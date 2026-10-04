@@ -21,7 +21,7 @@ export type TabMeshStateSnapshot = {
 export type TabSyncMessage =
   | { type: "sync"; u: number[]; fromTab: string }
   | { type: "awareness"; u: number[]; fromTab: string }
-  | { type: "tab-ping"; tabId: string; visible: boolean; at: number }
+  | { type: "tab-ping"; tabId: string; visible: boolean; at: number; isLeader?: boolean }
   | { type: "tab-leave"; tabId: string; at: number }
   | { type: "leader-resign"; tabId: string; at: number }
   | ({ type: "mesh-state"; fromTab: string } & TabMeshStateSnapshot);
@@ -60,7 +60,10 @@ export function pruneStaleTabs(
   return active;
 }
 
-/** Prefer visible tabs; break ties with lexicographically smallest tab id. */
+/**
+ * Cold start only: prefer visible tabs, then the lexicographically smallest id.
+ * Once a leader is known, {@link electStickyDocsLeaderTabId} keeps them.
+ */
 export function electLeaderTabId(
   tabs: ReadonlyMap<string, TabPresence>,
   now: number = Date.now(),
@@ -131,8 +134,42 @@ export function applyTabPresenceMessage(
   }
 }
 
-export function shouldResignOnHide(isLeader: boolean, visible: boolean): boolean {
-  return isLeader && !visible;
+/**
+ * Keep `currentLeaderId` until resign, `pagehide`, or `tab-leave`. A hidden
+ * leader must not hand the mesh to a visible tab — that rebuilt every peer
+ * connection on a tab switch.
+ */
+export function electStickyDocsLeaderTabId(
+  tabs: ReadonlyMap<string, TabPresence>,
+  currentLeaderId: string | null,
+  now: number = Date.now(),
+): string | null {
+  if (currentLeaderId) return currentLeaderId;
+  return electLeaderTabId(tabs, now);
+}
+
+/**
+ * Adopt a remote `isLeader` claim. Contenders collapse to the lexicographic
+ * minimum so simultaneous claims converge on one tab.
+ */
+export function resolveDocsLeaderClaim(
+  selfTabId: string,
+  selfIsLeader: boolean,
+  knownLeaderId: string | null,
+  remoteTabId: string,
+  remoteIsLeader: boolean,
+): string | null {
+  if (!remoteIsLeader || remoteTabId === selfTabId) return knownLeaderId;
+  const contenders = [remoteTabId];
+  if (knownLeaderId) contenders.push(knownLeaderId);
+  if (selfIsLeader) contenders.push(selfTabId);
+  contenders.sort((a, b) => a.localeCompare(b));
+  return contenders[0] ?? knownLeaderId;
+}
+
+/** Docs mesh keeps leadership across hide. Hand-off is `pagehide` or tab leave. */
+export function shouldResignOnHide(_isLeader: boolean, _visible: boolean): boolean {
+  return false;
 }
 
 export type MeshRelayMessage = Extract<DocsCollabMeshMessage, { type: "sync" | "awareness" }>;
@@ -154,6 +191,9 @@ export class DocsCollabTabCoordinator {
 
   private isLeader = false;
 
+  /** Last known leader. Sticky until resign, pagehide, or tab-leave. */
+  private knownLeaderId: string | null = null;
+
   private visible = typeof document === "undefined" ? true : document.visibilityState === "visible";
 
   private readonly onVisibilityChange: () => void;
@@ -168,9 +208,7 @@ export class DocsCollabTabCoordinator {
     this.onVisibilityChange = () => {
       this.visible = document.visibilityState === "visible";
       this.sendPing();
-      if (shouldResignOnHide(this.isLeader, this.visible)) {
-        this.resignLeadership();
-      }
+      // Sticky: never resign on hide. Peer connections stay up across a tab switch.
       this.runElection();
     };
     this.onPageHide = () => {
@@ -226,6 +264,7 @@ export class DocsCollabTabCoordinator {
     this.channel?.close();
     this.channel = null;
     this.tabs.clear();
+    this.knownLeaderId = null;
   }
 
   publishSync(encoded: number[]): void {
@@ -255,6 +294,13 @@ export class DocsCollabTabCoordinator {
       const wasKnown = this.tabs.has(data.tabId);
       applyTabPresenceMessage(this.tabs, data);
       if (!wasKnown && data.tabId !== this.tabId) this.sendPing();
+      this.knownLeaderId = resolveDocsLeaderClaim(
+        this.tabId,
+        this.isLeader,
+        this.knownLeaderId,
+        data.tabId,
+        data.isLeader === true,
+      );
       this.runElection();
       return;
     }
@@ -263,6 +309,7 @@ export class DocsCollabTabCoordinator {
     routeTabSyncMessage(data, this.tabId, this.handlers);
 
     if (data.type === "leader-resign" || data.type === "tab-leave") {
+      if (this.knownLeaderId === data.tabId) this.knownLeaderId = null;
       this.runElection();
     }
   }
@@ -278,15 +325,18 @@ export class DocsCollabTabCoordinator {
       tabId: this.tabId,
       visible: this.visible,
       at: Date.now(),
+      isLeader: this.isLeader,
     });
   }
 
   private runElection(): void {
-    const leaderId = electLeaderTabId(this.tabs);
+    const leaderId = electStickyDocsLeaderTabId(this.tabs, this.knownLeaderId);
     const shouldLead = leaderId === this.tabId;
 
     if (shouldLead && !this.isLeader) {
       this.isLeader = true;
+      this.knownLeaderId = this.tabId;
+      this.sendPing();
       this.handlers.onBecomeLeader();
       return;
     }
@@ -299,6 +349,7 @@ export class DocsCollabTabCoordinator {
   private resignLeadership(): void {
     if (!this.isLeader) return;
     this.isLeader = false;
+    this.knownLeaderId = null;
     this.post({ type: "leader-resign", tabId: this.tabId, at: Date.now() });
     this.handlers.onResignLeader();
   }

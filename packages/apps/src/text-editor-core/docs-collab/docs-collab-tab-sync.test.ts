@@ -5,9 +5,11 @@ import {
   BC_TAB_ORIGIN,
   DocsCollabTabCoordinator,
   electLeaderTabId,
+  electStickyDocsLeaderTabId,
   isTabPresenceStale,
   meshMessageForTabRelay,
   pruneStaleTabs,
+  resolveDocsLeaderClaim,
   routeTabSyncMessage,
   shouldResignOnHide,
   type TabPresence,
@@ -75,9 +77,37 @@ describe("docs-collab-tab-sync leader election", () => {
     expect(pruneStaleTabs(tabs, now).size).toBe(1);
   });
 
-  it("resigns leadership when leader tab becomes hidden", () => {
-    expect(shouldResignOnHide(true, false)).toBe(true);
+  it("keeps leadership when the leader tab becomes hidden", () => {
+    expect(shouldResignOnHide(true, false)).toBe(false);
     expect(shouldResignOnHide(false, false)).toBe(false);
+  });
+
+  it("keeps a hidden leader until it leaves", () => {
+    const now = 1_000_000;
+    const hiddenLeader: TabPresence = {
+      tabId: "tab-a",
+      visible: false,
+      lastSeen: now,
+    };
+    const visibleFollower: TabPresence = {
+      tabId: "tab-b",
+      visible: true,
+      lastSeen: now,
+    };
+    const tabs = new Map<string, TabPresence>([
+      ["tab-a", hiddenLeader],
+      ["tab-b", visibleFollower],
+    ]);
+
+    expect(electStickyDocsLeaderTabId(tabs, "tab-a", now)).toBe("tab-a");
+    expect(electLeaderTabId(tabs, now)).toBe("tab-b");
+    expect(electStickyDocsLeaderTabId(tabs, null, now)).toBe("tab-b");
+  });
+
+  it("adopts the lexicographically smaller leader claim", () => {
+    expect(resolveDocsLeaderClaim("tab-b", false, "tab-b", "tab-a", true)).toBe("tab-a");
+    expect(resolveDocsLeaderClaim("tab-a", true, "tab-a", "tab-b", true)).toBe("tab-a");
+    expect(resolveDocsLeaderClaim("tab-b", false, null, "tab-a", false)).toBeNull();
   });
 });
 
