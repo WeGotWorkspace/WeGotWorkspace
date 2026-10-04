@@ -246,16 +246,16 @@ export function useDocsCollabMesh({
         return resumed.getRoomPeers();
       }
 
-      let rtcSettings;
+      let fetched;
       try {
-        rtcSettings = await refs.wireRef.current.fetchRtcSettings({
+        fetched = await refs.wireRef.current.fetchRtcSettings({
           url: urls.collabRtcUrl,
           bearerToken: authToken,
           channel: "collab",
         });
       } catch (error) {
         console.warn("[docs-collab] rtc settings unavailable", error);
-        rtcSettings = await DEFAULT_DOCS_COLLAB_WIRE.fetchRtcSettings({ channel: "collab" });
+        fetched = await DEFAULT_DOCS_COLLAB_WIRE.fetchRtcSettings({ channel: "collab" });
       }
 
       const mesh = new DocsRtcSession({
@@ -263,7 +263,8 @@ export function useDocsCollabMesh({
         room,
         authToken,
         rtcSettings:
-          rtcSettings ?? applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, forceRelay: false }),
+          fetched ?? applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, forceRelay: false }),
+        collabTicket: fetched?.collabTicket,
       });
       refs.meshRef.current = mesh;
       mesh.onMessage(handleMeshMessage);
