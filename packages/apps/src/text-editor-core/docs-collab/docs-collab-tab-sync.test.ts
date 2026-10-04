@@ -252,6 +252,52 @@ describe("docs-collab-tab-sync coordinator", () => {
 
     tabB.stop();
   });
+
+  it("keeps peer connections across a hide/show cycle", () => {
+    const onResignLeader = vi.fn();
+    const onBecomeLeaderB = vi.fn();
+    const handlersFor = (onBecomeLeader: () => void, onResign: () => void) => ({
+      onSyncFromTab: vi.fn(),
+      onAwarenessFromTab: vi.fn(),
+      onMeshStateFromLeader: vi.fn(),
+      onBecomeLeader,
+      onResignLeader: onResign,
+    });
+
+    const tabA = new DocsCollabTabCoordinator(
+      "docs/test.md",
+      handlersFor(vi.fn(), onResignLeader),
+      "tab-a",
+    );
+    const tabB = new DocsCollabTabCoordinator(
+      "docs/test.md",
+      handlersFor(onBecomeLeaderB, vi.fn()),
+      "tab-b",
+    );
+
+    tabA.start();
+    tabB.start();
+    expect(tabA.meshLeader).toBe(true);
+
+    const setVisibility = (state: DocumentVisibilityState) => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => state,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+
+    setVisibility("hidden");
+    setVisibility("visible");
+
+    expect(tabA.meshLeader).toBe(true);
+    expect(tabB.meshLeader).toBe(false);
+    expect(onResignLeader).not.toHaveBeenCalled();
+    expect(onBecomeLeaderB).not.toHaveBeenCalled();
+
+    tabA.stop();
+    tabB.stop();
+  });
 });
 
 /**

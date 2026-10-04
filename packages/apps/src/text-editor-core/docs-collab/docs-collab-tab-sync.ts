@@ -194,6 +194,9 @@ export class DocsCollabTabCoordinator {
   /** Last known leader. Sticky until resign, pagehide, or tab-leave. */
   private knownLeaderId: string | null = null;
 
+  /** Set for the duration of `stop()` so a follower ping cannot reclaim leadership. */
+  private stopped = false;
+
   private visible = typeof document === "undefined" ? true : document.visibilityState === "visible";
 
   private readonly onVisibilityChange: () => void;
@@ -223,6 +226,7 @@ export class DocsCollabTabCoordinator {
 
   start(): void {
     const now = Date.now();
+    this.stopped = false;
     this.tabs.set(this.tabId, { tabId: this.tabId, visible: this.visible, lastSeen: now });
 
     try {
@@ -245,6 +249,9 @@ export class DocsCollabTabCoordinator {
   }
 
   stop(): void {
+    if (this.stopped) return;
+    this.stopped = true;
+    if (this.knownLeaderId === this.tabId) this.knownLeaderId = null;
     if (this.isLeader) {
       this.isLeader = false;
       this.post({ type: "leader-resign", tabId: this.tabId, at: Date.now() });
@@ -288,7 +295,7 @@ export class DocsCollabTabCoordinator {
   }
 
   private handleMessage(data: unknown): void {
-    if (!isTabSyncMessage(data)) return;
+    if (this.stopped || !isTabSyncMessage(data)) return;
 
     if (data.type === "tab-ping") {
       const wasKnown = this.tabs.has(data.tabId);
@@ -330,6 +337,7 @@ export class DocsCollabTabCoordinator {
   }
 
   private runElection(): void {
+    if (this.stopped) return;
     const leaderId = electStickyDocsLeaderTabId(this.tabs, this.knownLeaderId);
     const shouldLead = leaderId === this.tabId;
 
