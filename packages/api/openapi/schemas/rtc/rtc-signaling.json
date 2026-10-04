@@ -136,6 +136,27 @@
             "description": "True when a relay secret is configured. Credentials are never part of this response."
           }
         }
+      },
+      "collabTicket": {
+        "type": "object",
+        "required": ["kid", "jwk"],
+        "description": "Public half of the contract C2 ticket signing key. No private material is ever part of this response.",
+        "properties": {
+          "kid": { "type": "string", "description": "Key id the ticket header names." },
+          "jwk": {
+            "type": "object",
+            "required": ["kty", "crv", "x", "y", "kid"],
+            "properties": {
+              "kty": { "type": "string", "enum": ["EC"] },
+              "crv": { "type": "string", "enum": ["P-256"] },
+              "x": { "type": "string", "description": "base64url, 32 bytes." },
+              "y": { "type": "string", "description": "base64url, 32 bytes." },
+              "kid": { "type": "string" },
+              "alg": { "type": "string", "enum": ["ES256"] },
+              "use": { "type": "string", "enum": ["sig"] }
+            }
+          }
+        }
       }
     }
   },

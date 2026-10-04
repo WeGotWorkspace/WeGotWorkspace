@@ -4,15 +4,31 @@ import { rtcLog } from "@/lib/rtc/log";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { resolveRoomId } from "@/lib/rtc/room-id";
 import { DEFAULT_RTC_SETTINGS, type RtcSettings } from "@/lib/rtc/types";
+import type { components } from "@wgw/openapi-types/openapi-types";
 
 export type { RtcSettings };
 
 export type RtcIceSettings = Omit<RtcSettings, "forceRelay">;
 
-export function parseRtcSettingsPayload(payload: Record<string, unknown>): RtcIceSettings {
+type RtcRoomConfiguration = components["schemas"]["RtcRoomConfiguration"];
+
+/** Public half of the C2 signing key, as `RtcRoomConfiguration.collabTicket`. */
+export type PublishedCollabTicket = NonNullable<RtcRoomConfiguration["collabTicket"]>;
+
+export type FetchedRtcSettings = RtcSettings & {
+  collabTicket?: PublishedCollabTicket;
+};
+
+type RtcSettingsCarrier = {
+  rtc?: { stunUrls?: unknown; turnAvailable?: unknown };
+  stunUrls?: unknown;
+  turnAvailable?: unknown;
+};
+
+export function parseRtcSettingsPayload(payload: RtcSettingsCarrier): RtcIceSettings {
   // Shared platform ICE settings (`GET /rooms/{roomId}/configuration`). Relay
   // credentials are never part of this payload; they come from a relay request.
-  const rtc = (payload.rtc ?? payload) as Record<string, unknown>;
+  const rtc = payload.rtc ?? payload;
   return {
     stunUrls: typeof rtc.stunUrls === "string" ? rtc.stunUrls : "",
     turnAvailable: rtc.turnAvailable === true,
@@ -28,7 +44,7 @@ export async function fetchRtcSettings(options?: {
   bearerToken?: string;
   channel?: "meet" | "collab";
   room?: string;
-}): Promise<RtcSettings> {
+}): Promise<FetchedRtcSettings> {
   const channel = options?.channel ?? "meet";
   const base = wgwApiBaseUrl();
   const room = options?.room ?? (channel === "meet" ? "bootstrap" : "");
@@ -47,7 +63,7 @@ export async function fetchRtcSettings(options?: {
     return resolveRtcSettings(DEFAULT_RTC_SETTINGS);
   }
   try {
-    const payload = (await wgwReadJson(res)) as Record<string, unknown>;
+    const payload = (await wgwReadJson(res)) as RtcRoomConfiguration;
     const settings = resolveRtcSettings(parseRtcSettingsPayload(payload));
     rtcLog({ channel }, "rtc-settings-response", {
       requestUrl,
@@ -56,7 +72,7 @@ export async function fetchRtcSettings(options?: {
       forceRelay: settings.forceRelay,
       turnAvailable: settings.turnAvailable,
     });
-    return settings;
+    return payload.collabTicket ? { ...settings, collabTicket: payload.collabTicket } : settings;
   } catch {
     rtcLog({ channel }, "rtc-settings-response", {
       requestUrl,

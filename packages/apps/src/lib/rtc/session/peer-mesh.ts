@@ -486,7 +486,7 @@ export class RtcPeerMesh {
       this.myId = joined.peerId ?? previousPeerId ?? null;
       await this.prepareRelay();
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
-      await this.onPoll({ peers: joined.peers, messages: [] });
+      await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
     } catch (error) {
       this.log("peer-recover-error", { previousPeerId, error });
@@ -518,7 +518,7 @@ export class RtcPeerMesh {
     this.visibilityUnsubscribe ??=
       this.visibility?.subscribe(() => this.pollLoop.onVisibilityChange()) ?? null;
     this.schedulePoll();
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
     this.installNetworkRecovery();
     return {
       peerId: this.myId,
@@ -605,7 +605,7 @@ export class RtcPeerMesh {
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
     // Same-peer rename (admit): refresh roster and dial now — do not wait for
     // the next poll, which may already be on the idle interval.
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
   }
 
   async sendByeToAll(): Promise<void> {

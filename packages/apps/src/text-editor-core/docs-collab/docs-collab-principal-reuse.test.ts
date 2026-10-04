@@ -3,7 +3,12 @@ import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
-import type { RtcPeerDescriptor } from "@/lib/rtc/types";
+import {
+  collabRoomKey,
+  createCollabTicketKeyCache,
+  type DocsCollabTicketJwk,
+} from "@/text-editor-core/docs-collab/docs-collab-ticket";
+import type { DocsCollabAccess } from "@/text-editor-core/docs-collab/docs-collab-access";
 import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
@@ -19,10 +24,71 @@ vi.mock("@/lib/rtc/log", () => ({
   rtcLog: vi.fn(),
 }));
 
+const ROOM = "/groups/administrators/team-notes.md";
+const TICKET_KID = "envelopekid01";
+
+async function ticketKit() {
+  const pair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, [
+    "sign",
+    "verify",
+  ]);
+  const exported = await crypto.subtle.exportKey("jwk", pair.publicKey);
+  const jwk: DocsCollabTicketJwk = {
+    kty: "EC",
+    crv: "P-256",
+    x: exported.x ?? "",
+    y: exported.y ?? "",
+    kid: TICKET_KID,
+    alg: "ES256",
+    use: "sig",
+  };
+  const resolveTicketKey = createCollabTicketKeyCache(async (kid) =>
+    kid === jwk.kid ? jwk : null,
+  );
+  await resolveTicketKey(jwk.kid);
+  const roomDigest = await collabRoomKey(ROOM);
+  const now = Math.floor(Date.now() / 1000);
+
+  async function sign(input: {
+    user: string;
+    peer: string;
+    access: DocsCollabAccess;
+  }): Promise<string> {
+    const encoded = btoa(
+      JSON.stringify({
+        v: 1,
+        kid: TICKET_KID,
+        room: roomDigest,
+        user: input.user,
+        peer: input.peer,
+        access: input.access,
+        iat: now - 10,
+        exp: now + 600,
+      }),
+    )
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const signature = await crypto.subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" },
+      pair.privateKey,
+      new TextEncoder().encode(encoded),
+    );
+    const bytes = new Uint8Array(signature);
+    let raw = "";
+    for (const byte of bytes) raw += String.fromCharCode(byte);
+    return `${encoded}.${btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
+  }
+
+  return { resolveTicketKey, sign };
+}
+
 function createHarness(options?: {
   ackTimeoutMs?: number;
   onReuseFallback?: () => void;
   onReuseAttached?: (collabPeerId: string) => void;
+  resolveTicketKey?: (kid: string) => Promise<CryptoKey | null>;
+  getOwnTicket?: () => string | undefined;
 }) {
   const registry = new PrincipalLinkRegistry();
   const sent: unknown[] = [];
@@ -41,6 +107,8 @@ function createHarness(options?: {
     onReuseFallback: options?.onReuseFallback,
     onReuseAttached: options?.onReuseAttached,
     onMessage: (msg) => messages.push(msg),
+    resolveTicketKey: options?.resolveTicketKey,
+    getOwnTicket: options?.getOwnTicket,
     ackTimeoutMs: options?.ackTimeoutMs ?? COLLAB_REUSE_ACK_TIMEOUT_MS,
     setTimeoutFn: ((fn: () => void, delay?: number) => {
       timers.push({ delay: delay ?? 0, fn });
@@ -258,7 +326,6 @@ describe("DocsCollabPrincipalReuse", () => {
   it("carries the roster access along with a forwarded update", () => {
     const { reuse, registry, registerAdminToWouter, messages } = createHarness();
     registerAdminToWouter();
-    // `access` rides along on the wire; `RtcPeerDescriptor` does not name it.
     reuse.considerRoster(
       [
         {
@@ -266,7 +333,7 @@ describe("DocsCollabPrincipalReuse", () => {
           name: "Wouter",
           user: "wouter",
           access: "comment",
-        } as RtcPeerDescriptor,
+        },
       ],
       "aaaaaaaaaaaaaaaa",
     );
@@ -645,5 +712,124 @@ describe("DocsCollabPrincipalReuse bidirectional Yjs over reused DC", () => {
     expect(wouterMsgs.filter((msg) => msg.type === "sync")).toHaveLength(1);
     handleSyncMessage(inboundA[0]!.u, docA);
     expect(docA.getText("body").toString()).toContain("+wouter");
+  });
+});
+
+describe("DocsCollabPrincipalReuse ticket", () => {
+  it("puts the local ticket on open when one is available and omits it otherwise", () => {
+    const without = createHarness();
+    without.registerAdminToWouter();
+    without.reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    expect(without.sent[0]).not.toHaveProperty("ticket");
+
+    const withTicket = createHarness({ getOwnTicket: () => "local.ticket" });
+    withTicket.registerAdminToWouter();
+    withTicket.reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    expect(withTicket.sent[0]).toEqual(
+      expect.objectContaining({ op: "open", ticket: "local.ticket" }),
+    );
+  });
+
+  it("accepts a verified ticket and takes access from the payload", async () => {
+    const kit = await ticketKit();
+    const { reuse, registry, registerAdminToWouter, messages } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+    });
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter", access: "read" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    await registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "data",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      ticket: await kit.sign({ user: "wouter", peer: "bbbbbbbbbbbbbbbb", access: "write" }),
+      payload: { type: "sync", u: [7] },
+    });
+
+    expect(messages.at(-1)).toEqual({
+      type: "sync",
+      u: [7],
+      from: "bbbbbbbbbbbbbbbb",
+      trust: { user: "wouter", access: "write" },
+    });
+  });
+
+  it("rejects a ticket whose user or peer does not match the envelope", async () => {
+    const kit = await ticketKit();
+    const { reuse, registry, registerAdminToWouter, opened, sent } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+    });
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter", access: "write" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    sent.length = 0;
+
+    await registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+      ticket: await kit.sign({ user: "carol", peer: "bbbbbbbbbbbbbbbb", access: "write" }),
+    });
+    expect(opened).toEqual([]);
+    expect(sent).not.toContainEqual(expect.objectContaining({ op: "ack" }));
+
+    await registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+      ticket: await kit.sign({ user: "wouter", peer: "cccccccccccccccc", access: "write" }),
+    });
+    expect(opened).toEqual([]);
+    expect(reuse.reusedLinkCount()).toBe(0);
+  });
+
+  it("still accepts an envelope with no ticket through the roster check", () => {
+    const { reuse, registry, registerAdminToWouter, opened, sent } = createHarness();
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    sent.length = 0;
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    expect(opened).toEqual(["bbbbbbbbbbbbbbbb"]);
+    expect(sent).toContainEqual(expect.objectContaining({ op: "ack" }));
+    expect(sent[0]).not.toHaveProperty("ticket");
   });
 });

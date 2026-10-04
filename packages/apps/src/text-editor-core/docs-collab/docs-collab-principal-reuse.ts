@@ -5,7 +5,14 @@ import {
   type PrincipalLinkRegistry,
 } from "@/lib/rtc/session/principal-link-registry";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
-import { DocsCollabRosterTrust } from "@/text-editor-core/docs-collab/docs-collab-access";
+import {
+  DocsCollabRosterTrust,
+  type DocsCollabAccess,
+} from "@/text-editor-core/docs-collab/docs-collab-access";
+import {
+  collabRoomKey,
+  verifyCollabTicket,
+} from "@/text-editor-core/docs-collab/docs-collab-ticket";
 import type {
   DocsCollabMeshMessage,
   DocsCollabMeshPeer,
@@ -52,6 +59,12 @@ export type DocsCollabPrincipalReusePorts = {
   onMessage: (msg: DocsCollabMeshMessage) => void;
   /** Principal data-channel send failed for a reused collab peer. */
   onSendFailed?: (collabPeerId: string) => void;
+  /** Imported C2 public key for a `kid`. Missing keys reject a presented ticket. */
+  resolveTicketKey?: (kid: string) => Promise<CryptoKey | null>;
+  /** This client's own ticket, attached to outbound `open` and `ack` when set. */
+  getOwnTicket?: () => string | undefined;
+  /** Clock for ticket expiry. Tests pin it; production uses the wall clock. */
+  nowSeconds?: () => number;
   ackTimeoutMs?: number;
   principalConnectDeferMs?: number;
   setTimeoutFn?: typeof setTimeout;
@@ -64,10 +77,10 @@ export type DocsCollabPrincipalReusePorts = {
  * `shouldConnectToPeer` so reuse-hit peers skip ICE.
  *
  * The principal `workspace` room holds every signed-in account, so an envelope
- * arriving on it says nothing about document access. Nothing is accepted from a
- * username the collab roster does not list: an unrostered `open` is dropped
- * without an `ack`, so no `dc-open` fires and no Yjs state is ever sent. The
- * roster also supplies the right that rides along with every forwarded update.
+ * arriving on it says nothing about document access. A present C2 ticket is
+ * verified and its payload supplies `access`. An envelope with no ticket is
+ * still gated by the collab roster, so a mixed-version room keeps syncing.
+ * An unrostered `open` that also has no ticket is dropped without an `ack`.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
@@ -105,6 +118,10 @@ export class DocsCollabPrincipalReuse {
 
   private readonly trust = new DocsCollabRosterTrust();
 
+  private readonly resolveTicketKey: (kid: string) => Promise<CryptoKey | null>;
+
+  private roomDigestTask: Promise<string> | null = null;
+
   private lastRosterPeers: RtcPeerDescriptor[] = [];
 
   constructor(private readonly ports: DocsCollabPrincipalReusePorts) {
@@ -115,9 +132,10 @@ export class DocsCollabPrincipalReuse {
       ports.principalConnectDeferMs ?? COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS;
     this.scheduleTimeout = ports.setTimeoutFn ?? setTimeout.bind(globalThis);
     this.cancelTimeout = ports.clearTimeoutFn ?? clearTimeout.bind(globalThis);
+    this.resolveTicketKey = ports.resolveTicketKey ?? (async () => null);
     this.unsubscribe = this.registry.subscribe((username, principalPeerId, envelope) => {
       if (envelope.room !== this.room) return;
-      this.onEnvelope(username, principalPeerId, envelope);
+      return this.onEnvelope(username, principalPeerId, envelope);
     });
     this.unsubscribeLinks = this.registry.subscribeLinks(() => {
       this.dropDeadPrincipalLinks();
@@ -259,11 +277,24 @@ export class DocsCollabPrincipalReuse {
 
   /**
    * A reuse envelope is only trustworthy when the collab roster lists the
-   * sender under the collab peer id the envelope claims. Both halves matter:
-   * the username proves document access, the peer id keeps a rostered account
-   * from speaking for somebody else's peer row.
+   * sender under the collab peer id the envelope claims, or when a present
+   * C2 ticket verifies for that same username and peer id. Both halves of the
+   * roster check matter: the username proves document access, the peer id
+   * keeps a rostered account from speaking for somebody else's peer row.
+   * A present ticket replaces that roster check. A missing ticket does not.
    */
-  private mayReuseWith(fromUsername: string, collabPeerId: string | undefined): boolean {
+  private mayReuseWith(fromUsername: string, collabPeerId: string | undefined): boolean;
+  private mayReuseWith(
+    fromUsername: string,
+    collabPeerId: string | undefined,
+    ticket: string,
+  ): Promise<DocsCollabAccess | null>;
+  private mayReuseWith(
+    fromUsername: string,
+    collabPeerId: string | undefined,
+    ticket?: string,
+  ): boolean | Promise<DocsCollabAccess | null> {
+    if (ticket) return this.verifiedTicketAccess(fromUsername, collabPeerId, ticket);
     if (!this.trust.isRosteredUser(fromUsername)) {
       this.logMiss(collabPeerId ?? fromUsername, "not-in-collab-roster", fromUsername);
       return false;
@@ -275,6 +306,56 @@ export class DocsCollabPrincipalReuse {
       }
     }
     return true;
+  }
+
+  /**
+   * Verify a presented ticket. `user` and `peer` have to match the principal
+   * link and the envelope. Access comes from the payload. A failure is a drop,
+   * not a fall back to the roster.
+   */
+  private async verifiedTicketAccess(
+    fromUsername: string,
+    collabPeerId: string | undefined,
+    ticket: string,
+  ): Promise<DocsCollabAccess | null> {
+    if (!collabPeerId) {
+      this.logMiss(fromUsername, "ticket-missing-peer", fromUsername);
+      return null;
+    }
+    const payload = await verifyCollabTicket({
+      ticket,
+      claims: {
+        room: await this.roomDigest(),
+        user: fromUsername,
+        peer: collabPeerId,
+      },
+      resolveKey: this.resolveTicketKey,
+      nowSeconds: this.ports.nowSeconds?.(),
+    });
+    if (!payload || payload.user !== fromUsername || payload.peer !== collabPeerId) {
+      this.logMiss(collabPeerId, "ticket-rejected", fromUsername);
+      return null;
+    }
+    return payload.access;
+  }
+
+  private roomDigest(): Promise<string> {
+    this.roomDigestTask ??= collabRoomKey(this.room);
+    return this.roomDigestTask;
+  }
+
+  private handshakeEnvelope(op: "open" | "ack", collabPeerId: string): CollabReuseEnvelope {
+    const envelope: CollabReuseEnvelope = {
+      v: 1,
+      kind: "collab-reuse",
+      room: this.room,
+      op,
+      collabPeerId,
+      name: this.ports.getMyName(),
+    };
+    const ticket = this.ports.getOwnTicket?.();
+    if (ticket) envelope.ticket = ticket;
+    return envelope;
   }
 
   /** A share revoked mid-session drops off the roster; so does its reuse link. */
@@ -349,41 +430,14 @@ export class DocsCollabPrincipalReuse {
       username,
       timer,
     });
-    this.registry.sendToUsername(username, {
-      v: 1,
-      kind: "collab-reuse",
-      room: this.room,
-      op: "open",
-      collabPeerId: myId,
-      name: this.ports.getMyName(),
-    } satisfies CollabReuseEnvelope);
+    this.registry.sendToUsername(username, this.handshakeEnvelope("open", myId));
   }
 
   private onEnvelope(
     fromUsername: string,
     fromPrincipalPeerId: string,
     envelope: CollabReuseEnvelope,
-  ): void {
-    if (envelope.op === "open") {
-      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
-      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
-      const myId = this.ports.getMyCollabPeerId();
-      if (!myId) return;
-      this.registry.sendToPrincipalPeer(fromPrincipalPeerId, {
-        v: 1,
-        kind: "collab-reuse",
-        room: this.room,
-        op: "ack",
-        collabPeerId: myId,
-        name: this.ports.getMyName(),
-      } satisfies CollabReuseEnvelope);
-      return;
-    }
-    if (envelope.op === "ack") {
-      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
-      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "ack");
-      return;
-    }
+  ): void | Promise<void> {
     if (envelope.op === "close") {
       const collabPeerId = envelope.collabPeerId;
       if (collabPeerId) this.dropPeer(collabPeerId, false);
@@ -394,27 +448,99 @@ export class DocsCollabPrincipalReuse {
       }
       return;
     }
-    if (envelope.op === "data") {
-      const myId = this.ports.getMyCollabPeerId();
-      if (envelope.collabPeerId && myId && envelope.collabPeerId === myId) {
-        return;
-      }
-      // Only a peer whose reuse handshake was accepted may push mesh traffic,
-      // and only under the collab peer id that handshake established.
-      const attached = [...this.reused.values()].find((entry) => entry.username === fromUsername);
-      if (!attached) return;
-      const from = envelope.collabPeerId ?? attached.collabPeerId;
-      if (from !== attached.collabPeerId) return;
-      if (!this.mayReuseWith(fromUsername, from)) return;
-      if (envelope.payload === undefined) return;
-      const payload = envelope.payload;
-      if (!payload || typeof payload !== "object") return;
-      this.ports.onMessage({
-        ...(payload as DocsCollabMeshMessage),
-        from,
-        trust: { user: fromUsername, access: this.trust.accessForUser(fromUsername) },
-      } as DocsCollabMeshMessage);
+    if (
+      envelope.ticket &&
+      (envelope.op === "open" || envelope.op === "ack" || envelope.op === "data")
+    ) {
+      return this.onEnvelopeWithTicket(fromUsername, fromPrincipalPeerId, envelope);
     }
+    if (envelope.op === "open") {
+      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
+      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
+      const myId = this.ports.getMyCollabPeerId();
+      if (!myId) return;
+      this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
+      return;
+    }
+    if (envelope.op === "ack") {
+      if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
+      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "ack");
+      return;
+    }
+    if (envelope.op === "data") {
+      this.forwardRosterData(fromUsername, envelope);
+    }
+  }
+
+  private async onEnvelopeWithTicket(
+    fromUsername: string,
+    fromPrincipalPeerId: string,
+    envelope: CollabReuseEnvelope,
+  ): Promise<void> {
+    const ticket = envelope.ticket;
+    if (!ticket) return;
+    if (envelope.op === "data") {
+      const forwarded = this.dataForwardTarget(fromUsername, envelope);
+      if (!forwarded) return;
+      const access = await this.mayReuseWith(fromUsername, forwarded.from, ticket);
+      if (!access) return;
+      this.emitData(forwarded.from, forwarded.payload, fromUsername, access);
+      return;
+    }
+    const access = await this.mayReuseWith(fromUsername, envelope.collabPeerId, ticket);
+    if (!access) return;
+    if (envelope.op === "open") {
+      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
+      const myId = this.ports.getMyCollabPeerId();
+      if (!myId) return;
+      this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
+      return;
+    }
+    if (envelope.op === "ack") {
+      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "ack");
+    }
+  }
+
+  private forwardRosterData(fromUsername: string, envelope: CollabReuseEnvelope): void {
+    const forwarded = this.dataForwardTarget(fromUsername, envelope);
+    if (!forwarded) return;
+    if (!this.mayReuseWith(fromUsername, forwarded.from)) return;
+    this.emitData(
+      forwarded.from,
+      forwarded.payload,
+      fromUsername,
+      this.trust.accessForUser(fromUsername),
+    );
+  }
+
+  /** Identity checks shared by roster and ticket data. Null means drop. */
+  private dataForwardTarget(
+    fromUsername: string,
+    envelope: CollabReuseEnvelope,
+  ): { from: string; payload: unknown } | null {
+    const myId = this.ports.getMyCollabPeerId();
+    if (envelope.collabPeerId && myId && envelope.collabPeerId === myId) return null;
+    const attached = [...this.reused.values()].find((entry) => entry.username === fromUsername);
+    if (!attached) return null;
+    const from = envelope.collabPeerId ?? attached.collabPeerId;
+    if (from !== attached.collabPeerId) return null;
+    if (envelope.payload === undefined) return null;
+    const payload = envelope.payload;
+    if (!payload || typeof payload !== "object") return null;
+    return { from, payload };
+  }
+
+  private emitData(
+    from: string,
+    payload: unknown,
+    fromUsername: string,
+    access: DocsCollabAccess,
+  ): void {
+    this.ports.onMessage({
+      ...(payload as DocsCollabMeshMessage),
+      from,
+      trust: { user: fromUsername, access },
+    } as DocsCollabMeshMessage);
   }
 
   private acceptRemote(

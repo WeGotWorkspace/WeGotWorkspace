@@ -12,7 +12,7 @@ export type PrincipalCollabReuseListener = (
   fromUsername: string,
   fromPrincipalPeerId: string,
   envelope: CollabReuseEnvelope,
-) => void;
+) => void | Promise<void>;
 
 export type PrincipalLinkOpenListener = (username: string, principalPeerId: string) => void;
 
@@ -103,10 +103,18 @@ export class PrincipalLinkRegistry {
     return true;
   }
 
-  receive(fromUsername: string, fromPrincipalPeerId: string, envelope: CollabReuseEnvelope): void {
+  receive(
+    fromUsername: string,
+    fromPrincipalPeerId: string,
+    envelope: CollabReuseEnvelope,
+  ): void | Promise<void> {
+    const pending: Promise<void>[] = [];
     for (const listener of this.listeners) {
-      listener(fromUsername, fromPrincipalPeerId, envelope);
+      const result = listener(fromUsername, fromPrincipalPeerId, envelope);
+      if (result) pending.push(result);
     }
+    if (pending.length === 0) return;
+    return Promise.all(pending).then(() => undefined);
   }
 
   subscribe(listener: PrincipalCollabReuseListener): () => void {
