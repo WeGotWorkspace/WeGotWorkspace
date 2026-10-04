@@ -139,6 +139,10 @@ export const docsLabels = {
   statusOffline: "Offline – changes are kept on this device",
   /** Stands in for `statusSyncingViaServer` until an HTTP fallback exists. */
   statusChangesSyncWhenSaved: "Changes sync when saved",
+  /** Transient phases, only ever shown after a 1.5 s hold. */
+  statusConnecting: "Connecting…",
+  statusReconnecting: "Reconnecting…",
+  statusRejoining: "Rejoining…",
   statusNamesPair: (first: string, second: string) => `${first} and ${second}`,
   statusNamesOverflowOne: (names: string) => `${names} and 1 other`,
   statusNamesOverflowMany: (names: string, count: number) => `${names} and ${count} others`,

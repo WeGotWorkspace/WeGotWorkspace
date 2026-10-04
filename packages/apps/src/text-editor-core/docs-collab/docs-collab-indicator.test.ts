@@ -78,6 +78,31 @@ describe("deriveDocsCollabIndicator", () => {
     );
   });
 
+  it("shows a revealed transient phase in plain words", () => {
+    expect(deriveDocsCollabIndicator({ ...base, phase: "connecting" })).toEqual({
+      kind: "connecting",
+      label: "Connecting…",
+    });
+    expect(deriveDocsCollabIndicator({ ...base, phase: "reconnecting" })).toEqual({
+      kind: "reconnecting",
+      label: "Reconnecting…",
+    });
+    expect(deriveDocsCollabIndicator({ ...base, phase: "rejoining" })).toEqual({
+      kind: "rejoining",
+      label: "Rejoining…",
+    });
+  });
+
+  it("lets offline outrank a phase, and a phase outrank save and presence", () => {
+    expect(deriveDocsCollabIndicator({ ...base, online: false, phase: "reconnecting" }).kind).toBe(
+      "offline",
+    );
+    expect(
+      deriveDocsCollabIndicator({ ...base, phase: "connecting", saving: true, liveNames: ["Ada"] })
+        .kind,
+    ).toBe("connecting");
+  });
+
   it("never leaks transport vocabulary into any state", () => {
     // Whole words only: "device" legitimately ends in "ice".
     const jargon = /\b(mesh|signal+ing|ice|peers?|turn|stun|webrtc)\b/i;
@@ -87,6 +112,9 @@ describe("deriveDocsCollabIndicator", () => {
       deriveDocsCollabIndicator({ ...base, saving: true }),
       deriveDocsCollabIndicator({ ...base, liveNames: ["Ada"] }),
       deriveDocsCollabIndicator({ ...base, saved: true }),
+      deriveDocsCollabIndicator({ ...base, phase: "connecting" }),
+      deriveDocsCollabIndicator({ ...base, phase: "reconnecting" }),
+      deriveDocsCollabIndicator({ ...base, phase: "rejoining" }),
     ];
 
     for (const indicator of indicators) {
