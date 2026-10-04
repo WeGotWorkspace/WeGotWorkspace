@@ -10,6 +10,7 @@ describe("meet media constraints", () => {
     expect(buildMeetAudioConstraints()).toEqual({
       echoCancellation: true,
       noiseSuppression: true,
+      autoGainControl: true,
     });
   });
 
@@ -17,6 +18,7 @@ describe("meet media constraints", () => {
     expect(buildMeetAudioConstraints("mic-1")).toEqual({
       echoCancellation: true,
       noiseSuppression: true,
+      autoGainControl: true,
       deviceId: { exact: "mic-1" },
     });
     expect(buildMeetVideoConstraints("cam-1")).toEqual({

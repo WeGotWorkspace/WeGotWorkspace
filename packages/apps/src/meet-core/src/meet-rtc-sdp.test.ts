@@ -27,15 +27,40 @@ const SAMPLE = [
 ].join("\n");
 
 describe("sanitizeRtcSdp", () => {
-  it("keeps opus and VP8/H264 while stripping rejected lines", () => {
-    const out = sanitizeRtcSdp(SAMPLE);
+  it("strips Safari session lines when Chromium parses the description", () => {
+    const out = sanitizeRtcSdp(SAMPLE, "chromium");
     expect(out).toContain("a=rtpmap:111 opus/48000/2");
+    expect(out).toContain("a=rtpmap:63 red/48000/2");
+    expect(out).toContain("a=rtpmap:97 rtx/90000");
     expect(out).toContain("a=rtpmap:96 VP8/90000");
     expect(out).toContain("a=fmtp:98 packetization-mode=1;profile-level-id=64001f");
+    expect(out).toContain("a=fmtp:111 usedtx=1");
     expect(out).not.toContain("H265");
     expect(out).not.toContain("AV1");
     expect(out).not.toContain("a=ssrc:");
     expect(out).not.toContain("a=rtcp-rsize");
     expect(out).not.toContain("extmap-allow-mixed");
+  });
+
+  it("strips RTX and Opus RED when Safari parses a Chromium description", () => {
+    const out = sanitizeRtcSdp(SAMPLE, "safari");
+    expect(out).toContain("a=rtpmap:111 opus/48000/2");
+    expect(out).toContain("a=ssrc:");
+    expect(out).toContain("a=rtcp-rsize");
+    expect(out).toContain("extmap-allow-mixed");
+    expect(out).not.toContain("a=rtpmap:63 red/48000/2");
+    expect(out).not.toContain("a=rtpmap:97 rtx/90000");
+    expect(out).not.toContain("H265");
+    expect(out).not.toContain("AV1");
+  });
+
+  it("keeps RTX, RED, and Safari session lines for any other parser", () => {
+    const out = sanitizeRtcSdp(SAMPLE, "other");
+    expect(out).toContain("a=rtpmap:97 rtx/90000");
+    expect(out).toContain("a=rtpmap:63 red/48000/2");
+    expect(out).toContain("a=ssrc:");
+    expect(out).toContain("a=rtcp-rsize");
+    expect(out).not.toContain("H265");
+    expect(out).not.toContain("VP9");
   });
 });
