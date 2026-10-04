@@ -16,6 +16,7 @@ import type {
   DocsCollabMeshPeer,
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
+import { decodeCollabTicketPayload } from "@/text-editor-core/docs-collab/docs-collab-ticket";
 import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 const DC_LABEL = "collab";
@@ -151,11 +152,28 @@ export class DocsRtcSession {
       },
       onPollData: (data) => {
         this.trust.remember(data.peers, this.mesh.getMyId());
+        this.noteOwnAccessFromPoll(data);
         this.reuse.considerRoster(data.peers, this.mesh.getMyId());
         this.dropStaleReusedPeers(data.peers);
         this.gossipNewRosterPeers(data.peers);
       },
     });
+  }
+
+  /**
+   * Join and poll responses carry this client's ticket. The roster omits self,
+   * so without this the broadcast mute stays at the default `read` and an
+   * editor never puts a document update on the wire.
+   */
+  private noteOwnAccessFromPoll(data: unknown): void {
+    if (!data || typeof data !== "object") return;
+    const ticket = (data as { ticket?: unknown }).ticket;
+    if (typeof ticket !== "string" || ticket === "") return;
+    const payload = decodeCollabTicketPayload(ticket);
+    if (!payload) return;
+    const myPeerId = this.mesh.getMyId();
+    if (myPeerId && payload.peer !== myPeerId) return;
+    this.trust.noteOwnAccess(payload.access);
   }
 
   private emit(msg: DocsCollabMeshMessage): void {

@@ -97,4 +97,12 @@ export class DocsCollabRosterTrust {
   myAccess(): DocsCollabAccess {
     return this.myAccessValue;
   }
+
+  /**
+   * The roster lists everyone except this client, so `remember` cannot learn
+   * our own right from it. The poll ticket is that right, minted for us.
+   */
+  noteOwnAccess(access: DocsCollabAccess): void {
+    this.myAccessValue = access;
+  }
 }
