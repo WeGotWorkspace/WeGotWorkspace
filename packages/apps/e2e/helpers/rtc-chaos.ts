@@ -180,9 +180,10 @@ export async function shareWithViewer(
   page: Page,
   apiPath: string,
   username: string,
+  access: "view" | "edit" = "view",
 ): Promise<void> {
   const result = await page.evaluate(
-    async ({ path, sharee }) => {
+    async ({ path, sharee, grant }) => {
       const accessToken = localStorage.getItem("wgw.api.access_token");
       const response = await fetch("/api/v1/files/shares", {
         method: "POST",
@@ -194,12 +195,12 @@ export async function shareWithViewer(
           path,
           kind: "member",
           defaultAccess: "view",
-          shareWith: { [sharee]: { access: "view" } },
+          shareWith: { [sharee]: { access: grant } },
         }),
       });
       return { ok: response.ok, text: await response.text() };
     },
-    { path: apiPath, sharee: username },
+    { path: apiPath, sharee: username, grant: access },
   );
   expect(result.ok, result.text).toBeTruthy();
 }

@@ -1,5 +1,7 @@
 import { useCallback, useRef } from "react";
+import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
@@ -93,7 +95,7 @@ export function useDocsCollabSave({
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
     if (!ydoc || !getMd) return;
-    const markdown = getMd();
+    const markdown = markdownForSave(ydoc, getMd());
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -146,7 +148,7 @@ export function useDocsCollabSave({
           );
           rememberSidecarEtag(room, reload.etag);
           if (reload.applied) {
-            const remergedMarkdown = getMd();
+            const remergedMarkdown = markdownForSave(ydoc, getMd());
             const etag = await saveDocument(
               urls.documentUrl,
               remergedMarkdown,
@@ -270,3 +272,23 @@ export function useDocsCollabSave({
 }
 
 export { SAVE_DELAY_MS };
+
+/**
+ * A reconnect can apply the server Y.Doc before the editor view catches up.
+ * Saving the shorter view would replace the other person's edit.
+ */
+function markdownForSave(ydoc: Y.Doc, editorMarkdown: string): string {
+  try {
+    const fromDoc = readContentFromYDoc(ydoc);
+    if (
+      editorMarkdown !== "" &&
+      fromDoc.includes(editorMarkdown) &&
+      fromDoc.length > editorMarkdown.length
+    ) {
+      return fromDoc;
+    }
+  } catch {
+    // The editor string is still a valid save body.
+  }
+  return editorMarkdown;
+}

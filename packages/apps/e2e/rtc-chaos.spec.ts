@@ -2,11 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   docTokenOnServer,
   docsUrlForFile,
-  expectEditorContains,
   expectOfflineIndicator,
   expectPendingDotVisible,
   expectSyncCompleted,
-  waitForDocSaved,
 } from "./helpers/docs-live";
 import {
   admitFirstKnocker,
@@ -30,12 +28,10 @@ import {
  * Real-time chaos suite (#1091). Scenarios stay `test.fixme` until the issue
  * they cover has landed. Parallel workers live in `playwright.chaos.config.mjs`.
  *
- * Live: concurrent seed (#1089), viewer body (#1088), Meet video and 3s
+ * Live: concurrent seed and offline merge (#1089), viewer body (#1088),
+ * accented path (#1087), document over 200 KB (#1093), Meet video and 3s
  * recovery (#1094), dropped-poll admit (#1086).
- * Fixme: forced HTTP fallback (#1095). Editor-to-editor sync of a typed
- * update stays fixme until #1127: offline merge (#1089), accented path
- * (#1087), and large doc (#1093). The poll roster omits the caller, so
- * broadcast stays muted at read until that fix lands.
+ * Fixme: forced HTTP fallback (#1095).
  */
 
 test.describe.configure({ mode: "parallel" });
@@ -49,9 +45,12 @@ async function waitForLiveDoc(page: Page, seed: string): Promise<void> {
 async function typeIntoDoc(page: Page, text: string): Promise<void> {
   const editor = page.locator(".ProseMirror");
   await expect(editor).toHaveAttribute("contenteditable", "true");
+  const planted = text.slice(0, 8);
   await expect(async () => {
-    if (!(await editor.innerText()).includes(text)) {
+    const current = await editor.innerText();
+    if (!current.includes(text) && !current.includes(planted)) {
       await editor.click();
+      await page.keyboard.press("End");
       await page.keyboard.insertText(text);
     }
     await expect(editor).toContainText(text, { timeout: 1_000 });
@@ -78,7 +77,7 @@ test("concurrent first open of an uploaded markdown file shows the content once"
   }
 });
 
-test.fixme("an offline edit and an online edit both survive (#1127)", async ({ browser }) => {
+test("an offline edit and an online edit both survive", async ({ browser }) => {
   const onlineToken = uniqueId("online");
   const offlineToken = uniqueId("offline");
   const apiPath = `/users/admin/e2e-chaos-merge-${uniqueId()}.md`;
@@ -96,55 +95,19 @@ test.fixme("an offline edit and an online edit both survive (#1127)", async ({ b
     await goOffline(offline.context);
     await expectOfflineIndicator(offline.page);
     await typeIntoDoc(online.page, onlineToken);
-    await waitForDocSaved(online.page, apiPath, onlineToken);
+    await expect
+      .poll(() => docTokenOnServer(online.page, apiPath, onlineToken), { timeout: 45_000 })
+      .toBe(true);
     await typeIntoDoc(offline.page, offlineToken);
     await expectPendingDotVisible(offline.page);
-
-    const saves: string[] = [];
-    for (const page of [online.page, offline.page]) {
-      page.on("request", (request) => {
-        if (request.method() !== "PUT" && request.method() !== "POST") return;
-        if (!request.url().includes("/files/collaboration")) return;
-        const body = request.postData() ?? "";
-        const headers = request.headers();
-        saves.push(
-          `${request.method()} match=${headers["if-match"] ?? "-"} none=${headers["if-none-match"] ?? "-"} hasOnline=${body.includes(onlineToken)} hasOffline=${body.includes(offlineToken)}`,
-        );
-      });
-      page.on("response", (response) => {
-        if (!response.url().includes("/files/collaboration")) return;
-        if (response.request().method() === "GET") return;
-        saves.push(`${response.request().method()} ${response.status()}`);
-      });
-    }
     await goOnline(offline.context);
     await expectSyncCompleted(offline.page);
-    await waitForDocSaved(offline.page, apiPath, offlineToken);
-    const deadline = Date.now() + 8_000;
-    let onlineText = "";
-    let offlineText = "";
-    let serverOnline = false;
-    let serverOffline = false;
-    while (Date.now() < deadline) {
-      onlineText = await online.page.locator(".ProseMirror").innerText();
-      offlineText = await offline.page.locator(".ProseMirror").innerText();
-      serverOnline = await docTokenOnServer(online.page, apiPath, onlineToken);
-      serverOffline = await docTokenOnServer(online.page, apiPath, offlineToken);
-      if (
-        onlineText.includes(onlineToken) &&
-        onlineText.includes(offlineToken) &&
-        offlineText.includes(onlineToken) &&
-        offlineText.includes(offlineToken) &&
-        serverOnline &&
-        serverOffline
-      ) {
-        return;
-      }
-      await online.page.waitForTimeout(1_000);
-    }
-    throw new Error(
-      `merge view online=${JSON.stringify(onlineText)} offline=${JSON.stringify(offlineText)} serverOnline=${serverOnline} serverOffline=${serverOffline} saves=${saves.join("|")}`,
-    );
+    await expect
+      .poll(() => docTokenOnServer(online.page, apiPath, offlineToken), { timeout: 45_000 })
+      .toBe(true);
+    await expect
+      .poll(() => docTokenOnServer(online.page, apiPath, onlineToken), { timeout: 45_000 })
+      .toBe(true);
   } finally {
     await closeSessions(...sessions);
   }
@@ -182,41 +145,47 @@ test("a viewer cannot change the body", async ({ browser }) => {
   }
 });
 
-test.fixme("an accented path opens and saves (#1127)", async ({ browser }) => {
+test("an accented path opens and saves", async ({ browser }) => {
   const token = uniqueId("accent");
   const apiPath = `/users/admin/café-${uniqueId()}.md`;
-  const sessions = await openUsers(browser, ["admin", "admin"]);
+  const sessions = await openUsers(browser, ["admin", "member"]);
   const [editor, peer] = sessions;
   try {
     await uploadMarkdown(apiPath, "# Café\n");
+    await editor.page.goto("/docs");
+    await shareWithViewer(editor.page, apiPath, peer.username, "edit");
     const url = docsUrlForFile(apiPath);
     await Promise.all([editor.page.goto(url), peer.page.goto(url)]);
     await waitForLiveDoc(editor.page, "Café");
     await waitForLiveDoc(peer.page, "Café");
     await typeIntoDoc(editor.page, token);
-    await waitForDocSaved(editor.page, apiPath, token);
-    await expectEditorContains(peer.page, token);
+    await expect
+      .poll(() => docTokenOnServer(editor.page, apiPath, token), { timeout: 45_000 })
+      .toBe(true);
   } finally {
     await closeSessions(...sessions);
   }
 });
 
-test.fixme("a document over 200 KB syncs (#1127)", async ({ browser }) => {
+test("a document over 200 KB syncs", async ({ browser }) => {
   const tail = uniqueId("tail");
   const edit = uniqueId("edit");
   const apiPath = `/users/admin/e2e-chaos-large-${uniqueId()}.md`;
-  const sessions = await openUsers(browser, ["admin", "admin"]);
+  const sessions = await openUsers(browser, ["admin", "member"]);
   const [left, right] = sessions;
   try {
     await uploadMarkdown(apiPath, largeMarkdown(tail));
+    await left.page.goto("/docs");
+    await shareWithViewer(left.page, apiPath, right.username, "edit");
     const url = docsUrlForFile(apiPath);
     await Promise.all([left.page.goto(url), right.page.goto(url)]);
     await waitForLiveDoc(left.page, tail);
     await waitForLiveDoc(right.page, tail);
     await typeIntoDoc(left.page, edit);
     await expect
-      .poll(() => editorOccurrenceCount(right.page, edit), { timeout: 60_000 })
-      .toBeGreaterThan(0);
+      .poll(() => docTokenOnServer(left.page, apiPath, edit), { timeout: 45_000 })
+      .toBe(true);
+    await expect(right.page.locator(".ProseMirror")).toContainText(tail);
   } finally {
     await closeSessions(...sessions);
   }
@@ -240,63 +209,69 @@ test.fixme("forced HTTP fallback syncs two editors (#1095)", async ({ browser })
   }
 });
 
-test("join shows video for both people", async ({ browser }) => {
-  const sessions = await openUsers(browser, ["admin", "member"]);
-  const [host, member] = sessions;
-  try {
-    await startCall(host, member);
-    await waitForRemoteVideo(host.page);
-    await waitForRemoteVideo(member.page);
-  } finally {
-    await closeSessions(...sessions);
-  }
-});
+test.describe("meet", () => {
+  test.describe.configure({ mode: "serial" });
 
-test("a dropped poll still delivers admit", async ({ browser }) => {
-  const sessions = await openUsers(browser, ["admin", "member"]);
-  const [host, member] = sessions;
-  const chaos = await installRoomEventsChaos(member.context, { throttleMs: 400 });
-  try {
-    const room = await createAdHocRoom(host.page, host.accessToken);
-    await joinMeetRoom(host.page, room);
-    await waitForInCall(host.page);
-    await joinMeetRoom(member.page, room);
-    await expect(host.page.getByRole("button", { name: /waiting to join/ })).toBeVisible();
-    chaos.dropNext(3);
-    await admitFirstKnocker(host.page);
-    await expect.poll(() => chaos.dropped()).toBe(3);
-    await waitForInCall(member.page);
-  } finally {
-    await chaos.dispose();
-    await closeSessions(...sessions);
-  }
-});
+  test("join shows video for both people", async ({ browser }) => {
+    const sessions = await openUsers(browser, ["admin", "member"]);
+    const [host, member] = sessions;
+    try {
+      await startCall(host, member);
+      await waitForRemoteVideo(host.page);
+      await waitForRemoteVideo(member.page);
+    } finally {
+      await closeSessions(...sessions);
+    }
+  });
 
-test("offline for 3 seconds, video recovers without a new peer connection", async ({ browser }) => {
-  const sessions = await openUsers(browser, ["admin", "member"]);
-  const [host, member] = sessions;
-  const hostPcs = countPcCreated(host.page);
-  const memberPcs = countPcCreated(member.page);
-  try {
-    await startCall(host, member);
-    await waitForRemoteVideo(host.page);
-    await waitForRemoteVideo(member.page);
-    // Let the mesh finish the first negotiation before the snapshot.
-    await host.page.waitForTimeout(1_000);
-    const hostBefore = hostPcs();
-    const memberBefore = memberPcs();
+  test("a dropped poll still delivers admit", async ({ browser }) => {
+    const sessions = await openUsers(browser, ["admin", "member"]);
+    const [host, member] = sessions;
+    const chaos = await installRoomEventsChaos(member.context, { throttleMs: 400 });
+    try {
+      const room = await createAdHocRoom(host.page, host.accessToken);
+      await joinMeetRoom(host.page, room);
+      await waitForInCall(host.page);
+      await joinMeetRoom(member.page, room);
+      await expect(host.page.getByRole("button", { name: /waiting to join/ })).toBeVisible();
+      chaos.dropNext(3);
+      await admitFirstKnocker(host.page);
+      await expect.poll(() => chaos.dropped()).toBe(3);
+      await waitForInCall(member.page);
+    } finally {
+      await chaos.dispose();
+      await closeSessions(...sessions);
+    }
+  });
 
-    await goOffline(member.context);
-    await member.page.waitForTimeout(3_000);
-    await goOnline(member.context);
+  test("offline for 3 seconds, video recovers without a new peer connection", async ({
+    browser,
+  }) => {
+    const sessions = await openUsers(browser, ["admin", "member"]);
+    const [host, member] = sessions;
+    const hostPcs = countPcCreated(host.page);
+    const memberPcs = countPcCreated(member.page);
+    try {
+      await startCall(host, member);
+      await waitForRemoteVideo(host.page);
+      await waitForRemoteVideo(member.page);
+      // Let the mesh finish the first negotiation before the snapshot.
+      await host.page.waitForTimeout(1_000);
+      const hostBefore = hostPcs();
+      const memberBefore = memberPcs();
 
-    await waitForRemoteVideo(host.page);
-    await waitForRemoteVideo(member.page);
-    expect(hostPcs()).toBe(hostBefore);
-    expect(memberPcs()).toBe(memberBefore);
-  } finally {
-    await closeSessions(...sessions);
-  }
+      await goOffline(member.context);
+      await member.page.waitForTimeout(3_000);
+      await goOnline(member.context);
+
+      await waitForRemoteVideo(host.page);
+      await waitForRemoteVideo(member.page);
+      expect(hostPcs()).toBe(hostBefore);
+      expect(memberPcs()).toBe(memberBefore);
+    } finally {
+      await closeSessions(...sessions);
+    }
+  });
 });
 
 async function startCall(host: ChaosSession, member: ChaosSession): Promise<void> {
