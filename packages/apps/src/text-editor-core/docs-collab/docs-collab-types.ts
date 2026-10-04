@@ -29,6 +29,8 @@ export type DocsCollabMeshMessage =
   /** Gossip discovery: a connected peer forwards newly joined room peers. */
   | { type: "peer-hint"; peers: DocsCollabMeshPeer[]; from?: string }
   | { type: "dc-open"; from: string }
+  /** A data-channel send failed. The mesh should sync this peer again. */
+  | { type: "resync"; from: string }
   /** The server refused the poll: read access is gone, leave the room. */
   | { type: "forbidden" }
   | { type: "link" };

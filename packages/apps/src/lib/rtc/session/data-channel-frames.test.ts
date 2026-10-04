@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
+import {
+  DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES,
+  decodeBinaryFrame,
+} from "@/lib/rtc/session/data-channel-frames";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 
 /** Chrome refuses one data-channel message above this size. */
@@ -8,8 +12,15 @@ const MAX_SCTP_MESSAGE_BYTES = 256 * 1024;
 /** Each binary frame, header included, stays at or under this size. */
 const MAX_FRAME_BYTES = 16 * 1024;
 
-type CappedChannel = RTCDataChannel & {
+type CappedChannel = {
+  readyState: string;
+  bufferedAmount: number;
+  bufferedAmountLowThreshold: number;
+  binaryType: string;
   frames: Array<string | Uint8Array>;
+  lowListeners: Set<() => void>;
+  send: (data: string | Uint8Array | ArrayBuffer) => void;
+  onmessage: ((event: MessageEvent) => void) | null;
 };
 
 /**
@@ -23,6 +34,7 @@ function createCappedChannel(): CappedChannel {
     bufferedAmountLowThreshold: 0,
     binaryType: "arraybuffer",
     frames: [] as Array<string | Uint8Array>,
+    lowListeners: new Set<() => void>(),
     onopen: null,
     onclose: null,
     onmessage: null as ((event: MessageEvent) => void) | null,
@@ -44,8 +56,12 @@ function createCappedChannel(): CappedChannel {
     close() {
       channel.readyState = "closed";
     },
-    addEventListener() {},
-    removeEventListener() {},
+    addEventListener(type: string, listener: () => void) {
+      if (type === "bufferedamountlow") channel.lowListeners.add(listener);
+    },
+    removeEventListener(type: string, listener: () => void) {
+      if (type === "bufferedamountlow") channel.lowListeners.delete(listener);
+    },
     dispatchEvent() {
       return true;
     },
@@ -97,8 +113,7 @@ describe("large Yjs state over a capped data channel", () => {
       signalSent: true,
       dataChannel: attached,
     };
-    // Peer advertises `bin`, so the update must go out as binary frames.
-    Object.assign(entry, { caps: ["bin"] });
+    entry.caps = ["bin"];
     registry.add("peer-b", entry);
 
     registry.sendJsonTo("peer-b", message);
@@ -111,9 +126,116 @@ describe("large Yjs state over a capped data channel", () => {
     );
 
     expect(channel.frames.length).toBeGreaterThan(1);
-    for (const frame of channel.frames) {
+    const decoded = channel.frames.map((frame) => {
       expect(frame).toBeInstanceOf(Uint8Array);
-      expect((frame as Uint8Array).byteLength).toBeLessThanOrEqual(MAX_FRAME_BYTES);
-    }
+      const bytes = frame as Uint8Array;
+      expect(bytes.byteLength).toBeLessThanOrEqual(MAX_FRAME_BYTES);
+      return decodeBinaryFrame(bytes);
+    });
+    const count = decoded.length;
+    decoded.forEach((frame, index) => {
+      expect(frame).toMatchObject({ messageId: 1, index, count });
+    });
+  });
+
+  it("frames a collab-reuse data envelope the same way", async () => {
+    const { message, json } = largeSyncMessage();
+    const envelope = {
+      v: 1 as const,
+      kind: "collab-reuse" as const,
+      room: "docs/notes.md",
+      op: "data" as const,
+      collabPeerId: "aaaaaaaaaaaaaaaa",
+      payload: message,
+    };
+    const wire = JSON.stringify(envelope);
+    expect(wire.length).toBeGreaterThan(json.length);
+
+    const received: string[] = [];
+    const { registry, channel } = openPeer(received, ["bin"]);
+    registry.sendJsonTo("peer-b", envelope);
+
+    await vi.waitFor(() => expect(received).toEqual([wire]), { timeout: 200 });
+    expect(channel.frames.length).toBeGreaterThan(1);
+    expect(channel.frames.every((frame) => frame instanceof Uint8Array)).toBe(true);
+  });
+
+  it("still sends one JSON string to a peer that does not advertise bin", () => {
+    const received: string[] = [];
+    const { registry, channel } = openPeer(received);
+    const message = { type: "sync", u: [1, 2, 3] };
+    registry.sendJsonTo("peer-b", message);
+
+    expect(channel.frames).toEqual([JSON.stringify(message)]);
+    expect(received).toEqual([JSON.stringify(message)]);
+  });
+
+  it("pauses above 1 MiB buffered and resumes on bufferedamountlow", () => {
+    const received: string[] = [];
+    const { registry, channel } = openPeer(received, ["bin"]);
+    channel.bufferedAmount = DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES + 1;
+
+    registry.sendJsonTo("peer-b", { type: "sync", u: [1, 2, 3] });
+
+    expect(channel.frames).toEqual([]);
+    expect(channel.bufferedAmountLowThreshold).toBe(DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES);
+    expect(channel.lowListeners.size).toBe(1);
+
+    channel.bufferedAmount = 0;
+    for (const listener of channel.lowListeners) listener();
+
+    expect(received).toEqual([JSON.stringify({ type: "sync", u: [1, 2, 3] })]);
+    expect(channel.frames.every((frame) => frame instanceof Uint8Array)).toBe(true);
+  });
+
+  it("logs a send failure and reports the peer for resync", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onSendFailed = vi.fn();
+    const received: string[] = [];
+    const { registry, channel } = openPeer(received, ["bin"], onSendFailed);
+    channel.send = () => {
+      throw new Error("send failed");
+    };
+
+    registry.sendJsonTo("peer-b", { type: "sync", u: [1] });
+
+    expect(received).toEqual([]);
+    expect(onSendFailed).toHaveBeenCalledWith("peer-b", expect.any(Error));
+    expect(warn).toHaveBeenCalledWith(
+      "[rtc] datachannel-send-failed",
+      expect.objectContaining({ remoteId: "peer-b", message: "send failed" }),
+    );
   });
 });
+
+function openPeer(
+  received: string[],
+  caps?: readonly string[],
+  onSendFailed?: (remoteId: string, error: unknown) => void,
+): { registry: MeshPeerRegistry; channel: CappedChannel } {
+  const channel = createCappedChannel();
+  const binding = createDataBinding({
+    label: "collab",
+    onMessage: (_remoteId, data) => {
+      received.push(data);
+    },
+  });
+  const pc = {
+    createDataChannel: () => channel,
+  } as unknown as RTCPeerConnection;
+  const attached = binding.attachInitiator(pc, "peer-b");
+  const registry = new MeshPeerRegistry(binding, onSendFailed);
+  const entry: MeshPeerEntry = {
+    name: "Bob",
+    pc,
+    mode: "direct",
+    relayFallbackTried: false,
+    initiator: true,
+    pendingIce: [],
+    signalSent: true,
+    dataChannel: attached,
+    caps,
+  };
+  registry.add("peer-b", entry);
+  return { registry, channel };
+}

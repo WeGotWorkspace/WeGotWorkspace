@@ -123,6 +123,7 @@ export class DocsRtcSession {
       onReuseAttached: (remoteId) => this.mesh.abortPeerConnection(remoteId),
       onLinkChange: () => this.emit({ type: "link" }),
       onMessage: (msg) => this.handleReuseMeshMessage(msg),
+      onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
     });
 
     this.mesh = createRtcSession({
@@ -141,6 +142,7 @@ export class DocsRtcSession {
       // Contract C2 revocation: the poll re-reads the share grant, so a 403
       // means read access is gone. Drop the reuse links so the other peers
       // stop treating this client as a collaborator, and tell the session.
+      onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
       onPollError: (error) => {
         if (collabErrorStatus(error) !== 403) return;
         this.trust.forget();

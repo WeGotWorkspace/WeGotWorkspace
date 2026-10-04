@@ -53,6 +53,8 @@ export type RtcPeerDescriptor = {
   name: string;
   /** Sabre username of the peer's owner — collab and principal rooms (server-derived). */
   user?: string;
+  /** Capabilities the peer advertised at join. `bin` selects binary data-channel frames. */
+  caps?: RtcPeerCap[];
 };
 
 export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected" | "closed";

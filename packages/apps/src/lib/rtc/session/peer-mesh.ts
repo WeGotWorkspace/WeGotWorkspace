@@ -77,7 +77,11 @@ export class RtcPeerMesh {
   private visibilityUnsubscribe: (() => void) | null = null;
 
   constructor(private readonly options: RtcPeerMeshOptions) {
-    this.peers = new MeshPeerRegistry(options.binding);
+    this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log("send-failed", { remoteId, message });
+      options.onSendFailed?.(remoteId);
+    });
     this.dialer = new MeshPeerDialer({
       channel: options.channel,
       rtcSettings: options.rtcSettings,
@@ -381,6 +385,7 @@ export class RtcPeerMesh {
       ? sortPrincipalDialPeers(this.lastRoomPeers, this.peers.ids(), this.droppedGhostIds)
       : this.lastRoomPeers;
     for (const peer of dialOrder) {
+      this.peers.rememberCaps(peer.id, peer.caps);
       if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
         this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
         continue;

@@ -1,0 +1,24 @@
+import { describe, expect, it, vi } from "vitest";
+import { createRtcSignalingClient } from "@/lib/rtc/signaling/create-client";
+import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
+
+describe("createRtcSignalingClient caps", () => {
+  it("advertises bin on collab and principal join", async () => {
+    for (const channel of ["collab", "principal"] as const) {
+      const fetchImpl = vi.fn<HttpSignalingFetch>(
+        async () => new Response(JSON.stringify({ peerId: "p1", peers: [] }), { status: 200 }),
+      );
+      const client = createRtcSignalingClient({
+        channel,
+        apiBase: "/api/v1/rooms",
+        fetchImpl,
+      });
+      await client.join({ room: "docs/x.md", name: "Ada" });
+      const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<
+        string,
+        unknown
+      >;
+      expect(body.caps).toEqual(["bin"]);
+    }
+  });
+});

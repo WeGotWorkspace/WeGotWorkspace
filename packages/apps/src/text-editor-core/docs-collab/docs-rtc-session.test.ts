@@ -22,6 +22,7 @@ type CapturedMeshOptions = {
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
   shouldAcceptOffer?: (from: string) => boolean;
   onPollError?: (error: unknown) => void;
+  onSendFailed?: (remoteId: string) => void;
 };
 
 const captured = vi.hoisted(() => ({
@@ -68,6 +69,25 @@ function createSession(): DocsRtcSession {
 function pollRoster(peers: Array<{ id: string; name: string }>): void {
   captured.meshOptions?.onPollData?.({ peers, messages: [] });
 }
+
+describe("DocsRtcSession send failure", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  it("marks the peer for resync when a data-channel send fails", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+
+    captured.meshOptions?.onSendFailed?.("p1");
+
+    expect(seen).toEqual([{ type: "resync", from: "p1" }]);
+  });
+});
 
 describe("DocsRtcSession gossip discovery", () => {
   beforeEach(() => {

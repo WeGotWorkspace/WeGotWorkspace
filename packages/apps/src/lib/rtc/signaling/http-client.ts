@@ -18,7 +18,7 @@ export type HttpSignalingJoinInput = {
 export type HttpSignalingJoinResult = {
   peerId?: string;
   sessionKey?: string | null;
-  peers: Array<{ id: string; name: string; user?: string }>;
+  peers: Array<{ id: string; name: string; user?: string; caps?: RtcPeerCap[] }>;
 };
 
 export type HttpSignalingPollInput = {
@@ -38,7 +38,7 @@ export type HttpSignalingPollMessage = {
 };
 
 export type HttpSignalingPollResult = {
-  peers: Array<{ id: string; name: string; user?: string }>;
+  peers: Array<{ id: string; name: string; user?: string; caps?: RtcPeerCap[] }>;
   messages: HttpSignalingPollMessage[];
   /** Echo via `sig` on the next poll to opt into 204 "nothing new" responses. */
   rosterSig?: string;

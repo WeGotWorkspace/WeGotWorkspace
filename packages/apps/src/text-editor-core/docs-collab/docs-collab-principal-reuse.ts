@@ -50,6 +50,8 @@ export type DocsCollabPrincipalReusePorts = {
   /** Tear down an in-flight collab ICE handshake once reuse wins for this peer. */
   onReuseAttached?: (collabPeerId: string) => void;
   onMessage: (msg: DocsCollabMeshMessage) => void;
+  /** Principal data-channel send failed for a reused collab peer. */
+  onSendFailed?: (collabPeerId: string) => void;
   ackTimeoutMs?: number;
   principalConnectDeferMs?: number;
   setTimeoutFn?: typeof setTimeout;
@@ -86,6 +88,8 @@ export class DocsCollabPrincipalReuse {
 
   private readonly unsubscribeLinkOpen: () => void;
 
+  private readonly unsubscribeSendFailed: () => void;
+
   private readonly pending = new Map<string, PendingPeer>();
 
   private readonly deferredFreshIce = new Map<string, DeferredFreshIce>();
@@ -120,6 +124,12 @@ export class DocsCollabPrincipalReuse {
     });
     this.unsubscribeLinkOpen = this.registry.subscribeLinkOpen((username) => {
       this.onPrincipalLinkOpen(username);
+    });
+    this.unsubscribeSendFailed = this.registry.subscribeSendFailed((principalPeerId) => {
+      for (const entry of this.reused.values()) {
+        if (entry.principalPeerId === principalPeerId)
+          this.ports.onSendFailed?.(entry.collabPeerId);
+      }
     });
   }
 
@@ -237,6 +247,7 @@ export class DocsCollabPrincipalReuse {
     this.unsubscribe();
     this.unsubscribeLinks();
     this.unsubscribeLinkOpen();
+    this.unsubscribeSendFailed();
   }
 
   /** Retry reuse for roster peers when a principal DC opens (no poll-changed wait). */

@@ -94,6 +94,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.updatePollCadence();
         this.emit({ type: "roster" });
       },
+      onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
       onPollData: () => {
         this.syncPrincipalLinks();
         this.updatePollCadence();
