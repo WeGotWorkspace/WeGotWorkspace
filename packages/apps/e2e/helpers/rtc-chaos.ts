@@ -131,17 +131,49 @@ export async function admitFirstKnocker(page: Page): Promise<void> {
 }
 
 export async function waitForRemoteVideo(page: Page): Promise<void> {
+  let last = "[]";
   await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const videos = Array.from(document.querySelectorAll("video.meet-stream-video"));
-        return videos.some((node) => {
-          const video = node as HTMLVideoElement;
-          return !video.muted && video.videoWidth > 2;
-        });
-      }),
-    )
-    .toBe(true);
+    .poll(async () => {
+      last = await page.evaluate(() =>
+        JSON.stringify(
+          Array.from(document.querySelectorAll("video.meet-peer-tile__stream")).map((node) => ({
+            tile: (node.closest(".meet-peer-tile")?.textContent ?? "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 40),
+            width: (node as HTMLVideoElement).videoWidth,
+          })),
+        ),
+      );
+      const videos = JSON.parse(last) as { tile: string; width: number }[];
+      // Local previews are labeled "You" and stay muted. A remote tile with
+      // frames is the other person, even when Chrome mutes the element.
+      return videos.some((video) => video.width > 2 && !/^You\b/.test(video.tile));
+    })
+    .toBe(true)
+    .catch((error: unknown) => {
+      throw new Error(`Remote video did not start (${last})`, { cause: error });
+    });
+}
+
+/** Put markdown on the drive over WebDAV. `POST /files/content` is not an upload. */
+export async function uploadMarkdown(apiPath: string, content: string): Promise<void> {
+  const encoded = apiPath
+    .replace(/^\/+/, "")
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const response = await fetch(`${API}/files/${encoded}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`admin:${PASSWORD}`).toString("base64")}`,
+      "Content-Type": "text/markdown; charset=utf-8",
+    },
+    body: content,
+  });
+  if (!response.ok) {
+    throw new Error(`Upload ${apiPath} failed (${response.status}): ${await response.text()}`);
+  }
 }
 
 export async function shareWithViewer(
