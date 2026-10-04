@@ -12,10 +12,12 @@ import {
 import type { MeshRelay } from "@/lib/rtc/session/mesh-relay";
 import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
-  collapseStaleIdentityPeers,
-  peerIdentityKey,
-  sortPrincipalDialPeers,
-} from "@/lib/rtc/session/stale-identity-peers";
+  applyPeerHint as applyIncomingPeerHint,
+  dialRoomPeers as dialListedRoomPeers,
+  retryRoomPeerConnections as retryUnconnectedRoomPeers,
+} from "@/lib/rtc/session/mesh-room-dial";
+import type { MeshRoomDial } from "@/lib/rtc/session/mesh-room-dial";
+import { collapseStaleIdentityPeers } from "@/lib/rtc/session/stale-identity-peers";
 import {
   isUnchangedPollResponse,
   type HttpSignalingJoinResult,
@@ -50,9 +52,6 @@ import {
 } from "@/lib/rtc/types";
 
 export type { InitiatorRule, RtcMeshVisibilityPort, RtcPeerMeshOptions, RtcPeerMeshPorts };
-
-/** Limit how many new principal dials start on a single poll (ghost roster protection). */
-const PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL = 3;
 
 export class RtcPeerMesh {
   private myId: string | null = null;
@@ -417,30 +416,30 @@ export class RtcPeerMesh {
     this.notifyLinkChange();
   }
 
+  private roomDial(): MeshRoomDial {
+    return {
+      myId: this.myId,
+      principal: this.options.channel === "principal",
+      roomPeers: this.lastRoomPeers,
+      droppedGhostIds: this.droppedGhostIds,
+      hasPeer: (id) => this.peers.has(id),
+      peerIds: () => this.peers.ids(),
+      linkStateOf: (id) => this.peers.linkStateOf(id),
+      shouldConnectToPeer: this.options.shouldConnectToPeer,
+      isInitiator: (id) => this.isInitiator(id),
+      rtcSignalsEnabled: () => this.rtcSignalsEnabled(),
+      allowNameFallback: this.collapseIdentityOnPoll(),
+      rememberCaps: (id, caps) => this.peers.rememberCaps(id, caps),
+      connectTo: (id, name) => this.dialer.connectTo(id, name),
+      log: (event, details) => this.log(event, details),
+      kickPoll: () => this.schedulePoll(false),
+      notifyLinkChange: () => this.notifyLinkChange(),
+    };
+  }
+
   /** Dial everyone on the fresh roster, respecting the principal per-poll dial cap. */
   private dialRoomPeers(): void {
-    let newPrincipalConnects = 0;
-    const principal = this.options.channel === "principal";
-    const dialOrder = principal
-      ? sortPrincipalDialPeers(this.lastRoomPeers, this.peers.ids(), this.droppedGhostIds)
-      : this.lastRoomPeers;
-    for (const peer of dialOrder) {
-      this.peers.rememberCaps(peer.id, peer.caps);
-      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-        continue;
-      }
-      if (principal && !this.peers.has(peer.id)) {
-        if (newPrincipalConnects >= PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL) {
-          this.log("peer-skipped", { remoteId: peer.id, reason: "dial-cap" });
-          continue;
-        }
-        newPrincipalConnects += 1;
-      }
-      void this.dialer.connectTo(peer.id, peer.name).catch((error) => {
-        this.log("peer-connect-failed", { remoteId: peer.id, error });
-      });
-    }
+    dialListedRoomPeers(this.roomDial());
   }
 
   private async pollOnce(): Promise<void> {
@@ -541,32 +540,7 @@ export class RtcPeerMesh {
    * must not wait for the next poll cycle.
    */
   retryRoomPeerConnections(): void {
-    if (!this.myId || !this.rtcSignalsEnabled()) return;
-    let awaitingRemoteOffer = false;
-    for (const peer of this.lastRoomPeers) {
-      if (peer.id === this.myId) continue;
-      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-        continue;
-      }
-      if (this.peers.linkStateOf(peer.id) === "connected") {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "already-connected" });
-        continue;
-      }
-      if (this.isInitiator(peer.id)) {
-        this.log("reuse-fallback-connect", { remoteId: peer.id });
-        void this.dialer.connectTo(peer.id, peer.name).catch((error) => {
-          this.log("peer-connect-failed", { remoteId: peer.id, error });
-        });
-      } else {
-        awaitingRemoteOffer = true;
-      }
-    }
-    if (awaitingRemoteOffer) {
-      this.log("reuse-fallback-poll-kick");
-      this.schedulePoll(false);
-    }
-    this.notifyLinkChange();
+    retryUnconnectedRoomPeers(this.roomDial());
   }
 
   /**
@@ -577,48 +551,7 @@ export class RtcPeerMesh {
    * remains the source of truth and a lost hint costs nothing.
    */
   applyPeerHint(peers: RtcPeerDescriptor[]): void {
-    if (!this.myId || !this.rtcSignalsEnabled()) return;
-    let awaitingRemoteOffer = false;
-    const collapseSameUser = this.collapseIdentityOnPoll();
-    const knownIdentities = collapseSameUser
-      ? new Set(
-          this.lastRoomPeers
-            .map((peer) => peerIdentityKey(peer, true))
-            .filter((key): key is string => key !== null),
-        )
-      : null;
-    for (const peer of peers) {
-      if (peer.id === this.myId) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "self" });
-        continue;
-      }
-      if (this.droppedGhostIds.has(peer.id) || this.peers.has(peer.id)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "already-known" });
-        continue;
-      }
-      const identity = knownIdentities ? peerIdentityKey(peer, true) : null;
-      if (identity && knownIdentities?.has(identity)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "stale-hint-identity" });
-        this.droppedGhostIds.add(peer.id);
-        continue;
-      }
-      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-        continue;
-      }
-      if (this.isInitiator(peer.id)) {
-        this.log("peer-hint-connect", { remoteId: peer.id });
-        void this.dialer.connectTo(peer.id, peer.name).catch((error) => {
-          this.log("peer-connect-failed", { remoteId: peer.id, error });
-        });
-      } else {
-        awaitingRemoteOffer = true;
-      }
-    }
-    if (awaitingRemoteOffer) {
-      this.log("peer-hint-poll-kick");
-      this.schedulePoll(false);
-    }
+    applyIncomingPeerHint(this.roomDial(), peers);
   }
 
   async recoverUnknownPeer(): Promise<void> {
