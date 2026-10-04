@@ -103,7 +103,7 @@ final readonly class RtcSignalingPolicy
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: 1000,
             pollMode: RtcSignalingPollMode::SinceCursor,
-            allowedSendTypes: ['offer', 'answer', 'ice'],
+            allowedSendTypes: ['offer', 'answer', 'ice', 'yjs', 'yjs-sv'],
             peerIdPattern: '/^[a-f0-9]{16}$/',
             sendFromField: 'peerId',
             unknownPeerWhenMissing: true,
