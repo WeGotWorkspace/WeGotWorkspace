@@ -6,7 +6,10 @@ import {
   meetPollChatLine,
   type MeetChatLine,
 } from "@/meet-core/src/meet-chat-line";
-import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
+import {
+  parseMeetControlMessage,
+  type MeetControlMessage,
+} from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
 import {
@@ -28,6 +31,32 @@ type MeetPollMessage = {
   payload: unknown;
 };
 
+type RosterPeer = { id: string; user?: string };
+
+/** Host commands. Knock announcements and media presence are not in this set. */
+const HOST_CONTROL_KINDS = new Set<MeetControlMessage["kind"]>([
+  "admit",
+  "deny",
+  "end",
+  "mute",
+  "unmute",
+]);
+
+/**
+ * Authenticated polls include `user` on account peers and omit it on guests.
+ * Honour host commands only from an account. Guest polls strip every account
+ * name, so this client cannot tell; the server already refused the rest.
+ */
+function hostControlSenderIsTrusted(
+  peers: readonly RosterPeer[],
+  from: string,
+  viewerSeesAccounts: boolean,
+): boolean {
+  if (!viewerSeesAccounts) return true;
+  const sender = peers.find((peer) => peer.id === from);
+  return typeof sender?.user === "string" && sender.user.length > 0;
+}
+
 export type UseMeetPollHandlerArgs = {
   selfIdRef: MutableRefObject<string | null>;
   statusRef: MutableRefObject<CallStatus>;
@@ -46,7 +75,11 @@ export type UseMeetPollHandlerArgs = {
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
   meetRtcRef: MutableRefObject<MeetRtc | null>;
   muteMicRef: MutableRefObject<null | (() => boolean)>;
-  unmuteMicRef: MutableRefObject<null | (() => boolean)>;
+  /**
+   * Signed-in polls disclose account names on the roster. Guest polls do not,
+   * so they cannot apply the same sender check.
+   */
+  viewerSeesAccounts: boolean;
   setKnockers: Dispatch<SetStateAction<MeetKnocker[]>>;
   setEndedMessage: Dispatch<SetStateAction<string | null>>;
   setStatus: Dispatch<SetStateAction<CallStatus>>;
@@ -70,7 +103,7 @@ export function useMeetPollHandler({
   leaveRef,
   meetRtcRef,
   muteMicRef,
-  unmuteMicRef,
+  viewerSeesAccounts,
   setKnockers,
   setEndedMessage,
   setStatus,
@@ -124,6 +157,12 @@ export function useMeetPollHandler({
         if (typeof text !== "string" || text.trim() === "") continue;
         const control = parseMeetControlMessage(text.trim());
         if (control) {
+          if (
+            HOST_CONTROL_KINDS.has(control.kind) &&
+            !hostControlSenderIsTrusted(roster, msg.from, viewerSeesAccounts)
+          ) {
+            continue;
+          }
           if (control.kind === "knock") {
             setKnockers((prev) => {
               if (prev.some((entry) => entry.id === control.peerId)) return prev;
@@ -150,13 +189,14 @@ export function useMeetPollHandler({
             continue;
           }
           if (control.kind === "mute" || control.kind === "unmute") {
-            if (control.peerId === selfPeerId) {
-              if (control.kind === "mute" && muteMicRef.current?.()) {
-                toast.show(meetLabels.mutedByHost, { severity: "info" });
-              }
-              if (control.kind === "unmute" && unmuteMicRef.current?.()) {
-                toast.show(meetLabels.unmutedByHost, { severity: "info" });
-              }
+            // Remote unmute used to force `track.enabled = true`. That stays
+            // off until a consent UI exists; mute is still applied.
+            if (
+              control.kind === "mute" &&
+              control.peerId === selfPeerId &&
+              muteMicRef.current?.()
+            ) {
+              toast.show(meetLabels.mutedByHost, { severity: "info" });
             }
             continue;
           }
@@ -197,7 +237,7 @@ export function useMeetPollHandler({
       leaveRef,
       meetRtcRef,
       muteMicRef,
-      unmuteMicRef,
+      viewerSeesAccounts,
       participantRosterDiffReadyRef,
       peerDisclosedMediaRef,
       peerNamesRef,

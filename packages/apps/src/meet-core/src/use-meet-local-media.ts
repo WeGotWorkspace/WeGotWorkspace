@@ -196,16 +196,12 @@ export function useMeetLocalMedia({
     return true;
   }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
 
-  /** Host remote-unmute: restore the local mic. No-op when already live. */
-  const unmuteMic = useCallback((): boolean => {
-    if (micOnRef.current) return false;
-    localStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = true;
-    });
-    setMicOn(true);
-    void announceMediaPresence(true, videoOnRef.current);
-    return true;
-  }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
+  /**
+   * Remote unmute is not applied. Forcing `track.enabled = true` would open
+   * the mic without consent. Local unmute stays on `toggleMic` until a
+   * consent UI exists.
+   */
+  const unmuteMic = useCallback((): boolean => false, []);
 
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
