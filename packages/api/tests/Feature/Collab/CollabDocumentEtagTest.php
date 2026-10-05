@@ -6,6 +6,7 @@ namespace Tests\Feature\Collab;
 
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
 
@@ -168,6 +169,75 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
             )
             ->assertStatus(412)
             ->assertJsonPath('error', 'precondition_failed');
+    }
+
+    public function test_yjs_get_returns_304_when_if_none_match_still_matches(): void
+    {
+        $token = $this->issueBearerToken();
+        $this->withBearer($token)
+            ->putJson($this->collaborationUrl(), ['markdown' => "# Doc\n", 'yjs' => [1, 2, 3]])
+            ->assertOk();
+
+        $etag = $this->expectedEtag("\x01\x02\x03");
+        $response = $this->withBearer($token)->get(
+            $this->collaborationUrl().'&format=yjs',
+            ['If-None-Match' => $etag],
+        );
+
+        $response->assertStatus(304);
+        $response->assertHeader('ETag', $etag);
+        $this->assertSame('', $response->getContent());
+    }
+
+    public function test_a_held_lock_blocks_the_first_open_until_the_other_writer_finishes(): void
+    {
+        $lockPath = app(WgwStorage::class)->files()->path(self::SIDECAR_STORAGE_PATH.'.lock');
+        $flag = $this->dataDir.'/lock-held';
+        $script = $this->dataDir.'/hold-lock.php';
+        file_put_contents($script, <<<'PHP'
+<?php
+$handle = fopen($argv[1], 'c');
+if ($handle === false || ! flock($handle, LOCK_EX)) {
+    fwrite(STDERR, "lock failed\n");
+    exit(1);
+}
+file_put_contents($argv[2], 'held');
+usleep(1200000);
+flock($handle, LOCK_UN);
+fclose($handle);
+PHP);
+        $process = new Process([PHP_BINARY, $script, $lockPath, $flag]);
+        $process->start();
+
+        $deadline = microtime(true) + 5;
+        while (! is_file($flag) && microtime(true) < $deadline) {
+            usleep(20000);
+        }
+        $this->assertFileExists($flag, $process->getErrorOutput());
+
+        $token = $this->issueBearerToken();
+        $started = microtime(true);
+        $this->withBearer($token)
+            ->putJson(
+                $this->collaborationUrl(),
+                ['markdown' => "# First\n", 'yjs' => [1]],
+                ['If-None-Match' => '*'],
+            )
+            ->assertOk();
+        $this->assertGreaterThan(
+            0.8,
+            microtime(true) - $started,
+            'The first open must wait on the sidecar lock instead of racing the other writer.',
+        );
+        $process->wait();
+
+        $this->withBearer($token)
+            ->putJson(
+                $this->collaborationUrl(),
+                ['markdown' => "# Second\n", 'yjs' => [2]],
+                ['If-None-Match' => '*'],
+            )
+            ->assertStatus(412);
     }
 
     public function test_put_without_a_precondition_is_still_accepted(): void

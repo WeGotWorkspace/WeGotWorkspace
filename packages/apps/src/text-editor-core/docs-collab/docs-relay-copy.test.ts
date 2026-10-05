@@ -30,20 +30,4 @@ describe("docs relay copy", () => {
     expect(docsRelayCopy({ role: "admin", outcome: "issued", name: "Ada" })).toBeNull();
     expect(docsRelayCopy({ role: "admin", outcome: null, name: "Ada" })).toBeNull();
   });
-
-  it("uses the plan sentence in SaaS and only links the plan when one is given", () => {
-    const copy = docsRelayCopy({
-      role: "admin",
-      outcome: "relay_unavailable",
-      name: "Ada",
-      relayIncludedInService: true,
-      planHref: "/plan",
-    });
-    expect(copy).toEqual({
-      message:
-        "Direct connections aren't possible on this network; your plan's relay is used automatically.",
-      planHref: "/plan",
-    });
-    expect(copy?.setupHref).toBeUndefined();
-  });
 });

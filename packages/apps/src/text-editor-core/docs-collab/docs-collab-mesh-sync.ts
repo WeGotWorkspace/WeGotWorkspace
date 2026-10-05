@@ -47,6 +47,14 @@ export function isDocumentBearingSyncMessage(bytes: readonly number[]): boolean 
   return bytes[0] === SYNC_STEP_2 || bytes[0] === SYNC_UPDATE;
 }
 
+/** Raw Yjs update inside a step 2 or update message. A state request has none. */
+export function documentUpdateFromSyncMessage(bytes: readonly number[]): Uint8Array | null {
+  if (!isDocumentBearingSyncMessage(bytes)) return null;
+  const decoder = decoding.createDecoder(Uint8Array.from(bytes));
+  decoding.readVarUint(decoder);
+  return decoding.readVarUint8Array(decoder);
+}
+
 export type GuardedSyncOutcome =
   | { kind: "reply"; reply: SyncReply }
   | { kind: "update"; verdict: DocsCollabUpdateVerdict }

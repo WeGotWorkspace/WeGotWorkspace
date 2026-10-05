@@ -10,7 +10,9 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
+use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 
 /**
@@ -101,10 +103,7 @@ final class DocCollabDocumentService
             $this->fail('nothing_to_save');
         }
 
-        $disk = $this->storage->files();
-        $sidecarKey = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
-        $this->assertSidecarPrecondition($request, $sidecarKey);
-
+        $markdown = null;
         if ($hasMarkdown) {
             if (! is_string($body['markdown'])) {
                 $this->fail('invalid_markdown');
@@ -113,32 +112,113 @@ final class DocCollabDocumentService
             if (strlen($markdown) > self::MAX_MARKDOWN_BYTES) {
                 $this->fail('markdown_too_large', 413);
             }
-            $documentKey = $this->paths->virtualToStorageKey($virtual);
-            $disk->put($documentKey, $markdown);
-            // Keep the unified search index in sync with the written content so size and
-            // body reflect the latest save without waiting for a later rename/upload.
-            $this->searchSync->sync(
-                'collab',
-                fn () => $this->search->indexFileStorageKey($documentKey),
-                'files/'.$documentKey,
-            );
-            $this->eventDispatch->fireMutation(
-                $this->actors->requirePrincipal($request)['username'],
-                'collab',
-                'written',
-                'files/'.$documentKey,
-            );
         }
 
+        $yjsBytes = null;
         if ($hasYjs) {
-            $bytes = $this->decodeYjsBytes($body['yjs']);
-            if (strlen($bytes) > self::MAX_YJS_BYTES) {
+            $yjsBytes = $this->decodeYjsBytes($body['yjs']);
+            if (strlen($yjsBytes) > self::MAX_YJS_BYTES) {
                 $this->fail('yjs_too_large', 413);
             }
-            $disk->put($sidecarKey, $bytes);
+        }
+
+        $disk = $this->storage->files();
+        $sidecarKey = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
+        $documentKey = $this->paths->virtualToStorageKey($virtual);
+        $username = $markdown !== null ? $this->actors->requirePrincipal($request)['username'] : null;
+        // Check and write share one flock so two first opens cannot both pass
+        // `If-None-Match: *`. The sidecar lands first; a failed markdown write
+        // puts the previous sidecar back.
+        $lock = $this->acquireDocumentLock($sidecarKey);
+        try {
+            $this->assertSidecarPrecondition($request, $sidecarKey);
+            $previousSidecar = $this->readSidecarBytes($sidecarKey);
+            $wroteSidecar = false;
+            if ($yjsBytes !== null) {
+                $disk->put($sidecarKey, $yjsBytes);
+                $wroteSidecar = true;
+            }
+            if ($markdown !== null) {
+                try {
+                    $disk->put($documentKey, $markdown);
+                } catch (\Throwable $e) {
+                    if ($wroteSidecar) {
+                        $this->restoreSidecar($sidecarKey, $previousSidecar);
+                    }
+                    throw $e;
+                }
+                // Keep the unified search index in sync with the written content so size and
+                // body reflect the latest save without waiting for a later rename/upload.
+                $this->searchSync->sync(
+                    'collab',
+                    fn () => $this->search->indexFileStorageKey($documentKey),
+                    'files/'.$documentKey,
+                );
+                $this->eventDispatch->fireMutation(
+                    (string) $username,
+                    'collab',
+                    'written',
+                    'files/'.$documentKey,
+                );
+            }
+        } finally {
+            $this->releaseDocumentLock($lock);
         }
 
         return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
+    }
+
+    /**
+     * Shared-hosting lock: a sibling of the sidecar, not a cache store.
+     *
+     * @return resource
+     */
+    private function acquireDocumentLock(string $sidecarKey)
+    {
+        $disk = $this->storage->files();
+        if (! $disk instanceof FilesystemAdapter) {
+            $this->fail('lock_unavailable', 503);
+        }
+
+        try {
+            return ExclusiveFileLock::acquire($disk->path($sidecarKey.'.lock'));
+        } catch (\RuntimeException) {
+            $this->fail('lock_unavailable', 503);
+        }
+    }
+
+    /**
+     * @param  resource  $handle
+     */
+    private function releaseDocumentLock($handle): void
+    {
+        ExclusiveFileLock::release($handle);
+    }
+
+    private function readSidecarBytes(string $sidecarKey): ?string
+    {
+        $disk = $this->storage->files();
+        if (! $disk->fileExists($sidecarKey)) {
+            return null;
+        }
+
+        $contents = $disk->get($sidecarKey);
+
+        return is_string($contents) && $contents !== '' ? $contents : null;
+    }
+
+    private function restoreSidecar(string $sidecarKey, ?string $previous): void
+    {
+        $disk = $this->storage->files();
+        if ($previous === null) {
+            if ($disk->fileExists($sidecarKey)) {
+                $disk->delete($sidecarKey);
+            }
+
+            return;
+        }
+
+        $disk->put($sidecarKey, $previous);
     }
 
     /**

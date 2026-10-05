@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
+import type * as Y from "yjs";
 import type { DocsCollabSessionRefs, DocsCollabTabSyncApi } from "./docs-collab-types";
-import { applyAwarenessUpdate, handleSyncMessage } from "./docs-collab-mesh-sync";
+import {
+  applyAwarenessUpdate,
+  documentUpdateFromSyncMessage,
+  handleSyncMessage,
+} from "./docs-collab-mesh-sync";
 import {
   BC_TAB_ORIGIN,
   DocsCollabTabCoordinator,
@@ -8,6 +13,31 @@ import {
   type TabSyncHandlers,
 } from "./docs-collab-tab-sync";
 import { isYDocEmpty } from "./docs-collab-utils";
+
+/**
+ * Apply a follower tab's BroadcastChannel sync on this tab. The Yjs listener
+ * treats `bc-tab` as remote and returns before the mesh, which is correct for
+ * a follower and wrong for the leader: sticky leadership means the typing tab
+ * is usually not the one holding the peer connections. The leader re-broadcasts
+ * the same sync message and records it for the HTTP fallback, and does not
+ * post it back onto the channel.
+ */
+export function applyFollowerTabSync(input: {
+  updateBytes: number[];
+  ydoc: Y.Doc;
+  meshLeader: boolean;
+  broadcast: (message: { type: "sync"; u: number[] }) => void;
+  noteLocalUpdate: (update: Uint8Array) => void;
+  onDocReady: () => void;
+}): void {
+  handleSyncMessage(input.updateBytes, input.ydoc, BC_TAB_ORIGIN);
+  if (!isYDocEmpty(input.ydoc)) input.onDocReady();
+  if (!input.meshLeader) return;
+  const update = documentUpdateFromSyncMessage(input.updateBytes);
+  if (!update) return;
+  input.broadcast({ type: "sync", u: input.updateBytes });
+  input.noteLocalUpdate(update);
+}
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
@@ -72,8 +102,20 @@ export function useDocsCollabTabSync({
 
     const handlers: TabSyncHandlers = {
       onSyncFromTab: (updateBytes) => {
-        handleSyncMessage(updateBytes, ydoc, BC_TAB_ORIGIN);
-        if (!isYDocEmpty(ydoc)) joinRef.current.markDocReady();
+        applyFollowerTabSync({
+          updateBytes,
+          ydoc,
+          meshLeader: coordinatorRef.current?.meshLeader ?? false,
+          broadcast: (message) => {
+            refs.meshRef.current?.broadcast(message);
+          },
+          noteLocalUpdate: (update) => {
+            refs.meshRef.current?.noteLocalUpdate(update);
+          },
+          onDocReady: () => {
+            joinRef.current.markDocReady();
+          },
+        });
       },
       onAwarenessFromTab: (updateBytes) => {
         applyAwarenessUpdate(updateBytes, awareness, BC_TAB_ORIGIN);

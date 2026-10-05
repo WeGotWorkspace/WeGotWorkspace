@@ -51,11 +51,17 @@ final class MeetActorResolver
     }
 
     /**
+     * Server-issued guest key: 16 random bytes, then the first 32 hex
+     * characters of HMAC-SHA256(APP_KEY, those bytes). A caller-chosen key
+     * does not verify, so it is not an actor.
+     *
      * @return non-empty-string
      */
     public function newGuestSessionKey(): string
     {
-        return bin2hex(random_bytes(16));
+        $random = random_bytes(16);
+
+        return bin2hex($random).$this->guestSessionMac($random);
     }
 
     /**
@@ -73,13 +79,39 @@ final class MeetActorResolver
     public function readGuestSessionKey(array $body): ?string
     {
         $raw = $body['sessionKey'] ?? null;
-        if (! is_string($raw)) {
+        if (! is_string($raw) || preg_match('/^[a-f0-9]{64}$/', $raw) !== 1) {
             return null;
         }
-        if (! preg_match('/^[a-f0-9]{32}$/', $raw)) {
+
+        $random = hex2bin(substr($raw, 0, 32));
+        if (! is_string($random) || strlen($random) !== 16) {
+            return null;
+        }
+
+        $given = substr($raw, 32);
+        if (! hash_equals($this->guestSessionMac($random), $given)) {
             return null;
         }
 
         return $raw;
+    }
+
+    private function guestSessionMac(string $random): string
+    {
+        return substr(hash_hmac('sha256', $random, $this->appKey()), 0, 32);
+    }
+
+    /** Laravel's `base64:` prefix is the encoding, not part of the HMAC key. */
+    private function appKey(): string
+    {
+        $key = (string) config('app.key', '');
+        if (str_starts_with($key, 'base64:')) {
+            $decoded = base64_decode(substr($key, 7), true);
+            if (is_string($decoded) && $decoded !== '') {
+                return $decoded;
+            }
+        }
+
+        return $key;
     }
 }

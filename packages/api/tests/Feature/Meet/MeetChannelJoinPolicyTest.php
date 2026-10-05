@@ -260,7 +260,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // An unreserved ad-hoc code has no host who can admit, so a direct
         // guest join still passes. A reserved code does not — see below.
         $direct = $this->guestJoin('abcd-efgh-jklm', 'peer-code', 'Visitor')->assertOk();
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $direct->json('sessionKey'));
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) $direct->json('sessionKey'));
 
         // Authenticated users join plain rooms unconditionally, knock or not.
         $this->join('carol', 'empty-room', 'peer-carol', 'Carol')->assertOk();

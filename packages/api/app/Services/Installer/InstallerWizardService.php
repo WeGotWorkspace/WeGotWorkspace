@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
@@ -357,7 +358,9 @@ final class InstallerWizardService
                         SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
                         SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
                         SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
-                        SettingKeys::RTC_TURN_SECRET => $meetEnabled ? trim((string) ($payload['rtc_turn_secret'] ?? '')) : '',
+                        SettingKeys::RTC_TURN_SECRET => $meetEnabled
+                            ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
+                            : '',
                     ],
                 );
                 $this->jwtKeys->ensureKeys();

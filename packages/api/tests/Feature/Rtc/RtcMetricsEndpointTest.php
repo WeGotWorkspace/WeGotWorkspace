@@ -6,6 +6,7 @@ namespace Tests\Feature\Rtc;
 
 use App\Models\MeetPeer;
 use App\Models\RtcSessionMetric;
+use App\Services\Meet\MeetActorResolver;
 use Illuminate\Support\Facades\Cache;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwRoleFixtures;
@@ -63,22 +64,23 @@ final class RtcMetricsEndpointTest extends WgwDatabaseTestCase
 
     public function test_a_live_guest_session_can_report(): void
     {
+        $sessionKey = app(MeetActorResolver::class)->newGuestSessionKey();
         MeetPeer::query()->insert([
             'room' => 'room-a',
             'peer_id' => 'guest-peer',
             'name' => 'Guest',
-            'owner_user' => 'g:'.self::GUEST_SESSION,
+            'owner_user' => 'g:'.$sessionKey,
             'seen_at' => time(),
         ]);
 
-        $this->postJson('/api/v1/rtc/metrics?sessionKey='.self::GUEST_SESSION, [
+        $this->postJson('/api/v1/rtc/metrics?sessionKey='.$sessionKey, [
             'channel' => 'collab',
         ])->assertStatus(202);
 
         $row = RtcSessionMetric::query()->sole();
         $this->assertSame('collab', $row->channel);
         $this->assertSame(0, (int) $row->join_ms);
-        $this->assertStringNotContainsString(self::GUEST_SESSION, (string) json_encode($row->getAttributes()));
+        $this->assertStringNotContainsString($sessionKey, (string) json_encode($row->getAttributes()));
     }
 
     public function test_a_minted_session_key_is_rejected_and_stores_nothing(): void

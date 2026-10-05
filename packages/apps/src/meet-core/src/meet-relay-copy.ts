@@ -18,21 +18,17 @@ export type MeetRelayCopy = {
   /** Present only for an admin on a self-hosted `relay_unavailable`. */
   setupHref?: string;
   docsHref?: string;
-  /** Neutral plan link. Only when the deployment says relay is plan-gated. */
+  /** Kept so an older banner can still read the field. Nothing sets it. */
   planHref?: string;
 };
 
 /**
- * One message per role. Non-admins never receive Set up. SaaS, where TURN is
- * part of the service, replaces the firewall banner; there is no upsell beyond
- * `planHref` when the caller has one.
+ * One message per role. Non-admins never receive Set up.
  */
 export function meetRelayCopy(input: {
   audience: RelayCopyAudience;
   outcome: RelayCopyOutcome | null;
   name: string;
-  relayIncludedInService?: boolean;
-  planHref?: string | null;
 }): MeetRelayCopy | null {
   if (!input.outcome) return null;
   if (input.audience === "affected") {
@@ -45,14 +41,6 @@ export function meetRelayCopy(input: {
   if (input.audience === "participant") {
     if (input.outcome !== "relay_unavailable") return null;
     return { message: `Can't connect to ${input.name}` };
-  }
-  if (input.relayIncludedInService) {
-    if (input.outcome !== "issued" && input.outcome !== "relay_unavailable") return null;
-    return {
-      message:
-        "Direct connections aren't possible on this network; your plan's relay is used automatically.",
-      ...(input.planHref ? { planHref: input.planHref } : {}),
-    };
   }
   if (input.outcome !== "relay_unavailable") return null;
   return {
