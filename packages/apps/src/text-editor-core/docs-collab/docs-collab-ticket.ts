@@ -164,7 +164,8 @@ export async function verifyCollabTicket(input: {
 /**
  * Caches the imported public key per `kid`, the way C2 asks clients to. A
  * rotation publishes a new id, so a new entry appears and the old tickets
- * expire on their own rather than being revoked.
+ * expire on their own rather than being revoked. A null result is dropped
+ * from the cache so a key that shows up later can still be imported.
  */
 export function createCollabTicketKeyCache(
   fetchJwk: (kid: string) => Promise<DocsCollabTicketJwk | null>,
@@ -190,6 +191,14 @@ export function createCollabTicketKeyCache(
       }
     })();
     keys.set(kid, pending);
+    void pending.then(
+      (key) => {
+        if (key === null) keys.delete(kid);
+      },
+      () => {
+        keys.delete(kid);
+      },
+    );
     return pending;
   };
 }

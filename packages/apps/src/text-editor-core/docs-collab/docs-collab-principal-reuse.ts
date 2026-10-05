@@ -7,6 +7,7 @@ import {
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import {
   DocsCollabRosterTrust,
+  tighterDocsCollabAccess,
   type DocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
 import {
@@ -78,9 +79,11 @@ export type DocsCollabPrincipalReusePorts = {
  *
  * The principal `workspace` room holds every signed-in account, so an envelope
  * arriving on it says nothing about document access. A present C2 ticket is
- * verified and its payload supplies `access`. An envelope with no ticket is
- * still gated by the collab roster, so a mixed-version room keeps syncing.
- * An unrostered `open` that also has no ticket is dropped without an `ack`.
+ * verified for identity. A rostered peer's right is the tighter of that ticket
+ * and the live roster row. An unrostered peer is dropped. An envelope with no
+ * ticket is still gated by the collab roster, so a mixed-version room keeps
+ * syncing. An unrostered `open` that also has no ticket is dropped without an
+ * `ack`.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
@@ -281,7 +284,8 @@ export class DocsCollabPrincipalReuse {
    * C2 ticket verifies for that same username and peer id. Both halves of the
    * roster check matter: the username proves document access, the peer id
    * keeps a rostered account from speaking for somebody else's peer row.
-   * A present ticket replaces that roster check. A missing ticket does not.
+   * A present ticket still has to name a rostered peer, and its access cannot
+   * exceed the roster row. A missing ticket uses the roster check alone.
    */
   private mayReuseWith(fromUsername: string, collabPeerId: string | undefined): boolean;
   private mayReuseWith(
@@ -310,8 +314,10 @@ export class DocsCollabPrincipalReuse {
 
   /**
    * Verify a presented ticket. `user` and `peer` have to match the principal
-   * link and the envelope. Access comes from the payload. A failure is a drop,
-   * not a fall back to the roster.
+   * link and the envelope. The ticket binds identity; the roster is the
+   * fresher right, so a rostered peer gets the tighter of the two. A peer
+   * that is not on the roster is dropped. A failure is a drop, not a fall
+   * back to an unchecked ticket.
    */
   private async verifiedTicketAccess(
     fromUsername: string,
@@ -336,7 +342,11 @@ export class DocsCollabPrincipalReuse {
       this.logMiss(collabPeerId, "ticket-rejected", fromUsername);
       return null;
     }
-    return payload.access;
+    if (!this.trust.isRosteredPeerId(collabPeerId)) {
+      this.logMiss(collabPeerId, "ticket-peer-not-rostered", fromUsername);
+      return null;
+    }
+    return tighterDocsCollabAccess(payload.access, this.trust.accessForPeerId(collabPeerId));
   }
 
   private roomDigest(): Promise<string> {

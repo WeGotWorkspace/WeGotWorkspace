@@ -177,4 +177,16 @@ describe("docs-collab-ticket", () => {
 
     expect(lookups).toBe(1);
   });
+
+  it("does not cache a null key lookup", async () => {
+    let lookups = 0;
+    const resolveKey = createCollabTicketKeyCache(async () => {
+      lookups += 1;
+      return null;
+    });
+
+    await expect(resolveKey("missing")).resolves.toBeNull();
+    await expect(resolveKey("missing")).resolves.toBeNull();
+    expect(lookups).toBe(2);
+  });
 });
