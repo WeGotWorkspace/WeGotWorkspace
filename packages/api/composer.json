@@ -56,6 +56,7 @@
         "test:mysql:parity:shard": "WGW_TEST_DRIVER=mysql php scripts/phpunit-shard.php --config=phpunit-mysql-parity.xml",
         "test:architecture": "phpunit -c phpunit.xml --testsuite Architecture",
         "greenfield:guard": "@lint",
+        "autoload-app-classes": "php scripts/autoload-app-classes.php",
         "phpstan": "vendor/bin/phpstan analyse -c phpstan.neon.dist --memory-limit=1G --no-progress",
         "done-gate:contract": "php scripts/done-gate.php --contract",
         "done-gate": "php scripts/done-gate.php",
