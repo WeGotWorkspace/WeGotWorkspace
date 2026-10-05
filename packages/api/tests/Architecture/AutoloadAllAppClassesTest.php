@@ -56,6 +56,25 @@ final class AutoloadAllAppClassesTest extends TestCase
         $this->assertStringNotContainsString('principals/', $output);
     }
 
+    public function test_second_type_in_the_same_file_fails_composer_lookup(): void
+    {
+        $fixture = dirname(__DIR__).'/fixtures/AutoloadSharedFile';
+        $autoload = dirname(__DIR__, 2).'/vendor/autoload.php';
+
+        [$exitCode, $output] = $this->runWalker([
+            '--root='.$fixture,
+            '--autoload='.$autoload,
+        ]);
+
+        $this->assertNotSame(
+            0,
+            $exitCode,
+            "Expected Holder+Stowaway in one file to fail the walker:\n{$output}"
+        );
+        $this->assertStringContainsString('Stowaway', $output);
+        $this->assertStringContainsString('Composer lookup', $output);
+    }
+
     public function test_composer_only_load_reports_a_type_missing_from_psr4(): void
     {
         $failures = autoload_app_classes_load([

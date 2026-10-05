@@ -11,6 +11,8 @@ declare(strict_types=1);
  * file paths only — no outbound network.
  */
 
+use Composer\Autoload\ClassLoader;
+
 /**
  * @return list<array{file: string, type: string, kind: 'class'|'interface'|'trait'|'enum'}>
  */
@@ -231,6 +233,11 @@ function autoload_app_classes_load(array $types, bool $registerFallback = false)
             };
             if (! $loaded) {
                 $failures[] = $item['file'].': '.$item['type'].' was not defined after load';
+            } else {
+                $mapped = autoload_app_classes_composer_lookup($item['type']);
+                if (! is_string($mapped) || realpath($mapped) !== realpath($item['file'])) {
+                    $failures[] = $item['file'].': '.$item['type'].' Composer lookup does not point at the declaring file';
+                }
             }
         } catch (Throwable $e) {
             $failures[] = $item['file'].': '.$e->getMessage();
@@ -239,6 +246,22 @@ function autoload_app_classes_load(array $types, bool $registerFallback = false)
     autoload_app_classes_current_file(null);
 
     return $failures;
+}
+
+function autoload_app_classes_composer_lookup(string $type): string|false
+{
+    if (! class_exists(ClassLoader::class, false)) {
+        return false;
+    }
+
+    foreach (ClassLoader::getRegisteredLoaders() as $loader) {
+        $file = $loader->findFile($type);
+        if (is_string($file)) {
+            return $file;
+        }
+    }
+
+    return false;
 }
 
 function autoload_app_classes_current_file(?string $file = null): ?string
