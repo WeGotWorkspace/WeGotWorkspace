@@ -114,6 +114,10 @@ function applyAsCommenter(input: DocsCollabGuardedUpdate): DocsCollabUpdateVerdi
   try {
     Y.applyUpdate(scratch, Y.encodeStateAsUpdate(input.doc));
     ensureKnownRoots(scratch);
+    // The clone inherits the live doc's own pending state; only what this
+    // update adds counts against the commenter.
+    scratch.store.pendingDs = null;
+    scratch.store.pendingStructs = null;
     before = snapshotThreadRoots(scratch);
     const collected = applyAndCollectTouchedRoots(scratch, input.update);
     touched = collected.touched;
@@ -163,7 +167,6 @@ function applyAndCollectTouchedRoots(
 ): { touched: Set<string>; pending: boolean } {
   const touched = new Set<string>();
   const before = new Set(doc.share.keys());
-  const pendingBefore = pendingStore(doc);
   const unobserve: Array<() => void> = [];
   for (const [name, type] of doc.share) {
     const handler = (): void => {
@@ -182,31 +185,18 @@ function applyAndCollectTouchedRoots(
   for (const name of doc.share.keys()) {
     if (!before.has(name)) touched.add(name);
   }
-  return { touched, pending: updateAddedPending(pendingBefore, doc) };
+  return { touched, pending: updateAddedPending(doc) };
 }
 
 /**
  * A delete set for structs this document does not have yet is stored on
  * `pendingDs` and never notifies an observer. A later editor update then
- * applies that delete. Commenters never send ahead of causal history, so any
- * pending the update adds is a refused body edit.
+ * applies that delete. The scratch clone starts with inherited pending
+ * cleared, so any pending left after the update was added by it. Commenters
+ * never send ahead of causal history, so that pending is a refused body edit.
  */
-function pendingStore(doc: Y.Doc): {
-  ds: Uint8Array | null;
-  structs: Y.Doc["store"]["pendingStructs"];
-} {
-  return { ds: doc.store.pendingDs, structs: doc.store.pendingStructs };
-}
-
-function updateAddedPending(
-  before: { ds: Uint8Array | null; structs: Y.Doc["store"]["pendingStructs"] },
-  doc: Y.Doc,
-): boolean {
-  const afterDs = doc.store.pendingDs;
-  const afterStructs = doc.store.pendingStructs;
-  if (afterDs && afterDs !== before.ds) return true;
-  if (afterStructs && afterStructs !== before.structs) return true;
-  return false;
+function updateAddedPending(doc: Y.Doc): boolean {
+  return doc.store.pendingDs !== null || doc.store.pendingStructs !== null;
 }
 
 type MessageFacts = {

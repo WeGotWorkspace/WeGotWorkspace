@@ -277,6 +277,41 @@ describe("docs-collab-update-guard", () => {
     expect(editorMs).toBeLessThan(Math.max(cloneMs, 1));
   });
 
+  it("applies a commenter's own thread while the live doc already has pending", () => {
+    const editor = new Y.Doc();
+    editor.clientID = 1;
+    editor.getXmlFragment("default").insert(0, [new Y.XmlText("hello")]);
+    const sv = Y.encodeStateVector(editor);
+    editor.getXmlFragment("default").delete(0, 1);
+    const victim = new Y.Doc();
+    applyGuardedRemoteUpdate({
+      doc: victim,
+      update: Y.encodeStateAsUpdate(editor, sv),
+      access: "write",
+      senderUser: "erin",
+      origin: "mesh",
+    });
+    expect(victim.store.pendingDs).not.toBeNull();
+
+    // Carol's update is only her thread. Seeding her replica from the victim
+    // would copy victim.store.pendingDs into the update, which is the
+    // delete-ahead case covered below — not a legitimate comment.
+    const remote = new Y.Doc();
+    remote.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "carol", [message("m1", "carol")]));
+
+    expect(
+      applyGuardedRemoteUpdate({
+        doc: victim,
+        update: diff(victim, remote),
+        access: "comment",
+        senderUser: "carol",
+        origin: "mesh",
+      }),
+    ).toEqual({ applied: true });
+    expect(victim.getMap(DOCS_COMMENTS_MAP_KEY).size).toBe(1);
+    expect(victim.store.pendingDs).not.toBeNull();
+  });
+
   it("rejects a commenter delete the receiver has not seen yet", () => {
     const editor = new Y.Doc();
     editor.clientID = 1;
