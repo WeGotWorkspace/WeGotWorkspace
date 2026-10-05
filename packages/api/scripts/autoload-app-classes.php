@@ -5,9 +5,10 @@ declare(strict_types=1);
 /**
  * Autoload every class/interface/trait/enum under a PHP tree.
  *
- * Architecture tests use this so illegal inheritance, missing symbols, and
- * parse errors fail in seconds. The same walk is a local install/upgrade
- * smoke: no outbound network, and output is only file paths and type names.
+ * Architecture tests invoke this as a subprocess so an uncatchable fatal
+ * (Cannot extend final class) fails that test instead of killing PHPUnit.
+ * Local smoke: `composer autoload-app-classes`. Output is type counts and
+ * file paths only — no outbound network.
  */
 
 /**
@@ -212,12 +213,15 @@ function autoload_app_classes_register_classmap(array $types): void
  * @param  list<array{file: string, type: string, kind: 'class'|'interface'|'trait'|'enum'}>  $types
  * @return list<string>
  */
-function autoload_app_classes_load(array $types): array
+function autoload_app_classes_load(array $types, bool $registerFallback = false): array
 {
-    autoload_app_classes_register_classmap($types);
+    if ($registerFallback) {
+        autoload_app_classes_register_classmap($types);
+    }
 
     $failures = [];
     foreach ($types as $item) {
+        autoload_app_classes_current_file($item['file']);
         try {
             $loaded = match ($item['kind']) {
                 'class' => class_exists($item['type']),
@@ -232,8 +236,42 @@ function autoload_app_classes_load(array $types): array
             $failures[] = $item['file'].': '.$e->getMessage();
         }
     }
+    autoload_app_classes_current_file(null);
 
     return $failures;
+}
+
+function autoload_app_classes_current_file(?string $file = null): ?string
+{
+    static $current = null;
+    if (func_num_args() === 1) {
+        $current = $file;
+    }
+
+    return $current;
+}
+
+function autoload_app_classes_register_shutdown_handler(): void
+{
+    register_shutdown_function(static function (): void {
+        $error = error_get_last();
+        if ($error === null) {
+            return;
+        }
+        $fatals = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+        if (! in_array($error['type'], $fatals, true)) {
+            return;
+        }
+
+        fwrite(STDERR, "autoload-app-classes: FATAL\n");
+        fwrite(STDERR, '  '.$error['message'].' in '.$error['file'].':'.$error['line']."\n");
+        $loading = autoload_app_classes_current_file();
+        if (is_string($loading) && $loading !== '') {
+            fwrite(STDERR, '  loading: '.$loading."\n");
+        }
+
+        exit(1);
+    });
 }
 
 /**
@@ -245,10 +283,12 @@ function autoload_app_classes_main(array $argv): int
     $apiRoot = dirname($scriptDir);
     $root = $apiRoot.'/app';
     $autoload = $apiRoot.'/vendor/autoload.php';
+    $customRoot = false;
 
     foreach (array_slice($argv, 1) as $arg) {
         if (str_starts_with($arg, '--root=')) {
             $root = substr($arg, strlen('--root='));
+            $customRoot = true;
         } elseif (str_starts_with($arg, '--autoload=')) {
             $autoload = substr($arg, strlen('--autoload='));
         }
@@ -258,8 +298,12 @@ function autoload_app_classes_main(array $argv): int
         require_once $autoload;
     }
 
+    autoload_app_classes_register_shutdown_handler();
+
     $types = autoload_app_classes_discover($root);
-    $failures = autoload_app_classes_load($types);
+    // Composer PSR-4 alone for the app tree so a misnamed file is a failure.
+    // Classmap fallback is only for --root fixtures (not on the Composer map).
+    $failures = autoload_app_classes_load($types, registerFallback: $customRoot);
     if ($failures !== []) {
         fwrite(STDERR, "autoload-app-classes: FAILED\n");
         foreach ($failures as $failure) {

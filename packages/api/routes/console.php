@@ -34,14 +34,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('wgw:autoload-app-classes', function (): int {
-    $script = base_path('scripts/autoload-app-classes.php');
-    $exitCode = 0;
-    passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg($script), $exitCode);
-
-    return $exitCode;
-})->purpose('Autoload every app class (local install smoke; no network)');
-
 Artisan::command('wgw:schema-migrate', function (WgwSchemaMigrator $migrator): int {
     $before = $migrator->currentVersion();
     $migrator->migrate();

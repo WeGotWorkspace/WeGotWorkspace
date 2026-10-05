@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Architecture;
 
-use App\Dav\Storage\FlysystemAclFile;
-use App\Dav\Storage\FlysystemFile;
+use App\Dav\Server\GroupSharedFile;
 use PHPUnit\Framework\TestCase;
 
 require_once dirname(__DIR__, 2).'/scripts/autoload-app-classes.php';
@@ -14,9 +13,8 @@ require_once dirname(__DIR__, 2).'/scripts/autoload-app-classes.php';
  * Autoload every {@code packages/api/app} type so illegal inheritance, missing
  * symbols, and parse errors fail in the Architecture suite (#780).
  *
- * PHP only fatals when the subclass is loaded — {@see GroupSharedFile} extending
- * a previously-final {@see FlysystemFile} stayed hidden because
- * listing never autoloaded the subclass.
+ * The walk runs in a subprocess: a fatal (`Cannot extend final class`) must
+ * fail this test (PHPUnit exit 1) instead of killing the suite (exit 255).
  */
 final class AutoloadAllAppClassesTest extends TestCase
 {
@@ -26,55 +24,74 @@ final class AutoloadAllAppClassesTest extends TestCase
         $types = autoload_app_classes_discover($appRoot);
         $this->assertNotEmpty($types, 'Expected PHP types under packages/api/app');
 
-        $failures = autoload_app_classes_load($types);
-        $this->assertSame(
-            [],
-            $failures,
-            "Autoloading app classes failed:\n".implode("\n", $failures)
-        );
-
         $names = array_column($types, 'type');
-        $this->assertContains(\App\Dav\Server\GroupSharedFile::class, $names);
-        $this->assertTrue(class_exists(\App\Dav\Server\GroupSharedFile::class, false));
-        $this->assertTrue(class_exists(FlysystemAclFile::class, false));
+        $this->assertContains(GroupSharedFile::class, $names);
+
+        [$exitCode, $output] = $this->runWalker();
+        $this->assertSame(
+            0,
+            $exitCode,
+            "Autoloading app classes failed (exit {$exitCode}):\n{$output}"
+        );
+        $this->assertStringContainsString('autoload-app-classes: ok', $output);
     }
 
     public function test_extending_a_final_class_fails_the_autoload_walk(): void
     {
-        $script = dirname(__DIR__, 2).'/scripts/autoload-app-classes.php';
         $fixture = dirname(__DIR__).'/fixtures/AutoloadFinalExtend';
         $autoload = dirname(__DIR__, 2).'/vendor/autoload.php';
 
-        $cmd = implode(' ', [
-            escapeshellarg(PHP_BINARY),
-            escapeshellarg($script),
-            escapeshellarg('--root='.$fixture),
-            escapeshellarg('--autoload='.$autoload),
-        ]).' 2>&1';
-
-        $output = [];
-        $exitCode = 0;
-        exec($cmd, $output, $exitCode);
-        $combined = implode("\n", $output);
+        [$exitCode, $output] = $this->runWalker([
+            '--root='.$fixture,
+            '--autoload='.$autoload,
+        ]);
 
         $this->assertNotSame(
             0,
             $exitCode,
-            "Expected class B extends final A to fail the walker:\n{$combined}"
+            "Expected class B extends final A to fail the walker:\n{$output}"
         );
-        $this->assertStringContainsString('cannot extend final class', $combined);
-        $this->assertStringContainsString('IllegalChild', $combined);
-        $this->assertStringNotContainsString('http', strtolower($combined));
-        $this->assertStringNotContainsString('principals/', $combined);
+        $this->assertStringContainsString('cannot extend final class', strtolower($output));
+        $this->assertStringContainsString('IllegalChild', $output);
+        $this->assertStringNotContainsString('principals/', $output);
     }
 
-    public function test_local_smoke_command_is_wired_without_network(): void
+    public function test_composer_only_load_reports_a_type_missing_from_psr4(): void
     {
-        $console = (string) file_get_contents(dirname(__DIR__, 2).'/routes/console.php');
-        $composer = (string) file_get_contents(dirname(__DIR__, 2).'/composer.json');
+        $failures = autoload_app_classes_load([
+            [
+                'file' => dirname(__DIR__, 2).'/app/DoesNotExist.php',
+                'type' => 'App\\DoesNotExist',
+                'kind' => 'class',
+            ],
+        ], registerFallback: false);
 
-        $this->assertStringContainsString('wgw:autoload-app-classes', $console);
-        $this->assertStringContainsString('autoload-app-classes.php', $console);
-        $this->assertStringContainsString('"autoload-app-classes"', $composer);
+        $this->assertNotEmpty($failures);
+        $this->assertStringContainsString('DoesNotExist', implode("\n", $failures));
+    }
+
+    /**
+     * @param  list<string>  $extraArgs
+     * @return array{0: int, 1: string}
+     */
+    private function runWalker(array $extraArgs = []): array
+    {
+        $script = dirname(__DIR__, 2).'/scripts/autoload-app-classes.php';
+        $parts = [
+            escapeshellarg(PHP_BINARY),
+            '-d',
+            'display_errors=stderr',
+            escapeshellarg($script),
+        ];
+        foreach ($extraArgs as $arg) {
+            $parts[] = escapeshellarg($arg);
+        }
+        $cmd = implode(' ', $parts).' 2>&1';
+
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+
+        return [$exitCode, implode("\n", $output)];
     }
 }

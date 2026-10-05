@@ -12,15 +12,6 @@ use App\Models\PrincipalMessage;
 use App\Models\PrincipalPeer;
 use Illuminate\Database\Eloquent\Model;
 
-enum RtcSignalingPollMode
-{
-    /** Return messages with id > since; keep rows until pruned. */
-    case SinceCursor;
-
-    /** Return undelivered messages and delete them after read. */
-    case DeleteOnRead;
-}
-
 final readonly class RtcSignalingPolicy
 {
     /**
