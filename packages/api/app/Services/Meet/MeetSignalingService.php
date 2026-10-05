@@ -23,6 +23,14 @@ final class MeetSignalingService
     /** Send types that set up a media session, so the lobby may not use them. */
     private const MEDIA_SEND_TYPES = ['offer', 'answer', 'ice'];
 
+    /**
+     * Host commands. A knock row may not send these. Neither may a guest or
+     * a non-member: only an actor recordChannelAdmission would accept.
+     *
+     * @var list<string>
+     */
+    private const PRIVILEGED_CONTROL_KINDS = ['admit', 'deny', 'end', 'mute', 'unmute'];
+
     private readonly HttpSignalingStore $store;
 
     public function __construct(
@@ -304,7 +312,8 @@ final class MeetSignalingService
                 $this->fail('not_in_room');
             }
 
-            $this->assertKnockSenderSendsControlOnly($room, $from, $text);
+            $this->assertKnockSenderSendsOwnKnock($room, $from, $text);
+            $this->assertPrivilegedControlAuthorized($request, $room, $text);
             $this->recordChannelAdmission($request, $room, $text);
 
             $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
@@ -337,17 +346,17 @@ final class MeetSignalingService
     }
 
     /**
-     * The lobby is not the call: a knock row may announce itself (and send
-     * any other control payload that admittedPeerIdFromControlText and the
-     * meet-control prefix already classify) but must not post a visible
-     * room line. Same 403 family as media-from-lobby.
+     * The lobby is not the call. A knock row may announce itself (`kind`
+     * `knock` and `peerId` equal to the sender) and nothing else — not
+     * `end` / `mute` / `unmute` / `deny`, and not a knock that names
+     * someone else. Malformed control text is refused the same way.
      */
-    private function assertKnockSenderSendsControlOnly(string $room, string $from, string $text): void
+    private function assertKnockSenderSendsOwnKnock(string $room, string $from, string $text): void
     {
         if (! $this->isKnockPeer($room, $from)) {
             return;
         }
-        if ($this->isControlChatText($text)) {
+        if ($this->isOwnKnockAnnouncement($from, $text)) {
             return;
         }
 
@@ -355,15 +364,89 @@ final class MeetSignalingService
     }
 
     /**
-     * Control text is the meet-control family: the prefix that
-     * admittedPeerIdFromControlText / lobbyDecisionPeerIdFromControlText
-     * already require (knock announcement, admit, deny, and the rest).
+     * `admit` / `deny` / `end` / `mute` / `unmute` are host commands. The
+     * sender must be someone `recordChannelAdmission` would accept: a channel
+     * member, or the manager of a reserved code. An unreserved ad-hoc room
+     * has no membership list, so any authenticated actor may send. Everyone
+     * else is 403 and the row is not written.
      */
-    private function isControlChatText(string $text): bool
+    private function assertPrivilegedControlAuthorized(Request $request, string $room, string $text): void
     {
-        return str_starts_with($text, self::CONTROL_TEXT_PREFIX)
-            || $this->channelJoinPolicy->admittedPeerIdFromControlText($text) !== null
-            || $this->channelJoinPolicy->lobbyDecisionPeerIdFromControlText($text) !== null;
+        if (! $this->isPrivilegedControl($text)) {
+            return;
+        }
+        if ($this->senderMayIssuePrivilegedControl($request, $room)) {
+            return;
+        }
+
+        $this->fail('forbidden', 403);
+    }
+
+    private function isOwnKnockAnnouncement(string $from, string $text): bool
+    {
+        $payload = $this->decodedControlPayload($text);
+        if ($payload === null) {
+            return false;
+        }
+
+        return ($payload['kind'] ?? null) === 'knock' && ($payload['peerId'] ?? null) === $from;
+    }
+
+    private function isPrivilegedControl(string $text): bool
+    {
+        $payload = $this->decodedControlPayload($text);
+        if ($payload === null) {
+            return false;
+        }
+        $kind = $payload['kind'] ?? null;
+
+        return is_string($kind) && in_array($kind, self::PRIVILEGED_CONTROL_KINDS, true);
+    }
+
+    /**
+     * Object payload after the meet-control prefix, or null when the text
+     * is not that prefix or the JSON is not an object.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function decodedControlPayload(string $text): ?array
+    {
+        if (! str_starts_with($text, self::CONTROL_TEXT_PREFIX)) {
+            return null;
+        }
+        try {
+            $decoded = json_decode(
+                substr($text, strlen(self::CONTROL_TEXT_PREFIX)),
+                true,
+                512,
+                JSON_THROW_ON_ERROR,
+            );
+        } catch (\JsonException) {
+            return null;
+        }
+        if (! is_array($decoded) || array_is_list($decoded)) {
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    private function senderMayIssuePrivilegedControl(Request $request, string $room): bool
+    {
+        $username = $this->actors->tryAuthenticatedUsername($request);
+        if ($username === null || $username === '') {
+            return false;
+        }
+        $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
+        if ($channel !== null) {
+            return $this->channelJoinPolicy->isChannelMember($username, $channel);
+        }
+        $reservation = $this->reservations->find($room);
+        if ($reservation !== null) {
+            return $this->reservations->canManage($username, $reservation);
+        }
+
+        return true;
     }
 
     /**
@@ -462,7 +545,8 @@ final class MeetSignalingService
      * manager of a reserved ad-hoc code (`createdBy` / owner-principal
      * member), broadcasts an `admit` control message, the target peer row
      * is marked admitted so its non-knock re-join passes the policy.
-     * Non-member and guest senders are ignored (the message still delivers).
+     * Chat refuses every other sender with 403 before this runs, so a
+     * non-member or guest admit is not delivered and not recorded.
      */
     private function recordChannelAdmission(Request $request, string $room, string $text): void
     {

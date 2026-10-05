@@ -36,18 +36,18 @@ final class MeetPollAckTest extends WgwDatabaseTestCase
 
     public function test_dropped_poll_response_redelivers_offer_chat_and_admit_exactly_once(): void
     {
-        $host = $this->guestJoin('host-peer', 'Host', caps: self::SINCE_ACK);
+        $host = $this->authenticatedHost(caps: self::SINCE_ACK);
         $guest = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor', caps: self::SINCE_ACK);
 
-        $this->control($host['sessionKey'], ['kind' => 'admit', 'peerId' => 'knock-peer'])->assertOk();
+        $this->controlAs($host, ['kind' => 'admit', 'peerId' => 'knock-peer'])->assertOk();
         // Admitted: dropping the knock prefix opens the media path again.
         $this->guestJoin('knock-peer', 'Visitor', $guest['sessionKey'], self::SINCE_ACK);
-        $this->send($host['sessionKey'], 'host-peer', 'knock-peer', 'offer');
-        $this->postJson($this->meetRoomPath('/messages'), [
+        $this->sendAs($host, 'host-peer', 'knock-peer', 'offer');
+        $this->withBearer($host)->postJson($this->meetRoomPath('/messages'), [
             'from' => 'host-peer',
             'text' => 'starting now',
-            'sessionKey' => $host['sessionKey'],
         ])->assertOk();
+        $this->withoutBearer();
 
         // The response that carried all three never arrives, so the cursor stays at 0.
         $lost = $this->poll('knock-peer', $guest['sessionKey']);
@@ -72,10 +72,10 @@ final class MeetPollAckTest extends WgwDatabaseTestCase
 
     public function test_lobby_guest_receives_its_admit_exactly_once(): void
     {
-        $host = $this->guestJoin('host-peer', 'Host', caps: self::SINCE_ACK);
+        $host = $this->authenticatedHost(caps: self::SINCE_ACK);
         $guest = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor', caps: self::SINCE_ACK);
 
-        $this->control($host['sessionKey'], ['kind' => 'admit', 'peerId' => 'knock-peer'])
+        $this->controlAs($host, ['kind' => 'admit', 'peerId' => 'knock-peer'])
             ->assertOk()
             ->assertJson(['delivered' => 1]);
 
@@ -173,26 +173,49 @@ final class MeetPollAckTest extends WgwDatabaseTestCase
         ));
     }
 
-    private function send(string $sessionKey, string $from, string $to, string $type): TestResponse
+    /**
+     * Host commands on an unreserved room require an authenticated actor.
+     * A guest admit is refused, so the ack tests sign the host in.
+     *
+     * @param  list<string>|null  $caps
+     */
+    private function authenticatedHost(string $peerId = 'host-peer', ?array $caps = null): string
     {
-        return $this->postJson($this->meetRoomPath('/events'), [
-            'from' => $from,
-            'to' => $to,
-            'type' => $type,
-            'payload' => ['sdp' => 'v=0'],
-            'sessionKey' => $sessionKey,
-        ])->assertOk();
+        $token = $this->userBearerToken();
+        $body = ['peerId' => $peerId, 'name' => 'Host'];
+        if ($caps !== null) {
+            $body['caps'] = $caps;
+        }
+        $this->withBearer($token)->postJson($this->meetRoomPath('/participants'), $body)->assertOk();
+        $this->withoutBearer();
+
+        return $token;
     }
 
     /**
      * @param  array<string, mixed>  $control
      */
-    private function control(string $sessionKey, array $control, string $fromPeer = 'host-peer'): TestResponse
+    private function controlAs(string $token, array $control, string $fromPeer = 'host-peer'): TestResponse
     {
-        return $this->postJson($this->meetRoomPath('/messages'), [
+        $response = $this->withBearer($token)->postJson($this->meetRoomPath('/messages'), [
             'from' => $fromPeer,
             'text' => self::CONTROL_PREFIX.json_encode($control, JSON_THROW_ON_ERROR),
-            'sessionKey' => $sessionKey,
         ]);
+        $this->withoutBearer();
+
+        return $response;
+    }
+
+    private function sendAs(string $token, string $from, string $to, string $type): TestResponse
+    {
+        $response = $this->withBearer($token)->postJson($this->meetRoomPath('/events'), [
+            'from' => $from,
+            'to' => $to,
+            'type' => $type,
+            'payload' => ['sdp' => 'v=0'],
+        ])->assertOk();
+        $this->withoutBearer();
+
+        return $response;
     }
 }

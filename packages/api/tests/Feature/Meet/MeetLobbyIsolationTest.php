@@ -11,8 +11,9 @@ use Tests\Support\WgwDatabaseTestCase;
 /**
  * The lobby is not the call (#1099). A peer whose row still carries the knock
  * name prefix may not negotiate media, may not post ordinary room chat, and
- * does not receive room chat — only the `admit` / `deny` decision that names
- * that knocker. Control text (the knock announcement) is still allowed out.
+ * may not send host commands (`end` / `mute` / `unmute` / `deny`). It does
+ * not receive room chat — only the `admit` / `deny` decision that names that
+ * knocker. Its own knock announcement is still allowed out.
  */
 final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
 {
@@ -101,11 +102,11 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
 
     public function test_knocking_peer_receives_only_the_admit_or_deny_addressed_to_them(): void
     {
-        $host = $this->guestJoin('host-peer', 'Host');
+        $host = $this->authenticatedHost();
         $first = $this->guestJoin('knock-one', self::KNOCK_PREFIX.'Ada');
         $second = $this->guestJoin('knock-two', self::KNOCK_PREFIX.'Bram');
 
-        $this->control($host['sessionKey'], ['kind' => 'admit', 'peerId' => 'knock-one'])
+        $this->controlAs($host, ['kind' => 'admit', 'peerId' => 'knock-one'])
             ->assertOk()
             ->assertJson(['ok' => true, 'delivered' => 1]);
 
@@ -121,7 +122,7 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('messages', []);
 
-        $this->control($host['sessionKey'], ['kind' => 'deny', 'peerId' => 'knock-two'])
+        $this->controlAs($host, ['kind' => 'deny', 'peerId' => 'knock-two'])
             ->assertOk()
             ->assertJson(['ok' => true, 'delivered' => 1]);
 
@@ -135,14 +136,15 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
 
     public function test_other_control_messages_still_skip_the_lobby(): void
     {
-        $host = $this->guestJoin('host-peer', 'Host');
+        $host = $this->authenticatedHost();
         $knocker = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor');
 
         // `end` and `mute` are for the call, not for the waiting room.
-        $this->control($host['sessionKey'], ['kind' => 'end', 'by' => 'Host'])
+        // An unreserved room accepts them from an authenticated actor.
+        $this->controlAs($host, ['kind' => 'end', 'by' => 'Host'])
             ->assertOk()
             ->assertJson(['ok' => true, 'delivered' => 0]);
-        $this->control($host['sessionKey'], ['kind' => 'mute', 'peerId' => 'knock-peer'])
+        $this->controlAs($host, ['kind' => 'mute', 'peerId' => 'knock-peer'])
             ->assertOk()
             ->assertJson(['ok' => true, 'delivered' => 0]);
 
@@ -174,6 +176,63 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('messages', [])
             ->assertDontSee('payroll is on Friday');
+    }
+
+    public function test_knocking_peer_cannot_end_mute_unmute_or_deny_another_knocker(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $other = $this->guestJoin('knock-two', self::KNOCK_PREFIX.'Bram');
+        $knocker = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor');
+
+        foreach ([
+            ['kind' => 'end', 'by' => 'Visitor'],
+            ['kind' => 'mute', 'peerId' => 'host-peer'],
+            ['kind' => 'unmute', 'peerId' => 'host-peer'],
+            ['kind' => 'deny', 'peerId' => 'knock-two'],
+        ] as $payload) {
+            $this->control($knocker['sessionKey'], $payload, 'knock-peer')
+                ->assertForbidden()
+                ->assertJson(['error' => 'forbidden']);
+        }
+
+        // A knock that names someone else is not this row's announcement.
+        $this->control(
+            $knocker['sessionKey'],
+            ['kind' => 'knock', 'peerId' => 'knock-two', 'name' => 'Visitor'],
+            'knock-peer',
+        )
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->poll('host-peer', $host['sessionKey'])
+            ->assertOk()
+            ->assertJsonPath('messages', []);
+        $this->poll('knock-two', $other['sessionKey'])
+            ->assertOk()
+            ->assertJsonPath('messages', []);
+    }
+
+    public function test_guest_in_an_unreserved_call_cannot_send_host_controls(): void
+    {
+        $host = $this->authenticatedHost();
+        $guest = $this->guestJoin('guest-peer', 'Guest');
+
+        foreach ([
+            ['kind' => 'end', 'by' => 'Guest'],
+            ['kind' => 'mute', 'peerId' => 'host-peer'],
+            ['kind' => 'unmute', 'peerId' => 'host-peer'],
+            ['kind' => 'admit', 'peerId' => 'guest-peer'],
+            ['kind' => 'deny', 'peerId' => 'host-peer'],
+        ] as $payload) {
+            $this->control($guest['sessionKey'], $payload, 'guest-peer')
+                ->assertForbidden()
+                ->assertJson(['error' => 'forbidden']);
+        }
+
+        $this->withBearer($host)
+            ->getJson($this->meetRoomPath('/events?peerId=host-peer'))
+            ->assertOk()
+            ->assertJsonPath('messages', []);
     }
 
     public function test_knocker_can_still_announce_the_knock_to_the_room(): void
@@ -221,6 +280,21 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
     }
 
     /**
+     * Unreserved ad-hoc host: any authenticated actor may send host commands.
+     */
+    private function authenticatedHost(string $peerId = 'host-peer', string $name = 'Host'): string
+    {
+        $token = $this->userBearerToken();
+        $this->withBearer($token)->postJson($this->meetRoomPath('/participants'), [
+            'peerId' => $peerId,
+            'name' => $name,
+        ])->assertOk();
+        $this->withoutBearer();
+
+        return $token;
+    }
+
+    /**
      * @param  array<string, mixed>  $control
      */
     private function control(string $sessionKey, array $control, string $fromPeer = 'host-peer'): TestResponse
@@ -230,5 +304,19 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             'text' => self::CONTROL_PREFIX.json_encode($control, JSON_THROW_ON_ERROR),
             'sessionKey' => $sessionKey,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $control
+     */
+    private function controlAs(string $token, array $control, string $fromPeer = 'host-peer'): TestResponse
+    {
+        $response = $this->withBearer($token)->postJson($this->meetRoomPath('/messages'), [
+            'from' => $fromPeer,
+            'text' => self::CONTROL_PREFIX.json_encode($control, JSON_THROW_ON_ERROR),
+        ]);
+        $this->withoutBearer();
+
+        return $response;
     }
 }
