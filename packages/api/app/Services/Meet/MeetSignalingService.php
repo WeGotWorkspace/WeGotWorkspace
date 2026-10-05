@@ -88,15 +88,16 @@ final class MeetSignalingService
      * Guest relay rules (contract C3): an admitted guest in a channel room or
      * on a reserved code gets credentials, and on an unreserved ad-hoc code a
      * guest gets them only while an authenticated member is in the room. A
-     * peer that is still knocking never does.
+     * peer that is still knocking never does — including an authenticated
+     * knocker, whose owner marker starts with `u:`.
      */
     private function guestRelayDenied(string $room, string $peerId, string $ownerMarker): bool
     {
-        if (str_starts_with($ownerMarker, 'u:')) {
-            return false;
-        }
         if (str_starts_with((string) $this->store->peerName($room, $peerId), self::KNOCK_NAME_PREFIX)) {
             return true;
+        }
+        if (str_starts_with($ownerMarker, 'u:')) {
+            return false;
         }
 
         $channel = $this->channelJoinPolicy->resolveChannelForRoom($room);
@@ -316,7 +317,14 @@ final class MeetSignalingService
             $this->assertPrivilegedControlAuthorized($request, $room, $text);
             $this->recordChannelAdmission($request, $room, $text);
 
-            $payload = json_encode(['text' => $text], JSON_THROW_ON_ERROR);
+            // A client-supplied `host` field is never copied. The stamp is
+            // added only after assertPrivilegedControlAuthorized has passed,
+            // so a knocker or guest cannot mark their own row.
+            $stored = ['text' => $text];
+            if ($this->isPrivilegedControl($text)) {
+                $stored['host'] = true;
+            }
+            $payload = json_encode($stored, JSON_THROW_ON_ERROR);
             if (strlen($payload) > 12_000) {
                 $this->fail('payload_too_large', 413);
             }

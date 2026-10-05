@@ -26,6 +26,11 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const accountHost = { id: "host-1", name: "Admin", user: "admin" };
 
+/** Server stamp from a privileged control that passed authority. */
+function stamped(text: string): { text: string; host: true } {
+  return { text, host: true };
+}
+
 function createPollHandler(
   overrides: {
     waitingForAdmissionRef?: { current: boolean };
@@ -113,9 +118,7 @@ describe("useMeetPollHandler mute", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
         },
       ],
     });
@@ -132,9 +135,7 @@ describe("useMeetPollHandler mute", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "peer-other" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "peer-other" })),
         },
       ],
     });
@@ -151,9 +152,7 @@ describe("useMeetPollHandler mute", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "unmute", peerId: "self-1" })),
         },
       ],
     });
@@ -234,6 +233,55 @@ describe("useMeetPollHandler host control sender", () => {
     expect(setWaitingForAdmission).toHaveBeenCalledWith(false);
     expect(toastApi.showSuccess).toHaveBeenCalledWith(meetLabels.youWereLetIn);
   });
+
+  it("still leaves when a stamped end arrives after the host has left the roster", async () => {
+    const leave = vi.fn();
+    const { handlePoll, setEndedMessage } = createPollHandler({ leave });
+
+    await handlePoll({
+      peers: [accountHost, { id: "self-1", name: "Alex", user: "alex" }],
+      messages: [],
+    });
+
+    await handlePoll({
+      peers: [{ id: "self-1", name: "Alex", user: "alex" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: stamped(buildMeetControlMessage({ kind: "end", by: "Admin" })),
+        },
+      ],
+    });
+
+    expect(setEndedMessage).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"));
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"), {
+      severity: "info",
+    });
+    expect(leave).toHaveBeenCalledWith({ preserveEndedMessage: true });
+  });
+
+  it("still mutes when a stamped mute arrives after the host has left the roster", async () => {
+    const { handlePoll, muteMic } = createPollHandler();
+
+    await handlePoll({
+      peers: [accountHost],
+      messages: [],
+    });
+
+    await handlePoll({
+      peers: [{ id: "self-1", name: "Alex", user: "alex" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
+        },
+      ],
+    });
+
+    expect(muteMic).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("useMeetPollHandler admit", () => {
@@ -257,9 +305,7 @@ describe("useMeetPollHandler admit", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -286,9 +332,7 @@ describe("useMeetPollHandler admit", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -416,9 +460,7 @@ describe("useMeetPollHandler call toasts", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "end", by: "Admin" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "end", by: "Admin" })),
         },
       ],
     });
@@ -438,9 +480,7 @@ describe("useMeetPollHandler call toasts", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
         },
       ],
     });
@@ -459,9 +499,7 @@ describe("useMeetPollHandler call toasts", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -480,9 +518,7 @@ describe("useMeetPollHandler call toasts", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "deny", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "deny", peerId: "self-1" })),
         },
       ],
     });

@@ -31,8 +31,6 @@ type MeetPollMessage = {
   payload: unknown;
 };
 
-type RosterPeer = { id: string; user?: string };
-
 /** Host commands. Knock announcements and media presence are not in this set. */
 const HOST_CONTROL_KINDS = new Set<MeetControlMessage["kind"]>([
   "admit",
@@ -43,18 +41,24 @@ const HOST_CONTROL_KINDS = new Set<MeetControlMessage["kind"]>([
 ]);
 
 /**
- * Authenticated polls include `user` on account peers and omit it on guests.
- * Honour host commands only from an account. Guest polls strip every account
- * name, so this client cannot tell; the server already refused the rest.
+ * The server stamps `host: true` on a privileged control only after
+ * `assertPrivilegedControlAuthorized` passes. Trust that stamp. The live
+ * roster is not a substitute: the host posts `end` and then leaves, so the
+ * next poll often no longer lists them.
+ *
+ * Guest polls strip every account name, so this client cannot tell; the
+ * server already refused the rest. A client-supplied `host` inside the
+ * control text is not this stamp.
  */
-function hostControlSenderIsTrusted(
-  peers: readonly RosterPeer[],
-  from: string,
-  viewerSeesAccounts: boolean,
-): boolean {
+function hostControlSenderIsTrusted(viewerSeesAccounts: boolean, payload: unknown): boolean {
+  if (isServerHostStamp(payload)) return true;
   if (!viewerSeesAccounts) return true;
-  const sender = peers.find((peer) => peer.id === from);
-  return typeof sender?.user === "string" && sender.user.length > 0;
+  return false;
+}
+
+function isServerHostStamp(payload: unknown): boolean {
+  if (payload === null || typeof payload !== "object") return false;
+  return (payload as { host?: unknown }).host === true;
 }
 
 export type UseMeetPollHandlerArgs = {
@@ -159,7 +163,7 @@ export function useMeetPollHandler({
         if (control) {
           if (
             HOST_CONTROL_KINDS.has(control.kind) &&
-            !hostControlSenderIsTrusted(roster, msg.from, viewerSeesAccounts)
+            !hostControlSenderIsTrusted(viewerSeesAccounts, msg.payload)
           ) {
             continue;
           }

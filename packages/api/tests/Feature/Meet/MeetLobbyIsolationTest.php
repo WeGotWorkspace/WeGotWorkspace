@@ -253,6 +253,86 @@ final class MeetLobbyIsolationTest extends WgwDatabaseTestCase
             ->assertJsonPath('messages.0.from', 'knock-peer');
     }
 
+    public function test_authorized_host_controls_are_stamped_and_a_forged_host_flag_is_not(): void
+    {
+        $host = $this->authenticatedHost();
+        $viewer = $this->guestJoin('viewer-peer', 'Viewer');
+        $knocker = $this->guestJoin('knock-peer', self::KNOCK_PREFIX.'Visitor');
+
+        foreach ([
+            ['kind' => 'end', 'by' => 'Host', 'host' => false],
+            ['kind' => 'mute', 'peerId' => 'viewer-peer', 'host' => true],
+            ['kind' => 'unmute', 'peerId' => 'viewer-peer'],
+            ['kind' => 'deny', 'peerId' => 'viewer-peer'],
+        ] as $control) {
+            $this->controlAs($host, $control)->assertOk();
+        }
+        $this->controlAs($host, ['kind' => 'admit', 'peerId' => 'knock-peer'])->assertOk();
+
+        $viewerMessages = $this->poll('viewer-peer', $viewer['sessionKey'])
+            ->assertOk()
+            ->json('messages');
+        $this->assertIsArray($viewerMessages);
+        $this->assertCount(5, $viewerMessages);
+        foreach ($viewerMessages as $message) {
+            $this->assertIsArray($message);
+            $payload = $message['payload'] ?? null;
+            $this->assertIsArray($payload);
+            $this->assertTrue($payload['host'] ?? false);
+        }
+
+        $knockerMessages = $this->poll('knock-peer', $knocker['sessionKey'])
+            ->assertOk()
+            ->json('messages');
+        $this->assertIsArray($knockerMessages);
+        $this->assertCount(1, $knockerMessages);
+        $this->assertTrue($knockerMessages[0]['payload']['host'] ?? false);
+        $this->assertStringContainsString('"kind":"admit"', (string) $knockerMessages[0]['payload']['text']);
+
+        $this->postJson($this->meetRoomPath('/messages'), [
+            'from' => 'viewer-peer',
+            'host' => true,
+            'text' => self::CONTROL_PREFIX.json_encode([
+                'kind' => 'end',
+                'by' => 'Viewer',
+                'host' => true,
+            ], JSON_THROW_ON_ERROR),
+            'sessionKey' => $viewer['sessionKey'],
+        ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $this->postJson($this->meetRoomPath('/messages'), [
+            'from' => 'knock-peer',
+            'host' => true,
+            'text' => self::CONTROL_PREFIX.json_encode([
+                'kind' => 'knock',
+                'peerId' => 'knock-peer',
+                'name' => 'Visitor',
+                'host' => true,
+            ], JSON_THROW_ON_ERROR),
+            'sessionKey' => $knocker['sessionKey'],
+        ])
+            ->assertOk();
+
+        $hostMessages = $this->withBearer($host)
+            ->getJson($this->meetRoomPath('/events?peerId=host-peer'))
+            ->assertOk()
+            ->json('messages');
+        $this->assertIsArray($hostMessages);
+        $forged = array_values(array_filter(
+            $hostMessages,
+            static fn (mixed $message): bool => is_array($message) && ($message['from'] ?? null) === 'knock-peer',
+        ));
+        $this->assertCount(1, $forged);
+        $this->assertIsArray($forged[0]['payload']);
+        $this->assertArrayNotHasKey('host', $forged[0]['payload']);
+        $this->assertSame([], array_values(array_filter(
+            $hostMessages,
+            static fn (mixed $message): bool => is_array($message) && ($message['from'] ?? null) === 'viewer-peer',
+        )));
+    }
+
     public function test_admitted_peer_can_send_ordinary_chat(): void
     {
         $host = $this->guestJoin('host-peer', 'Host');

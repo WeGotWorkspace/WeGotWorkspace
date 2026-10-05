@@ -166,6 +166,35 @@ final class MeetRelayTest extends WgwDatabaseTestCase
         ])->assertOk();
     }
 
+    public function test_authenticated_knocker_does_not_get_turn_credentials(): void
+    {
+        $this->configureRelay();
+        $hostToken = $this->userBearerToken();
+        $channelId = (string) $this->withBearer($hostToken)->postJson('/api/v1/chat/channels', [
+            'name' => 'Team',
+            'kind' => 'channel',
+        ])->assertCreated()->json('id');
+
+        $this->withBearer($hostToken)->postJson('/api/v1/rooms/'.$channelId.'/participants', [
+            'peerId' => 'host-peer',
+            'name' => 'Host',
+        ])->assertOk();
+
+        $knockerToken = $this->carolBearerToken();
+        $this->withBearer($knockerToken)->postJson('/api/v1/rooms/'.$channelId.'/participants', [
+            'peerId' => 'knock-peer',
+            'name' => self::KNOCK_PREFIX.'Carol',
+        ])->assertOk();
+
+        $this->withBearer($knockerToken)->postJson('/api/v1/rooms/'.$channelId.'/relay', [
+            'peerId' => 'knock-peer',
+            'target' => 'host-peer',
+            'reason' => 'failed',
+        ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'relay_denied']);
+    }
+
     public function test_relay_refuses_a_peer_the_actor_does_not_own(): void
     {
         $this->configureRelay();
