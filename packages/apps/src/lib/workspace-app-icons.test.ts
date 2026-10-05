@@ -22,7 +22,7 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
   it("bundles inline SVG markup for every workspace app", () => {
     for (const appId of WORKSPACE_APP_IDS) {
       expect(WORKSPACE_APP_ICON_INLINE[appId]).toMatch(/^<svg[\s>]/);
-      expect(WORKSPACE_APP_ICON_INLINE[appId]).toContain("--workspace-brand");
+      expect(WORKSPACE_APP_ICON_INLINE[appId]).toContain("--workspace-icon-surface");
     }
   });
 
@@ -39,11 +39,11 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
   it("keeps tile backgrounds square (no baked-in corner radius)", () => {
     for (const appId of WORKSPACE_APP_IDS) {
       const markup = WORKSPACE_APP_ICON_INLINE[appId];
-      // Background layer is the first rect/path with --workspace-brand; it must not use tile rx.
+      // Background layer is the first rect/path with --workspace-icon-surface; it must not use tile rx.
       const bgLayer = markup.match(
-        /<(?:rect|path)[^>]*fill="var\(--workspace-brand[^"]*"[^>]*\/?>|<(?:rect|path)[^>]*rx="45"[^>]*fill="var\(--workspace-brand/,
+        /<(?:rect|path)[^>]*fill="var\(--workspace-icon-surface[^"]*"[^>]*\/?>|<(?:rect|path)[^>]*rx="45"[^>]*fill="var\(--workspace-icon-surface/,
       )?.[0];
-      expect(bgLayer, `${appId} should have a --workspace-brand layer`).toBeTruthy();
+      expect(bgLayer, `${appId} should have a --workspace-icon-surface layer`).toBeTruthy();
       expect(bgLayer).not.toMatch(/\brx="/);
       expect(markup).not.toMatch(/<(?:rect|path)[^>]*\brx="45"/);
     }
@@ -69,9 +69,9 @@ describe("WORKSPACE_HOME_ICON_INLINE", () => {
   it("is a 270 suite tile: navy background, cream mark, same clover path", () => {
     expect(WORKSPACE_HOME_ICON_INLINE).toMatch(/^<svg[\s>]/);
     expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 270 270"');
-    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--workspace-brand, #1b1d3a)"');
+    expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--workspace-icon-surface, #1b1d3a)"');
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
-      'fill="var(--workspace-brand-foreground, #fff5e9)"',
+      'fill="var(--workspace-icon-foreground, #fff5e9)"',
     );
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
       'd="M45 0c8.286 0 15 6.717 15 15.001s-6.715 15-15 15H45c8.284 0 15 6.715 15 15 0 8.283-6.716 14.999-15 14.999s-15-6.716-15-15c0 8.284-6.715 15-15 15C6.717 60 0 53.284 0 45s6.716-15 15-15C6.715 30 0 23.283 0 15S6.714 0 15 0s15 6.716 15 15c0-8.284 6.715-15 15-15"',

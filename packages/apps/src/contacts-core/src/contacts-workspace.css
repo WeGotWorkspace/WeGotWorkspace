@@ -13,55 +13,41 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 70%,
+    var(--workspace-foreground) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 65%,
+    var(--workspace-foreground) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --contacts-pending-sync-color: var(--color-warning);
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-serif);
-  --loading-spinner-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 45%,
-    transparent
-  );
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
-  --workspace-brand: var(--color-we-got-sky);
-  --workspace-brand-foreground: var(--color-we-got-dark);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --checkbox-checked-bg: var(--workspace-accent);
@@ -84,10 +70,8 @@
  */
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
-  --workspace-brand: var(--color-we-got-sky);
-  --workspace-brand-foreground: var(--color-we-got-dark);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 /*
@@ -104,15 +88,15 @@
 .contacts-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-brand);
+  background-color: var(--workspace-icon-surface);
 }
 
 .contacts-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-sky);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .contacts-list-panel__loading {
@@ -214,13 +198,13 @@
   font-size: 1.75rem;
   font-weight: 400;
   line-height: 1.2;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   margin: 0;
 }
 
 .contacts-detail-view__subtitle {
   @apply m-0 text-[0.9375rem] leading-snug;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .contacts-detail-view__tag-group {
@@ -234,7 +218,7 @@
 .contacts-detail-view__section + .contacts-detail-view__section {
   margin-top: 1.75rem;
   padding-top: 1.75rem;
-  border-top: 1px solid color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
 .contacts-detail-view__section-title {
@@ -242,7 +226,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   margin: 0 0 0.75rem;
 }
 
@@ -328,13 +312,13 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .contacts-detail-view__label--none {
   font-style: italic;
   font-size: 0.9375rem;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
 .contacts-detail-view__channel-row--editable .input,
@@ -366,7 +350,7 @@
   min-width: 0;
   font-size: 0.9375rem;
   line-height: 1.35;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .contacts-detail-view__address-entry {
@@ -458,12 +442,12 @@
   align-items: baseline;
   gap: 0.5rem;
   font-size: 0.9375rem;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .contacts-detail-view__meta {
   font-size: 0.75rem;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .contacts-detail-view__link {
@@ -479,21 +463,19 @@
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .contacts-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --workspace-brand: var(--color-we-got-sky);
-  --workspace-brand-foreground: var(--color-we-got-dark);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
-  --segmented-control-track-active-bg: var(--workspace-surface-foreground);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 

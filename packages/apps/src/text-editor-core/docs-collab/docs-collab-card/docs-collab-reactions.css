@@ -12,30 +12,27 @@
   @apply inline-flex h-7 items-center gap-1 rounded-full border px-2 text-xs transition-colors;
   border-color: var(
     --docs-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
   background-color: transparent;
-  color: var(--docs-text, var(--workspace-surface-foreground));
+  color: var(--docs-text, var(--workspace-foreground));
 }
 
 .docs-collab-reactions__reaction:hover {
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 4%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
 }
 
 .docs-collab-reactions__reaction[data-reacted="true"] {
   border-color: color-mix(in oklab, var(--workspace-accent) 35%, transparent);
   background-color: color-mix(in oklab, var(--workspace-accent) 10%, transparent);
-  color: color-mix(in oklab, var(--workspace-accent) 88%, var(--workspace-surface-foreground));
+  color: color-mix(in oklab, var(--workspace-accent) 88%, var(--workspace-foreground));
 }
 
 .docs-collab-reactions__reaction--add {
   @apply justify-center px-2;
   border-style: dashed;
-  border-color: color-mix(in oklab, var(--workspace-surface-foreground) 18%, transparent);
-  color: var(
-    --docs-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  border-color: color-mix(in oklab, var(--workspace-foreground) 18%, transparent);
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .docs-collab-reactions__reaction-add-icon {
@@ -63,5 +60,5 @@
 }
 
 .docs-collab-reactions__picker-item:hover {
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 6%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
 }

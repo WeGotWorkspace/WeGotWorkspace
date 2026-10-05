@@ -8,7 +8,7 @@
   @apply flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2.5;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
 }
 
@@ -25,16 +25,13 @@
   @apply shrink-0 border-b pb-1;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
 }
 
 .chat-thread-panel__divider {
   @apply shrink-0 px-3 py-2 text-xs font-medium;
-  color: var(
-    --chat-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .chat-thread-panel__replies {
@@ -45,7 +42,7 @@
   @apply min-w-0 max-w-full shrink-0 border-t p-3;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
 }
 
@@ -53,6 +50,6 @@
   @apply h-[36rem] w-full max-w-md overflow-hidden border;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
 }

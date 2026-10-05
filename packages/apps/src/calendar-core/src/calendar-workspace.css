@@ -14,11 +14,7 @@
  */
 .calendar-workspace {
   --workspace-accent: var(--color-we-got-dark);
-  --calendar-muted: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 80%,
-    var(--workspace-surface)
-  );
+  --calendar-muted: color-mix(in oklch, var(--workspace-foreground) 80%, var(--workspace-surface));
 
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
@@ -27,50 +23,40 @@
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 80%,
+    var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 80%,
+    var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 85%,
+    var(--workspace-foreground) 85%,
     var(--workspace-surface)
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
-  --field-label-color: var(--workspace-surface-foreground);
-  --workspace-brand: var(--color-we-got-prince);
-  --workspace-brand-foreground: #ffffff;
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --field-label-color: var(--workspace-foreground);
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
@@ -86,31 +72,27 @@
 
   /* Docs comments/review panel tokens reused by the invitations inbox. */
   --docs-surface: var(--workspace-surface);
-  --docs-text: var(--workspace-surface-foreground);
+  --docs-text: var(--workspace-foreground);
   --docs-muted: var(--calendar-muted);
-  --docs-border: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  --docs-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
   --calendar-invitations-column-width: 23rem;
   --workspace-panel-width: var(--calendar-invitations-column-width);
-}
-
-.calendar-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`), including Storybook controls. */
 }
 
 /** App switcher lockup: calendar.svg literals (`#962fa8` tile / white marks). */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-brand);
+  background-color: var(--workspace-icon-surface);
 }
 
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-prince);
-  --workspace-brand-foreground: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
 }
 
 /*
@@ -421,12 +403,12 @@
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     left: auto;
     z-index: calc(var(--_lc-z-sticky, 30) + 10);
-    border-color: color-mix(in oklch, var(--workspace-surface-foreground) 16%, transparent);
+    border-color: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
     box-shadow:
-      0 1px 2px color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent),
-      0 10px 28px color-mix(in oklch, var(--workspace-surface-foreground) 22%, transparent);
+      0 1px 2px color-mix(in oklch, var(--workspace-foreground) 10%, transparent),
+      0 10px 28px color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
     --collection-search-input-bg: color-mix(in oklch, var(--workspace-surface) 78%, transparent);
-    --collection-search-input-color: var(--workspace-surface-foreground);
+    --collection-search-input-color: var(--workspace-foreground);
   }
 
   .calendar-workspace .calendar-search-field--expanded {
@@ -452,14 +434,14 @@
   .calendar-workspace .calendar-search-field:focus-within {
     --collection-search-input-bg: color-mix(
       in oklch,
-      var(--workspace-surface-foreground) 6%,
+      var(--workspace-foreground) 6%,
       var(--workspace-surface)
     );
     @apply shadow-xl;
   }
 
   .calendar-workspace .calendar-search-field:focus-within:has(:focus-visible) {
-    outline: 2px solid color-mix(in oklch, var(--workspace-surface-foreground) 35%, transparent);
+    outline: 2px solid color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
     outline-offset: 1px;
   }
 }

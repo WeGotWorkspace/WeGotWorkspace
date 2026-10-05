@@ -23,7 +23,7 @@
 }
 
 .note-text-editor-body .text-editor-prose {
-  color: var(--notes-detail-contrast-fg, var(--workspace-surface-foreground));
+  color: var(--notes-detail-contrast-fg, var(--workspace-foreground));
   text-box-trim: trim-both;
   text-box-edge: cap alphabetic;
 }

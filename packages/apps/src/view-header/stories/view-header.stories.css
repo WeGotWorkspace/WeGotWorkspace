@@ -6,7 +6,7 @@
  * Strong fg mirrors Calendar (`--workspace-accent-strong`) for WCAG AA.
  */
 .view-header-story-actions {
-  --button-outline-color: var(--workspace-surface-foreground);
+  --button-outline-color: var(--workspace-foreground);
 }
 
 .view-header-story-surface {

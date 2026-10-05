@@ -30,9 +30,9 @@
   background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
   border-color: var(
     --app-sidebar-border-color,
-    color-mix(in oklab, var(--workspace-sidebar-surface-foreground) 15%, transparent)
+    color-mix(in oklab, var(--workspace-sidebar-foreground) 15%, transparent)
   );
-  color: var(--app-sidebar-color, var(--workspace-sidebar-surface-foreground));
+  color: var(--app-sidebar-color, var(--workspace-sidebar-foreground));
   /*
    * Safe area is padding, so the sidebar fill runs under the status bar and
    * home indicator while the header and footer keep today's inset.
@@ -97,7 +97,7 @@
    */
   --button-outline-border-color: var(
     --app-sidebar-border-color,
-    color-mix(in oklab, var(--workspace-sidebar-surface-foreground) 15%, transparent)
+    color-mix(in oklab, var(--workspace-sidebar-foreground) 15%, transparent)
   );
   /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
@@ -106,7 +106,7 @@
    */
   --button-outline-color: var(
     --sidebar-logo-close-button-color,
-    var(--app-sidebar-color, var(--workspace-sidebar-surface-foreground))
+    var(--app-sidebar-color, var(--workspace-sidebar-foreground))
   );
   --button-outline-hover-color: var(--button-outline-color);
   /* Idle stays transparent (outline). Hover uses the same accent wash as nav items. */

@@ -11,7 +11,7 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 75%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
   /* Shared leading column width (checkbox / icon / color-dot). */
   --collection-sidebar-row-leading-size: 1rem;
 }
@@ -20,16 +20,13 @@
   border-color: transparent;
   color: var(
     --collection-sidebar-row-hover-color,
-    var(
-      --button-outline-hover-color,
-      var(--button-outline-color, var(--workspace-surface-foreground))
-    )
+    var(--button-outline-hover-color, var(--button-outline-color, var(--workspace-foreground)))
   );
   background-color: var(
     --collection-sidebar-row-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
     )
   );
 }
@@ -47,7 +44,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
+        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
       )
     )
   );
@@ -66,7 +63,7 @@
         --button-outline-active-background,
         var(
           --button-outline-hover-background,
-          color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
+          color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
         )
       )
     )
@@ -95,24 +92,24 @@
 }
 
 .collection-sidebar-row__visibility {
-  --primary: var(--collection-row-color, var(--workspace-surface-foreground));
+  --primary: var(--collection-row-color, var(--workspace-foreground));
   --primary-foreground: #ffffff;
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
    * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
   --checkbox-size: var(--collection-sidebar-row-leading-size, 1rem);
-  --checkbox-border-color: var(--collection-row-color, var(--workspace-surface-foreground));
-  --checkbox-checked-bg: var(--collection-row-color, var(--workspace-surface-foreground));
-  --checkbox-checked-border: var(--collection-row-color, var(--workspace-surface-foreground));
+  --checkbox-border-color: var(--collection-row-color, var(--workspace-foreground));
+  --checkbox-checked-bg: var(--collection-row-color, var(--workspace-foreground));
+  --checkbox-checked-border: var(--collection-row-color, var(--workspace-foreground));
   --checkbox-checked-fg: #ffffff;
   @apply relative z-10 shrink-0;
-  border-color: var(--collection-row-color, var(--workspace-surface-foreground));
+  border-color: var(--collection-row-color, var(--workspace-foreground));
   pointer-events: auto;
 }
 
 .collection-sidebar-row__visibility[data-state="checked"] {
-  background-color: var(--collection-row-color, var(--workspace-surface-foreground));
-  border-color: var(--collection-row-color, var(--workspace-surface-foreground));
+  background-color: var(--collection-row-color, var(--workspace-foreground));
+  border-color: var(--collection-row-color, var(--workspace-foreground));
   color: #ffffff;
 }
 
@@ -123,7 +120,7 @@
 
 .collection-sidebar-row__dot {
   @apply relative z-10 size-2.5 shrink-0 rounded-full;
-  background-color: var(--collection-row-color, var(--workspace-surface-foreground));
+  background-color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .collection-sidebar-row__select {
@@ -167,7 +164,7 @@
 
 .collection-sidebar-row__mark {
   @apply inline-flex size-3.5 shrink-0 items-center justify-center;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
 }
 
 .collection-sidebar-row__action.button,
@@ -177,14 +174,14 @@
   height: var(--control-height-xs, 1.75rem);
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
 }
 
 .collection-sidebar-row__action:hover,
 .collection-sidebar-row__action:focus-visible,
 .collection-sidebar-row__expand:hover,
 .collection-sidebar-row__expand:focus-visible {
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 /* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */

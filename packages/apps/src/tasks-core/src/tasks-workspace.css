@@ -27,49 +27,39 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 70%,
+    var(--workspace-foreground) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 65%,
+    var(--workspace-foreground) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
-  --workspace-brand: var(--color-we-got-pink);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --workspace-icon-surface: var(--color-we-got-pink);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-brand) 20%,
+    var(--workspace-icon-surface) 20%,
     var(--workspace-surface)
   );
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
@@ -84,15 +74,15 @@
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
 .tasks-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-brand);
+  background-color: var(--workspace-icon-surface);
 }
 
 .tasks-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-pink);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-pink);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 /**
@@ -139,19 +129,17 @@
 .tasks-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --workspace-brand: var(--color-we-got-pink);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-pink);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-brand) 20%,
+    var(--workspace-icon-surface) 20%,
     var(--workspace-surface)
   );
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 

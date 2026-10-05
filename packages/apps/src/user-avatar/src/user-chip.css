@@ -10,7 +10,7 @@
    * Tone classes set `--user-chip-fg/bg/border` (and `--tag-fg`).
    * Fallbacks keep a readable cream wash when no tone is applied.
    */
-  --user-chip-fg: var(--tag-fg, var(--workspace-surface-foreground));
+  --user-chip-fg: var(--tag-fg, var(--workspace-foreground));
   --user-chip-mark-icon: 0.75rem;
   --user-chip-font-size: var(--input-font-size-md, 0.875rem);
   --user-chip-padding-end: 0.625rem;

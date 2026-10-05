@@ -17,7 +17,7 @@
 
 /**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
- * The same vector SVG as the default icon is inlined; `--workspace-brand*`
+ * The same vector SVG as the default icon is inlined; `--workspace-icon-surface*`
  * remaps layers for inversion.
  */
 .workspace-app-icon--switch-trigger {
@@ -30,8 +30,8 @@
 
 .workspace-app-icon--switch-trigger svg {
   @apply block size-full;
-  --workspace-brand: transparent;
-  --workspace-brand-foreground: var(--app-switch-icon-fg);
+  --workspace-icon-surface: transparent;
+  --workspace-icon-foreground: var(--app-switch-icon-fg);
 }
 
 /**
@@ -46,5 +46,5 @@
 }
 
 .workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
-  --workspace-brand-foreground: var(--workspace-surface-foreground);
+  --workspace-icon-foreground: var(--workspace-foreground);
 }

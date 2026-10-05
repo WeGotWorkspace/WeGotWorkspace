@@ -38,7 +38,7 @@
   --notes-detail-accent-strong: color-mix(
     in oklch,
     var(--notes-detail-accent) 32%,
-    var(--workspace-surface-foreground)
+    var(--workspace-foreground)
   );
   --workspace-chrome-footer-bg: var(--workspace-surface);
   --action-bar-bg: var(--workspace-chrome-footer-bg, var(--workspace-surface));
@@ -50,51 +50,43 @@
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 70%,
+    var(--workspace-foreground) 70%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 65%,
+    var(--workspace-foreground) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --notes-list-star-color: var(--workspace-accent);
   /*
    * Primary fill is the notes icon yellow. Dark label clears AA on that fill.
    * Sidebar fill is a stronger yellow wash than the shared 5%.
    */
-  --workspace-brand: var(--color-we-got-yellow);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-yellow);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-brand) 15%,
+    var(--workspace-icon-surface) 15%,
     var(--workspace-surface)
   );
   /*
@@ -105,11 +97,7 @@
   --list-item-active-bg: var(--drive-item-selected-background);
   /* Checked fill is Dark (`--color-emerald`). White glyph, same as Drive. */
   --list-item-checkbox-icon-color: #ffffff;
-  --checkbox-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 30%,
-    transparent
-  );
+  --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
   /* Workspace-level yellow — sidebar collection rows override with row color.
    * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
   --checkbox-checked-bg: var(--workspace-accent);
@@ -118,14 +106,14 @@
   /* Idle tag chips — sidebar filters + list-row pills share this family.
    * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
    * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
-  --notes-tag-bg: color-mix(in oklch, var(--workspace-surface-foreground) 8%, transparent);
-  --notes-tag-fg: var(--workspace-surface-foreground);
-  --notes-tag-border: color-mix(in oklch, var(--workspace-surface-foreground) 18%, transparent);
+  --notes-tag-bg: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+  --notes-tag-fg: var(--workspace-foreground);
+  --notes-tag-border: color-mix(in oklch, var(--workspace-foreground) 18%, transparent);
   /* Selected sidebar tag chip — ink + product yellow. Nested `.notes-workspace`
    * inherits the tokens so stories do not reset chip text. */
-  --notes-tag-selected-bg: var(--workspace-surface-foreground);
+  --notes-tag-selected-bg: var(--workspace-foreground);
   --notes-tag-selected-fg: #ffffff;
-  --notes-tag-selected-border: var(--workspace-surface-foreground);
+  --notes-tag-selected-border: var(--workspace-foreground);
   --note-detail-tag-bg: color-mix(in oklch, var(--notes-detail-accent) 16%, transparent);
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: color-mix(in oklch, var(--notes-detail-accent) 28%, transparent);
@@ -139,7 +127,7 @@
   /* Title/body: warm charcoal — 85% ink into the sheet, not full ink or gray. */
   --notes-detail-contrast-fg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 85%,
+    var(--workspace-foreground) 85%,
     var(--paper-sheet-bg, var(--workspace-surface))
   );
   /*
@@ -151,7 +139,7 @@
   --workspace-chrome-footer-padding-y: 0.5rem;
   --workspace-chrome-footer-border: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   /*
@@ -168,7 +156,7 @@
    * 55% accent→cream so the chip clearly pops. Hover: accent-strong fg + 40%
    * wash. Selected-hover goes higher still (65%).
    */
-  --button-active-color: var(--workspace-surface-foreground);
+  --button-active-color: var(--workspace-foreground);
 }
 
 /* Detail scroll shares the cream desk (card is the notebook sheet). */
@@ -278,27 +266,25 @@
  * same pair as New note: yellow fill + Dark label.
  */
 .notes-workspace .app-sidebar__notifications {
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-accent-foreground);
   --notification-inbox-badge-bg: var(--workspace-accent);
   --notification-inbox-badge-fg: #ffffff;
 }
 
 /**
  * App switcher lockup: notes.svg literals (`#ffc800` tile / white marks).
- * Default switch-trigger remaps `--workspace-brand*`; pin them back to those hexes.
+ * Default switch-trigger remaps `--workspace-icon-surface*`; pin them back to those hexes.
  */
 .notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-brand);
-  background-color: var(--workspace-brand);
+  --app-switch-icon-bg: var(--workspace-icon-surface);
+  background-color: var(--workspace-icon-surface);
 }
 
 .notes-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-yellow);
-  --workspace-brand-foreground: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-yellow);
+  --workspace-icon-foreground: #ffffff;
 }
 
 /**
@@ -312,27 +298,27 @@
 .notes-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
-  --workspace-brand: var(--color-we-got-yellow);
-  --workspace-brand-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-yellow);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-brand) 15%,
+    var(--workspace-icon-surface) 15%,
     var(--workspace-surface)
   );
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
-  --segmented-control-track-active-bg: var(--workspace-surface-foreground);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
 }
 
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
 .notes-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--workspace-surface-foreground) 6%, transparent);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   /* 72% clears WCAG AA on cream footer wash (~4.5:1); 65% was ~4.38:1. */
-  --tag-fg: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .notes-workspace .workspace-detail-footer__meta-tag--edited .tag {
@@ -368,27 +354,19 @@
 }
 
 .notes-workspace .note-detail-view__tag-group {
-  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
   --tag-bg: var(--note-detail-tag-bg);
   --tag-fg: var(--note-detail-tag-fg);
   --tag-remove-fg: var(--note-detail-tag-fg);
-  --tag-group-input-border: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 16%,
-    transparent
-  );
-  --tag-group-input-bg: color-mix(in oklch, var(--workspace-surface-foreground) 4%, transparent);
+  --tag-group-input-border: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
+  --tag-group-input-bg: color-mix(in oklch, var(--workspace-foreground) 4%, transparent);
   --tag-group-input-bg-focus: var(--workspace-surface);
-  --tag-group-input-fg: var(--workspace-surface-foreground);
-  --tag-group-suggestions-border: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
+  --tag-group-input-fg: var(--workspace-foreground);
+  --tag-group-suggestions-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   --tag-group-suggestions-bg: var(--workspace-surface);
   --tag-group-suggestion-bg-active: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 6%,
+    var(--workspace-foreground) 6%,
     transparent
   );
 }
@@ -412,7 +390,7 @@
 
 .notes-workspace .notes-sidebar-tags__item:focus-visible {
   @apply ring-2 ring-offset-1 ring-offset-transparent;
-  --tw-ring-color: color-mix(in oklch, var(--workspace-surface-foreground) 35%, transparent);
+  --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
 /* Idle chips: sidebar filter tags. */
@@ -424,7 +402,7 @@
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
-  background-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 }
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
@@ -435,9 +413,8 @@
 }
 
 .notes-workspace .notes-sidebar-tags__item--drop-target .tag {
-  background-color: color-mix(in oklch, var(--workspace-surface-foreground) 22%, transparent);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklch, var(--workspace-surface-foreground) 35%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
 .notes-workspace .collection-sidebar-row--drop-target {
@@ -448,7 +425,7 @@
   font-family: var(--font-sans);
   color: color-mix(
     in oklch,
-    var(--notes-detail-contrast-fg, var(--workspace-surface-foreground)) 85%,
+    var(--notes-detail-contrast-fg, var(--workspace-foreground)) 85%,
     transparent
   );
 }
@@ -476,6 +453,6 @@
 }
 
 .notes-story-scope__action-bar-shell {
-  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
   background-color: var(--workspace-chrome-footer-bg, var(--workspace-surface));
 }

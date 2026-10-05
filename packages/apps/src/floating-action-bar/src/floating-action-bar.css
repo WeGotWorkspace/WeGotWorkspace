@@ -17,9 +17,9 @@
   /* Pin to the non-scrolling pane bottom; safe-area for notched phones. */
   bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
   border-radius: var(--control-radius-button-pill);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   background-color: var(--workspace-surface);
-  border: 1px solid color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
   opacity: 1;
   transform: translate(-50%, 0);
   transition:
@@ -55,7 +55,7 @@
 
 .floating-action-bar__count {
   @apply inline-flex items-center px-3 text-xs font-semibold tabular-nums leading-9;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .floating-action-bar__actions {
@@ -65,7 +65,7 @@
 .floating-action-bar__spacer {
   @apply mx-0.5 self-stretch;
   width: 1px;
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
 /* Same chrome as the paper bar; fill is brand Dark and content is light. */

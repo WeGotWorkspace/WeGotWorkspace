@@ -16,46 +16,36 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-text-color: var(--workspace-surface-foreground);
+  --workspace-user-footer-text-color: var(--workspace-foreground);
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 80%,
+    var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 85%,
+    var(--workspace-foreground) 85%,
     var(--workspace-surface)
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
-  --field-label-color: var(--workspace-surface-foreground);
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --field-label-color: var(--workspace-foreground);
 
-  --workspace-brand: var(--color-we-got-dark);
-  --workspace-brand-foreground: var(--color-we-got-soft);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
@@ -79,32 +69,32 @@
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-surface-foreground);
+  background-color: var(--workspace-foreground);
 }
 
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-dark);
-  --workspace-brand-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .settings-workspace .app-sidebar__footer {
-  --workspace-user-footer-text-color: var(--workspace-surface-foreground);
+  --workspace-user-footer-text-color: var(--workspace-foreground);
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 80%,
+    var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 85%,
+    var(--workspace-foreground) 85%,
     var(--workspace-surface)
   );
 }
@@ -150,7 +140,7 @@
 }
 
 .settings-workspace .settings-group-list > li + li {
-  border-top: 1px solid color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
 .settings-workspace .settings-group-row {
@@ -160,10 +150,10 @@
 .settings-workspace .settings-group-avatar {
   --user-avatar-bg: var(--workspace-accent);
   --user-avatar-fg: #ffffff;
-  --user-avatar-label-color: var(--workspace-surface-foreground);
+  --user-avatar-label-color: var(--workspace-foreground);
   --user-avatar-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 80%,
+    var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
 }
@@ -213,12 +203,12 @@
 .settings-workspace .settings-assistants-pane__grant-name {
   @apply m-0 text-4xl font-normal leading-none;
   font-family: var(--font-serif);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .settings-workspace .settings-assistants-pane__grant-origin {
   @apply m-0 text-base font-normal leading-normal;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .settings-workspace .settings-assistants-pane__grant-revoke {

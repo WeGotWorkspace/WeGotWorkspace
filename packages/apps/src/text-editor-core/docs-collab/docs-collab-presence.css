@@ -17,18 +17,18 @@
 .docs-collab-presence__avatar--connecting {
   --user-avatar-bg: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-surface-foreground)) 14%,
+    var(--docs-collab-presence-accent, var(--workspace-foreground)) 14%,
     transparent
   );
   --user-avatar-fg: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-surface-foreground)) 72%,
-    var(--workspace-surface-foreground)
+    var(--docs-collab-presence-accent, var(--workspace-foreground)) 72%,
+    var(--workspace-foreground)
   );
   --user-avatar-border-width: 1px;
   --user-avatar-border: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-surface-foreground)) 38%,
+    var(--docs-collab-presence-accent, var(--workspace-foreground)) 38%,
     transparent
   );
 }
@@ -39,7 +39,7 @@
 
 .docs-collab-presence__avatar--warning {
   --user-avatar-bg: color-mix(in oklab, #c2410c 14%, transparent);
-  --user-avatar-fg: color-mix(in oklab, #c2410c 75%, var(--workspace-surface-foreground));
+  --user-avatar-fg: color-mix(in oklab, #c2410c 75%, var(--workspace-foreground));
   --user-avatar-border-width: 1px;
   --user-avatar-border: color-mix(in oklab, #c2410c 42%, transparent);
 }

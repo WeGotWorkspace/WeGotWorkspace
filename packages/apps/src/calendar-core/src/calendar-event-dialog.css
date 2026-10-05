@@ -18,24 +18,18 @@
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--workspace-surface-foreground)
+    var(--workspace-foreground)
   );
   --color-emerald: var(--workspace-accent);
-  --workspace-brand: var(--color-we-got-prince);
-  --workspace-brand-foreground: #ffffff;
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklab, var(--workspace-surface-foreground) 68%, transparent);
+  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
   --card-title-icon-color: var(--workspace-accent);
-  --card-panel-border-color: color-mix(
-    in oklab,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --card-row-hover-bg: color-mix(in oklab, var(--workspace-surface-foreground) 5%, transparent);
+  --card-panel-border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  --card-row-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
   /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
    * details popover keeps its own narrower token in details-popover.css. */
@@ -311,7 +305,7 @@
   .calendar-event-dialog__meet-menu-trigger__menu.button {
   @apply shrink-0 rounded-s-none px-0;
   border-inline-start: 1px solid
-    color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
+    color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
 }
 
 /* Read-only Meet: same URL row as edit — input + copy + compact Join (not stacked). */
@@ -386,7 +380,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__recurrence-count-suffix {
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
   font-size: 0.875rem;
 }
 

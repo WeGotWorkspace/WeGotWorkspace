@@ -15,11 +15,11 @@
   border-radius: var(--control-radius);
   color: var(
     --path-breadcrumb-lead-color,
-    var(--path-breadcrumb-current-color, var(--workspace-surface-foreground))
+    var(--path-breadcrumb-current-color, var(--workspace-foreground))
   );
   background-color: var(
     --path-breadcrumb-lead-bg,
-    color-mix(in oklab, var(--workspace-surface-foreground) 7%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 7%, transparent)
   );
 }
 
@@ -51,7 +51,7 @@
   flex-shrink: 0;
   color: var(
     --path-breadcrumb-separator-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 32%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 32%, transparent)
   );
 }
 
@@ -63,7 +63,7 @@
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  color: var(--path-breadcrumb-current-color, var(--workspace-surface-foreground));
+  color: var(--path-breadcrumb-current-color, var(--workspace-foreground));
 }
 
 @media (min-width: 768px) {
@@ -84,7 +84,7 @@
   line-height: 1.2;
   color: var(
     --path-breadcrumb-link-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
   );
   transition:
     color 0.15s ease,
@@ -92,10 +92,10 @@
 }
 
 .path-breadcrumb__link:hover {
-  color: var(--path-breadcrumb-current-color, var(--workspace-surface-foreground));
+  color: var(--path-breadcrumb-current-color, var(--workspace-foreground));
   background-color: var(
     --path-breadcrumb-link-hover-bg,
-    color-mix(in oklab, var(--workspace-surface-foreground) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }
 

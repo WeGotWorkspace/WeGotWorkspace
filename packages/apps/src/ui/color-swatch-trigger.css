@@ -44,5 +44,5 @@
 
 .color-swatch-trigger__chevron {
   @apply size-3.5 shrink-0 opacity-70;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 70%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
 }

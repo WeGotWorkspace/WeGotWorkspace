@@ -2,7 +2,7 @@
 
 .contacts-group-icon {
   @apply size-3.5 shrink-0 block;
-  color: var(--collection-row-color, var(--workspace-surface-foreground));
+  color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .contacts-group-icon-slot {

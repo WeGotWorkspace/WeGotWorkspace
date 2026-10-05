@@ -15,7 +15,7 @@
   );
   border-color: var(
     --list-sticky-header-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 

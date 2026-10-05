@@ -28,16 +28,16 @@ export function sharedBrandingCssprops(): BrandingCsspropsMap {
   };
 }
 
-/** Switch-trigger `--workspace-brand*` layers (document real workspace defaults per app). */
+/** Switch-trigger `--workspace-icon-surface*` layers (document real workspace defaults per app). */
 export function waiBrandingCssprops(defaults: { bg: string; fg: string }): BrandingCsspropsMap {
   return {
-    "workspace-brand": {
+    "workspace-icon-surface": {
       value: defaults.bg,
-      description: 'Icon background layer (fill="var(--workspace-brand, …)")',
+      description: 'Icon background layer (fill="var(--workspace-icon-surface, …)")',
       category: "Icon layers",
       control: defaults.bg.startsWith("#") ? "color" : "text",
     },
-    "workspace-brand-foreground": {
+    "workspace-icon-foreground": {
       value: defaults.fg,
       description: "Icon foreground / marks",
       category: "Icon layers",
@@ -122,13 +122,12 @@ export function createAppBrandingCssprops(
 ): BrandingCsspropsMap {
   const accentToken = options.accentToken ?? "workspace-accent";
   const accentValue = options.accentValue ?? BRANDING_APP_ACCENT_DEFAULTS[appId];
-  const buttonPrimary = brandingAppButtonPrimary(appId);
   const sidebarToken = options.sidebarToken ?? "app-sidebar-bg";
   const map: BrandingCsspropsMap = {
     ...sharedBrandingCssprops(),
     [accentToken]: {
       value: accentValue,
-      description: `Solid accent (--${accentToken}). Production follows We Got Dark.`,
+      description: `Solid accent (--${accentToken}). Production follows We Got Dark. Primary buttons use this pair.`,
       category: "App chrome",
       control: "text",
     },
@@ -138,19 +137,7 @@ export function createAppBrandingCssprops(
       category: "App chrome",
       control: "text",
     },
-    "button-primary-bg": {
-      value: buttonPrimary.bg,
-      description: "Primary button fill.",
-      category: "App chrome",
-      control: "text",
-    },
-    "button-primary-fg": {
-      value: buttonPrimary.fg,
-      description: "Primary button label.",
-      category: "App chrome",
-      control: "text",
-    },
-    "workspace-surface-foreground": {
+    "workspace-foreground": {
       value: "var(--color-we-got-dark)",
       description: "Ink on app paper.",
       category: "App chrome",
@@ -164,11 +151,11 @@ export function createAppBrandingCssprops(
     },
     "workspace-sidebar-surface": {
       value: brandingAppSidebarBg(appId),
-      description: "Sidebar fill — brand mixed into white. Tasks 20%, Notes 15%, others 5%.",
+      description: "Sidebar fill — icon hue mixed into paper. Tasks 20%, Notes 15%, others 5%.",
       category: "App chrome",
       control: "text",
     },
-    "workspace-sidebar-surface-foreground": {
+    "workspace-sidebar-foreground": {
       value: "var(--color-we-got-dark)",
       description: "Ink on the sidebar rail.",
       category: "App chrome",
@@ -222,39 +209,16 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
  */
 export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
   if (appId === "tasks") {
-    return "color-mix(in oklch, var(--workspace-brand) 20%, var(--workspace-surface))";
+    return "color-mix(in oklch, var(--workspace-icon-surface) 20%, var(--workspace-surface))";
   }
   if (appId === "notes") {
-    return "color-mix(in oklch, var(--workspace-brand) 15%, var(--workspace-surface))";
+    return "color-mix(in oklch, var(--workspace-icon-surface) 15%, var(--workspace-surface))";
   }
-  return "color-mix(in oklch, var(--workspace-brand) 5%, var(--workspace-surface))";
+  return "color-mix(in oklch, var(--workspace-icon-surface) 5%, var(--workspace-surface))";
 }
 
 /**
- * Storybook primary-button controls. Defaults are the production declarations
- * in each `*-workspace.css`, so Themes starts identical to the app.
- */
-export function brandingAppButtonPrimary(appId: WorkspaceAppId): { bg: string; fg: string } {
-  switch (appId) {
-    case "drive":
-      return { bg: "var(--workspace-brand-foreground)", fg: "var(--workspace-brand)" };
-    case "meet":
-      return { bg: "var(--workspace-brand-foreground)", fg: "var(--workspace-accent-foreground)" };
-    case "notes":
-      return { bg: "var(--workspace-brand)", fg: "var(--workspace-accent-foreground)" };
-    case "mail":
-      // Raw We Got Red with white is ~4.1:1. Darken it so 14px labels clear AA.
-      return {
-        bg: "color-mix(in oklch, var(--workspace-brand) 45%, var(--workspace-surface-foreground))",
-        fg: "var(--workspace-brand-foreground)",
-      };
-    default:
-      return { bg: "var(--workspace-brand)", fg: "var(--workspace-brand-foreground)" };
-  }
-}
-
-/**
- * Convenience: shared cream/ink + accent + production `--workspace-brand*` for a workspace app.
+ * Convenience: shared cream/ink + accent + production `--workspace-icon-*` for a workspace app.
  *
  * Omits `--app-sidebar-bg` and `--app-sidebar-color` so the decorator cannot
  * wipe the Soft rail. `--sidebar-bg` and `--sidebar-on` are included because

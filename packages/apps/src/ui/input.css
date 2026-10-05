@@ -126,10 +126,7 @@
   @apply disabled:cursor-not-allowed;
   @apply [&>span]:line-clamp-1;
   /* Align idle text/chevron with outline Button / SegmentedControl. */
-  color: var(
-    --select-trigger-color,
-    var(--button-outline-color, var(--workspace-surface-foreground))
-  );
+  color: var(--select-trigger-color, var(--button-outline-color, var(--workspace-foreground)));
 }
 
 .select-trigger__icon {
@@ -251,7 +248,7 @@
 
 .input__clear:hover,
 .input__visibility:hover:not(:disabled) {
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
 }
 
 .input__clear-icon,

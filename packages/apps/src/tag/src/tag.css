@@ -32,11 +32,8 @@
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
   border-radius: var(--tag-radius, var(--control-radius));
-  background-color: var(
-    --tag-bg,
-    color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
-  );
-  color: var(--tag-fg, var(--workspace-surface-foreground));
+  background-color: var(--tag-bg, color-mix(in oklab, var(--workspace-foreground) 8%, transparent));
+  color: var(--tag-fg, var(--workspace-foreground));
 }
 
 .tag--size-lg {
@@ -50,12 +47,12 @@
 .tag--collection-tint {
   --tag-bg: color-mix(
     in oklab,
-    var(--collection-row-color, var(--workspace-surface-foreground)) 18%,
+    var(--collection-row-color, var(--workspace-foreground)) 18%,
     transparent
   );
   --tag-fg: color-mix(
     in oklab,
-    var(--collection-row-color, var(--workspace-surface-foreground)) 62%,
+    var(--collection-row-color, var(--workspace-foreground)) 62%,
     #003311
   );
 }
@@ -126,15 +123,15 @@
   border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(
     --tag-group-add-bg,
-    color-mix(in oklab, var(--workspace-surface-foreground) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
-  color: var(--tag-group-add-fg, var(--workspace-surface-foreground));
+  color: var(--tag-group-add-fg, var(--workspace-foreground));
 }
 
 .tag-group__add-button:hover {
   background-color: var(
     --tag-group-add-bg-hover,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -163,7 +160,7 @@
     --tag-group-input-bg,
     color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
   );
-  color: var(--tag-group-input-fg, var(--workspace-surface-foreground));
+  color: var(--tag-group-input-fg, var(--workspace-foreground));
 }
 
 .tag-group--size-lg .tag-group__input {
@@ -193,7 +190,7 @@
   background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
   box-shadow: var(
     --tag-group-suggestions-shadow,
-    0 4px 16px color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    0 4px 16px color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
   min-width: 10rem;
 }
@@ -203,7 +200,7 @@
   font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1.25;
-  color: var(--tag-group-suggestion-fg, var(--workspace-surface-foreground));
+  color: var(--tag-group-suggestion-fg, var(--workspace-foreground));
   background-color: transparent;
 }
 
@@ -216,6 +213,6 @@
 .tag-group__suggestion--active {
   background-color: var(
     --tag-group-suggestion-bg-active,
-    color-mix(in oklab, var(--workspace-surface-foreground) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }

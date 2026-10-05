@@ -1035,10 +1035,10 @@
  * IconButtons stay readable on cream/oklch backgrounds.
  */
 :is(.mail-compose-dialog-surface .mail-compose-view__message-editor.text-editor) {
-  --foreground: var(--workspace-surface-foreground);
-  --accent: color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent);
-  --accent-foreground: var(--workspace-surface-foreground);
-  --border: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
+  --foreground: var(--workspace-foreground);
+  --accent: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
+  --accent-foreground: var(--workspace-foreground);
+  --border: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
 /* Compact body for format-bar-only Storybook previews */

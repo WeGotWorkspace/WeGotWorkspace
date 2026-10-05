@@ -2,7 +2,7 @@
 
 /**
  * Conventional compact toggle. Parents override `--switch-*`.
- * On-fill follows `--button-primary-bg` / `--primary` so app accents apply.
+ * On-fill follows `--workspace-accent` so app accents apply.
  * Never stretch: width is the track, not 100%.
  */
 .switch {
@@ -46,11 +46,11 @@
   @apply ring-1;
   box-shadow:
     0 0 0 2px var(--background, #ffffff),
-    0 0 0 4px var(--switch-ring-color, var(--ring, var(--workspace-surface-foreground)));
+    0 0 0 4px var(--switch-ring-color, var(--ring, var(--workspace-foreground)));
 }
 
 .switch[data-state="on"] {
-  background-color: var(--switch-on-bg, var(--button-primary-bg, var(--primary)));
+  background-color: var(--switch-on-bg, var(--workspace-accent));
 }
 
 .switch:disabled {

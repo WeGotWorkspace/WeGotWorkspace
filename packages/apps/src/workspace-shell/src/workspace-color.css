@@ -7,7 +7,7 @@
  * `workspace-derive.css`. This sheet only republishes old names onto the
  * workspace / dialog hosts so existing callers keep resolving.
  *
- * Defaults use `:where` (zero specificity). Products set `--workspace-brand`
+ * Defaults use `:where` (zero specificity). Products set `--workspace-icon-surface`
  * (and optional `--workspace-sidebar-surface` mix %) on their class.
  */
 :where(
@@ -35,12 +35,12 @@
   .meet-device-popover
 ) {
   --sidebar-bg: var(--workspace-sidebar-surface);
-  --sidebar-on: var(--workspace-sidebar-surface-foreground);
+  --sidebar-on: var(--workspace-sidebar-foreground);
   --popover: var(--workspace-surface);
   --color-popover: var(--workspace-surface);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -74,10 +74,10 @@
   --app-sidebar-bg: var(--workspace-sidebar-surface);
   --app-sidebar-border-color: color-mix(
     in oklch,
-    var(--workspace-sidebar-surface-foreground) 12%,
+    var(--workspace-sidebar-foreground) 12%,
     transparent
   );
-  --app-sidebar-color: var(--workspace-sidebar-surface-foreground);
+  --app-sidebar-color: var(--workspace-sidebar-foreground);
 }
 
 /*
@@ -88,5 +88,5 @@
 .docs-collab-sidebar-panel,
 .docs-collab-sidebar-panel-drawer {
   --workspace-surface: var(--workspace-sidebar-surface);
-  --workspace-surface-foreground: var(--workspace-sidebar-surface-foreground);
+  --workspace-foreground: var(--workspace-sidebar-foreground);
 }

@@ -3,7 +3,7 @@
 .mcp-assistant-data-warning.callout .menu-item__label,
 .mcp-assistant-data-warning.callout .menu-item__description {
   @apply overflow-visible whitespace-normal break-words;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   opacity: 1;
   overflow-wrap: anywhere;
   text-overflow: unset;

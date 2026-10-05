@@ -21,10 +21,7 @@
 }
 
 .docs-suggestion-card__diff-arrow {
-  color: var(
-    --docs-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .docs-suggestion-card__reactions {
@@ -33,14 +30,14 @@
 
 .docs-suggestion-card__replies {
   @apply mt-3 space-y-2.5 border-t pt-3;
-  border-color: color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
 }
 
 .docs-suggestion-card__composer {
   @apply sticky bottom-0 z-[1] mt-3 flex items-center gap-2 rounded-lg border px-3 py-1;
   border-color: var(
     --docs-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
   background-color: color-mix(
     in oklab,
@@ -51,14 +48,11 @@
 
 .docs-suggestion-card__composer-input {
   @apply min-w-0 flex-1 border-0 bg-transparent text-sm outline-none;
-  color: var(--docs-text, var(--workspace-surface-foreground));
+  color: var(--docs-text, var(--workspace-foreground));
 }
 
 .docs-suggestion-card__composer-input::placeholder {
-  color: var(
-    --docs-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .docs-suggestion-card__composer-post {

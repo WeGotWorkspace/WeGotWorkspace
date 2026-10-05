@@ -25,10 +25,7 @@
 
 .chat-message-list__empty {
   @apply flex flex-1 items-center justify-center px-4 py-12 text-sm;
-  color: var(
-    --chat-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 45%, transparent)
-  );
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 45%, transparent));
 }
 
 .chat-message-list__group {

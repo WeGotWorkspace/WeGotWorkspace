@@ -44,15 +44,18 @@ describe("wai cssprop shapes match production switch-trigger", () => {
 
   it("mail/contacts/settings: bg + fg only", () => {
     expect(Object.keys(waiBrandingCssprops({ bg: "#de4b0e", fg: "#ffbdc2" })).sort()).toEqual([
-      "workspace-brand",
-      "workspace-brand-foreground",
+      "workspace-icon-foreground",
+      "workspace-icon-surface",
     ]);
   });
 
   it("meet: bg + fg only", () => {
     const map = waiBrandingCssprops({ bg: "#ffc800", fg: "#962fa8" });
-    expect(Object.keys(map).sort()).toEqual(["workspace-brand", "workspace-brand-foreground"]);
-    expect(map["workspace-brand-foreground"]?.value).toBe("#962fa8");
+    expect(Object.keys(map).sort()).toEqual([
+      "workspace-icon-foreground",
+      "workspace-icon-surface",
+    ]);
+    expect(map["workspace-icon-foreground"]?.value).toBe("#962fa8");
   });
 });
 
@@ -73,14 +76,14 @@ function styleBag(): { el: { style: CSSStyleDeclaration }; style: CSSStyleDeclar
 describe("resolveBrandingCsspropValues", () => {
   const entries = [
     { key: "workspace-accent", value: "#962fa8" },
-    { key: "workspace-brand", value: "#ffbdc2" },
+    { key: "workspace-icon-surface", value: "#ffbdc2" },
   ];
 
   it("applies parameter defaults when body has no style (Docs / Canvas wipe)", () => {
     const body = styleBag();
     expect(resolveBrandingCsspropValues(entries, body.style)).toEqual({
       "--workspace-accent": "#962fa8",
-      "--workspace-brand": "#ffbdc2",
+      "--workspace-icon-surface": "#ffbdc2",
     });
   });
 
@@ -89,7 +92,7 @@ describe("resolveBrandingCsspropValues", () => {
     body.style.setProperty("--workspace-accent", "#ff0000");
     expect(resolveBrandingCsspropValues(entries, body.style)).toEqual({
       "--workspace-accent": "#ff0000",
-      "--workspace-brand": "#ffbdc2",
+      "--workspace-icon-surface": "#ffbdc2",
     });
   });
 });
@@ -98,35 +101,35 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
   it("emits concrete token values, never inherit", () => {
     const css = buildBrandingWorkspaceOverrideCss("calendar-workspace", {
       "--workspace-accent": "#962fa8",
-      "--workspace-brand": "#ffbdc2",
-      "--workspace-brand-foreground": "#962fa8",
+      "--workspace-icon-surface": "#ffbdc2",
+      "--workspace-icon-foreground": "#962fa8",
     });
     expect(css).toContain("--workspace-accent: oklch(from #962fa8 l c h);");
-    expect(css).toContain("--workspace-brand: oklch(from #ffbdc2 l c h);");
+    expect(css).toContain("--workspace-icon-surface: oklch(from #ffbdc2 l c h);");
     expect(css).not.toMatch(/:\s*inherit\s*;/);
   });
 
   it("retargets wai layers onto the switch-trigger SVG", () => {
     const css = buildBrandingWorkspaceOverrideCss("calendar-workspace", {
       "--workspace-accent": "#962fa8",
-      "--workspace-brand": "#ffbdc2",
+      "--workspace-icon-surface": "#ffbdc2",
     });
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger svg \{\s*--workspace-brand: oklch\(from #ffbdc2 l c h\);/,
+      /\.workspace-app-icon--switch-trigger svg \{\s*--workspace-icon-surface: oklch\(from #ffbdc2 l c h\);/,
     );
   });
 
   it("keeps the Docs sidebar icon a blue tile with white marks", () => {
     const css = buildBrandingWorkspaceOverrideCss("docs-workspace", {
       "--workspace-accent": "#ba9689",
-      "--workspace-brand": "#0045ff",
-      "--workspace-brand-foreground": "#ffffff",
+      "--workspace-icon-surface": "#0045ff",
+      "--workspace-icon-foreground": "#ffffff",
     });
     expect(css).toMatch(
-      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: oklch\(from #ba9689 l c h\);\s*--workspace-brand: oklch\(from #0045ff l c h\);\s*--workspace-brand-foreground: oklch\(from #ffffff l c h\);/,
+      /\.branding-playground-root \.docs-workspace \{\s*--workspace-accent: oklch\(from #ba9689 l c h\);\s*--workspace-icon-surface: oklch\(from #0045ff l c h\);\s*--workspace-icon-foreground: oklch\(from #ffffff l c h\);/,
     );
     expect(css).toMatch(
-      /\.workspace-app-icon--switch-trigger svg \{\s*--workspace-brand: oklch\(from #0045ff l c h\);\s*--workspace-brand-foreground: oklch\(from #ffffff l c h\);/,
+      /\.workspace-app-icon--switch-trigger svg \{\s*--workspace-icon-surface: oklch\(from #0045ff l c h\);\s*--workspace-icon-foreground: oklch\(from #ffffff l c h\);/,
     );
   });
 
@@ -136,7 +139,7 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
 });
 
 describe("csspropValuesForPaint", () => {
-  const entries = [{ key: "button-primary-bg", value: "var(--workspace-accent)" }];
+  const entries = [{ key: "workspace-accent", value: "var(--color-we-got-dark)" }];
 
   it("omits parameter defaults so workspace CSS stays the source of truth", () => {
     const body = styleBag();
@@ -145,27 +148,27 @@ describe("csspropValuesForPaint", () => {
 
   it("omits a body value that matches the parameter default", () => {
     const body = styleBag();
-    body.style.setProperty("--button-primary-bg", "var(--workspace-accent)");
+    body.style.setProperty("--workspace-accent", "var(--color-we-got-dark)");
     expect(csspropValuesForPaint(entries, body.style, null, "themes-tasks--default")).toEqual({});
   });
 
   it("keeps a real panel edit", () => {
     const body = styleBag();
-    body.style.setProperty("--button-primary-bg", "#ff0000");
+    body.style.setProperty("--workspace-accent", "#ff0000");
     expect(csspropValuesForPaint(entries, body.style, null, "themes-tasks--default")).toEqual({
-      "--button-primary-bg": "#ff0000",
+      "--workspace-accent": "#ff0000",
     });
   });
 
   it("ignores an untouched stored default that no longer matches the parameter", () => {
     const body = styleBag();
-    body.style.setProperty("--button-primary-bg", "var(--workspace-brand)");
+    body.style.setProperty("--workspace-accent", "var(--workspace-icon-surface)");
     const store = {
       customProperties: {
-        "themes-tasks--default": { "button-primary-bg": "var(--workspace-brand)" },
+        "themes-tasks--default": { "workspace-accent": "var(--workspace-icon-surface)" },
       },
       initialCustomProperties: {
-        "themes-tasks--default": { "button-primary-bg": "var(--workspace-brand)" },
+        "themes-tasks--default": { "workspace-accent": "var(--workspace-icon-surface)" },
       },
     };
     expect(csspropValuesForPaint(entries, body.style, store, "themes-tasks--default")).toEqual({});
@@ -173,32 +176,32 @@ describe("csspropValuesForPaint", () => {
 });
 
 describe("reconcileUntouchedCsspropDefaults", () => {
-  const entries = [{ key: "button-primary-bg", value: "var(--workspace-accent)" }];
+  const entries = [{ key: "workspace-accent", value: "var(--color-we-got-dark)" }];
 
   it("moves an untouched stored default onto the current parameter", () => {
     const store = {
       customProperties: {
-        "themes-tasks--default": { "button-primary-bg": "var(--workspace-brand)" },
+        "themes-tasks--default": { "workspace-accent": "var(--workspace-icon-surface)" },
       },
       initialCustomProperties: {
-        "themes-tasks--default": { "button-primary-bg": "var(--workspace-brand)" },
+        "themes-tasks--default": { "workspace-accent": "var(--workspace-icon-surface)" },
       },
     };
     const next = reconcileUntouchedCsspropDefaults(store, "themes-tasks--default", entries);
     expect(next.changed).toBe(true);
-    expect(next.store.customProperties?.["themes-tasks--default"]?.["button-primary-bg"]).toBe(
-      "var(--workspace-accent)",
+    expect(next.store.customProperties?.["themes-tasks--default"]?.["workspace-accent"]).toBe(
+      "var(--color-we-got-dark)",
     );
     expect(
-      next.store.initialCustomProperties?.["themes-tasks--default"]?.["button-primary-bg"],
-    ).toBe("var(--workspace-accent)");
+      next.store.initialCustomProperties?.["themes-tasks--default"]?.["workspace-accent"],
+    ).toBe("var(--color-we-got-dark)");
   });
 
   it("leaves a row the user changed", () => {
     const store = {
-      customProperties: { "themes-tasks--default": { "button-primary-bg": "#ff0000" } },
+      customProperties: { "themes-tasks--default": { "workspace-accent": "#ff0000" } },
       initialCustomProperties: {
-        "themes-tasks--default": { "button-primary-bg": "var(--workspace-accent)" },
+        "themes-tasks--default": { "workspace-accent": "var(--color-we-got-dark)" },
       },
     };
     const next = reconcileUntouchedCsspropDefaults(store, "themes-tasks--default", entries);
@@ -214,7 +217,7 @@ describe("reconcileUntouchedCsspropDefaults", () => {
 describe("syncBrandingCsspropsToRoot", () => {
   const entries = [
     { key: "workspace-accent", value: "#962fa8" },
-    { key: "workspace-brand", value: "#ffbdc2" },
+    { key: "workspace-icon-surface", value: "#ffbdc2" },
   ];
 
   it("applies parameter defaults when body has no values", () => {
@@ -222,7 +225,9 @@ describe("syncBrandingCsspropsToRoot", () => {
     const body = styleBag();
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
     expect(root.style.getPropertyValue("--workspace-accent")).toBe("oklch(from #962fa8 l c h)");
-    expect(root.style.getPropertyValue("--workspace-brand")).toBe("oklch(from #ffbdc2 l c h)");
+    expect(root.style.getPropertyValue("--workspace-icon-surface")).toBe(
+      "oklch(from #ffbdc2 l c h)",
+    );
   });
 
   it("prefers body values when the cssprops addon has injected them", () => {
@@ -231,7 +236,9 @@ describe("syncBrandingCsspropsToRoot", () => {
     body.style.setProperty("--workspace-accent", "#ff0000");
     syncBrandingCsspropsToRoot(root.el as HTMLElement, entries, body.style);
     expect(root.style.getPropertyValue("--workspace-accent")).toBe("oklch(from #ff0000 l c h)");
-    expect(root.style.getPropertyValue("--workspace-brand")).toBe("oklch(from #ffbdc2 l c h)");
+    expect(root.style.getPropertyValue("--workspace-icon-surface")).toBe(
+      "oklch(from #ffbdc2 l c h)",
+    );
   });
 
   it("restores defaults after body style is cleared (Canvas panel cleanup)", () => {

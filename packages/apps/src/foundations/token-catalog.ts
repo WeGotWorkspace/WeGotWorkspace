@@ -31,13 +31,13 @@ export const COLOR_SEMANTIC = [
  */
 export const COLOR_CORE_TOKENS = [
   "--workspace-surface",
-  "--workspace-surface-foreground",
+  "--workspace-foreground",
   "--workspace-accent",
   "--workspace-accent-foreground",
   "--workspace-sidebar-surface",
-  "--workspace-sidebar-surface-foreground",
-  "--workspace-brand",
-  "--workspace-brand-foreground",
+  "--workspace-sidebar-foreground",
+  "--workspace-icon-surface",
+  "--workspace-icon-foreground",
 ] as const;
 
 /**
@@ -49,8 +49,6 @@ export const COLOR_COMPONENT_CONTRACT = [
   "--app-sidebar-bg",
   "--app-sidebar-color",
   "--app-sidebar-border-color",
-  "--button-primary-bg",
-  "--button-primary-fg",
 ] as const;
 
 /** Brand / system face primitives. */

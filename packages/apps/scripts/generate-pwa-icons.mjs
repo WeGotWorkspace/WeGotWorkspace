@@ -22,13 +22,13 @@
  * Icon query strings come from `src/lib/pwa-icon-cache-version.json`. Bump
  * `version` there and re-run this script. Do not parse the TypeScript module.
  *
- * Switch-trigger inversion uses the in-app SVG with `--workspace-brand*` CSS vars
+ * Switch-trigger inversion uses the in-app SVG with `--workspace-icon-surface*` CSS vars
  * (see workspace-app-icon.css). Brand fills nest a `--color-we-got-*` token
  * inside that fallback. Rasterization peels both layers down to the hex
  * (see pwa-icon-raster.mjs). Cream is `--color-we-got-soft`. White has no brand
  * token and stays `#ffffff`.
  * `home-pwa.svg` is the `/` install tile and favicon. It is never inlined, so
- * its fills are brand tokens with a hex fallback and no `--workspace-brand*` layer.
+ * its fills are brand tokens with a hex fallback and no `--workspace-icon-surface*` layer.
  * `home.svg` stays the in-app suite mark.
  *
  * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer

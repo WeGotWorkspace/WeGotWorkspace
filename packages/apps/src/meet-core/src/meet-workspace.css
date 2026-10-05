@@ -7,19 +7,19 @@
   @apply flex h-dvh w-full flex-col;
 
   --workspace-surface: var(--workspace-home-bg);
-  --workspace-surface-foreground: #ffffff;
+  --workspace-foreground: #ffffff;
   --workspace-accent: #ffffff;
   --workspace-accent-foreground: var(--color-we-got-dark);
-  --workspace-brand: var(--color-we-got-soft);
-  --workspace-brand-foreground: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
   --workspace-sidebar-surface: var(--workspace-surface);
-  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
+  --workspace-sidebar-foreground: var(--workspace-foreground);
 
   --meet-surface: var(--workspace-surface);
   --meet-panel: color-mix(in oklch, #fff 4%, var(--workspace-surface));
   --meet-panel-soft: color-mix(in oklch, #fff 8%, var(--workspace-surface));
-  --meet-text: var(--workspace-surface-foreground);
-  --meet-muted: color-mix(in oklch, var(--workspace-surface-foreground) 60%, transparent);
+  --meet-text: var(--workspace-foreground);
+  --meet-muted: color-mix(in oklch, var(--workspace-foreground) 60%, transparent);
   --app-sidebar-color: var(--meet-text);
   --meet-border: rgba(255, 255, 255, 0.06);
   --meet-border-strong: rgba(255, 255, 255, 0.08);
@@ -36,8 +36,6 @@
   --meet-screen-bg: #000000;
   --meet-pip-border: rgba(255, 255, 255, 0.22);
 
-  --button-primary-bg: var(--workspace-brand-foreground);
-  --button-primary-fg: var(--workspace-accent-foreground);
   --button-active-color: var(--meet-text);
   --field-label-color: var(--meet-muted);
   --foreground: var(--meet-text);
@@ -48,7 +46,7 @@
   --accent-foreground: var(--meet-text);
 
   background-color: var(--workspace-home-bg);
-  --app-switch-label-color: var(--workspace-surface-foreground);
+  --app-switch-label-color: var(--workspace-foreground);
   color: var(--meet-text);
   font-family: var(--font-sans);
 }
@@ -69,31 +67,31 @@
   .meet-call-expanded
 ) {
   --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
-  --workspace-surface-foreground: var(--color-we-got-dark);
+  --workspace-foreground: var(--color-we-got-dark);
   --workspace-accent: var(--color-we-got-dark);
   --workspace-accent-foreground: #ffffff;
-  --workspace-brand: var(--color-we-got-soft);
-  --workspace-brand-foreground: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-brand) 5%,
+    var(--workspace-icon-surface) 5%,
     var(--workspace-surface)
   );
-  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
+  --workspace-sidebar-foreground: var(--workspace-foreground);
   --meet-surface: var(--workspace-surface);
-  --meet-text: var(--workspace-surface-foreground);
-  --meet-muted: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  --meet-text: var(--workspace-foreground);
+  --meet-muted: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .meet-workspace .workspace-shell-header {
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   background-color: var(--meet-surface);
   --app-sidebar-bg: var(--meet-surface);
-  --app-sidebar-color: var(--workspace-surface-foreground);
+  --app-sidebar-color: var(--workspace-foreground);
   --app-switch-lockup-bg: var(--meet-surface);
   --app-switch-label-tagline-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 92%,
+    var(--workspace-foreground) 92%,
     var(--meet-surface)
   );
 }
@@ -267,25 +265,23 @@
 .meet-dialog-surface,
 .meet-popover-surface {
   --workspace-surface: var(--workspace-home-bg);
-  --workspace-surface-foreground: #ffffff;
+  --workspace-foreground: #ffffff;
   --workspace-accent: #ffffff;
   --workspace-accent-foreground: var(--color-we-got-dark);
-  --workspace-brand: var(--color-we-got-soft);
-  --workspace-brand-foreground: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
   --workspace-sidebar-surface: var(--workspace-surface);
-  --workspace-sidebar-surface-foreground: var(--workspace-surface-foreground);
+  --workspace-sidebar-foreground: var(--workspace-foreground);
   --meet-surface: var(--workspace-surface);
   --meet-panel: color-mix(in oklch, #fff 4%, var(--workspace-surface));
   --meet-panel-soft: color-mix(in oklch, #fff 8%, var(--workspace-surface));
-  --meet-text: var(--workspace-surface-foreground);
-  --meet-muted: color-mix(in oklch, var(--workspace-surface-foreground) 60%, transparent);
+  --meet-text: var(--workspace-foreground);
+  --meet-muted: color-mix(in oklch, var(--workspace-foreground) 60%, transparent);
   --meet-border-strong: rgba(255, 255, 255, 0.08);
   --meet-mic-off: #e5484d;
   --field-label-color: var(--meet-muted);
   --user-avatar-bg: color-mix(in oklch, #ffffff 12%, var(--meet-surface));
   --user-avatar-fg: var(--meet-text);
-  --button-primary-bg: var(--workspace-brand-foreground);
-  --button-primary-fg: var(--workspace-accent-foreground);
   --color-foreground: var(--meet-text);
   --input-background: var(--meet-panel-soft);
   --input-background-focus: var(--meet-panel-soft);
@@ -314,23 +310,23 @@
  * Overlay dim stays; the card must not reuse lobby `--meet-panel` (`#171826`).
  */
 .meet-call-dialog {
-  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
   --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
   --meet-panel: var(--meet-call-surface);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
   --background: var(--workspace-surface);
-  --modal-title-foreground: var(--workspace-surface-foreground);
+  --modal-title-foreground: var(--workspace-foreground);
   --button-active-color: var(--workspace-accent-strong);
   --button-destructive-bg: var(--color-red-500, #dc2626);
   --button-destructive-fg: var(--workspace-accent-foreground);
   @apply max-w-sm;
   background-color: var(--workspace-surface) !important;
-  color: var(--workspace-surface-foreground) !important;
+  color: var(--workspace-foreground) !important;
   border-color: var(--meet-call-border) !important;
 }
 
@@ -357,22 +353,22 @@
  * Do not reuse `.meet-popover-surface` (lobby dark) or `--meet-call-surface`.
  */
 .meet-device-popover {
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   --muted-foreground: var(--meet-muted);
   --color-muted-foreground: var(--meet-muted);
   --background: var(--workspace-surface);
   --popover: var(--workspace-surface);
-  --popover-foreground: var(--workspace-surface-foreground);
+  --popover-foreground: var(--workspace-foreground);
   --color-popover: var(--workspace-surface);
-  --color-popover-foreground: var(--workspace-surface-foreground);
+  --color-popover-foreground: var(--workspace-foreground);
   --accent: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
-  --accent-foreground: var(--workspace-surface-foreground);
+  --accent-foreground: var(--workspace-foreground);
   @apply w-80;
   background-color: var(--workspace-surface) !important;
-  color: var(--workspace-surface-foreground) !important;
-  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  color: var(--workspace-foreground) !important;
+  border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 }
 
 /* Device menu: quiet group labels, hairline between segments. Checks are MenuItem. */
@@ -383,18 +379,18 @@
 
 .meet-device-menu .meet-device-menu__label {
   @apply py-1 text-xs font-semibold tracking-normal;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 48%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 48%, transparent);
 }
 
 .meet-device-menu .dropdown-menu-ui__separator {
   @apply my-1 h-px;
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger {
   @apply h-9 min-h-9 border px-3;
-  color: var(--workspace-surface-foreground);
-  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  color: var(--workspace-foreground);
+  border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   box-shadow: none;
   --input-background: var(--workspace-surface);
   --input-background-focus: var(--workspace-surface);
@@ -404,17 +400,17 @@
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger:focus,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger[data-state="open"] {
   background-color: var(--workspace-surface);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   border-color: color-mix(
     in oklch,
     var(--workspace-accent) 45%,
-    var(--workspace-surface-foreground) 12%,
+    var(--workspace-foreground) 12%,
     transparent
   );
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger svg {
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface, .meet-knock-badge__popover)
@@ -650,25 +646,23 @@
  * `!important` beats PopoverContent `bg-popover`.
  */
 .meet-knock-badge__popover {
-  --workspace-brand: var(--color-we-got-sand);
-  --workspace-brand-foreground: var(--color-we-got-dark);
-  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --workspace-icon-surface: var(--color-we-got-sand);
+  --workspace-icon-foreground: var(--color-we-got-dark);
+  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
   --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
   --meet-panel: var(--meet-call-surface);
   --meet-panel-soft: var(--meet-call-empty);
   --popover: var(--workspace-surface);
-  --popover-foreground: var(--workspace-surface-foreground);
+  --popover-foreground: var(--workspace-foreground);
   --color-popover: var(--workspace-surface);
-  --color-popover-foreground: var(--workspace-surface-foreground);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
+  --color-popover-foreground: var(--workspace-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   @apply w-80 rounded-xl p-2;
   background-color: var(--workspace-surface) !important;
-  color: var(--workspace-surface-foreground) !important;
+  color: var(--workspace-foreground) !important;
   border-color: var(--meet-call-border);
 }
 
@@ -687,7 +681,7 @@
 
 .meet-knock-row__name {
   @apply truncate text-sm font-medium;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-knock-row__hint {
@@ -736,16 +730,16 @@
  */
 .meet-workspace--split .meet-call-knock-wait {
   background-color: color-mix(in oklch, var(--workspace-accent) 8%, var(--workspace-surface));
-  border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
-  color: var(--workspace-surface-foreground);
+  border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  color: var(--workspace-foreground);
 }
 
 .meet-workspace--split .meet-call-knock-wait__title {
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-workspace--split .meet-call-knock-wait__hint {
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .meet-call-knock-wait--stage {
@@ -770,77 +764,67 @@
   --workspace-panel-width: 22rem;
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--workspace-surface-foreground);
-  --app-switch-label-color: var(--workspace-surface-foreground);
+  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-color: var(--workspace-foreground);
+  --app-switch-label-color: var(--workspace-foreground);
   --app-switch-lockup-bg: var(--app-sidebar-bg);
-  --sidebar-logo-close-button-color: var(--workspace-surface-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: var(--workspace-accent-foreground);
   --meet-unread-bg: var(--workspace-accent-strong);
   --meet-unread-fg: var(--workspace-accent-foreground);
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 70%,
+    var(--workspace-foreground) 70%,
     transparent
   );
   /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 72%,
+    var(--workspace-foreground) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 65%,
+    var(--workspace-foreground) 65%,
     transparent
   );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    transparent
-  );
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   /*
    * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
    */
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
-  --button-primary-bg: var(--workspace-brand-foreground);
-  --button-primary-fg: var(--workspace-accent-foreground);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   /*
    * Workspace and in-call chrome use outline IconButtons with Meet outline tokens.
    */
   --button-active-color: var(--workspace-accent-strong);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   --workspace-main-bg: var(--meet-surface);
   --workspace-main-header-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --chat-list-surface: var(--workspace-surface);
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-accent: var(--workspace-accent-strong);
-  --chat-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --chat-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --chat-day-bg: var(--chat-list-surface);
   --chat-action-surface: var(--workspace-surface);
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-workspace .chat-ui {
@@ -855,7 +839,7 @@
     var(--workspace-accent) 12%,
     var(--workspace-surface)
   );
-  --chat-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --chat-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --button-ghost-hover-background: color-mix(
     in oklab,
     var(--workspace-accent) 8%,
@@ -900,31 +884,31 @@
 
 .meet-workspace--split .app-sidebar {
   @apply h-full min-h-0 self-stretch;
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 68%, transparent);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --user-avatar-presence-ring: var(--app-sidebar-bg);
-  color: var(--app-sidebar-color, var(--workspace-surface-foreground));
+  color: var(--app-sidebar-color, var(--workspace-foreground));
 }
 
 .meet-workspace--split .app-sidebar__footer {
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 70%,
+    var(--workspace-foreground) 70%,
     transparent
   );
   /* 72% clears AA on the shared sand rail; 65% was ~4.3:1 for 12px text. */
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 72%,
+    var(--workspace-foreground) 72%,
     transparent
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 65%,
+    var(--workspace-foreground) 65%,
     transparent
   );
 }
@@ -940,8 +924,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-brand: var(--color-we-got-soft);
-  --workspace-brand-foreground: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
 }
 
 .meet-workspace__sidebar-kind-icon {
@@ -951,7 +935,7 @@
 .meet-workspace__upcoming-time {
   @apply max-w-[9.5rem] shrink-0 text-right text-xs font-normal leading-tight;
   /* Same 72% ink as the footer subtitle so 12px times clear AA on the sand rail. */
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .meet-workspace__header-kind-icon {
@@ -1010,13 +994,13 @@
  * `--meet-screen-bg` stays black for video pixels.
  */
 :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) {
-  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   --button-active-color: var(--workspace-accent-strong);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
 }
 
 :is(.meet-call-bar, .meet-call-stage--expanded, .meet-call-expanded) {
@@ -1060,7 +1044,7 @@
 
 .meet-call-bar__title {
   @apply truncate text-sm font-semibold;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-call-bar__meta {
@@ -1081,7 +1065,7 @@
 }
 
 .meet-call-bar__avatars .user-avatar--colored .user-avatar__mark {
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 /* Lobby / dark peer tiles: light marks (ink fails on navy fills). */
@@ -1091,7 +1075,7 @@
 
 /* Guest preview stays a light wash, so marks stay ink. */
 .meet-guest-lobby__preview .user-avatar--colored .user-avatar__mark {
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 /* Camera-off initial: Brat letter and stroke, no disc fill. */
@@ -1182,7 +1166,7 @@
 
 .meet-workspace__members {
   @apply inline-flex items-center gap-1 text-sm;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .meet-workspace__members-icon {
@@ -1214,7 +1198,7 @@
 
 .meet-workspace__chat-empty {
   @apply flex flex-1 items-center justify-center px-6 text-sm;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .meet-workspace__surfaces {
@@ -1278,22 +1262,22 @@
 /* Fixed-height row so the indicator never shifts the composer. */
 .meet-workspace__typing {
   @apply h-5 shrink-0 truncate px-4 text-xs italic;
-  color: color-mix(in oklch, var(--workspace-surface-foreground) 65%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
 }
 
 .meet-workspace__rail.workspace-app-layout__panel,
 .meet-call-stage__chat {
   @apply flex h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-none;
   background-color: var(--workspace-surface);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   --chat-surface: var(--workspace-surface);
   --chat-list-surface: var(--workspace-surface);
   --user-avatar-presence-ring: var(--workspace-surface);
   --docs-surface: var(--workspace-surface);
-  --docs-collab-sidebar-panel-color: var(--workspace-surface-foreground);
+  --docs-collab-sidebar-panel-color: var(--workspace-foreground);
   --docs-collab-sidebar-panel-border-color: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 8%,
+    var(--workspace-foreground) 8%,
     transparent
   );
 }
@@ -1353,7 +1337,7 @@
 
 .meet-call-stage__title {
   @apply truncate text-base font-semibold;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-call-stage__meta {
@@ -1572,7 +1556,7 @@
 
 .meet-call-stage__chat-header {
   @apply shrink-0 px-4 pb-2 pt-4 text-base font-semibold;
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-call-stage--collapsed .meet-call-stage__chat {
@@ -1588,17 +1572,15 @@
   @apply flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto;
   --meet-panel: color-mix(in oklch, var(--workspace-accent) 8%, var(--workspace-surface));
   --meet-panel-soft: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
-  --meet-border: color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
-  --meet-border-strong: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
-  --field-label-color: color-mix(in oklch, var(--workspace-surface-foreground) 72%, transparent);
+  --meet-border: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
+  --meet-border-strong: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --button-active-color: var(--workspace-accent-strong);
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
-  --button-primary-bg: var(--workspace-brand-foreground);
-  --button-primary-fg: var(--workspace-accent-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
   background-color: var(--meet-surface);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
   padding-top: max(1.5rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
   padding-right: max(1.5rem, calc(env(safe-area-inset-right, 0px) + 1rem));
   padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem));
@@ -1609,7 +1591,7 @@
 
 .meet-guest-channel__lobby .meet-workspace__title {
   font-family: var(--font-serif);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-guest-lobby__card {
@@ -1624,7 +1606,7 @@
   --card-surface-bg: var(--workspace-surface);
   --input-background: var(--workspace-surface);
   --input-background-focus: var(--workspace-surface);
-  box-shadow: 0 18px 48px color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  box-shadow: 0 18px 48px color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
 .meet-guest-lobby__card--status {
@@ -1723,7 +1705,7 @@
 
 .meet-guest-lobby__mic-level-track {
   @apply relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full;
-  background-color: color-mix(in oklch, var(--workspace-surface-foreground) 10%, transparent);
+  background-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
 .meet-guest-lobby__mic-level-fill {
@@ -1754,11 +1736,11 @@
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__name .meet-workspace__display-name-input {
-  --foreground: var(--workspace-surface-foreground);
-  --color-foreground: var(--workspace-surface-foreground);
+  --foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
   --input-background: var(--workspace-surface);
   --input-background-focus: var(--workspace-surface);
-  color: var(--workspace-surface-foreground);
+  color: var(--workspace-foreground);
 }
 
 .meet-guest-lobby__footer {

@@ -25,7 +25,7 @@
   );
   --segmented-control-severity-success-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--workspace-surface-foreground))
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--workspace-foreground))
   );
   --segmented-control-severity-success-hover-bg: var(
     --button-severity-success-hover-background,
@@ -88,7 +88,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
+        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
       )
     )
   );
@@ -149,10 +149,7 @@
   /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
   line-height: 0;
   /* Match outline Button / IconButton idle foreground (no muted fade). */
-  color: var(
-    --segmented-control-color,
-    var(--button-outline-color, var(--workspace-surface-foreground))
-  );
+  color: var(--segmented-control-color, var(--button-outline-color, var(--workspace-foreground)));
   background: transparent;
   transition:
     color 150ms,
@@ -186,7 +183,7 @@
 .segmented-control__button--active {
   color: var(
     --segmented-control-active-fg,
-    var(--button-active-color, var(--workspace-surface-foreground))
+    var(--button-active-color, var(--workspace-foreground))
   );
   /* Fallback when the sliding thumb has not measured yet (Storybook a11y). */
   background-color: var(--segmented-control-active-bg, transparent);
@@ -196,16 +193,13 @@
 .segmented-control__button:hover:not(:disabled) {
   color: var(
     --segmented-control-hover-color,
-    var(
-      --button-outline-hover-color,
-      var(--button-outline-color, var(--workspace-surface-foreground))
-    )
+    var(--button-outline-hover-color, var(--button-outline-color, var(--workspace-foreground)))
   );
   background-color: var(
     --segmented-control-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--workspace-surface-foreground) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
     )
   );
 }
@@ -217,7 +211,7 @@
   background-color: transparent;
   color: var(
     --segmented-control-active-fg,
-    var(--button-active-color, var(--workspace-surface-foreground))
+    var(--button-active-color, var(--workspace-foreground))
   );
 }
 

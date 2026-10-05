@@ -7,7 +7,7 @@
   line-height: 1.25rem;
   color: var(
     --collection-state-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
   );
 }
 
@@ -59,7 +59,7 @@
   line-height: 1.25rem;
   color: var(
     --collection-state-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
   );
 }
 

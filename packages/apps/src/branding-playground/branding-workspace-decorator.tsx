@@ -77,12 +77,12 @@ function sidebarSwitchTriggerWaiDecls(
   _workspaceClass: string,
   values: Record<string, string>,
 ): string {
-  const bg = values["--workspace-brand"];
-  const fg = values["--workspace-brand-foreground"];
+  const bg = values["--workspace-icon-surface"];
+  const fg = values["--workspace-icon-foreground"];
   if (bg === undefined && fg === undefined) return "";
   const lines: string[] = [];
-  if (bg !== undefined) lines.push(`  --workspace-brand: ${brandColorForCascade(bg)};`);
-  if (fg !== undefined) lines.push(`  --workspace-brand-foreground: ${brandColorForCascade(fg)};`);
+  if (bg !== undefined) lines.push(`  --workspace-icon-surface: ${brandColorForCascade(bg)};`);
+  if (fg !== undefined) lines.push(`  --workspace-icon-foreground: ${brandColorForCascade(fg)};`);
   return lines.join("\n");
 }
 

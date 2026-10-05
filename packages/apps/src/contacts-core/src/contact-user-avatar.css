@@ -11,7 +11,7 @@
     var(--contacts-book-color, var(--workspace-accent)) 24%,
     var(--workspace-surface)
   );
-  --user-avatar-fg: var(--workspace-surface-foreground);
+  --user-avatar-fg: var(--workspace-foreground);
   /* Soft stroke matches `.user-avatar` palette tiles; width stays default 1px. */
   --user-avatar-border: color-mix(
     in oklab,

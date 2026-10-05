@@ -73,7 +73,7 @@ describe("workspace token core", () => {
 
   it("keeps brand primitives out of component paint (tier-2 and brand assignments only)", () => {
     const CORE_ASSIGN =
-      /^\s*--workspace-(?:surface(?:-foreground)?|accent(?:-foreground)?|brand(?:-foreground)?|sidebar-surface(?:-foreground)?)\s*:/;
+      /^\s*--workspace-(?:surface|foreground|accent(?:-foreground)?|sidebar-surface|sidebar-foreground|icon-surface|icon-foreground)\s*:/;
     const STATUS_ASSIGN = /^\s*--meet-mark\s*:/;
     const SKIP = new Set(["styles.css", "user-avatar/src/user-avatar.css"]);
     const leaks: string[] = [];

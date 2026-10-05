@@ -4,7 +4,7 @@
   @apply min-w-48 overflow-hidden rounded-md border shadow-md;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
   background-color: var(--chat-surface, var(--workspace-surface));
 }
@@ -15,14 +15,14 @@
 
 .chat-mention-menu__option {
   @apply flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm;
-  color: var(--chat-text, var(--workspace-surface-foreground));
+  color: var(--chat-text, var(--workspace-foreground));
 }
 
 .chat-mention-menu__option:hover,
 .chat-mention-menu__option[data-active="true"] {
   background-color: var(
     --chat-hover,
-    color-mix(in oklab, var(--workspace-surface-foreground) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }
 
@@ -32,8 +32,5 @@
 
 .chat-mention-menu__empty {
   @apply px-3 py-2 text-sm;
-  color: var(
-    --chat-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }

@@ -107,10 +107,10 @@ export function ColorsSheet() {
     if (!contractHost) return;
 
     const contractTokens = COLOR_COMPONENT_CONTRACT.filter(
-      (t) => t !== "--workspace-brand" && t !== "--workspace-brand-foreground",
+      (t) => t !== "--workspace-icon-surface" && t !== "--workspace-icon-foreground",
     );
     const waiTokens = COLOR_COMPONENT_CONTRACT.filter(
-      (t) => t === "--workspace-brand" || t === "--workspace-brand-foreground",
+      (t) => t === "--workspace-icon-surface" || t === "--workspace-icon-foreground",
     );
 
     setContractRows(

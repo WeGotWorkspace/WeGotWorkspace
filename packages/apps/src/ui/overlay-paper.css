@@ -15,8 +15,6 @@
   --color-background: var(--workspace-surface);
   --color-popover: var(--workspace-surface);
   --color-card: var(--workspace-surface);
-  --button-primary-bg: var(--workspace-accent);
-  --button-primary-fg: var(--workspace-accent-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: var(--workspace-accent-foreground);
   --card-surface-bg: transparent;

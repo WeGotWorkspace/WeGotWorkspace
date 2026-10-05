@@ -9,7 +9,7 @@
   --button-active-color: color-mix(
     in oklab,
     var(--workspace-accent) 55%,
-    var(--workspace-surface-foreground)
+    var(--workspace-foreground)
   );
 }
 

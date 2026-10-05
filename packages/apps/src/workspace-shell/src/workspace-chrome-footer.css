@@ -15,7 +15,7 @@
   border-top: 1px solid
     var(
       --workspace-chrome-footer-border,
-      color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
     );
 }
 

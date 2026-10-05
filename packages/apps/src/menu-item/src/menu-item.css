@@ -25,7 +25,7 @@
   ) {
   color: var(
     --button-outline-hover-color,
-    var(--button-outline-color, var(--workspace-surface-foreground))
+    var(--button-outline-color, var(--workspace-foreground))
   );
   background-color: var(
     --button-outline-hover-background,
@@ -85,7 +85,7 @@
 
 .sidebar-section .menu-item--surface-idle {
   @apply font-medium;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 75%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
 }
 
 .menu-item--surface-selected {
@@ -97,9 +97,9 @@
   @apply font-medium;
   background-color: var(
     --button-outline-active-background,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
-  color: var(--button-active-color, var(--workspace-surface-foreground));
+  color: var(--button-active-color, var(--workspace-foreground));
 }
 
 .menu-item--surface-drop {
@@ -107,7 +107,7 @@
 }
 
 .sidebar-section .menu-item--surface-drop {
-  @apply bg-[color-mix(in_oklab,var(--workspace-sidebar-surface)_22%,transparent)] font-medium text-[var(--workspace-surface-foreground)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--workspace-sidebar-surface)_35%,transparent)];
+  @apply bg-[color-mix(in_oklab,var(--workspace-sidebar-surface)_22%,transparent)] font-medium text-[var(--workspace-foreground)] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--workspace-sidebar-surface)_35%,transparent)];
 }
 
 /* ----- Icon slot ----- */
@@ -179,12 +179,12 @@
 }
 
 .sidebar-section .menu-item__badge {
-  background-color: color-mix(in oklab, var(--workspace-surface-foreground) 14%, transparent);
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 80%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 14%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 80%, transparent);
 }
 
 .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
-  background-color: var(--sidebar-badge-bg, var(--workspace-surface-foreground));
+  background-color: var(--sidebar-badge-bg, var(--workspace-foreground));
   color: var(--sidebar-badge-fg, var(--workspace-accent-foreground));
 }
 

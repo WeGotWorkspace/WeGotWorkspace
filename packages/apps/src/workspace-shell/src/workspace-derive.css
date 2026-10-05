@@ -51,48 +51,42 @@
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
-    var(--workspace-surface-foreground)
+    var(--workspace-foreground)
   );
 
-  --control-border-color: color-mix(in oklch, var(--workspace-surface-foreground) 12%, transparent);
+  --control-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 
-  --input-background: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 6%,
-    var(--workspace-surface)
-  );
+  --input-background: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
   --input-background-focus: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 8%,
+    var(--workspace-foreground) 8%,
     var(--workspace-surface)
   );
   --input-background-disabled: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 4%,
+    var(--workspace-foreground) 4%,
     var(--workspace-surface)
   );
 
-  --button-outline-color: var(--workspace-surface-foreground);
+  --button-outline-color: var(--workspace-foreground);
   --button-outline-hover-color: var(--workspace-accent);
   --button-outline-hover-background: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 8%,
+    var(--workspace-foreground) 8%,
     var(--workspace-surface)
   );
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 12%,
+    var(--workspace-foreground) 12%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-surface-foreground) 16%,
+    var(--workspace-foreground) 16%,
     var(--workspace-surface)
   );
   --button-active-color: var(--workspace-accent);
   --button-ghost-hover-background: var(--button-outline-hover-background);
-  --button-primary-bg: var(--workspace-brand);
-  --button-primary-fg: var(--workspace-brand-foreground);
 
   --menu-item-hover-background: var(--button-outline-hover-background);
   --menu-item-selected-background: var(--button-outline-active-background);
@@ -103,14 +97,10 @@
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
 
-  --switch-off-bg: color-mix(
-    in oklch,
-    var(--workspace-surface-foreground) 18%,
-    var(--workspace-surface)
-  );
+  --switch-off-bg: color-mix(in oklch, var(--workspace-foreground) 18%, var(--workspace-surface));
   --switch-on-bg: var(--workspace-accent);
 
-  --field-label-color: var(--workspace-surface-foreground);
+  --field-label-color: var(--workspace-foreground);
 
   --drive-item-selected-background: color-mix(
     in oklch,

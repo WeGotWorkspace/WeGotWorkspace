@@ -14,12 +14,12 @@
 
 .swatch-color-picker__swatch:hover {
   @apply ring-2 ring-offset-2;
-  ring-color: color-mix(in oklab, var(--workspace-surface-foreground) 18%, transparent);
+  ring-color: color-mix(in oklab, var(--workspace-foreground) 18%, transparent);
 }
 
 .swatch-color-picker__swatch--selected {
   @apply ring-2 ring-offset-2;
-  ring-color: var(--workspace-surface-foreground);
+  ring-color: var(--workspace-foreground);
 }
 
 .swatch-color-picker__swatch--custom {

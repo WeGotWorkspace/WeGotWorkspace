@@ -4,7 +4,7 @@
   @apply flex w-full min-w-0 max-w-full overflow-hidden rounded-lg border;
   border-color: var(
     --chat-border,
-    color-mix(in oklab, var(--workspace-surface-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
   background-color: var(--chat-surface, var(--workspace-surface));
 }
@@ -17,7 +17,7 @@
   @apply relative flex h-20 w-24 shrink-0 items-center justify-center overflow-hidden;
   background-color: var(
     --chat-hover,
-    color-mix(in oklab, var(--workspace-surface-foreground) 4%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
   );
 }
 
@@ -37,10 +37,7 @@
 
 .chat-link-preview__site {
   @apply truncate text-[11px] uppercase tracking-wide;
-  color: var(
-    --chat-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .chat-link-preview__title {
@@ -50,10 +47,7 @@
 .chat-link-preview__description,
 .chat-link-preview__missing {
   @apply line-clamp-2 text-xs;
-  color: var(
-    --chat-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .chat-link-preview__link {

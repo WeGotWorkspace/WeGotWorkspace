@@ -11,10 +11,7 @@
 .calendar-rsvp-page__email,
 .calendar-rsvp-page__status {
   @apply text-sm;
-  color: var(
-    --calendar-muted,
-    color-mix(in oklab, var(--workspace-surface-foreground) 65%, transparent)
-  );
+  color: var(--calendar-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .calendar-rsvp-page__actions {

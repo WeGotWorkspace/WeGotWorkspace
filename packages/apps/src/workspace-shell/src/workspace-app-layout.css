@@ -35,7 +35,7 @@
   @apply shrink-0 border-b p-4 md:p-6;
   border-color: var(
     --workspace-main-header-border-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -54,11 +54,11 @@
   padding-inline: var(--app-sidebar-padding-x, 1rem);
   color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 70%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 70%, transparent)
   );
   border-color: var(
     --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -74,7 +74,7 @@
   @apply border-t py-2;
   border-color: var(
     --workspace-user-footer-border-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -85,17 +85,17 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--workspace-surface-foreground) 75%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
 }
 
 .workspace-sidebar-account-footer__settings-button:hover {
   color: var(
     --button-outline-hover-color,
-    var(--button-outline-color, var(--workspace-surface-foreground))
+    var(--button-outline-color, var(--workspace-foreground))
   );
   background-color: var(
     --button-outline-hover-background,
-    color-mix(in oklab, var(--workspace-surface-foreground) 8%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-foreground) 8%, var(--workspace-surface))
   );
 }
 
@@ -132,10 +132,7 @@
 .workspace-sidebar-toggle[data-unread]::after {
   content: "";
   @apply absolute -right-0.5 -top-0.5 size-2 rounded-full;
-  background-color: var(
-    --notification-inbox-badge-bg,
-    var(--button-primary-bg, var(--workspace-brand))
-  );
+  background-color: var(--notification-inbox-badge-bg, var(--workspace-accent));
 }
 
 /* Same one-shot as the bell badge; mute does not suppress. */
@@ -198,12 +195,12 @@
 .workspace-app-layout__user-footer .user-avatar {
   --user-avatar-label-color: var(
     --workspace-user-footer-text-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 70%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 70%, transparent)
   );
   /* 72% clears WCAG AA on cream sidebar wash (~4.5:1); 65% was ~4.45:1. */
   --user-avatar-subtitle-color: var(
     --workspace-user-footer-subtitle-color,
-    color-mix(in oklab, var(--workspace-surface-foreground) 72%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 72%, transparent)
   );
   /*
    * Accent wash on the sidebar surface, same family as nav item tints.
@@ -214,7 +211,7 @@
     var(--workspace-accent) 16%,
     var(--app-sidebar-bg, var(--workspace-sidebar-surface))
   );
-  --user-avatar-fg: var(--workspace-surface-foreground);
+  --user-avatar-fg: var(--workspace-foreground);
   --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
     in oklch,
