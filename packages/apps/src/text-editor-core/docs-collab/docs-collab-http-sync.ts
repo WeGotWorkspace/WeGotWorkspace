@@ -17,7 +17,7 @@ import {
 } from "./docs-collab-http-wire";
 import { applyGuardedRemoteUpdate } from "./docs-collab-update-guard";
 import { MESH_ORIGIN } from "./docs-collab-utils";
-import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
+import type { RelayReason, RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 
 export type DocsHttpRosterPeer = {
   id: string;
@@ -39,7 +39,7 @@ export type DocsCollabHttpSyncPorts = {
   webrtcUnavailable: () => boolean;
   send: (to: string, type: "yjs" | "yjs-sv", payload: YjsHttpPayload) => void;
   sendStateVectorOnChannel: (peerId: string) => void;
-  requestRelay: (peerId: string) => Promise<RelayRequestOutcome>;
+  requestRelay: (peerId: string, reason: "timeout" | "refresh") => Promise<RelayRequestOutcome>;
   onRelay: (peerId: string, name: string, outcome: RelayRequestOutcome) => void;
   setFastPoll: (active: boolean) => void;
   getYDoc: () => Y.Doc | null;
@@ -56,6 +56,12 @@ export class DocsCollabHttpSync {
   private readonly seenAt = new Map<string, number>();
 
   private readonly relayRequested = new Set<string>();
+
+  /** Epoch ms when a still-closed channel may ask for a fresh credential. */
+  private readonly relayRefreshAt = new Map<string, number>();
+
+  /** Peers that already received a credential, so the next ask is a refresh. */
+  private readonly relayIssued = new Set<string>();
 
   private readonly lastResync = new Map<string, number>();
 
@@ -111,11 +117,34 @@ export class DocsCollabHttpSync {
       this.fastPoll = wantFast;
       this.ports.setFastPoll(wantFast);
     }
+    this.expireClosedRelayMarks(peers, now);
     for (const peer of relayDuePeers(peers, now, immediate, this.relayRequested)) {
+      const reason: Extract<RelayReason, "timeout" | "refresh"> = this.relayIssued.has(peer.id)
+        ? "refresh"
+        : "timeout";
       this.relayRequested.add(peer.id);
-      void this.ports.requestRelay(peer.id).then((outcome) => {
+      void this.ports.requestRelay(peer.id, reason).then((outcome) => {
+        if (outcome.outcome === "issued") {
+          this.relayIssued.add(peer.id);
+          const ttlMs = outcome.turn.ttl * 1000;
+          if (Number.isFinite(ttlMs) && ttlMs > 0) {
+            this.relayRefreshAt.set(peer.id, now + Math.max(0, ttlMs - 60_000));
+          }
+        }
         this.ports.onRelay(peer.id, peer.name, outcome);
       });
+    }
+  }
+
+  /** A channel that is still down after the credential's refresh window may ask again. */
+  private expireClosedRelayMarks(peers: readonly HttpFallbackPeer[], now: number): void {
+    const connected = new Set(peers.filter((peer) => peer.connected).map((peer) => peer.id));
+    for (const id of [...this.relayRequested]) {
+      if (connected.has(id)) continue;
+      const refreshAt = this.relayRefreshAt.get(id);
+      if (refreshAt == null || now < refreshAt) continue;
+      this.relayRequested.delete(id);
+      this.relayRefreshAt.delete(id);
     }
   }
 

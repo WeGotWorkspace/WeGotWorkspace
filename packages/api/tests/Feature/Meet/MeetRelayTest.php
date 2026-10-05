@@ -39,7 +39,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
 
         $response->assertOk();
         $this->assertSame(['turn:relay.example.org:3478'], $response->json('turn.urls'));
-        $this->assertSame(600, $response->json('turn.ttl'));
+        $this->assertSame(3600, $response->json('turn.ttl'));
         $this->assertSame(
             RtcTurnCredentialService::credential((string) $response->json('turn.username'), 'north'),
             $response->json('turn.credential'),
@@ -121,7 +121,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
         ])
             ->assertForbidden()
             ->assertJson(['error' => 'relay_denied']);
-        $this->assertRelayEvent('guest', 'failed', 'denied');
+        $this->assertRelayEvent($this->guestActor($sessionKey), 'failed', 'denied');
 
         $this->admitGuest($token, 'host-peer', 'guest-peer');
         $this->withoutBearer()->postJson($this->meetRoomPath('/participants'), [
@@ -138,7 +138,7 @@ final class MeetRelayTest extends WgwDatabaseTestCase
         ])
             ->assertOk()
             ->assertJsonStructure(['turn' => ['urls', 'username', 'credential', 'ttl']]);
-        $this->assertRelayEvent('guest', 'failed', 'issued');
+        $this->assertRelayEvent($this->guestActor($sessionKey), 'failed', 'issued');
     }
 
     public function test_guest_on_an_unreserved_code_needs_a_member_in_the_room(): void
@@ -180,6 +180,37 @@ final class MeetRelayTest extends WgwDatabaseTestCase
         ])->assertForbidden();
 
         $this->assertSame(0, RtcRelayEvent::query()->count());
+    }
+
+    public function test_refresh_re_mints_without_a_hint_or_a_could_not_connect_notice(): void
+    {
+        $this->configureRelay();
+        $token = $this->userBearerToken();
+        $this->joinAsMember('host-peer', $token);
+        $guest = $this->withoutBearer()->guestJoin('guest-peer', 'Guest');
+
+        $this->withBearer($token)->postJson($this->meetRoomPath('/relay'), [
+            'peerId' => 'host-peer',
+            'target' => 'guest-peer',
+            'reason' => 'refresh',
+        ])->assertOk();
+
+        $this->assertSame([], $this->pollGuest($guest['sessionKey']));
+        $this->assertRelayEvent('bob', 'refresh', 'issued');
+        $this->assertSame(0, Notification::query()->count());
+
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => '',
+        ]);
+        $this->withBearer($token)->postJson($this->meetRoomPath('/relay'), [
+            'peerId' => 'host-peer',
+            'target' => 'guest-peer',
+            'reason' => 'refresh',
+        ])->assertStatus(503);
+
+        $this->assertRelayEvent('bob', 'refresh', 'unavailable');
+        $this->assertSame(0, Notification::query()->count());
     }
 
     public function test_relay_rejects_an_unknown_reason_and_an_absent_target(): void
@@ -264,6 +295,11 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             ->json('messages');
 
         return is_array($messages) ? $messages : [];
+    }
+
+    private function guestActor(string $sessionKey): string
+    {
+        return 'guest:'.substr(hash('sha256', $sessionKey), 0, 8);
     }
 
     private function assertRelayEvent(string $actor, string $reason, string $outcome): void

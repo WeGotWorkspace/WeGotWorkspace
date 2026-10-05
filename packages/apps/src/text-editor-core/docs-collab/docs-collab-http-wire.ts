@@ -1,8 +1,11 @@
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
 
-/** Encoded JSON payload cap from contract C4. Larger updates are split. */
-export const YJS_HTTP_MAX_ENCODED_BYTES = 64 * 1024;
+/**
+ * Encoded JSON payload cap from contract C4. Larger updates are split.
+ * 63 KiB stays under the server's 64 KiB check when a base64 `/` is escaped.
+ */
+export const YJS_HTTP_MAX_ENCODED_BYTES = 63 * 1024;
 
 export const YJS_HTTP_BATCH_MS = 300;
 

@@ -25,15 +25,12 @@ import {
 } from "./helpers/rtc-chaos";
 
 /**
- * Real-time chaos suite (#1091). Scenarios stay `test.fixme` until the issue
- * they cover has landed. Parallel workers live in `playwright.chaos.config.mjs`.
+ * Real-time chaos suite (#1091). Every scenario in this file runs; none are
+ * `test.fixme`. Parallel workers live in `playwright.chaos.config.mjs`.
  *
  * Live: concurrent seed and offline merge (#1089), viewer body (#1088),
  * accented path (#1087), document over 200 KB (#1093), Meet video and 3s
  * recovery (#1094), dropped-poll admit (#1086), forced HTTP fallback (#1095).
- *
- * Offline merge, the accented path, and the large document waited on #1127.
- * That fix landed in #1128, so those three scenarios already run.
  */
 
 test.describe.configure({ mode: "parallel" });

@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\RateLimiter;
  * including a self-minted 32-hex key — is anonymous and shares the address
  * budget. Signed actors are keyed per room, with an actor-wide ceiling and an
  * address ceiling so one office NAT still cannot multiply budgets by minting
- * sessions.
+ * sessions. Accounts (`u:`) are not subject to that address ceiling: an office
+ * NAT of signed-in people must not share one 1,200/min bucket. Guests (`g:`)
+ * keep it. Anonymous traffic returns only the 300/min address limit — a second
+ * limit on the same `ip:` key is incremented too, and would halve the budget.
  */
 final class RtcRoomRateLimiters
 {
@@ -54,18 +57,20 @@ final class RtcRoomRateLimiters
             if ($actor === null) {
                 return [
                     Limit::perMinute(self::ROOM_REQUESTS_PER_MINUTE)->by($address),
-                    Limit::perMinute(self::ADDRESS_ROOM_REQUESTS_PER_MINUTE)->by($address),
                 ];
             }
 
             $room = self::roomId($request);
             $perRoom = $room === '' ? $actor : $actor.'|'.$room;
-
-            return [
+            $limits = [
                 Limit::perMinute(self::ROOM_REQUESTS_PER_MINUTE)->by($perRoom),
                 Limit::perMinute(self::ACTOR_REQUESTS_PER_MINUTE)->by($actor),
-                Limit::perMinute(self::ADDRESS_ROOM_REQUESTS_PER_MINUTE)->by($address),
             ];
+            if (str_starts_with($actor, 'g:')) {
+                $limits[] = Limit::perMinute(self::ADDRESS_ROOM_REQUESTS_PER_MINUTE)->by($address);
+            }
+
+            return $limits;
         });
 
         RateLimiter::for(self::ANONYMOUS_JOIN, static function (Request $request): Limit {

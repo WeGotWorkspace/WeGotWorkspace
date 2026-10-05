@@ -274,7 +274,7 @@ export class DocsRtcSession {
             });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
-          requestRelay: (peerId) => this.requestPeerRelay(peerId),
+          requestRelay: (peerId, reason) => this.requestPeerRelay(peerId, reason),
           onRelay: (peerId, name, outcome) => {
             if (outcome.outcome === "issued") {
               this.relayReady.add(peerId);
@@ -348,7 +348,10 @@ export class DocsRtcSession {
       }));
   }
 
-  private requestPeerRelay(peerId: string): Promise<RelayRequestOutcome> {
+  private requestPeerRelay(
+    peerId: string,
+    reason: "timeout" | "refresh" = "timeout",
+  ): Promise<RelayRequestOutcome> {
     const peerIdLocal = this.mesh.getMyId();
     if (!peerIdLocal) return Promise.resolve({ outcome: "error", error: "not_joined" });
     const net = this.mesh.localNetClass() ?? peekNetClass() ?? undefined;
@@ -360,7 +363,7 @@ export class DocsRtcSession {
         roomId: this.options.room,
         peerId: peerIdLocal,
         target: peerId,
-        reason: "timeout",
+        reason,
         ...(net ? { net } : {}),
       },
     );

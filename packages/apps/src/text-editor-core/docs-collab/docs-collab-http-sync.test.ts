@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { TurnCredentials } from "@/lib/rtc/types";
 import * as Y from "yjs";
 import type { DocsCollabAccess } from "./docs-collab-access";
 import { DocsCollabHttpSync, type DocsCollabHttpSyncPorts } from "./docs-collab-http-sync";
@@ -47,5 +48,49 @@ describe("DocsCollabHttpSync state-vector answers", () => {
     const commenter = harness("comment", doc);
     commenter.sync.ingest([message]);
     expect(commenter.sent).toEqual([]);
+  });
+});
+
+describe("DocsCollabHttpSync relay refresh", () => {
+  it("asks again with refresh after the credential window while the channel stays closed", async () => {
+    let now = 1_000;
+    const reasons: string[] = [];
+    const turn: TurnCredentials = {
+      urls: ["turn:turn.example:3478"],
+      username: "user",
+      credential: "cred",
+      ttl: 180,
+    };
+    const sync = new DocsCollabHttpSync({
+      now: () => now,
+      peers: () => [
+        { id: "peer-b", name: "Bea", caps: ["relay-jit", "yjs-http"], connected: false },
+      ],
+      webrtcUnavailable: () => true,
+      send: () => {},
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async (_peerId, reason) => {
+        reasons.push(reason);
+        return { outcome: "issued", turn };
+      },
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => null,
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.evaluate();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reasons).toEqual(["timeout"]);
+
+    sync.evaluate();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reasons).toEqual(["timeout"]);
+
+    now += 120_000;
+    sync.evaluate();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reasons).toEqual(["timeout", "refresh"]);
   });
 });

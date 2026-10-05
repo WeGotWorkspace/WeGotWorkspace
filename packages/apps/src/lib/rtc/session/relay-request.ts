@@ -7,7 +7,7 @@ import type { TurnCredentials } from "@/lib/rtc/types";
  * session state, so collab can pass its own signaling client unmodified.
  */
 
-export type RelayReason = "precheck" | "timeout" | "failed";
+export type RelayReason = "precheck" | "timeout" | "failed" | "refresh";
 
 export type RelayRequest = {
   roomId: string;

@@ -3048,7 +3048,7 @@ export interface paths {
                     format?: "markdown" | "yjs";
                 };
                 header?: {
-                    /** @description Entity tag from an earlier load. The server answers 304 when the document still matches. */
+                    /** @description Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches. */
                     "If-None-Match"?: string;
                 };
                 path?: never;
@@ -3059,13 +3059,13 @@ export interface paths {
                 /** @description Document */
                 200: {
                     headers: {
-                        /** @description Entity tag of the stored document. */
+                        /** @description Entity tag of the representation in this response. Markdown (format omitted or `markdown`) is sha1 of those bytes and is only valid for `If-None-Match` on a markdown load. `?format=yjs` is sha1 of the Yjs sidecar; only that tag is valid for `If-Match` on save. */
                         ETag?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Not modified — the document still matches `If-None-Match`. */
+                /** @description Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag. */
                 304: {
                     headers: {
                         [name: string]: unknown;
@@ -3099,7 +3099,7 @@ export interface paths {
                     path: string;
                 };
                 header?: {
-                    /** @description Entity tag the client last loaded. The save is refused with 412 when the stored document moved on. */
+                    /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. */
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
@@ -3112,7 +3112,7 @@ export interface paths {
                 /** @description Saved */
                 200: {
                     headers: {
-                        /** @description Entity tag of the stored document. */
+                        /** @description Entity tag of the stored Yjs sidecar (sha1 of the sidecar bytes). This is the tag `If-Match` checks. It is not the markdown representation tag. */
                         ETag?: string;
                         [name: string]: unknown;
                     };

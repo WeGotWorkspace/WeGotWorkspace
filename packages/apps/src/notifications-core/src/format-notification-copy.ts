@@ -216,9 +216,10 @@ function formatRtcDirectConnect(data: NotificationFacts): NotificationCopy {
   for (const person of people) {
     if (person == null || typeof person !== "object") continue;
     const row = person as { name?: unknown; where?: unknown };
-    const name = typeof row.name === "string" ? row.name.trim() : "";
+    const rawName = typeof row.name === "string" ? row.name.trim() : "";
     const where = typeof row.where === "string" ? row.where.trim() : "";
-    if (!name || !where) continue;
+    if (!rawName || !where) continue;
+    const name = rawName.startsWith("guest:") ? "a guest" : rawName;
     parts.push(`${name} (${where})`);
   }
   return { title, body: parts.length > 0 ? parts.join(", ") : null };

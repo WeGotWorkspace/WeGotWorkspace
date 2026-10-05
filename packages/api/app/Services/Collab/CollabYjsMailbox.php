@@ -41,7 +41,7 @@ final class CollabYjsMailbox
             throw new RtcSignalingException(400, ['error' => 'invalid_peer']);
         }
 
-        $encoded = json_encode($payload);
+        $encoded = json_encode($payload, JSON_UNESCAPED_SLASHES);
         if ($encoded === false || strlen($encoded) > self::MAX_ENCODED_BYTES) {
             throw new RtcSignalingException(413, ['error' => 'payload_too_large']);
         }

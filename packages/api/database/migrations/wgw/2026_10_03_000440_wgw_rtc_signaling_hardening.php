@@ -50,9 +50,7 @@ return new class extends WgwMigration
             $this->dropIndex($table, $this->createdAtIndexName($table));
         }
 
-        foreach (['access', 'browser_id'] as $column) {
-            $this->dropColumn('collab_peers', $column);
-        }
+        $this->dropCollabPeerColumns();
 
         foreach (self::PEER_TABLES as $table) {
             $this->dropIndex($table, $this->seenAtIndexName($table));
@@ -84,6 +82,29 @@ return new class extends WgwMigration
             if (in_array('net', $missing, true)) {
                 $blueprint->string('net', 16)->default('');
             }
+        });
+    }
+
+    /**
+     * Mirror of {@see addCollabPeerColumns()}: drop only the columns this
+     * migration actually finds, so a partial upgrade can roll back.
+     */
+    private function dropCollabPeerColumns(): void
+    {
+        if (! $this->wgwHasTable('collab_peers')) {
+            return;
+        }
+
+        $present = array_values(array_filter(
+            ['access', 'browser_id'],
+            fn (string $column): bool => $this->wgwHasColumn('collab_peers', $column),
+        ));
+        if ($present === []) {
+            return;
+        }
+
+        $this->wgw()->table('collab_peers', function (Blueprint $blueprint) use ($present): void {
+            $blueprint->dropColumn($present);
         });
     }
 

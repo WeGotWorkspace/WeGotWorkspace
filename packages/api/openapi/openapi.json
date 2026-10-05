@@ -3400,7 +3400,7 @@
             "name": "If-None-Match",
             "in": "header",
             "required": false,
-            "description": "Entity tag from an earlier load. The server answers 304 when the document still matches.",
+            "description": "Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches.",
             "schema": {
               "type": "string"
             }
@@ -3411,7 +3411,7 @@
             "description": "Document",
             "headers": {
               "ETag": {
-                "description": "Entity tag of the stored document.",
+                "description": "Entity tag of the representation in this response. Markdown (format omitted or `markdown`) is sha1 of those bytes and is only valid for `If-None-Match` on a markdown load. `?format=yjs` is sha1 of the Yjs sidecar; only that tag is valid for `If-Match` on save.",
                 "schema": {
                   "type": "string"
                 }
@@ -3419,7 +3419,7 @@
             }
           },
           "304": {
-            "description": "Not modified — the document still matches `If-None-Match`."
+            "description": "Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag."
           },
           "403": {
             "description": "No read access to the path",
@@ -3467,7 +3467,7 @@
             "name": "If-Match",
             "in": "header",
             "required": false,
-            "description": "Entity tag the client last loaded. The save is refused with 412 when the stored document moved on.",
+            "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on.",
             "schema": {
               "type": "string"
             }
@@ -3487,7 +3487,7 @@
             "description": "Saved",
             "headers": {
               "ETag": {
-                "description": "Entity tag of the stored document.",
+                "description": "Entity tag of the stored Yjs sidecar (sha1 of the sidecar bytes). This is the tag `If-Match` checks. It is not the markdown representation tag.",
                 "schema": {
                   "type": "string"
                 }

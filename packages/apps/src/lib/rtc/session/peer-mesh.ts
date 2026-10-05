@@ -698,6 +698,7 @@ export class RtcPeerMesh {
     this.pollLoop.release();
     this.networkUnsubscribe?.();
     this.networkUnsubscribe = null;
+    this.meshRelay?.dispose();
     this.iceOut?.dispose();
     this.recovery?.dispose();
     this.visibilityUnsubscribe?.();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Collab;
 
+use App\Services\Collab\DocCollabDocumentService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
@@ -191,7 +192,7 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
 
     public function test_a_held_lock_blocks_the_first_open_until_the_other_writer_finishes(): void
     {
-        $lockPath = app(WgwStorage::class)->files()->path(self::SIDECAR_STORAGE_PATH.'.lock');
+        $lockPath = DocCollabDocumentService::documentLockPath(self::SIDECAR_STORAGE_PATH);
         $flag = $this->dataDir.'/lock-held';
         $script = $this->dataDir.'/hold-lock.php';
         file_put_contents($script, <<<'PHP'

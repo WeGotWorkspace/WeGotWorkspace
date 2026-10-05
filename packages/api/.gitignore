@@ -16,6 +16,7 @@ storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
+storage/framework/locks/*
 bootstrap/cache/*.php
 !bootstrap/cache/.gitignore
 !storage/logs/.gitignore

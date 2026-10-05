@@ -37,7 +37,7 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('alice', $username);
     }
 
-    public function test_mint_returns_urls_hmac_credential_and_ten_minute_ttl(): void
+    public function test_mint_returns_urls_hmac_credential_and_one_hour_ttl(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_TURN_URL => "turn:relay.example.org:3478\nturns:relay.example.org:5349",
@@ -49,8 +49,8 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
 
         $this->assertNotNull($turn);
         $this->assertSame(['turn:relay.example.org:3478', 'turns:relay.example.org:5349'], $turn['urls']);
-        $this->assertSame(600, $turn['ttl']);
-        $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 600), $turn['username']);
+        $this->assertSame(3600, $turn['ttl']);
+        $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 3600), $turn['username']);
         $this->assertSame(
             RtcTurnCredentialService::credential($turn['username'], 'north'),
             $turn['credential'],

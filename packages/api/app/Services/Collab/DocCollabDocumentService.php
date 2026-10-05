@@ -12,7 +12,6 @@ use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
-use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
 
 /**
@@ -169,22 +168,23 @@ final class DocCollabDocumentService
     }
 
     /**
-     * Shared-hosting lock: a sibling of the sidecar, not a cache store.
+     * Shared-hosting lock under the framework lock directory, not beside the
+     * user's document. The path is the sha1 of the sidecar key.
      *
      * @return resource
      */
     private function acquireDocumentLock(string $sidecarKey)
     {
-        $disk = $this->storage->files();
-        if (! $disk instanceof FilesystemAdapter) {
-            $this->fail('lock_unavailable', 503);
-        }
-
         try {
-            return ExclusiveFileLock::acquire($disk->path($sidecarKey.'.lock'));
+            return ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
         } catch (\RuntimeException) {
             $this->fail('lock_unavailable', 503);
         }
+    }
+
+    public static function documentLockPath(string $sidecarKey): string
+    {
+        return storage_path('framework/locks/'.sha1($sidecarKey));
     }
 
     /**

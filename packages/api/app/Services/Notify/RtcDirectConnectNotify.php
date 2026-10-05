@@ -33,6 +33,9 @@ final class RtcDirectConnectNotify
                 if ($name === '' || $where === '') {
                     continue;
                 }
+                if (str_starts_with($name, 'guest:')) {
+                    $name = 'a guest';
+                }
                 $parts[] = $name.' ('.$where.')';
             }
         }

@@ -21,8 +21,14 @@ use App\Services\Rtc\Signaling\RtcSignalingException;
  */
 final class RtcRelayService
 {
-    /** @var list<string> */
-    public const REASONS = ['precheck', 'timeout', 'failed'];
+    /**
+     * `refresh` re-mints a credential that is already in use. It is not a
+     * failed connection, so it does not hint the other peer and health does
+     * not count it as "couldn't connect".
+     *
+     * @var list<string>
+     */
+    public const REASONS = ['precheck', 'timeout', 'failed', 'refresh'];
 
     public const OUTCOME_ISSUED = 'issued';
 
@@ -77,19 +83,35 @@ final class RtcRelayService
 
         $this->record($channel, $actor, $reason, self::OUTCOME_ISSUED);
         $store->rememberNetClass($room, $peerId, RtcNetClass::normalize($body['net'] ?? null));
-        if ($target !== self::ANY_TARGET) {
+        if ($target !== self::ANY_TARGET && $reason !== 'refresh') {
             // The other side has to turn on its own relay, or the pair still
-            // has no common path.
+            // has no common path. A refresh only replaces this side's secret.
             $store->insertServerMessage($room, $peerId, $target, 'relay-hint', ['reason' => $reason]);
         }
 
         return ['turn' => $turn];
     }
 
-    /** Username for authenticated actors, the literal `guest` for everyone else. */
+    /**
+     * Username for an account. A guest is `guest:` plus the first 8 hex
+     * characters of sha256(session key), so two guests behind one NAT count
+     * as two people and the notice can say "a guest" instead of a username.
+     */
     public static function actorLabel(string $actorMarker): string
     {
-        return str_starts_with($actorMarker, 'u:') ? substr($actorMarker, 2) : 'guest';
+        if (str_starts_with($actorMarker, 'u:')) {
+            return substr($actorMarker, 2);
+        }
+
+        $sessionKey = str_starts_with($actorMarker, 'g:') ? substr($actorMarker, 2) : $actorMarker;
+
+        return 'guest:'.substr(hash('sha256', $sessionKey), 0, 8);
+    }
+
+    /** Notice copy for a counted guest label. Usernames pass through. */
+    public static function noticeName(string $actor): string
+    {
+        return str_starts_with($actor, 'guest:') ? 'a guest' : $actor;
     }
 
     /**
