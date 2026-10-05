@@ -7,7 +7,6 @@ namespace App\Services\Rtc;
 use App\Models\RtcRelayEvent;
 use App\Models\RtcSessionMetric;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
@@ -137,7 +136,7 @@ final class RtcRealtimeHealthService
      * One row per percentile: `ORDER BY column, id LIMIT 1 OFFSET floor(p·n)`.
      * The week's samples stay in the database.
      *
-     * @param  Builder<Model>  $query
+     * @param  Builder<RtcSessionMetric>  $query
      */
     private function percentileAt(Builder $query, string $column, float $fraction): ?int
     {
