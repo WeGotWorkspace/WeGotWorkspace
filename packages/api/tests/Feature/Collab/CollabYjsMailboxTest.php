@@ -105,6 +105,19 @@ final class CollabYjsMailboxTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'invalid_peer']);
     }
 
+    public function test_a_slash_heavy_payload_under_the_cap_is_accepted(): void
+    {
+        [$bob, $carol] = $this->twoWriters();
+        $update = str_repeat('A/', 32_500);
+        $this->assertSame(65_000, strlen($update));
+        $this->assertGreaterThan(0, substr_count($update, '/'));
+
+        $this->send($this->userBearerToken(), $bob, $carol, 'yjs', [
+            'u' => $update,
+            'n' => 1,
+        ])->assertOk();
+    }
+
     public function test_an_encoded_payload_over_64_kib_is_rejected(): void
     {
         $bob = $this->join($this->userBearerToken(), 'Bob');

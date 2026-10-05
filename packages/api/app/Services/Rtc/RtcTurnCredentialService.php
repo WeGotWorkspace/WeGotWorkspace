@@ -15,7 +15,7 @@ namespace App\Services\Rtc;
  */
 final class RtcTurnCredentialService
 {
-    public const TTL_SECONDS = 600;
+    public const TTL_SECONDS = 3600;
 
     public function __construct(private RtcSettingsService $settings) {}
 

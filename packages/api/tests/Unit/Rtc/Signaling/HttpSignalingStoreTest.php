@@ -330,6 +330,23 @@ final class HttpSignalingStoreTest extends TestCase
         $this->assertSame(1, $store->countPeers('room-a'));
     }
 
+    public function test_prune_keeps_a_live_peer_mailbox_and_drops_the_stale_one(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = 1_700_000_000;
+        $store->upsertPeer('room-a', 'peer-live', 'Live', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'peer-stale', 'Stale', 'u:bob', $now - 120);
+        $store->insertServerMessage('room-a', 'host', 'peer-live', 'chat', ['text' => 'admit']);
+        $store->insertServerMessage('room-a', 'host', 'peer-stale', 'chat', ['text' => 'admit']);
+
+        $store->pruneOldRows($now);
+
+        $this->assertNotNull(MeetPeer::query()->where('peer_id', 'peer-live')->first());
+        $this->assertNull(MeetPeer::query()->where('peer_id', 'peer-stale')->first());
+        $this->assertSame(1, MeetMessage::query()->where('to_peer', 'peer-live')->count());
+        $this->assertSame(0, MeetMessage::query()->where('to_peer', 'peer-stale')->count());
+    }
+
     public function test_prune_removes_only_the_stale_room_when_a_peer_id_is_reused(): void
     {
         $store = new HttpSignalingStore(RtcSignalingPolicy::meet());

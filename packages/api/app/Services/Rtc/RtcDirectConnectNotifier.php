@@ -28,6 +28,7 @@ final class RtcDirectConnectNotifier
         $start = Carbon::createFromTimestamp($now)->startOfDay()->getTimestamp();
         $rows = RtcRelayEvent::query()
             ->where('outcome', RtcRelayService::OUTCOME_UNAVAILABLE)
+            ->where('reason', '!=', 'refresh')
             ->where('created_at', '>=', $start)
             ->where('created_at', '<=', $now)
             ->get(['actor', 'channel']);

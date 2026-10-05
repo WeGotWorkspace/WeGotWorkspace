@@ -58,6 +58,24 @@ final class RtcDirectConnectNotificationTest extends WgwDatabaseTestCase
         $this->assertSame(0, Notification::query()->where('principal', 'bob')->count());
     }
 
+    public function test_guest_labels_count_separately_and_read_as_a_guest(): void
+    {
+        $now = time();
+        $this->insertUnavailable($now - 30, 'guest:'.substr(hash('sha256', 'session-one'), 0, 8), 'meet');
+        $this->insertUnavailable($now - 20, 'guest:'.substr(hash('sha256', 'session-two'), 0, 8), 'collab');
+        app(RtcDirectConnectNotifier::class)->notifyFromToday($now);
+
+        $notice = Notification::query()->where('principal', 'alice')->sole();
+        $this->assertSame(
+            "2 people couldn't connect directly to a call or document today.",
+            $notice->title,
+        );
+        $body = (string) $notice->body;
+        $this->assertStringContainsString('a guest (Meet)', $body);
+        $this->assertStringContainsString('a guest (Docs)', $body);
+        $this->assertStringNotContainsString('guest:', $body);
+    }
+
     private function insertUnavailable(int $createdAt, string $actor, string $channel): void
     {
         RtcRelayEvent::query()->create([

@@ -124,6 +124,42 @@ final class RtcRoomThrottleTest extends WgwDatabaseTestCase
         $this->assertGreaterThan(0, $accepted);
     }
 
+    public function test_five_accounts_from_one_address_each_complete_three_hundred_requests(): void
+    {
+        foreach (['office1', 'office2', 'office3', 'office4', 'office5'] as $username) {
+            $this->seedWgwUser($username, displayName: $username);
+        }
+
+        foreach (['office1', 'office2', 'office3', 'office4', 'office5'] as $username) {
+            $token = $this->issueBearerTokenFor($username);
+            for ($request = 0; $request < 300; $request++) {
+                $status = $this->withBearer($token)
+                    ->getJson('/api/v1/rooms/shared-nat/configuration')
+                    ->getStatusCode();
+                $this->assertNotSame(
+                    429,
+                    $status,
+                    $username.' was limited on request '.($request + 1),
+                );
+            }
+        }
+    }
+
+    public function test_anonymous_room_traffic_stops_at_three_hundred_not_one_hundred_fifty(): void
+    {
+        $accepted = 0;
+
+        for ($request = 0; $request < 320; $request++) {
+            $status = $this->getJson($this->meetRoomPath('/configuration'))->getStatusCode();
+            if ($status === 429) {
+                break;
+            }
+            $accepted++;
+        }
+
+        $this->assertSame(300, $accepted);
+    }
+
     public function test_an_authenticated_join_is_not_charged_to_the_anonymous_bucket(): void
     {
         $token = $this->userBearerToken();

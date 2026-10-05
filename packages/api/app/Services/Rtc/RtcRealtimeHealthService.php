@@ -6,6 +6,7 @@ namespace App\Services\Rtc;
 
 use App\Models\RtcRelayEvent;
 use App\Models\RtcSessionMetric;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -39,6 +40,7 @@ final class RtcRealtimeHealthService
         $weekStart = $now - self::WEEK_SECONDS;
         $unavailableActors = RtcRelayEvent::query()
             ->where('outcome', RtcRelayService::OUTCOME_UNAVAILABLE)
+            ->where('reason', '!=', 'refresh')
             ->where('created_at', '>=', $weekStart)
             ->where('created_at', '<=', $now)
             ->pluck('actor')
@@ -71,26 +73,16 @@ final class RtcRealtimeHealthService
             ->where('created_at', '>=', $start)
             ->where('created_at', '<=', $now);
         $samples = (clone $query)->count();
-        $join = (clone $query)
-            ->where('join_ms', '>', 0)
-            ->orderBy('join_ms')
-            ->pluck('join_ms')
-            ->map(static fn (mixed $value): int => (int) $value)
-            ->all();
-        $poll = (clone $query)
-            ->orderBy('poll_rtt_ms')
-            ->pluck('poll_rtt_ms')
-            ->map(static fn (mixed $value): int => (int) $value)
-            ->all();
+        $joins = (clone $query)->where('join_ms', '>', 0);
 
         return [
             'samples' => $samples,
-            'joinP50Ms' => $this->percentile($join, 50),
-            'joinP95Ms' => $this->percentile($join, 95),
+            'joinP50Ms' => $this->percentileAt($joins, 'join_ms', 0.50),
+            'joinP95Ms' => $this->percentileAt($joins, 'join_ms', 0.95),
             'relayPercent' => $this->percent((clone $query)->where('candidate_type', 'relay')->count(), $samples),
             'failedPairsPercent' => $this->percent((clone $query)->where('failed_pairs', '>', 0)->count(), $samples),
             'fallbackPercent' => $this->percent((clone $query)->where('http_fallback', true)->count(), $samples),
-            'pollP95Ms' => $this->percentile($poll, 95),
+            'pollP95Ms' => $this->percentileAt(clone $query, 'poll_rtt_ms', 0.95),
             'constrainedPercent' => $this->percent(
                 (clone $query)->whereIn('net', self::CONSTRAINED_NETS)->count(),
                 $samples,
@@ -123,6 +115,7 @@ final class RtcRealtimeHealthService
         $rows = RtcRelayEvent::query()
             ->where('created_at', '>=', $start)
             ->where('created_at', '<=', $now)
+            ->where('reason', '!=', 'refresh')
             ->get(['created_at', 'outcome']);
         foreach ($rows as $row) {
             $outcome = (string) $row->outcome;
@@ -140,19 +133,31 @@ final class RtcRealtimeHealthService
     }
 
     /**
-     * @param  array<int, int>  $sorted
+     * One row per percentile: `ORDER BY column, id LIMIT 1 OFFSET floor(p·n)`.
+     * The week's samples stay in the database.
+     *
+     * @param  Builder<RtcSessionMetric>  $query
      */
-    private function percentile(array $sorted, float $p): ?int
+    private function percentileAt(Builder $query, string $column, float $fraction): ?int
     {
-        $sorted = array_values($sorted);
-        $count = count($sorted);
+        $count = (clone $query)->count();
         if ($count === 0) {
             return null;
         }
-        $rank = (int) ceil(($p / 100) * $count);
-        $index = max(0, min($count - 1, $rank - 1));
 
-        return $sorted[$index];
+        $offset = (int) floor($fraction * $count);
+        if ($offset >= $count) {
+            $offset = $count - 1;
+        }
+
+        $value = (clone $query)
+            ->orderBy($column)
+            ->orderBy('id')
+            ->offset($offset)
+            ->limit(1)
+            ->value($column);
+
+        return $value === null ? null : (int) $value;
     }
 
     private function percent(int $part, int $whole): float

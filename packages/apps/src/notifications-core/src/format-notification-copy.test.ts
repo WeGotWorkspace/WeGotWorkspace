@@ -252,6 +252,21 @@ describe("formatNotificationCopy", () => {
     expect(copy.body).not.toContain("symmetric");
   });
 
+  it("shows a guest label instead of the hashed session key", () => {
+    const copy = formatNotificationCopy({
+      domain: "rtc",
+      action: "direct_connect",
+      title: "legacy",
+      body: "legacy",
+      data: {
+        count: 1,
+        people: [{ name: "guest:ab12cd34", where: "Meet" }],
+      },
+    });
+    expect(copy.body).toBe("a guest (Meet)");
+    expect(copy.body).not.toContain("guest:");
+  });
+
   it("falls back to stored title/body when data is missing", () => {
     expect(
       formatNotificationCopy({

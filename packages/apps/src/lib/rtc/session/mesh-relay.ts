@@ -1,4 +1,5 @@
 import type { NetClass } from "@/lib/rtc/net-probe";
+import { selectedPairIsRelay } from "@/meet-core/src/meet-video-sender";
 import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import { needsRelayPrecheck } from "@/lib/rtc/session/relay-policy";
 import {
@@ -38,7 +39,8 @@ export type MeshRelayPorts = {
  *
  * Credentials die with the `ttl` the server returned. This re-mints at
  * `ttl - 60s` and again on ICE restart, then puts them on the existing
- * connection. A 25-minute call is not exercised here.
+ * connection. Refresh posts `reason: "refresh"` and only for a pair whose
+ * selected candidate is still a relay.
  */
 export class MeshRelay {
   private turn: TurnCredentials | null = null;
@@ -52,6 +54,10 @@ export class MeshRelay {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly ports: MeshRelayPorts) {}
+
+  dispose(): void {
+    this.clearRefresh();
+  }
 
   credentials(): TurnCredentials | null {
     return this.credentialsAreStale() ? null : this.turn;
@@ -172,7 +178,18 @@ export class MeshRelay {
     this.issuedAtMs = 0;
     if (redoPrecheck) await this.beforeDial();
     for (const remoteId of ids) {
-      await this.request(remoteId, "timeout");
+      if (!(await this.pairStillUsesRelay(remoteId))) continue;
+      await this.request(remoteId, "refresh");
+    }
+  }
+
+  private async pairStillUsesRelay(remoteId: string): Promise<boolean> {
+    const pc = this.ports.getPeerConnection(remoteId);
+    if (!pc) return false;
+    try {
+      return await selectedPairIsRelay(pc);
+    } catch {
+      return false;
     }
   }
 

@@ -6,6 +6,7 @@ namespace Tests\Unit\Installer;
 
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\WgwConnectionConfigurator;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\WgwTestDatabase;
@@ -26,6 +27,22 @@ final class WgwSchemaMigratorTest extends TestCase
 
         $this->assertSame(WgwSchemaMigrator::CURRENT_SCHEMA_VERSION, $migrator->currentVersion());
         $this->assertExpectedSchemaAtCurrentVersion();
+    }
+
+    public function test_rtc_hardening_down_drops_collab_browser_id_only_when_present(): void
+    {
+        app(WgwSchemaMigrator::class)->migrate();
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+
+        Schema::connection('wgw')->table('collab_peers', function (Blueprint $table): void {
+            $table->dropColumn('browser_id');
+        });
+
+        $migration = require database_path('migrations/wgw/2026_10_03_000440_wgw_rtc_signaling_hardening.php');
+        $migration->down();
+
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
     }
 
     public function test_migrate_is_idempotent_when_already_at_current_version(): void

@@ -59,7 +59,7 @@ final class RtcRealtimeHealthTest extends WgwDatabaseTestCase
             ->json();
 
         $this->assertSame(4, $body['day']['samples']);
-        $this->assertSame(200, $body['day']['joinP50Ms']);
+        $this->assertSame(300, $body['day']['joinP50Ms']);
         $this->assertSame(400, $body['day']['joinP95Ms']);
         $this->assertEquals(25, $body['day']['relayPercent']);
         $this->assertEquals(25, $body['day']['failedPairsPercent']);
@@ -123,5 +123,27 @@ final class RtcRealtimeHealthTest extends WgwDatabaseTestCase
         $this->assertSame(0, $today[0]['denied']);
         $this->assertStringNotContainsString('symmetric', (string) json_encode($body));
         $this->assertStringNotContainsString('203.0.113.', (string) json_encode($body));
+    }
+
+    public function test_a_refresh_does_not_count_as_could_not_connect(): void
+    {
+        $now = time();
+        RtcRelayEvent::query()->create([
+            'created_at' => $now - 10,
+            'channel' => 'meet',
+            'actor' => 'bob',
+            'reason' => 'refresh',
+            'outcome' => 'unavailable',
+        ]);
+
+        $body = $this->withBearer($this->adminBearerToken())
+            ->getJson('/api/v1/admin/realtime-health')
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(0, $body['unavailablePeopleThisWeek']);
+        $this->assertNull($body['callout']);
+        $issued = array_sum(array_column($body['relayDays'], 'unavailable'));
+        $this->assertSame(0, $issued);
     }
 }
