@@ -83,8 +83,9 @@ final class RtcSessionMetricIngest
     private function guestSessionKey(Request $request): ?string
     {
         foreach ([$request->query('sessionKey'), $request->input('sessionKey')] as $raw) {
-            if (is_string($raw) && preg_match('/^[a-f0-9]{32}$/', $raw) === 1) {
-                return $raw;
+            $sessionKey = $this->actors->readGuestSessionKey(['sessionKey' => $raw]);
+            if ($sessionKey !== null) {
+                return $sessionKey;
             }
         }
 

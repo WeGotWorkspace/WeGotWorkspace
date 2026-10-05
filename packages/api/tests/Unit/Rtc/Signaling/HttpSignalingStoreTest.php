@@ -6,6 +6,7 @@ namespace Tests\Unit\Rtc\Signaling;
 
 use App\Models\CollabPeer;
 use App\Models\MeetMessage;
+use App\Models\MeetPeer;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
@@ -327,6 +328,23 @@ final class HttpSignalingStoreTest extends TestCase
         }
 
         $this->assertSame(1, $store->countPeers('room-a'));
+    }
+
+    public function test_prune_removes_only_the_stale_room_when_a_peer_id_is_reused(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = 1_700_000_000;
+        $store->upsertPeer('room-live', 'peer-shared', 'Live', 'u:alice', $now);
+        $store->upsertPeer('room-stale', 'peer-shared', 'Stale', 'u:alice', $now - 120);
+        $store->insertServerMessage('room-live', 'peer-other', 'peer-shared', 'chat', ['text' => 'keep']);
+        $store->insertServerMessage('room-stale', 'peer-shared', 'peer-other', 'chat', ['text' => 'drop']);
+
+        $store->pruneOldRows($now);
+
+        $this->assertNotNull(MeetPeer::query()->where('room', 'room-live')->where('peer_id', 'peer-shared')->first());
+        $this->assertNull(MeetPeer::query()->where('room', 'room-stale')->where('peer_id', 'peer-shared')->first());
+        $this->assertSame(1, MeetMessage::query()->where('room', 'room-live')->count());
+        $this->assertSame(0, MeetMessage::query()->where('room', 'room-stale')->count());
     }
 
     public function test_peer_timeouts_match_the_signaling_contract(): void

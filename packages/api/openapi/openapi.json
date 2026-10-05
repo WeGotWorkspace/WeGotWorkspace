@@ -3471,6 +3471,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -4974,6 +4983,26 @@
               }
             }
           },
+          "403": {
+            "description": "The actor may not read this room",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown room",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests — per-actor room throttle",
             "content": {
@@ -5111,11 +5140,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Queued",
+            "description": "Queued, with the sender's pending mailbox",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OkResponse"
+                  "$ref": "#/components/schemas/RtcSendEventResponse"
                 }
               }
             }

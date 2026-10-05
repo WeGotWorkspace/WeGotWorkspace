@@ -6,6 +6,8 @@ namespace App\Services\Rtc;
 
 use App\Models\AppSetting;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 
 final class RtcSettingsService
 {
@@ -111,7 +113,28 @@ final class RtcSettingsService
 
     public function turnSecret(): string
     {
-        return trim((string) AppSetting::getValue(SettingKeys::RTC_TURN_SECRET, ''));
+        $stored = trim((string) AppSetting::getValue(SettingKeys::RTC_TURN_SECRET, ''));
+        if ($stored === '') {
+            return '';
+        }
+
+        try {
+            return trim(Crypt::decryptString($stored));
+        } catch (DecryptException) {
+            // Rows written before the secret was sealed stay readable.
+            return $stored;
+        }
+    }
+
+    /** Ciphertext for `rtc_turn_secret`. Empty stays empty so a clear still clears. */
+    public function sealTurnSecret(string $secret): string
+    {
+        $secret = trim($secret);
+        if ($secret === '') {
+            return '';
+        }
+
+        return Crypt::encryptString($secret);
     }
 
     public function turnAvailable(): bool

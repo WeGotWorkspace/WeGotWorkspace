@@ -95,7 +95,7 @@ final class AdminSettingsService
             return $values;
         }
 
-        $values[SettingKeys::RTC_TURN_SECRET] = $secret;
+        $values[SettingKeys::RTC_TURN_SECRET] = $this->rtcSettings->sealTurnSecret($secret);
         $this->rtcSettings->forgetLegacyStaticCredentials();
 
         return $values;

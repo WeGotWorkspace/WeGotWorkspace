@@ -160,17 +160,48 @@ final class FilesController
                 return response('', 204);
             }
 
-            return response($binary, 200, [
-                'Content-Type' => 'application/octet-stream',
-                'ETag' => DocCollabDocumentService::sidecarEtag($binary),
-            ]);
+            return $this->collaborationBody($request, $binary, 'application/octet-stream');
         }
 
-        return response(
+        return $this->collaborationBody(
+            $request,
             $this->collabDocuments->getMarkdown($request, $path),
-            200,
-            ['Content-Type' => 'text/markdown; charset=utf-8'],
+            'text/markdown; charset=utf-8',
         );
+    }
+
+    /** 304 when `If-None-Match` still names this body. `*` matches any stored representation. */
+    private function collaborationBody(Request $request, string $bytes, string $contentType): Response
+    {
+        $etag = DocCollabDocumentService::sidecarEtag($bytes);
+        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+        if ($ifNoneMatch === '*' || $this->etagListed($ifNoneMatch, $etag)) {
+            return response('', 304, ['ETag' => $etag]);
+        }
+
+        return response($bytes, 200, [
+            'Content-Type' => $contentType,
+            'ETag' => $etag,
+        ]);
+    }
+
+    private function etagListed(string $header, string $etag): bool
+    {
+        if ($header === '') {
+            return false;
+        }
+
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = trim(substr($candidate, 2));
+            }
+            if ($candidate === $etag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function updateCollaboration(Request $request): JsonResponse
