@@ -137,7 +137,11 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
     alreadyRequested: (remoteId) => relayBox.current?.hasRequested(remoteId) ?? false,
     markRequested: () => undefined,
     restartIce: (remoteId) => {
-      void restartPeerIce(host, remoteId);
+      const relay = relayBox.current;
+      void (async () => {
+        if (relay) await relay.onIceRestart(remoteId);
+        await restartPeerIce(host, remoteId);
+      })();
     },
     requestRelay: (remoteId, reason) => {
       const relay = relayBox.current;

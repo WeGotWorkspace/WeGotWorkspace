@@ -22,8 +22,6 @@ export function presentMeetRelayOutcome(input: {
   remoteId: string;
   name: string;
   outcome: RelayCopyOutcome;
-  relayIncludedInService?: boolean;
-  planHref?: string | null;
 }): MeetRelayPresentation {
   if (input.role === "admin") {
     return {
@@ -32,8 +30,6 @@ export function presentMeetRelayOutcome(input: {
         audience: "admin",
         outcome: input.outcome,
         name: input.name,
-        relayIncludedInService: input.relayIncludedInService,
-        planHref: input.planHref,
       }),
       tile: null,
     };

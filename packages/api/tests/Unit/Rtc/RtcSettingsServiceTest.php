@@ -37,6 +37,19 @@ final class RtcSettingsServiceTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_a_sealed_turn_secret_round_trips_and_a_legacy_row_still_reads(): void
+    {
+        $service = new RtcSettingsService;
+        $sealed = $service->sealTurnSecret('north');
+
+        $this->assertNotSame('north', $sealed);
+        $this->setAppSettings([SettingKeys::RTC_TURN_SECRET => $sealed]);
+        $this->assertSame('north', $service->turnSecret());
+
+        $this->setAppSettings([SettingKeys::RTC_TURN_SECRET => 'legacy-plain']);
+        $this->assertSame('legacy-plain', $service->turnSecret());
+    }
+
     public function test_turn_is_unavailable_without_secret_or_url(): void
     {
         $service = new RtcSettingsService;

@@ -3101,6 +3101,8 @@ export interface paths {
                 header?: {
                     /** @description Entity tag the client last loaded. The save is refused with 412 when the stored document moved on. */
                     "If-Match"?: string;
+                    /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
+                    "If-None-Match"?: string;
                 };
                 path?: never;
                 cookie?: never;
@@ -3773,6 +3775,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description The actor may not read this room */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown room */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Too many requests — per-actor room throttle */
                 429: {
                     headers: {
@@ -3888,13 +3908,13 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Queued */
+                /** @description Queued, with the sender's pending mailbox */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["OkResponse"];
+                        "application/json": components["schemas"]["RtcSendEventResponse"];
                     };
                 };
                 /** @description `bad_type` or `invalid_peer` */
@@ -12058,13 +12078,17 @@ export interface components {
         /** @description Server-side ceilings for the room, advertised on the meeting join response. */
         RtcRoomLimits: {
             /** @description Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15). */
-            maxPeers?: number;
-            /** @description Video profile ceiling in pixels. Populated by the meeting connectivity work. */
-            maxVideoHeight?: number;
-            /** @description Video profile ceiling in frames per second. Populated by the meeting connectivity work. */
-            maxFramerateFps?: number;
-            /** @description Video profile ceiling in kilobits per second. Populated by the meeting connectivity work. */
-            maxBitrateKbps?: number;
+            maxPeers: number;
+            /**
+             * @description Highest camera profile Meet may select. Clients still pick the profile automatically.
+             * @enum {string}
+             */
+            maxVideoProfile: "p720" | "p360" | "p270" | "p180" | "audio";
+            /**
+             * @description Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile.
+             * @enum {string}
+             */
+            maxVideoProfileRelay: "p720" | "p360" | "p270" | "p180" | "audio";
         };
         /** @description Short-lived relay credentials in the TURN REST convention (coturn `use-auth-secret`). Issued only by the relay request, never at join and never by the room configuration endpoint. */
         RtcTurnCredentials: {
@@ -12112,14 +12136,14 @@ export interface components {
             caps?: components["schemas"]["RtcPeerCapability"][];
             /** @description Opaque per-browser-profile token used to evict leftover peers from the same browser. */
             browserId?: string;
-            /** @description Guest session key from an earlier join. */
+            /** @description Server-issued guest session key from an earlier join. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. A caller-chosen key is ignored. */
             sessionKey?: string;
         };
         RtcJoinResponse: {
             /** @description Server-assigned peer id (collaboration and principal rooms). */
             peerId?: string;
             peers: components["schemas"]["RtcRosterPeer"][];
-            /** @description Guest session key for meeting rooms. */
+            /** @description Server-issued guest session key for meeting rooms. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. Null for an authenticated member. */
             sessionKey?: string | null;
             /** @description Signed collaboration ticket a peer presents to the other peers in the mesh. */
             ticket?: string;
@@ -12222,6 +12246,8 @@ export interface components {
             callout: string | null;
             retentionDays: number;
         };
+        /** @description The send was queued. The same object carries the sender's pending mailbox so the client can apply it without waiting for the next poll. */
+        RtcSendEventResponse: components["schemas"]["OkResponse"] & components["schemas"]["RtcPollResponse"];
     };
     responses: {
         /** @description Invalid request */

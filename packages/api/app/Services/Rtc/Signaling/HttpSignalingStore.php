@@ -29,14 +29,14 @@ final class HttpSignalingStore
      * one request in twenty carries it, and the scheduler sweeps what the
      * sampling misses. Both legs ride the `seen_at` / `created_at` indexes.
      */
-    public function pruneOldRowsSampled(): void
+    public function pruneOldRowsSampled(?int $now = null): void
     {
         $oneIn = max(1, (int) config('wgw.rtc.prune_one_in', self::PRUNE_ONE_IN));
         if ($oneIn > 1 && random_int(1, $oneIn) !== 1) {
             return;
         }
 
-        $this->pruneOldRows();
+        $this->pruneOldRows($now);
     }
 
     public function countStalePeers(?int $now = null): int
@@ -46,26 +46,39 @@ final class HttpSignalingStore
             ->count();
     }
 
-    public function pruneOldRows(): void
+    public function pruneOldRows(?int $now = null): void
     {
-        $cutoff = time() - $this->policy->peerTimeoutSeconds;
-        $stalePeerIds = $this->peerQuery()
+        $now = $now ?? time();
+        $cutoff = $now - $this->policy->peerTimeoutSeconds;
+        // Peer ids are only unique inside a room. Delete the stale rows
+        // themselves, then the mailbox for each (room, peer), never every
+        // room that happens to reuse the id.
+        $stalePeers = $this->peerQuery()
             ->where('seen_at', '<', $cutoff)
-            ->pluck('peer_id')
-            ->all();
+            ->get(['room', 'peer_id']);
 
-        if ($stalePeerIds !== []) {
-            $this->peerQuery()->whereIn('peer_id', $stalePeerIds)->delete();
-            $this->messageQuery()
-                ->where(function ($query) use ($stalePeerIds): void {
-                    $query->whereIn('from_peer', $stalePeerIds)->orWhereIn('to_peer', $stalePeerIds);
-                })
-                ->delete();
+        if ($stalePeers->isNotEmpty()) {
+            $this->peerQuery()->where('seen_at', '<', $cutoff)->delete();
+            foreach ($stalePeers->chunk(50) as $chunk) {
+                $this->messageQuery()
+                    ->where(function ($query) use ($chunk): void {
+                        foreach ($chunk as $row) {
+                            $room = (string) $row->getAttribute('room');
+                            $peerId = (string) $row->getAttribute('peer_id');
+                            $query->orWhere(function ($inner) use ($room, $peerId): void {
+                                $inner->where('room', $room)
+                                    ->where(function ($peers) use ($peerId): void {
+                                        $peers->where('from_peer', $peerId)->orWhere('to_peer', $peerId);
+                                    });
+                            });
+                        }
+                    })
+                    ->delete();
+            }
         }
 
-        $messageCutoff = time() - $this->policy->messageRetentionSeconds;
         $this->messageQuery()
-            ->where('created_at', '<', $messageCutoff)
+            ->where('created_at', '<', $now - $this->policy->messageRetentionSeconds)
             ->delete();
     }
 

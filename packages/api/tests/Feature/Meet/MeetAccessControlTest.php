@@ -59,9 +59,9 @@ final class MeetAccessControlTest extends WgwDatabaseTestCase
     {
         $this->guestJoin('peer-a', 'Guest');
 
-        $this->getJson($this->meetRoomPath('/events?peerId=peer-a&sessionKey='.str_repeat('a', 32)))
-            ->assertForbidden()
-            ->assertJson(['error' => 'forbidden']);
+        $this->getJson($this->meetRoomPath('/events?peerId=peer-a&sessionKey='.bin2hex(random_bytes(32))))
+            ->assertUnauthorized()
+            ->assertJson(['error' => 'auth_required']);
     }
 
     public function test_poll_unknown_peer_returns_not_found(): void

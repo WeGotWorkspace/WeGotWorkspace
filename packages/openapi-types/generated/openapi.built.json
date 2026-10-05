@@ -11875,22 +11875,37 @@
             "RtcRoomLimits": {
                 "type": "object",
                 "description": "Server-side ceilings for the room, advertised on the meeting join response.",
+                "required": [
+                    "maxPeers",
+                    "maxVideoProfile",
+                    "maxVideoProfileRelay"
+                ],
                 "properties": {
                     "maxPeers": {
                         "type": "integer",
                         "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15)."
                     },
-                    "maxVideoHeight": {
-                        "type": "integer",
-                        "description": "Video profile ceiling in pixels. Populated by the meeting connectivity work."
+                    "maxVideoProfile": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile Meet may select. Clients still pick the profile automatically."
                     },
-                    "maxFramerateFps": {
-                        "type": "integer",
-                        "description": "Video profile ceiling in frames per second. Populated by the meeting connectivity work."
-                    },
-                    "maxBitrateKbps": {
-                        "type": "integer",
-                        "description": "Video profile ceiling in kilobits per second. Populated by the meeting connectivity work."
+                    "maxVideoProfileRelay": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
                     }
                 }
             },
@@ -12035,7 +12050,8 @@
                     },
                     "sessionKey": {
                         "type": "string",
-                        "description": "Guest session key from an earlier join."
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Server-issued guest session key from an earlier join. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. A caller-chosen key is ignored."
                     }
                 }
             },
@@ -12058,7 +12074,8 @@
                     "sessionKey": {
                         "type": "string",
                         "nullable": true,
-                        "description": "Guest session key for meeting rooms."
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Server-issued guest session key for meeting rooms. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. Null for an authenticated member."
                     },
                     "ticket": {
                         "type": "string",
@@ -12389,6 +12406,17 @@
                         "type": "integer"
                     }
                 }
+            },
+            "RtcSendEventResponse": {
+                "description": "The send was queued. The same object carries the sender's pending mailbox so the client can apply it without waiting for the next poll.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/OkResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RtcPollResponse"
+                    }
+                ]
             }
         },
         "responses": {
@@ -14890,6 +14918,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -15470,6 +15507,26 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "The actor may not read this room",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown room",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests — per-actor room throttle",
                         "content": {
@@ -15607,11 +15664,11 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Queued",
+                        "description": "Queued, with the sender's pending mailbox",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
+                                    "$ref": "#/components/schemas/RtcSendEventResponse"
                                 }
                             }
                         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\RateLimiting;
 
+use App\Services\Meet\MeetActorResolver;
 use App\Services\Meet\MeetRequestAuth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -12,11 +13,11 @@ use Illuminate\Support\Facades\RateLimiter;
 /**
  * Per-actor throttles for the room routes.
  *
- * Keying on the actor rather than the address is the point: a whole office
- * behind one NAT address is a dozen separate actors, while a single peer that
- * polls four times a second stays well inside its own budget. Only a request
- * with no actor at all — an anonymous join — falls back to the address, and
- * gets a much smaller budget.
+ * A guest is an actor only with a server-signed session key. Anything else —
+ * including a self-minted 32-hex key — is anonymous and shares the address
+ * budget. Signed actors are keyed per room, with an actor-wide ceiling and an
+ * address ceiling so one office NAT still cannot multiply budgets by minting
+ * sessions.
  */
 final class RtcRoomRateLimiters
 {
@@ -31,38 +32,64 @@ final class RtcRoomRateLimiters
     /** 4 peers polling at 400 ms is 150 requests per minute, plus sends and leaves. */
     private const ROOM_REQUESTS_PER_MINUTE = 300;
 
+    /** One account across every room and device, above the per-room ceiling. */
+    private const ACTOR_REQUESTS_PER_MINUTE = 1500;
+
+    /** Shared by every actor (and every forged key) behind one address. */
+    private const ADDRESS_ROOM_REQUESTS_PER_MINUTE = 1200;
+
     private const ANONYMOUS_JOINS_PER_MINUTE = 60;
 
     private const RELAY_REQUESTS_PER_MINUTE = 6;
+
+    private const ADDRESS_RELAY_REQUESTS_PER_MINUTE = 30;
 
     private const METRIC_REPORTS_PER_MINUTE = 30;
 
     public static function register(): void
     {
-        RateLimiter::for(
-            self::ROOMS,
-            static fn (Request $request): Limit => Limit::perMinute(self::ROOM_REQUESTS_PER_MINUTE)
-                ->by(self::throttleKey($request)),
-        );
+        RateLimiter::for(self::ROOMS, static function (Request $request): array {
+            $address = self::addressKey($request);
+            $actor = self::actorIdentity($request);
+            if ($actor === null) {
+                return [
+                    Limit::perMinute(self::ROOM_REQUESTS_PER_MINUTE)->by($address),
+                    Limit::perMinute(self::ADDRESS_ROOM_REQUESTS_PER_MINUTE)->by($address),
+                ];
+            }
+
+            $room = self::roomId($request);
+            $perRoom = $room === '' ? $actor : $actor.'|'.$room;
+
+            return [
+                Limit::perMinute(self::ROOM_REQUESTS_PER_MINUTE)->by($perRoom),
+                Limit::perMinute(self::ACTOR_REQUESTS_PER_MINUTE)->by($actor),
+                Limit::perMinute(self::ADDRESS_ROOM_REQUESTS_PER_MINUTE)->by($address),
+            ];
+        });
 
         RateLimiter::for(self::ANONYMOUS_JOIN, static function (Request $request): Limit {
             return self::actorIdentity($request) === null
-                ? Limit::perMinute(self::ANONYMOUS_JOINS_PER_MINUTE)->by('ip:'.(string) $request->ip())
+                ? Limit::perMinute(self::ANONYMOUS_JOINS_PER_MINUTE)->by(self::addressKey($request))
                 : Limit::none();
         });
 
-        RateLimiter::for(
-            self::RELAY,
-            static fn (Request $request): Limit => Limit::perMinute(self::RELAY_REQUESTS_PER_MINUTE)
-                ->by(self::throttleKey($request)),
-        );
+        RateLimiter::for(self::RELAY, static function (Request $request): array {
+            $address = self::addressKey($request);
+            $actor = self::actorIdentity($request);
+
+            return [
+                Limit::perMinute(self::RELAY_REQUESTS_PER_MINUTE)->by($actor ?? $address),
+                Limit::perMinute(self::ADDRESS_RELAY_REQUESTS_PER_MINUTE)->by($address),
+            ];
+        });
 
         RateLimiter::for(self::METRICS, static function (Request $request): array {
-            // A guest session key is caller-chosen. Keying only on it lets one
-            // address mint a fresh budget per key. The address ceiling matches
-            // the per-actor ceiling so that minting cannot multiply inserts.
+            // A guest session key is only an actor when the server signed it.
+            // The address ceiling still matches the per-actor ceiling so one
+            // NAT cannot multiply inserts by collecting signed keys.
             $actor = self::actorIdentity($request);
-            $address = 'ip:'.(string) $request->ip();
+            $address = self::addressKey($request);
             if ($actor === null) {
                 return [Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($address)];
             }
@@ -74,12 +101,19 @@ final class RtcRoomRateLimiters
         });
     }
 
-    private static function throttleKey(Request $request): string
+    private static function addressKey(Request $request): string
     {
-        return self::actorIdentity($request) ?? 'ip:'.(string) $request->ip();
+        return 'ip:'.(string) $request->ip();
     }
 
-    /** Username for an account, the guest session key for a guest, null when anonymous. */
+    private static function roomId(Request $request): string
+    {
+        $roomId = $request->route('roomId');
+
+        return is_string($roomId) ? $roomId : '';
+    }
+
+    /** Username for an account, the signed guest session key for a guest, null when anonymous. */
     private static function actorIdentity(Request $request): ?string
     {
         $username = app(MeetRequestAuth::class)
@@ -88,8 +122,10 @@ final class RtcRoomRateLimiters
             return 'u:'.$username;
         }
 
-        $sessionKey = $request->input('sessionKey', $request->query('sessionKey'));
-        if (is_string($sessionKey) && preg_match('/^[a-f0-9]{32}$/', $sessionKey) === 1) {
+        $sessionKey = app(MeetActorResolver::class)->readGuestSessionKey([
+            'sessionKey' => $request->input('sessionKey'),
+        ]);
+        if ($sessionKey !== null) {
             return 'g:'.$sessionKey;
         }
 

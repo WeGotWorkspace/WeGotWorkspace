@@ -6,7 +6,7 @@ export type DocsRelayCopy = {
   message: string;
   /** Present only when the viewer is an admin on a self-hosted install. */
   setupHref?: string;
-  /** Neutral plan link. Only when relay is plan-gated. */
+  /** Kept so an older banner can still read the field. Nothing sets it. */
   planHref?: string;
 };
 
@@ -19,18 +19,9 @@ export function docsRelayCopy(input: {
   role: PrincipalRole;
   outcome: RelayRequestOutcome["outcome"] | null;
   name: string;
-  relayIncludedInService?: boolean;
-  planHref?: string | null;
 }): DocsRelayCopy | null {
   if (input.outcome !== "relay_unavailable") return null;
   if (input.role !== "admin") return null;
-  if (input.relayIncludedInService) {
-    return {
-      message:
-        "Direct connections aren't possible on this network; your plan's relay is used automatically.",
-      ...(input.planHref ? { planHref: input.planHref } : {}),
-    };
-  }
   return {
     message: `Collaboration with ${input.name} runs via the server (slower). A TURN server makes it faster.`,
     setupHref: adminPathFor("collaboration"),

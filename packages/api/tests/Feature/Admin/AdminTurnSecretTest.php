@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -60,7 +61,10 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
     {
         $this->saveSecret($this->adminBearerToken(), self::SECRET);
 
-        $this->assertSame(self::SECRET, AppSetting::getValue(SettingKeys::RTC_TURN_SECRET));
+        $stored = (string) AppSetting::getValue(SettingKeys::RTC_TURN_SECRET);
+        $this->assertNotSame(self::SECRET, $stored);
+        $this->assertStringNotContainsString(self::SECRET, $stored);
+        $this->assertSame(self::SECRET, app(RtcSettingsService::class)->turnSecret());
     }
 
     public function test_an_empty_value_leaves_the_stored_secret_alone(): void
@@ -75,7 +79,7 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
         $this->withBearer($token)->getJson('/api/v1/admin/state')
             ->assertOk()
             ->assertJsonPath('rtc.turnSecretSet', true);
-        $this->assertSame(self::SECRET, AppSetting::getValue(SettingKeys::RTC_TURN_SECRET));
+        $this->assertSame(self::SECRET, app(RtcSettingsService::class)->turnSecret());
     }
 
     public function test_an_explicit_clear_removes_the_secret(): void
