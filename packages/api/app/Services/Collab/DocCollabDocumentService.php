@@ -10,6 +10,7 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
+use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\Request;
@@ -179,23 +180,11 @@ final class DocCollabDocumentService
             $this->fail('lock_unavailable', 503);
         }
 
-        $path = $disk->path($sidecarKey.'.lock');
-        $directory = dirname($path);
-        if (! is_dir($directory) && ! mkdir($directory, 0775, true) && ! is_dir($directory)) {
+        try {
+            return ExclusiveFileLock::acquire($disk->path($sidecarKey.'.lock'));
+        } catch (\RuntimeException) {
             $this->fail('lock_unavailable', 503);
         }
-
-        $handle = fopen($path, 'c');
-        if ($handle === false) {
-            $this->fail('lock_unavailable', 503);
-        }
-        @chmod($path, 0660);
-        if (! flock($handle, LOCK_EX)) {
-            fclose($handle);
-            $this->fail('lock_unavailable', 503);
-        }
-
-        return $handle;
     }
 
     /**
@@ -203,8 +192,7 @@ final class DocCollabDocumentService
      */
     private function releaseDocumentLock($handle): void
     {
-        flock($handle, LOCK_UN);
-        fclose($handle);
+        ExclusiveFileLock::release($handle);
     }
 
     private function readSidecarBytes(string $sidecarKey): ?string
