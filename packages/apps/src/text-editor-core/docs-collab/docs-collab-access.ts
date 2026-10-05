@@ -27,6 +27,20 @@ export function docsCollabAccessMayBroadcast(access: DocsCollabAccess): boolean 
   return access !== "read";
 }
 
+const ACCESS_RANK: Record<DocsCollabAccess, number> = {
+  read: 0,
+  comment: 1,
+  write: 2,
+};
+
+/** The weaker of two rights. A stale ticket cannot outrank the live roster. */
+export function tighterDocsCollabAccess(
+  left: DocsCollabAccess,
+  right: DocsCollabAccess,
+): DocsCollabAccess {
+  return ACCESS_RANK[left] <= ACCESS_RANK[right] ? left : right;
+}
+
 type RosterEntry = {
   user: string;
   access: DocsCollabAccess;

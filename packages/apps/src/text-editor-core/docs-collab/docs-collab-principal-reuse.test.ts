@@ -736,7 +736,7 @@ describe("DocsCollabPrincipalReuse ticket", () => {
     );
   });
 
-  it("accepts a verified ticket and takes access from the payload", async () => {
+  it("applies a write ticket as read when the roster says read", async () => {
     const kit = await ticketKit();
     const { reuse, registry, registerAdminToWouter, messages } = createHarness({
       resolveTicketKey: kit.resolveTicketKey,
@@ -769,7 +769,7 @@ describe("DocsCollabPrincipalReuse ticket", () => {
       type: "sync",
       u: [7],
       from: "bbbbbbbbbbbbbbbb",
-      trust: { user: "wouter", access: "write" },
+      trust: { user: "wouter", access: "read" },
     });
   });
 

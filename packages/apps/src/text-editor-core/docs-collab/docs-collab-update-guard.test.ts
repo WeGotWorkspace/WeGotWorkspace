@@ -277,6 +277,31 @@ describe("docs-collab-update-guard", () => {
     expect(editorMs).toBeLessThan(Math.max(cloneMs, 1));
   });
 
+  it("rejects a commenter delete the receiver has not seen yet", () => {
+    const editor = new Y.Doc();
+    editor.clientID = 1;
+    editor.getXmlFragment("default").insert(0, [new Y.XmlText("secret body")]);
+    const editorUpdate = Y.encodeStateAsUpdate(editor);
+    const commenter = new Y.Doc();
+    commenter.clientID = 2;
+    Y.applyUpdate(commenter, editorUpdate);
+    const sv = Y.encodeStateVector(commenter);
+    commenter.getXmlFragment("default").delete(0, 1);
+    const deleteOnly = Y.encodeStateAsUpdate(commenter, sv);
+    const victim = new Y.Doc();
+    expect(
+      applyGuardedRemoteUpdate({
+        doc: victim,
+        update: deleteOnly,
+        access: "comment",
+        senderUser: "c",
+        origin: "mesh",
+      }).applied,
+    ).toBe(false);
+    Y.applyUpdate(victim, editorUpdate);
+    expect(victim.getXmlFragment("default").toString()).toContain("secret body");
+  });
+
   it("treats a root type the commenter invents as a body edit", () => {
     const { local, remote } = pair();
     remote.getMap("smuggled").set("k", "v");

@@ -44,6 +44,8 @@ export type DocsCollabHttpSyncPorts = {
   setFastPoll: (active: boolean) => void;
   getYDoc: () => Y.Doc | null;
   trust: (peerId: string) => { access: DocsCollabAccess; user: string };
+  /** This client's own right. Only a writer may answer a state vector. */
+  myAccess: () => DocsCollabAccess;
 };
 
 /**
@@ -185,6 +187,7 @@ export class DocsCollabHttpSync {
   }
 
   private answerStateVector(peerId: string, stateVector: Uint8Array): void {
+    if (this.ports.myAccess() !== "write") return;
     const doc = this.ports.getYDoc();
     if (!doc) return;
     const diff = diffForStateVector(doc, stateVector);

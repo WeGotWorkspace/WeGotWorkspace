@@ -38,6 +38,7 @@ export type DocsCollabUpdateDropReason =
   | "foreign-authorship"
   | "foreign-entry-change"
   | "resolve-by-commenter"
+  | "pending-from-commenter"
   | "malformed-update";
 
 export type DocsCollabUpdateVerdict =
@@ -114,7 +115,12 @@ function applyAsCommenter(input: DocsCollabGuardedUpdate): DocsCollabUpdateVerdi
     Y.applyUpdate(scratch, Y.encodeStateAsUpdate(input.doc));
     ensureKnownRoots(scratch);
     before = snapshotThreadRoots(scratch);
-    touched = applyAndCollectTouchedRoots(scratch, input.update);
+    const collected = applyAndCollectTouchedRoots(scratch, input.update);
+    touched = collected.touched;
+    if (collected.pending) {
+      scratch.destroy();
+      return { applied: false, reason: "pending-from-commenter" };
+    }
   } catch {
     scratch.destroy();
     return { applied: false, reason: "malformed-update" };
@@ -151,9 +157,13 @@ function ensureKnownRoots(doc: Y.Doc): void {
  * root the update invents is counted too — otherwise a new root would read as
  * "nothing changed".
  */
-function applyAndCollectTouchedRoots(doc: Y.Doc, update: Uint8Array): Set<string> {
+function applyAndCollectTouchedRoots(
+  doc: Y.Doc,
+  update: Uint8Array,
+): { touched: Set<string>; pending: boolean } {
   const touched = new Set<string>();
   const before = new Set(doc.share.keys());
+  const pendingBefore = pendingStore(doc);
   const unobserve: Array<() => void> = [];
   for (const [name, type] of doc.share) {
     const handler = (): void => {
@@ -172,7 +182,31 @@ function applyAndCollectTouchedRoots(doc: Y.Doc, update: Uint8Array): Set<string
   for (const name of doc.share.keys()) {
     if (!before.has(name)) touched.add(name);
   }
-  return touched;
+  return { touched, pending: updateAddedPending(pendingBefore, doc) };
+}
+
+/**
+ * A delete set for structs this document does not have yet is stored on
+ * `pendingDs` and never notifies an observer. A later editor update then
+ * applies that delete. Commenters never send ahead of causal history, so any
+ * pending the update adds is a refused body edit.
+ */
+function pendingStore(doc: Y.Doc): {
+  ds: Uint8Array | null;
+  structs: Y.Doc["store"]["pendingStructs"];
+} {
+  return { ds: doc.store.pendingDs, structs: doc.store.pendingStructs };
+}
+
+function updateAddedPending(
+  before: { ds: Uint8Array | null; structs: Y.Doc["store"]["pendingStructs"] },
+  doc: Y.Doc,
+): boolean {
+  const afterDs = doc.store.pendingDs;
+  const afterStructs = doc.store.pendingStructs;
+  if (afterDs && afterDs !== before.ds) return true;
+  if (afterStructs && afterStructs !== before.structs) return true;
+  return false;
 }
 
 type MessageFacts = {

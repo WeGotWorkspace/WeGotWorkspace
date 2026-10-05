@@ -269,7 +269,9 @@ export class DocsRtcSession {
           peers: () => this.httpRoster(),
           webrtcUnavailable: () => this.webrtcUnavailable(),
           send: (to, type, payload) => {
-            void this.mesh.sendMailbox(to, type, payload);
+            void this.mesh.sendMailbox(to, type, payload).catch(() => {
+              // A refused mailbox post must not surface as an unhandled rejection.
+            });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
           requestRelay: (peerId) => this.requestPeerRelay(peerId),
@@ -297,6 +299,7 @@ export class DocsRtcSession {
             user: this.trust.userForPeerId(peerId),
             access: this.trust.accessForPeerId(peerId),
           }),
+          myAccess: () => this.myAccess(),
         })
       : null;
   }
