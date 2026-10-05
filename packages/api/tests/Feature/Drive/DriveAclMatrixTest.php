@@ -25,7 +25,7 @@ use Tests\Support\WgwDatabaseTestCase;
  * is /users/{actor}/.Trash, not a folder inside the share. Share grant,
  * change, revoke, and email invite use /api/v1/files/shares. Editor folder
  * create, rename, and delete stay incomplete until #990. Grantee trash,
- * restore, and move-out stay parked until the shared-account vs
+ * restore, and move-out are omitted until the shared-account vs
  * grantee-account decision lands with #990 — trashing for a grantee is a
  * move out of the share.
  */
@@ -50,13 +50,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
     private const EDITOR_ACCESS = 'full';
 
     private const VIEWER_ACCESS = 'view';
-
-    /**
-     * Grantee FileNode/set notFound is shared-node invisibility, not an ACL
-     * denial. #990 is only create/rename/delete; trash and move-out need the
-     * account-model decision to land with that fix.
-     */
-    private const GRANTEE_TRASH_OR_MOVE_PARKED = 'Parked until the shared-account vs grantee-account decision lands with #990. Trashing for a grantee moves the node to /users/{grantee}/.Trash, which is a move out of the share, so "editors may trash" conflicts with "editors may not move out". FileNode/set notFound is shared-node invisibility, not an ACL denial.';
 
     private string $shareId = '';
 
@@ -623,16 +616,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->assertSame(self::PLAN_BODY, $this->readCollab(self::PLAN, 'viewer')->assertOk()->getContent());
     }
 
-    public function test_viewer_cannot_trash_or_restore_inside_the_share(): void
-    {
-        $this->markTestIncomplete(self::GRANTEE_TRASH_OR_MOVE_PARKED);
-    }
-
-    public function test_editor_can_trash_and_restore_inside_the_share(): void
-    {
-        $this->markTestIncomplete(self::GRANTEE_TRASH_OR_MOVE_PARKED);
-    }
-
     public function test_owner_can_move_a_file_out_of_the_share_to_their_tree(): void
     {
         $planId = $this->planNodeId();
@@ -655,11 +638,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->download('/users/alice/plan.md', 'editor')
             ->assertStatus(400)
             ->assertJsonPath('error', 'Access denied for this path.');
-    }
-
-    public function test_grantee_cannot_move_a_file_out_of_the_share(): void
-    {
-        $this->markTestIncomplete(self::GRANTEE_TRASH_OR_MOVE_PARKED);
     }
 
     private function token(string $role): string
