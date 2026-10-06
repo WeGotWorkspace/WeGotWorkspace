@@ -21,7 +21,7 @@ Artifact-oriented routes for `/api/v1`. **Contract source:** `packages/api/opena
 | Search | `/search/results` | Unified search; download via `/search/results/{resultId}/content`. |
 | Workspace | `/workspace/state` | Shell bootstrap (replaces `/home/state`). |
 | Admin jobs | `/admin/update-jobs`, `/admin/search/jobs` | Async admin operations. |
-| Plugins | `PUT /plugins/{id}/activation` | `{ "active": true\|false }`. |
+| Plugins | `PUT /admin/plugins/{id}/activation` | `{ "active": true\|false }`. Admin only. |
 
 ## Room IDs
 

@@ -1,6 +1,6 @@
 ---
 name: plugins
-description: Installable UI plugins for WeGotWorkspace — registry, activation, ZIP install, static assets, and Flysystem/WebDAV boundaries. Use when working on plugin.json, PUT /plugins/{id}/activation, or wgw-plugins/.
+description: Installable UI plugins for WeGotWorkspace — registry, activation, ZIP install, static assets, and Flysystem/WebDAV boundaries. Use when working on plugin.json, PUT /admin/plugins/{id}/activation, or wgw-plugins/.
 paths:
   - "packages/api/app/Services/Plugins/**"
   - "packages/api/app/Http/Controllers/Api/V1/Plugins/**"
@@ -16,7 +16,7 @@ Plugins are **installed ZIP packages** under `wgw-plugins/{id}/` with a `plugin.
 
 | Task | Read |
 |------|------|
-| REST routes / OpenAPI | `packages/api/openapi/openapi.json` (`/plugins`, `/plugins/{id}/activation`) |
+| REST routes / OpenAPI | `packages/api/openapi/openapi.json` (`/plugins`, `/admin/plugins/{id}/activation`) |
 | Registry + activation | This file |
 | Install from ZIP (admin) | `packages/api/app/Services/Plugins/PluginInstallerService.php` |
 | Paths + assets | `packages/api/app/Services/Plugins/PluginPaths.php` |
@@ -37,7 +37,7 @@ Plugins are **installed ZIP packages** under `wgw-plugins/{id}/` with a `plugin.
 ## Activation
 
 - **Default active** from manifest `active: true` unless overridden.
-- **Runtime toggle:** `PUT /api/v1/plugins/{id}/activation` with `{ "active": true|false }` → `ActivationController`.
+- **Runtime toggle:** `PUT /api/v1/admin/plugins/{id}/activation` with `{ "active": true|false }` → `ActivationController`. Admin only.
 - Overrides persist in `app_settings` key `plugins_active_overrides` via `PluginRegistryService::setActive`.
 
 Admin listing also exposes plugins at `/api/v1/admin/plugins` (install/upload flows).
