@@ -133,6 +133,7 @@ async function ensureTopLevel(
 
 async function loadSharedRoots(session: DriveJmapSession, signal?: AbortSignal): Promise<void> {
   const rows = await fetchDriveSharedWithMe({ signal });
+  session.sharedRootPaths.clear();
   const pathById = new Map<string, string>();
   for (const row of rows) {
     if (row.fileNodeId) pathById.set(row.fileNodeId, normalizePath(row.share.path));
@@ -193,11 +194,13 @@ export async function resolveFileNodeId(
     rest = parts.slice(2);
   } else {
     let root = longestSharedRoot(session, target);
-    if (!root) {
+    if (!root || !session.cache.nodeIdForPath(root)) {
       await loadSharedRoots(session, signal);
       root = longestSharedRoot(session, target);
     }
-    if (!root) throw new Error(`Unsupported drive path: ${normalized}`);
+    if (!root || !session.cache.nodeIdForPath(root)) {
+      throw new Error(`Unsupported drive path: ${normalized}`);
+    }
     prefix = root;
     rest = target.slice(root.length).split("/").filter(Boolean);
   }
