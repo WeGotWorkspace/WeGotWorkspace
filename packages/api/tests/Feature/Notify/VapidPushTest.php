@@ -12,6 +12,7 @@ use App\Models\PushSubscription;
 use App\Services\Notify\VapidPushService;
 use App\Services\Notify\WebPushSender;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class VapidPushTest extends WgwDatabaseTestCase
@@ -203,6 +204,63 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->assertSame('/users/bob/notes.md', $decoded['body']);
         $this->assertSame('Bob shared notes.md with you', $decoded['notification']['title']);
         Carbon::setTestNow();
+    }
+
+    public function test_subscribe_rejects_non_https_and_non_allowlisted_endpoints(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+        $keys = ['p256dh' => 'pub', 'auth' => 'secret'];
+
+        foreach ([
+            'http://127.0.0.1:9/push',
+            'https://10.0.0.1/push',
+            'https://169.254.169.254/latest/meta-data',
+            'https://evil.example/push',
+        ] as $endpoint) {
+            $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
+                'endpoint' => $endpoint,
+                'keys' => $keys,
+            ])->assertUnprocessable();
+        }
+
+        $this->assertSame(0, PushSubscription::query()->count());
+        $sender = app(WebPushSender::class);
+        $this->assertSame([], $sender->sent);
+    }
+
+    public function test_subscribe_accepts_an_fcm_endpoint(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+
+        $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice',
+            'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
+        ])->assertCreated();
+
+        $this->assertSame(1, PushSubscription::query()->where('principal', 'alice')->count());
+    }
+
+    public function test_send_prunes_a_disallowed_existing_subscription(): void
+    {
+        $id = $this->seedDueSharedNotification('alice');
+        $endpoint = 'https://evil.example/already-stored';
+        PushSubscription::query()->create([
+            'id' => (string) Str::ulid(),
+            'principal' => 'alice',
+            'endpoint' => $endpoint,
+            'endpoint_hash' => hash('sha256', $endpoint),
+            'p256dh' => 'pub',
+            'auth' => 'secret',
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
+        ]);
+
+        $notification = Notification::query()->findOrFail($id);
+        app(VapidPushService::class)->sendNotification($notification);
+
+        $this->assertSame(0, PushSubscription::query()->count());
+        $sender = app(WebPushSender::class);
+        $this->assertSame([], $sender->sent);
     }
 
     private function seedSharedNotification(string $principal): string
