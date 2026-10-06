@@ -217,6 +217,7 @@ export type AdminUIData = {
   searchReindex: AdminSearchReindexState;
   currentUser: string;
   logoutUrl: string;
+  securityWarnings: string[];
   updateLogLines: string[];
 };
 

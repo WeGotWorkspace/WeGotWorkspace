@@ -7896,6 +7896,8 @@ export interface components {
             mcp: components["schemas"]["AdminMcpSettings"];
             currentUser: string;
             logoutUrl: string;
+            /** @description Present when APP_DEBUG is on or APP_ENV is not production. */
+            securityWarnings: string[];
         };
         UpdateApplyResponse: components["schemas"]["UpdateApplyResult"];
         /**

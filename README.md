@@ -28,6 +28,8 @@ On Docker installs, **Admin → Updates** is read-only — use `setup.sh upgrade
 pnpm install
 composer --working-dir packages/api install
 cp packages/api/.env.example packages/api/.env
+# Local dev: set APP_ENV=local and APP_DEBUG=true in packages/api/.env
+# Optional: WGW_DISABLE_LOGIN_THROTTLE=1
 pnpm dev
 ```
 

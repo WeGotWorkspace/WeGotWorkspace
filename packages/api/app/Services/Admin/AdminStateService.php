@@ -61,7 +61,24 @@ final class AdminStateService
             ],
             'currentUser' => $adminUsername,
             'logoutUrl' => $this->urls->logout(),
+            'securityWarnings' => $this->securityWarnings(),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function securityWarnings(): array
+    {
+        $warnings = [];
+        if (config('app.debug') === true) {
+            $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
+        }
+        if (! app()->environment('production')) {
+            $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
+        }
+
+        return $warnings;
     }
 
     /**

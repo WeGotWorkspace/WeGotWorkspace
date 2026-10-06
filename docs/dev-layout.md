@@ -54,6 +54,8 @@ Host API uses PHP’s built-in server on **http://127.0.0.1:9080** (`packages/ap
 
 ```bash
 cp packages/api/.env.example packages/api/.env
+# Local dev: set APP_ENV=local and APP_DEBUG=true in packages/api/.env
+# Optional: WGW_DISABLE_LOGIN_THROTTLE=1
 php artisan key:generate --working-dir packages/api
 bash packages/api/scripts/generate-jwt-keys.sh
 # Ensure packages/api/.env has WGW_API_JWT_*_PATH (see .env.example)
@@ -104,7 +106,7 @@ See [`packages/api/docs/api-auth.md`](../packages/api/docs/api-auth.md) for env 
 **Login (`POST /api/v1/auth/token`) prerequisites:**
 
 1. **API running** — `pnpm dev:api` in a separate terminal; `curl -s http://127.0.0.1:9080/api/v1/health` must return `200`.
-2. **Laravel env** — `cp packages/api/.env.example packages/api/.env` and `php artisan key:generate --working-dir packages/api`.
+2. **Laravel env** — `cp packages/api/.env.example packages/api/.env`, then set `APP_ENV=local` and `APP_DEBUG=true` (optional: `WGW_DISABLE_LOGIN_THROTTLE=1`), and `php artisan key:generate --working-dir packages/api`.
 3. **Install data** under `apps/wegotworkspace/` — `packages/api/.env` with `WGW_*`, `wgw-content/db.sqlite`, and `wgw-content/keys/api-jwt-{private,public}.pem` (created by the web installer, or copy from an existing install / run `tools/setup-storybook-live-api.sh` after install).
 4. **Preview env** — repo-root `.env.local` from `packages/apps/.env.example` with `VITE_WGW_USE_LIVE_API=1` and credentials matching your install user.
 

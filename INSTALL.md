@@ -37,7 +37,7 @@ On the first HTTP request, the install bootstrap automatically:
 
 Existing installs are not overwritten: a present `.env` or `.htaccess` is left as-is (including custom `RewriteBase` rules).
 
-Set `APP_ENV=production` and `APP_DEBUG=false` on a live host after install.  
+The shipped `.env.example` already sets `APP_ENV=production` and `APP_DEBUG=false`. Existing ZIP and Docker installs are rewritten to those values on the next schema migration.  
 Default drivers use files under `packages/api/storage/` so you do not need `packages/api/database/database.sqlite`.  
 In-place updates preserve `.env`, `.htaccess`, session files, and logs, and copy `.env` into the update backup folder as `packages-api.env`.
 

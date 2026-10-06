@@ -279,3 +279,7 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__endpoint {
   @apply mt-4;
 }
+
+.admin-workspace .admin-security-warnings {
+  @apply mb-4 flex flex-col gap-3;
+}

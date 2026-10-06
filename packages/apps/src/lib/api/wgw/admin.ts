@@ -179,6 +179,7 @@ export function mapWgwAdminStateToUI(
     searchReindex,
     currentUser: state.currentUser,
     logoutUrl: state.logoutUrl,
+    securityWarnings: state.securityWarnings,
     updateLogLines,
   };
 }
