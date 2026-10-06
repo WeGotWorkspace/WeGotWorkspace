@@ -26,6 +26,7 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
         $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = '1';
         $this->configureWgwJwtKeys();
+        config(['app.url' => 'https://wgw.example.test']);
         Mail::fake();
     }
 
@@ -202,6 +203,27 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
 
         putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
         $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = '1';
+    }
+
+    public function test_loopback_app_url_creates_no_token(): void
+    {
+        config(['app.url' => 'http://localhost']);
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame(0, $this->tokenCount());
+    }
+
+    public function test_loopback_app_url_hides_password_recovery(): void
+    {
+        config(['app.url' => 'http://localhost']);
+        $this->enableMailDelivery();
+
+        $this->assertFalse($this->getJson('/api/v1/capabilities')->json('auth.passwordRecovery'));
     }
 
     public function test_capabilities_exposes_password_recovery_from_can_submit(): void

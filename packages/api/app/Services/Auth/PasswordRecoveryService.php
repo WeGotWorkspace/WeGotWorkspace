@@ -12,6 +12,7 @@ use App\Services\MailDelivery\DeliveryResult;
 use App\Services\MailDelivery\InvalidOutboundMessageException;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Settings\UserProfileService;
+use App\Support\PublicAppUrl;
 use Illuminate\Support\Facades\Log;
 
 final class PasswordRecoveryService
@@ -44,7 +45,7 @@ final class PasswordRecoveryService
 
         $config = $this->mailDelivery->loadConfig();
         $canSubmit = (bool) ($this->mailDelivery->adminState()['capability']['canSubmit'] ?? false);
-        if (! $canSubmit) {
+        if (! $canSubmit || ! PublicAppUrl::isConfigured()) {
             return;
         }
 

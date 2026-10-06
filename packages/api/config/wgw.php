@@ -23,6 +23,8 @@ return [
     ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
+    /** Extra Host names, comma-separated, trusted in addition to the APP_URL host. */
+    'trusted_hosts' => env('WGW_TRUSTED_HOSTS'),
 
     /**
      * Installer autofill / headless env (read via {@see WgwInstallEnv}).
