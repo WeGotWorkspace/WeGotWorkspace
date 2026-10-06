@@ -48,7 +48,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
             ->assertJsonStructure(['publicKey']);
 
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/alice',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -75,7 +75,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->seedSharedNotification('alice');
         $token = $this->issueBearerTokenFor('alice');
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/alice',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -104,7 +104,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->seedDueSharedNotification('alice');
         $token = $this->issueBearerTokenFor('alice');
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/alice',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -129,7 +129,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->seedDueSharedNotification('alice');
         $token = $this->issueBearerTokenFor('alice');
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/alice',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -148,7 +148,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->seedDueSharedNotification('alice');
         $token = $this->issueBearerTokenFor('alice');
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/gone',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/gone',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -187,7 +187,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
 
         $token = $this->issueBearerTokenFor('alice');
         $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
-            'endpoint' => 'https://push.example/alice-fmt',
+            'endpoint' => 'https://fcm.googleapis.com/fcm/send/alice-fmt',
             'keys' => ['p256dh' => 'pub', 'auth' => 'secret'],
         ])->assertCreated();
 
@@ -220,7 +220,7 @@ final class VapidPushTest extends WgwDatabaseTestCase
             $this->withBearer($token)->postJson('/api/v1/notifications/push/subscriptions', [
                 'endpoint' => $endpoint,
                 'keys' => $keys,
-            ])->assertUnprocessable();
+            ])->assertStatus(400);
         }
 
         $this->assertSame(0, PushSubscription::query()->count());

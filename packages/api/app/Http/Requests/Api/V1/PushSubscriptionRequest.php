@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use App\Http\Requests\Api\V1\Concerns\NarrowsValidatedInput;
+use App\Services\Notify\PushEndpointPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class PushSubscriptionRequest extends FormRequest
@@ -22,7 +23,16 @@ final class PushSubscriptionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'endpoint' => ['required', 'string', 'url', 'max:2048'],
+            'endpoint' => [
+                'required',
+                'string',
+                'max:2048',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! app(PushEndpointPolicy::class)->isAllowed($value)) {
+                        $fail('The endpoint must be an allowlisted https push service.');
+                    }
+                },
+            ],
             'keys' => ['required', 'array'],
             'keys.p256dh' => ['required', 'string', 'min:1', 'max:255'],
             'keys.auth' => ['required', 'string', 'min:1', 'max:255'],
