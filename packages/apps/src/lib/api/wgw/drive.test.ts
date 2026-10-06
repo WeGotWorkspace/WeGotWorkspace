@@ -46,6 +46,7 @@ const DOCS_ID = "fn-docs";
 const FILE_ID = "fn-readme";
 const SHARE_ROOT_ID = "fn-share-root";
 const SHARE_CHILD_ID = "fn-share-plan";
+let sharedRootPath = "/users/alice/workspace";
 
 function jmapSessionBody() {
   return {
@@ -222,7 +223,7 @@ function mockSignedInFetch() {
       return jsonResponse({
         data: [
           {
-            share: { path: "/users/alice/workspace" },
+            share: { path: sharedRootPath },
             fileNodeId: SHARE_ROOT_ID,
             entry: { path: "/users/alice/workspace", name: "workspace", type: "dir" },
           },
@@ -256,6 +257,7 @@ function mockSignedInFetch() {
 describe("createWgwDriveOperations FileNode cutover", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sharedRootPath = "/users/alice/workspace";
     resetDriveJmapSessionForTests();
     wgwIsGuestSession.mockReturnValue(false);
     wgwGuestSharePath.mockReturnValue(null);
@@ -400,6 +402,20 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(
       wgwFetch.mock.calls.some((call) => String(call[0]).startsWith("/files/shared-with-me")),
     ).toBe(true);
+  });
+
+  it("reloads share roots after the owner renames the share", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const first = await ops.listDirectory("/users/alice/workspace");
+    expect(first.directory.files.map((entry) => entry.name)).toEqual(["plan.md"]);
+
+    sharedRootPath = "/users/alice/workspace-renamed";
+    const renamed = await ops.listDirectory("/users/alice/workspace-renamed");
+    expect(renamed.directory.files.map((entry) => entry.name)).toEqual(["plan.md"]);
+
+    await expect(ops.listDirectory("/users/alice/workspace/plan.md")).rejects.toThrow(
+      /Unsupported drive path/,
+    );
   });
 
   it("rejects an unknown foreign path", async () => {
