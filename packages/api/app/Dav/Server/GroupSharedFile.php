@@ -9,19 +9,20 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 
 final class GroupSharedFile extends FlysystemAclFile
 {
+    /**
+     * @param  list<array{privilege: string, principal: string, protected?: bool}>|null  $acl
+     */
     public function __construct(
         Filesystem $filesystem,
         string $key,
-        private readonly string $groupPrincipalUri,
+        string $groupPrincipalUri,
+        ?array $acl = null,
     ) {
-        parent::__construct($filesystem, $key, [], $groupPrincipalUri);
-    }
-
-    /**
-     * @return list<array{privilege: string, principal: string, protected?: bool}>
-     */
-    public function getACL(): array
-    {
-        return GroupSharedAclHelper::aclForGroup($this->groupPrincipalUri);
+        parent::__construct(
+            $filesystem,
+            $key,
+            $acl ?? GroupSharedAclHelper::aclForGroup($groupPrincipalUri),
+            $groupPrincipalUri,
+        );
     }
 }
