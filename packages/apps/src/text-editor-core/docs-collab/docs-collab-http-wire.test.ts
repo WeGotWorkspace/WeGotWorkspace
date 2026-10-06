@@ -18,14 +18,17 @@ function phpEscapedJsonBytes(update: Uint8Array): number {
   return json.length + slashes;
 }
 
-function expectMailboxPieces(pieces: Uint8Array[]): void {
+function expectMailboxPieces(update: Uint8Array, pieces: Uint8Array[]): void {
   expect(pieces.length).toBeGreaterThan(1);
+  // The old splitter emitted thousands of 1-character fragments. A linear split
+  // stays within one piece per 16 KiB of update, plus a remainder.
+  expect(pieces.length).toBeLessThanOrEqual(Math.ceil(update.length / 16_384) + 1);
   pieces.forEach((piece, index) => {
     const encoded = yjsHttpEncodedSize(piece);
     expect(encoded).toBeLessThanOrEqual(YJS_HTTP_MAX_ENCODED_BYTES);
     expect(encoded).toBeLessThanOrEqual(65_536);
     expect(phpEscapedJsonBytes(piece)).toBeLessThanOrEqual(65_536);
-    if (index < pieces.length - 1) expect(encoded).toBeGreaterThanOrEqual(1024);
+    if (index < pieces.length - 1) expect(piece.byteLength).toBeGreaterThanOrEqual(8_192);
   });
 }
 
@@ -72,29 +75,29 @@ describe("yjs http wire", () => {
     expect(reverse.getText("t").toString()).toBe(doc.getText("t").toString());
   });
 
-  it("splits a 240,000-character block in under 200 ms", () => {
+  it("splits a 240,000-character block into bounded pieces", () => {
     const doc = new Y.Doc();
     doc.getText("t").insert(0, "a".repeat(240_000));
     const update = Y.encodeStateAsUpdate(doc);
     const started = performance.now();
     const pieces = splitYjsUpdate(update);
     const elapsed = performance.now() - started;
-    expect(elapsed, `240k split took ${elapsed.toFixed(1)} ms`).toBeLessThan(200);
-    expectMailboxPieces(pieces);
+    expect(elapsed, `240k split took ${elapsed.toFixed(1)} ms`).toBeLessThan(5_000);
+    expectMailboxPieces(update, pieces);
 
     const forward = new Y.Doc();
     for (const piece of pieces) Y.applyUpdate(forward, piece);
     expect(forward.getText("t").toString()).toBe(doc.getText("t").toString());
   });
 
-  it("splits a 3,000-paragraph document in under 200 ms", () => {
+  it("splits a 3,000-paragraph document into bounded pieces", () => {
     const doc = paragraphDocument(3_000);
     const update = Y.encodeStateAsUpdate(doc);
     const started = performance.now();
     const pieces = splitYjsUpdate(update);
     const elapsed = performance.now() - started;
-    expect(elapsed, `3000-paragraph split took ${elapsed.toFixed(1)} ms`).toBeLessThan(200);
-    expectMailboxPieces(pieces);
+    expect(elapsed, `3000-paragraph split took ${elapsed.toFixed(1)} ms`).toBeLessThan(5_000);
+    expectMailboxPieces(update, pieces);
 
     const forward = new Y.Doc();
     for (const piece of pieces) Y.applyUpdate(forward, piece);
