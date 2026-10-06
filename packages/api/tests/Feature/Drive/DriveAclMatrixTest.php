@@ -651,6 +651,22 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         };
     }
 
+    public function test_editor_cannot_write_attachment_under_another_principal_prefix(): void
+    {
+        $nodes = $this->fileNodeGetAll('alice', $this->token('owner'));
+        $parentId = $this->fileNodeIdByName($nodes, 'alice');
+        $blobId = $this->uploadFileNodeBlob("# Plan\n", 'alice', $this->token('owner'));
+        $created = $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'alice', 'create' => [
+                'd0' => ['parentId' => $parentId, 'name' => 'matrix-doc.md', 'blobId' => $blobId],
+            ]], 'c0'],
+        ], $this->token('owner'))->assertOk()->json('methodResponses.0.1.created.d0');
+        $docId = $created['id'];
+
+        $this->writeCollab('/users/bob/.attachments/'.$docId.'/x.md', 'owner', 'nope')
+            ->assertForbidden();
+    }
+
     private function accountId(string $role): string
     {
         return match ($role) {

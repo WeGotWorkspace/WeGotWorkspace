@@ -267,6 +267,11 @@ final class DriveShareAuthorizer
         if ($doc === null) {
             return null;
         }
+        $pathPrefix = DocAttachmentPaths::principalPrefix($this->paths->virtualToStorageKey($path));
+        $docPrefix = DocAttachmentPaths::principalPrefix((string) $doc->storage_key);
+        if ($pathPrefix === null || $pathPrefix !== $docPrefix) {
+            return null;
+        }
         if (DocAttachmentPaths::parseStorageKey((string) $doc->storage_key) !== null) {
             return null;
         }
