@@ -54,14 +54,6 @@
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
-
-  /* Outline action language for header + collection sidebar rows. */
-}
-
-/* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
-.tasks-workspace .view-header {
 }
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
@@ -123,8 +115,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

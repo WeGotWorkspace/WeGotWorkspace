@@ -292,8 +292,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

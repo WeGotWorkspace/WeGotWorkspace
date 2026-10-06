@@ -15,8 +15,6 @@
   --workspace-sidebar-surface: var(--color-we-got-soft);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   --color-emerald: var(--workspace-accent);
-  --primary: var(--workspace-accent);
-  --primary-foreground: var(--workspace-accent-foreground);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
   --muted-foreground: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);

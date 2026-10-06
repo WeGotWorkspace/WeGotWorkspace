@@ -22,9 +22,6 @@
   );
 }
 
-.drive-workspace .drive-main-pane {
-}
-
 /** Matches sidebar section titles (`field-label-row__label` + `--field-label-color`). */
 .drive-workspace .drive-item-label {
   @apply flex items-center gap-1 text-xs font-medium uppercase truncate min-w-0;

@@ -93,7 +93,7 @@
 
 .collection-sidebar-row__visibility {
   --primary: var(--collection-row-color, var(--workspace-foreground));
-  --primary-foreground: #ffffff;
+  --primary-foreground: var(--workspace-accent-foreground);
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
    * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */

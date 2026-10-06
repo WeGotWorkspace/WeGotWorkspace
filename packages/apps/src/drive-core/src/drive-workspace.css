@@ -60,10 +60,6 @@
   @apply mx-0 flex min-h-full flex-1 flex-col w-full max-w-none px-0 py-0;
 }
 
-.drive-workspace .app-sidebar__scroll {
-  /* Primary fill inherits `--workspace-accent`. */
-}
-
 /*
  * Bell lives in the header (sibling of scroll). Mirror New CTA: brat fill +
  * Dark label.
@@ -175,8 +171,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-brat);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

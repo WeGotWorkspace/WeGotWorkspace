@@ -162,7 +162,9 @@
   --color-ring: var(--ring);
 
   --paper-sheet-bg: var(--workspace-surface);
-  --paper-sheet-bg: oklch(from var(--workspace-surface) calc(l + 0.045) c h);
+  @supports (color: oklch(from red l c h)) {
+    --paper-sheet-bg: oklch(from var(--workspace-surface) calc(l + 0.045) c h);
+  }
   --sheet-shadow:
     0 1px 2px color-mix(in oklch, var(--workspace-foreground) 4%, transparent),
     0 10px 30px -10px color-mix(in oklch, var(--workspace-foreground) 12%, transparent);

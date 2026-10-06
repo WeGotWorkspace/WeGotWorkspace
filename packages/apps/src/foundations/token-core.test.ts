@@ -96,6 +96,13 @@ describe("workspace token core", () => {
     expect(derive).toContain("body,");
   });
 
+  it("gates the paper-sheet lift behind relative-color support", () => {
+    const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
+    expect(derive).toMatch(
+      /--paper-sheet-bg:\s*var\(--workspace-surface\);\s*@supports \(color: oklch\(from red l c h\)\)/,
+    );
+  });
+
   it("lists every selector that assigns --workspace-surface or --workspace-foreground", () => {
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
     const where = derive.match(/:where\(\s*([\s\S]*?)\)\s*\{/);
@@ -251,10 +258,9 @@ describe("workspace token contrast (AA floors)", () => {
   });
 
   it.each([
-    ["surface-foreground on Soft (paper floor)", "dark", "soft", 4.5],
+    ["ink on Soft (paper and rail floor)", "dark", "soft", 4.5],
     ["accent-foreground on accent", "soft-white", "dark", 4.5],
-    ["sidebar-foreground on Soft (rail floor)", "dark", "soft", 4.5],
-  ] as const)("%s is at least %s:1", (_label, fgKey, bgKey, min) => {
+  ] as const)("%s is at least %d:1", (_label, fgKey, bgKey, min) => {
     const hex = { soft: soft!, dark: dark!, "soft-white": "#ffffff" };
     expect(contrastRatio(hex[fgKey], hex[bgKey])).toBeGreaterThanOrEqual(min);
   });

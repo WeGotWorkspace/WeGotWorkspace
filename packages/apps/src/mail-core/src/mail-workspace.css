@@ -55,14 +55,9 @@
   /* Switch mark stays the mail icon (red + white). */
   --workspace-icon-surface: var(--color-we-got-red);
   --workspace-icon-foreground: #ffffff;
-  /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   /* Selected nav count pills match the primary CTA (darkened red + white). */
   --sidebar-badge-bg: var(--workspace-accent);
   --sidebar-badge-fg: var(--workspace-accent-foreground);
-
-  /* Outline action language for header + collection sidebar rows. */
 }
 
 /** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
@@ -76,10 +71,6 @@
   svg {
   --workspace-icon-surface: var(--color-we-got-red);
   --workspace-icon-foreground: #ffffff;
-}
-
-/* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
-.mail-workspace .view-header {
 }
 
 .mail-workspace .mail-state-accent {
@@ -162,9 +153,6 @@
   /* Switch mark stays the mail icon (red + white). */
   --workspace-icon-surface: var(--color-we-got-red);
   --workspace-icon-foreground: #ffffff;
-  /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

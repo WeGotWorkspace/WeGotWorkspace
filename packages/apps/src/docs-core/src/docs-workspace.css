@@ -75,13 +75,6 @@
 }
 
 /*
- * Header outline actions (sidebar toggle + DocsHeaderActions): accent glyph via
- * `--button-active-color`; soft washes come from shared `.view-header` SST.
- */
-.docs-workspace .view-header {
-}
-
-/*
  * Suggest mode: icon-only below md (Tasks show-completed / Meet-style sr-only label +
  * square chrome); icon + visible "Suggest" label from md up.
  */
@@ -269,8 +262,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: #ffffff;
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

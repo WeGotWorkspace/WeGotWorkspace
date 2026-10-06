@@ -489,10 +489,6 @@
   @apply mt-2 flex w-full justify-start gap-2;
 }
 
-/* Dark primary for this submit only. Sidebar New task keeps the pink icon pair. */
-.tasks-main-view__add-submit {
-}
-
 .tasks-edit-dialog__content {
   @apply max-w-lg;
 }

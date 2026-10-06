@@ -28,8 +28,9 @@ html:has(.apps-home-screen) {
 }
 
 /**
- * Pin the current-app icon pair, then map it onto the SVG layer tokens.
- * Unpinned inline artwork keeps its own `--app-icon-layer-*` fallbacks.
+ * Home tiles always map `--workspace-icon-*` onto `--app-icon-layer-*`.
+ * Pin each `data-app-id` below; an unpinned tile (e.g. reminders) inherits
+ * the `:root` pair and will not use the SVG fallbacks.
  */
 .apps-home-screen__tile-icon .workspace-app-icon--tile {
   --app-icon-layer-surface: var(--workspace-icon-surface);

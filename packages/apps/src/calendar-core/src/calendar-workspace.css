@@ -55,10 +55,6 @@
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: #ffffff;
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
-
-  /* Outline action language for header + collection sidebar rows. */
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
@@ -94,16 +90,6 @@
   svg {
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: #ffffff;
-}
-
-/*
- * Header outline actions (sidebar toggle, Today, prev/next, inbox, view switch):
- * accent glyph via `--button-active-color`; soft washes from shared `.view-header` SST.
- * SegmentedControl consumes these (and --segmented-control-*) so the grid/list
- * track matches outline IconButtons; active thumb matches pressed Today/Inbox wash.
- * Idle Week select + outline buttons share --button-outline-color (ink).
- */
-.calendar-workspace .view-header {
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */

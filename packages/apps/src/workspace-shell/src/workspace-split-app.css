@@ -37,7 +37,4 @@
   );
 
   --workspace-main-content-max-width: 42rem;
-
-  --primary: var(--workspace-accent);
-  --primary-foreground: var(--workspace-accent-foreground);
 }

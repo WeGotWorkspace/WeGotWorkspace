@@ -48,22 +48,7 @@
   );
   --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   --segmented-control-track-active-bg: var(--workspace-accent);
-
-  /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
-  /*
-   * Item washes live in `workspace-color.css` (accent stepped into the rail).
-   * A local copy here used to lose to a later import of that sheet.
-   */
-}
-
-/*
- * Header outline actions (sidebar toggle): accent glyph via `--button-active-color`;
- * soft washes come from shared `.view-header` SST.
- */
-.admin-workspace .view-header {
 }
 
 .admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -105,8 +90,6 @@
   --workspace-accent: var(--color-we-got-dark);
   --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
   --segmented-control-track-active-bg: var(--workspace-accent);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

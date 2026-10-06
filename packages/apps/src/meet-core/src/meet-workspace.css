@@ -3,9 +3,9 @@
 @import "../../workspace-shell/src/workspace-chrome-footer.css";
 @import "../../text-editor-core/docs-collab/docs-collab-card/docs-collab-sidebar-panel.css";
 
-.meet-workspace {
-  @apply flex h-dvh w-full flex-col;
-
+.meet-workspace,
+.meet-dialog-surface,
+.meet-popover-surface {
   --workspace-surface: var(--workspace-home-bg);
   --workspace-foreground: #ffffff;
   --workspace-accent: #ffffff;
@@ -14,6 +14,10 @@
   --workspace-icon-foreground: var(--color-we-got-sand);
   --workspace-sidebar-surface: var(--workspace-surface);
   --workspace-sidebar-foreground: var(--workspace-foreground);
+}
+
+.meet-workspace {
+  @apply flex h-dvh w-full flex-col;
 
   --meet-surface: var(--workspace-surface);
   --meet-panel: color-mix(in oklch, #fff 4%, var(--workspace-surface));
@@ -259,14 +263,6 @@
  */
 .meet-dialog-surface,
 .meet-popover-surface {
-  --workspace-surface: var(--workspace-home-bg);
-  --workspace-foreground: #ffffff;
-  --workspace-accent: #ffffff;
-  --workspace-accent-foreground: var(--color-we-got-dark);
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-sand);
-  --workspace-sidebar-surface: var(--workspace-surface);
-  --workspace-sidebar-foreground: var(--workspace-foreground);
   --meet-surface: var(--workspace-surface);
   --meet-panel: color-mix(in oklch, #fff 4%, var(--workspace-surface));
   --meet-panel-soft: color-mix(in oklch, #fff 8%, var(--workspace-surface));
@@ -936,13 +932,6 @@
   @apply flex items-center gap-2;
 }
 
-/*
- * Header outline actions (sidebar toggle + edit): accent glyph via `--button-active-color`;
- * soft washes come from shared `.view-header` SST.
- */
-.meet-workspace--split .view-header {
-}
-
 .meet-workspace__header-start {
   @apply w-auto shrink-0;
 }
@@ -997,12 +986,6 @@
    * Chrome is already a 12% accent wash. Outline hover/selected must be
    * darker steps of the same mix or they disappear into the bar.
    */
-}
-
-/* Collapsed stage toggles stay on the quieter sidebar wash. */
-.meet-workspace
-  .meet-call-stage:not(.meet-call-stage--expanded)
-  .button--variant-outline.icon-button--active {
 }
 
 .meet-call-bar {
