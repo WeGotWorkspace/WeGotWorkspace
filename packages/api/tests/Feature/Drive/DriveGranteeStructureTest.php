@@ -14,7 +14,8 @@ use Tests\Support\WgwDatabaseTestCase;
 
 /**
  * Grantee structure rules for member shares (#990): the share root is off-limits,
- * moves stay inside the share, and destroy lands in the owner's trash.
+ * moves stay inside the share, destroy lands in the owner's trash, and a share
+ * whose root sits in product trash is suspended until restore.
  */
 #[Group('MySQLParity')]
 final class DriveGranteeStructureTest extends WgwDatabaseTestCase
@@ -53,6 +54,12 @@ final class DriveGranteeStructureTest extends WgwDatabaseTestCase
 
     public function test_editor_cannot_delete_the_share_root_via_rest(): void
     {
+        $this->withBearer($this->token('editor'))
+            ->deleteJson('/api/v1/files', ['paths' => [self::WORKSPACE]])
+            ->assertStatus(405);
+
+        // DELETE /api/v1/files is no longer routed (FilesEndpointsTest). MCP and
+        // other DriveService callers still hit the share-root guard.
         try {
             app(DriveService::class)->deleteItems(
                 $this->drivePrincipal('bob'),
@@ -202,5 +209,55 @@ final class DriveGranteeStructureTest extends WgwDatabaseTestCase
         $this->listWorkspace('owner')
             ->assertOk()
             ->assertJsonFragment(['name' => 'plan.md', 'type' => 'file']);
+    }
+
+    public function test_owner_trash_suspends_the_share_until_restore(): void
+    {
+        $workspaceId = $this->workspaceNodeId();
+        $planId = $this->planNodeId();
+        $trashId = $this->ensureActorTrashNodeId('owner');
+        $homeId = $this->fileNodeIdByName(
+            $this->fileNodeGetAll('alice', $this->token('owner')),
+            'alice',
+        );
+        $trashedPlan = self::OWNER_TRASH.'/workspace/plan.md';
+
+        $public = $this->withBearer($this->token('owner'))->postJson('/api/v1/files/shares', [
+            'path' => self::WORKSPACE,
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+        $guestToken = (string) $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $public->json('data.publicToken'),
+        ])->assertOk()->json('access_token');
+
+        $this->moveNode('owner', $workspaceId, $trashId)->assertOk()
+            ->assertJsonPath('methodResponses.0.1.updated.'.$workspaceId, null);
+
+        $this->withBearer($this->token('editor'))
+            ->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonPath('data', []);
+
+        $this->fileNodeJmap([
+            ['FileNode/get', ['accountId' => 'bob', 'ids' => [$planId]], 'g0'],
+        ], $this->token('editor'))->assertOk()
+            ->assertJsonPath('methodResponses.0.1.notFound.0', $planId);
+
+        $this->download($trashedPlan, 'editor')
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Access denied for this path.');
+
+        $this->withBearer($guestToken)
+            ->get('/api/v1/files/content?path='.urlencode($trashedPlan))
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Access denied for this path.');
+
+        $this->moveNode('owner', $workspaceId, $homeId)->assertOk()
+            ->assertJsonPath('methodResponses.0.1.updated.'.$workspaceId, null);
+
+        $restored = $this->download(self::PLAN, 'editor');
+        $restored->assertOk();
+        $this->assertSame(self::PLAN_BODY, $restored->streamedContent());
     }
 }

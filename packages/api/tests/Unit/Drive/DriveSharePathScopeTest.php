@@ -53,4 +53,27 @@ final class DriveSharePathScopeTest extends TestCase
 
         $this->assertSame($expected, $scope->isTopLevelDrive($path));
     }
+
+    /**
+     * @return iterable<string, array{0: string, 1: bool}>
+     */
+    public static function productTrashProvider(): iterable
+    {
+        yield 'personal trash root' => ['/users/alice/.Trash', true];
+        yield 'personal trash child' => ['/users/alice/.Trash/workspace', true];
+        yield 'legacy trash segment' => ['/users/alice/Trash/workspace', true];
+        yield 'group trash child' => ['/groups/team/.Trash/docs', true];
+        yield 'user home' => ['/users/alice', false];
+        yield 'shared folder' => ['/users/alice/workspace', false];
+        yield 'nested folder named trash' => ['/users/alice/workspace/.Trash', false];
+        yield 'dotdot collapses away from trash' => ['/users/alice/.Trash/../workspace', false];
+    }
+
+    #[DataProvider('productTrashProvider')]
+    public function test_is_in_product_trash(string $path, bool $expected): void
+    {
+        $scope = new DriveSharePathScope(new StoragePaths);
+
+        $this->assertSame($expected, $scope->isInProductTrash($path));
+    }
 }
