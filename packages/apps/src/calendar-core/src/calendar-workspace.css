@@ -69,6 +69,7 @@
 
   /* The lit views highlight "today" and previews with this. */
   --lc-higlight-color: var(--workspace-accent);
+  --lc-today-on-color: var(--workspace-accent-foreground);
   /* Grid chrome follows the workspace pair — not light-dark() slate. */
   --lc-grid-base-color: var(--workspace-foreground);
   --lc-weekend-day-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);

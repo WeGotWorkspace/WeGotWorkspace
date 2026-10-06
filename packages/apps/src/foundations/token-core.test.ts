@@ -110,6 +110,34 @@ describe("workspace token core", () => {
       /::part\(day-number-outside-month\)[\s\S]*color:\s*var\(--_lc-outside-month-day-color\)/,
     );
     expect(css).toMatch(/::part\(day-header-button\)[\s\S]*color:\s*inherit/);
+    expect(css).toContain(
+      "--_lc-today-day-color: var(--lc-today-on-color, var(--workspace-accent-foreground))",
+    );
+    expect(css).toMatch(/::part\(day-number-today\)[\s\S]*color:\s*var\(--_lc-today-day-color\)/);
+    expect(css).not.toMatch(/::part\(day-number-today\)[\s\S]*color:\s*#fff/);
+  });
+
+  it("paints today pill ink from the accent pair, not hardcoded white", () => {
+    const weekday = readFileSync(
+      join(srcRoot, "lib/calendar-elements/CalendarWeekdayHeader/CalendarWeekdayHeader.css"),
+      "utf8",
+    );
+    const sidebar = readFileSync(
+      join(srcRoot, "lib/calendar-elements/CalendarTimeSidebar/CalendarTimeSidebar.css"),
+      "utf8",
+    );
+    const workspace = readFileSync(
+      join(srcRoot, "calendar-core/src/calendar-workspace.css"),
+      "utf8",
+    );
+    expect(workspace).toContain("--lc-today-on-color: var(--workspace-accent-foreground)");
+    expect(weekday).toContain(
+      "color: var(--lc-today-on-color, var(--workspace-accent-foreground, #fff))",
+    );
+    expect(weekday).not.toMatch(/\.weekday-day-number\.is-today[\s\S]*color:\s*#fff/);
+    expect(sidebar).toContain(
+      "color: var(--lc-today-on-color, var(--workspace-accent-foreground, #fff))",
+    );
   });
 
   it("paints sticky list day headers from workspace foreground, not light-dark slate", () => {

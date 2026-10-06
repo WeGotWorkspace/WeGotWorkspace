@@ -1469,7 +1469,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           @dblclick=${(dblClickEvent: MouseEvent) =>
             this.#handleMonthDayHeaderDblClick(cellIndex, day, dblClickEvent)}
         >
-          <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
+          <span part=${dayNumberParts}>
             ${dayNumberContent}
             ${
               dotColors.length

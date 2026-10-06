@@ -23,6 +23,9 @@
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
   --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
+  /* Today pill fill is `--lc-higlight-color` → accent. Ink must be the accent
+     pair, not `#fff`, or a remapped white accent is white-on-white. */
+  --_lc-today-day-color: var(--lc-today-on-color, var(--workspace-accent-foreground));
   --_lc-grid-ghost-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
@@ -428,8 +431,9 @@ time-line.timeline-timed::part(viewport) {
 }
 
 .year-day-number.is-today {
-  @apply text-white font-semibold;
+  @apply font-semibold;
   background: var(--lc-higlight-color, #ff0000);
+  color: var(--_lc-today-day-color);
 }
 
 .year-day-dots {
@@ -586,7 +590,7 @@ time-line::part(day-number-outside-month) {
 
 time-line::part(day-number-today) {
   background: var(--lc-higlight-color, #ff0000);
-  color: #fff;
+  color: var(--_lc-today-day-color);
   font-weight: 600;
 }
 
@@ -782,7 +786,7 @@ time-line::part(overflow-dot) {
   }
 
   time-line.timeline-main::part(day-number-today) {
-    color: #fff;
+    color: var(--_lc-today-day-color);
   }
 
   time-line.timeline-main::part(day-month-prefix) {
@@ -845,7 +849,7 @@ time-line::part(overflow-dot) {
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-number-today) {
-  color: #fff;
+  color: var(--_lc-today-day-color);
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-month-prefix) {
