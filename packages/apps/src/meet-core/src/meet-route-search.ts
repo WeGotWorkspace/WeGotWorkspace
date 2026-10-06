@@ -52,7 +52,7 @@ export function meetSearchFromRoom(roomCode: string | null): MeetRouteSearch {
     typeof window !== "undefined" && isRtcForceRelayEnabledFromQuery(window.location.search)
       ? 1
       : undefined;
-  const debug = {
+  const debug: MeetRouteSearch = {
     ...(rtcDebug !== undefined ? { rtcDebug } : {}),
     ...(rtcForceRelay !== undefined ? { rtcForceRelay } : {}),
   };
