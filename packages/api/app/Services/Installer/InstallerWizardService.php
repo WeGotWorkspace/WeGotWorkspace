@@ -6,6 +6,7 @@ namespace App\Services\Installer;
 
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
+use App\Support\InstallLayout;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
 use Illuminate\Support\Facades\Cache;
@@ -373,7 +374,9 @@ final class InstallerWizardService
         ];
         // ZIP extracts have no channel. Docker already wrote WGW_INSTALL_CHANNEL
         // before this wizard runs, so an existing channel is left as-is.
-        if ($this->installConfig->installChannel() === null) {
+        // A monorepo app shell (apps/wegotworkspace) is not a ZIP release.
+        if ($this->installConfig->installChannel() === null
+            && InstallLayout::isReleaseInstallRoot($this->installConfig->installRoot())) {
             $bootstrap['install_channel'] = 'zip';
         }
 

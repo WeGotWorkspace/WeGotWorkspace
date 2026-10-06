@@ -13,8 +13,9 @@ use App\Support\WgwInstallConfig;
  * One-time rewrite of shipped APP_ENV / APP_DEBUG for ZIP and Docker installs.
  *
  * Channel is read the same way as DevSeedGuard::installChannel():
- * config first, then WGW_INSTALL_CHANNEL. A ZIP extract often has no channel
- * at all; those installs are rewritten unless the root is a monorepo checkout.
+ * config first, then WGW_INSTALL_CHANNEL. An empty channel is a release
+ * install only when packages/api lives in the install root and that root is
+ * not the monorepo app shell.
  */
 final class ShippedInstallEnvHardening
 {
@@ -58,7 +59,7 @@ final class ShippedInstallEnvHardening
             return false;
         }
 
-        return ! InstallLayout::isMonorepoCheckoutRoot($this->install->installRoot());
+        return InstallLayout::isReleaseInstallRoot($this->install->installRoot());
     }
 
     private function installChannel(): string

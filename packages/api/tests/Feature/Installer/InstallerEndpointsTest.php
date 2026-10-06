@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Installer;
 
+use App\Support\WgwDatabaseProbe;
+use App\Support\WgwInstallConfig;
 use Tests\Support\InstallerMysqlTestDatabase;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
@@ -172,6 +174,74 @@ final class InstallerEndpointsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('installed', true)
             ->assertJsonPath('state.step', 'installed');
+    }
+
+    public function test_wizard_writes_no_channel_for_monorepo_app_shell(): void
+    {
+        $repo = $this->installRoot;
+        file_put_contents($repo.'/pnpm-workspace.yaml', "packages:\n  - 'packages/*'\n");
+        $beside = "APP_ENV=local\nAPP_DEBUG=true\n";
+        file_put_contents($repo.'/packages/api/.env', $beside);
+
+        $shell = $repo.'/apps/wegotworkspace';
+        mkdir($shell.'/wgw-content', 0775, true);
+        file_put_contents($shell.'/index.php', "<?php\n");
+        WgwInstallFixture::ensureApiPackage($shell);
+        file_put_contents($shell.'/packages/api/.env', $beside);
+
+        putenv('WGW_APP_ROOT='.$shell);
+        $_ENV['WGW_APP_ROOT'] = $shell;
+        $_SERVER['WGW_APP_ROOT'] = $shell;
+        config([
+            'wgw.install_root' => $shell,
+            'wgw.data_dir' => $shell.'/wgw-content',
+            'wgw.install_channel' => null,
+        ]);
+        $this->app->forgetInstance(WgwInstallConfig::class);
+        $this->app->forgetInstance(WgwDatabaseProbe::class);
+
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'welcome_next',
+            'payload' => [],
+        ])->assertOk();
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'requirements_next',
+            'payload' => ['db_driver' => 'sqlite'],
+        ])->assertOk();
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'database_next',
+            'payload' => [
+                'db_driver' => 'sqlite',
+                'sqlite_path' => './wgw-content/monorepo-install.sqlite',
+            ],
+        ])->assertOk();
+        $this->postJson('/api/v1/installer/action', [
+            'action' => 'site_next',
+            'payload' => [
+                'timezone' => 'UTC',
+                'enable_files' => true,
+                'enable_calendars' => true,
+                'enable_contacts' => false,
+                'show_browser_ui' => true,
+            ],
+        ])->assertOk();
+        $install = $this->postJson('/api/v1/installer/action', [
+            'action' => 'install',
+            'payload' => [
+                'username' => 'admin',
+                'display_name' => 'Admin',
+                'email' => 'admin@example.test',
+                'password' => 'longpassword',
+                'password_confirm' => 'longpassword',
+                'mail_enabled' => false,
+                'meet_enabled' => false,
+            ],
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $written = (string) file_get_contents($shell.'/packages/api/.env');
+        $this->assertStringNotContainsString('WGW_INSTALL_CHANNEL', $written);
+        $this->assertStringContainsString('WGW_DB_CONNECTION=sqlite', $written);
+        $this->assertSame($beside, (string) file_get_contents($repo.'/packages/api/.env'));
     }
 
     public function test_wizard_advances_through_mysql_install(): void
