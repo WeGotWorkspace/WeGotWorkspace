@@ -22,6 +22,20 @@ describe("meet route search", () => {
     });
   });
 
+  it("keeps rtcForceRelay and ignores iceTransportPolicy", () => {
+    expect(
+      parseMeetRouteSearch({
+        room: "h8y8-ewp6-al8n",
+        rtcForceRelay: "1",
+        iceTransportPolicy: "relay",
+      }),
+    ).toEqual({
+      room: "h8y8-ewp6-al8n",
+      rtcForceRelay: 1,
+    });
+    expect(parseMeetRouteSearch({ rtcForceRelay: "public" })).toEqual({});
+  });
+
   it("reads room from router search params", () => {
     expect(meetRoomFromSearch(parseMeetRouteSearch({ room: "h8y8-ewp6-al8n" }))).toBe(
       "h8y8-ewp6-al8n",

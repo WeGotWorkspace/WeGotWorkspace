@@ -16,7 +16,7 @@ const webServer = Array.isArray(liveConfig.webServer)
         ...server,
         command: server.command.replace(
           "env WGW_DISABLE_LOGIN_THROTTLE=1 ",
-          "env WGW_DISABLE_LOGIN_THROTTLE=1 WGW_RTC_TURN_TTL_SECONDS=120 ",
+          "env WGW_DISABLE_LOGIN_THROTTLE=1 WGW_RTC_TURN_TTL_SECONDS=120 WGW_RTC_RELAY_REQUESTS_PER_MINUTE=60 ",
         ),
       };
     })

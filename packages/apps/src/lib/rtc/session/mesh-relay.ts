@@ -23,6 +23,8 @@ export type MeshRelayPorts = {
   peerName: (remoteId: string) => string;
   postRelay?: RelayRequestClient["postRelay"];
   getPeerConnection: (remoteId: string) => RTCPeerConnection | null;
+  /** Live peer ids, so a precheck can refresh each relay pair later. */
+  peerIds?: () => readonly string[];
   onOutcome: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   /** Credentials are on the existing connection. The mesh times the rebuild. */
   onApplied?: (remoteId: string) => void;
@@ -67,10 +69,17 @@ export class MeshRelay {
     return this.prechecked || this.requested.has(remoteId);
   }
 
-  /** Join-time request. Runs before the first offer when our own path is bad. */
+  /**
+   * Join-time request. Runs before the first offer when our own path is bad,
+   * and whenever debug force-relay is on — including an open path, where the
+   * net class would otherwise skip the mint. A denied force-relay attempt
+   * (lobby) may run again once the peer is allowed in.
+   */
   async beforeDial(): Promise<void> {
-    if (!this.ports.enabled || this.prechecked) return;
-    if (!needsRelayPrecheck(this.ports.localNet())) return;
+    if (!this.ports.enabled) return;
+    const forced = this.wantsForceRelay();
+    if (this.prechecked && !(forced && !this.turn)) return;
+    if (!forced && !needsRelayPrecheck(this.ports.localNet())) return;
     const peerId = this.ports.localPeerId();
     if (!peerId || !this.ports.postRelay) return;
     this.prechecked = true;
@@ -143,7 +152,12 @@ export class MeshRelay {
       this.armRefresh(outcome.turn.ttl);
     }
     this.ports.onOutcome(remoteId, this.ports.peerName(remoteId), outcome);
-    this.ports.log("relay-request", { remoteId, outcome: outcome.outcome, ttl: this.turn?.ttl });
+    this.ports.log("relay-request", {
+      remoteId,
+      outcome: outcome.outcome,
+      ttl: this.turn?.ttl,
+      ...(outcome.outcome === "error" ? { error: outcome.error } : {}),
+    });
   }
 
   /** `ttl` is seconds from the relay response, not a client constant. */
@@ -169,16 +183,24 @@ export class MeshRelay {
     this.refreshTimer = timer;
   }
 
+  private wantsForceRelay(): boolean {
+    return this.ports.settings.forceRelay;
+  }
+
   private async remintRequested(): Promise<void> {
-    const ids = [...this.requested];
+    const ids = new Set(this.requested);
+    for (const id of this.ports.peerIds?.() ?? []) ids.add(id);
     const redoPrecheck = this.prechecked;
     this.requested.clear();
     this.prechecked = false;
     this.turn = null;
     this.issuedAtMs = 0;
-    if (redoPrecheck) await this.beforeDial();
+    const relayIds: string[] = [];
     for (const remoteId of ids) {
-      if (!(await this.pairStillUsesRelay(remoteId))) continue;
+      if (await this.pairStillUsesRelay(remoteId)) relayIds.push(remoteId);
+    }
+    if (redoPrecheck && relayIds.length === 0) await this.beforeDial();
+    for (const remoteId of relayIds) {
       await this.request(remoteId, "refresh");
     }
   }

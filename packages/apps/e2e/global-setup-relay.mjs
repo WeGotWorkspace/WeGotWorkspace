@@ -19,7 +19,10 @@ export default async function globalSetup() {
     body: JSON.stringify({
       values: {
         rtc_stun_url: `stun:${turnHost}:3478`,
-        rtc_turn_url: `turn:${turnHost}:3478?transport=udp`,
+        // TCP only. Docker Desktop on macOS delivers published UDP into the
+        // container but drops the reply. A UDP URL still produces a candidate
+        // Chrome can nominate as prflx, so the selected pair is not relay.
+        rtc_turn_url: `turn:${turnHost}:3478?transport=tcp`,
         rtc_turn_secret: secret,
       },
     }),

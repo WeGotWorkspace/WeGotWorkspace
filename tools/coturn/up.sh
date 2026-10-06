@@ -43,8 +43,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     --max-port=49200 \
     --fingerprint \
     --no-cli \
-    --no-tls \
-    --no-dtls
+    --no-tls
   TURN_HOST="$LAN_IP"
 else
   docker run -d --name "$NAME" --network=host \
@@ -61,8 +60,7 @@ else
     --allow-loopback-peers \
     --fingerprint \
     --no-cli \
-    --no-tls \
-    --no-dtls
+    --no-tls
   TURN_HOST="127.0.0.1"
 fi
 

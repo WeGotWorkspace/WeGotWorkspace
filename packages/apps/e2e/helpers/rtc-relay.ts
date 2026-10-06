@@ -37,6 +37,25 @@ async function readDetails(message: ConsoleMessage): Promise<Record<string, unkn
   return null;
 }
 
+function summarizeRtcEvent(item: RtcConsoleEvent): string {
+  const details = item.details;
+  if (!details) return `${item.channel}:${item.event}`;
+  const pair = details.selectedPair;
+  const localType =
+    pair && typeof pair === "object" ? (pair as { localType?: unknown }).localType : undefined;
+  const bits = [
+    details.forceRelay,
+    details.turnAvailable,
+    details.iceTransportPolicy,
+    details.mode,
+    details.outcome,
+    details.error,
+    localType,
+  ].filter((value) => value !== undefined && value !== null && value !== "");
+  if (bits.length === 0) return `${item.channel}:${item.event}`;
+  return `${item.channel}:${item.event}(${bits.join("/")})`;
+}
+
 /** Console lines whose first argument starts with `[rtc]`. */
 export function collectRtcEvents(page: Page): {
   events: () => RtcConsoleEvent[];
@@ -73,16 +92,28 @@ export function collectRtcEvents(page: Page): {
     waitFor(event, predicate, timeoutMs = 30_000) {
       const matches = (item: RtcConsoleEvent) =>
         item.event === event && (predicate ? predicate(item) : true);
-      const existing = events.find(matches);
-      if (existing) return Promise.resolve(existing);
+      const already = events.find(matches);
+      if (already) return Promise.resolve(already);
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           const index = waiters.findIndex((waiter) => waiter.timer === timer);
           if (index >= 0) waiters.splice(index, 1);
-          const seen = events.map((item) => `${item.channel}:${item.event}`).join(", ");
+          const late = events.find(matches);
+          if (late) {
+            resolve(late);
+            return;
+          }
+          const seen = events.map((item) => summarizeRtcEvent(item)).join(", ");
           reject(new Error(`Timed out waiting for [rtc] ${event}. Seen: ${seen || "(none)"}`));
         }, timeoutMs);
-        waiters.push({ matches, resolve, timer });
+        const waiter: Waiter = { matches, resolve, timer };
+        waiters.push(waiter);
+        const raced = events.find(matches);
+        if (!raced) return;
+        clearTimeout(timer);
+        const index = waiters.indexOf(waiter);
+        if (index >= 0) waiters.splice(index, 1);
+        resolve(raced);
       });
     },
   };

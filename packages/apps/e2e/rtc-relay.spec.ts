@@ -9,7 +9,6 @@ import { docsUrlForFile } from "./helpers/docs-live";
 import {
   admitFirstKnocker,
   closeSessions,
-  countPcCreated,
   createAdHocRoom,
   joinMeetRoom,
   openUsers,
@@ -103,8 +102,6 @@ test("forced relay — Docs", async ({ browser }) => {
 test("credential refresh keeps the call", async ({ browser }) => {
   const sessions = await openUsers(browser, ["admin", "admin"]);
   const [left, right] = sessions;
-  const leftPcs = countPcCreated(left.page);
-  const rightPcs = countPcCreated(right.page);
   const leftLog = collectRtcEvents(left.page);
   const rightLog = collectRtcEvents(right.page);
   const leftReasons = trackRelayReasons(left.page);
@@ -113,8 +110,12 @@ test("credential refresh keeps the call", async ({ browser }) => {
     await startAdHocCall(left, right, true);
     await waitForRemoteVideo(left.page);
     await waitForRemoteVideo(right.page);
-    const leftBefore = leftPcs();
-    const rightBefore = rightPcs();
+    await leftLog.waitFor("selected-pair", meetRelayPair, 45_000);
+    await rightLog.waitFor("selected-pair", meetRelayPair, 45_000);
+    await flushConsole(left.page);
+    await flushConsole(right.page);
+    const leftBefore = meetPcCount(leftLog);
+    const rightBefore = meetPcCount(rightLog);
     await Promise.any([
       leftLog.waitFor("relay-request", (event) => issuedRefresh(event, leftReasons), 150_000),
       rightLog.waitFor("relay-request", (event) => issuedRefresh(event, rightReasons), 150_000),
@@ -123,8 +124,10 @@ test("credential refresh keeps the call", async ({ browser }) => {
       leftLog.waitFor("relay-applied", (event) => event.channel === "meet", 30_000),
       rightLog.waitFor("relay-applied", (event) => event.channel === "meet", 30_000),
     ]);
-    expect(leftPcs()).toBe(leftBefore);
-    expect(rightPcs()).toBe(rightBefore);
+    await flushConsole(left.page);
+    await flushConsole(right.page);
+    expect(meetPcCount(leftLog), pcCreatedSummary(leftLog)).toBe(leftBefore);
+    expect(meetPcCount(rightLog), pcCreatedSummary(rightLog)).toBe(rightBefore);
     await remoteVideoAdvances(left.page);
   } finally {
     await closeSessions(...sessions);
@@ -323,6 +326,19 @@ async function knockGuest(page: Page, room: string, name: string): Promise<void>
   await join;
 }
 
+/** Playwright can deliver `console` after the call is already up. */
+async function flushConsole(page: Page): Promise<void> {
+  const marker = `console-flush-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const seen = page.waitForEvent("console", {
+    predicate: (message) => message.text().includes(marker),
+    timeout: 5_000,
+  });
+  await page.evaluate((token) => {
+    console.log(token);
+  }, marker);
+  await seen;
+}
+
 function trackRelayReasons(page: Page): () => string[] {
   const reasons: string[] = [];
   page.on("request", (request) => {
@@ -335,6 +351,23 @@ function trackRelayReasons(page: Page): () => string[] {
     }
   });
   return () => reasons.slice();
+}
+
+function meetPcCount(log: { events: () => RtcConsoleEvent[] }): number {
+  return log.events().filter((event) => event.channel === "meet" && event.event === "pc-created")
+    .length;
+}
+
+function pcCreatedSummary(log: { events: () => RtcConsoleEvent[] }): string {
+  return log
+    .events()
+    .filter((event) => event.event === "pc-created")
+    .map((event) => {
+      const mode = event.details?.mode;
+      const policy = event.details?.iceTransportPolicy;
+      return `${event.channel}:${String(mode)}/${String(policy)}`;
+    })
+    .join(",");
 }
 
 function issuedRefresh(event: RtcConsoleEvent, reasons: () => string[]): boolean {
@@ -356,7 +389,7 @@ function configuredTurn(): Record<string, string> {
   if (!host) throw new Error("WGW_TURN_HOST is required to restore TURN.");
   return {
     rtc_stun_url: `stun:${host}:3478`,
-    rtc_turn_url: `turn:${host}:3478?transport=udp`,
+    rtc_turn_url: `turn:${host}:3478?transport=tcp`,
     rtc_turn_secret: process.env.WGW_TURN_SECRET ?? "devsecret",
   };
 }

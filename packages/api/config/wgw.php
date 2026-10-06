@@ -134,5 +134,8 @@ return [
     'rtc' => [
         'prune_one_in' => (int) env('WGW_RTC_PRUNE_ONE_IN', 20),
         'turn_ttl_seconds' => (int) env('WGW_RTC_TURN_TTL_SECONDS', 3600),
+        // Per signed-in actor. The relay e2e suite shares one admin across
+        // Meet, Docs, and refresh inside a minute, so that process raises this.
+        'relay_requests_per_minute' => (int) env('WGW_RTC_RELAY_REQUESTS_PER_MINUTE', 6),
     ],
 ];

@@ -147,6 +147,112 @@ describe("MeshRelay credential lifetime", () => {
     expect(postRelay).toHaveBeenCalledTimes(1);
   });
 
+  it("mints TURN on an open path when force relay is set, and retries a denial", async () => {
+    const reasons: string[] = [];
+    const postRelay = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("relay_denied"))
+      .mockResolvedValueOnce({ turn: turn(120, "cred-1") });
+    const relay = new MeshRelay({
+      enabled: true,
+      roomId: "room-1",
+      settings: { ...settings, forceRelay: true },
+      localPeerId: () => "self",
+      localNet: () => "open",
+      peerName: () => "Ada",
+      postRelay: async (_room, body) => {
+        reasons.push(body.reason);
+        return postRelay();
+      },
+      getPeerConnection: () => null,
+      onOutcome: () => undefined,
+      log: () => undefined,
+      schedule: () => 1 as unknown as ReturnType<typeof setTimeout>,
+      cancel: () => undefined,
+    });
+
+    await relay.beforeDial();
+    expect(relay.credentials()).toBeNull();
+    await relay.beforeDial();
+    expect(reasons).toEqual(["precheck", "precheck"]);
+    expect(relay.credentials()?.credential).toBe("cred-1");
+    await relay.beforeDial();
+    expect(postRelay).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes a live relay pair that was minted by a force-relay precheck", async () => {
+    let now = 1_000_000;
+    const scheduled: Array<{ fn: () => void; delay: number }> = [];
+    const reasons: string[] = [];
+    const postRelay = vi
+      .fn()
+      .mockResolvedValueOnce({ turn: turn(120, "cred-1") })
+      .mockResolvedValueOnce({ turn: turn(120, "cred-2") });
+    const pc = {
+      setConfiguration: vi.fn(),
+      restartIce: vi.fn(),
+      getStats: async () => {
+        const stats = new Map();
+        stats.set("transport", {
+          type: "transport",
+          selectedCandidatePairId: "pair",
+        });
+        stats.set("pair", { type: "candidate-pair", localCandidateId: "local" });
+        stats.set("local", { type: "local-candidate", candidateType: "relay" });
+        return stats;
+      },
+    };
+    const relay = new MeshRelay({
+      enabled: true,
+      roomId: "room-1",
+      settings: { ...settings, forceRelay: true },
+      localPeerId: () => "self",
+      localNet: () => "open",
+      peerName: () => "Ada",
+      peerIds: () => ["peer-a"],
+      postRelay: async (_room, body) => {
+        reasons.push(`${body.reason}:${body.target}`);
+        return postRelay();
+      },
+      getPeerConnection: () => pc as unknown as RTCPeerConnection,
+      onOutcome: () => undefined,
+      log: () => undefined,
+      now: () => now,
+      schedule: (fn, delay) => {
+        scheduled.push({ fn, delay });
+        return 1 as unknown as ReturnType<typeof setTimeout>;
+      },
+      cancel: () => undefined,
+    });
+
+    await relay.beforeDial();
+    expect(reasons).toEqual(["precheck:*"]);
+    expect(pc.setConfiguration).not.toHaveBeenCalled();
+    now += 60_000;
+    scheduled[0]?.fn();
+    await vi.waitFor(() => expect(reasons).toEqual(["precheck:*", "refresh:peer-a"]));
+    expect(pc.setConfiguration).toHaveBeenCalledTimes(1);
+    expect(relay.credentials()?.credential).toBe("cred-2");
+  });
+
+  it("does not precheck an open path without force relay", async () => {
+    const postRelay = vi.fn();
+    const relay = new MeshRelay({
+      enabled: true,
+      roomId: "room-1",
+      settings,
+      localPeerId: () => "self",
+      localNet: () => "open",
+      peerName: () => "Ada",
+      postRelay: async () => postRelay(),
+      getPeerConnection: () => null,
+      onOutcome: () => undefined,
+      log: () => undefined,
+    });
+    await relay.beforeDial();
+    expect(postRelay).not.toHaveBeenCalled();
+  });
+
   it("dispose clears the refresh timer", async () => {
     const cancel = vi.fn();
     const pc = { setConfiguration: vi.fn(), restartIce: vi.fn() };
