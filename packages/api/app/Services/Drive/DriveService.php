@@ -33,6 +33,7 @@ final class DriveService
         private FileNodeIndexService $fileNodes,
         private DocsThreadRepository $docsThreads,
         private DocAttachmentsService $docAttachments,
+        private DriveTrashNames $trashNames,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -204,7 +205,7 @@ final class DriveService
         }
         if ($disk->exists($toKey)) {
             if ($this->isTrashDestination($destination)) {
-                $toName = $this->resolveUniqueTrashName($disk, $destination, $toName);
+                $toName = $this->trashNames->unique($disk, $this->paths->virtualToStorageKey($destination), $toName);
                 $toPath = $this->paths->normalizeVirtualPath($destination.'/'.$toName);
                 $toKey = $this->paths->virtualToStorageKey($toPath);
             } else {
@@ -240,6 +241,7 @@ final class DriveService
         foreach ($items as $item) {
             $path = $this->paths->normalizeVirtualPath((string) ($item['path'] ?? '/'));
             $this->authorizer->assertMayManageStructure($path, $principal);
+            $this->authorizer->assertNotGrantScopeRoot($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
             $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
             if ($disk->directoryExists($key) || $disk->exists($key)) {
@@ -874,34 +876,6 @@ final class DriveService
     {
         return preg_match('#/\.Trash$#', $destination) === 1
             || preg_match('#/Trash$#', $destination) === 1;
-    }
-
-    private function resolveUniqueTrashName(Filesystem $disk, string $trashVirtualPath, string $name): string
-    {
-        $name = $this->validateItemName($name);
-        $prefix = $this->paths->virtualToStorageKey($trashVirtualPath);
-        $taken = [];
-        foreach ($disk->files($prefix) as $key) {
-            $taken[] = basename($key);
-        }
-        foreach ($disk->directories($prefix) as $key) {
-            $taken[] = basename($key);
-        }
-        $takenLower = array_map(static fn (string $entry): string => mb_strtolower($entry), $taken);
-
-        $dot = strrpos($name, '.');
-        $hasExt = $dot !== false && $dot > 0;
-        $base = $hasExt ? substr($name, 0, $dot) : $name;
-        $ext = $hasExt ? substr($name, $dot) : '';
-
-        $candidate = $name;
-        $index = 2;
-        while (in_array(mb_strtolower($candidate), $takenLower, true)) {
-            $candidate = $base.' '.$index.$ext;
-            $index++;
-        }
-
-        return $candidate;
     }
 
     private function disk(): Filesystem

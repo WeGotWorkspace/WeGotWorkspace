@@ -10517,6 +10517,8 @@ export interface components {
             entry?: components["schemas"]["DriveDirectoryEntry"];
             /** @description Present when access is group-only (groups/{slug} grant). Omitted when the caller has a direct user grant on the same share. */
             viaGroup?: string;
+            /** @description FileNode id of the share root. Present when `entry` is present. Valid under the caller's own JMAP accountId (FileNode/get, FileNode/query {parentId}). */
+            fileNodeId?: string;
         };
         DriveSharedWithMeDataResponse: {
             data: components["schemas"]["DriveSharedWithMeEntry"][];
