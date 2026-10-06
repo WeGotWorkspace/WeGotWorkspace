@@ -44,8 +44,8 @@ test("direct path stays direct", async ({ browser }) => {
     await startAdHocCall(left, right, false);
     await waitForRemoteVideo(left.page);
     await waitForRemoteVideo(right.page);
-    await leftLog.waitFor("selected-pair", (event) => event.channel === "meet");
-    await rightLog.waitFor("selected-pair", (event) => event.channel === "meet");
+    await leftLog.waitFor("selected-pair", meetDirectPair, 45_000);
+    await rightLog.waitFor("selected-pair", meetDirectPair, 45_000);
     for (const log of [leftLog, rightLog]) {
       const types = selectedLocalTypes(log.events(), "meet");
       expect(types.length).toBeGreaterThan(0);
@@ -390,6 +390,10 @@ function issuedRefresh(event: RtcConsoleEvent, reasons: () => string[]): boolean
 
 function meetRelayPair(event: RtcConsoleEvent): boolean {
   return event.channel === "meet" && localType(event) === "relay";
+}
+
+function meetDirectPair(event: RtcConsoleEvent): boolean {
+  return event.channel === "meet" && DIRECT_TYPES.has(localType(event));
 }
 
 function localType(event: RtcConsoleEvent): string {
