@@ -19,7 +19,7 @@ final class TrustedHostsTest extends TestCase
             '^wgw\.example\.test$',
             '^localhost$',
             '^127\.0\.0\.1$',
-            '^::1$',
+            '^\:\:1$',
         ], $hosts);
     }
 }

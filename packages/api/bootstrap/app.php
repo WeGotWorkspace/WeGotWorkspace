@@ -30,6 +30,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
@@ -70,6 +71,18 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
+        $middleware->trustHosts(at: function (): array {
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
+            $hosts = ['localhost', '127.0.0.1', '::1'];
+            if (is_string($host) && $host !== '') {
+                array_unshift($hosts, $host);
+            }
+
+            return array_map(
+                static fn (string $trusted): string => '^'.preg_quote($trusted).'$',
+                $hosts,
+            );
+        }, subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         $middleware->append(BindMcpPublicOrigin::class);
         $middleware->append(McpCors::class);
@@ -99,6 +112,11 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->json($payload, $e->getStatusCode());
+        });
+        $exceptions->render(function (SuspiciousOperationException $e) {
+            return response()->json([
+                'code' => 'bad_request',
+            ], 400);
         });
         $exceptions->render(function (ValidationException $e) {
             $message = $e->validator->errors()->first();

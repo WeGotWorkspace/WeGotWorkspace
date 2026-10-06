@@ -21,6 +21,7 @@ final class PasswordResetMailFactoryTest extends TestCase
 
     public function test_message_uses_configured_from_to_and_reset_link(): void
     {
+        config(['app.url' => 'https://wgw.example.test']);
         $request = Request::create('http://workspace.test/api/v1/auth/password-resets', 'POST');
         $this->app->instance('request', $request);
         $factory = $this->app->make(PasswordResetMailFactory::class);
@@ -31,14 +32,18 @@ final class PasswordResetMailFactoryTest extends TestCase
         $this->assertSame('ops@example.test', $message->from);
         $this->assertSame(['alice@example.test'], $message->to);
         $this->assertSame('Reset your WeGotWorkspace password', $message->subject);
-        $this->assertStringContainsString('http://workspace.test/login/reset?token='.$token, $message->textBody);
+        $this->assertStringContainsString('https://wgw.example.test/login/reset?token='.$token, $message->textBody);
+        $this->assertStringNotContainsString('workspace.test', $message->textBody);
         $this->assertStringContainsString('valid for 15 minutes', $message->textBody);
         $this->assertStringContainsString('does not mean it reached an inbox', $message->textBody);
     }
 
-    public function test_reset_link_uses_public_web_base_instead_of_api_bind(): void
+    public function test_reset_link_ignores_public_web_base_and_request_host(): void
     {
-        config(['wgw.public_web_url' => 'http://localhost:5194']);
+        config([
+            'app.url' => 'https://wgw.example.test/',
+            'wgw.public_web_url' => 'http://localhost:5194',
+        ]);
         $request = Request::create('http://127.0.0.1:9080/api/v1/auth/password-resets', 'POST');
         $this->app->instance('request', $request);
         $factory = $this->app->make(PasswordResetMailFactory::class);
@@ -46,13 +51,17 @@ final class PasswordResetMailFactoryTest extends TestCase
 
         $message = $factory->message('ops@example.test', 'alice@example.test', $token);
 
-        $this->assertStringContainsString('http://localhost:5194/login/reset?token='.$token, $message->textBody);
+        $this->assertStringContainsString('https://wgw.example.test/login/reset?token='.$token, $message->textBody);
+        $this->assertStringNotContainsString('localhost:5194', $message->textBody);
         $this->assertStringNotContainsString('127.0.0.1:9080', $message->textBody);
     }
 
-    public function test_reset_link_uses_vite_dev_port_when_request_is_api_bind(): void
+    public function test_reset_link_ignores_vite_dev_port_and_request_host(): void
     {
-        config(['wgw.vite_dev_port' => 5194]);
+        config([
+            'app.url' => 'https://wgw.example.test',
+            'wgw.vite_dev_port' => 5194,
+        ]);
         $request = Request::create('http://127.0.0.1:9080/api/v1/auth/password-resets', 'POST');
         $this->app->instance('request', $request);
         $factory = $this->app->make(PasswordResetMailFactory::class);
@@ -60,6 +69,8 @@ final class PasswordResetMailFactoryTest extends TestCase
 
         $message = $factory->message('ops@example.test', 'alice@example.test', $token);
 
-        $this->assertStringContainsString('http://localhost:5194/login/reset?token='.$token, $message->textBody);
+        $this->assertStringContainsString('https://wgw.example.test/login/reset?token='.$token, $message->textBody);
+        $this->assertStringNotContainsString('localhost:5194', $message->textBody);
+        $this->assertStringNotContainsString('127.0.0.1:9080', $message->textBody);
     }
 }
