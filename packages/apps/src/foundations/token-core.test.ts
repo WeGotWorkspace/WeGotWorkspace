@@ -90,6 +90,64 @@ describe("workspace token core", () => {
     expect(leaks).toEqual([]);
   });
 
+  it("redeclares muted ink on the derive scopes so remapped pairs recompute", () => {
+    const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
+    expect(derive).toContain("--muted-foreground:");
+    expect(derive).toContain("--color-muted-foreground:");
+    expect(derive).toContain("body,");
+  });
+
+  it("paints month-view in-month day numbers from workspace foreground", () => {
+    const css = readFileSync(
+      join(srcRoot, "lib/calendar-elements/CalendarTimelineView/CalendarTimelineView.css"),
+      "utf8",
+    );
+    expect(css).toContain("--_lc-in-month-day-color: var(--workspace-foreground)");
+    expect(css).toContain("--_lc-outside-month-day-color: color-mix");
+    expect(css).not.toMatch(/--_lc-in-month-day-color:\s*color-mix\([\s\S]*--lc-grid-base-color/);
+    expect(css).toMatch(/::part\(day-number\)[\s\S]*color:\s*inherit/);
+    expect(css).toMatch(
+      /::part\(day-number-outside-month\)[\s\S]*color:\s*var\(--_lc-outside-month-day-color\)/,
+    );
+    expect(css).toMatch(/::part\(day-header-button\)[\s\S]*color:\s*inherit/);
+  });
+
+  it("paints sticky list day headers from workspace foreground, not light-dark slate", () => {
+    const css = readFileSync(
+      join(srcRoot, "list-sticky-header/src/list-sticky-header.css"),
+      "utf8",
+    );
+    const sst = readFileSync(join(srcRoot, "ui/list-sticky-header-sst.css"), "utf8");
+    expect(css).toContain("color: var(--list-sticky-header-color, var(--workspace-foreground))");
+    expect(css).not.toMatch(/light-dark\(/);
+    expect(sst).toContain("--list-sticky-header-color: var(--workspace-foreground)");
+  });
+
+  it("paints the switch on-state from the accent pair", () => {
+    const css = readFileSync(join(srcRoot, "ui/switch.css"), "utf8");
+    const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
+    expect(css).toContain("appearance: none");
+    expect(css).toContain(
+      "background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground))",
+    );
+    expect(derive).toContain("--switch-on-thumb-bg: var(--workspace-accent-foreground)");
+  });
+
+  it("lets month day-number buttons inherit header ink (UA ButtonText is dark)", () => {
+    const css = readFileSync(join(srcRoot, "lib/calendar-elements/TimeLine/TimeLine.css"), "utf8");
+    expect(css).toMatch(/\.timeline-day-header-button\s*\{[\s\S]*?color:\s*inherit/);
+  });
+
+  it("paints tooltips from the workspace pair, not primary/accent", () => {
+    const tooltip = readFileSync(join(srcRoot, "ui/tooltip.css"), "utf8").replace(
+      /\/\*[\s\S]*?\*\//g,
+      "",
+    );
+    expect(tooltip).toContain("background-color: var(--workspace-foreground)");
+    expect(tooltip).toContain("color: var(--workspace-surface)");
+    expect(tooltip).not.toMatch(/--primary|--workspace-accent|--color-we-got-dark/);
+  });
+
   it("does not grow a second outline-ladder recipe in product workspace sheets", () => {
     const offenders: string[] = [];
     for (const file of walkCss(srcRoot)) {
@@ -110,8 +168,8 @@ describe("workspace token core", () => {
 describe("workspace token contrast (AA floors)", () => {
   /**
    * Conservative sRGB stand-ins for the default :root pairs.
-   * Paper is Soft mixed toward white (lighter than Soft); sidebar is 5% brand
-   * into white. Measuring Dark-on-Soft and white-on-Dark is the floor.
+   * Paper is Soft mixed toward white (lighter than Soft); sidebar is Soft.
+   * Measuring Dark-on-Soft and white-on-Dark is the floor.
    */
   it.each([
     ["surface-foreground on Soft (paper floor)", "#003311", "#fff5e9", 4.5],

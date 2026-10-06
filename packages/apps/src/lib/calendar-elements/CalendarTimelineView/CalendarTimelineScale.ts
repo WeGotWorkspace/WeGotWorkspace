@@ -331,6 +331,11 @@ export function monthDayHeaderClassNames(options: { outsideMonth: boolean }): st
     .join(" ");
 }
 
+/** Host tokens shared by month `::part` / inline ink and year `.year-day.is-outside-month`. */
+export function monthDayInkColor(outsideMonth: boolean): string {
+  return `var(--_lc-${outsideMonth ? "outside" : "in"}-month-day-color)`;
+}
+
 /**
  * Whether a numeric timeline range overlaps day cell `cellIndex`
  * (cell `i` spans `[i * unitsPerDay, (i + 1) * unitsPerDay)`; ranges are `[start, end)`).

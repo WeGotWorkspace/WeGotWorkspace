@@ -5,7 +5,10 @@
   @apply block h-full;
   width: var(--_lc-time-sidebar-width, max-content);
   min-width: max-content;
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  color: var(
+    --_lc-grid-line-day-color,
+    color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+  );
 }
 
 .time-sidebar {

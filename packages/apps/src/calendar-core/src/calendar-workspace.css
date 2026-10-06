@@ -69,6 +69,10 @@
 
   /* The lit views highlight "today" and previews with this. */
   --lc-higlight-color: var(--workspace-accent);
+  /* Grid chrome follows the workspace pair — not light-dark() slate. */
+  --lc-grid-base-color: var(--workspace-foreground);
+  --lc-weekend-day-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  --_lc-surface-bg: var(--workspace-surface);
 
   /* Docs comments/review panel tokens reused by the invitations inbox. */
   --docs-surface: var(--workspace-surface);

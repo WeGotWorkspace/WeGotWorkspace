@@ -13,10 +13,16 @@
   padding-inline: var(--_lc-weekday-header-inline-padding, 2px);
   padding-block-end: var(--_lc-weekday-header-padding-block-end, 0.25rem);
   min-height: var(--_lc-weekday-header-height, 26px);
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  color: var(
+    --_lc-grid-line-day-color,
+    color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+  );
   --_lc-weekend-day-color: var(
     --lc-weekend-day-label-color,
-    light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%))
+    var(
+      --_lc-grid-line-day-color,
+      color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+    )
   );
   font-size: var(--_lc-weekday-header-font-size, 14px);
 }
