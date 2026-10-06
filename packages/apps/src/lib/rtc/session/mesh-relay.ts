@@ -1,5 +1,4 @@
 import type { NetClass } from "@/lib/rtc/net-probe";
-import { selectedPairIsRelay } from "@/meet-core/src/meet-video-sender";
 import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import { needsRelayPrecheck } from "@/lib/rtc/session/relay-policy";
 import {
@@ -8,6 +7,7 @@ import {
   type RelayRequestClient,
   type RelayRequestOutcome,
 } from "@/lib/rtc/session/relay-request";
+import { selectedPairIsRelay } from "@/lib/rtc/stats";
 import type { RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 
 /** Re-mint this long before the server-supplied `ttl` elapses. */

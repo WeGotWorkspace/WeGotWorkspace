@@ -37,7 +37,22 @@ type DecodedUpdate = {
   ds: DecodedDeleteSet;
 };
 
-type Fragment = { struct: WritableStruct; offset: number; end: number };
+type Fragment = {
+  struct: WritableStruct;
+  offset: number;
+  end: number;
+  /** Byte length of this fragment encoded on its own, including its update frame. */
+  wireBytes: number;
+};
+
+/** Lone-update framing subtracted so fragment bodies can be summed. */
+const LONE_FRAGMENT_FRAME_BYTES = 16;
+
+/** Restored once per client after fragment costs drop the shared frame. */
+const CLIENT_HEADER_ALLOWANCE = 24;
+
+/** `{"u":"<base64>","n":N}` outside the base64 body. Base64 itself is 4/3. */
+const JSON_WRAPPER_BYTES = 16;
 
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -86,23 +101,39 @@ export function splitYjsUpdate(
 ): Uint8Array[] {
   if (yjsHttpEncodedSize(update) <= maxEncodedBytes) return [update];
   const decoded = Y.decodeUpdate(update) as unknown as DecodedUpdate;
+  const fragments: Fragment[] = [];
+  for (const struct of decoded.structs) {
+    fragments.push(...fragmentStruct(struct, maxEncodedBytes));
+  }
+  if (fragments.length === 0) return [update];
+
   const pieces: Uint8Array[] = [];
   let batch: Fragment[] = [];
+  let cost = 0;
+  const clients = new Set<number>();
 
   const flush = (withDeletes: boolean) => {
     if (batch.length === 0) return;
-    pieces.push(encodeFragments(batch, withDeletes ? decoded.ds : emptyDeleteSet()));
+    const flushing = batch;
     batch = [];
+    cost = 0;
+    clients.clear();
+    emitWithinCap(flushing, withDeletes ? decoded.ds : emptyDeleteSet(), pieces, maxEncodedBytes);
   };
 
-  for (const struct of decoded.structs) {
-    for (const fragment of fragmentStruct(struct, maxEncodedBytes)) {
-      if (batch.length > 0) {
-        const trial = encodeFragments([...batch, fragment], emptyDeleteSet());
-        if (yjsHttpEncodedSize(trial) > maxEncodedBytes) flush(false);
-      }
-      batch.push(fragment);
+  for (const fragment of fragments) {
+    const fragmentCost = Math.max(1, fragment.wireBytes - LONE_FRAGMENT_FRAME_BYTES);
+    const client = fragment.struct.id.client;
+    if (batch.length > 0) {
+      const nextClients = clients.has(client) ? clients.size : clients.size + 1;
+      const estimated = estimateMailboxBytes(
+        cost + fragmentCost + nextClients * CLIENT_HEADER_ALLOWANCE,
+      );
+      if (estimated > maxEncodedBytes) flush(false);
     }
+    batch.push(fragment);
+    cost += fragmentCost;
+    clients.add(client);
   }
   flush(true);
   return pieces.length > 0 ? pieces : [update];
@@ -118,26 +149,64 @@ function emptyDeleteSet(): DecodedDeleteSet {
 }
 
 function fragmentStruct(struct: WritableStruct, maxEncodedBytes: number): Fragment[] {
-  const whole = encodeFragments([{ struct, offset: 0, end: struct.length }], emptyDeleteSet());
+  const whole = encodeFragments(
+    [{ struct, offset: 0, end: struct.length, wireBytes: 0 }],
+    emptyDeleteSet(),
+  );
   if (yjsHttpEncodedSize(whole) <= maxEncodedBytes || !isStringStruct(struct)) {
-    return [{ struct, offset: 0, end: struct.length }];
+    return [{ struct, offset: 0, end: struct.length, wireBytes: whole.byteLength }];
   }
   const pieces: Fragment[] = [];
   let offset = 0;
   while (offset < struct.length) {
     let size = 1;
     let next = Math.min(struct.length, offset + size);
+    let nextBytes = 0;
     while (next < struct.length) {
-      const candidate = Math.min(struct.length, next * 2);
-      const encoded = encodeFragments([{ struct, offset, end: candidate }], emptyDeleteSet());
+      // Double the piece length. Doubling the absolute index collapses a long string to 1-char pieces.
+      const candidate = Math.min(struct.length, offset + size * 2);
+      if (candidate <= next) break;
+      const encoded = encodeFragments(
+        [{ struct, offset, end: candidate, wireBytes: 0 }],
+        emptyDeleteSet(),
+      );
       if (yjsHttpEncodedSize(encoded) > maxEncodedBytes) break;
       next = candidate;
       size = candidate - offset;
+      nextBytes = encoded.byteLength;
     }
-    pieces.push({ struct, offset, end: next });
+    if (nextBytes === 0) {
+      nextBytes = encodeFragments(
+        [{ struct, offset, end: next, wireBytes: 0 }],
+        emptyDeleteSet(),
+      ).byteLength;
+    }
+    pieces.push({ struct, offset, end: next, wireBytes: nextBytes });
     offset = next;
   }
   return pieces;
+}
+
+/** Plain base64 grows by 4/3. Flush before the JSON mailbox payload would pass the cap. */
+function estimateMailboxBytes(yjsBytes: number): number {
+  return Math.ceil(yjsBytes / 3) * 4 + JSON_WRAPPER_BYTES;
+}
+
+function emitWithinCap(
+  fragments: Fragment[],
+  ds: DecodedDeleteSet,
+  pieces: Uint8Array[],
+  maxEncodedBytes: number,
+): void {
+  if (fragments.length === 0) return;
+  const encoded = encodeFragments(fragments, ds);
+  if (yjsHttpEncodedSize(encoded) <= maxEncodedBytes || fragments.length < 2) {
+    pieces.push(encoded);
+    return;
+  }
+  const mid = Math.floor(fragments.length / 2);
+  emitWithinCap(fragments.slice(0, mid), emptyDeleteSet(), pieces, maxEncodedBytes);
+  emitWithinCap(fragments.slice(mid), ds, pieces, maxEncodedBytes);
 }
 
 function isStringStruct(struct: WritableStruct): boolean {

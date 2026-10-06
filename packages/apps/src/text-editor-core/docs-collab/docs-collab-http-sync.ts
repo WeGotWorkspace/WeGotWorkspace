@@ -136,7 +136,10 @@ export class DocsCollabHttpSync {
     }
   }
 
-  /** A channel that is still down after the credential's refresh window may ask again. */
+  /**
+   * A channel that is still down after the credential's refresh window may ask again.
+   * Re-ask only after the channel has closed is deliberate with TTL 3600 (up to ~5s HTTP fallback once per hour).
+   */
   private expireClosedRelayMarks(peers: readonly HttpFallbackPeer[], now: number): void {
     const connected = new Set(peers.filter((peer) => peer.connected).map((peer) => peer.id));
     for (const id of [...this.relayRequested]) {
