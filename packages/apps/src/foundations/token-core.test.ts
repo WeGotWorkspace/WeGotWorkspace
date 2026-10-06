@@ -14,7 +14,6 @@ const CHROME_SHEETS = [
   "workspace-shell/src/workspace-color.css",
   "workspace-shell/src/workspace-app-layout.css",
   "ui/overlay-paper.css",
-  "ui/workspace-menu-item-sst.css",
   "app-sidebar/src/app-sidebar.css",
 ] as const;
 
@@ -95,6 +94,50 @@ describe("workspace token core", () => {
     expect(derive).toContain("--muted-foreground:");
     expect(derive).toContain("--color-muted-foreground:");
     expect(derive).toContain("body,");
+  });
+
+  it("lists every selector that assigns --workspace-surface or --workspace-foreground", () => {
+    const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
+    const where = derive.match(/:where\(\s*([\s\S]*?)\)\s*\{/);
+    expect(where, "derive :where list").toBeTruthy();
+    const listed = new Set(
+      where![1]
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean),
+    );
+
+    const missing: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (rel === "workspace-shell/src/workspace-derive.css") continue;
+      const css = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      const rules = css.split("}");
+      for (const rule of rules) {
+        if (
+          !/--workspace-(?:surface|foreground)\s*:/.test(rule) ||
+          /--workspace-(?:surface|foreground)-/.test(rule)
+        ) {
+          continue;
+        }
+        const selector = rule.includes("{") ? rule.slice(0, rule.indexOf("{")).trim() : "";
+        if (!selector || selector.startsWith("@")) continue;
+        for (const part of selector.split(",")) {
+          const atoms = part.match(/:root|:is\(([^)]+)\)|\.[a-zA-Z0-9_-]+/g) ?? [];
+          for (const raw of atoms) {
+            if (raw.startsWith(":is(")) {
+              for (const inner of raw.slice(4, -1).split(",")) {
+                const sel = inner.trim();
+                if (sel && !listed.has(sel)) missing.push(`${rel}: ${sel}`);
+              }
+              continue;
+            }
+            if (!listed.has(raw)) missing.push(`${rel}: ${raw}`);
+          }
+        }
+      }
+    }
+    expect(missing).toEqual([]);
   });
 
   it("paints month-view in-month day numbers from workspace foreground", () => {
@@ -195,16 +238,24 @@ describe("workspace token core", () => {
 
 describe("workspace token contrast (AA floors)", () => {
   /**
-   * Conservative sRGB stand-ins for the default :root pairs.
-   * Paper is Soft mixed toward white (lighter than Soft); sidebar is Soft.
-   * Measuring Dark-on-Soft and white-on-Dark is the floor.
+   * Hexes parsed from `styles.css` primitives. Paper is Soft mixed 40% toward
+   * white (lighter than Soft), so Dark-on-Soft is the conservative floor.
+   * Sidebar rail is Soft, not white.
    */
+  const soft = styles.match(/--color-we-got-soft:\s*(#[0-9a-fA-F]{6})/)?.[1];
+  const dark = styles.match(/--color-we-got-dark:\s*(#[0-9a-fA-F]{6})/)?.[1];
+
+  it("resolves Soft and Dark from styles.css", () => {
+    expect(soft).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(dark).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
   it.each([
-    ["surface-foreground on Soft (paper floor)", "#003311", "#fff5e9", 4.5],
-    ["accent-foreground on accent", "#ffffff", "#003311", 4.5],
-    ["sidebar-foreground on white (rail floor)", "#003311", "#ffffff", 4.5],
-    ["brand-foreground on default brand", "#ffffff", "#003311", 4.5],
-  ] as const)("%s is at least %s:1", (_label, fg, bg, min) => {
-    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(min);
+    ["surface-foreground on Soft (paper floor)", "dark", "soft", 4.5],
+    ["accent-foreground on accent", "soft-white", "dark", 4.5],
+    ["sidebar-foreground on Soft (rail floor)", "dark", "soft", 4.5],
+  ] as const)("%s is at least %s:1", (_label, fgKey, bgKey, min) => {
+    const hex = { soft: soft!, dark: dark!, "soft-white": "#ffffff" };
+    expect(contrastRatio(hex[fgKey], hex[bgKey])).toBeGreaterThanOrEqual(min);
   });
 });

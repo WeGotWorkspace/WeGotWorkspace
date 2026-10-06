@@ -13,7 +13,7 @@ export const brandingIconArgTypes = {
   svgMarkup: {
     control: "text",
     description:
-      'Used when iconPreset is "custom". Prefer fill="var(--workspace-icon-surface|fg, fallback)" layers so invert still works.',
+      'Used when iconPreset is "custom". Prefer fill="var(--app-icon-layer-surface|foreground, fallback)" layers so invert still works.',
     table: { category: "Icon" },
   },
 } satisfies Record<string, InputType>;

@@ -23,7 +23,6 @@
 }
 
 .drive-workspace .drive-main-pane {
-  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 /** Matches sidebar section titles (`field-label-row__label` + `--field-label-color`). */

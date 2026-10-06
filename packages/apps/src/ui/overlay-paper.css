@@ -3,30 +3,13 @@
 /**
  * Light dialogs and popovers inherit `:root` `--workspace-surface`. They
  * portal to `document.body`, so the paper must resolve from the root pair
- * (not a workspace ancestor). Primary actions stay on the accent pair, not
- * the per-app brand.
+ * (not a workspace ancestor). Derive already lists `.overlay-paper` and
+ * paints shadcn aliases from the local pair. Primary actions stay on the
+ * accent pair, not the per-app brand.
  *
  * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out.
  */
 .overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface) {
-  --background: var(--workspace-surface);
-  --popover: var(--workspace-surface);
-  --card: var(--workspace-surface);
-  --color-background: var(--workspace-surface);
-  --color-popover: var(--workspace-surface);
-  --color-card: var(--workspace-surface);
-  --foreground: var(--workspace-foreground);
-  --popover-foreground: var(--workspace-foreground);
-  --color-foreground: var(--workspace-foreground);
-  --color-popover-foreground: var(--workspace-foreground);
-  --muted-foreground: color-mix(
-    in oklch,
-    var(--workspace-foreground) 55%,
-    var(--workspace-surface)
-  );
-  --color-muted-foreground: var(--muted-foreground);
-  --primary: var(--workspace-accent);
-  --primary-foreground: var(--workspace-accent-foreground);
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
   background-color: var(--workspace-surface);

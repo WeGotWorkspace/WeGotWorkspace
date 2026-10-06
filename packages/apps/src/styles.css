@@ -70,12 +70,9 @@
  * The @theme inline block maps CSS custom properties to Tailwind utility
  * classes (e.g. --color-primary -> bg-primary, text-primary).
  *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * The :root block defines the eight workspace pairs. Pair-derived aliases
+ * (shadcn, border, ring, paper sheet) live on `workspace-derive.css` so a
+ * remapped host recomputes them. Meet owns the dark pair on `.meet-workspace`.
  */
 
 @theme inline {
@@ -154,48 +151,12 @@
   /* Compatibility aliases still read by product sheets. */
   --sidebar-bg: var(--workspace-sidebar-surface);
   --sidebar-on: var(--workspace-sidebar-foreground);
-
-  /* shadcn / Tailwind `bg-*` utilities resolve to the same four pairs. */
-  --background: var(--workspace-surface);
-  --foreground: var(--workspace-foreground);
-  --card: var(--workspace-surface);
-  --card-foreground: var(--workspace-foreground);
-  --popover: var(--workspace-surface);
-  --popover-foreground: var(--workspace-foreground);
-  --primary: var(--workspace-accent);
-  --primary-foreground: var(--workspace-accent-foreground);
-  --secondary: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
-  --secondary-foreground: var(--workspace-foreground);
-  --muted: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
-  --muted-foreground: color-mix(
-    in oklch,
-    var(--workspace-foreground) 55%,
-    var(--workspace-surface)
-  );
-  --accent: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
-  --accent-foreground: var(--workspace-foreground);
   --destructive: var(--color-error);
-  --destructive-foreground: var(--workspace-accent-foreground);
-  --border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --input: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --ring: color-mix(in oklch, var(--workspace-foreground) 40%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: var(--workspace-sidebar-surface);
-  --sidebar-foreground: var(--workspace-sidebar-foreground);
-  --sidebar-primary: var(--workspace-accent);
-  --sidebar-primary-foreground: var(--workspace-accent-foreground);
-  --sidebar-accent: color-mix(
-    in oklch,
-    var(--workspace-sidebar-foreground) 8%,
-    var(--workspace-sidebar-surface)
-  );
-  --sidebar-accent-foreground: var(--workspace-sidebar-foreground);
-  --sidebar-border: color-mix(in oklch, var(--workspace-sidebar-foreground) 12%, transparent);
-  --sidebar-ring: color-mix(in oklch, var(--workspace-sidebar-foreground) 40%, transparent);
   /*
    * Shared form / chrome radius (soft 6px). Global default — Button, IconButton,
    * Input, Select, SegmentedControl, ColorSwatchTrigger, LocaleDatePicker all
@@ -205,7 +166,6 @@
    * True capsules use `--control-radius-pill` (Switch, badges) explicitly.
    */
   --control-radius: 0.375rem;
-  --control-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   --input-shadow: none;
   /* Capsule chips: metadata labels, count badges, switches — not ordinary controls. */
   --control-radius-pill: 9999px;
@@ -215,20 +175,12 @@
    * for intentional full capsules only.
    */
   --control-radius-button-pill: var(--control-radius);
-  /* Paper sheet — Docs letter surface + Notes detail card (see `.paper-sheet`). */
-  --paper-sheet-bg: oklch(from var(--workspace-surface) calc(l + 0.045) c h);
-  --sheet-shadow:
-    0 1px 2px color-mix(in oklch, var(--workspace-foreground) 4%, transparent),
-    0 10px 30px -10px color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   /*
    * Panel overlay motion — AppSidebar mobile slide + SideDrawer/Sheet enter/exit.
    * Keep duration + easing in sync across left chrome and right drawers.
    */
   --panel-overlay-duration: 300ms;
   --panel-overlay-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --control-shadow:
-    0 1px 2px color-mix(in oklch, var(--workspace-foreground) 4%, transparent),
-    0 10px 30px -10px color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   /*
    * Fixed control height scale (not viewport-relative).
    * xs=28 / sm=32 / md=36 (default chrome + forms) / lg=40 / xl=44 (sidebar New).
@@ -254,23 +206,6 @@
   --input-font-size-md: 0.875rem;
   --input-font-size-lg: 1rem;
   --input-font-size-xl: 1rem;
-  /* Switch off track + pending UserChip wash — one shared gray. */
-  --switch-off-bg: color-mix(in oklch, var(--workspace-foreground) 18%, var(--workspace-surface));
-}
-
-.dark {
-  --workspace-surface: var(--workspace-home-bg);
-  --workspace-foreground: #ffffff;
-  --workspace-accent: #ffffff;
-  --workspace-accent-foreground: var(--color-we-got-dark);
-  --workspace-icon-surface: var(--color-we-got-sand);
-  --workspace-icon-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-foreground) 8%,
-    var(--workspace-surface)
-  );
-  --workspace-sidebar-foreground: var(--workspace-foreground);
 }
 
 @layer base {

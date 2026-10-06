@@ -131,7 +131,6 @@
 
 .meet-workspace__preview-controls {
   @apply absolute bottom-3 right-3 flex gap-2;
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .meet-workspace__form {
@@ -317,7 +316,6 @@
   --color-muted-foreground: var(--meet-muted);
   --background: var(--workspace-surface);
   --modal-title-foreground: var(--workspace-foreground);
-  --button-active-color: var(--workspace-accent-strong);
   --button-destructive-bg: var(--color-red-500, #dc2626);
   --button-destructive-fg: var(--workspace-accent-foreground);
   @apply max-w-sm;
@@ -349,7 +347,6 @@
  * Do not reuse `.meet-popover-surface` (lobby dark) or `--meet-call-surface`.
  */
 .meet-device-popover {
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
   --muted-foreground: var(--meet-muted);
@@ -799,11 +796,9 @@
    * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
    */
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   /*
    * Workspace and in-call chrome use outline IconButtons with Meet outline tokens.
    */
-  --button-active-color: var(--workspace-accent-strong);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
   --workspace-main-bg: var(--meet-surface);
@@ -880,7 +875,6 @@
 
 .meet-workspace--split .app-sidebar {
   @apply h-full min-h-0 self-stretch;
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --user-avatar-presence-ring: var(--app-sidebar-bg);
   color: var(--app-sidebar-color, var(--workspace-foreground));
 }
@@ -940,7 +934,6 @@
 
 .meet-workspace__header-actions {
   @apply flex items-center gap-2;
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -948,7 +941,6 @@
  * soft washes come from shared `.view-header` SST.
  */
 .meet-workspace--split .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .meet-workspace__header-start {
@@ -994,7 +986,6 @@
   --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
   color: var(--workspace-foreground);
-  --button-active-color: var(--workspace-accent-strong);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
 }
@@ -1012,7 +1003,6 @@
 .meet-workspace
   .meet-call-stage:not(.meet-call-stage--expanded)
   .button--variant-outline.icon-button--active {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .meet-call-bar {
@@ -1570,8 +1560,6 @@
   --meet-panel-soft: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
   --meet-border: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
   --meet-border-strong: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  --button-active-color: var(--workspace-accent-strong);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
   --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));

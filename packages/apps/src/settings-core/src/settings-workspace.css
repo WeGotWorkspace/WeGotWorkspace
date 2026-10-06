@@ -42,16 +42,12 @@
     var(--workspace-surface)
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  --field-label-color: var(--workspace-foreground);
-
   --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
-  --button-active-color: var(--workspace-accent-strong);
-
   /*
    * Item washes live in `workspace-color.css` (accent stepped into the rail).
    * A local copy here used to lose to a later import of that sheet.
@@ -63,7 +59,6 @@
  * soft washes come from shared `.view-header` SST.
  */
 .settings-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .settings-workspace

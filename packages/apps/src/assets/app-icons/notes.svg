@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--workspace-icon-surface, var(--color-we-got-yellow, #ffc800))"/>
-<rect width="60" height="13" fill="var(--workspace-icon-foreground, var(--color-we-got-soft, #fff5e9))"/>
-<path fill="var(--workspace-icon-foreground, var(--color-we-got-soft, #fff5e9))" d="M28 45a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm20-11a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm0-11a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4z"/>
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))"/>
+<rect width="60" height="13" fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" d="M28 45a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm20-11a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4zm0-11a2 2 0 1 1 0 4H12a2 2 0 1 1 0-4z"/>
 </svg>

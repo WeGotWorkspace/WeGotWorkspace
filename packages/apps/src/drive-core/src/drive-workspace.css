@@ -49,9 +49,7 @@
    */
   --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-brat);
-  --button-active-color: var(--workspace-accent-strong);
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .drive-workspace .workspace-app-layout__main-scroll {
@@ -179,9 +177,7 @@
   --workspace-icon-foreground: var(--color-we-got-brat);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .drive-workspace .drive-main-pane__body {

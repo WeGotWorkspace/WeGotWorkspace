@@ -82,7 +82,7 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Sof
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | We Got Soft and We Got Dark                                                          |
 | App chrome  | `--workspace-surface` / `-foreground`, `--workspace-accent` / `-foreground`, `--workspace-sidebar-surface` / `-foreground`, `--workspace-icon-surface` / `-foreground` | Four surface/foreground pairs. Products assign primitives; state washes derive once. |
-| Icon layers | `--workspace-icon-surface`, `--workspace-icon-foreground`                                                                                                              | Same icon pair the switch-trigger SVG reads                                          |
+| Icon layers | `--workspace-icon-surface`, `--workspace-icon-foreground`                                                                                                              | Remappable pair; switch-trigger / home tiles map it onto `--app-icon-layer-*`        |
 
 **Pairs:** `--workspace-accent` is We Got Dark (checks, badges, outline glyphs, primary buttons). `--workspace-icon-surface` is the per-app tile hue only. `--workspace-surface` is `color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)`. `--workspace-sidebar-surface` is `var(--color-we-got-soft)` — Soft, not an icon tint. Row hover and selected mix sidebar foreground into that fill (8 / 12 / 16%). A CSS custom property in the panel overrides a token only after you change it. Do not set a token to `var(--itself)` — the addon writes the value onto `body` and a self-reference makes the token invalid.
 
@@ -118,20 +118,22 @@ Custom switch-trigger artwork must use the same CSS variable fills as production
 ```svg
 <svg viewBox="0 0 270 270" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <path fill="var(--workspace-icon-surface, #de4b0e)" d="…" />
+  <path fill="var(--app-icon-layer-surface, #de4b0e)" d="…" />
   <!-- Foreground marks -->
-  <path fill="var(--workspace-icon-foreground, #ffbdc2)" d="…" />
+  <path fill="var(--app-icon-layer-foreground, #ffbdc2)" d="…" />
 </svg>
 ```
 
-Knockouts that should stay the tile color use `--workspace-icon-surface`, not a third token.
+Knockouts that should stay the tile color use `--app-icon-layer-surface`, not a third token.
 
-| Token                         | Role             |
-| ----------------------------- | ---------------- |
-| `--workspace-icon-surface`    | Icon background  |
-| `--workspace-icon-foreground` | Foreground marks |
+| Token                         | Role                                   |
+| ----------------------------- | -------------------------------------- |
+| `--app-icon-layer-surface`    | SVG background (fallback = app hue)    |
+| `--app-icon-layer-foreground` | SVG marks                              |
+| `--workspace-icon-surface`    | Remappable pair mapped onto the layers |
+| `--workspace-icon-foreground` | Remappable pair mapped onto the layers |
 
-Hard-coded `#hex` fills ignore the Icon layers cssprops. Prefer `fill="var(--workspace-icon-surface…, fallback)"` with a sensible fallback for non-Storybook use.
+Hard-coded `#hex` fills ignore the Icon layers cssprops. Prefer `fill="var(--app-icon-layer-surface…, fallback)"` with a sensible fallback for non-Storybook use.
 
 ## Hand values back to engineers
 

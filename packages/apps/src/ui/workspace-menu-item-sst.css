@@ -1,7 +1,0 @@
-@import "../styles.css" reference;
-
-/**
- * Menu / outline washes are owned by `workspace-derive.css`. This sheet used
- * to restate the 8/12/16 ladder on every workspace and dialog host; that is
- * now one definition. Severity rows still live on the primitives.
- */

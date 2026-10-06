@@ -9,7 +9,7 @@ import {
   syncBrandingCsspropsToRoot,
 } from "@/branding-playground/branding-workspace-decorator";
 import { WORKSPACE_APP_ICON_INLINE } from "@/lib/workspace-app-icon-svgs";
-import { waiBrandingCssprops } from "@/branding-playground/branding-cssprops";
+import { iconBrandingCssprops } from "@/branding-playground/branding-cssprops";
 
 describe("resolveBrandingIconMarkup", () => {
   it("returns undefined for current (no override)", () => {
@@ -35,22 +35,22 @@ describe("resolveBrandingIconMarkup", () => {
   });
 });
 
-describe("wai cssprop shapes match production switch-trigger", () => {
+describe("icon cssprop shapes match production switch-trigger", () => {
   it("calendar: bg + fg only (no invented cutout←bg)", () => {
-    const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#962fa8" });
+    const map = iconBrandingCssprops({ bg: "#ffbdc2", fg: "#962fa8" });
     expect(map).not.toHaveProperty("wai-cutout");
     expect(map).not.toHaveProperty("wai-detail");
   });
 
   it("mail/contacts/settings: bg + fg only", () => {
-    expect(Object.keys(waiBrandingCssprops({ bg: "#de4b0e", fg: "#ffbdc2" })).sort()).toEqual([
+    expect(Object.keys(iconBrandingCssprops({ bg: "#de4b0e", fg: "#ffbdc2" })).sort()).toEqual([
       "workspace-icon-foreground",
       "workspace-icon-surface",
     ]);
   });
 
   it("meet: bg + fg only", () => {
-    const map = waiBrandingCssprops({ bg: "#ffc800", fg: "#962fa8" });
+    const map = iconBrandingCssprops({ bg: "#ffc800", fg: "#962fa8" });
     expect(Object.keys(map).sort()).toEqual([
       "workspace-icon-foreground",
       "workspace-icon-surface",
@@ -109,7 +109,7 @@ describe("buildBrandingWorkspaceOverrideCss", () => {
     expect(css).not.toMatch(/:\s*inherit\s*;/);
   });
 
-  it("retargets wai layers onto the switch-trigger SVG", () => {
+  it("retargets icon layers onto the switch-trigger SVG", () => {
     const css = buildBrandingWorkspaceOverrideCss("calendar-workspace", {
       "--workspace-accent": "#962fa8",
       "--workspace-icon-surface": "#ffbdc2",

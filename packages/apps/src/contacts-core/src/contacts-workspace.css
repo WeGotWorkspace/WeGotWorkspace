@@ -45,7 +45,6 @@
   --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-serif);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
@@ -59,7 +58,6 @@
   --list-item-active-bg: var(--drive-item-selected-background);
 
   /* Outline action language for header + collection sidebar + action-bar. */
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -473,10 +471,8 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --segmented-control-track-active-bg: var(--workspace-foreground);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .contacts-workspace .field-label-row:has(input[readonly]) .input,

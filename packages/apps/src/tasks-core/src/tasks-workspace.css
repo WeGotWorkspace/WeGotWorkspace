@@ -52,19 +52,16 @@
     transparent
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
 .tasks-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /** App switcher lockup: tasks.svg literals (`#ffbdc2` tile, white marks). */
@@ -128,9 +125,7 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .tasks-story-scope {

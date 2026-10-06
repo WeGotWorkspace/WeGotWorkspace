@@ -148,7 +148,8 @@ export function findOpenMenuTrigger(): HTMLElement | null {
  * Falls back to the document-wide open-trigger heuristic.
  */
 export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement | null {
-  const id = content.id?.trim();
+  const tooltipId = content.querySelector("[role='tooltip']")?.id?.trim();
+  const id = tooltipId || content.id?.trim();
   if (id) {
     const escaped = escapeCssIdent(id);
     const owned = document.querySelector<HTMLElement>(`[aria-controls="${escaped}"]`);
@@ -156,10 +157,12 @@ export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement
     const described = document.querySelector<HTMLElement>(`[aria-describedby~="${escaped}"]`);
     if (described) return described;
   }
-  return (
-    findOpenMenuTrigger() ??
-    document.querySelector<HTMLElement>('[data-state="delayed-open"], [data-state="instant-open"]')
-  );
+  if (tooltipId) {
+    return document.querySelector<HTMLElement>(
+      '[data-state="delayed-open"], [data-state="instant-open"]',
+    );
+  }
+  return findOpenMenuTrigger();
 }
 
 /** Bridge theme vars from the trigger that owns `content` (no-op if none found). */

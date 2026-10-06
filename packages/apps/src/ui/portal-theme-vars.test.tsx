@@ -61,17 +61,25 @@ describe("portal-theme-vars", () => {
     expect(findTriggerForPortaledContent(content)).toBe(trigger);
   });
 
-  it("finds a tooltip trigger via aria-describedby", () => {
+  it("finds a tooltip trigger via the hidden tooltip id, not the content id", () => {
     const trigger = document.createElement("button");
     trigger.setAttribute("aria-describedby", "radix-tooltip-1");
-    trigger.dataset.state = "instant-open";
     document.body.append(trigger);
 
+    const menuTrigger = document.createElement("button");
+    menuTrigger.setAttribute("aria-haspopup", "menu");
+    menuTrigger.dataset.state = "open";
+    document.body.append(menuTrigger);
+
     const content = document.createElement("div");
-    content.id = "radix-tooltip-1";
+    const hidden = document.createElement("div");
+    hidden.setAttribute("role", "tooltip");
+    hidden.id = "radix-tooltip-1";
+    content.append(hidden);
     document.body.append(content);
 
     expect(findTriggerForPortaledContent(content)).toBe(trigger);
+    expect(findTriggerForPortaledContent(content)).not.toBe(menuTrigger);
   });
 
   it("copies the paper pair onto a tooltip without painting the paper fill", () => {
@@ -86,7 +94,10 @@ describe("portal-theme-vars", () => {
     document.body.append(host);
 
     const content = document.createElement("div");
-    content.id = "radix-tooltip-chip";
+    const hidden = document.createElement("div");
+    hidden.setAttribute("role", "tooltip");
+    hidden.id = "radix-tooltip-chip";
+    content.append(hidden);
     document.body.append(content);
 
     bridgePortalThemeFromOpenTrigger(content, { paintSurface: false });

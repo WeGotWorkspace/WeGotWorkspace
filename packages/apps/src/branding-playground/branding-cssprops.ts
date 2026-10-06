@@ -28,18 +28,19 @@ export function sharedBrandingCssprops(): BrandingCsspropsMap {
   };
 }
 
-/** Switch-trigger `--workspace-icon-surface*` layers (document real workspace defaults per app). */
-export function waiBrandingCssprops(defaults: { bg: string; fg: string }): BrandingCsspropsMap {
+/** Switch-trigger `--workspace-icon-*` pair (maps onto `--app-icon-layer-*` on the SVG). */
+export function iconBrandingCssprops(defaults: { bg: string; fg: string }): BrandingCsspropsMap {
   return {
     "workspace-icon-surface": {
       value: defaults.bg,
-      description: 'Icon background layer (fill="var(--workspace-icon-surface, …)")',
+      description: "Icon pair surface (switch-trigger maps this onto --app-icon-layer-surface)",
       category: "Icon layers",
       control: defaults.bg.startsWith("#") ? "color" : "text",
     },
     "workspace-icon-foreground": {
       value: defaults.fg,
-      description: "Icon foreground / marks",
+      description:
+        "Icon pair foreground (switch-trigger maps this onto --app-icon-layer-foreground)",
       category: "Icon layers",
       control: defaults.fg.startsWith("#") ? "color" : "text",
     },
@@ -55,7 +56,7 @@ export type AppBrandingCsspropsOptions = {
   sidebarValue?: string;
   /** Optional nav on-color; omit so `*-workspace.css` `--app-sidebar-color` wins. */
   appSidebarColor?: string;
-  wai?: {
+  icon?: {
     bg: string;
     fg: string;
   };
@@ -100,19 +101,6 @@ export const BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT = "var(--color-we-got-so
  */
 export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--workspace-sidebar-surface)";
 
-export const BRANDING_APP_SIDEBAR_DEFAULTS: Record<WorkspaceAppId, string> = {
-  mail: BRANDING_APP_SIDEBAR_DEFAULT,
-  notes: BRANDING_APP_SIDEBAR_DEFAULT,
-  tasks: BRANDING_APP_SIDEBAR_DEFAULT,
-  calendar: BRANDING_APP_SIDEBAR_DEFAULT,
-  contacts: BRANDING_APP_SIDEBAR_DEFAULT,
-  drive: BRANDING_APP_SIDEBAR_DEFAULT,
-  docs: BRANDING_APP_SIDEBAR_DEFAULT,
-  admin: BRANDING_APP_SIDEBAR_DEFAULT,
-  settings: BRANDING_APP_SIDEBAR_DEFAULT,
-  meet: BRANDING_APP_SIDEBAR_DEFAULT,
-};
-
 /** Production `--app-sidebar-color` (ink on every cream rail). */
 export function brandingAppSidebarColorDefault(_appId: WorkspaceAppId): string {
   return "#003311";
@@ -156,7 +144,7 @@ export function createAppBrandingCssprops(
       control: "text",
     },
     "workspace-sidebar-surface": {
-      value: brandingAppSidebarBg(appId),
+      value: BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT,
       description: "Sidebar rail — We Got Soft. Icon hue stays on the tile pair.",
       category: "App chrome",
       control: "text",
@@ -188,15 +176,15 @@ export function createAppBrandingCssprops(
     };
   }
 
-  if (options.wai) {
-    Object.assign(map, waiBrandingCssprops(options.wai));
+  if (options.icon) {
+    Object.assign(map, iconBrandingCssprops(options.icon));
   }
 
   return map;
 }
 
-/** Per-app wai defaults sampled from `*-workspace.css` switch-trigger rules. */
-export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
+/** Per-app icon-pair defaults sampled from `*-workspace.css` switch-trigger rules. */
+export const BRANDING_APP_ICON_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
   mail: { bg: "#de4b0e", fg: "#ffffff" },
   notes: { bg: "#ffc800", fg: "#ffffff" },
   docs: { bg: "#0045ff", fg: "#ffffff" },
@@ -209,11 +197,6 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
   settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
 };
 
-/** Production sidebar fill. Same Soft rail for every app. */
-export function brandingAppSidebarBg(_appId: WorkspaceAppId): string {
-  return BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT;
-}
-
 /**
  * Convenience: shared cream/ink + accent + production `--workspace-icon-*` for a workspace app.
  *
@@ -224,7 +207,7 @@ export function brandingAppSidebarBg(_appId: WorkspaceAppId): string {
  */
 export function defaultAppBrandingCssprops(appId: WorkspaceAppId): BrandingCsspropsMap {
   return createAppBrandingCssprops(appId, {
-    wai: BRANDING_APP_WAI_DEFAULTS[appId],
+    icon: BRANDING_APP_ICON_DEFAULTS[appId],
   });
 }
 

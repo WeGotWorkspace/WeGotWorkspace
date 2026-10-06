@@ -52,8 +52,6 @@
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --mail-swipe-star-color: var(--color-emerald);
   --mail-swipe-archive-color: var(--workspace-foreground);
-
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   /* Switch mark stays the mail icon (red + white). */
   --workspace-icon-surface: var(--color-we-got-red);
   --workspace-icon-foreground: #ffffff;
@@ -65,7 +63,6 @@
   --sidebar-badge-fg: var(--workspace-accent-foreground);
 
   /* Outline action language for header + collection sidebar rows. */
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
@@ -83,7 +80,6 @@
 
 /* Header outline chips stay on accent-strong; sidebar nav hover stays ink. */
 .mail-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .mail-workspace .mail-state-accent {
@@ -169,10 +165,8 @@
   /* White on raw We Got Red (~4.1:1) fails WCAG AA (4.5:1) for 14px labels. */
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --segmented-control-track-active-bg: var(--workspace-foreground);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .mail-compose-dialog-surface {

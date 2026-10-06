@@ -53,20 +53,6 @@
   --app-sidebar-item-height: var(--control-height-md, 2.25rem);
 }
 
-@supports (color: contrast-color(red)) {
-  .app-sidebar {
-    /*
-     * Light on-color (cream-nudged white) when the selected wash is strong/dark
-     * enough; dark when the wash stays light (e.g. yellow Notes).
-     */
-    --button-active-color: color-mix(
-      in oklab,
-      contrast-color(var(--button-outline-active-background)) 92%,
-      var(--workspace-surface)
-    );
-  }
-}
-
 .app-sidebar__header {
   /*
    * Block padding matches `.workspace-app-layout__main-header` (`p-4 md:p-6`) so

@@ -17,8 +17,8 @@
 
 /**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
- * The same vector SVG as the default icon is inlined; `--workspace-icon-surface*`
- * remaps layers for inversion.
+ * Artwork paints `--app-icon-layer-*` (with per-app fallbacks). This host maps
+ * those layers from `--workspace-icon-*` so invert still follows the pair.
  */
 .workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
@@ -30,6 +30,8 @@
 
 .workspace-app-icon--switch-trigger svg {
   @apply block size-full;
+  --app-icon-layer-surface: var(--workspace-icon-surface);
+  --app-icon-layer-foreground: var(--workspace-icon-foreground);
   --workspace-icon-surface: transparent;
   --workspace-icon-foreground: var(--app-switch-icon-fg);
 }
@@ -47,4 +49,5 @@
 
 .workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
   --workspace-icon-foreground: var(--workspace-foreground);
+  --app-icon-layer-foreground: var(--workspace-foreground);
 }

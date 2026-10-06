@@ -17,22 +17,14 @@ const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => {
-  const contentRef = React.useRef<React.ElementRef<typeof TooltipPrimitive.Content> | null>(null);
-
   const assignContentRef = React.useCallback(
     (node: React.ElementRef<typeof TooltipPrimitive.Content> | null) => {
-      contentRef.current = node;
       if (node) bridgePortalThemeFromOpenTrigger(node, { paintSurface: false });
       if (typeof ref === "function") ref(node);
       else if (ref) ref.current = node;
     },
     [ref],
   );
-
-  React.useLayoutEffect(() => {
-    const content = contentRef.current;
-    if (content) bridgePortalThemeFromOpenTrigger(content, { paintSurface: false });
-  }, []);
 
   return (
     <TooltipPrimitive.Portal>

@@ -1,6 +1,4 @@
 @import "../styles.css" reference;
-@import "./workspace-menu-item-sst.css";
-
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
@@ -328,7 +326,7 @@ input.input:focus-visible:not(:read-only),
 /**
  * Select item states — same 8/12/16 accent-into-paper washes as outline buttons.
  * Accent + fg still come from portaled tokens via `bridgePortalThemeVars`.
- * Washes: shared `workspace-menu-item-sst.css` (`--menu-item-*`).
+ * Washes: shared `workspace-derive.css` (`--menu-item-*`).
  */
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;

@@ -28,9 +28,14 @@ html:has(.apps-home-screen) {
 }
 
 /**
- * Same `--workspace-icon-surface` / `--workspace-icon-foreground` pair as each app's sidebar switch icon
- * (`app-sidebar__header` … `workspace-app-icon--switch-trigger svg`).
+ * Pin the current-app icon pair, then map it onto the SVG layer tokens.
+ * Unpinned inline artwork keeps its own `--app-icon-layer-*` fallbacks.
  */
+.apps-home-screen__tile-icon .workspace-app-icon--tile {
+  --app-icon-layer-surface: var(--workspace-icon-surface);
+  --app-icon-layer-foreground: var(--workspace-icon-foreground);
+}
+
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="admin"],
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="settings"] {
   --workspace-icon-surface: var(--color-we-got-dark);

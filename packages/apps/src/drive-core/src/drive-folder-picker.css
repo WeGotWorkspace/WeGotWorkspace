@@ -38,7 +38,6 @@
     --workspace-accent-strong,
     color-mix(in oklab, var(--workspace-accent, #3b82f6) 70%, #0f172a)
   );
-  --button-active-color: var(--workspace-accent-strong);
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
 }

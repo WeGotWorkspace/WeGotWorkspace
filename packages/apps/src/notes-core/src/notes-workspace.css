@@ -294,10 +294,8 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --segmented-control-track-active-bg: var(--workspace-foreground);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */

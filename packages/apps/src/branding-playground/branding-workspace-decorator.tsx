@@ -73,7 +73,7 @@ export function resolveBrandingIconMarkup(
 }
 
 /** Switch-trigger SVG keeps the sheet pair. Docs is a blue tile with white marks. */
-function sidebarSwitchTriggerWaiDecls(
+function sidebarSwitchTriggerIconDecls(
   _workspaceClass: string,
   values: Record<string, string>,
 ): string {
@@ -236,15 +236,15 @@ export function buildBrandingWorkspaceOverrideCss(
     .map(([prop, value]) => `  ${prop}: ${brandColorForCascade(value)};`)
     .join("\n");
 
-  const waiDecls = sidebarSwitchTriggerWaiDecls(workspaceClass, values);
+  const iconDecls = sidebarSwitchTriggerIconDecls(workspaceClass, values);
   const workspaceRule = decls
     ? `.branding-playground-root .${workspaceClass} {\n${decls}\n}\n`
     : "";
 
   return `${workspaceRule}${
-    waiDecls
+    iconDecls
       ? `.branding-playground-root .${workspaceClass} .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger svg {
-${waiDecls}
+${iconDecls}
 }
 `
       : ""

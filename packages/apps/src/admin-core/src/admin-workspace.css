@@ -41,7 +41,6 @@
     var(--workspace-surface)
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  --field-label-color: var(--workspace-foreground);
   --user-avatar-subtitle-color: color-mix(
     in oklch,
     var(--workspace-foreground) 80%,
@@ -54,8 +53,6 @@
   --segmented-control-track-active-bg: var(--workspace-accent);
 
   /* Outline header chrome (cream main); sidebar inherits ink-on-tint SST. */
-  --button-active-color: var(--workspace-accent-strong);
-
   /*
    * Item washes live in `workspace-color.css` (accent stepped into the rail).
    * A local copy here used to lose to a later import of that sheet.
@@ -67,7 +64,6 @@
  * soft washes come from shared `.view-header` SST.
  */
 .admin-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -111,9 +107,8 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
   --segmented-control-track-active-bg: var(--workspace-accent);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 /* Storybook pane stories: cream canvas without inline layout presets. */

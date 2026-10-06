@@ -53,16 +53,12 @@
     var(--workspace-surface)
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-
-  --field-label-color: var(--workspace-foreground);
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
   /* Outline action language for header + collection sidebar rows. */
-  --button-active-color: var(--workspace-accent-strong);
-
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
@@ -108,7 +104,6 @@
  * Idle Week select + outline buttons share --button-outline-color (ink).
  */
 .calendar-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */

@@ -100,7 +100,7 @@ export const WorkspaceAppIcon = memo(function WorkspaceAppIcon({
     );
   }
 
-  // Home launcher tiles inline the SVG so they can use the same `--workspace-icon-surface*` pair
+  // Home launcher tiles inline the SVG so they can use the same `--app-icon-layer-*` pair
   // as that app's sidebar switch icon.
   if (variant === "tile" && overrideHtml == null) {
     return (

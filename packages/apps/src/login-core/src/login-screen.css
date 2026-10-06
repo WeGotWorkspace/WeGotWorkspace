@@ -28,7 +28,6 @@
     var(--workspace-foreground) 18%,
     transparent
   );
-  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
   --input-background: color-mix(in oklab, var(--workspace-foreground) 6%, var(--workspace-surface));
   --input-background-focus: color-mix(
     in oklab,

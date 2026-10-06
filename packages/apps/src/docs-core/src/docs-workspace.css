@@ -63,8 +63,7 @@
   --checkbox-checked-fg: #ffffff;
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
-  --button-active-color: var(--workspace-accent-strong);
-  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
+  /* Quiet menu washes: shared `workspace-derive.css`.
    * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
 
   --foreground: var(--docs-text);
@@ -80,7 +79,6 @@
  * `--button-active-color`; soft washes come from shared `.view-header` SST.
  */
 .docs-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -111,8 +109,7 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Menu/select washes: shared `workspace-derive.css`. */
 }
 
 @media (min-width: 768px) {
@@ -274,8 +271,7 @@
   --workspace-icon-foreground: #ffffff;
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .docs-workspace__editor {

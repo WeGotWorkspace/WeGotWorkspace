@@ -9,7 +9,6 @@
   left: auto;
   transform: none;
   cursor: grab;
-  --button-active-color: var(--workspace-accent-strong);
 }
 
 .meet-mini-player.floating-action-bar:not(.meet-mini-player--moved) {

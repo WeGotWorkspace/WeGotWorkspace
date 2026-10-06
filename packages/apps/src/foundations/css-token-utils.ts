@@ -16,7 +16,7 @@ export function readCssVar(host: Element, property: string): string {
 
 /**
  * Resolve a custom property to a concrete color by painting it on a temporary
- * probe. Works for HTML and SVG hosts (switch-trigger `--workspace-icon-surface*` lives on SVG).
+ * probe. Works for HTML and SVG hosts (switch-trigger `--app-icon-layer-*` lives on SVG).
  */
 export function resolveCssColor(host: Element, property: string): string {
   const name = toCssVarName(property);

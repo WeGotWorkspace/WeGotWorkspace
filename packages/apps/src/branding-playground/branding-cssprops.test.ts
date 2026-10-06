@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 import {
   BRANDING_APP_ACCENT_DEFAULTS,
-  BRANDING_APP_SIDEBAR_DEFAULTS,
-  BRANDING_APP_WAI_DEFAULTS,
+  BRANDING_APP_ICON_DEFAULTS,
+  BRANDING_APP_SIDEBAR_DEFAULT,
   BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT,
   BRANDING_WORKSPACE_SURFACE_DEFAULT,
   brandingAppSidebarColorDefault,
@@ -11,7 +11,7 @@ import {
   defaultAppBrandingCssprops,
   defaultAuthBrandingCssprops,
   defaultHomeBrandingCssprops,
-  waiBrandingCssprops,
+  iconBrandingCssprops,
 } from "@/branding-playground/branding-cssprops";
 import {
   brandingIconArgs,
@@ -30,9 +30,9 @@ describe("BRANDING_APP_ACCENT_DEFAULTS", () => {
   });
 });
 
-describe("waiBrandingCssprops", () => {
+describe("iconBrandingCssprops", () => {
   it("emits only bg/fg when optional layers are omitted (calendar production shape)", () => {
-    const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#962fa8" });
+    const map = iconBrandingCssprops({ bg: "#ffbdc2", fg: "#962fa8" });
     expect(Object.keys(map).sort()).toEqual([
       "workspace-icon-foreground",
       "workspace-icon-surface",
@@ -42,7 +42,7 @@ describe("waiBrandingCssprops", () => {
   });
 
   it("emits only bg and fg", () => {
-    const map = waiBrandingCssprops({ bg: "#ffbdc2", fg: "#de4b0e" });
+    const map = iconBrandingCssprops({ bg: "#ffbdc2", fg: "#de4b0e" });
     expect(Object.keys(map).sort()).toEqual([
       "workspace-icon-foreground",
       "workspace-icon-surface",
@@ -52,27 +52,27 @@ describe("waiBrandingCssprops", () => {
 
 describe("createAppBrandingCssprops", () => {
   it("omits sidebar and app-sidebar-color unless callers opt in", () => {
-    const map = createAppBrandingCssprops("mail", { wai: BRANDING_APP_WAI_DEFAULTS.mail });
+    const map = createAppBrandingCssprops("mail", { icon: BRANDING_APP_ICON_DEFAULTS.mail });
     expect(map["app-sidebar-bg"]).toBeUndefined();
     expect(map["app-sidebar-color"]).toBeUndefined();
   });
 
   it("emits chrome overrides when provided", () => {
     const map = createAppBrandingCssprops("mail", {
-      sidebarValue: BRANDING_APP_SIDEBAR_DEFAULTS.mail,
+      sidebarValue: BRANDING_APP_SIDEBAR_DEFAULT,
       appSidebarColor: brandingAppSidebarColorDefault("mail"),
     });
-    expect(map["app-sidebar-bg"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULTS.mail);
+    expect(map["app-sidebar-bg"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULT);
     expect(map["app-sidebar-color"]?.value).toBe("#003311");
   });
 });
 
 describe("defaultAppBrandingCssprops", () => {
   it.each(WORKSPACE_APP_IDS)(
-    "documents cream, ink, accent, and production wai only for %s (no sidebar chrome)",
+    "documents cream, ink, accent, and production icon pair only for %s (no sidebar chrome)",
     (appId) => {
       const map = defaultAppBrandingCssprops(appId);
-      const wai = BRANDING_APP_WAI_DEFAULTS[appId];
+      const icon = BRANDING_APP_ICON_DEFAULTS[appId];
       expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
       expect(map["color-we-got-dark"]?.value).toBe("#003311");
       expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
@@ -86,8 +86,8 @@ describe("defaultAppBrandingCssprops", () => {
       expect(map["workspace-sidebar-foreground"]?.value).toBe("var(--color-we-got-dark)");
       expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
-      expect(map["workspace-icon-surface"]?.value).toBe(wai.bg);
-      expect(map["workspace-icon-foreground"]?.value).toBe(wai.fg);
+      expect(map["workspace-icon-surface"]?.value).toBe(icon.bg);
+      expect(map["workspace-icon-foreground"]?.value).toBe(icon.fg);
       expect(map["wai-detail"]).toBeUndefined();
       expect(map["wai-detail-muted"]).toBeUndefined();
       expect(map["wai-cutout"]).toBeUndefined();
@@ -105,13 +105,7 @@ describe("defaultAppBrandingCssprops", () => {
   it("documents one production sidebar formula for every app", () => {
     expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");
     expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
-    const values = new Set(Object.values(BRANDING_APP_SIDEBAR_DEFAULTS));
-    expect(values.size).toBe(1);
-    const formula = BRANDING_APP_SIDEBAR_DEFAULTS.mail;
-    expect(formula).toBe("var(--workspace-sidebar-surface)");
-    for (const appId of WORKSPACE_APP_IDS) {
-      expect(BRANDING_APP_SIDEBAR_DEFAULTS[appId]).toBe(formula);
-    }
+    expect(BRANDING_APP_SIDEBAR_DEFAULT).toBe("var(--workspace-sidebar-surface)");
   });
 });
 
@@ -229,8 +223,10 @@ describe("createBrandingStoryMeta defaults", () => {
       expect(cssprops["workspace-accent"].value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
       expect(cssprops["app-sidebar-bg"]).toBeUndefined();
       expect(cssprops["app-sidebar-color"]).toBeUndefined();
-      expect(cssprops["workspace-icon-surface"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].bg);
-      expect(cssprops["workspace-icon-foreground"].value).toBe(BRANDING_APP_WAI_DEFAULTS[appId].fg);
+      expect(cssprops["workspace-icon-surface"].value).toBe(BRANDING_APP_ICON_DEFAULTS[appId].bg);
+      expect(cssprops["workspace-icon-foreground"].value).toBe(
+        BRANDING_APP_ICON_DEFAULTS[appId].fg,
+      );
     },
   );
 });

@@ -1,11 +1,9 @@
 @import "../../styles.css" reference;
 
 @import "../../ui/anchored-dropdown.css";
-@import "../../ui/workspace-menu-item-sst.css";
-
 /**
  * Toggle + title row. Soft outline + menu washes: shared
- * `workspace-menu-item-sst.css` (Sand 14/18/24). Products set
+ * `workspace-derive.css` (Sand 14/18/24). Products set
  * `--workspace-accent` for solid primary fills and usually
  * `--button-active-color` (accent-strong) for the glyph.
  * Heavier sidebar nav washes stay on the workspace root. Control radius is

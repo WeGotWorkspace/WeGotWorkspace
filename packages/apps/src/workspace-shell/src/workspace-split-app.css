@@ -40,6 +40,4 @@
 
   --primary: var(--workspace-accent);
   --primary-foreground: var(--workspace-accent-foreground);
-
-  --field-label-color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
 }
