@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Services\MailDelivery\OutboundMessage;
+use App\Support\PublicAppUrl;
 
 final class PasswordResetMailFactory
 {
     public function message(string $from, string $to, string $token): OutboundMessage
     {
-        $link = rtrim((string) config('app.url'), '/').'/login/reset?token='.$token;
+        $link = PublicAppUrl::to('login/reset').'?token='.$token;
 
         return new OutboundMessage(
             from: $from,

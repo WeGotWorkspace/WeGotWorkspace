@@ -11,6 +11,7 @@ use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
 use App\Services\Update\UpdateStateService;
 use App\Support\ApiUrlBuilder;
+use App\Support\PublicAppUrl;
 use App\Support\WgwSettings;
 
 final class AdminStateService
@@ -76,6 +77,9 @@ final class AdminStateService
         }
         if (! app()->environment('production')) {
             $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
+        }
+        if (! PublicAppUrl::isConfigured()) {
+            $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
         }
 
         return $warnings;

@@ -22,6 +22,7 @@ use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
+use App\Support\PublicAppUrl;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -30,7 +31,6 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
@@ -71,18 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
-        $middleware->trustHosts(at: function (): array {
-            $host = parse_url((string) config('app.url'), PHP_URL_HOST);
-            $hosts = ['localhost', '127.0.0.1', '::1'];
-            if (is_string($host) && $host !== '') {
-                array_unshift($hosts, $host);
-            }
-
-            return array_map(
-                static fn (string $trusted): string => '^'.preg_quote($trusted).'$',
-                $hosts,
-            );
-        }, subdomains: false);
+        $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         $middleware->append(BindMcpPublicOrigin::class);
         $middleware->append(McpCors::class);
@@ -112,11 +101,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->json($payload, $e->getStatusCode());
-        });
-        $exceptions->render(function (SuspiciousOperationException $e) {
-            return response()->json([
-                'code' => 'bad_request',
-            ], 400);
         });
         $exceptions->render(function (ValidationException $e) {
             $message = $e->validator->errors()->first();
@@ -157,6 +141,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $code = match ($status) {
+                400 => 'bad_request',
                 401 => 'unauthorized',
                 403 => 'forbidden',
                 404 => 'not_found',
@@ -168,6 +153,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $message = config('app.debug')
                 ? ($e->getMessage() ?: 'Internal server error.')
                 : match ($code) {
+                    'bad_request' => 'Bad request.',
                     'unauthorized' => 'Unauthorized.',
                     'forbidden' => 'Forbidden.',
                     'not_found' => 'Not found.',
