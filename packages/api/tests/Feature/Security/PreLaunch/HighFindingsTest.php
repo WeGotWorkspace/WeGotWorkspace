@@ -6,6 +6,10 @@ namespace Tests\Feature\Security\PreLaunch;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\MailDelivery\MailDeliveryConfig;
+use App\Services\MailDelivery\OutboundMessageMail;
+use App\Services\Settings\SettingKeys;
+use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -39,6 +43,32 @@ final class HighFindingsTest extends WgwDatabaseTestCase
         putenv('WGW_DISABLE_LOGIN_THROTTLE');
         unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
         parent::tearDown();
+    }
+
+    /** H1: the reset link must not follow the attacker's Host header. */
+    public function test_h1_password_reset_link_ignores_the_request_host(): void
+    {
+        Mail::fake();
+        config(['app.url' => 'https://wgw.example.test']);
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => 'ops@example.test',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+
+        $this->postJson('http://attacker.example/api/v1/auth/password-resets', ['identifier' => 'bob'])
+            ->assertOk();
+
+        $bodies = [];
+        Mail::assertSent(OutboundMessageMail::class, function (OutboundMessageMail $mail) use (&$bodies): bool {
+            $bodies[] = (string) $mail->outbound->textBody;
+
+            return true;
+        });
+        $this->assertNotEmpty($bodies, 'No reset mail was sent.');
+        $body = implode("\n", $bodies);
+
+        $this->assertStringNotContainsString('attacker.example', $body, 'Reset link points at the attacker-controlled Host header.');
+        $this->assertStringContainsString('https://wgw.example.test/', $body);
     }
 
     /** H4: the env file shipped with releases must be production-safe. */
