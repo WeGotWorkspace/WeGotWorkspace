@@ -199,7 +199,11 @@ final class DriveShareGrantResolver
             if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {
                 continue;
             }
-            $paths[$this->scope->normalize((string) $share->path)] = true;
+            $path = $this->scope->normalize((string) $share->path);
+            if ($this->scope->isInProductTrash($path)) {
+                continue;
+            }
+            $paths[$path] = true;
         }
 
         return array_keys($paths);
@@ -232,6 +236,9 @@ final class DriveShareGrantResolver
             return null;
         }
         $sharePath = $this->scope->normalize($share->path);
+        if ($this->scope->isInProductTrash($sharePath)) {
+            return null;
+        }
         if (! $this->scope->isWithin($sharePath, $requestedPath)) {
             return null;
         }

@@ -10,7 +10,7 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 
 ## Active
 
-None.
+- 2026-10-06: A path rewrite can carry a grant into a location that must not grant access (a share followed its folder into product trash and stayed live).
 
 ## Promoted
 

@@ -397,6 +397,9 @@ final class DriveShareService
             if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
                 continue;
             }
+            if ($this->scope->isInProductTrash((string) $share->path)) {
+                continue;
+            }
             $directByShareId[(string) $share->id] = $grant;
         }
 
@@ -424,6 +427,9 @@ final class DriveShareService
         foreach ($groupGrants as $grant) {
             $share = $grant->share;
             if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
+                continue;
+            }
+            if ($this->scope->isInProductTrash((string) $share->path)) {
                 continue;
             }
             $shareId = (string) $share->id;

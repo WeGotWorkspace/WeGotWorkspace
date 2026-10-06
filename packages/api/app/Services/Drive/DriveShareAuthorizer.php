@@ -247,6 +247,9 @@ final class DriveShareAuthorizer
             }
 
             $rootPath = $this->scope->normalize((string) $share->path);
+            if ($this->scope->isInProductTrash($rootPath)) {
+                $this->deny();
+            }
             if (! $this->scope->isWithin($rootPath, $path)) {
                 $this->deny();
             }
