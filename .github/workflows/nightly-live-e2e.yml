@@ -94,6 +94,9 @@ jobs:
         working-directory: packages/apps
         run: pnpm exec playwright test --config playwright.chaos.config.mjs
 
+      - name: Run relay e2e specs
+        run: bash tools/coturn/run-relay-e2e.sh
+
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -102,6 +105,18 @@ jobs:
           path: |
             packages/apps/playwright-report/
             packages/apps/test-results/
+          if-no-files-found: ignore
+
+      - name: Upload coturn logs
+        if: failure()
+        run: docker logs wgw-coturn > coturn.log 2>&1 || true
+
+      - name: Upload coturn log artifact
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coturn-logs
+          path: coturn.log
           if-no-files-found: ignore
 
   notify-failure:
