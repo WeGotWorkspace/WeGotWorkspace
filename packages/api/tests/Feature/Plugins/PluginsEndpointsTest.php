@@ -7,9 +7,12 @@ namespace Tests\Feature\Plugins;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
+use Tests\Support\WgwRoleFixtures;
 
 final class PluginsEndpointsTest extends WgwDatabaseTestCase
 {
+    use WgwRoleFixtures;
+
     private string $dataDir = '';
 
     protected function setUp(): void
@@ -36,8 +39,7 @@ final class PluginsEndpointsTest extends WgwDatabaseTestCase
 
         parent::setUp();
         WgwInstallFixture::bindInstallRoot($this->dataDir.'/install-root');
-        $this->configureWgwJwtKeys();
-        $this->seedAlice();
+        $this->configureRoleMatrix();
     }
 
     protected function tearDown(): void
@@ -82,9 +84,9 @@ final class PluginsEndpointsTest extends WgwDatabaseTestCase
 
     public function test_plugins_can_be_activated_and_deactivated(): void
     {
-        $client = $this->withBearer($this->issueBearerToken());
+        $client = $this->withBearer($this->adminBearerToken());
 
-        $client->putJson('/api/v1/plugins/demo-plugin/activation', ['active' => false])
+        $client->putJson('/api/v1/admin/plugins/demo-plugin/activation', ['active' => false])
             ->assertOk()
             ->assertJsonPath('plugin.id', 'demo-plugin')
             ->assertJsonPath('plugin.active', false);
@@ -96,18 +98,24 @@ final class PluginsEndpointsTest extends WgwDatabaseTestCase
                 'active' => false,
             ]);
 
-        $client->putJson('/api/v1/plugins/demo-plugin/activation', ['active' => true])
+        $client->putJson('/api/v1/admin/plugins/demo-plugin/activation', ['active' => true])
             ->assertOk()
             ->assertJsonPath('plugin.id', 'demo-plugin')
             ->assertJsonPath('plugin.active', true);
 
-        $client->putJson('/api/v1/plugins/unknown/activation', ['active' => false])
+        $client->putJson('/api/v1/admin/plugins/unknown/activation', ['active' => false])
             ->assertNotFound()
             ->assertJsonPath('error', 'plugin_not_found');
     }
 
-    private function seedAlice(): void
+    public function test_regular_user_cannot_change_plugin_activation(): void
     {
-        $this->seedWgwUser('alice', displayName: 'Alice');
+        $this->withBearer($this->userBearerToken())
+            ->putJson('/api/v1/admin/plugins/demo-plugin/activation', ['active' => false])
+            ->assertForbidden();
+
+        $this->withBearer($this->userBearerToken())
+            ->putJson('/api/v1/plugins/demo-plugin/activation', ['active' => false])
+            ->assertNotFound();
     }
 }
