@@ -71,6 +71,42 @@ final class HighFindingsTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('https://wgw.example.test/', $body);
     }
 
+    public function test_h1_unset_app_url_sends_no_reset_mail(): void
+    {
+        Mail::fake();
+        config(['app.url' => 'http://localhost']);
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => 'ops@example.test',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'bob'])
+            ->assertOk();
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_h1_reset_link_includes_the_install_base_path(): void
+    {
+        Mail::fake();
+        config(['app.url' => 'https://host.example']);
+        $this->setAppSetting(SettingKeys::BASE_URI, '/wgw/');
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_FROM => 'ops@example.test',
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_PHP,
+        ]);
+
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'bob'])
+            ->assertOk();
+
+        Mail::assertSent(OutboundMessageMail::class, function (OutboundMessageMail $mail): bool {
+            $this->assertStringContainsString('https://host.example/wgw/login/reset?token=', (string) $mail->outbound->textBody);
+            $this->assertStringNotContainsString('https://host.example/login/reset', (string) $mail->outbound->textBody);
+
+            return true;
+        });
+    }
+
     /** H4: the env file shipped with releases must be production-safe. */
     public function test_h4_shipped_env_example_is_production_safe(): void
     {
@@ -118,7 +154,8 @@ final class HighFindingsTest extends WgwDatabaseTestCase
 
     public function test_h4_admin_state_warns_when_debug_is_on_or_env_is_not_production(): void
     {
-        config(['app.debug' => false]);
+        config(['app.debug' => false, 'app.url' => 'https://wgw.example.test']);
+        $this->app->make('url')->forceRootUrl('https://wgw.example.test');
         $this->app['env'] = 'production';
 
         $quiet = $this->withBearer($this->login('alice')['access_token'])
@@ -139,6 +176,19 @@ final class HighFindingsTest extends WgwDatabaseTestCase
         $joined = implode("\n", $warnings);
         $this->assertStringContainsString('APP_DEBUG', $joined);
         $this->assertStringContainsString('production', $joined);
+
+        config(['app.debug' => false, 'app.url' => 'http://localhost']);
+        $this->app->make('url')->forceRootUrl('http://localhost');
+        $this->app['env'] = 'production';
+        $unset = $this->withBearer($this->login('alice')['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->json('securityWarnings');
+        $this->assertIsArray($unset);
+        $this->assertContains(
+            'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.',
+            $unset,
+        );
     }
 
     /**

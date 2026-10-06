@@ -22,4 +22,25 @@ final class TrustedHostsTest extends TestCase
             '^\:\:1$',
         ], $hosts);
     }
+
+    public function test_loopback_app_url_does_not_restrict_hosts(): void
+    {
+        config(['app.url' => 'http://localhost']);
+
+        $this->assertSame([], app(TrustHosts::class)->hosts());
+    }
+
+    public function test_extra_trusted_hosts_are_added(): void
+    {
+        config([
+            'app.url' => 'https://wgw.example.test',
+            'wgw.trusted_hosts' => 'www.wgw.example.test, 203.0.113.10',
+        ]);
+
+        $hosts = app(TrustHosts::class)->hosts();
+
+        $this->assertContains('^www\.wgw\.example\.test$', $hosts);
+        $this->assertContains('^203\.0\.113\.10$', $hosts);
+        $this->assertContains('^wgw\.example\.test$', $hosts);
+    }
 }
