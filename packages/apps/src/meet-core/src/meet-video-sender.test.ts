@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { selectedPairIsRelay as selectedPairIsRelayFromStats } from "@/lib/rtc/stats";
 import {
   effectiveSendProfile,
   remoteVideoSuppressed,
+  selectedPairIsRelay,
   type VideoLimits,
 } from "@/meet-core/src/meet-video-sender";
 
 const limits: VideoLimits = { maxVideoProfile: "p720", maxVideoProfileRelay: "p360" };
+
+describe("selectedPairIsRelay", () => {
+  it("re-exports the rtc stats helper", () => {
+    expect(selectedPairIsRelay).toBe(selectedPairIsRelayFromStats);
+  });
+});
 
 describe("effectiveSendProfile", () => {
   it("never exceeds the admin, relay, or low-data cap", () => {

@@ -80,24 +80,7 @@ export type SenderApply = {
   lowData: boolean;
 };
 
-/** `getStats` selected pair is a relay. Re-run after every ICE restart. */
-export async function selectedPairIsRelay(pc: RTCPeerConnection): Promise<boolean> {
-  const stats = await pc.getStats();
-  let relay = false;
-  stats.forEach((report) => {
-    if (report.type !== "candidate-pair") return;
-    const pair = report as RTCStats & {
-      selected?: boolean;
-      nominated?: boolean;
-      localCandidateId?: string;
-    };
-    if (!pair.selected && !pair.nominated) return;
-    const local = pair.localCandidateId ? stats.get(pair.localCandidateId) : undefined;
-    const kind = local && "candidateType" in local ? String(local.candidateType) : "";
-    if (kind === "relay") relay = true;
-  });
-  return relay;
-}
+export { selectedPairIsRelay } from "@/lib/rtc/stats";
 
 /**
  * Encoding parameters only. No new offer: `setParameters` does not renegotiate.
