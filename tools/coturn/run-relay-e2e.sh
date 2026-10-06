@@ -19,6 +19,22 @@ source "$ROOT/.coturn.env"
 set +a
 export WGW_TURN_HOST="${WGW_TURN_HOST:-$TURN_HOST}"
 
+# Playwright starts this API itself so the short TURN TTL is on the process.
+# A leftover listener would be reused and refresh would wait out a 3600s TTL.
+if command -v lsof >/dev/null 2>&1; then
+  pids="$(lsof -nP -iTCP:9080 -sTCP:LISTEN -t 2>/dev/null || true)"
+  if [[ -n "$pids" ]]; then
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      if ! lsof -nP -iTCP:9080 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        break
+      fi
+      sleep 0.2
+    done
+  fi
+fi
+
 cd "$ROOT/packages/apps"
 set +e
 pnpm exec playwright test --config playwright.relay.config.mjs

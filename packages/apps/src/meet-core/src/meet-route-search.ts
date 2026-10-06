@@ -48,15 +48,14 @@ export function meetSearchFromRoom(roomCode: string | null): MeetRouteSearch {
       ? new URLSearchParams(window.location.search).get("rtcDebug")
       : undefined,
   );
-  const rtcForceRelay =
+  const rtcForceRelay: 1 | undefined =
     typeof window !== "undefined" && isRtcForceRelayEnabledFromQuery(window.location.search)
       ? 1
       : undefined;
-  const debug: MeetRouteSearch = {
-    ...(rtcDebug !== undefined ? { rtcDebug } : {}),
-    ...(rtcForceRelay !== undefined ? { rtcForceRelay } : {}),
-  };
-  if (!room) return { ...debug };
+  const debug: MeetRouteSearch = {};
+  if (rtcDebug === 1) debug.rtcDebug = 1;
+  if (rtcForceRelay === 1) debug.rtcForceRelay = 1;
+  if (!room) return debug;
   return { room, ...debug };
 }
 

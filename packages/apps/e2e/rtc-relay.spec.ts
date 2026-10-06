@@ -112,6 +112,8 @@ test("credential refresh keeps the call", async ({ browser }) => {
     await waitForRemoteVideo(right.page);
     await leftLog.waitFor("selected-pair", meetRelayPair, 45_000);
     await rightLog.waitFor("selected-pair", meetRelayPair, 45_000);
+    expect(issuedMeetTtl(leftLog), "relay e2e must mint a 120s TURN credential").toBe(120);
+    expect(issuedMeetTtl(rightLog), "relay e2e must mint a 120s TURN credential").toBe(120);
     await flushConsole(left.page);
     await flushConsole(right.page);
     const leftBefore = meetPcCount(leftLog);
@@ -368,6 +370,16 @@ function pcCreatedSummary(log: { events: () => RtcConsoleEvent[] }): string {
       return `${event.channel}:${String(mode)}/${String(policy)}`;
     })
     .join(",");
+}
+
+function issuedMeetTtl(log: { events: () => RtcConsoleEvent[] }): number | null {
+  for (const event of log.events()) {
+    if (event.channel !== "meet" || event.event !== "relay-request") continue;
+    if (event.details?.outcome !== "issued") continue;
+    const ttl = event.details.ttl;
+    if (typeof ttl === "number") return ttl;
+  }
+  return null;
 }
 
 function issuedRefresh(event: RtcConsoleEvent, reasons: () => string[]): boolean {
