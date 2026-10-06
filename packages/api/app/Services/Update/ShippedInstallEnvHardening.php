@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Update;
 
 use App\Services\Installer\EnvFileWriter;
+use App\Support\InstallLayout;
 use App\Support\WgwApiEnvFile;
 use App\Support\WgwInstallConfig;
 
@@ -12,7 +13,8 @@ use App\Support\WgwInstallConfig;
  * One-time rewrite of shipped APP_ENV / APP_DEBUG for ZIP and Docker installs.
  *
  * Channel is read the same way as DevSeedGuard::installChannel():
- * config first, then WGW_INSTALL_CHANNEL. Source checkouts are left alone.
+ * config first, then WGW_INSTALL_CHANNEL. A ZIP extract often has no channel
+ * at all; those installs are rewritten unless the root is a monorepo checkout.
  */
 final class ShippedInstallEnvHardening
 {
@@ -23,7 +25,7 @@ final class ShippedInstallEnvHardening
 
     public function apply(): bool
     {
-        if (! in_array($this->installChannel(), ['zip', 'docker'], true)) {
+        if (! $this->shouldHarden()) {
             return false;
         }
 
@@ -43,6 +45,20 @@ final class ShippedInstallEnvHardening
 
             return $next === $content ? null : $next;
         });
+    }
+
+    private function shouldHarden(): bool
+    {
+        $channel = $this->installChannel();
+        if (in_array($channel, ['zip', 'docker'], true)) {
+            return true;
+        }
+
+        if ($channel !== '') {
+            return false;
+        }
+
+        return ! InstallLayout::isMonorepoCheckoutRoot($this->install->installRoot());
     }
 
     private function installChannel(): string

@@ -30,6 +30,9 @@ final class InstallerEnvWriter
         if (isset($config['data_dir']) && is_string($config['data_dir'])) {
             $bootstrap['data_dir'] = $config['data_dir'];
         }
+        if (isset($config['install_channel']) && is_string($config['install_channel'])) {
+            $bootstrap['install_channel'] = $config['install_channel'];
+        }
 
         $pairs = $this->envPairsFromBootstrap($bootstrap);
         $envPath = $this->envPath();
@@ -76,7 +79,7 @@ final class InstallerEnvWriter
     }
 
     /**
-     * @param  array{pdo: array<string, mixed>, data_dir?: string}  $config
+     * @param  array{pdo: array<string, mixed>, data_dir?: string, install_channel?: string}  $config
      * @return array<string, string>
      */
     public function envPairsFromBootstrap(array $config): array
@@ -90,6 +93,10 @@ final class InstallerEnvWriter
             'WGW_DATA_DIR' => $dataDir,
             'WGW_UPDATE_FEED_URL' => UpdateFeedDefaults::MANIFEST_URL,
         ];
+        $channel = $config['install_channel'] ?? null;
+        if (is_string($channel) && trim($channel) !== '') {
+            $pairs['WGW_INSTALL_CHANNEL'] = strtolower(trim($channel));
+        }
 
         if (isset($pdo['sqlite_file'])) {
             $pairs['WGW_DB_CONNECTION'] = 'sqlite';

@@ -14,6 +14,8 @@ final class InstallerEndpointsTest extends TestCase
 
     private ?string $mysqlInstallDatabase = null;
 
+    private string|false $previousInstallChannel = false;
+
     protected function setUp(): void
     {
         $this->installRoot = sys_get_temp_dir().'/wgw-installer-test-'.uniqid('', true);
@@ -25,11 +27,17 @@ final class InstallerEndpointsTest extends TestCase
         $_ENV['WGW_APP_ROOT'] = $this->installRoot;
         putenv('WGW_DISABLE_INSTALL_THROTTLE=1');
         $_ENV['WGW_DISABLE_INSTALL_THROTTLE'] = '1';
+        $channel = getenv('WGW_INSTALL_CHANNEL');
+        $this->previousInstallChannel = is_string($channel) ? $channel : false;
 
         parent::setUp();
 
         WgwInstallFixture::ensureApiPackage($this->installRoot);
-        config(['wgw.install_root' => $this->installRoot, 'wgw.data_dir' => $this->installRoot.'/wgw-content']);
+        config([
+            'wgw.install_root' => $this->installRoot,
+            'wgw.data_dir' => $this->installRoot.'/wgw-content',
+            'wgw.install_channel' => null,
+        ]);
     }
 
     protected function tearDown(): void
@@ -48,9 +56,24 @@ final class InstallerEndpointsTest extends TestCase
         }
 
         config(['wgw.install' => []]);
+        $this->restoreInstallChannel();
         WgwInstallFixture::forgetInstallBindings();
 
         parent::tearDown();
+    }
+
+    private function restoreInstallChannel(): void
+    {
+        if (is_string($this->previousInstallChannel) && $this->previousInstallChannel !== '') {
+            putenv('WGW_INSTALL_CHANNEL='.$this->previousInstallChannel);
+            $_ENV['WGW_INSTALL_CHANNEL'] = $this->previousInstallChannel;
+            $_SERVER['WGW_INSTALL_CHANNEL'] = $this->previousInstallChannel;
+
+            return;
+        }
+
+        putenv('WGW_INSTALL_CHANNEL');
+        unset($_ENV['WGW_INSTALL_CHANNEL'], $_SERVER['WGW_INSTALL_CHANNEL']);
     }
 
     public function test_state_and_bootstrap_expose_welcome_step(): void
@@ -132,6 +155,7 @@ final class InstallerEndpointsTest extends TestCase
         $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
         $env = (string) file_get_contents($this->installRoot.'/packages/api/.env');
         $this->assertStringContainsString('WGW_DB_CONNECTION=sqlite', $env);
+        $this->assertStringContainsString('WGW_INSTALL_CHANNEL=zip', $env);
         $this->assertStringContainsString('install-test.sqlite', $env);
         $this->assertFileDoesNotExist($this->installRoot.'/wgw-config.php');
         $this->assertFileExists($this->installRoot.'/wgw-content/install-test.sqlite');

@@ -371,6 +371,11 @@ final class InstallerWizardService
             'data_dir' => $this->paths->tryRelativeToInstallRoot($this->paths->dataDir()) ?? $this->paths->dataDir(),
             'pdo' => $this->pdoConfigForWrite($db),
         ];
+        // ZIP extracts have no channel. Docker already wrote WGW_INSTALL_CHANNEL
+        // before this wizard runs, so an existing channel is left as-is.
+        if ($this->installConfig->installChannel() === null) {
+            $bootstrap['install_channel'] = 'zip';
+        }
 
         try {
             $this->envWriter->writeBootstrap($bootstrap);

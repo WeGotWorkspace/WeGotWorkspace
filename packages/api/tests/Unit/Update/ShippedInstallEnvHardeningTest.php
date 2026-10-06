@@ -32,12 +32,7 @@ final class ShippedInstallEnvHardeningTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->root !== '' && is_dir($this->root)) {
-            $env = $this->root.'/packages/api/.env';
-            if (is_file($env)) {
-                unlink($env);
-            }
-            @rmdir($this->root.'/packages/api');
-            @rmdir($this->root);
+            $this->removeTree($this->root);
         }
         $this->restoreEnv('WGW_INSTALL_CHANNEL');
         $this->restoreEnv('WGW_APP_ROOT');
@@ -68,8 +63,38 @@ final class ShippedInstallEnvHardeningTest extends TestCase
         $this->assertSame('false', WgwApiEnvFile::readValue($written, 'APP_DEBUG'));
     }
 
+    public function test_empty_channel_rewrites_when_install_root_is_not_a_monorepo(): void
+    {
+        $this->writeEnv("APP_ENV=local\nAPP_DEBUG=true\nAPP_KEY=base64:abc\n");
+        config([
+            'wgw.install_root' => $this->root,
+            'wgw.install_channel' => null,
+        ]);
+
+        $this->assertTrue($this->fresh()->apply());
+        $written = $this->readEnv();
+        $this->assertSame('production', WgwApiEnvFile::readValue($written, 'APP_ENV'));
+        $this->assertSame('false', WgwApiEnvFile::readValue($written, 'APP_DEBUG'));
+        $this->assertSame('base64:abc', WgwApiEnvFile::readValue($written, 'APP_KEY'));
+    }
+
+    public function test_empty_channel_leaves_monorepo_checkout_untouched(): void
+    {
+        $this->markMonorepoCheckout();
+        $this->writeEnv("APP_ENV=local\nAPP_DEBUG=true\n");
+        config([
+            'wgw.install_root' => $this->root,
+            'wgw.install_channel' => null,
+        ]);
+
+        $this->assertFalse($this->fresh()->apply());
+        $this->assertSame('local', WgwApiEnvFile::readValue($this->readEnv(), 'APP_ENV'));
+        $this->assertSame('true', WgwApiEnvFile::readValue($this->readEnv(), 'APP_DEBUG'));
+    }
+
     public function test_source_checkout_and_non_local_env_are_not_rewritten_to_production(): void
     {
+        $this->markMonorepoCheckout();
         $this->writeEnv("APP_ENV=local\nAPP_DEBUG=true\n");
         config([
             'wgw.install_root' => $this->root,
@@ -98,6 +123,33 @@ final class ShippedInstallEnvHardeningTest extends TestCase
         $this->app->forgetInstance(ShippedInstallEnvHardening::class);
 
         return $this->app->make(ShippedInstallEnvHardening::class);
+    }
+
+    private function markMonorepoCheckout(): void
+    {
+        file_put_contents($this->root.'/pnpm-workspace.yaml', "packages:\n  - 'packages/*'\n");
+        mkdir($this->root.'/apps/wegotworkspace', 0775, true);
+    }
+
+    private function removeTree(string $dir): void
+    {
+        $items = scandir($dir);
+        if ($items === false) {
+            return;
+        }
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+            $path = $dir.'/'.$item;
+            if (is_dir($path)) {
+                $this->removeTree($path);
+
+                continue;
+            }
+            unlink($path);
+        }
+        rmdir($dir);
     }
 
     private function writeEnv(string $content): void
