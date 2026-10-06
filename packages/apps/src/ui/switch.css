@@ -2,7 +2,7 @@
 
 /**
  * Conventional compact toggle. Parents override `--switch-*`.
- * On-fill follows `--button-primary-bg` / `--primary` so app accents apply.
+ * On-fill follows `--workspace-accent` so app accents apply.
  * Never stretch: width is the track, not 100%.
  */
 .switch {
@@ -15,6 +15,8 @@
   );
   @apply relative inline-flex shrink-0 items-center border-0 p-0;
   @apply focus-visible:outline-none;
+  appearance: none;
+  color: inherit;
   box-sizing: border-box;
   /* Do not use flex-basis: width — in a column stack that becomes height and the track turns into a circle. */
   flex-grow: 0;
@@ -46,11 +48,11 @@
   @apply ring-1;
   box-shadow:
     0 0 0 2px var(--background, #ffffff),
-    0 0 0 4px var(--switch-ring-color, var(--ring, var(--color-we-got-dark)));
+    0 0 0 4px var(--switch-ring-color, var(--ring, var(--workspace-foreground)));
 }
 
 .switch[data-state="on"] {
-  background-color: var(--switch-on-bg, var(--button-primary-bg, var(--primary)));
+  background-color: var(--switch-on-bg, var(--workspace-accent));
 }
 
 .switch:disabled {
@@ -63,11 +65,12 @@
   height: var(--switch-thumb-size);
   margin-inline-start: var(--switch-pad);
   border-radius: var(--switch-thumb-radius, 999px);
-  background-color: var(--switch-thumb-bg, var(--color-we-got-soft));
+  background-color: var(--switch-thumb-bg, var(--workspace-surface));
   transform: translateX(0);
   transition: transform 150ms ease;
 }
 
 .switch[data-state="on"] .switch__thumb {
+  background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground));
   transform: translateX(var(--switch-travel));
 }

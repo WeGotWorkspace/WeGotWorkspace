@@ -3,10 +3,13 @@
 
 .docs-collab-card {
   @apply cursor-pointer border p-4 transition-[border-color,background-color,opacity] duration-200;
-  --docs-collab-card-accent: var(--workspace-accent, var(--color-we-got-blue));
+  --docs-collab-card-accent: var(--workspace-accent);
   border-radius: var(--control-radius-button-pill);
-  border-color: var(--docs-border, color-mix(in oklab, var(--color-we-got-dark) 12%, transparent));
-  background-color: var(--docs-surface, var(--color-we-got-soft));
+  border-color: var(
+    --docs-border,
+    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
+  );
+  background-color: var(--docs-surface, var(--workspace-surface));
 }
 
 .docs-collab-card[data-active="false"] {
@@ -80,8 +83,8 @@
 }
 
 .docs-collab-card__avatar {
-  --user-avatar-bg: color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
-  --user-avatar-fg: var(--color-we-got-dark);
+  --user-avatar-bg: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  --user-avatar-fg: var(--workspace-foreground);
 }
 
 .docs-collab-card__meta {
@@ -94,7 +97,7 @@
 
 .docs-collab-card__time {
   @apply text-[11px] leading-tight;
-  color: var(--docs-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .docs-collab-card__actions {

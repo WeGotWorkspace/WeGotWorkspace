@@ -15,42 +15,18 @@
      These tokens are consumed inside <time-line>'s shadow (classes + inline color)
      because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
-  --_lc-grid-line-color: light-dark(rgb(221 226 233), rgb(74 81 93));
-  --_lc-grid-line-day-color: light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%));
-  --_lc-in-month-day-color: light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%));
-  --_lc-outside-month-day-color: light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%));
-  --_lc-grid-ghost-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 12%));
-}
-
-@supports (color: color-mix(in srgb, black, white)) {
-  :host {
-    /* Same recipe as CalendarGridView.css (--_lc-grid-base-color at 14% over the surface). */
-    --_lc-grid-line-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 14%,
-      var(--_lc-surface-bg, var(--color-we-got-soft))
-    );
-    --_lc-grid-line-day-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 72%,
-      var(--_lc-surface-bg, var(--color-we-got-soft))
-    );
-    --_lc-in-month-day-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 100%,
-      var(--_lc-surface-bg, var(--color-we-got-soft))
-    );
-    --_lc-outside-month-day-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 63%,
-      var(--_lc-surface-bg, var(--color-we-got-soft))
-    );
-    --_lc-grid-ghost-color: color-mix(
-      in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 10%,
-      transparent
-    );
-  }
+  --_lc-grid-line-color: color-mix(
+    in oklch,
+    var(--workspace-foreground) 14%,
+    var(--workspace-surface)
+  );
+  --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  --_lc-in-month-day-color: var(--workspace-foreground);
+  --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
+  /* Today pill fill is `--lc-higlight-color` → accent. Ink must be the accent
+     pair, not `#fff`, or a remapped white accent is white-on-white. */
+  --_lc-today-day-color: var(--lc-today-on-color, var(--workspace-accent-foreground));
+  --_lc-grid-ghost-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
 :host([hidden]) {
@@ -134,10 +110,10 @@ time-line.timeline-main {
   --_lc-timeline-section-divider-width: var(--_lc-week-section-divider-width, 3px);
   --_lc-timeline-section-divider-color: var(
     --_lc-week-section-divider-color,
-    light-dark(rgb(15 23 42 / 22%), rgb(255 255 255 / 28%))
+    color-mix(in oklch, var(--workspace-foreground) 22%, transparent)
   );
   /* Hour lines on <time-line> `.cell-main--grid` only (not the time-gutter labels). */
-  --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+  --time-line-grid-color: var(--_lc-grid-line-color);
   /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */
   --_lc-time-sidebar-inline-padding: 6px;
 }
@@ -169,7 +145,7 @@ time-line.timeline-main {
   isolation: isolate;
   height: var(--_lc-timeline-content-height);
   min-height: var(--_lc-timeline-content-height);
-  background-color: var(--_lc-surface-bg, var(--color-we-got-soft));
+  background-color: var(--_lc-surface-bg, var(--workspace-surface));
   /* Internal layout mirrors the composed column: no weekday header row, an all-day slot as
      tall as the (measured) sticky shell — itself sticky, so it covers the top-left corner
      while scrolling — and the timed hour labels below. */
@@ -222,8 +198,8 @@ time-line.timeline-main {
   white-space: nowrap;
   /* Dimmer than day-name 72% ink; page muted, then calendar outside-month (AA floor). */
   color: var(
-    --muted-foreground,
-    var(--_lc-outside-month-day-color, light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%)))
+    --_lc-grid-line-day-color,
+    color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
   );
   pointer-events: none;
   user-select: none;
@@ -271,7 +247,7 @@ time-line.timeline-main {
   z-index: 3;
   flex: none;
   min-height: 0;
-  background-color: var(--_lc-surface-bg, var(--color-we-got-soft));
+  background-color: var(--_lc-surface-bg, var(--workspace-surface));
   border-bottom: var(--_lc-timeline-section-divider-width) solid
     var(--_lc-timeline-section-divider-color);
 }
@@ -358,13 +334,13 @@ time-line.timeline-timed {
   --time-line-touch-action: pan-y;
   /* Hour gridlines: same look as the grid stack's timed horizontal lines
      (CalendarGridView.css `--_lc-grid-line-color-horizontal`, timed variant). */
-  --time-line-grid-color: light-dark(rgb(231 235 241), rgb(84 90 101));
+  --time-line-grid-color: var(--_lc-grid-line-color);
   /* Separation for staggered overlaps: a thin surface-colored "cutout" ring around each timed
      card (see --_lc-event-card-cutout-ring in EventCard.css). Same-color cards stacked by the
      stagger layout get a crisp gap; against the plain surface background the ring is invisible,
      so non-overlapping cards are unchanged. Inherits through <time-line>'s shadow tree into
      each event-card. */
-  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--color-we-got-soft));
+  --_lc-event-card-cutout-ring: 0 0 0 1.5px var(--_lc-surface-bg, var(--workspace-surface));
   /* Same four-side gutter as all-day bars. */
   --time-line-event-inline-inset: 1px;
 }
@@ -381,8 +357,8 @@ time-line.timeline-timed::part(viewport) {
   time-line.timeline-timed {
     --time-line-grid-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, light-dark(#222, #fff)) 8%,
-      var(--_lc-surface-bg, var(--color-we-got-soft))
+      var(--lc-grid-base-color, var(--workspace-foreground)) 8%,
+      var(--_lc-surface-bg, var(--workspace-surface))
     );
   }
 }
@@ -418,7 +394,7 @@ time-line.timeline-timed::part(viewport) {
 
 .year-day {
   @apply appearance-none border-0 m-0 p-0 min-w-0 min-h-0 flex items-center justify-center cursor-pointer bg-transparent;
-  color: var(--_lc-in-month-day-color);
+  color: var(--_lc-in-month-day-color, var(--workspace-foreground));
 }
 
 .year-day:hover {
@@ -435,11 +411,18 @@ time-line.timeline-timed::part(viewport) {
 }
 
 .year-day.is-outside-month {
+  /* Same token as month `::part(day-number-outside-month)`. */
   color: var(--_lc-outside-month-day-color);
 }
 
 .year-day.is-weekend:not(.is-outside-month) {
-  color: var(--lc-weekend-day-label-color, light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%)));
+  color: var(
+    --lc-weekend-day-label-color,
+    var(
+      --_lc-grid-line-day-color,
+      color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+    )
+  );
 }
 
 .year-day-number {
@@ -448,8 +431,9 @@ time-line.timeline-timed::part(viewport) {
 }
 
 .year-day-number.is-today {
-  @apply text-white font-semibold;
+  @apply font-semibold;
   background: var(--lc-higlight-color, #ff0000);
+  color: var(--_lc-today-day-color);
 }
 
 .year-day-dots {
@@ -512,6 +496,7 @@ time-line::part(day-header-button) {
   padding: 0;
   background: transparent;
   cursor: pointer;
+  color: inherit;
   font: inherit;
   width: auto;
   flex: 0 1 auto;
@@ -566,25 +551,24 @@ time-line::part(day-header) {
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
-  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
-}
-
-time-line::part(day-header-outside-month),
-time-line::part(day-number-outside-month) {
-  /* Color (not opacity) so compact year event dots stay at full strength. Mute is
-     vs in-month 100% ink, not vs the 72% weekday token (that pairing is invisible).
-     Year mini-months also set this via TimeLine.css + inline color — `::part()`
-     alone does not paint those numbers. */
-  color: var(--_lc-outside-month-day-color);
+  color: var(--_lc-in-month-day-color, var(--workspace-foreground));
 }
 
 /* The templates only set the weekend part on days inside the anchor month, encoding the old
    `.is-weekend:not(.is-outside-month)` exclusion in the part list itself. */
 time-line::part(day-header-weekend) {
-  color: var(--lc-weekend-day-label-color, light-dark(rgb(15 23 42 / 64%), rgb(255 255 255 / 66%)));
+  color: var(
+    --lc-weekend-day-label-color,
+    var(
+      --_lc-grid-line-day-color,
+      color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+    )
+  );
 }
 
-/* position: relative anchors the compact event-day bullets under the number. */
+/* position: relative anchors the compact event-day bullets under the number.
+   Ink inherits the header (in-month / outside / weekend) — do not pin in-month
+   color here or it overrides `day-number-outside-month` at the same specificity. */
 time-line::part(day-number) {
   position: relative;
   display: inline-flex;
@@ -595,11 +579,18 @@ time-line::part(day-number) {
   padding: 0 5px;
   border-radius: 999px;
   font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+/* Same mute as year `.year-day.is-outside-month` (`--_lc-outside-month-day-color`). */
+time-line::part(day-header-outside-month),
+time-line::part(day-number-outside-month) {
+  color: var(--_lc-outside-month-day-color);
 }
 
 time-line::part(day-number-today) {
   background: var(--lc-higlight-color, #ff0000);
-  color: #fff;
+  color: var(--_lc-today-day-color);
   font-weight: 600;
 }
 
@@ -655,7 +646,10 @@ time-line::part(overflow-button) {
   text-overflow: ellipsis;
   text-align: start;
   user-select: none;
-  color: var(--_lc-grid-line-day-color, light-dark(rgb(15 23 42 / 72%), rgb(255 255 255 / 72%)));
+  color: var(
+    --_lc-grid-line-day-color,
+    color-mix(in oklch, var(--workspace-foreground) 72%, transparent)
+  );
   background: transparent;
 }
 
@@ -791,13 +785,8 @@ time-line::part(overflow-dot) {
     @apply justify-center;
   }
 
-  time-line.timeline-main::part(day-header-outside-month),
-  time-line.timeline-main::part(day-number-outside-month) {
-    color: var(--_lc-outside-month-day-color);
-  }
-
   time-line.timeline-main::part(day-number-today) {
-    color: #fff;
+    color: var(--_lc-today-day-color);
   }
 
   time-line.timeline-main::part(day-month-prefix) {
@@ -859,13 +848,8 @@ time-line::part(overflow-dot) {
   @apply justify-center;
 }
 
-:host([force-compact]) time-line.timeline-main::part(day-header-outside-month),
-:host([force-compact]) time-line.timeline-main::part(day-number-outside-month) {
-  color: var(--_lc-outside-month-day-color);
-}
-
 :host([force-compact]) time-line.timeline-main::part(day-number-today) {
-  color: #fff;
+  color: var(--_lc-today-day-color);
 }
 
 :host([force-compact]) time-line.timeline-main::part(day-month-prefix) {

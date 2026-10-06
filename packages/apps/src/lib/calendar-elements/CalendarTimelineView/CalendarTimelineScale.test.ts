@@ -13,6 +13,7 @@ import {
   isOutsideVisibleMonth,
   monthDayHeaderClassNames,
   monthDayHeaderPartNames,
+  monthDayInkColor,
   resolveTimelineEventFilter,
   resolveVisibleHoursZoom,
   shouldRequestInitialTimedScroll,
@@ -525,6 +526,11 @@ describe("isOutsideVisibleMonth / monthDayHeaderPartNames (year mini-months)", (
       "day-header day-header-weekend",
     );
     expect(monthDayHeaderPartNames({ outsideMonth: false, isWeekend: false })).toBe("day-header");
+  });
+
+  it("uses the shared host tokens for in-month vs outside-month ink", () => {
+    expect(monthDayInkColor(false)).toBe("var(--_lc-in-month-day-color)");
+    expect(monthDayInkColor(true)).toBe("var(--_lc-outside-month-day-color)");
   });
 
   it("marks outside cells with is-outside-month for TimeLine shadow CSS", () => {

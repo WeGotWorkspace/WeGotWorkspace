@@ -77,6 +77,7 @@ export default tseslint.config(
       // Design-token invariants; replace with stylelint rules in a follow-up PR.
       "src/control-height.tokens.test.ts",
       "src/foundations/token-catalog.test.ts",
+      "src/foundations/token-core.test.ts",
     ],
     rules: {
       "no-restricted-imports": "off",

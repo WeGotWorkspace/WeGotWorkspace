@@ -6,26 +6,20 @@
  * (oklab). Selected is `--drive-item-selected-background` in
  * `workspace-color.css` (6.6% accent into the same paper) so Notes and
  * Contacts share it. The percentages match the lightness drop of the
- * sidebar item ladder (Sand 12 / 18 / 28 into `--sidebar-bg`) — the Sand
- * color and the sidebar fill stay on the rail.
- * 4.4 / 6.6 / 10.3 line up with those steps against a 5% icon rail
- * (measured L deltas −0.031 / −0.047 / −0.073).
+ * sidebar item ladder (8 / 12 / 16 into the Soft rail).
+ * 4.4 / 6.6 / 10.3 keep tile hover/selected a step quieter than that rail.
  */
 .drive-workspace {
   --drive-item-hover-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 4.4%,
+    var(--workspace-accent) 4.4%,
     var(--workspace-surface)
   );
   --drive-item-selected-hover-background: color-mix(
     in oklab,
-    var(--workspace-accent, var(--color-we-got-dark)) 10.3%,
+    var(--workspace-accent) 10.3%,
     var(--workspace-surface)
   );
-}
-
-.drive-workspace .drive-main-pane {
-  --field-label-color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
 }
 
 /** Matches sidebar section titles (`field-label-row__label` + `--field-label-color`). */
@@ -167,7 +161,7 @@
 
 .drive-workspace .drive-folder-tile__title {
   @apply flex-1 min-w-0 truncate text-sm font-medium;
-  color: var(--color-we-got-dark);
+  color: var(--workspace-foreground);
 }
 
 .drive-workspace .drive-folder-tile__star {
@@ -228,7 +222,7 @@
 
 .drive-workspace .drive-selection-checkbox {
   @apply inline-flex size-4 items-center justify-center rounded-[4px] border;
-  border-color: color-mix(in oklab, var(--color-we-got-dark) 30%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-foreground) 30%, transparent);
   background-color: transparent;
 }
 
@@ -354,17 +348,17 @@
 .drive-workspace .drive-file-tile__title {
   /* Content-sized so share indicators sit next to the title (list-view adjacency). */
   @apply min-w-0 truncate text-sm sm:text-[0.9375rem] font-medium;
-  color: var(--color-we-got-dark);
+  color: var(--workspace-foreground);
 }
 
 .drive-workspace .drive-file-tile__location {
   @apply min-w-0 truncate text-xs;
-  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 .drive-workspace .drive-location-label {
   @apply flex min-w-0 items-center gap-1.5 text-sm;
-  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 .drive-workspace .drive-location-label__icon {
@@ -383,7 +377,7 @@
   @apply w-full min-w-0 table-fixed text-sm;
   border-collapse: separate;
   border-spacing: 0;
-  color: var(--color-we-got-dark);
+  color: var(--workspace-foreground);
 }
 
 .drive-workspace .drive-list-col-name {
@@ -426,7 +420,7 @@
 }
 
 .drive-workspace .drive-list-head > th {
-  border-bottom: 1px solid color-mix(in oklab, var(--color-we-got-dark) 12%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
 .drive-workspace .drive-list-head__cell {
@@ -466,7 +460,7 @@
 }
 
 .drive-workspace .drive-list-row > td {
-  border-bottom: 1px solid color-mix(in oklab, var(--color-we-got-dark) 6%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
 }
 
 .drive-workspace .drive-list-row--drop-target {
@@ -483,7 +477,7 @@
 }
 
 .drive-workspace .drive-list-row--active {
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
 }
 
 .drive-workspace .drive-list-row--dragging {
@@ -504,7 +498,7 @@
 
 .drive-workspace .drive-shared-indicator {
   @apply inline-flex items-center gap-1 shrink-0;
-  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
 }
 
 .drive-workspace .drive-shared-indicator__icon {
@@ -516,7 +510,7 @@
 }
 
 .drive-workspace .drive-list-muted {
-  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
 }
 
 .drive-workspace .drive-list-folder-icon {

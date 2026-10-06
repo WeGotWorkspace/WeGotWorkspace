@@ -3,7 +3,7 @@
 .notes-notebook-select.select-trigger {
   width: auto;
   min-width: 7rem;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .notes-notebook-select.select-trigger > span {

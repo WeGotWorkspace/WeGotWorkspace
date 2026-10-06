@@ -26,6 +26,9 @@ describe("portal-theme-vars", () => {
     expect(PORTAL_THEME_BACKGROUND_VARS).toContain("--button-outline-active-background");
     expect(PORTAL_THEME_COLOR_VARS).toContain("--button-active-color");
     expect(PORTAL_THEME_COLOR_VARS).toContain("--workspace-accent");
+    expect(PORTAL_THEME_COLOR_VARS).toContain("--workspace-foreground");
+    expect(PORTAL_THEME_COLOR_VARS).toContain("--workspace-surface");
+    expect(PORTAL_THEME_COLOR_VARS).toContain("--popover-foreground");
   });
 
   it("parses nested var() references from wash values", () => {
@@ -56,6 +59,52 @@ describe("portal-theme-vars", () => {
     document.body.append(content);
 
     expect(findTriggerForPortaledContent(content)).toBe(trigger);
+  });
+
+  it("finds a tooltip trigger via the hidden tooltip id, not the content id", () => {
+    const trigger = document.createElement("button");
+    trigger.setAttribute("aria-describedby", "radix-tooltip-1");
+    document.body.append(trigger);
+
+    const menuTrigger = document.createElement("button");
+    menuTrigger.setAttribute("aria-haspopup", "menu");
+    menuTrigger.dataset.state = "open";
+    document.body.append(menuTrigger);
+
+    const content = document.createElement("div");
+    const hidden = document.createElement("div");
+    hidden.setAttribute("role", "tooltip");
+    hidden.id = "radix-tooltip-1";
+    content.append(hidden);
+    document.body.append(content);
+
+    expect(findTriggerForPortaledContent(content)).toBe(trigger);
+    expect(findTriggerForPortaledContent(content)).not.toBe(menuTrigger);
+  });
+
+  it("copies the paper pair onto a tooltip without painting the paper fill", () => {
+    const host = document.createElement("div");
+    host.className = "workspace-app-layout__main";
+    host.style.backgroundColor = "rgb(20, 20, 20)";
+    host.style.setProperty("--workspace-foreground", "#ffffff");
+    host.style.setProperty("--workspace-surface", "#141414");
+    const trigger = document.createElement("button");
+    trigger.setAttribute("aria-describedby", "radix-tooltip-chip");
+    host.append(trigger);
+    document.body.append(host);
+
+    const content = document.createElement("div");
+    const hidden = document.createElement("div");
+    hidden.setAttribute("role", "tooltip");
+    hidden.id = "radix-tooltip-chip";
+    content.append(hidden);
+    document.body.append(content);
+
+    bridgePortalThemeFromOpenTrigger(content, { paintSurface: false });
+
+    expect(content.style.getPropertyValue("--workspace-foreground").trim()).toBe("#ffffff");
+    expect(content.style.getPropertyValue("--workspace-surface").trim()).toBe("#141414");
+    expect(content.style.backgroundColor).toBe("");
   });
 
   it("bridges cascaded outline washes onto the portaled target", () => {
@@ -159,6 +208,8 @@ describe("portal-theme-vars", () => {
     const main = document.createElement("div");
     main.className = "workspace-app-layout__main";
     main.style.backgroundColor = "rgb(255, 251, 246)";
+    main.style.color = "rgb(0, 51, 17)";
+    main.style.setProperty("--workspace-foreground", "#003311");
     const dialog = document.createElement("div");
     dialog.className = "overlay-paper";
     dialog.style.backgroundColor = "rgb(255, 248, 228)";
@@ -181,6 +232,9 @@ describe("portal-theme-vars", () => {
     bridgePortalThemeFromOpenTrigger(mainMenu);
     expect(mainMenu.style.backgroundColor).toBe("rgb(255, 251, 246)");
     expect(mainMenu.style.getPropertyValue("--color-popover").trim()).toBe("rgb(255, 251, 246)");
+    expect(mainMenu.style.getPropertyValue("--popover-foreground").trim()).toMatch(
+      /#003311|rgb\(0,\s*51,\s*17\)/,
+    );
 
     const dialogMenu = document.createElement("div");
     dialogMenu.id = "dialog-menu";

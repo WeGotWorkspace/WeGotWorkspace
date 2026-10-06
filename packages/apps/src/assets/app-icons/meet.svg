@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--wai-bg, var(--color-we-got-soft, #fff5e9))"/>
-<path fill="var(--wai-fg, var(--color-we-got-sand, #ba9689))" d="M60 39.206c0 5.412-4.477 9.8-10 9.8H36.952l-9.311 10.08C25.94 60.927 23 59.645 23 57.062v-8.056H10.223C4.577 49.006 0 44.52 0 38.988V0h60z"/>
-<path fill="var(--wai-bg, var(--color-we-got-soft, #fff5e9))" d="M27.64 27c1.304 0 2.36.895 2.36 2s-1.056 2-2.36 2H12.36c-1.304 0-2.36-.895-2.36-2s1.056-2 2.36-2zm19.996-11C48.94 16 50 16.895 50 18s-1.059 2-2.364 2H12.364C11.058 20 10 19.105 10 18s1.059-2 2.364-2z"/>
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-soft, #fff5e9))"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-sand, #ba9689))" d="M60 39.206c0 5.412-4.477 9.8-10 9.8H36.952l-9.311 10.08C25.94 60.927 23 59.645 23 57.062v-8.056H10.223C4.577 49.006 0 44.52 0 38.988V0h60z"/>
+<path fill="var(--app-icon-layer-surface, var(--color-we-got-soft, #fff5e9))" d="M27.64 27c1.304 0 2.36.895 2.36 2s-1.056 2-2.36 2H12.36c-1.304 0-2.36-.895-2.36-2s1.056-2 2.36-2zm19.996-11C48.94 16 50 16.895 50 18s-1.059 2-2.364 2H12.364C11.058 20 10 19.105 10 18s1.059-2 2.364-2z"/>
 </svg>

@@ -84,7 +84,7 @@ Refactor checklist:
 
 Example:
 
-- Parent CSS: set `--button-outline-*`, `--button-ghost-*`, `--button-primary-*` on the workspace or dialog root.
+- Parent CSS: set `--button-outline-*` and `--button-ghost-*` on the workspace or dialog root. Primary paint is `--workspace-accent` / `--workspace-accent-foreground` (do not reintroduce `--button-primary-*`).
 - Primitive CSS: read those vars in `.button--variant-*` rules with sensible fallbacks.
 
 ### Tailwind and `className` in workspace panes
