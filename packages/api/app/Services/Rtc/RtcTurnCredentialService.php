@@ -36,14 +36,27 @@ final class RtcTurnCredentialService
             return null;
         }
 
-        $username = self::username($actorMarker, ($now ?? time()) + self::TTL_SECONDS);
+        $ttl = $this->ttlSeconds();
+        $username = self::username($actorMarker, ($now ?? time()) + $ttl);
 
         return [
             'urls' => $urls,
             'username' => $username,
             'credential' => self::credential($username, $secret),
-            'ttl' => self::TTL_SECONDS,
+            'ttl' => $ttl,
         ];
+    }
+
+    /**
+     * `WGW_RTC_TURN_TTL_SECONDS`, clamped to the range coturn can enforce.
+     * The class constant stays the default when the config key is absent.
+     */
+    private function ttlSeconds(): int
+    {
+        $configured = config('wgw.rtc.turn_ttl_seconds', self::TTL_SECONDS);
+        $ttl = is_numeric($configured) ? (int) $configured : self::TTL_SECONDS;
+
+        return max(60, min(86_400, $ttl));
     }
 
     public static function username(string $actorMarker, int $expiresAt): string

@@ -133,5 +133,6 @@ return [
      */
     'rtc' => [
         'prune_one_in' => (int) env('WGW_RTC_PRUNE_ONE_IN', 20),
+        'turn_ttl_seconds' => (int) env('WGW_RTC_TURN_TTL_SECONDS', 3600),
     ],
 ];
