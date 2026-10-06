@@ -4,7 +4,8 @@ import {
   BRANDING_APP_ACCENT_DEFAULTS,
   BRANDING_APP_SIDEBAR_DEFAULTS,
   BRANDING_APP_WAI_DEFAULTS,
-  brandingAppSidebarBg,
+  BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT,
+  BRANDING_WORKSPACE_SURFACE_DEFAULT,
   brandingAppSidebarColorDefault,
   createAppBrandingCssprops,
   defaultAppBrandingCssprops,
@@ -75,9 +76,13 @@ describe("defaultAppBrandingCssprops", () => {
       expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
       expect(map["color-we-got-dark"]?.value).toBe("#003311");
       expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
-      expect(map["workspace-surface"]?.value).toBe("var(--workspace-surface)");
+      expect(map["workspace-surface"]?.value).toBe(BRANDING_WORKSPACE_SURFACE_DEFAULT);
+      expect(map["workspace-surface"]?.value).not.toBe("var(--workspace-surface)");
       expect(map["workspace-foreground"]?.value).toBe("var(--color-we-got-dark)");
-      expect(map["workspace-sidebar-surface"]?.value).toBe(brandingAppSidebarBg(appId));
+      expect(map["workspace-sidebar-surface"]?.value).toBe(
+        BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT,
+      );
+      expect(map["workspace-sidebar-surface"]?.value).not.toContain("workspace-icon-surface");
       expect(map["workspace-sidebar-foreground"]?.value).toBe("var(--color-we-got-dark)");
       expect(map["app-sidebar-bg"]).toBeUndefined();
       expect(map["app-sidebar-color"]).toBeUndefined();
@@ -88,6 +93,14 @@ describe("defaultAppBrandingCssprops", () => {
       expect(map["wai-cutout"]).toBeUndefined();
     },
   );
+
+  it("never documents a token as a self-referential var()", () => {
+    for (const appId of WORKSPACE_APP_IDS) {
+      for (const [key, entry] of Object.entries(defaultAppBrandingCssprops(appId))) {
+        expect(entry.value.trim()).not.toBe(`var(--${key})`);
+      }
+    }
+  });
 
   it("documents one production sidebar formula for every app", () => {
     expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");

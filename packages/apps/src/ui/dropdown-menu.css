@@ -72,14 +72,15 @@
 .dropdown-menu-ui__item {
   @apply relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors;
   border-radius: var(--control-radius);
+  color: var(--workspace-foreground);
 }
 
 .dropdown-menu-ui__item:focus:not(.menu-item--severity-danger) {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-foreground) 8%, var(--workspace-surface))
   );
-  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+  color: var(--workspace-foreground);
 }
 
 .dropdown-menu-ui__item[data-disabled] {

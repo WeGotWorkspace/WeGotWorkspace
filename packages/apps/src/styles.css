@@ -147,11 +147,8 @@
   --workspace-accent-foreground: #ffffff;
   --workspace-icon-surface: var(--workspace-accent);
   --workspace-icon-foreground: var(--workspace-accent-foreground);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 5%,
-    var(--workspace-surface)
-  );
+  /* Rail is Soft — not a tint of the icon pair. Paper is Soft mixed toward white. */
+  --workspace-sidebar-surface: var(--color-we-got-soft);
   --workspace-sidebar-foreground: var(--workspace-foreground);
 
   /* Compatibility aliases still read by product sheets. */
@@ -270,7 +267,7 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
   --workspace-sidebar-surface: color-mix(
     in oklch,
-    var(--workspace-icon-surface) 8%,
+    var(--workspace-foreground) 8%,
     var(--workspace-surface)
   );
   --workspace-sidebar-foreground: var(--workspace-foreground);

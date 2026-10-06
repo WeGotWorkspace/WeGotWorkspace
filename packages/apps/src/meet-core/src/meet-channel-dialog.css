@@ -12,11 +12,7 @@
   --workspace-accent-foreground: #ffffff;
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-sand);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 5%,
-    var(--workspace-surface)
-  );
+  --workspace-sidebar-surface: var(--color-we-got-soft);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   --color-emerald: var(--workspace-accent);
   --button-active-color: var(--workspace-accent-strong);

@@ -8,7 +8,7 @@
  * workspace / dialog hosts so existing callers keep resolving.
  *
  * Defaults use `:where` (zero specificity). Products set `--workspace-icon-surface`
- * (and optional `--workspace-sidebar-surface` mix %) on their class.
+ * on their class. The rail is `--workspace-sidebar-surface` (Soft), not an icon mix.
  */
 :where(
   .admin-workspace,

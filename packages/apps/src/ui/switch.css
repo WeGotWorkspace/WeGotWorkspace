@@ -15,6 +15,8 @@
   );
   @apply relative inline-flex shrink-0 items-center border-0 p-0;
   @apply focus-visible:outline-none;
+  appearance: none;
+  color: inherit;
   box-sizing: border-box;
   /* Do not use flex-basis: width — in a column stack that becomes height and the track turns into a circle. */
   flex-grow: 0;
@@ -69,5 +71,6 @@
 }
 
 .switch[data-state="on"] .switch__thumb {
+  background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground));
   transform: translateX(var(--switch-travel));
 }

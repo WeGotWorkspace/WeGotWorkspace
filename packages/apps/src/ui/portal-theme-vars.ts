@@ -27,6 +27,9 @@ export const PORTAL_THEME_COLOR_VARS = [
   "--button-outline-hover-color",
   "--button-outline-color",
   "--workspace-accent",
+  "--workspace-foreground",
+  "--workspace-surface",
+  "--popover-foreground",
 ] as const;
 
 const CUSTOM_PROPERTY_REF = /var\(\s*(--[\w-]+)/g;
@@ -147,17 +150,27 @@ export function findOpenMenuTrigger(): HTMLElement | null {
 export function findTriggerForPortaledContent(content: HTMLElement): HTMLElement | null {
   const id = content.id?.trim();
   if (id) {
-    const owned = document.querySelector<HTMLElement>(`[aria-controls="${escapeCssIdent(id)}"]`);
+    const escaped = escapeCssIdent(id);
+    const owned = document.querySelector<HTMLElement>(`[aria-controls="${escaped}"]`);
     if (owned) return owned;
+    const described = document.querySelector<HTMLElement>(`[aria-describedby~="${escaped}"]`);
+    if (described) return described;
   }
-  return findOpenMenuTrigger();
+  return (
+    findOpenMenuTrigger() ??
+    document.querySelector<HTMLElement>('[data-state="delayed-open"], [data-state="instant-open"]')
+  );
 }
 
 /** Bridge theme vars from the trigger that owns `content` (no-op if none found). */
-export function bridgePortalThemeFromOpenTrigger(content: HTMLElement): void {
+export function bridgePortalThemeFromOpenTrigger(
+  content: HTMLElement,
+  options?: { paintSurface?: boolean },
+): void {
   const trigger = findTriggerForPortaledContent(content);
   if (!trigger) return;
   bridgePortalThemeVars(trigger, content);
+  if (options?.paintSurface === false) return;
   applyPortaledSurfaceBackground(trigger, content);
 }
 
@@ -183,4 +196,19 @@ export function applyPortaledSurfaceBackground(source: Element, target: HTMLElem
   target.style.backgroundColor = background;
   target.style.setProperty("--popover", background);
   target.style.setProperty("--color-popover", background);
+
+  const specifiedInk =
+    getComputedStyle(surface).getPropertyValue("--workspace-foreground").trim() ||
+    surface.style.getPropertyValue("--workspace-foreground").trim();
+  const resolvedInk = resolveCustomPropertyColor(surface, "--workspace-foreground");
+  const usedInk = getComputedStyle(surface).color.trim();
+  const ink = isResolvedCssColor(resolvedInk)
+    ? resolvedInk
+    : specifiedInk || (isResolvedCssColor(usedInk) ? usedInk : "");
+  if (!ink) return;
+  target.style.setProperty("--workspace-foreground", ink);
+  target.style.setProperty("--popover-foreground", ink);
+  target.style.setProperty("--color-popover-foreground", ink);
+  target.style.setProperty("--foreground", ink);
+  if (isResolvedCssColor(ink)) target.style.color = ink;
 }

@@ -333,15 +333,16 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item {
   @apply relative flex w-full cursor-default select-none items-center py-1.5 pl-2 pr-8 text-sm outline-none transition-colors;
   border-radius: var(--control-radius);
+  color: var(--workspace-foreground);
 }
 
 .select-ui__item[data-highlighted],
 .select-ui__item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-foreground) 8%, var(--workspace-surface))
   );
-  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+  color: var(--workspace-foreground);
 }
 
 .select-ui__item[data-state="checked"] {

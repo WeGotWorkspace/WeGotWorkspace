@@ -78,17 +78,9 @@
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --notes-list-star-color: var(--workspace-accent);
-  /*
-   * Primary fill is the notes icon yellow. Dark label clears AA on that fill.
-   * Sidebar fill is a stronger yellow wash than the shared 5%.
-   */
+  /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 15%,
-    var(--workspace-surface)
-  );
   /*
    * Open / selected list row: same wash as Drive and Docs tiles
    * (`--drive-item-selected-background` in workspace-color.css).
@@ -300,11 +292,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 15%,
-    var(--workspace-surface)
-  );
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

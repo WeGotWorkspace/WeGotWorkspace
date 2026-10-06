@@ -6,10 +6,8 @@
  * (oklab). Selected is `--drive-item-selected-background` in
  * `workspace-color.css` (6.6% accent into the same paper) so Notes and
  * Contacts share it. The percentages match the lightness drop of the
- * sidebar item ladder (Sand 12 / 18 / 28 into `--sidebar-bg`) — the Sand
- * color and the sidebar fill stay on the rail.
- * 4.4 / 6.6 / 10.3 line up with those steps against a 5% icon rail
- * (measured L deltas −0.031 / −0.047 / −0.073).
+ * sidebar item ladder (8 / 12 / 16 into the Soft rail).
+ * 4.4 / 6.6 / 10.3 keep tile hover/selected a step quieter than that rail.
  */
 .drive-workspace {
   --drive-item-hover-background: color-mix(

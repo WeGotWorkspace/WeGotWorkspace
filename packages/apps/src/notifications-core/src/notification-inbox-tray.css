@@ -75,7 +75,8 @@
 }
 
 .notification-inbox-tray__empty {
-  @apply px-3 py-6 text-sm text-muted-foreground;
+  @apply px-3 py-6 text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__list {
@@ -119,7 +120,8 @@
 }
 
 .notification-inbox-tray__time {
-  @apply shrink-0 text-xs tabular-nums text-muted-foreground;
+  @apply shrink-0 text-xs tabular-nums;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__row-title {
@@ -151,9 +153,10 @@
 }
 
 .notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__domain {
-  @apply text-muted-foreground;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__row-body {
-  @apply line-clamp-2 text-sm leading-snug text-muted-foreground;
+  @apply line-clamp-2 text-sm leading-snug;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }

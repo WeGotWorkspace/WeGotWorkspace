@@ -10,11 +10,10 @@
  */
 .docs-collab-sidebar-panel-drawer {
   /*
-   * Portaled under document.body, so the workspace rail does not inherit.
-   * Republish the default sidebar fill (5% icon into white). Product drawers
-   * set `--workspace-icon-surface` so Tasks/Notes percentages stay on their own hosts.
+   * Portaled under document.body. Rail is the sidebar pair (Soft on :root),
+   * not a tint of the icon tile.
    */
-  --sidebar-bg: color-mix(in oklch, var(--workspace-icon-surface) 5%, var(--workspace-surface));
+  --sidebar-bg: var(--workspace-sidebar-surface);
   --app-sidebar-bg: var(--sidebar-bg);
   --sidebar-on: var(--workspace-sidebar-foreground);
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);

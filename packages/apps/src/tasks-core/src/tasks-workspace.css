@@ -55,11 +55,6 @@
   --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 20%,
-    var(--workspace-surface)
-  );
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
 
@@ -131,11 +126,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --workspace-sidebar-surface: color-mix(
-    in oklch,
-    var(--workspace-icon-surface) 20%,
-    var(--workspace-surface)
-  );
   --primary: var(--workspace-accent);
   --primary-foreground: #ffffff;
   --button-active-color: var(--workspace-accent-strong);

@@ -15,6 +15,16 @@
   --color-background: var(--workspace-surface);
   --color-popover: var(--workspace-surface);
   --color-card: var(--workspace-surface);
+  --foreground: var(--workspace-foreground);
+  --popover-foreground: var(--workspace-foreground);
+  --color-foreground: var(--workspace-foreground);
+  --color-popover-foreground: var(--workspace-foreground);
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--workspace-foreground) 55%,
+    var(--workspace-surface)
+  );
+  --color-muted-foreground: var(--muted-foreground);
   --primary: var(--workspace-accent);
   --primary-foreground: var(--workspace-accent-foreground);
   --card-surface-bg: transparent;

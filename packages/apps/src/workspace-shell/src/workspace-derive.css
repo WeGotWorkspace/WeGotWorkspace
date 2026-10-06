@@ -11,6 +11,8 @@
 
 :where(
   :root,
+  body,
+  .dark,
   .app-sidebar,
   .overlay-paper,
   .workspace-app-layout__main,
@@ -99,8 +101,31 @@
 
   --switch-off-bg: color-mix(in oklch, var(--workspace-foreground) 18%, var(--workspace-surface));
   --switch-on-bg: var(--workspace-accent);
+  --switch-on-thumb-bg: var(--workspace-accent-foreground);
 
   --field-label-color: var(--workspace-foreground);
+  --list-sticky-header-color: var(--workspace-foreground);
+
+  /* shadcn aliases must re-specify here. `:root` computed mixes do not follow a
+     remapped pair on `body` / `.dark` / a workspace host. */
+  --background: var(--workspace-surface);
+  --foreground: var(--workspace-foreground);
+  --card: var(--workspace-surface);
+  --card-foreground: var(--workspace-foreground);
+  --popover: var(--workspace-surface);
+  --popover-foreground: var(--workspace-foreground);
+  --muted: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--workspace-foreground) 55%,
+    var(--workspace-surface)
+  );
+  --color-background: var(--workspace-surface);
+  --color-foreground: var(--workspace-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--workspace-surface);
+  --color-popover-foreground: var(--workspace-foreground);
 
   --drive-item-selected-background: color-mix(
     in oklch,

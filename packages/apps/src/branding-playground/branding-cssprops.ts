@@ -82,15 +82,21 @@ export const BRANDING_APP_ACCENT_DEFAULTS: Record<WorkspaceAppId, string> = {
 };
 
 /**
- * App paper from `workspace-color.css`. Very light tint of Soft — lighter than
- * the sidebar, which is the Soft primitive. The recipe lives on `:root` as
- * `--workspace-surface` so portaled dialogs resolve the same paper.
+ * App paper — same recipe as `:root` in `styles.css`. Never `var(--workspace-surface)`:
+ * the cssprops addon writes this onto `body`, and a self-reference makes the
+ * token cyclic (invalid), which drops every derive wash that mixes into paper.
  */
-export const BRANDING_WORKSPACE_SURFACE_DEFAULT = "var(--workspace-surface)";
+export const BRANDING_WORKSPACE_SURFACE_DEFAULT =
+  "color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)";
 
 /**
- * Production `--app-sidebar-bg` from `workspace-color.css`.
- * The rail is a 5% brand wash into white unless a product overrides the mix.
+ * Sidebar rail — same recipe as `:root`. Soft, not a tint of the icon pair.
+ * Never `var(--workspace-sidebar-surface)` (cssprops addon would cycle it).
+ */
+export const BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT = "var(--color-we-got-soft)";
+
+/**
+ * Production `--app-sidebar-bg` alias. Points at the sidebar pair, not a mix.
  */
 export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--workspace-sidebar-surface)";
 
@@ -133,7 +139,7 @@ export function createAppBrandingCssprops(
     },
     "workspace-surface": {
       value: BRANDING_WORKSPACE_SURFACE_DEFAULT,
-      description: "App paper — very light tint of We Got Soft. The sidebar stays Soft.",
+      description: "App paper — Soft mixed 40% toward white. Same recipe as :root.",
       category: "App chrome",
       control: "text",
     },
@@ -151,7 +157,7 @@ export function createAppBrandingCssprops(
     },
     "workspace-sidebar-surface": {
       value: brandingAppSidebarBg(appId),
-      description: "Sidebar fill — icon hue mixed into paper. Tasks 20%, Notes 15%, others 5%.",
+      description: "Sidebar rail — We Got Soft. Icon hue stays on the tile pair.",
       category: "App chrome",
       control: "text",
     },
@@ -203,18 +209,9 @@ export const BRANDING_APP_WAI_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg:
   settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
 };
 
-/**
- * Production `--sidebar-bg`. Most apps mix 5% of the icon into white.
- * Tasks and Notes use a stronger wash so pink and yellow still read.
- */
-export function brandingAppSidebarBg(appId: WorkspaceAppId): string {
-  if (appId === "tasks") {
-    return "color-mix(in oklch, var(--workspace-icon-surface) 20%, var(--workspace-surface))";
-  }
-  if (appId === "notes") {
-    return "color-mix(in oklch, var(--workspace-icon-surface) 15%, var(--workspace-surface))";
-  }
-  return "color-mix(in oklch, var(--workspace-icon-surface) 5%, var(--workspace-surface))";
+/** Production sidebar fill. Same Soft rail for every app. */
+export function brandingAppSidebarBg(_appId: WorkspaceAppId): string {
+  return BRANDING_WORKSPACE_SIDEBAR_SURFACE_DEFAULT;
 }
 
 /**
