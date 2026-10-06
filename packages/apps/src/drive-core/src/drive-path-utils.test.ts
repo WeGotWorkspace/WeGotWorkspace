@@ -6,6 +6,7 @@ import {
   driveUserTrashApiPath,
   isDriveTrashApiPath,
   isDriveTrashFolderName,
+  isForeignDriveApiPath,
   isTopLevelDriveApiPath,
   normalizeApiVirtualPath,
   normalizeDriveFolderUiPath,
@@ -55,6 +56,19 @@ describe("isDriveTrashFolderName", () => {
     expect(isDriveTrashFolderName(".Trash")).toBe(true);
     expect(isDriveTrashFolderName("Trash")).toBe(true);
     expect(isDriveTrashFolderName("Archive")).toBe(false);
+  });
+});
+
+describe("isForeignDriveApiPath", () => {
+  it("treats the user's home and member groups as their own drives", () => {
+    expect(isForeignDriveApiPath(`/users/${USER}/docs`, USER, groupRoots)).toBe(false);
+    expect(isForeignDriveApiPath(`/users/${USER}`, USER, groupRoots)).toBe(false);
+    expect(isForeignDriveApiPath("/groups/Engineering/docs", USER, groupRoots)).toBe(false);
+  });
+
+  it("treats another user's tree and a non-member group as foreign", () => {
+    expect(isForeignDriveApiPath("/users/bob/workspace/plan.md", USER, groupRoots)).toBe(true);
+    expect(isForeignDriveApiPath("/groups/Other/docs", USER, groupRoots)).toBe(true);
   });
 });
 

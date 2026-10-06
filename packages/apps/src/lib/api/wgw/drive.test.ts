@@ -44,6 +44,8 @@ const ACCOUNT_ID = "bob";
 const HOME_ID = "fn-home";
 const DOCS_ID = "fn-docs";
 const FILE_ID = "fn-readme";
+const SHARE_ROOT_ID = "fn-share-root";
+const SHARE_CHILD_ID = "fn-share-plan";
 
 function jmapSessionBody() {
   return {
@@ -117,6 +119,30 @@ function fileNode() {
   };
 }
 
+function shareRootNode() {
+  return {
+    id: SHARE_ROOT_ID,
+    parentId: "fn-alice-home",
+    nodeType: "directory",
+    blobId: null,
+    name: "workspace",
+    size: null,
+    type: null,
+  };
+}
+
+function shareChildNode() {
+  return {
+    id: SHARE_CHILD_ID,
+    parentId: SHARE_ROOT_ID,
+    nodeType: "file",
+    blobId: "fnb-fn-share-plan-bbbbbbbb",
+    name: "plan.md",
+    size: 8,
+    type: "text/markdown",
+  };
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -132,6 +158,8 @@ function handleJmap(body: JmapRequest) {
     [HOME_ID, homeNode()],
     [DOCS_ID, docsNode()],
     [FILE_ID, fileNode()],
+    [SHARE_ROOT_ID, shareRootNode()],
+    [SHARE_CHILD_ID, shareChildNode()],
   ]);
   let lastQueryIds: string[] = [];
   const responses = body.methodCalls.map(([name, args, id]) => {
@@ -146,6 +174,7 @@ function handleJmap(body: JmapRequest) {
       else if (filter.parentId === HOME_ID && filter.name === "Docs") ids = [DOCS_ID];
       else if (filter.parentId === HOME_ID && filter.name === "readme.md") ids = [FILE_ID];
       else if (filter.parentId === HOME_ID) ids = [DOCS_ID, FILE_ID];
+      else if (filter.parentId === SHARE_ROOT_ID) ids = [SHARE_CHILD_ID];
       lastQueryIds = ids;
       return [name, { accountId: ACCOUNT_ID, ids, queryState: "1" }, id];
     }
@@ -188,6 +217,17 @@ function mockSignedInFetch() {
     }
     if (path.startsWith("/jmap/download/")) {
       return new Response("hello", { status: 200 });
+    }
+    if (path === "/files/shared-with-me" || path.startsWith("/files/shared-with-me?")) {
+      return jsonResponse({
+        data: [
+          {
+            share: { path: "/users/alice/workspace" },
+            fileNodeId: SHARE_ROOT_ID,
+            entry: { path: "/users/alice/workspace", name: "workspace", type: "dir" },
+          },
+        ],
+      });
     }
     if (path === "/files/context") {
       return jsonResponse({
@@ -339,5 +379,33 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     const childPaths = wgwFetch.mock.calls.map((call) => String(call[0]));
     expect(childPaths.some((path) => path.includes("path=%2Fusers%2Fbob%2FTest"))).toBe(true);
     expect(childPaths.some((path) => path === "/files/children?path=%2Fusers%2Fbob")).toBe(false);
+  });
+
+  it("lists a shared folder through the share root FileNode", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const listed = await ops.listDirectory("/users/alice/workspace");
+    expect(listed.directory.files.map((entry) => entry.name)).toEqual(["plan.md"]);
+
+    const queries = wgwFetch.mock.calls
+      .filter((call) => call[0] === "/jmap")
+      .map((call) => JSON.parse(String(call[1]?.body)) as JmapRequest);
+    const parentQueries = queries.flatMap((body) =>
+      body.methodCalls.filter(([name, args]) => {
+        if (name !== "FileNode/query") return false;
+        const filter = (args.filter ?? {}) as { parentId?: string };
+        return filter.parentId === SHARE_ROOT_ID;
+      }),
+    );
+    expect(parentQueries.length).toBeGreaterThan(0);
+    expect(
+      wgwFetch.mock.calls.some((call) => String(call[0]).startsWith("/files/shared-with-me")),
+    ).toBe(true);
+  });
+
+  it("rejects an unknown foreign path", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    await expect(ops.listDirectory("/users/carol/secret")).rejects.toThrow(
+      /Unsupported drive path/,
+    );
   });
 });
