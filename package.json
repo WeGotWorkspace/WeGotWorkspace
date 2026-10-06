@@ -20,6 +20,7 @@
     "test:jmap-client-e2e": "bash tools/test-jmap-client-e2e.sh",
     "test:collab-api": "bash tools/test-collab-api.sh",
     "test:meet-api": "bash tools/test-meet-api.sh",
+    "test:rtc-relay": "bash tools/coturn/run-relay-e2e.sh",
     "build": "tools/with-root-env.sh run 'turbo run build --filter=@wgw/openapi-types --filter=@wgw/apps && composer --working-dir packages/api prune && node packages/api/scripts/prune-swagger-ui-vendor.mjs && node packages/api/scripts/sync-runtime-api-package.mjs --with-vendor && node packages/apps/scripts/sync-runtime-app-builds.mjs'",
     "ci:quality": "pnpm run ci:quality:api && pnpm run ci:quality:apps",
     "ci:quality:api": "tools/with-root-env.sh run 'turbo run typegen:check --filter=@wgw/openapi-types && composer --working-dir packages/api lint && composer --working-dir packages/api format:check && composer --working-dir packages/api done-gate'",
