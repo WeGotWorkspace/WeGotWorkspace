@@ -167,16 +167,14 @@ final class SsrfSafeIcsFetcher
      */
     public function requestOptions(string $host, int $port, string $connectIp): array
     {
-        $temp = fopen('php://temp', 'w+');
-        if ($temp === false) {
-            throw new \RuntimeException('Could not open a temporary stream.');
-        }
-
         return [
             'allow_redirects' => false,
             'timeout' => self::TIMEOUT_SECONDS,
             'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
-            'sink' => new CappedSinkStream(Utils::streamFor($temp), VObjectPayloadGuard::MAX_ICS_BYTES),
+            'sink' => new CappedSinkStream(
+                Utils::streamFor(Utils::tryFopen('php://temp', 'w+')),
+                VObjectPayloadGuard::MAX_ICS_BYTES,
+            ),
             'curl' => [
                 CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
             ],
