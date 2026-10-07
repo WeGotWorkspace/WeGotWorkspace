@@ -4,7 +4,7 @@ packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	920	
 packages/api/app/Services/Docs/DocsThreadRepository.php	851	grandfathered
 packages/api/app/Services/Drive/DriveService.php	922	grandfathered
 packages/api/app/Services/Mail/MailImapClient.php	1022	grandfathered
-packages/apps/src/calendar-core/src/calendar-workspace.tsx	1372	grandfathered
+packages/apps/src/calendar-core/src/calendar-workspace.tsx	1371	grandfathered
 packages/apps/src/calendar-core/src/use-calendar-controller.ts	1489	grandfathered
 packages/apps/src/contacts-core/src/contacts-edit-utils.ts	884	grandfathered
 packages/apps/src/contacts-core/src/use-contacts-controller.tsx	1597	grandfathered
