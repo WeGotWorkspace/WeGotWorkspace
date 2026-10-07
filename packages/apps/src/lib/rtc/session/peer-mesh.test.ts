@@ -196,7 +196,7 @@ describe("RtcPeerMesh", () => {
     setTimeoutSpy.mockRestore();
   });
 
-  it("backs off collab polling when topology is stable", async () => {
+  it("backs off collab polling to 2s when the room is empty", async () => {
     const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
     const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
@@ -221,7 +221,7 @@ describe("RtcPeerMesh", () => {
     await vi.advanceTimersByTimeAsync(400);
     await flushAsyncWork();
 
-    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 15000);
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 2000);
     await mesh.leave();
     setTimeoutSpy.mockRestore();
   });

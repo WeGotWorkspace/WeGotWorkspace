@@ -6,7 +6,10 @@ import type {
   SignalingChannel,
 } from "@/lib/rtc/types";
 
-const COLLAB_IDLE_POLL_INTERVAL_MS = 15000;
+/** Collab room with nobody else on the roster. Empty `.every()` is not "stable". */
+const COLLAB_ALONE_POLL_INTERVAL_MS = 2_000;
+/** Every rostered collab peer already has a data channel. */
+const COLLAB_STABLE_POLL_INTERVAL_MS = 5_000;
 /** Meet idle backoff when connected with no knockers — shorter than collab for chat/control UX. */
 const MEET_IDLE_POLL_INTERVAL_MS = 4000;
 /** Hidden-tab backoff — applies only when the mesh holds no peer connections at all. */
@@ -32,9 +35,15 @@ function allPeersConnected(
   return peers.every((peer) => linkStateOf(peer.id) === "connected");
 }
 
+function isCollabDataMesh(snapshot: MeshPollCadenceSnapshot): boolean {
+  return (
+    snapshot.channel === "collab" && snapshot.bindingKind === "data" && snapshot.rtcSignalsEnabled
+  );
+}
+
 export function hasStableCollabTopology(snapshot: MeshPollCadenceSnapshot): boolean {
-  if (snapshot.channel !== "collab" || snapshot.bindingKind !== "data") return false;
-  if (!snapshot.rtcSignalsEnabled) return false;
+  if (!isCollabDataMesh(snapshot)) return false;
+  if (snapshot.roomPeers.length === 0) return false;
   return allPeersConnected(snapshot.roomPeers, snapshot.linkStateOf);
 }
 
@@ -66,8 +75,10 @@ export function steadyPollDelayMs(
   snapshot: MeshPollCadenceSnapshot,
 ): number {
   let delay = intervals.steadyMs;
-  if (hasStableCollabTopology(snapshot)) {
-    delay = Math.max(delay, COLLAB_IDLE_POLL_INTERVAL_MS);
+  if (isCollabDataMesh(snapshot) && snapshot.roomPeers.length === 0) {
+    delay = Math.max(delay, COLLAB_ALONE_POLL_INTERVAL_MS);
+  } else if (hasStableCollabTopology(snapshot)) {
+    delay = Math.max(delay, COLLAB_STABLE_POLL_INTERVAL_MS);
   } else if (hasStableMeetTopology(snapshot)) {
     delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
   }
