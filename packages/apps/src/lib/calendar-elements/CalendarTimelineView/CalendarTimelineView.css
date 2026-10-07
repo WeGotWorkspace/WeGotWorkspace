@@ -15,11 +15,7 @@
      These tokens are consumed inside <time-line>'s shadow (classes + inline color)
      because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
-  --_lc-grid-line-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 14%,
-    var(--workspace-surface)
-  );
+  --_lc-grid-line-color: var(--border);
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
   --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
@@ -106,12 +102,10 @@ time-line.timeline-main {
     var(--_lc-timeline-all-day-height, 0px) + var(--_lc-timeline-timed-gap) +
       var(--_lc-timeline-timed-height)
   );
-  /* Divider between the sticky all-day shell and the timed area (grid-week parity). */
+  /* Divider between the sticky all-day shell and the timed area (grid-week parity).
+     3px width is the heavier section rule; the color stays the shared hairline. */
   --_lc-timeline-section-divider-width: var(--_lc-week-section-divider-width, 3px);
-  --_lc-timeline-section-divider-color: var(
-    --_lc-week-section-divider-color,
-    color-mix(in oklch, var(--workspace-foreground) 22%, transparent)
-  );
+  --_lc-timeline-section-divider-color: var(--_lc-week-section-divider-color, var(--border));
   /* Hour lines on <time-line> `.cell-main--grid` only (not the time-gutter labels). */
   --time-line-grid-color: var(--_lc-grid-line-color);
   /* Shared gutter inset: hour labels, now-badge, and the week-number corner cell. */

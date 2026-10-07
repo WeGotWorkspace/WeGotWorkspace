@@ -67,7 +67,7 @@ export const FONT_SEMANTIC = ["--font-sans", "--font-serif", "--font-mono", "--f
 export const TYPE_ROLE_UTILITIES = [
   { className: "text-title", label: "Title", sample: "Workspace title" },
   { className: "text-title-lg", label: "Title large", sample: "Editorial headline" },
-  { className: "text-caption", label: "Caption", sample: "Section label" },
+  { className: "text-caption", label: "Caption", sample: "Status" },
   { className: "text-lockup", label: "Lockup", sample: "We Got Workspace" },
 ] as const;
 

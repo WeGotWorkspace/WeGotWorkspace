@@ -143,14 +143,14 @@ describe("PWA icon artwork", () => {
     const inApp = readFileSync(join(sourceDir, "home.svg"), "utf8");
 
     expect(install).toContain('viewBox="0 0 60 60"');
-    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #222222)"');
     expect(install).toContain('fill="url(#home-pwa-clover)"');
     expect(install).toContain('stop-color="var(--color-we-got-blue, #0045ff)"');
     expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
     expect(install).not.toContain("--wai-");
     const raster = svgForRasterization(install);
     expect(raster).not.toContain("var(");
-    expect(raster).toContain("#003311");
+    expect(raster).toContain("#222222");
     expect(raster).toContain("#0045ff");
     expect(raster).toContain("#8ace00");
     expect(inApp).toContain('viewBox="0 0 270 270"');

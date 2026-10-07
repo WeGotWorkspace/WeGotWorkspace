@@ -8,12 +8,11 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
-.sidebar-section__heading h4 {
-  letter-spacing: 1px;
-}
-
-/** Caption look comes from `field-label-row__label` (see field-label-row.css). */
-.sidebar-section__title {
+/**
+ * Truncation for section titles. Type/color come from `.field-label-row__label`.
+ * Search groups restyle this class with a more specific (uppercase) selector.
+ */
+h4.sidebar-section__title {
   @apply truncate min-w-0;
 }
 

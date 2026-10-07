@@ -8,18 +8,11 @@ import {
   type DragEvent,
   type FormEvent,
 } from "react";
-import {
-  CalendarDays,
-  CheckCircle2,
-  Circle,
-  MoreVertical,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { CalendarDays, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { Button } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
 import type { TasksUILabels } from "@/tasks-core/src/tasks-labels";
@@ -126,23 +119,21 @@ function TaskRow({
   }, [canMutate, isExiting, onEditTask, task.id]);
 
   const completeDisabled = isExiting || !canMutate;
-  const completeButton = (
-    <button
-      type="button"
-      className={`tasks-main-view__complete${completed ? " tasks-main-view__complete--done" : ""}`}
-      aria-label={completed ? L.markIncomplete : L.markComplete}
-      draggable={false}
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggleComplete(task.id);
-      }}
-      disabled={completeDisabled}
-    >
-      {completed ? <CheckCircle2 aria-hidden /> : <Circle aria-hidden />}
-    </button>
+  const completeControl = (
+    <span className="tasks-main-view__complete-wrap">
+      <Checkbox
+        size="md"
+        className="tasks-main-view__complete"
+        checked={completed}
+        aria-label={completed ? L.markIncomplete : L.markComplete}
+        draggable={false}
+        disabled={completeDisabled}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={() => onToggleComplete(task.id)}
+      />
+    </span>
   );
-  const completeControl = <span className="tasks-main-view__complete-wrap">{completeButton}</span>;
 
   return (
     <div

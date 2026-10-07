@@ -53,7 +53,7 @@
   --tag-fg: color-mix(
     in oklab,
     var(--collection-row-color, var(--workspace-foreground)) 62%,
-    #003311
+    var(--color-we-got-dark)
   );
 }
 

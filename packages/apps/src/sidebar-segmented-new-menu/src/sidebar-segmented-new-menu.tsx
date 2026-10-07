@@ -21,7 +21,7 @@ export type SidebarSegmentedNewMenuProps = {
   className?: string;
   icon?: ReactNode;
   size?: SidebarSegmentedNewMenuSize;
-  /** Stretch to the parent width (sidebar New). Header Meet passes false. */
+  /** Stretch to the parent width. Sidebar primary stays content-sized. */
   stretch?: boolean;
 };
 
@@ -34,8 +34,8 @@ export function SidebarSegmentedNewMenu({
   blockName = "sidebar-segmented-new-menu",
   className,
   icon,
-  size = "xl",
-  stretch = true,
+  size = "md",
+  stretch = false,
 }: SidebarSegmentedNewMenuProps) {
   const hasMenu = items.length > 0;
   const mainButton = (
@@ -47,7 +47,10 @@ export function SidebarSegmentedNewMenu({
       pill
       variant="primary"
       disabled={mainDisabled}
-      className={hasMenu ? `${blockName}__main` : `${blockName}__main--solo`}
+      className={cn(
+        hasMenu ? `${blockName}__main` : `${blockName}__main--solo`,
+        !hasMenu && stretch && `${blockName}__main--stretch`,
+      )}
     />
   );
 

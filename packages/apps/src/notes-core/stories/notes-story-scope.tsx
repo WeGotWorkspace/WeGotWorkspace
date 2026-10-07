@@ -15,8 +15,8 @@ export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";
  * which drops sheet and desk washes to transparent.
  */
 const NOTES_STORY_BRAND_TOKENS = {
-  "--color-we-got-soft": "#fff5e9",
-  "--color-we-got-dark": "#003311",
+  "--color-we-got-soft": "#eeeeee",
+  "--color-we-got-dark": "#222222",
   "--color-we-got-yellow": "#ffc800",
   // Sidebar wash still reads Sand. Storybook Vitest does not emit `@theme` onto `:root`.
   "--color-we-got-sand": "#ba9689",

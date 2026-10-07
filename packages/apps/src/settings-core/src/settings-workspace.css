@@ -4,9 +4,9 @@
 /* Pane class fragments: `settings-workspace.styles.ts` (must stay in sync). */
 
 /**
- * Settings product shell: cream main pane + light accent→cream sidebar tint
- * (Notes / Contacts / Meet-split chrome). `--workspace-accent` is the brand tile
- * (`#003311` — same hex as WORKSPACE_APP_ACCENT.settings). The lockup is a
+ * Settings product shell: paper main pane + soft sidebar.
+ * `--workspace-accent` is We Got Dark (`#222222` — same hex as
+ * WORKSPACE_APP_ACCENT.settings). The lockup is a
  * white tile with Dark marks. Primary fills use accent with white fg. The rail
  * is the shared recipe in `workspace-color.css`.
  * Import only from {@link SettingsWorkspace}.
@@ -16,7 +16,7 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;

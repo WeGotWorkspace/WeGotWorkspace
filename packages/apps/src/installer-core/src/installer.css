@@ -1,8 +1,8 @@
 @import "../../styles.css" reference;
 
 /**
- * Installer step chrome on the cream auth shell (`.login-screen`).
- * Ink foregrounds; primary / active fills use brand dark green `#003311`.
+ * Installer step chrome on the auth shell (`.login-screen`).
+ * Ink and primary / active fills follow We Got Dark.
  */
 .installer {
   --installer-status-ok: #15803d;
@@ -13,16 +13,20 @@
   --button-outline-hover-color: var(--workspace-foreground);
   --button-outline-hover-background: color-mix(
     in oklab,
-    var(--workspace-foreground) 8%,
+    var(--workspace-foreground) 4%,
     transparent
   );
-  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--workspace-surface));
-  --button-active-color: #003311;
+  --button-outline-active-background: color-mix(
+    in oklab,
+    var(--workspace-accent) 14%,
+    var(--workspace-surface)
+  );
+  --button-active-color: var(--workspace-accent);
   --segmented-control-color: var(--workspace-foreground);
   --segmented-control-hover-color: var(--workspace-foreground);
-  --segmented-control-hover-bg: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+  --segmented-control-hover-bg: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
   --segmented-control-active-fg: #ffffff;
-  --segmented-control-active-bg: #003311;
+  --segmented-control-active-bg: var(--workspace-accent);
   --segmented-control-track-border-color: color-mix(
     in oklab,
     var(--workspace-foreground) 20%,

@@ -16,11 +16,8 @@
     var(--app-switch-label-color) 92%,
     var(--app-switch-lockup-bg)
   );
-  --app-switch-chevron-color: color-mix(
-    in oklab,
-    var(--app-switch-label-color) 50%,
-    var(--app-switch-lockup-bg)
-  );
+  /* Subtle affordance — lower contrast than the serif app name. */
+  --app-switch-chevron-color: color-mix(in oklab, var(--app-switch-label-color) 28%, transparent);
 }
 
 .app-sidebar {
@@ -28,10 +25,7 @@
   transition-duration: var(--panel-overlay-duration);
   transition-timing-function: var(--panel-overlay-ease);
   background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
-  border-color: var(
-    --app-sidebar-border-color,
-    color-mix(in oklab, var(--workspace-sidebar-foreground) 15%, transparent)
-  );
+  border-color: var(--app-sidebar-border-color, var(--border));
   color: var(--app-sidebar-color, var(--workspace-sidebar-foreground));
   /*
    * Safe area is padding, so the sidebar fill runs under the status bar and
@@ -41,10 +35,8 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
   /* Outer chrome gutter — aligns with the app-switch icon tile. */
   --app-sidebar-padding-x: 1rem;
-  /* Same lockup math as `.app-switch-button__icon` (two caption lines). */
-  --app-switch-lockup-leading: 0.85;
-  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
-  --app-switch-icon-size: calc(2 * var(--app-switch-lockup-line));
+  /* Same size as `.app-switch-button__icon` (md control height). */
+  --app-switch-icon-size: var(--control-height-md, 2.25rem);
   /* White mark inset in 512² `/app-icons/*.svg` artwork (calendar body at x=112). */
   --app-switch-glyph-inset: calc(var(--app-switch-icon-size) * 112 / 512);
   /* Section titles + collection/menu rows: align to the glyph, not the tile edge. */
@@ -81,10 +73,7 @@
   /*
    * Bell stroke = sidebar right hairline (same token as `.app-sidebar` `border-r`).
    */
-  --button-outline-border-color: var(
-    --app-sidebar-border-color,
-    color-mix(in oklab, var(--workspace-sidebar-foreground) 15%, transparent)
-  );
+  --button-outline-border-color: var(--app-sidebar-border-color, var(--border));
   /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
    * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
@@ -107,13 +96,25 @@
 }
 
 .app-sidebar__primary-button {
-  @apply shrink-0 pb-4;
+  /* Hairline under Compose; asymmetric block padding (pt-2 / pb-4). */
+  @apply shrink-0 border-b pt-2 pb-4;
+  border-color: var(--app-sidebar-border-color, var(--border));
   padding-inline: var(--app-sidebar-padding-x);
 }
 
 .app-sidebar__sections {
-  @apply min-h-0 flex-1 space-y-7 overflow-y-auto;
+  @apply min-h-0 flex-1 overflow-y-auto pt-4;
   padding-inline: var(--app-sidebar-padding-x);
+}
+
+/*
+ * Hairline between sections. Same soft token as the rail
+ * (`--app-sidebar-border-color`, which Settings aliases to `--border`).
+ * `mt-3.5` + `pt-3.5` keeps the previous `space-y-7` gap, with the line centered.
+ */
+.app-sidebar__sections > .sidebar-section + .sidebar-section {
+  @apply mt-3.5 border-t pt-3.5;
+  border-color: var(--app-sidebar-border-color, var(--border));
 }
 
 .app-sidebar__footer {

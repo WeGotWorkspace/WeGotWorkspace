@@ -51,7 +51,6 @@
 }
 
 .tasks-main-view__complete-wrap,
-.tasks-main-view__complete,
 .tasks-main-view__composer-marker {
   @apply absolute z-[1] flex shrink-0 items-center justify-center;
   top: 0.875rem;
@@ -60,35 +59,10 @@
   inline-size: var(--tasks-marker-size, 1.5rem);
   pointer-events: auto;
   touch-action: manipulation;
-
-  & svg {
-    @apply size-6;
-  }
 }
 
-.tasks-main-view__complete-wrap .tasks-main-view__complete {
-  position: static;
-  inset-inline-start: auto;
-  top: auto;
-  block-size: 100%;
-  inline-size: 100%;
-}
-
-.tasks-main-view__complete {
-  @apply rounded-full transition-colors;
-  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
-}
-
-.tasks-main-view__complete:hover:not(:disabled) {
-  color: var(--workspace-accent);
-}
-
-.tasks-main-view__complete:disabled {
-  @apply cursor-not-allowed opacity-50;
-}
-
-.tasks-main-view__complete--done {
-  color: var(--workspace-accent);
+.tasks-main-view__composer-marker svg {
+  @apply size-6;
 }
 
 .tasks-main-view__body {

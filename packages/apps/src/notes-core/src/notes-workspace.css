@@ -50,7 +50,7 @@
   --notes-detail-body-bg: var(--workspace-detail-bg);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
@@ -90,11 +90,11 @@
   /* Checked fill is Dark (`--color-emerald`). White glyph, same as Drive. */
   --list-item-checkbox-icon-color: #ffffff;
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
-  /* Workspace-level yellow — sidebar collection rows override with row color.
+  /* Workspace-level — sidebar collection rows override with row color.
+   * Checked fill uses `.checkbox` event-card surfaceTint; border/fg stay saturated.
    * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
-  --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: #ffffff;
+  --checkbox-checked-fg: var(--workspace-accent);
   /* Idle tag chips — sidebar filters + list-row pills share this family.
    * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
    * use `--note-detail-tag-*` (notebook wash on the paper sheet). */

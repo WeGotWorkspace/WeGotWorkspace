@@ -4,10 +4,7 @@
 :host {
   --_lc-button-bg-default: light-dark(rgb(255 255 255 / 94%), rgb(255 255 255 / 24%));
   --_lc-button-hover-bg-default: light-dark(rgb(255 255 255 / 98%), rgb(255 255 255 / 30%));
-  --_lc-button-border-color: light-dark(
-    var(--_lc-grid-line-color, rgb(15 23 42 / 14%)),
-    var(--_lc-grid-line-color, rgb(255 255 255 / 16%))
-  );
+  --_lc-button-border-color: var(--_lc-grid-line-color, var(--border));
   --_lc-focus-outline-color: light-dark(rgb(15 23 42 / 92%), rgb(255 255 255 / 96%));
   --_lc-focus-ring-color: light-dark(rgb(15 23 42 / 85%), rgb(255 255 255 / 92%));
   --_lc-focus-ring-offset-color: light-dark(rgb(255 255 255), rgb(2 6 23));

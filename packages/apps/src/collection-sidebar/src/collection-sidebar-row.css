@@ -12,8 +12,8 @@
   border: 1px solid transparent;
   background-color: transparent;
   color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
-  /* Shared leading column width (checkbox / icon / color-dot). */
-  --collection-sidebar-row-leading-size: 1rem;
+  /* Shared leading column width (checkbox / icon / color-dot) — size-3.5. */
+  --collection-sidebar-row-leading-size: 0.875rem;
 }
 
 .collection-sidebar-row:hover:not(.collection-sidebar-row--selected) {
@@ -26,7 +26,7 @@
     --collection-sidebar-row-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
     )
   );
 }
@@ -79,9 +79,9 @@
 
 /* Shared leading column: checkbox, icon, or color-dot — one width so labels align. */
 .collection-sidebar-row__leading {
-  width: var(--collection-sidebar-row-leading-size, 1rem);
-  min-width: var(--collection-sidebar-row-leading-size, 1rem);
-  height: var(--collection-sidebar-row-leading-size, 1rem);
+  width: var(--collection-sidebar-row-leading-size, 0.875rem);
+  min-width: var(--collection-sidebar-row-leading-size, 0.875rem);
+  height: var(--collection-sidebar-row-leading-size, 0.875rem);
   @apply relative z-10 inline-flex shrink-0 items-center justify-center self-center;
   /* Decorative marks: let the select stretch handle clicks. Checkbox opts back in. */
   pointer-events: none;
@@ -96,21 +96,21 @@
   --primary-foreground: var(--workspace-accent-foreground);
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
-   * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
-  --checkbox-size: var(--collection-sidebar-row-leading-size, 1rem);
+   * Keep collection-row size (`Checkbox size="sm"` / 0.875rem) even if the editor
+   * overrides `--checkbox-size`. Checked fill uses `.checkbox` event-card
+   * surfaceTint; only border/fg stay saturated. */
+  --checkbox-size: var(--collection-sidebar-row-leading-size, 0.875rem);
   --checkbox-border-color: var(--collection-row-color, var(--workspace-foreground));
-  --checkbox-checked-bg: var(--collection-row-color, var(--workspace-foreground));
   --checkbox-checked-border: var(--collection-row-color, var(--workspace-foreground));
-  --checkbox-checked-fg: #ffffff;
+  --checkbox-checked-fg: var(--collection-row-color, var(--workspace-foreground));
   @apply relative z-10 shrink-0;
   border-color: var(--collection-row-color, var(--workspace-foreground));
   pointer-events: auto;
 }
 
 .collection-sidebar-row__visibility[data-state="checked"] {
-  background-color: var(--collection-row-color, var(--workspace-foreground));
   border-color: var(--collection-row-color, var(--workspace-foreground));
-  color: #ffffff;
+  color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .collection-sidebar-row__visibility[data-state="unchecked"] {

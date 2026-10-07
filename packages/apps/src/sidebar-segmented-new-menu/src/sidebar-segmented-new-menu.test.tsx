@@ -18,9 +18,12 @@ describe("SidebarSegmentedNewMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    const main = screen.getByRole("button", { name: "New task" });
+    fireEvent.click(main);
     expect(onMainAction).toHaveBeenCalledOnce();
     expect(screen.queryByRole("menu")).toBeNull();
+    expect(main.className).toMatch(/button--size-md/);
+    expect(main.closest(".sidebar-segmented-new-menu")?.className).not.toMatch(/--stretch/);
   });
 
   it("hides the chevron when there are no menu items", () => {

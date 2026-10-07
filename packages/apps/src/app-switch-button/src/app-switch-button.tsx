@@ -14,7 +14,6 @@ import {
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
 import "@/app-switch-button/src/app-switch-button.css";
 
-const TAGLINE = "we got";
 /** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
 const CHEVRON = "▾";
 
@@ -24,7 +23,7 @@ export type AppSwitchButtonProps = {
   disabled?: boolean;
   /** When set (e.g. `Workspace` on home/install), overrides the subtitle inferred from the route. */
   subtitle?: string;
-  /** `compact` drops the “we got” tagline and scales the mark to a single app line. */
+  /** `compact` scales the mark down for dense chrome (same single-line app name). */
   variant?: AppSwitchButtonVariant;
   onSelect?: (app: AppSwitchMenuApp) => void;
 };
@@ -111,7 +110,6 @@ export const AppSwitchButton = memo(function AppSwitchButton({
             />
           )}
           <span className="app-switch-button__label">
-            {!compact ? <span className="app-switch-button__label-top">{TAGLINE}</span> : null}
             <span className="app-switch-button__label-name">
               {subtitle}
               {!disabled ? (

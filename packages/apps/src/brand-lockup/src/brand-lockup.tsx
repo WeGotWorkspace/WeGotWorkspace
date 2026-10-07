@@ -3,9 +3,7 @@ import { cn } from "@/lib/utils";
 import "@/app-switch-button/src/app-switch-button.css";
 import "@/brand-lockup/src/brand-lockup.css";
 
-/** Suite tagline — same copy as {@link AppSwitchButton} workspace lockup. */
-const TAGLINE = "we got";
-/** Product name line — with tagline reads as WeGotWorkspace. */
+/** Product name line — same copy as {@link AppSwitchButton} workspace lockup. */
 const PRODUCT_NAME = "Workspace";
 
 export type BrandLockupProps = {
@@ -32,7 +30,6 @@ export function BrandLockup({ className }: BrandLockupProps) {
     >
       <WorkspaceHomeIcon className="app-switch-button__icon" variant="switch-trigger" />
       <span className="app-switch-button__label" aria-hidden>
-        <span className="app-switch-button__label-top">{TAGLINE}</span>
         <span className="app-switch-button__label-name">{PRODUCT_NAME}</span>
       </span>
     </div>

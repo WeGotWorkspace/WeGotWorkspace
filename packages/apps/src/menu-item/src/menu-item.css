@@ -10,7 +10,7 @@
 .menu-item--interactive:hover {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, currentColor 12%, transparent)
+    color-mix(in oklab, currentColor 4%, transparent)
   );
 }
 
@@ -27,7 +27,7 @@
   );
   background-color: var(
     --button-outline-hover-background,
-    color-mix(in oklab, var(--workspace-sidebar-surface) 12%, transparent)
+    color-mix(in oklab, var(--workspace-sidebar-surface) 4%, transparent)
   );
 }
 
@@ -95,7 +95,7 @@
   @apply font-medium;
   background-color: var(
     --button-outline-active-background,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
   );
   color: var(--button-active-color, var(--workspace-foreground));
 }

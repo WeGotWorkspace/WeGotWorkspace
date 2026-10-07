@@ -12,9 +12,9 @@ describe("BrandLockup", () => {
     expect(screen.getByLabelText("WeGotWorkspace")).toBeTruthy();
   });
 
-  it("renders the suite wordmark lines matching the app-switch workspace lockup", () => {
+  it("renders the suite wordmark matching the app-switch workspace lockup", () => {
     const { container } = render(<BrandLockup />);
-    expect(container.querySelector(".app-switch-button__label-top")?.textContent).toBe("we got");
+    expect(container.querySelector(".app-switch-button__label-top")).toBeNull();
     expect(container.querySelector(".app-switch-button__label-name")?.textContent).toBe(
       "Workspace",
     );

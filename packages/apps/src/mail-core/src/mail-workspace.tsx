@@ -167,10 +167,9 @@ export function MailWorkspace({
                   compose();
                   closeSidebarOnMobile(c.closeSidebar);
                 }}
-                size="xl"
+                size="md"
                 pill
                 variant="primary"
-                className="w-full"
               />
             }
           >

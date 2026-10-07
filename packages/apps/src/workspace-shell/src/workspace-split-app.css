@@ -18,7 +18,7 @@
  */
 :where(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
   --workspace-root-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
+  --app-sidebar-border-color: var(--border);
   --workspace-user-footer-text-color: color-mix(
     in oklab,
     var(--workspace-foreground) 80%,

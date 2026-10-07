@@ -24,7 +24,7 @@
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: #ffffff;
   --card-title-icon-color: var(--workspace-accent);
-  --card-panel-border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  --card-panel-border-color: var(--border);
   --card-row-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
@@ -201,7 +201,7 @@
 .calendar-dialog-surface .calendar-event-dialog__all-day-caption {
   font-size: 0.875rem;
   line-height: 1;
-  color: var(--field-label-color, var(--color-muted-foreground));
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
 .calendar-dialog-surface

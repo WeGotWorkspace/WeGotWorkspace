@@ -8,7 +8,7 @@
  * sheets.
  *
  * Mix direction is foreground-into-surface so a dark scope inverts without
- * a second recipe. Hover / active / active-hover = 8 / 12 / 16%.
+ * a second recipe. Hover / active / active-hover = 4 / 8 / 12%.
  */
 
 :where(
@@ -58,8 +58,6 @@
     var(--workspace-foreground)
   );
 
-  --control-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-
   --input-background: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
   --input-background-focus: color-mix(
     in oklch,
@@ -76,22 +74,22 @@
   --button-outline-hover-color: var(--workspace-accent);
   --button-outline-hover-background: color-mix(
     in oklch,
-    var(--workspace-foreground) 8%,
+    var(--workspace-foreground) 4%,
     var(--workspace-surface)
   );
   --button-outline-active-background: color-mix(
     in oklch,
-    var(--workspace-foreground) 12%,
+    var(--workspace-foreground) 8%,
     var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklch,
-    var(--workspace-foreground) 16%,
+    var(--workspace-foreground) 12%,
     var(--workspace-surface)
   );
   --button-ghost-hover-background: var(--button-outline-hover-background);
   --button-active-color: var(--workspace-accent-strong);
-  --field-label-color: color-mix(in oklch, var(--workspace-foreground) 68%, transparent);
+  --field-label-color: var(--workspace-foreground);
 
   --menu-item-hover-background: var(--button-outline-hover-background);
   --menu-item-selected-background: var(--button-outline-active-background);
@@ -126,8 +124,10 @@
   --accent: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
   --accent-foreground: var(--workspace-foreground);
   --destructive-foreground: var(--workspace-accent-foreground);
-  --border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
-  --input: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  /* Shared chrome hairline: sidebar edge, controls, calendar rules. */
+  --border: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+  --control-border-color: var(--border);
+  --input: var(--border);
   --ring: color-mix(in oklch, var(--workspace-foreground) 40%, transparent);
   --sidebar: var(--workspace-sidebar-surface);
   --sidebar-foreground: var(--workspace-sidebar-foreground);
@@ -139,7 +139,7 @@
     var(--workspace-sidebar-surface)
   );
   --sidebar-accent-foreground: var(--workspace-sidebar-foreground);
-  --sidebar-border: color-mix(in oklch, var(--workspace-sidebar-foreground) 12%, transparent);
+  --sidebar-border: var(--border);
   --sidebar-ring: color-mix(in oklch, var(--workspace-sidebar-foreground) 40%, transparent);
 
   --color-background: var(--workspace-surface);

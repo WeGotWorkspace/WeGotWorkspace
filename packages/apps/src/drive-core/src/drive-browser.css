@@ -6,7 +6,7 @@
  * (oklab). Selected is `--drive-item-selected-background` in
  * `workspace-color.css` (6.6% accent into the same paper) so Notes and
  * Contacts share it. The percentages match the lightness drop of the
- * sidebar item ladder (8 / 12 / 16 into the Soft rail).
+ * sidebar item ladder (4 / 8 / 12 into the Soft rail).
  * 4.4 / 6.6 / 10.3 keep tile hover/selected a step quieter than that rail.
  */
 .drive-workspace {
@@ -22,18 +22,19 @@
   );
 }
 
-/** Matches sidebar section titles (`field-label-row__label` + `--field-label-color`). */
+/** Matches sidebar / form labels (`.field-label-row__label`). */
 .drive-workspace .drive-item-label {
-  @apply flex items-center gap-1 text-xs font-medium uppercase truncate min-w-0;
+  @apply flex items-center gap-1 capitalize text-sm font-medium truncate min-w-0;
+  letter-spacing: normal;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
   );
-  color: var(--field-label-color, var(--color-muted-foreground));
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
 .drive-workspace .drive-item-label > svg {
-  @apply size-3 shrink-0;
+  @apply size-3.5 shrink-0;
 }
 
 .drive-workspace .drive-browser-section-title {

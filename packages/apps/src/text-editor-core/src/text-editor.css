@@ -400,9 +400,9 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] {
-  /* Match Tasks `--tasks-marker-size` (size-6). Radius stays `--radius-sm`. */
+  /* Match Tasks `--tasks-marker-size` (size-6). Circle via `--control-radius-pill`. */
   --checkbox-size: 1.5rem;
-  /* Inset Lucide check — same as `.checkbox__icon` (size-4), not the full 24px box. */
+  /* Inset Lucide check — same as `.checkbox__icon`, not the full 24px box. */
   --checkbox-check-size: 1rem;
   list-style: none;
   padding-left: 0.25rem;
@@ -450,21 +450,31 @@
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label span {
-  /* 2px matches Tasks Lucide `strokeWidth` (Circle / CheckCircle2). No drop shadow. */
-  @apply relative grid shrink-0 place-content-center border border-2 shadow-none;
+  /* 1px border matches shared `.checkbox`. No drop shadow.
+   * Checked fill: same light 14% / dark 22% wash as `.checkbox`. */
+  --_checkbox-fill-accent: var(
+    --checkbox-checked-border,
+    var(--checkbox-border-color, var(--primary))
+  );
+  --_checkbox-surface: var(--_lc-surface-bg, var(--workspace-surface));
+  --_checkbox-tint: light-dark(
+    color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface)),
+    color-mix(in srgb, var(--_checkbox-fill-accent) 22%, var(--_checkbox-surface))
+  );
+  @apply relative grid shrink-0 place-content-center border shadow-none;
   width: var(--checkbox-size, 1.5rem);
   height: var(--checkbox-size, 1.5rem);
-  border-radius: var(--checkbox-radius, var(--radius-sm));
+  border-radius: var(--checkbox-radius, var(--control-radius-pill));
   border-color: var(--checkbox-border-color, var(--primary));
   background-color: var(--checkbox-bg, transparent);
-  color: var(--checkbox-checked-fg, var(--primary-foreground));
+  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span {
-  background-color: var(--checkbox-checked-bg, var(--primary));
-  border-color: var(--checkbox-checked-border, var(--checkbox-checked-bg, var(--primary)));
-  color: var(--checkbox-checked-fg, var(--primary-foreground));
+  background-color: var(--checkbox-checked-bg, var(--_checkbox-tint));
+  border-color: var(--checkbox-checked-border, var(--checkbox-border-color, var(--primary)));
+  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span::after,
@@ -1038,7 +1048,6 @@
   --foreground: var(--workspace-foreground);
   --accent: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
   --accent-foreground: var(--workspace-foreground);
-  --border: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
 /* Compact body for format-bar-only Storybook previews */

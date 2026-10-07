@@ -29,11 +29,7 @@
   user-select: none;
   display: flex;
   --__event-height: var(--event-height, 32px);
-  --border: 0.5px solid
-    var(
-      --_lc-grid-line-color,
-      color-mix(in oklch, var(--workspace-foreground) 14%, var(--workspace-surface))
-    );
+  --border: 0.5px solid var(--_lc-grid-line-color, var(--color-border));
   pointer-events: none;
 }
 
@@ -91,13 +87,7 @@
    next interval boundary; earlier when the window starts off-interval). Background renders
    behind events/markers/create-preview by nature. */
 .cell-main--grid {
-  --__grid-line-color: var(
-    --time-line-grid-color,
-    var(
-      --_lc-grid-line-color,
-      color-mix(in oklch, var(--workspace-foreground) 14%, var(--workspace-surface))
-    )
-  );
+  --__grid-line-color: var(--time-line-grid-color, var(--_lc-grid-line-color, var(--color-border)));
 }
 
 :host([flow="vertical"]) .cell-main--grid {
