@@ -9,11 +9,8 @@ import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
-import {
-  encodeAwarenessBroadcast,
-  encodeUpdateBroadcast,
-  mayInitiateMeshDocumentSync,
-} from "./docs-collab-mesh-sync";
+import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
   markRoomServerSuccess,
@@ -419,7 +416,7 @@ export function useDocsCollabJoin({
       refs.localDirtySinceLastSaveRef.current = true;
       const encoded = encodeUpdateBroadcast(update);
       const tabSync = refs.tabSyncRef.current;
-      const mayMeshPublish = mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current);
+      const mayMeshPublish = mayPublishDocumentBearingMeshSync(ydoc, refs.seedDoneRef.current);
       if (tabSync) {
         tabSync.onLocalSync(encoded);
         if (tabSync.isMeshLeader() && mayMeshPublish) {

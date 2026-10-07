@@ -48,10 +48,10 @@ describe("docs-collab-mesh-hydration", () => {
     const outcome = handleGuardedSyncMessage({
       bytes: encodeSyncStep1(full),
       ydoc: empty,
-      meshHydrated: false,
+      mayAnswerSyncStep1: false,
       trust: { user: "bob", access: "write" },
     });
-    expect(outcome).toEqual({ kind: "hydration-blocked" });
+    expect(outcome).toEqual({ kind: "hydration-blocked", requestPull: true });
     expect(isYDocEmpty(empty)).toBe(true);
   });
 
@@ -63,7 +63,7 @@ describe("docs-collab-mesh-hydration", () => {
     const outcome = handleGuardedSyncMessage({
       bytes: encodeSyncStep1(full),
       ydoc: empty,
-      meshHydrated: true,
+      mayAnswerSyncStep1: true,
       trust: { user: "bob", access: "write" },
     });
     expect(outcome.kind).toBe("reply");
@@ -106,6 +106,31 @@ describe("docs-collab-mesh-hydration", () => {
     Y.applyUpdate(peer, Y.encodeStateAsUpdate(full));
     Y.applyUpdate(peer, wipeUpdate, "mesh");
     expect(isYDocEmpty(peer)).toBe(true);
+  });
+
+  it("recovers from a 9-byte step-1-only stall by requesting a pull", () => {
+    const full = docWithBody("team content");
+    const empty = new Y.Doc();
+    empty.getXmlFragment("default");
+
+    const peerStep1 = encodeSyncStep1(full);
+    expect(peerStep1.length).toBeLessThan(20);
+
+    const blocked = handleGuardedSyncMessage({
+      bytes: peerStep1,
+      ydoc: empty,
+      mayAnswerSyncStep1: false,
+      trust: { user: "bob", access: "write" },
+    });
+    expect(blocked).toEqual({ kind: "hydration-blocked", requestPull: true });
+    expect(isYDocEmpty(empty)).toBe(true);
+
+    const pullReply = handleSyncMessage(encodeSyncStep1(empty), full);
+    expect(pullReply).not.toBeNull();
+    if (pullReply) handleSyncMessage(pullReply.u, empty);
+
+    expect(isYDocEmpty(empty)).toBe(false);
+    expect(empty.getXmlFragment("default").toJSON()).toContain("team content");
   });
 
   it("still allows an empty refresher to pull state from a full peer", () => {

@@ -203,9 +203,9 @@ describe("handleGuardedSyncMessage", () => {
     const outcome = handleGuardedSyncMessage({
       bytes: encodeSyncStep1(local),
       ydoc: new Y.Doc(),
-      meshHydrated: false,
+      mayAnswerSyncStep1: false,
       trust: { user: "bob", access: "write" },
     });
-    expect(outcome).toEqual({ kind: "hydration-blocked" });
+    expect(outcome).toEqual({ kind: "hydration-blocked", requestPull: true });
   });
 });

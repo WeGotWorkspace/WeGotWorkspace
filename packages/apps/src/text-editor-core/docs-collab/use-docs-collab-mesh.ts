@@ -14,9 +14,12 @@ import {
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
   handleGuardedSyncMessage,
-  mayInitiateMeshDocumentSync,
   mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
+import {
+  mayAnswerSyncStep1WithLocalState,
+  mayPublishDocumentBearingMeshSync,
+} from "./docs-collab-mesh-hydration";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import { docsRelayCopy, type DocsRelayCopy } from "./docs-relay-copy";
@@ -161,7 +164,6 @@ export function useDocsCollabMesh({
       const ydoc = refs.ydocRef.current;
       const mesh = refs.meshRef.current;
       if (!ydoc || !mesh) return;
-      if (!mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current)) return;
       const msg = { type: "sync" as const, u: encodeSyncStep1(ydoc) };
       if (toPeerId) mesh.sendTo(toPeerId, msg);
       else mesh.broadcast(msg);
@@ -213,12 +215,15 @@ export function useDocsCollabMesh({
           trust: msg.trust,
           from: msg.from,
           origin: MESH_ORIGIN,
-          meshHydrated: mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current),
+          mayAnswerSyncStep1: mayAnswerSyncStep1WithLocalState(ydoc, refs.seedDoneRef.current),
         });
         if (!isYDocEmpty(ydoc)) markDocReady();
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
+        }
+        if (outcome.kind === "hydration-blocked" && outcome.requestPull && msg.from) {
+          sendSyncStep1(msg.from);
         }
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
@@ -226,9 +231,7 @@ export function useDocsCollabMesh({
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
       }
       if ((msg.type === "dc-open" || msg.type === "resync") && msg.from) {
-        if (mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current)) {
-          sendSyncStep1(msg.from);
-        }
+        sendSyncStep1(msg.from);
         sendAwarenessBroadcast(msg.from);
         if (msg.type === "dc-open") trySeedFromFile();
       }
@@ -313,7 +316,7 @@ export function useDocsCollabMesh({
         meshHydrated: () => {
           const doc = refs.ydocRef.current;
           if (!doc) return false;
-          return mayInitiateMeshDocumentSync(doc, refs.seedDoneRef.current);
+          return mayPublishDocumentBearingMeshSync(doc, refs.seedDoneRef.current);
         },
         onRelayNotice: setRelayNotice,
         collabTicket: fetched?.collabTicket,
