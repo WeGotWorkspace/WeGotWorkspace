@@ -6,7 +6,6 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\VObject\VObjectPayloadGuard;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -21,8 +20,6 @@ final class SsrfSafeIcsFetcher
     private const TIMEOUT_SECONDS = 15;
 
     private const CONNECT_TIMEOUT_SECONDS = 5;
-
-    private const READ_CHUNK_BYTES = 65_536;
 
     public function __construct(
         private readonly HostIpResolver $resolver,
@@ -72,7 +69,6 @@ final class SsrfSafeIcsFetcher
 
             $length = $response->header('Content-Length');
             if (is_numeric($length) && (int) $length > VObjectPayloadGuard::MAX_ICS_BYTES) {
-                $response->toPsrResponse()->getBody()->close();
                 throw new ApiHttpException(
                     413,
                     'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
@@ -80,41 +76,13 @@ final class SsrfSafeIcsFetcher
                 );
             }
 
-            $body = $this->readCappedBody($response);
+            $body = $response->body();
             $this->payloadGuard->assertIcsSize($body);
 
             return $body;
         }
 
         throw new ApiHttpException(400, 'The calendar feed redirected too many times.', 'bad_request');
-    }
-
-    private function readCappedBody(Response $response): string
-    {
-        $stream = $response->toPsrResponse()->getBody();
-        $body = '';
-
-        try {
-            while (! $stream->eof()) {
-                $chunk = $stream->read(self::READ_CHUNK_BYTES);
-                if ($chunk === '') {
-                    break;
-                }
-
-                $body .= $chunk;
-                if (strlen($body) > VObjectPayloadGuard::MAX_ICS_BYTES) {
-                    throw new ApiHttpException(
-                        413,
-                        'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
-                        'payload_too_large',
-                    );
-                }
-            }
-        } finally {
-            $stream->close();
-        }
-
-        return $body;
     }
 
     /**
@@ -166,26 +134,53 @@ final class SsrfSafeIcsFetcher
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
         $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'http' ? 80 : 443);
         $connectIp = $validatedIps[0] ?? $host;
+        $tooLarge = false;
 
         try {
-            return Http::withOptions([
-                'allow_redirects' => false,
-                'stream' => true,
-                'timeout' => self::TIMEOUT_SECONDS,
-                'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
-                'curl' => [
-                    CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
-                ],
-            ])->withHeaders([
+            return Http::withOptions($this->requestOptions($host, $port, $connectIp, $tooLarge))->withHeaders([
                 'Accept' => 'text/calendar, text/plain, */*',
             ])->get($url);
-        } catch (ConnectionException) {
-            throw new ApiHttpException(400, 'Could not fetch the calendar feed.', 'bad_request');
         } catch (ApiHttpException $exception) {
             throw $exception;
         } catch (\Throwable) {
+            if ($tooLarge) {
+                throw new ApiHttpException(
+                    413,
+                    'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
+                    'payload_too_large',
+                );
+            }
+
             throw new ApiHttpException(400, 'Could not fetch the calendar feed.', 'bad_request');
         }
+    }
+
+    /**
+     * cURL options for one hop. No `stream` key: that selects Guzzle's
+     * StreamHandler, which drops CURLOPT_RESOLVE and resolves DNS again.
+     *
+     * @return array<string, mixed>
+     */
+    public function requestOptions(string $host, int $port, string $connectIp, bool &$tooLarge): array
+    {
+        return [
+            'allow_redirects' => false,
+            'timeout' => self::TIMEOUT_SECONDS,
+            'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'curl' => [
+                CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
+                CURLOPT_NOPROGRESS => false,
+                CURLOPT_XFERINFOFUNCTION => static function ($ch, int $dlTotal, int $dlNow) use (&$tooLarge): int {
+                    if ($dlNow > VObjectPayloadGuard::MAX_ICS_BYTES) {
+                        $tooLarge = true;
+
+                        return 1;
+                    }
+
+                    return 0;
+                },
+            ],
+        ];
     }
 
     private function absoluteUrl(string $current, string $location): string

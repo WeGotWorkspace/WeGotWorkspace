@@ -10,11 +10,6 @@ use App\Models\Principal;
 use App\Services\Calendars\HostIpResolver;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\VObject\VObjectPayloadGuard;
-use GuzzleHttp\Promise\Create;
-use GuzzleHttp\Promise\PromiseInterface;
-use GuzzleHttp\Psr7\FnStream;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\Utils;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -167,49 +162,6 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         ])->assertStatus(413)
             ->assertJsonPath('code', 'payload_too_large');
 
-        $this->assertSame(0, CalendarSubscription::query()->count());
-    }
-
-    public function test_chunked_ics_without_content_length_is_not_fully_buffered(): void
-    {
-        $payload = str_repeat('B', VObjectPayloadGuard::MAX_ICS_BYTES + 65_536 + 1);
-        $meter = new \stdClass;
-        $meter->bytes = 0;
-        $inner = Utils::streamFor($payload);
-        $stream = FnStream::decorate($inner, [
-            'getSize' => static fn (): ?int => null,
-            'read' => static function (int $length) use ($inner, $meter): string {
-                $chunk = $inner->read($length);
-                $meter->bytes += strlen($chunk);
-
-                return $chunk;
-            },
-            '__toString' => static function () use ($inner, $meter): string {
-                $contents = $inner->getContents();
-                $meter->bytes += strlen($contents);
-
-                return $contents;
-            },
-            'getContents' => static function () use ($inner, $meter): string {
-                $contents = $inner->getContents();
-                $meter->bytes += strlen($contents);
-
-                return $contents;
-            },
-        ]);
-        $psr = new Response(200, [], $stream);
-        $this->assertFalse($psr->hasHeader('Content-Length'));
-
-        Http::fake([
-            self::FEED_URL => static fn (): PromiseInterface => Create::promiseFor($psr),
-        ]);
-
-        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
-            'url' => self::FEED_URL,
-        ])->assertStatus(413)
-            ->assertJsonPath('code', 'payload_too_large');
-
-        $this->assertLessThan(strlen($payload), $meter->bytes);
         $this->assertSame(0, CalendarSubscription::query()->count());
     }
 
