@@ -248,25 +248,20 @@ test("two browsers of one user keep edits moving without reuse fallback", async 
     expect(quietWindow.filter((line) => line.includes("reuse-fresh-ice-abort"))).toEqual([]);
 
     const memberCaret = (page: ChaosSession["page"]) =>
-      page.locator(".collaboration-carets__label", { hasText: "Member" });
+      page.locator(".collaboration-carets__caret").filter({
+        has: page.locator(".collaboration-carets__label", { hasText: "Member" }),
+      });
     await member.page.locator(".ProseMirror").click();
     await expect(memberCaret(adminA.page)).toBeVisible({ timeout: 5_000 });
     await expect(memberCaret(adminB.page)).toBeVisible({ timeout: 5_000 });
-    const caretBefore = await adminA.page
-      .locator(".collaboration-carets__caret")
-      .first()
-      .boundingBox();
+    const memberCaretBox = async (page: ChaosSession["page"]) => {
+      const box = await memberCaret(page).boundingBox();
+      return box ? `${box.x},${box.y}` : "";
+    };
+    const caretBefore = await memberCaretBox(adminA.page);
 
     await typeIntoDoc(member.page, memberSentence);
-    await expect
-      .poll(
-        async () =>
-          (await adminA.page.locator(".collaboration-carets__caret").first().boundingBox())?.x,
-        {
-          timeout: 5_000,
-        },
-      )
-      .not.toBe(caretBefore?.x);
+    await expect.poll(() => memberCaretBox(adminA.page), { timeout: 5_000 }).not.toBe(caretBefore);
     await expect(adminA.page.locator(".ProseMirror")).toContainText(memberSentence, {
       timeout: 5_000,
     });
