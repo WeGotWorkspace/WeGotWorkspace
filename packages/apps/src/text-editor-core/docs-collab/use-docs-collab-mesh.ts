@@ -222,9 +222,8 @@ export function useDocsCollabMesh({
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
         }
-        if (outcome.kind === "hydration-blocked" && outcome.requestPull && msg.from) {
-          sendSyncStep1(msg.from);
-        }
+        // dc-open already pulls once per peer. Answering an empty step 1 with
+        // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
@@ -248,7 +247,7 @@ export function useDocsCollabMesh({
       sendAwarenessBroadcast,
       sendSyncStep1,
       trySeedFromFile,
-      urls.onPersistForbidden,
+      urls,
     ],
   );
 
@@ -339,8 +338,7 @@ export function useDocsCollabMesh({
       room,
       sendAwarenessBroadcast,
       sendSyncStep1,
-      urls.collabApiBaseUrl,
-      urls.collabRtcUrl,
+      urls,
     ],
   );
 
