@@ -67,7 +67,6 @@ Routes that remain:
 | `GET/PUT /api/v1/settings/*` | user |
 | Notes HTTP | `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{noteId}` (UID), `/star`, `/changes` |
 | `GET /api/v1/plugins` | user |
-| `PUT /api/v1/plugins/{id}/activation` | user |
 | `POST /api/v1/plugins/{id}/session` | user |
 | `GET /api/v1/dav/capabilities` | user |
 
@@ -86,6 +85,7 @@ Routes that remain:
 | `POST/DELETE /api/v1/admin/update-jobs/{jobId}` | admin |
 | `POST/GET/DELETE /api/v1/admin/search/jobs/*` | admin |
 | `POST /api/v1/admin/plugins` | admin |
+| `PUT /api/v1/admin/plugins/{id}/activation` | admin |
 | `GET/DELETE /api/v1/admin/backups/{name}` | admin |
 
 ## Installer

@@ -193,8 +193,6 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('plugins', PluginsIndexController::class);
     Route::post('plugins/{id}/session', PluginsSessionController::class)
         ->where('id', '[a-z0-9_-]+');
-    Route::put('plugins/{id}/activation', PluginsActivationController::class)
-        ->where('id', '[a-z0-9_-]+');
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
@@ -379,6 +377,8 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
     Route::delete('search/jobs/{jobId}', [AdminSearchJobController::class, 'destroy'])
         ->where('jobId', '[a-z0-9_-]+');
     Route::post('plugins', AdminPluginInstallController::class);
+    Route::put('plugins/{id}/activation', PluginsActivationController::class)
+        ->where('id', '[a-z0-9_-]+');
     Route::get('backups/{name}', [AdminUpdateBackupController::class, 'show']);
     Route::delete('backups/{name}', [AdminUpdateBackupController::class, 'destroy']);
     Route::put('groups/{group}/members/{username}', [AdminGroupMemberController::class, 'store']);
