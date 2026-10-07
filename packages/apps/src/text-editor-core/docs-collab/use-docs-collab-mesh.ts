@@ -240,10 +240,16 @@ export function useDocsCollabMesh({
   );
 
   const joinMesh = useCallback(
-    async (name: string, authToken: string): Promise<DocsCollabMeshPeer[]> => {
+    async (
+      name: string,
+      authToken: string,
+      isCurrent: () => boolean,
+    ): Promise<DocsCollabMeshPeer[] | null> => {
       if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
         await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
       }
+      if (!isCurrent()) return null;
+      if (refs.meshRef.current) return refs.meshRef.current.getRoomPeers();
 
       const resumed = resumeDocsCollabMeshSession(room);
       if (resumed) {
@@ -270,6 +276,21 @@ export function useDocsCollabMesh({
         fetched = await DEFAULT_DOCS_COLLAB_WIRE.fetchRtcSettings({ channel: "collab" });
       }
 
+      // Re-check after the await. Between these checks and `new` there must be
+      // no await, so check-and-create stays atomic.
+      if (!isCurrent()) return null;
+      if (refs.meshRef.current) return refs.meshRef.current.getRoomPeers();
+      const parked = resumeDocsCollabMeshSession(room);
+      if (parked) {
+        refs.meshRef.current = parked;
+        parked.onMessage(handleMeshMessage);
+        refreshMeshUi();
+        publishMeshStateToTabs();
+        sendSyncStep1();
+        sendAwarenessBroadcast();
+        return parked.getRoomPeers();
+      }
+
       const mesh = new DocsRtcSession({
         apiBase: urls.collabApiBaseUrl ?? "/api/v1/rooms",
         room,
@@ -283,6 +304,9 @@ export function useDocsCollabMesh({
       refs.meshRef.current = mesh;
       mesh.onMessage(handleMeshMessage);
       const joinedData = await mesh.join(name);
+      // If we went stale during join(), teardown() or the newer reconnect has
+      // already parked or left `mesh` through refs.meshRef. Do not touch it.
+      if (!isCurrent()) return null;
       refreshMeshUi();
       publishMeshStateToTabs();
       return joinedData.peers;

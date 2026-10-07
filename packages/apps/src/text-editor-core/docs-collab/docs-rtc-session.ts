@@ -40,6 +40,8 @@ import {
 } from "@/text-editor-core/docs-collab/docs-collab-ticket";
 import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
+const liveCollabSessions = new Map<string, Set<DocsRtcSession>>();
+
 const DC_LABEL = "collab";
 
 type MeshListener = (msg: DocsCollabMeshMessage) => void;
@@ -110,6 +112,8 @@ export type DocsRtcSessionOptions = {
 };
 
 export class DocsRtcSession {
+  private readonly room: string;
+
   private myName = "";
 
   private readonly listeners = new Set<MeshListener>();
@@ -150,6 +154,7 @@ export class DocsRtcSession {
   private readonly sendTicket: boolean;
 
   constructor(private readonly options: DocsRtcSessionOptions) {
+    this.room = options.room;
     this.httpOnlyUntilRelay = options.rtcSettings.forceRelay && !options.rtcSettings.turnAvailable;
     const binding = createDataBinding({
       label: DC_LABEL,
@@ -524,11 +529,21 @@ export class DocsRtcSession {
   async join(name: string): Promise<{ peerId: string; peers: DocsCollabMeshPeer[] }> {
     this.myName = name.trim();
     const joined = await this.mesh.join({ name: this.myName });
+    const live = liveCollabSessions.get(this.room) ?? new Set<DocsRtcSession>();
+    live.add(this);
+    liveCollabSessions.set(this.room, live);
+    if (live.size > 1) {
+      rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "duplicate-session", {
+        room: this.room,
+        ids: [...live].map((s) => s.mesh.getMyId()),
+      });
+    }
     this.http?.start();
     return { peerId: joined.peerId, peers: joined.peers };
   }
 
   async leave(): Promise<void> {
+    liveCollabSessions.get(this.room)?.delete(this);
     this.http?.stop();
     this.reuse.dispose();
     this.seenReusedRosterIds.clear();

@@ -92,7 +92,7 @@ export function useDocsCollabJoin({
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
-  const meshJoinInFlightRef = useRef(false);
+  const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
 
   const markDocReady = useCallback(() => {
@@ -129,7 +129,7 @@ export function useDocsCollabJoin({
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
-    meshJoinInFlightRef.current = false;
+    meshJoinInFlightRef.current = null;
     serverJoinStartedRef.current = false;
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
@@ -273,23 +273,25 @@ export function useDocsCollabJoin({
   const connectMeshInBackground = useCallback(
     async (generation: number, name: string, authToken: string) => {
       if (refs.meshRef.current || meshJoinInFlightRef.current) return;
-      meshJoinInFlightRef.current = true;
+      const token = {};
+      meshJoinInFlightRef.current = token;
+      const isCurrent = () => isJoinGenerationCurrent(generation, refs.joinGenerationRef);
       setDocStatus((prev) => prev || "Connecting to collaborators…");
       setStatus(docsLabels.statusConnecting);
       try {
-        const meshPeers = await joinMesh(name, authToken);
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        const meshPeers = await joinMesh(name, authToken, isCurrent);
+        if (meshPeers === null || !isCurrent()) return;
         setConnectingPeers(meshPeers);
         refreshMeshUi();
         setDocStatus((prev) => (prev === "Connecting to collaborators…" ? "" : prev));
         trySeedFromFile();
       } catch (error) {
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
         setDocStatus(error instanceof Error ? error.message : String(error));
       } finally {
-        meshJoinInFlightRef.current = false;
+        if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }
     },
     [

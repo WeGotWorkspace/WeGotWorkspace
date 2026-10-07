@@ -606,3 +606,43 @@ describe("DocsRtcSession principal reuse wiring", () => {
     expect(captured.meshOptions?.shouldAcceptOffer?.("dddddddddddddddd")).toBe(true);
   });
 });
+
+describe("DocsRtcSession duplicate session guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaaaaaaaaaa");
+    vi.stubGlobal("window", { location: { search: "?rtcDebug=1" } });
+  });
+
+  it("logs duplicate-session only while two sessions are live in one room", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const room = "docs/duplicate-session.md";
+    const first = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    const second = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+
+    await first.join("Ann");
+    await second.join("Bob");
+
+    const duplicateLogs = () =>
+      info.mock.calls.filter((call) => String(call[0]).includes("duplicate-session"));
+    expect(duplicateLogs()).toHaveLength(1);
+
+    await first.leave();
+    await second.join("Bob");
+    expect(duplicateLogs()).toHaveLength(1);
+
+    await second.leave();
+    info.mockRestore();
+  });
+});

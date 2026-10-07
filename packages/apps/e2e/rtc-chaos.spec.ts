@@ -190,6 +190,40 @@ test("a document over 200 KB syncs", async ({ browser }) => {
   }
 });
 
+test("one tab keeps a single collab peer id", async ({ browser }) => {
+  const apiPath = `/users/admin/e2e-chaos-session-${uniqueId()}.md`;
+  const sessions = await openUsers(browser, ["admin", "admin"]);
+  const lines = new Map<ChaosSession, string[]>();
+  for (const session of sessions) {
+    const captured: string[] = [];
+    lines.set(session, captured);
+    session.page.on("console", (message) => {
+      captured.push(message.text());
+    });
+  }
+  try {
+    await uploadMarkdown(apiPath, "# Session\n");
+    const url = `${docsUrlForFile(apiPath)}&rtcDebug=1`;
+    await Promise.all(sessions.map((session) => session.page.goto(url)));
+    for (const session of sessions) {
+      await waitForLiveDoc(session.page, "Session");
+    }
+    await sessions[0].page.waitForTimeout(5_000);
+    for (const session of sessions) {
+      const captured = lines.get(session) ?? [];
+      expect(captured.some((line) => line.includes("duplicate-session"))).toBe(false);
+      const ids = new Set<string>();
+      for (const line of captured) {
+        const match = line.match(/\[collab\]\[([0-9a-f]{16})\]/);
+        if (match?.[1]) ids.add(match[1]);
+      }
+      expect(ids.size).toBe(1);
+    }
+  } finally {
+    await closeSessions(...sessions);
+  }
+});
+
 test("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
   const token = uniqueId("http");
   const apiPath = `/users/admin/e2e-chaos-http-${uniqueId()}.md`;

@@ -102,9 +102,10 @@ export function useDocsCollabReconnect({
       if (existingMesh) await existingMesh.leave();
       if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
 
+      const isCurrent = () => isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef);
       setStatus(docsLabels.statusConnecting);
-      const meshPeers = await joinMesh(name, authToken);
-      if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
+      const meshPeers = await joinMesh(name, authToken, isCurrent);
+      if (meshPeers === null || !isCurrent()) return;
       setConnectingPeers(meshPeers);
       refreshMeshUi();
       trySeedFromFile();
