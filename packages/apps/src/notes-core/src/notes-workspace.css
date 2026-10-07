@@ -17,8 +17,8 @@
  * `--notes-detail-accent` still binds to that tint so selected
  * Star/Archive, tags, and editor checks use the live notebook hue.
  * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
- * not full ink). Detail task-list checks share the tag wash (16% fill,
- * 28% border, accent-strong mark) — not a full-sat fill.
+ * not full ink). Detail task-list checks share the tag wash (saturated
+ * border + surfaceTint light 14% / dark 22% fill, accent-strong mark).
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
@@ -106,9 +106,15 @@
   --notes-tag-selected-bg: var(--workspace-foreground);
   --notes-tag-selected-fg: #ffffff;
   --notes-tag-selected-border: var(--workspace-foreground);
-  --note-detail-tag-bg: color-mix(in oklch, var(--notes-detail-accent) 16%, transparent);
+  /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
+   * surfaceTint light 14% / dark 22% accent into surface (srgb). */
+  --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
+  --note-detail-tag-bg: light-dark(
+    color-mix(in srgb, var(--notes-detail-accent) 14%, var(--_note-detail-tag-surface)),
+    color-mix(in srgb, var(--notes-detail-accent) 22%, var(--_note-detail-tag-surface))
+  );
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
-  --note-detail-tag-border: color-mix(in oklch, var(--notes-detail-accent) 28%, transparent);
+  --note-detail-tag-border: var(--notes-detail-accent);
   /* Very light notebook wash on cream — not the full `--notes-detail-tint`.
    * oklab (not oklch): small % keeps notebook chroma/hue on warm Soft. */
   --paper-sheet-bg: color-mix(
@@ -159,13 +165,13 @@
 /*
  * Notes detail editor task-list only — not Docs, not sidebar 16px collection
  * checkboxes (those set `--checkbox-checked-*` from `--collection-row-color`).
- * Same family as detail tags: notebook wash, not a full-sat neon square.
+ * Same family as detail tags: saturated border + surfaceTint fill.
  */
 .notes-workspace .note-text-editor-body {
-  --checkbox-border-color: color-mix(in oklch, var(--notes-detail-accent) 28%, transparent);
-  --checkbox-checked-bg: color-mix(in oklch, var(--notes-detail-accent) 16%, transparent);
-  --checkbox-checked-border: color-mix(in oklch, var(--notes-detail-accent) 28%, transparent);
-  --checkbox-checked-fg: var(--notes-detail-accent-strong);
+  --checkbox-border-color: var(--note-detail-tag-border);
+  --checkbox-checked-bg: var(--note-detail-tag-bg);
+  --checkbox-checked-border: var(--note-detail-tag-border);
+  --checkbox-checked-fg: var(--note-detail-tag-fg);
 }
 
 /*
@@ -361,9 +367,11 @@
   color: var(--note-detail-tag-fg);
 }
 
-/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows). */
+/* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows).
+ * Match section heading / MenuItem inset — not `px-4` (double-gutter vs rows). */
 .notes-workspace .notes-sidebar-tags .sidebar-section__list {
-  @apply flex flex-wrap gap-1.5 space-y-0 px-4;
+  @apply flex flex-wrap gap-1.5 space-y-0;
+  padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
 .notes-workspace .notes-sidebar-tags__item {
