@@ -36,7 +36,9 @@ final class BearerAuthenticationService
         if ($this->revokedTokens->isRevoked($claims['jti'])) {
             return null;
         }
-        if (! $this->enabled->isEnabled($claims['sub'])) {
+        // Guest subjects (share links, Meet peers) have no users row. The guard
+        // treats that as disabled; role checks still reject them on user routes.
+        if ($claims['role'] !== 'guest' && ! $this->enabled->isEnabled($claims['sub'])) {
             return null;
         }
 
