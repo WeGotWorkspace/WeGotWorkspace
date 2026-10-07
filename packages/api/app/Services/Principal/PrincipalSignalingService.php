@@ -7,6 +7,7 @@ namespace App\Services\Principal;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcBrowserId;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
@@ -83,11 +84,15 @@ final class PrincipalSignalingService
 
             $peerId = $this->makePeerId($username);
             $ownerMarker = $this->actors->ownerMarker($username);
+            $browserId = RtcBrowserId::read($body);
             $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), null, [
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId, [
                 'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
                 'net' => RtcNetClass::normalize($body['net'] ?? null),
             ]);
+            if ($browserId !== null) {
+                $this->store->deletePeersForBrowser($room, $browserId, $peerId);
+            }
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($room, $peerId);

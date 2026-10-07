@@ -42,6 +42,8 @@ import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-ut
 
 const DC_LABEL = "collab";
 
+const liveCollabSessions = new Map<string, Set<DocsRtcSession>>();
+
 type MeshListener = (msg: DocsCollabMeshMessage) => void;
 
 function mailboxMessages(data: unknown): DocsHttpMailboxMessage[] {
@@ -110,6 +112,8 @@ export type DocsRtcSessionOptions = {
 };
 
 export class DocsRtcSession {
+  private readonly room: string;
+
   private myName = "";
 
   private readonly listeners = new Set<MeshListener>();
@@ -150,6 +154,7 @@ export class DocsRtcSession {
   private readonly sendTicket: boolean;
 
   constructor(private readonly options: DocsRtcSessionOptions) {
+    this.room = options.room;
     this.httpOnlyUntilRelay = options.rtcSettings.forceRelay && !options.rtcSettings.turnAvailable;
     const binding = createDataBinding({
       label: DC_LABEL,
@@ -215,13 +220,15 @@ export class DocsRtcSession {
         this.emit({ type: "dc-open", from: remoteId });
         this.http?.evaluate();
       },
-      onReuseFallback: () => this.mesh.retryRoomPeerConnections(),
+      onReuseFallback: (id) =>
+        id ? this.mesh.retryPeerConnection(id) : this.mesh.retryRoomPeerConnections(),
       onReuseAttached: (remoteId) => this.mesh.abortPeerConnection(remoteId),
       onLinkChange: () => this.emit({ type: "link" }),
       onMessage: (msg) => this.handleReuseMeshMessage(msg),
       onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
       resolveTicketKey,
       getOwnTicket: () => (this.sendTicket ? this.ownTicket : undefined),
+      requestRosterRefresh: () => this.mesh.kickPoll(),
     });
 
     this.mesh = createRtcSession({
@@ -494,7 +501,7 @@ export class DocsRtcSession {
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
-    if (this.isMutedDocumentUpdate(msg)) return;
+    if (this.isMutedDocumentUpdate(msg, remoteId)) return;
     if (this.reuse.sendTo(remoteId, msg)) return;
     this.mesh.sendJsonTo(remoteId, msg);
   }
@@ -505,10 +512,11 @@ export class DocsRtcSession {
    * step 1 still goes out — it only asks for state, which is what a viewer is
    * here for. Awareness and roster gossip flow too; presence is not a change.
    */
-  private isMutedDocumentUpdate(msg: DocsCollabMeshMessage): boolean {
+  private isMutedDocumentUpdate(msg: DocsCollabMeshMessage, remoteId?: string): boolean {
     if (msg.type !== "sync" || !isDocumentBearingSyncMessage(msg.u)) return false;
     if (docsCollabAccessMayBroadcast(this.trust.myAccess())) return false;
     rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "update-not-sent", {
+      remoteId: remoteId ?? null,
       access: this.trust.myAccess(),
       reason: "reader",
     });
@@ -524,11 +532,22 @@ export class DocsRtcSession {
   async join(name: string): Promise<{ peerId: string; peers: DocsCollabMeshPeer[] }> {
     this.myName = name.trim();
     const joined = await this.mesh.join({ name: this.myName });
+    this.noteOwnAccessFromPoll(joined);
+    const live = liveCollabSessions.get(this.room) ?? new Set<DocsRtcSession>();
+    live.add(this);
+    liveCollabSessions.set(this.room, live);
+    if (live.size > 1) {
+      rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "duplicate-session", {
+        room: this.room,
+        ids: [...live].map((session) => session.mesh.getMyId()),
+      });
+    }
     this.http?.start();
     return { peerId: joined.peerId, peers: joined.peers };
   }
 
   async leave(): Promise<void> {
+    liveCollabSessions.get(this.room)?.delete(this);
     this.http?.stop();
     this.reuse.dispose();
     this.seenReusedRosterIds.clear();

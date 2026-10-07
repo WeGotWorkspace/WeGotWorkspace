@@ -194,6 +194,7 @@ final class WgwSchemaMigratorTest extends TestCase
 
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));
 
         // Fail-closed default: a collab peer row that was not written by join
         // comes back as read-only.

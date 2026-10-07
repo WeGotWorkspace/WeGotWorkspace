@@ -74,6 +74,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'caps'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'net'));
     }

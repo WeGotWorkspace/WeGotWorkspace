@@ -15,6 +15,7 @@ import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
   applyPeerHint as applyIncomingPeerHint,
   dialRoomPeers as dialListedRoomPeers,
+  retryRoomPeer,
   retryRoomPeerConnections as retryUnconnectedRoomPeers,
 } from "@/lib/rtc/session/mesh-room-dial";
 import type { MeshRoomDial } from "@/lib/rtc/session/mesh-room-dial";
@@ -525,6 +526,11 @@ export class RtcPeerMesh {
     retryUnconnectedRoomPeers(this.roomDial());
   }
 
+  /** Re-dial one roster peer. Connected peers are left untouched. */
+  retryPeerConnection(remoteId: string): void {
+    retryRoomPeer(this.roomDial(), remoteId);
+  }
+
   /**
    * Gossip hint received from an already-connected peer: another peer joined
    * the room. Dial unknown peers where the local side is the initiator; for
@@ -590,6 +596,7 @@ export class RtcPeerMesh {
       peers: joined.peers,
       sessionKey: joined.sessionKey,
       limits: joined.rtc,
+      ticket: joined.ticket,
     };
   }
 

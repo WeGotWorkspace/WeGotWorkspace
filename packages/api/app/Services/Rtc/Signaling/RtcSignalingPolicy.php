@@ -37,7 +37,7 @@ final readonly class RtcSignalingPolicy
         public bool $requireLivePeersOnSend,
         /** Expose the peer's owner username (`owner_user` minus the `u:` marker) as `user` in rosters. */
         public bool $rosterIncludesOwner = false,
-        /** Persist the client `browserId` on the peer row. Meet also evicts same-browser leftovers on join. */
+        /** Persist the client `browserId` on the peer row and evict same-browser leftovers on join. */
         public bool $persistBrowserId = false,
         /** Carry the join-computed `access` right on the peer row and in rosters (collab only). */
         public bool $rosterIncludesAccess = false,
@@ -128,6 +128,7 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
             rosterIncludesOwner: true,
+            persistBrowserId: true,
         );
     }
 }

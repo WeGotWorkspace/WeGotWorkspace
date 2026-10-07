@@ -68,22 +68,44 @@ export function dialRoomPeers(dial: MeshRoomDial): void {
  * ack timeout). Poll may return 204 while the roster is unchanged, so this
  * must not wait for the next poll cycle.
  */
+type RoomPeerRetry = "skipped" | "dialed" | "awaiting";
+
+/** One roster peer: skip if not connectable or already connected; dial or kick poll. */
+function retryListedPeer(dial: MeshRoomDial, peer: RtcPeerDescriptor): RoomPeerRetry {
+  if (skipUnlessConnectable(dial, peer)) return "skipped";
+  if (dial.linkStateOf(peer.id) === "connected") {
+    dial.log("peer-skipped", { remoteId: peer.id, reason: "already-connected" });
+    return "skipped";
+  }
+  if (dial.isInitiator(peer.id)) {
+    dial.log("reuse-fallback-connect", { remoteId: peer.id });
+    connectPeer(dial, peer);
+    return "dialed";
+  }
+  return "awaiting";
+}
+
+/**
+ * Re-dial one room peer after a collab reuse path ends for that peer.
+ * Connected peers are left untouched.
+ */
+export function retryRoomPeer(dial: MeshRoomDial, remoteId: string): void {
+  if (!dial.myId || !dial.rtcSignalsEnabled()) return;
+  const peer = dial.roomPeers.find((candidate) => candidate.id === remoteId);
+  if (!peer || peer.id === dial.myId) return;
+  if (retryListedPeer(dial, peer) === "awaiting") {
+    dial.log("reuse-fallback-poll-kick");
+    dial.kickPoll();
+  }
+  dial.notifyLinkChange();
+}
+
 export function retryRoomPeerConnections(dial: MeshRoomDial): void {
   if (!dial.myId || !dial.rtcSignalsEnabled()) return;
   let awaitingRemoteOffer = false;
   for (const peer of dial.roomPeers) {
     if (peer.id === dial.myId) continue;
-    if (skipUnlessConnectable(dial, peer)) continue;
-    if (dial.linkStateOf(peer.id) === "connected") {
-      dial.log("peer-skipped", { remoteId: peer.id, reason: "already-connected" });
-      continue;
-    }
-    if (dial.isInitiator(peer.id)) {
-      dial.log("reuse-fallback-connect", { remoteId: peer.id });
-      connectPeer(dial, peer);
-    } else {
-      awaitingRemoteOffer = true;
-    }
+    if (retryListedPeer(dial, peer) === "awaiting") awaitingRemoteOffer = true;
   }
   if (awaitingRemoteOffer) {
     dial.log("reuse-fallback-poll-kick");

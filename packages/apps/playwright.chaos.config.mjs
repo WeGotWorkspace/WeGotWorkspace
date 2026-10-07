@@ -24,6 +24,7 @@ export default defineConfig({
         "--use-fake-ui-for-media-stream",
         "--use-fake-device-for-media-stream",
         "--autoplay-policy=no-user-gesture-required",
+        "--disable-features=WebRtcHideLocalIpsWithMdns",
       ],
     },
   },

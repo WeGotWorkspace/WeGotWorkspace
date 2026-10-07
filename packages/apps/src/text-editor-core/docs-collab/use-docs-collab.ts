@@ -163,6 +163,7 @@ export function useDocsCollab({
     failedSync,
     join,
     leave,
+    connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
     registerMarkdownGetter,
     onMarkdownChange,

@@ -7,6 +7,7 @@ namespace App\Services\Meet;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcBrowserId;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
@@ -181,7 +182,7 @@ final class MeetSignalingService
                 }
             }
 
-            $browserId = $this->readBrowserId($body);
+            $browserId = RtcBrowserId::read($body);
             $this->store->assertPeerIdFree($room, $peerId, $ownerMarker);
             $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId, [
                 'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
@@ -616,24 +617,6 @@ final class MeetSignalingService
         }
 
         return $room;
-    }
-
-    /**
-     * Optional client token that identifies the browser profile (localStorage).
-     * Invalid or missing values are ignored — join still succeeds, leftover
-     * peers are just not evicted.
-     *
-     * @param  array<string, mixed>  $body
-     * @return non-empty-string|null
-     */
-    private function readBrowserId(array $body): ?string
-    {
-        $raw = $body['browserId'] ?? null;
-        if (! is_string($raw) || preg_match('/^[a-f0-9]{32}$/', $raw) !== 1) {
-            return null;
-        }
-
-        return $raw;
     }
 
     /**

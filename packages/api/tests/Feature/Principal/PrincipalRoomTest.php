@@ -335,6 +335,58 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->assertJsonPath('rtc.turnAvailable', false);
     }
 
+    public function test_same_browser_rejoin_keeps_only_the_second_peer(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+        $browser = str_repeat('ab', 16);
+
+        $first = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+                'name' => 'Alice',
+                'browserId' => $browser,
+            ]);
+        $first->assertOk();
+        $firstPeerId = (string) $first->json('peerId');
+
+        $second = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+                'name' => 'Alice',
+                'browserId' => $browser,
+            ]);
+        $second->assertOk();
+        $secondPeerId = (string) $second->json('peerId');
+        $this->assertNotSame($firstPeerId, $secondPeerId);
+        $this->assertNotContains($firstPeerId, array_column($second->json('peers'), 'id'));
+        $this->assertSame($browser, PrincipalPeer::query()->where('peer_id', $secondPeerId)->value('browser_id'));
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$firstPeerId.'&since=0')
+            ->assertNotFound()
+            ->assertJsonPath('error', 'unknown_peer');
+    }
+
+    public function test_different_browser_rejoin_keeps_both_peers(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+
+        $laptop = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+                'name' => 'Alice',
+                'browserId' => str_repeat('11', 16),
+            ]);
+        $laptop->assertOk();
+        $laptopPeerId = (string) $laptop->json('peerId');
+
+        $tablet = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/participants', [
+                'name' => 'Alice',
+                'browserId' => str_repeat('22', 16),
+            ]);
+        $tablet->assertOk();
+
+        $this->assertContains($laptopPeerId, array_column($tablet->json('peers'), 'id'));
+    }
+
     public function test_configuration_requires_an_actor(): void
     {
         $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')

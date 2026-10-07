@@ -208,6 +208,102 @@ test("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
   }
 });
 
+test("two browsers of one user keep edits moving without reuse fallback", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const seed = `Two browsers ${uniqueId()}`;
+  const memberSentence = `Member says ${uniqueId()}`;
+  const adminOneSentence = `Admin one ${uniqueId()}`;
+  const adminTwoSentence = `Admin two ${uniqueId()}`;
+  const apiPath = `/users/admin/e2e-chaos-two-browsers-${uniqueId()}.md`;
+  const sessions = await openUsers(browser, ["admin", "admin", "member"]);
+  const [adminA, adminB, member] = sessions;
+  if (!adminA || !adminB || !member) throw new Error("expected three chaos sessions");
+  const logs = new Map<ChaosSession, string[]>(sessions.map((session) => [session, []]));
+  for (const session of sessions) {
+    session.page.on("console", (message) => {
+      logs.get(session)?.push(message.text());
+    });
+  }
+  try {
+    await uploadMarkdown(apiPath, `# Notes\n\n${seed}\n`);
+    await adminA.page.goto("/docs");
+    await shareWithViewer(adminA.page, apiPath, member.username, "edit");
+    const url = `${docsUrlForFile(apiPath)}&rtcDebug=1`;
+    await Promise.all(sessions.map((session) => session.page.goto(url)));
+    for (const session of sessions) await waitForLiveDoc(session.page, seed);
+
+    const collabDcOpen = (session: ChaosSession) =>
+      (logs.get(session) ?? []).some(
+        (line) =>
+          line.includes("[rtc][collab]") &&
+          (line.includes("[dc-open]") || line.includes("[datachannel-open]")),
+      );
+    await expect.poll(() => sessions.every(collabDcOpen), { timeout: 45_000 }).toBe(true);
+
+    const memberLogs = logs.get(member) ?? [];
+    const windowStart = memberLogs.length;
+    await member.page.waitForTimeout(30_000);
+    const quietWindow = memberLogs.slice(windowStart);
+    expect(quietWindow.filter((line) => line.includes("reuse-fallback-connect"))).toEqual([]);
+    expect(quietWindow.filter((line) => line.includes("reuse-fresh-ice-abort"))).toEqual([]);
+
+    const memberCaret = (page: ChaosSession["page"]) =>
+      page.locator(".collaboration-carets__label", { hasText: "Member" });
+    await member.page.locator(".ProseMirror").click();
+    await expect(memberCaret(adminA.page)).toBeVisible({ timeout: 5_000 });
+    await expect(memberCaret(adminB.page)).toBeVisible({ timeout: 5_000 });
+    const caretBefore = await adminA.page
+      .locator(".collaboration-carets__caret")
+      .first()
+      .boundingBox();
+
+    await typeIntoDoc(member.page, memberSentence);
+    await expect
+      .poll(
+        async () =>
+          (await adminA.page.locator(".collaboration-carets__caret").first().boundingBox())?.x,
+        {
+          timeout: 5_000,
+        },
+      )
+      .not.toBe(caretBefore?.x);
+    await expect(adminA.page.locator(".ProseMirror")).toContainText(memberSentence, {
+      timeout: 5_000,
+    });
+    await expect(adminB.page.locator(".ProseMirror")).toContainText(memberSentence, {
+      timeout: 5_000,
+    });
+
+    await typeIntoDoc(adminA.page, adminOneSentence);
+    await expect(member.page.locator(".ProseMirror")).toContainText(adminOneSentence, {
+      timeout: 5_000,
+    });
+    await typeIntoDoc(adminB.page, adminTwoSentence);
+    await expect(member.page.locator(".ProseMirror")).toContainText(adminTwoSentence, {
+      timeout: 5_000,
+    });
+
+    const collabPeerIds = (lines: string[]) => {
+      const ids = new Set<string>();
+      for (const line of lines) {
+        const match = line.match(/\[rtc\]\[collab\]\[([0-9a-f]{16})\]/);
+        if (match?.[1]) ids.add(match[1]);
+      }
+      return ids;
+    };
+    for (const session of sessions) {
+      const lines = logs.get(session) ?? [];
+      expect(collabPeerIds(lines).size, session.username).toBe(1);
+      expect(lines.some((line) => line.includes("duplicate-session"))).toBe(false);
+      expect(lines.some((line) => line.includes("ticket-peer-not-rostered"))).toBe(false);
+      expect(lines.some((line) => line.includes("update-dropped"))).toBe(false);
+      expect(lines.some((line) => line.includes("update-not-sent"))).toBe(false);
+    }
+  } finally {
+    await closeSessions(...sessions);
+  }
+});
+
 test.describe("meet", () => {
   test.describe.configure({ mode: "serial" });
 
