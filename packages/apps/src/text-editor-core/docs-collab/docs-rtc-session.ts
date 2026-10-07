@@ -54,8 +54,8 @@ function hexBytes(bytes: readonly number[], start: number, end: number): string 
  * First and last 8 bytes of a collab payload, so a send and its receive match
  * without putting anything new on the wire. Shorter payloads are hexed once.
  */
-export function tagOf(msg: { u?: readonly number[] }): string {
-  const bytes = msg.u;
+export function tagOf(msg: DocsCollabMeshMessage | { u?: readonly number[] }): string {
+  const bytes = "u" in msg ? msg.u : undefined;
   if (!bytes || bytes.length === 0) return "";
   if (bytes.length < 16) return hexBytes(bytes, 0, bytes.length);
   return hexBytes(bytes, 0, 8) + hexBytes(bytes, bytes.length - 8, bytes.length);
@@ -420,7 +420,7 @@ export class DocsRtcSession {
 
   private handleReuseMeshMessage(msg: DocsCollabMeshMessage): void {
     rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
-      from: msg.from,
+      from: "from" in msg ? msg.from : undefined,
       type: msg.type,
       bytes: payloadBytes(msg),
       tag: tagOf(msg),
