@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Dav;
 
 use App\Models\User;
+use App\Support\WgwSettings;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
 
@@ -28,6 +29,7 @@ final class SabreBrowserAssetTest extends WgwDatabaseTestCase
         config(['wgw.install_root' => $installRoot, 'wgw.data_dir' => $data]);
         WgwInstallFixture::forgetInstallBindings();
         WgwInstallFixture::purgeDatabaseConnection();
+        $this->setAppSetting(WgwSettings::BROWSER_PLUGIN, true);
     }
 
     public function test_sabre_browser_css_is_not_served_by_ui_shell(): void
