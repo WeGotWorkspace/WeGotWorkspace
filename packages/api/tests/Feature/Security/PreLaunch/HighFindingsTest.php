@@ -107,6 +107,19 @@ final class HighFindingsTest extends WgwDatabaseTestCase
         });
     }
 
+    /** H2: data and source trees must stay denied even without mod_rewrite. */
+    public function test_h2_private_trees_are_denied_without_mod_rewrite(): void
+    {
+        $htaccess = (string) file_get_contents(base_path('../../apps/wegotworkspace/.htaccess'));
+        $outsideRewrite = (string) preg_replace('#<IfModule mod_rewrite\.c>.*?</IfModule>#s', '', $htaccess);
+
+        $this->assertMatchesRegularExpression(
+            '#(Require all denied|Deny from all|RedirectMatch\s+40[34])#i',
+            $outsideRewrite,
+            'wgw-content/ and packages/ are only protected inside <IfModule mod_rewrite.c>; without mod_rewrite (or on nginx) db.sqlite and the JWT private key are downloadable.',
+        );
+    }
+
     /** H4: the env file shipped with releases must be production-safe. */
     public function test_h4_shipped_env_example_is_production_safe(): void
     {

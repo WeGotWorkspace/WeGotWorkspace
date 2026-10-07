@@ -51,8 +51,15 @@ final class AppPaths
         return $this->jwtKeysReady() && $this->databaseReady();
     }
 
+    public function ensureDataDirWebDeny(): void
+    {
+        WebRootDeny::ensure($this->dataDir());
+    }
+
     public function ensureInstallLock(): void
     {
+        $this->ensureDataDirWebDeny();
+
         if (is_file($this->lockFile())) {
             return;
         }

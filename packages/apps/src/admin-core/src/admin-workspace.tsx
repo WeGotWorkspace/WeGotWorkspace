@@ -21,6 +21,7 @@ import { AdminPluginsPane } from "@/admin-core/src/admin-plugins-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
+import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
@@ -120,6 +121,7 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         }
         main={
           <>
+            <AdminWebRootProbe />
             <AdminSecurityWarnings warnings={data.securityWarnings} />
             {controller.section === "users" ? (
               <AdminUsersPane
