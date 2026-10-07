@@ -25,7 +25,7 @@ const DEFAULT_INSTALLER_STATE: WgwInstallerRuntimeState = {
   enable_calendars: true,
   timezone: "UTC",
   base_uri: "/",
-  show_browser_ui: true,
+  show_browser_ui: false,
   checks: [
     { label: "PHP version", ok: true, detail: "8.3" },
     { label: "Writable data directory", ok: true, detail: "wgw-content is writable" },

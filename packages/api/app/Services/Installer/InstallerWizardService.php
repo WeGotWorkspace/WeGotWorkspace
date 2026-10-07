@@ -453,7 +453,7 @@ final class InstallerWizardService
             'enable_files' => (bool) ($state['enable_files'] ?? true),
             'enable_calendars' => (bool) ($state['enable_calendars'] ?? true),
             'enable_contacts' => (bool) ($state['enable_contacts'] ?? true),
-            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
+            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'checks' => $this->env->checkAll($driver),
             'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
         ];

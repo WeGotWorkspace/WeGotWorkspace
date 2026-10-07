@@ -43,7 +43,7 @@ final class WgwInstallEnv
             'enable_files' => $this->configBool('enable_files', true),
             'enable_calendars' => $this->configBool('enable_calendars', true),
             'enable_contacts' => $this->configBool('enable_contacts', true),
-            'show_browser_ui' => $this->configBool('show_browser_ui', true),
+            'show_browser_ui' => $this->configBool('show_browser_ui', false),
         ];
 
         $username = $this->configString('admin_username');
@@ -109,7 +109,7 @@ final class WgwInstallEnv
                 'enable_files' => $this->configBool('enable_files', true),
                 'enable_calendars' => $this->configBool('enable_calendars', true),
                 'enable_contacts' => $this->configBool('enable_contacts', true),
-                'show_browser_ui' => $this->configBool('show_browser_ui', true),
+                'show_browser_ui' => $this->configBool('show_browser_ui', false),
             ],
             'payload' => [
                 'username' => $username,
