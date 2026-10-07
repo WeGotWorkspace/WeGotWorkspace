@@ -1,5 +1,10 @@
 Options -Indexes -MultiViews
 
+# Deny private trees and dotfiles even when mod_rewrite is off. mod_alias is
+# effectively always present. Keep /.well-known/ reachable for OAuth discovery.
+RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)
+RedirectMatch 404 /\.(?!well-known/)
+
 # Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
 # see .user.ini. Must stay in sync with docker/php/uploads.ini.
 <IfModule mod_php.c>

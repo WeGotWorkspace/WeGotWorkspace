@@ -325,6 +325,7 @@ final class InstallerWizardService
         if ($enableFiles) {
             @mkdir(rtrim($this->paths->dataDir(), '/').'/files', 0775, true);
         }
+        $this->paths->ensureDataDirWebDeny();
 
         $this->paths->clearStaleInstallLock();
         $this->removeEmptySqliteDatabase($db);
