@@ -243,7 +243,9 @@ function DetailSection({
   if (hidden) return null;
   return (
     <section className="contacts-detail-view__section">
-      <h2 className="contacts-detail-view__section-title">{title}</h2>
+      <h2 className={cn("field-label-row__label", "contacts-detail-view__section-title")}>
+        {title}
+      </h2>
       <div className="contacts-detail-view__section-body">{children}</div>
     </section>
   );

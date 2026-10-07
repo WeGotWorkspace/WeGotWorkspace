@@ -92,7 +92,7 @@ export const Welcome: Story = {
     await expect(progressItems(canvas)).toHaveLength(4);
     await expect(canvas.getByText("Welcome, current")).toBeInTheDocument();
     await expect(canvas.getByText("Database")).toBeInTheDocument();
-    // BrandLockup keeps an aria-hidden "we got" tagline; assert old marketing heroes stay gone.
+    // BrandLockup wordmark is aria-hidden; assert old marketing heroes stay gone.
     await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
     await expect(canvas.queryByText("Files on every device")).toBeNull();
     await expect(canvas.queryByText("On your own server.")).toBeNull();

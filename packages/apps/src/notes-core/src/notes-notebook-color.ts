@@ -2,8 +2,8 @@
 export const DEFAULT_NOTEBOOK_COLOR = "#14b8a6";
 
 /** Same hexes as `--color-we-got-dark` / `--color-we-got-soft` (We Got Dark / Soft). */
-export const NOTES_INK_HEX = "#003311";
-export const NOTES_CREAM_HEX = "#fff5e9";
+export const NOTES_INK_HEX = "#222222";
+export const NOTES_CREAM_HEX = "#eeeeee";
 
 /**
  * Calendar event-card light wash (`surfaceTint(color, 11)` in srgb).

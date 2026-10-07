@@ -1,9 +1,7 @@
 @import "../../styles.css" reference;
-@import "../../workspace-shell/src/workspace-type.css";
 
 .app-switch-button__trigger {
-  /* Top-align mark with the two-line label (not vertical center of the lockup). */
-  @apply inline-flex min-w-0 items-start gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply inline-flex min-w-0 items-center gap-2 rounded-lg pr-2 pl-1 py-1 -ml-1 transition-colors outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
   user-select: none;
   color: var(--app-switch-label-color, currentColor);
   /*
@@ -12,9 +10,6 @@
    */
   /* Beat UA `buttonface` (#efefef) under white lockup labels on accent rails. */
   background-color: transparent;
-  /* Single leading token — shared by icon height + `.app-switch-button__label` (BrandLockup too). */
-  --app-switch-lockup-leading: 0.85;
-  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
 }
 
 .app-switch-button__icon,
@@ -22,9 +17,8 @@
   @apply shrink-0;
 }
 .app-switch-button__icon {
-  /* Match the two-line label block (text-3xl × --app-switch-lockup-leading). */
-  height: calc(2 * var(--app-switch-lockup-line));
-  width: calc(2 * var(--app-switch-lockup-line));
+  height: var(--control-height-md, 2.25rem);
+  width: var(--control-height-md, 2.25rem);
 }
 
 .app-switch-button__menu-icon {
@@ -32,7 +26,7 @@
 }
 
 .app-switch-button__trigger:hover {
-  background-color: color-mix(in oklab, currentColor 8%, transparent);
+  background-color: color-mix(in oklab, currentColor 4%, transparent);
 }
 
 /* .app-switch-button__trigger:disabled {
@@ -45,54 +39,49 @@
 
 .app-switch-button__label {
   /*
-   * Wordmark stack for AppSwitch + BrandLockup. Face is shared `text-lockup`
-   * (`font-mark` → Bebas Neue). Re-assert `--font-mark` after `@apply` so base
-   * `.uppercase` (which forces `--font-sans` for UI captions) cannot clobber
-   * the mark face. Leading comes from `--app-switch-lockup-leading` (not
-   * `text-3xl`'s default lh) so cream shells and sidebar triggers share one
-   * line box.
+   * In-app AppSwitch: serif face (We Got Serif) at 2xl; sentence/title case
+   * from the data — no uppercase lockup text.
    */
-  @apply text-lockup flex min-w-0 flex-col items-start tracking-wide text-left uppercase text-3xl font-normal;
-  font-family: var(--font-mark);
-  line-height: var(--app-switch-lockup-leading, 0.85);
+  @apply font-serif text-2xl flex min-w-0 flex-col items-start text-left font-normal;
   color: var(--app-switch-label-color, currentColor);
 }
 
-.app-switch-button__label-top,
 .app-switch-button__label-name {
-  line-height: inherit;
-}
-
-.app-switch-button__label-top {
-  color: var(
-    --app-switch-label-tagline-color,
-    color-mix(
-      in oklab,
-      var(--app-switch-label-color, currentColor) 92%,
-      var(--app-switch-lockup-bg, var(--app-switch-label-color, currentColor))
-    )
-  );
-}
-
-.app-switch-button__label-name {
-  /* Block so line-height comes only from __label leading — not a flex row with the chevron. */
-  @apply relative block min-w-0;
-}
-
-.app-switch-button__label-name:has(.app-switch-button__chevron) {
-  /* Reserve room for the out-of-flow chevron without changing the text line box. */
-  padding-inline-end: 0.7em;
+  @apply flex min-w-0 items-center gap-2;
 }
 
 .app-switch-button__chevron {
-  /*
-   * Absolutely positioned so ▾ (line-height: 1) cannot stretch the subtitle row
-   * taller than the shared --app-switch-lockup-leading used by BrandLockup (no chevron).
-   */
-  @apply absolute shrink-0 transition-transform;
-  inset-inline-end: 0;
-  inset-block-end: 0.02em;
+  /* In-flow next to the name; subtle so it does not compete with the serif title. */
+  @apply shrink-0 transition-transform text-sm;
   line-height: 1;
+  color: var(
+    --app-switch-chevron-color,
+    color-mix(in oklab, var(--app-switch-label-color, currentColor) 28%, transparent)
+  );
+}
+
+.app-switch-button__trigger[data-state="open"] .app-switch-button__chevron {
+  @apply rotate-180;
+}
+
+/**
+ * Suite lockup (Home AppSwitch + BrandLockup on Login / Installer).
+ * Suite mark + SVG wordmark — not the in-app serif title.
+ * Icon size stays on the base `.app-switch-button__icon` md control height.
+ */
+.app-switch-button__trigger--workspace {
+  @apply items-center;
+}
+
+.app-switch-button__trigger--workspace .app-switch-button__label--wordmark {
+  @apply flex min-w-0 flex-row items-center gap-2 font-sans;
+  /* Reset in-app serif / text-2xl — wordmark owns its own size. */
+  font-size: inherit;
+  line-height: 1;
+}
+
+.app-switch-button__trigger--workspace .app-switch-button__chevron {
+  @apply relative shrink-0 text-base;
   color: var(
     --app-switch-chevron-color,
     color-mix(
@@ -103,24 +92,8 @@
   );
 }
 
-.app-switch-button__trigger[data-state="open"] .app-switch-button__chevron {
-  @apply rotate-180;
-}
-
 .app-switch-button__menu {
   @apply min-w-48 p-1.5;
   user-select: none;
   border-color: color-mix(in oklab, currentColor 25%, transparent);
-}
-.app-switch-button__trigger--compact {
-  @apply items-start gap-1.5 py-0.5 pl-0.5 pr-1.5;
-}
-
-.app-switch-button__trigger--compact .app-switch-button__icon {
-  height: var(--app-switch-lockup-line);
-  width: var(--app-switch-lockup-line);
-}
-
-.app-switch-button__trigger--compact .workspace-app-icon--switch-trigger {
-  @apply rounded-[4px];
 }

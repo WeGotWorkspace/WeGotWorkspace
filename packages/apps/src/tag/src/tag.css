@@ -23,10 +23,9 @@
 }
 
 .tag {
-  @apply inline-flex min-w-0 items-center font-medium normal-case tracking-normal;
+  @apply inline-flex min-w-0 items-center font-sans font-medium normal-case tracking-normal;
   gap: var(--tag-gap, 0.375rem);
   padding-inline: var(--tag-padding-inline, 0.5rem);
-  font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
@@ -44,17 +43,22 @@
   --tag-gap: 0.375rem;
 }
 
+/* Same wash as `.checkbox` / colored `.user-avatar`: saturated stroke +
+ * surfaceTint 14% into surface (srgb). */
 .tag--collection-tint {
+  --_tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
   --tag-bg: color-mix(
-    in oklab,
-    var(--collection-row-color, var(--workspace-foreground)) 18%,
-    transparent
+    in srgb,
+    var(--collection-row-color, var(--workspace-foreground)) 14%,
+    var(--_tag-surface)
   );
   --tag-fg: color-mix(
     in oklab,
-    var(--collection-row-color, var(--workspace-foreground)) 62%,
-    #003311
+    var(--collection-row-color, var(--workspace-foreground)) 32%,
+    var(--workspace-accent)
   );
+  @apply border;
+  border-color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .tag__icon {
@@ -108,8 +112,7 @@
 /* Idle “Add tag” and the add field share one type scale. */
 .tag-group__add-button,
 .tag-group__input {
-  @apply font-medium tracking-normal;
-  font-family: var(--font-mono);
+  @apply font-sans font-medium tracking-normal;
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
 }
@@ -196,8 +199,7 @@
 }
 
 .tag-group__suggestion {
-  @apply flex w-full items-center px-2.5 py-1.5 text-left font-medium;
-  font-family: var(--font-mono);
+  @apply flex w-full items-center px-2.5 py-1.5 text-left font-sans font-medium;
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1.25;
   color: var(--tag-group-suggestion-fg, var(--workspace-foreground));

@@ -247,7 +247,7 @@
 .button--variant-ghost:hover {
   background-color: var(
     --button-ghost-hover-background,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
   );
 }
 

@@ -89,11 +89,6 @@
   --app-sidebar-bg: var(--meet-surface);
   --app-sidebar-color: var(--workspace-foreground);
   --app-switch-lockup-bg: var(--meet-surface);
-  --app-switch-label-tagline-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 92%,
-    var(--meet-surface)
-  );
 }
 
 .meet-workspace .workspace-shell-header .app-switch-button__trigger {
@@ -753,7 +748,7 @@
   --workspace-panel-width: 22rem;
   --workspace-root-bg: var(--meet-surface);
   --workspace-main-content-max-width: none;
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --app-switch-label-color: var(--workspace-foreground);
   --app-switch-lockup-bg: var(--app-sidebar-bg);
@@ -789,7 +784,7 @@
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   /*
-   * SidebarSection titles use `field-label-row__label` → `--field-label-color`.
+   * Form / SidebarSection labels use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
    */
   /*

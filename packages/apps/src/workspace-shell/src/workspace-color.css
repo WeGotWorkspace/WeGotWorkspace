@@ -72,11 +72,7 @@
   .app-sidebar
 ) {
   --app-sidebar-bg: var(--workspace-sidebar-surface);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--workspace-sidebar-foreground) 12%,
-    transparent
-  );
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-sidebar-foreground);
 }
 

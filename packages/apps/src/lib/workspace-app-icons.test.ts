@@ -55,11 +55,11 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
 
     expect(notes).toContain('d="M28 45a2 2 0');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#fff5e9");
+    expect(notes).toContain("#eeeeee");
     expect(notes).not.toContain("44.868");
     expect(contacts).toContain("44.868");
     expect(contacts).toContain("#a3c4e8");
-    expect(contacts).toContain("#fff5e9");
+    expect(contacts).toContain("#eeeeee");
     expect(contacts).not.toContain('d="M28 45a2 2 0');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });
@@ -71,7 +71,7 @@ describe("WORKSPACE_HOME_ICON_INLINE", () => {
     expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 270 270"');
     expect(WORKSPACE_HOME_ICON_INLINE).toContain('fill="var(--app-icon-layer-surface, #1b1d3a)"');
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
-      'fill="var(--app-icon-layer-foreground, #fff5e9)"',
+      'fill="var(--app-icon-layer-foreground, #eeeeee)"',
     );
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
       'd="M45 0c8.286 0 15 6.717 15 15.001s-6.715 15-15 15H45c8.284 0 15 6.715 15 15 0 8.283-6.716 14.999-15 14.999s-15-6.716-15-15c0 8.284-6.715 15-15 15C6.717 60 0 53.284 0 45s6.716-15 15-15C6.715 30 0 23.283 0 15S6.714 0 15 0s15 6.716 15 15c0-8.284 6.715-15 15-15"',

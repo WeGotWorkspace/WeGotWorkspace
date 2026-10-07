@@ -75,9 +75,15 @@
  * `titleSize="sm"` path). Serif display titles are removed.
  */
 .view-header__title {
-  @apply min-w-0 truncate text-sm font-medium leading-none md:text-lg;
+  @apply min-w-0 truncate text-sm font-medium leading-none;
   font-family: var(--font-sans);
   color: var(--workspace-foreground);
+}
+
+@media (width >= 48rem) {
+  .view-header__title {
+    @apply text-base;
+  }
 }
 
 .view-header__title-compact {

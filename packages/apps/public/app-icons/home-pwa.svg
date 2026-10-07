@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--color-we-got-dark, #003311)"/>
+<rect width="60" height="60" fill="var(--color-we-got-dark, #222222)"/>
 <path fill="url(#home-pwa-clover)" d="M40 30c5.523 0 10-4.477 10-10s-4.477-10-10-10c-5.524 0-10 4.477-10 10 0-5.523-4.477-10-10-10-5.524 0-10 4.477-10 10s4.477 10 10 10c-5.523 0-10 4.478-10 10s4.477 10 10 10 10-4.477 10-10c0 5.523 4.476 10 9.999 10 5.522 0 10-4.477 10-10s-4.478-10-10-10"/>
 <defs>
 <linearGradient id="home-pwa-clover" x1="30" x2="30" y1="10" y2="50" gradientUnits="userSpaceOnUse">

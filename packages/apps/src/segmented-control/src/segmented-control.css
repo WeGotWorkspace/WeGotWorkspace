@@ -199,7 +199,7 @@
     --segmented-control-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
     )
   );
 }

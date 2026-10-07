@@ -63,7 +63,7 @@ describe("createAppBrandingCssprops", () => {
       appSidebarColor: brandingAppSidebarColorDefault("mail"),
     });
     expect(map["app-sidebar-bg"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULT);
-    expect(map["app-sidebar-color"]?.value).toBe("#003311");
+    expect(map["app-sidebar-color"]?.value).toBe("#222222");
   });
 });
 
@@ -73,8 +73,8 @@ describe("defaultAppBrandingCssprops", () => {
     (appId) => {
       const map = defaultAppBrandingCssprops(appId);
       const icon = BRANDING_APP_ICON_DEFAULTS[appId];
-      expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
-      expect(map["color-we-got-dark"]?.value).toBe("#003311");
+      expect(map["color-we-got-soft"]?.value).toBe("#eeeeee");
+      expect(map["color-we-got-dark"]?.value).toBe("#222222");
       expect(map["workspace-accent"]?.value).toBe(BRANDING_APP_ACCENT_DEFAULTS[appId]);
       expect(map["workspace-surface"]?.value).toBe(BRANDING_WORKSPACE_SURFACE_DEFAULT);
       expect(map["workspace-surface"]?.value).not.toBe("var(--workspace-surface)");
@@ -103,8 +103,8 @@ describe("defaultAppBrandingCssprops", () => {
   });
 
   it("documents one production sidebar formula for every app", () => {
-    expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");
-    expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
+    expect(brandingAppSidebarColorDefault("docs")).toBe("#222222");
+    expect(brandingAppSidebarColorDefault("mail")).toBe("#222222");
     expect(BRANDING_APP_SIDEBAR_DEFAULT).toBe("var(--workspace-sidebar-surface)");
   });
 });
@@ -112,8 +112,8 @@ describe("defaultAppBrandingCssprops", () => {
 describe("defaultHomeBrandingCssprops", () => {
   it("documents cream, ink, and workspace-home-bg", () => {
     const map = defaultHomeBrandingCssprops();
-    expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
-    expect(map["color-we-got-dark"]?.value).toBe("#003311");
+    expect(map["color-we-got-soft"]?.value).toBe("#eeeeee");
+    expect(map["color-we-got-dark"]?.value).toBe("#222222");
     expect(map["workspace-home-bg"]?.value).toBe("#1b1d3a");
   });
 });
@@ -121,8 +121,8 @@ describe("defaultHomeBrandingCssprops", () => {
 describe("defaultAuthBrandingCssprops", () => {
   it("documents cream and ink only (no home navy)", () => {
     const map = defaultAuthBrandingCssprops();
-    expect(map["color-we-got-soft"]?.value).toBe("#fff5e9");
-    expect(map["color-we-got-dark"]?.value).toBe("#003311");
+    expect(map["color-we-got-soft"]?.value).toBe("#eeeeee");
+    expect(map["color-we-got-dark"]?.value).toBe("#222222");
     expect(map["workspace-home-bg"]).toBeUndefined();
   });
 });
@@ -164,8 +164,8 @@ describe("createBrandingStoryMeta defaults", () => {
     });
     expect(meta.parameters?.routerPath).toBe("/install");
     const cssprops = meta.parameters?.cssprops as Record<string, { value: string }>;
-    expect(cssprops["color-we-got-soft"].value).toBe("#fff5e9");
-    expect(cssprops["color-we-got-dark"].value).toBe("#003311");
+    expect(cssprops["color-we-got-soft"].value).toBe("#eeeeee");
+    expect(cssprops["color-we-got-dark"].value).toBe("#222222");
     expect(cssprops["workspace-home-bg"]).toBeUndefined();
     expect(cssprops["workspace-accent"]).toBeUndefined();
   });

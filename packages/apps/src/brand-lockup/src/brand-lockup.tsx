@@ -1,12 +1,11 @@
 import { WorkspaceHomeIcon } from "@/lib/workspace-app-icon";
 import { cn } from "@/lib/utils";
+import {
+  WE_GOT_WORKSPACE_WORDMARK_LABEL,
+  WeGotWorkspaceWordmark,
+} from "@/brand-lockup/src/we-got-workspace-wordmark";
 import "@/app-switch-button/src/app-switch-button.css";
 import "@/brand-lockup/src/brand-lockup.css";
-
-/** Suite tagline — same copy as {@link AppSwitchButton} workspace lockup. */
-const TAGLINE = "we got";
-/** Product name line — with tagline reads as WeGotWorkspace. */
-const PRODUCT_NAME = "Workspace";
 
 export type BrandLockupProps = {
   className?: string;
@@ -28,13 +27,10 @@ export function BrandLockup({ className }: BrandLockupProps) {
         className,
       )}
       role="img"
-      aria-label="WeGotWorkspace"
+      aria-label={WE_GOT_WORKSPACE_WORDMARK_LABEL}
     >
       <WorkspaceHomeIcon className="app-switch-button__icon" variant="switch-trigger" />
-      <span className="app-switch-button__label" aria-hidden>
-        <span className="app-switch-button__label-top">{TAGLINE}</span>
-        <span className="app-switch-button__label-name">{PRODUCT_NAME}</span>
-      </span>
+      <WeGotWorkspaceWordmark />
     </div>
   );
 }

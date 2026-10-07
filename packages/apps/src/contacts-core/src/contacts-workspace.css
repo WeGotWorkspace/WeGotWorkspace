@@ -13,7 +13,7 @@
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
@@ -47,9 +47,8 @@
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-dark);
-  --checkbox-checked-bg: var(--workspace-accent);
+  --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: #ffffff;
   --switch-on-bg: var(--workspace-accent);
   /* Selected / open list row: same wash as Drive and Docs tiles. */
   --list-item-selected-bg: var(--drive-item-selected-background);
@@ -215,13 +214,12 @@
   border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
+/**
+ * Layout only — type/color come from `.field-label-row__label` (same as
+ * sidebar section titles and form FieldLabelRow captions).
+ */
 .contacts-detail-view__section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
-  margin: 0 0 0.75rem;
+  @apply mb-3;
 }
 
 .contacts-detail-view__section-body {

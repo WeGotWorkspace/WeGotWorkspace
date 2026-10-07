@@ -23,7 +23,7 @@
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
@@ -71,7 +71,7 @@
   --docs-surface: var(--workspace-surface);
   --docs-text: var(--workspace-foreground);
   --docs-muted: var(--calendar-muted);
-  --docs-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  --docs-border: var(--border);
   /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
   --calendar-invitations-column-width: 23rem;
   --workspace-panel-width: var(--calendar-invitations-column-width);
@@ -389,6 +389,7 @@
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     left: auto;
     z-index: calc(var(--_lc-z-sticky, 30) + 10);
+    /* Floating over the grid on a blur; stronger than the shared hairline so the circle still reads. */
     border-color: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
     box-shadow:
       0 1px 2px color-mix(in oklch, var(--workspace-foreground) 10%, transparent),

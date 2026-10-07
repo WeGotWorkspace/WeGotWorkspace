@@ -29,10 +29,10 @@
    * so supporting browsers mix in OKLCH. Floor: relative color + color-mix
    * (Chrome 119 / Safari 16.4 / Firefox 128); shipped CSS already needs color-mix.
    */
-  --color-we-got-soft: #fff5e9;
-  --color-we-got-soft: oklch(from #fff5e9 l c h);
-  --color-we-got-dark: #003311;
-  --color-we-got-dark: oklch(from #003311 l c h);
+  --color-we-got-soft: #eeeeee;
+  --color-we-got-soft: oklch(from #eeeeee l c h);
+  --color-we-got-dark: #222222;
+  --color-we-got-dark: oklch(from #222222 l c h);
   --color-we-got-blue: #0045ff;
   --color-we-got-blue: oklch(from #0045ff l c h);
   --color-we-got-red: #de4b0e;

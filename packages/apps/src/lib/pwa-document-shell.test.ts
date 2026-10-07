@@ -11,7 +11,7 @@ describe("PWA document shell", () => {
   it("extends under the iOS status bar from the first HTML byte", () => {
     expect(indexHtml).toMatch(/viewport-fit=cover/);
     expect(indexHtml).toMatch(/apple-mobile-web-app-status-bar-style" content="black-translucent"/);
-    expect(indexHtml).toMatch(/<style>[\s\S]*html,\s*body\s*\{[\s\S]*background-color:\s*#fff5e9/);
+    expect(indexHtml).toMatch(/<style>[\s\S]*html,\s*body\s*\{[\s\S]*background-color:\s*#eeeeee/);
     expect(indexHtml).toMatch(/documentElement\.classList\.add\("pwa-standalone"\)/);
   });
 

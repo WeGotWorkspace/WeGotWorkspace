@@ -1,9 +1,9 @@
 @import "../../styles.css" reference;
 
 /**
- * Auth / gated-entry shell — brand cream surface with ink chrome
- * (same paper as apps home). Primary fills use Admin/Settings tile green
- * `#003311` with white fg. Do not reuse `--workspace-home-bg` (home icon navy).
+ * Auth / gated-entry shell — app paper with ink chrome
+ * (same paper as apps home). Primary fills use We Got Dark with white fg.
+ * Do not reuse `--workspace-home-bg` (home icon navy).
  */
 .login-screen {
   background-color: var(--workspace-surface);
@@ -37,7 +37,6 @@
   --input-placeholder-color: color-mix(in oklab, var(--workspace-foreground) 42%, transparent);
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
-  /* Brand dark green — same hex as WORKSPACE_APP_ACCENT.admin / settings. */
 }
 
 html:has(.login-screen) {

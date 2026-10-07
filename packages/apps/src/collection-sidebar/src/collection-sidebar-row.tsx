@@ -139,6 +139,7 @@ export function CollectionSidebarRow({
         <span className={bem(blocks, "__leading")}>
           {onToggleVisibility ? (
             <Checkbox
+              size="sm"
               checked={visible}
               aria-label={`${visible ? "Hide" : "Show"} ${name}`}
               className={bem(blocks, "__visibility")}

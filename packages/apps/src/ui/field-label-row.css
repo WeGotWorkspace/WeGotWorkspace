@@ -7,23 +7,25 @@
 }
 
 /**
- * Dense uppercase field caption (shared `.text-caption`). Parents override tone
- * via `labelClassName` or `--field-label-color` / `--field-label-font-family`
- * on an ancestor. Face overrides prefer remapping `--font-sans` on the workspace.
- * No letter-spacing — size is text-xs (12px) with leading-4 from `.text-caption`.
+ * Field label (matches `.sidebar-section__title`). Source strings own casing —
+ * do not Title-Case via `text-transform: capitalize`.
+ * Parents override tone via `labelClassName` or `--field-label-color` /
+ * `--field-label-font-family` on an ancestor. Face overrides prefer remapping
+ * `--font-sans` on the workspace. True uppercase captions stay on `.text-caption`.
  */
 .field-label-row__label {
-  @apply flex items-center gap-1 text-caption;
+  @apply flex items-center gap-1 text-sm font-medium;
+  letter-spacing: normal;
   font-family: var(
     --field-label-font-family,
     var(--font-sans, ui-sans-serif, system-ui, sans-serif)
   );
-  color: var(--field-label-color, var(--color-muted-foreground));
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
-/** Sibling icons (passed `icon`, lock) match the caption optically. */
+/** Sibling icons (passed `icon`, lock) match the label optically. */
 .field-label-row__label > svg {
-  @apply size-3 shrink-0;
+  @apply size-3.5 shrink-0;
 }
 
 /**
@@ -36,7 +38,7 @@
 }
 
 .field-label-row__lock {
-  @apply size-3 shrink-0 opacity-60;
+  @apply size-3.5 shrink-0 opacity-60;
 }
 
 /**
@@ -55,11 +57,11 @@
     --field-label-icon-min-height,
     var(--input-height, var(--control-height-md, 2.25rem))
   );
-  color: var(--field-label-color, var(--color-muted-foreground));
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
 .field-label-row__icon-label > svg {
-  @apply size-3 shrink-0;
+  @apply size-3.5 shrink-0;
 }
 
 .field-label-row__control {

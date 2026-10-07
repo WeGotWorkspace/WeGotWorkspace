@@ -5,7 +5,7 @@
  * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
  * Size (`xs` … `xl`) changes height, padding, and font-size only.
  * Default `md` = 36px — action bar / view header / event form density.
- * Spacious forms use `lg` (40px); sidebar New / hero CTAs use `xl` (44px).
+ * Spacious forms use `lg` (40px); hero CTAs use `xl` (44px).
  * Desktop xs/sm/md type is <16px. iOS Safari focus-zoom floor (1rem below 768px)
  * lives in `styles.css` — do not re-set font-size here or at product callsites.
  * Radius stays global `--control-radius` on the shared surface — do not remap
@@ -338,7 +338,7 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(in oklab, var(--workspace-foreground) 8%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-foreground) 4%, var(--workspace-surface))
   );
   color: var(--workspace-foreground);
 }
@@ -346,7 +346,7 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item[data-state="checked"] {
   background-color: var(
     --menu-item-selected-background,
-    color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface))
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -355,7 +355,7 @@ input.input:focus-visible:not(:read-only),
 .select-ui__item[data-state="checked"]:focus {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(in oklab, var(--workspace-accent) 16%, var(--workspace-surface))
+    color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface))
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }

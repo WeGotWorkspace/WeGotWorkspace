@@ -49,7 +49,7 @@
 
 .agenda-day {
   @apply border-t py-2.5;
-  border-top-color: light-dark(rgb(15 23 42 / 10%), rgb(255 255 255 / 14%));
+  border-top-color: var(--border);
 }
 
 .agenda-day:first-child {
