@@ -11,6 +11,7 @@ import {
   hostFromSurface,
   type MeshSurface,
 } from "@/lib/rtc/session/mesh-connectivity";
+import { enqueueMeshJoin } from "@/lib/rtc/session/mesh-join-queue";
 import type { MeshRelay } from "@/lib/rtc/session/mesh-relay";
 import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
@@ -56,26 +57,6 @@ import {
 } from "@/lib/rtc/types";
 
 export type { InitiatorRule, RtcMeshVisibilityPort, RtcPeerMeshOptions, RtcPeerMeshPorts };
-
-/**
- * One join at a time per room. React StrictMode starts a second join while the
- * first request is still open; collab's join then deletes the newer peer for
- * the same browser, and the live precheck comes back `unknown_peer`.
- */
-const meshJoinTails = new Map<string, Promise<unknown>>();
-
-function enqueueMeshJoin<T>(key: string, run: () => Promise<T>): Promise<T> {
-  const previous = meshJoinTails.get(key) ?? Promise.resolve();
-  const current = previous.then(run, run);
-  meshJoinTails.set(
-    key,
-    current.then(
-      () => undefined,
-      () => undefined,
-    ),
-  );
-  return current;
-}
 
 export class RtcPeerMesh {
   private myId: string | null = null;
