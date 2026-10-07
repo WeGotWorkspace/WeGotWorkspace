@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\Security\PreLaunch;
 
 use App\Models\Principal;
+use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Auth\UiSessionService;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
+use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WgwInstallFixture;
 
 /**
  * H4 methods copied from the #1140 reference test. They assert the secure
@@ -118,6 +122,111 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             $outsideRewrite,
             'wgw-content/ and packages/ are only protected inside <IfModule mod_rewrite.c>; without mod_rewrite (or on nginx) db.sqlite and the JWT private key are downloadable.',
         );
+    }
+
+    /** H3a: a deleted user's refresh token must stop working. */
+    public function test_h3_deleted_user_cannot_refresh(): void
+    {
+        $bob = $this->login('bob');
+
+        $this->withBearer($this->login('alice')['access_token'])
+            ->deleteJson('/api/v1/admin/users/bob')
+            ->assertSuccessful();
+
+        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+            ->assertUnauthorized();
+    }
+
+    /** H3b: removing someone from administrators must remove admin access on the next refresh. */
+    public function test_h3_demoted_admin_loses_admin_on_refresh(): void
+    {
+        $alice = $this->login('alice');
+        $this->seedWgwUser('carol', displayName: 'Carol');
+        $carolPrincipal = Principal::forUsername('carol');
+        $this->assertNotNull($carolPrincipal);
+        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
+        $this->addPrincipalToGroup($admins, $carolPrincipal);
+
+        // carol (second admin) demotes alice.
+        $this->withBearer($this->login('carol')['access_token'])
+            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->assertOk();
+
+        $refreshed = $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $alice['refresh_token']]);
+        if ($refreshed->status() === 401) {
+            $this->assertTrue(true);
+
+            return;
+        }
+        $refreshed->assertOk();
+        $this->assertNotSame('admin', $refreshed->json('role'), 'Refresh re-issued the stale admin role.');
+        $this->withBearer((string) $refreshed->json('access_token'))
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+    }
+
+    /** H3c: an admin password change must revoke the user's existing sessions. */
+    public function test_h3_admin_password_change_revokes_sessions(): void
+    {
+        $bob = $this->login('bob');
+
+        $this->withBearer($this->login('alice')['access_token'])
+            ->patchJson('/api/v1/admin/users/bob', ['password' => 'a-brand-new-password'])
+            ->assertSuccessful();
+
+        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+            ->assertUnauthorized();
+    }
+
+    /** H3d: a disabled user's existing MCP (Passport) identity must not resolve. */
+    public function test_h3_disabled_user_is_not_resolved_for_mcp_tokens(): void
+    {
+        $this->withBearer($this->login('alice')['access_token'])
+            ->patchJson('/api/v1/admin/users/bob', ['enabled' => false])
+            ->assertSuccessful();
+
+        $provider = auth()->createUserProvider('users');
+        $this->assertNotNull($provider);
+        $bob = User::query()->where('username', 'bob')->firstOrFail();
+
+        $this->assertNull(
+            $provider->retrieveById($bob->getAuthIdentifier()),
+            'SabreUserProvider::retrieveById() returns disabled users, so existing Passport tokens keep working.',
+        );
+    }
+
+    /** H3: a deleted user's still-valid UI cookie must not authenticate DAV. */
+    public function test_h3_deleted_user_cookie_is_rejected(): void
+    {
+        $realm = (string) (WgwSettings::normalized()[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
+        $cookie = $this->app->make(UiSessionService::class)->buildCookie('bob', $realm, '/');
+
+        $this->withBearer($this->login('alice')['access_token'])
+            ->deleteJson('/api/v1/admin/users/bob')
+            ->assertSuccessful();
+
+        $installRoot = sys_get_temp_dir().'/wgw-h3-cookie-'.uniqid('', true);
+        mkdir($installRoot, 0775, true);
+        file_put_contents($installRoot.'/index.php', "<?php\n");
+        $dataDir = $installRoot.'/wgw-content';
+        mkdir($dataDir.'/files/users/bob', 0775, true);
+        WgwInstallFixture::bindInstallRoot($installRoot, $dataDir);
+        WgwInstallFixture::markInstalled($installRoot, $dataDir, 'bob');
+        config(['wgw.install_root' => $installRoot, 'wgw.data_dir' => $dataDir]);
+        WgwInstallFixture::forgetInstallBindings();
+        WgwInstallFixture::purgeDatabaseConnection();
+
+        $_COOKIE['sabre_ui_auth'] = $cookie->getValue();
+        try {
+            $this->withUnencryptedCookie('sabre_ui_auth', $cookie->getValue())
+                ->call('PROPFIND', '/files', [], [], [], [
+                    'HTTP_DEPTH' => '0',
+                    'HTTP_ACCEPT' => '*/*',
+                ])
+                ->assertStatus(401);
+        } finally {
+            unset($_COOKIE['sabre_ui_auth']);
+        }
     }
 
     /** H4: the env file shipped with releases must be production-safe. */

@@ -14,9 +14,14 @@ final class UserEnabledGuardTest extends WgwDatabaseTestCase
         $this->assertFalse(app(UserEnabledGuard::class)->isEnabled(''));
     }
 
-    public function test_missing_user_is_not_treated_as_disabled(): void
+    public function test_missing_user_is_disabled(): void
     {
-        $this->assertTrue(app(UserEnabledGuard::class)->isEnabled('nobody'));
+        $this->assertFalse(app(UserEnabledGuard::class)->isEnabled('nobody'));
+    }
+
+    public function test_share_guest_without_a_user_row_stays_enabled(): void
+    {
+        $this->assertTrue(app(UserEnabledGuard::class)->isEnabled('share:guest-token'));
     }
 
     public function test_new_user_defaults_enabled(): void
