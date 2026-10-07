@@ -1,10 +1,11 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
 import { useCallback, useRef } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { isYDocEmpty } from "./docs-collab-utils";
 import {
   DEFAULT_DOCS_COLLAB_URLS,
   type DocsCollabMeshMessage,
@@ -85,6 +86,8 @@ function withSender(msg: DocsCollabMeshMessage, id: string, name: string): DocsC
 function useEchoSession(userName: string): {
   refs: DocsCollabSessionRefs;
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
+  applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
+  trySeedFromFile: () => void;
 } {
   const refs = useDocsCollabSessionRefs(DEFAULT_DOCS_COLLAB_WIRE, undefined);
   const markDocReadyRef = useRef<() => void>(() => undefined);
@@ -120,7 +123,12 @@ function useEchoSession(userName: string): {
   });
   markDocReadyRef.current = join.markDocReady;
   trySeedFromFileRef.current = join.trySeedFromFile;
-  return { refs, handleMeshMessage: mesh.handleMeshMessage };
+  return {
+    refs,
+    handleMeshMessage: mesh.handleMeshMessage,
+    applyServerBootstrap: join.applyServerBootstrap,
+    trySeedFromFile: join.trySeedFromFile,
+  };
 }
 
 function writeBody(doc: Y.Doc, text: string): Y.XmlText {
@@ -144,13 +152,15 @@ function attachSession(
   refs: DocsCollabSessionRefs,
   mesh: LinkedMesh,
   doc: Y.Doc,
+  seedDone = true,
 ): awarenessProtocol.Awareness {
   const awareness = new awarenessProtocol.Awareness(doc);
   awareness.setLocalStateField("user", { name: mesh.name, color: "#2563eb", id: mesh.id });
   refs.ydocRef.current = doc;
   refs.awarenessRef.current = awareness;
   refs.meshRef.current = mesh as unknown as DocsRtcSession;
-  refs.seedDoneRef.current = true;
+  refs.seedDoneRef.current = seedDone;
+  refs.pendingMarkdownRef.current = "";
   return awareness;
 }
 
@@ -189,5 +199,103 @@ describe("useDocsCollabJoin markDocReady", () => {
     docB.destroy();
     left.unmount();
     right.unmount();
+  });
+
+  it("exchanges one step 1 each when both docs are empty and unseeded", () => {
+    const left = renderHook(() => useEchoSession("Ada"));
+    const right = renderHook(() => useEchoSession("Bea"));
+    const meshA = new LinkedMesh("ada", "Ada");
+    const meshB = new LinkedMesh("bea", "Bea");
+    meshA.peer = meshB;
+    meshB.peer = meshA;
+    meshA.onMessage((msg) => left.result.current.handleMeshMessage(msg));
+    meshB.onMessage((msg) => right.result.current.handleMeshMessage(msg));
+
+    const docA = new Y.Doc();
+    docA.getXmlFragment("default");
+    const docB = new Y.Doc();
+    docB.getXmlFragment("default");
+    const awarenessA = attachSession(left.result.current.refs, meshA, docA, false);
+    const awarenessB = attachSession(right.result.current.refs, meshB, docB, false);
+
+    act(() => {
+      meshA.broadcast({ type: "dc-open", from: meshA.id });
+      meshB.broadcast({ type: "dc-open", from: meshB.id });
+    });
+
+    const syncs = [...meshA.sent, ...meshB.sent].filter((msg) => msg.type === "sync");
+    expect(syncs).toHaveLength(2);
+    expect(isYDocEmpty(docA)).toBe(true);
+    expect(isYDocEmpty(docB)).toBe(true);
+
+    awarenessA.destroy();
+    awarenessB.destroy();
+    docA.destroy();
+    docB.destroy();
+    left.unmount();
+    right.unmount();
+  });
+
+  it("does not seed a failed sidecar and matches the peer after sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("format=yjs")) {
+          return new Response(JSON.stringify({ error: "lock_unavailable" }), { status: 503 });
+        }
+        return new Response("# Already on the sidecar\n", { status: 200 });
+      }),
+    );
+    vi.useFakeTimers();
+    const hook = renderHook(() => useEchoSession("Ada"));
+    const local = new Y.Doc();
+    local.getXmlFragment("default");
+    const awareness = new awarenessProtocol.Awareness(local);
+    hook.result.current.refs.ydocRef.current = local;
+    hook.result.current.refs.awarenessRef.current = awareness;
+    hook.result.current.refs.seedDoneRef.current = false;
+    hook.result.current.refs.meshRef.current = null;
+
+    const pending = hook.result.current.applyServerBootstrap(0, "token");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7_000);
+    });
+    await pending;
+
+    expect(isYDocEmpty(local)).toBe(true);
+
+    hook.result.current.refs.meshRef.current = {
+      getPeerIds: () => ["peer"],
+      getMyId: () => "ada",
+      getMyName: () => "Ada",
+      linkCount: () => 1,
+      getRoomPeerStatuses: () => [],
+      sendTo: () => undefined,
+      broadcast: () => undefined,
+    } as unknown as DocsRtcSession;
+    hook.result.current.trySeedFromFile();
+    expect(isYDocEmpty(local)).toBe(true);
+
+    const peer = new Y.Doc();
+    writeBody(peer, "from the peer");
+    act(() => {
+      hook.result.current.handleMeshMessage({
+        type: "sync",
+        u: encodeUpdateBroadcast(Y.encodeStateAsUpdate(peer)),
+        from: "peer",
+        trust: { user: "Bea", access: "write" },
+      });
+    });
+
+    expect(bodyText(local)).toBe("from the peer");
+    expect(bodyText(peer)).toBe("from the peer");
+
+    awareness.destroy();
+    local.destroy();
+    peer.destroy();
+    hook.unmount();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 });

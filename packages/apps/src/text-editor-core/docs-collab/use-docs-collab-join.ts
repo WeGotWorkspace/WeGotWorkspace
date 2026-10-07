@@ -110,11 +110,14 @@ export function useDocsCollabJoin({
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
+  /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */
+  const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
   const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
   const markDocReady = useCallback(() => {
     if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
+    setSnapshotPreview(null);
     flushMeshSyncIfHydrated();
   }, [flushMeshSyncIfHydrated, refs]);
 
@@ -177,6 +180,7 @@ export function useDocsCollabJoin({
     refs.sessionRef.current = null;
     setSession(null);
     setJoined(false);
+    setSnapshotPreview(null);
     resetMeshUi();
     setDocStatus("");
     setLastSavedAt(null);
@@ -190,6 +194,7 @@ export function useDocsCollabJoin({
       if (!ydoc) return false;
       const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
       rememberSidecarEtag(room, snapshot.etag);
+      if (snapshot.applied) setSnapshotPreview(null);
       return snapshot.applied;
     },
     [refs, room, urls.yjsUrl],
@@ -223,13 +228,21 @@ export function useDocsCollabJoin({
       }
 
       const snapshot = load.snapshot;
-      const snapshotLoadFailed = snapshot.kind === "failed";
-      // C7: when the sidecar is unknown, still hydrate from markdown — an empty
-      // editor is worse than skipping Yjs merge. Reconnect retries the sidecar.
-      if (snapshotLoadFailed) {
+      // C7: the snapshot state is unknown, so seeding would risk a second copy.
+      // The room is already in backoff via onAttemptFailed; the reconnect path
+      // retries the sidecar once that backoff allows it. Markdown stays a
+      // read-only preview and is not written into the Y.Doc.
+      if (snapshot.kind === "failed") {
         console.warn("[docs-collab] yjs load failed", snapshot.error);
+        const markdown = load.markdown;
+        refs.lastKnownMarkdownRef.current = markdown;
+        refs.pendingMarkdownRef.current = "";
+        setSnapshotPreview(markdown.trim() ? markdown : null);
         setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
-      } else if (snapshot.kind === "snapshot") {
+        return;
+      }
+
+      if (snapshot.kind === "snapshot") {
         const adoption = decideServerStateAdoption({
           hasServerSnapshot: true,
           pendingServerSave: refs.pendingServerSaveRef.current,
@@ -284,11 +297,7 @@ export function useDocsCollabJoin({
       room,
       setDocStatus,
       trySeedFromFile,
-      urls.documentUrl,
-      urls.loadDocumentMarkdown,
-      urls.onReconnectConflict,
-      urls.skipYjsSnapshot,
-      urls.yjsUrl,
+      urls,
     ],
   );
 
@@ -476,7 +485,6 @@ export function useDocsCollabJoin({
   }, [
     documentFormat,
     finishAuthenticatedJoin,
-    joinMesh,
     markDocReady,
     refs,
     room,
@@ -536,6 +544,7 @@ export function useDocsCollabJoin({
   return {
     session,
     joined,
+    snapshotPreview,
     join,
     leave,
     teardown,
