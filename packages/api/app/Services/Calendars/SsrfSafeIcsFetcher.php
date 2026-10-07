@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\VObject\VObjectPayloadGuard;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -134,16 +135,18 @@ final class SsrfSafeIcsFetcher
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
         $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'http' ? 80 : 443);
         $connectIp = $validatedIps[0] ?? $host;
-        $tooLarge = false;
+        $options = $this->requestOptions($host, $port, $connectIp);
+        /** @var CappedSinkStream $sink */
+        $sink = $options['sink'];
 
         try {
-            return Http::withOptions($this->requestOptions($host, $port, $connectIp, $tooLarge))->withHeaders([
+            return Http::withOptions($options)->withHeaders([
                 'Accept' => 'text/calendar, text/plain, */*',
             ])->get($url);
         } catch (ApiHttpException $exception) {
             throw $exception;
         } catch (\Throwable) {
-            if ($tooLarge) {
+            if ($sink->tooLarge) {
                 throw new ApiHttpException(
                     413,
                     'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
@@ -158,27 +161,24 @@ final class SsrfSafeIcsFetcher
     /**
      * cURL options for one hop. No `stream` key: that selects Guzzle's
      * StreamHandler, which drops CURLOPT_RESOLVE and resolves DNS again.
+     * The sink aborts the transfer with a short write once the body crosses the cap.
      *
      * @return array<string, mixed>
      */
-    public function requestOptions(string $host, int $port, string $connectIp, bool &$tooLarge): array
+    public function requestOptions(string $host, int $port, string $connectIp): array
     {
+        $temp = fopen('php://temp', 'w+');
+        if ($temp === false) {
+            throw new \RuntimeException('Could not open a temporary stream.');
+        }
+
         return [
             'allow_redirects' => false,
             'timeout' => self::TIMEOUT_SECONDS,
             'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'sink' => new CappedSinkStream(Utils::streamFor($temp), VObjectPayloadGuard::MAX_ICS_BYTES),
             'curl' => [
                 CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
-                CURLOPT_NOPROGRESS => false,
-                CURLOPT_XFERINFOFUNCTION => static function ($ch, int $dlTotal, int $dlNow) use (&$tooLarge): int {
-                    if ($dlNow > VObjectPayloadGuard::MAX_ICS_BYTES) {
-                        $tooLarge = true;
-
-                        return 1;
-                    }
-
-                    return 0;
-                },
             ],
         ];
     }
