@@ -43,6 +43,45 @@ describe("text editor extensions", () => {
     expect(duplicateExtensionNames(names)).toEqual([]);
   });
 
+  it("drops a hostile textAlign and keeps an allowed alignment", () => {
+    const hostile = new Editor({
+      extensions: createTextEditorExtensions(),
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { textAlign: "center;position:fixed" },
+            content: [{ type: "text", text: "Overlay" }],
+          },
+        ],
+      },
+    });
+    const centered = new Editor({
+      extensions: createTextEditorExtensions(),
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { textAlign: "center" },
+            content: [{ type: "text", text: "Centered" }],
+          },
+        ],
+      },
+    });
+
+    try {
+      const hostileHtml = hostile.getHTML();
+      expect(hostileHtml).not.toContain("style");
+      expect(hostileHtml).not.toContain("position");
+      expect(centered.getHTML()).toContain("text-align: center");
+    } finally {
+      hostile.destroy();
+      centered.destroy();
+    }
+  });
+
   /** @vitest-environment jsdom */
   it("resolves collaborative StarterKit children without duplicate TipTap marks", () => {
     const ydoc = new Y.Doc();
