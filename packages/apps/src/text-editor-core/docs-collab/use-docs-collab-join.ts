@@ -30,6 +30,7 @@ import {
 import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import {
   canSeedFromFile,
+  markSeedDoneAfterSnapshot,
   resolveBootstrapSeed,
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
@@ -237,7 +238,9 @@ export function useDocsCollabJoin({
           Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
         }
         rememberSidecarEtag(room, snapshot.etag);
-        refs.seedDoneRef.current = true;
+        if (markSeedDoneAfterSnapshot(ydoc)) {
+          refs.seedDoneRef.current = true;
+        }
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
       }

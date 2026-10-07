@@ -79,6 +79,10 @@ export function shouldApplyImmediateSeed(
   return false;
 }
 
-export function markSeedDoneAfterSnapshot(hadSnapshot: boolean): boolean {
-  return hadSnapshot;
+/**
+ * A sidecar can exist while the body is still empty (e.g. a prior wipe persisted).
+ * In that case markdown must still seed the editor on solo open.
+ */
+export function markSeedDoneAfterSnapshot(ydoc: Y.Doc): boolean {
+  return !isYDocEmpty(ydoc);
 }

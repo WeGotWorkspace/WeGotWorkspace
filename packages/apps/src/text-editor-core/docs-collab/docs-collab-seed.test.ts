@@ -3,11 +3,13 @@ import * as Y from "yjs";
 import {
   canSeedFromFile,
   isLowestPeer,
+  markSeedDoneAfterSnapshot,
   resolveBootstrapSeed,
   shouldApplyImmediateSeed,
   shouldDeferToMeshSeed,
   shouldSeedOffline,
 } from "./docs-collab-seed";
+import { isYDocEmpty } from "./docs-collab-utils";
 
 describe("docs-collab-seed", () => {
   it("isLowestPeer picks lexicographically smallest id", () => {
@@ -45,5 +47,18 @@ describe("docs-collab-seed", () => {
     expect(shouldApplyImmediateSeed(null, ydoc, false, "# seed")).toBe(true);
     const mesh = { getPeerIds: () => ["peer-b"], getMyId: () => "peer-a", linkCount: () => 1 };
     expect(shouldApplyImmediateSeed(mesh, ydoc, false, "# seed")).toBe(false);
+  });
+
+  it("markSeedDoneAfterSnapshot is false when the sidecar body is empty", () => {
+    const emptySidecar = new Y.Doc();
+    emptySidecar.getXmlFragment("default");
+    expect(isYDocEmpty(emptySidecar)).toBe(true);
+    expect(markSeedDoneAfterSnapshot(emptySidecar)).toBe(false);
+
+    const withBody = new Y.Doc();
+    const paragraph = new Y.XmlElement("paragraph");
+    paragraph.insert(0, [new Y.XmlText("hello")]);
+    withBody.getXmlFragment("default").insert(0, [paragraph]);
+    expect(markSeedDoneAfterSnapshot(withBody)).toBe(true);
   });
 });
