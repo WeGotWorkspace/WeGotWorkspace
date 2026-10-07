@@ -40,6 +40,21 @@ describe("docs-collab-mesh-hydration", () => {
     expect(isDestructiveBodyWipe(full, wipeUpdate)).toBe(true);
   });
 
+  it("skips the wipe check for an insert that deletes nothing", () => {
+    const full = docWithBody("keep me");
+    const peer = new Y.Doc();
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(full));
+    peer.getXmlFragment("default").get(0);
+    const paragraph = peer.getXmlFragment("default").get(0);
+    if (paragraph instanceof Y.XmlElement) {
+      const node = paragraph.get(0);
+      if (node instanceof Y.XmlText) node.insert(node.length, "!");
+    }
+    const insert = Y.encodeStateAsUpdate(peer, Y.encodeStateVector(full));
+    expect(Y.decodeUpdate(insert).ds.clients.size).toBe(0);
+    expect(isDestructiveBodyWipe(full, insert)).toBe(false);
+  });
+
   it("does not answer sync step 1 while the local doc is still empty", () => {
     const full = docWithBody("peer body");
     const empty = new Y.Doc();

@@ -25,6 +25,11 @@ export function mayAnswerSyncStep1WithLocalState(ydoc: Y.Doc, seedDone: boolean)
 /** True when applying `update` would clear a non-empty document body. */
 export function isDestructiveBodyWipe(doc: Y.Doc, update: Uint8Array): boolean {
   if (isYDocEmpty(doc)) return false;
+  try {
+    if (Y.decodeUpdate(update).ds.clients.size === 0) return false;
+  } catch {
+    return false;
+  }
   const scratch = new Y.Doc();
   try {
     Y.applyUpdate(scratch, Y.encodeStateAsUpdate(doc));
