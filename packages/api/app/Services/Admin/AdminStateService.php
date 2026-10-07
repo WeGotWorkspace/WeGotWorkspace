@@ -50,7 +50,7 @@ final class AdminStateService
                 'tasks' => (bool) ($cfg[SettingKeys::TASKS_ENABLED] ?? true),
             ],
             'webdav' => [
-                'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? true),
+                'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? false),
                 'timezone' => (string) ($cfg[SettingKeys::TIMEZONE] ?? 'UTC'),
                 'baseUri' => (string) ($cfg[SettingKeys::BASE_URI] ?? '/'),
                 'authRealm' => (string) ($cfg[SettingKeys::AUTH_REALM] ?? 'SabreDAV'),

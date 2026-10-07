@@ -64,7 +64,7 @@ final class WgwSettings
             self::TASKS_ENABLED => true,
             self::NOTES_ENABLED => true,
             self::AUTH_REALM => 'SabreDAV',
-            self::BROWSER_PLUGIN => true,
+            self::BROWSER_PLUGIN => false,
             self::TIMEZONE => 'UTC',
             self::MAIL_IMAP_HOST => '',
             self::MAIL_IMAP_PORT => 993,
