@@ -38,7 +38,7 @@ export const Default: Story = {
     const accent = document.createElement("span");
     accent.style.backgroundColor = "var(--workspace-accent)";
     const fg = document.createElement("span");
-    fg.style.color = "var(--button-primary-fg)";
+    fg.style.color = "var(--workspace-accent-foreground)";
     scroll!.append(fg);
     workspace!.append(accent);
     await expect(getComputedStyle(main).backgroundColor).toBe(

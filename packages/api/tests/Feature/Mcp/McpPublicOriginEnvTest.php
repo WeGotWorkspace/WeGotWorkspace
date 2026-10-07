@@ -75,11 +75,12 @@ final class McpPublicOriginEnvTest extends WgwDatabaseTestCase
     public function test_production_ignores_configured_mcp_origin(): void
     {
         $this->app['env'] = 'production';
+        $origin = 'https://customer.example';
         config([
             'app.env' => 'production',
+            'app.url' => $origin,
             'wgw.mcp.public_origin' => self::TUNNEL,
         ]);
-        $origin = 'https://customer.example';
 
         $this->getJson($origin.'/.well-known/oauth-authorization-server')
             ->assertOk()

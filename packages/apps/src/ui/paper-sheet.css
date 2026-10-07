@@ -2,7 +2,7 @@
 
 /**
  * Shared paper sheet surface — Docs letter sheet + Notes detail card.
- * Parents publish `--paper-sheet-bg` (white default in styles.css). Elevation
+ * Parents publish `--paper-sheet-bg` (lifted workspace surface from derive). Elevation
  * uses `--paper-sheet-shadow` → `--sheet-shadow`. Square corners — not a card.
  *
  * Height: grows with content (`fit-content`). Parents set

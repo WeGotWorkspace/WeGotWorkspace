@@ -10,9 +10,6 @@
    * The menu portals to body. These tokens ride the portal bridge so option
    * hover / selected match the left rail, not the main-paper wash.
    */
-  --menu-item-hover-background: var(--app-sidebar-item-hover-bg);
-  --menu-item-selected-background: var(--app-sidebar-item-selected-bg);
-  --menu-item-selected-hover-background: var(--app-sidebar-item-selected-hover-bg);
   /* Beat UA `buttonface` (#efefef) under white lockup labels on accent rails. */
   background-color: transparent;
   /* Single leading token — shared by icon height + `.app-switch-button__label` (BrandLockup too). */

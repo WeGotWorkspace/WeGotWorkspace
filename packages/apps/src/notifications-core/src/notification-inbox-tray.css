@@ -4,7 +4,7 @@
   @apply relative;
   /*
    * Unread badge follows the sidebar primary CTA (`Button` variant primary):
-   * `--notification-inbox-badge-*` when set, else `--button-primary-bg/fg`
+   * `--notification-inbox-badge-*` when set, else accent / accent-foreground
    * (Dark fill + white label). Glyph
    * and button stroke stay parent-owned (sidebar icon chrome /
    * `--app-sidebar-border-color`); do not pin them here.
@@ -14,11 +14,8 @@
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(
-    --notification-inbox-badge-bg,
-    var(--button-primary-bg, var(--color-we-got-dark))
-  );
-  color: var(--notification-inbox-badge-fg, var(--button-primary-fg, var(--color-emerald)));
+  background-color: var(--notification-inbox-badge-bg, var(--workspace-accent));
+  color: var(--notification-inbox-badge-fg, var(--workspace-accent-foreground));
 }
 
 .notification-inbox-tray__trigger:not([data-count])::after {
@@ -54,8 +51,8 @@
 }
 
 .notification-inbox-tray__popover {
-  --popover: var(--color-we-got-soft);
-  --popover-foreground: var(--color-we-got-dark);
+  --popover: var(--workspace-surface);
+  --popover-foreground: var(--workspace-foreground);
   @apply w-96 p-0;
 }
 
@@ -78,7 +75,8 @@
 }
 
 .notification-inbox-tray__empty {
-  @apply px-3 py-6 text-sm text-muted-foreground;
+  @apply px-3 py-6 text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__list {
@@ -93,7 +91,7 @@
 .notification-inbox-tray__row:focus-visible {
   @apply outline-none;
   /* Same ink wash for hover and keyboard focus — no emerald outline ring. */
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 4%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
 }
 
 .notification-inbox-tray__icon {
@@ -122,7 +120,8 @@
 }
 
 .notification-inbox-tray__time {
-  @apply shrink-0 text-xs tabular-nums text-muted-foreground;
+  @apply shrink-0 text-xs tabular-nums;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__row-title {
@@ -154,9 +153,10 @@
 }
 
 .notification-inbox-tray__row[data-unread="false"] .notification-inbox-tray__domain {
-  @apply text-muted-foreground;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }
 
 .notification-inbox-tray__row-body {
-  @apply line-clamp-2 text-sm leading-snug text-muted-foreground;
+  @apply line-clamp-2 text-sm leading-snug;
+  color: color-mix(in oklch, var(--workspace-foreground) 55%, var(--workspace-surface));
 }

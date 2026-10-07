@@ -344,6 +344,26 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
         ));
     }
 
+    public function test_attachment_write_must_use_the_doc_principal_prefix(): void
+    {
+        $this->seedWgwGroup('principals/groups/outsiders', 'Outsiders');
+        $doc = $this->createMarkdownDoc('owned.md', 'alice', 'alice');
+        $alice = $this->adminBearerToken();
+        $own = '/users/alice/.attachments/'.$doc['id'].'/x.md';
+        $foreignUser = '/users/bob/.attachments/'.$doc['id'].'/x.md';
+        $foreignGroup = '/groups/outsiders/.attachments/'.$doc['id'].'/x.md';
+
+        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($foreignUser), [
+            'markdown' => 'nope',
+        ])->assertForbidden();
+        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($foreignGroup), [
+            'markdown' => 'nope',
+        ])->assertForbidden();
+        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($own), [
+            'markdown' => '# ok',
+        ])->assertOk();
+    }
+
     /**
      * @return array{id: string, name: string}
      */

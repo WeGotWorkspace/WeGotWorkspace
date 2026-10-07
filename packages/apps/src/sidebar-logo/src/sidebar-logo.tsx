@@ -12,7 +12,7 @@ export function SidebarLogo({
   showAppSwitcher = true,
   appSwitcher,
   onCloseMobile,
-  closeButtonHoverClassName = "hover:bg-[color-mix(in_oklab,var(--color-we-got-dark)_8%,transparent)]",
+  closeButtonHoverClassName = "hover:bg-[color-mix(in_oklab,var(--workspace-foreground)_8%,transparent)]",
 }: SidebarLogoProps) {
   return (
     <div className="p-6 flex items-center gap-3 justify-between">
@@ -23,7 +23,9 @@ export function SidebarLogo({
         aria-label="Close menu"
         onClick={onCloseMobile}
         className={`size-8 rounded-full flex items-center justify-center transition-colors sidebar:hidden ${closeButtonHoverClassName}`}
-        style={{ color: "var(--sidebar-logo-close-button-color, var(--color-we-got-dark))" }}
+        style={{
+          color: "var(--sidebar-logo-close-button-color, var(--workspace-foreground))",
+        }}
       >
         <X className="size-4" />
       </button>

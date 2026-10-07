@@ -110,23 +110,27 @@ const BRAND_ICON_TOKEN = {
 describe("svgForRasterization", () => {
   it("peels nested brand tokens down to the hex fallback", () => {
     expect(
-      svgForRasterization('<rect fill="var(--wai-bg, var(--color-we-got-yellow, #ffc800))"/>'),
+      svgForRasterization(
+        '<rect fill="var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))"/>',
+      ),
     ).toBe('<rect fill="#ffc800"/>');
   });
 
   it("keeps a single-level white fallback", () => {
-    expect(svgForRasterization('<rect fill="var(--wai-fg, #ffffff)"/>')).toBe(
+    expect(svgForRasterization('<rect fill="var(--app-icon-layer-foreground, #ffffff)"/>')).toBe(
       '<rect fill="#ffffff"/>',
     );
   });
 });
 
 describe("PWA icon artwork", () => {
-  it("nests a brand token inside --wai-* and keeps a hex fallback for install PNGs", () => {
+  it("nests a brand token inside --app-icon-layer-* and keeps a hex fallback for install PNGs", () => {
     for (const [app, token] of Object.entries(BRAND_ICON_TOKEN)) {
       const markup = readFileSync(join(sourceDir, `${app}.svg`), "utf8");
       expect(markup, app).toMatch(
-        new RegExp(`var\\(--wai-(?:bg|fg), var\\(${token}, #[0-9a-f]{6}\\)\\)`),
+        new RegExp(
+          `var\\(--app-icon-layer-(?:surface|foreground), var\\(${token}, #[0-9a-f]{6}\\)\\)`,
+        ),
       );
       const raster = svgForRasterization(markup);
       expect(raster, app).not.toContain("var(");

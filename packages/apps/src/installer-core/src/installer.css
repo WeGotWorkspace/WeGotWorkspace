@@ -7,21 +7,25 @@
 .installer {
   --installer-status-ok: #15803d;
   --installer-status-error: #b14242;
-  --installer-status-pending: color-mix(in oklab, var(--color-we-got-dark) 45%, transparent);
+  --installer-status-pending: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
   --installer-status-warn: #b45309;
-  --button-outline-color: var(--color-we-got-dark);
-  --button-outline-hover-color: var(--color-we-got-dark);
-  --button-outline-hover-background: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
-  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--color-we-got-soft));
+  --button-outline-color: var(--workspace-foreground);
+  --button-outline-hover-color: var(--workspace-foreground);
+  --button-outline-hover-background: color-mix(
+    in oklab,
+    var(--workspace-foreground) 8%,
+    transparent
+  );
+  --button-outline-active-background: color-mix(in oklab, #003311 14%, var(--workspace-surface));
   --button-active-color: #003311;
-  --segmented-control-color: var(--color-we-got-dark);
-  --segmented-control-hover-color: var(--color-we-got-dark);
-  --segmented-control-hover-bg: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  --segmented-control-color: var(--workspace-foreground);
+  --segmented-control-hover-color: var(--workspace-foreground);
+  --segmented-control-hover-bg: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
   --segmented-control-active-fg: #ffffff;
   --segmented-control-active-bg: #003311;
   --segmented-control-track-border-color: color-mix(
     in oklab,
-    var(--color-we-got-dark) 20%,
+    var(--workspace-foreground) 20%,
     transparent
   );
 }
@@ -41,16 +45,16 @@
 
 .installer__dot {
   @apply size-1.5 rounded-full;
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 28%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
 }
 
 .installer__dot--current,
 .installer__dot--done {
-  background-color: var(--color-we-got-dark);
+  background-color: var(--workspace-accent);
 }
 
 .installer__lead {
-  color: color-mix(in oklab, var(--color-we-got-dark) 72%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
   @apply mb-8 text-lg font-medium;
 }
 
@@ -63,7 +67,7 @@
 }
 
 .installer__hint {
-  color: color-mix(in oklab, var(--color-we-got-dark) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
   @apply mb-4 text-sm;
 }
 
@@ -165,11 +169,11 @@
 
 .installer__progress-step {
   @apply flex items-center gap-2;
-  color: color-mix(in oklab, var(--color-we-got-dark) 48%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 48%, transparent);
 }
 
 .installer__progress-step--current {
-  color: var(--color-we-got-dark);
+  color: var(--workspace-foreground);
 }
 
 .installer__progress-marker {
@@ -194,11 +198,11 @@
 
 .installer__check-label {
   @apply font-medium;
-  color: var(--color-we-got-dark);
+  color: var(--workspace-foreground);
 }
 
 .installer__check-detail {
-  color: color-mix(in oklab, var(--color-we-got-dark) 68%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

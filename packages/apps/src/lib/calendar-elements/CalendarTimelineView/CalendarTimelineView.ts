@@ -51,6 +51,7 @@ import {
   isOutsideVisibleMonth,
   monthDayHeaderClassNames,
   monthDayHeaderPartNames,
+  monthDayInkColor,
   monthGridDays,
   occurrenceDayKeys,
   resolveTimelineEventFilter,
@@ -1449,11 +1450,8 @@ export class CalendarTimelineView extends CalendarViewBase {
     ]
       .filter(Boolean)
       .join(" ");
-    // Ink is per-cell data (in vs outside month). Set it inline so year mini-months
-    // cannot lose the mute when outer-tree `::part()` fails to paint TimeLine's tree.
-    const headerInk = isToday
-      ? ""
-      : `;color:var(--_lc-${outsideMonth ? "outside" : "in"}-month-day-color)`;
+    // Same host tokens as year `.year-day` / `.year-day.is-outside-month`.
+    const headerInk = isToday ? "" : `;color:${monthDayInkColor(outsideMonth)}`;
     return html`
       <div
         class=${headerClass}
@@ -1471,7 +1469,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           @dblclick=${(dblClickEvent: MouseEvent) =>
             this.#handleMonthDayHeaderDblClick(cellIndex, day, dblClickEvent)}
         >
-          <span part=${dayNumberParts} style=${isToday ? "color:#fff" : ""}>
+          <span part=${dayNumberParts}>
             ${dayNumberContent}
             ${
               dotColors.length

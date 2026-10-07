@@ -44,7 +44,8 @@
 }
 
 :host .event-calendar-range-label {
-  @apply m-0 min-w-0 truncate px-1 text-start text-xl font-bold text-[light-dark(rgb(15_23_42_/_95%),rgb(255_255_255_/_98%))];
+  @apply m-0 min-w-0 truncate px-1 text-start text-xl font-bold;
+  color: var(--workspace-foreground);
 }
 
 :host .event-calendar-range-year {

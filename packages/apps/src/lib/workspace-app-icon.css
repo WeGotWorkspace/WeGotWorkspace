@@ -17,7 +17,8 @@
 
 /**
  * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
- * The same vector SVG as the default icon is inlined; `--wai-*` vars remap layers for inversion.
+ * Artwork paints `--app-icon-layer-*` (with per-app fallbacks). This host maps
+ * those layers from `--workspace-icon-*` so invert still follows the pair.
  */
 .workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
@@ -29,21 +30,24 @@
 
 .workspace-app-icon--switch-trigger svg {
   @apply block size-full;
-  --wai-bg: transparent;
-  --wai-fg: var(--app-switch-icon-fg);
+  --app-icon-layer-surface: var(--workspace-icon-surface);
+  --app-icon-layer-foreground: var(--workspace-icon-foreground);
+  --workspace-icon-surface: transparent;
+  --workspace-icon-foreground: var(--app-switch-icon-fg);
 }
 
 /**
  * Workspace home lockup: cream tile behind the solid `#003311` suite mark.
  * `home.svg` is the in-app mark (navy + cream fallbacks). The `/` install icons
  * and favicon use `home-pwa.svg` and are not inlined here.
- * This override clears the in-app tile through the shared `--wai-bg: transparent`
- * rule and pins the mark so it does not pick up `--app-switch-icon-fg`.
+ * This override clears the in-app tile through the shared transparent brand
+ * fill and pins the mark so it does not pick up `--app-switch-icon-fg`.
  */
 .workspace-app-icon--switch-trigger-home {
-  --app-switch-icon-bg: var(--color-we-got-soft);
+  --app-switch-icon-bg: var(--workspace-surface);
 }
 
 .workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
-  --wai-fg: #003311;
+  --workspace-icon-foreground: var(--workspace-foreground);
+  --app-icon-layer-foreground: var(--workspace-foreground);
 }

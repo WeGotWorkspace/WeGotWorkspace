@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 const OVERRIDE_MARKUP =
-  '<svg data-branding-override="1" viewBox="0 0 10 10"><rect width="10" height="10" fill="var(--wai-bg, #f00)"/></svg>';
+  '<svg data-branding-override="1" viewBox="0 0 10 10"><rect width="10" height="10" fill="var(--app-icon-layer-surface, #f00)"/></svg>';
 
 describe("WorkspaceAppIconOverrideProvider", () => {
   it("keeps build-time switch-trigger markup when the provider is absent", () => {
@@ -20,8 +20,12 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
     // jsdom may expand self-closing tags; assert production artwork cues, not byte equality.
     expect(trigger?.innerHTML).toContain('viewBox="0 0 60 60"');
-    expect(trigger?.innerHTML).toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
-    expect(trigger?.innerHTML).toContain("var(--wai-fg, var(--color-we-got-soft, #fff5e9))");
+    expect(trigger?.innerHTML).toContain(
+      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+    );
+    expect(trigger?.innerHTML).toContain(
+      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))",
+    );
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
 
@@ -34,7 +38,9 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
     expect(trigger?.querySelector("[data-branding-override='1']")).toBeTruthy();
     expect(trigger?.innerHTML).toContain("data-branding-override");
-    expect(trigger?.innerHTML).not.toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
+    expect(trigger?.innerHTML).not.toContain(
+      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+    );
   });
 
   it("inlines the home tile and keeps the artwork's own fill variables", () => {
@@ -43,8 +49,12 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     expect(tile?.tagName).toBe("SPAN");
     expect(tile?.querySelector("svg")).toBeTruthy();
     expect(tile?.querySelector("img")).toBeNull();
-    expect(tile?.innerHTML).toContain("var(--wai-bg, var(--color-we-got-red, #de4b0e))");
-    expect(tile?.innerHTML).toContain("var(--wai-fg, var(--color-we-got-soft, #fff5e9))");
+    expect(tile?.innerHTML).toContain(
+      "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
+    );
+    expect(tile?.innerHTML).toContain(
+      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))",
+    );
   });
 
   it("uses a data URL for default/tile variants when svgMarkup is provided", () => {
@@ -65,7 +75,9 @@ describe("WorkspaceAppIconOverrideProvider", () => {
       </WorkspaceAppIconOverrideProvider>,
     );
     const trigger = container.querySelector(".workspace-app-icon--switch-trigger");
-    expect(trigger?.innerHTML).toContain("var(--wai-bg, var(--color-we-got-yellow, #ffc800))");
+    expect(trigger?.innerHTML).toContain(
+      "var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))",
+    );
     expect(trigger?.innerHTML).toContain('d="M28 45a2 2 0');
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });

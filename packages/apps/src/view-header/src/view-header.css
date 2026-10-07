@@ -1,11 +1,9 @@
 @import "../../styles.css" reference;
 
 @import "../../ui/anchored-dropdown.css";
-@import "../../ui/workspace-menu-item-sst.css";
-
 /**
  * Toggle + title row. Soft outline + menu washes: shared
- * `workspace-menu-item-sst.css` (Sand 14/18/24). Products set
+ * `workspace-derive.css` (Sand 14/18/24). Products set
  * `--workspace-accent` for solid primary fills and usually
  * `--button-active-color` (accent-strong) for the glyph.
  * Heavier sidebar nav washes stay on the workspace root. Control radius is
@@ -69,7 +67,7 @@
 .view-header__title-count {
   @apply text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
-  color: var(--sidebar-on, var(--color-we-got-dark));
+  color: var(--workspace-foreground);
 }
 
 /**
@@ -79,7 +77,7 @@
 .view-header__title {
   @apply min-w-0 truncate text-sm font-medium leading-none md:text-lg;
   font-family: var(--font-sans);
-  color: var(--sidebar-on, var(--color-we-got-dark));
+  color: var(--workspace-foreground);
 }
 
 .view-header__title-compact {

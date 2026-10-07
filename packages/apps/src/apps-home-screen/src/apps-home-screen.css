@@ -2,20 +2,20 @@
 
 /** Shared suite home shell — brand cream surface with ink chrome. */
 .apps-home-screen {
-  background-color: var(--color-we-got-soft);
-  color: var(--color-we-got-dark);
-  --app-switch-label-color: var(--color-we-got-dark);
+  background-color: var(--workspace-surface);
+  color: var(--workspace-foreground);
+  --app-switch-label-color: var(--workspace-foreground);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--color-we-got-soft);
+  --app-switch-lockup-bg: var(--workspace-surface);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
-    var(--color-we-got-dark) 12%,
-    var(--color-we-got-soft)
+    var(--workspace-foreground) 12%,
+    var(--workspace-surface)
   );
-  --workspace-shell-header-user-menu-fg: var(--color-we-got-dark);
+  --workspace-shell-header-user-menu-fg: var(--workspace-foreground);
   --workspace-shell-header-user-menu-border: color-mix(
     in oklab,
-    var(--color-we-got-dark) 18%,
+    var(--workspace-foreground) 18%,
     transparent
   );
   box-sizing: border-box;
@@ -24,57 +24,63 @@
 }
 
 html:has(.apps-home-screen) {
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 /**
- * Same `--wai-bg` / `--wai-fg` pair as each app's sidebar switch icon
- * (`app-sidebar__header` … `workspace-app-icon--switch-trigger svg`).
+ * Home tiles always map `--workspace-icon-*` onto `--app-icon-layer-*`.
+ * Pin each `data-app-id` below; an unpinned tile (e.g. reminders) inherits
+ * the `:root` pair and will not use the SVG fallbacks.
  */
+.apps-home-screen__tile-icon .workspace-app-icon--tile {
+  --app-icon-layer-surface: var(--workspace-icon-surface);
+  --app-icon-layer-foreground: var(--workspace-icon-foreground);
+}
+
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="admin"],
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="settings"] {
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="calendar"] {
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="contacts"] {
-  --wai-bg: var(--color-we-got-sky);
-  --wai-fg: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="docs"] {
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-foreground: #ffffff;
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="drive"] {
-  --wai-bg: var(--color-we-got-dark);
-  --wai-fg: var(--color-we-got-brat);
+  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-brat);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="mail"] {
-  --wai-bg: var(--color-we-got-red);
-  --wai-fg: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-red);
+  --workspace-icon-foreground: #ffffff;
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="meet"] {
-  --wai-bg: var(--color-we-got-soft);
-  --wai-fg: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="notes"] {
-  --wai-bg: var(--color-we-got-yellow);
-  --wai-fg: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-yellow);
+  --workspace-icon-foreground: #ffffff;
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="tasks"] {
-  --wai-bg: var(--color-we-got-pink);
-  --wai-fg: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-pink);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 /** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */

@@ -116,6 +116,19 @@ final class CalendarImipServiceTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_rsvp_link_includes_the_install_base_path(): void
+    {
+        $this->enableMailSubmit();
+        config(['app.url' => 'https://host.example']);
+        $this->setAppSetting(SettingKeys::BASE_URI, '/wgw/');
+
+        $outbound = $this->app->make(CalendarImipService::class)->compose('bob', $this->itip('REQUEST'));
+
+        $this->assertNotNull($outbound);
+        $this->assertStringContainsString('https://host.example/wgw/calendar/rsvp/', $outbound->textBody);
+        $this->assertStringNotContainsString('https://host.example/calendar/rsvp/', $outbound->textBody);
+    }
+
     public function test_skips_compose_when_mail_cannot_submit(): void
     {
         $this->setAppSettings([

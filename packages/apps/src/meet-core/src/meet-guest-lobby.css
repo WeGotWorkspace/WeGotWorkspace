@@ -8,7 +8,7 @@
 .meet-guest-lobby__title {
   font-family: var(--font-serif);
   /* Hex — `@theme` `we-got-dark` can compile to oklch(from) that misses Storybook :root. */
-  color: var(--color-we-got-dark, #003311);
+  color: var(--workspace-foreground);
 }
 
 .meet-guest-lobby__title {
@@ -22,19 +22,17 @@
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger {
   @apply mb-4 size-8 rounded-md;
-  background-color: var(--color-we-got-soft);
+  background-color: var(--workspace-surface);
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
-  --wai-bg: var(--color-we-got-soft);
-  --wai-fg: var(--color-we-got-sand);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-sand);
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {
   @apply mt-4 w-full;
-  --wai-fg: var(--color-we-got-sand);
-  --button-primary-bg: var(--wai-fg);
-  --button-primary-fg: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-sand);
   --button-icon-size: 1rem;
 }
 

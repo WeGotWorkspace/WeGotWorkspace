@@ -180,6 +180,13 @@
       },
       "logoutUrl": {
         "type": "string"
+      },
+      "securityWarnings": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Present when APP_DEBUG is on or APP_ENV is not production."
       }
     },
     "required": [
@@ -193,7 +200,8 @@
       "updates",
       "mcp",
       "currentUser",
-      "logoutUrl"
+      "logoutUrl",
+      "securityWarnings"
     ]
   }
 }

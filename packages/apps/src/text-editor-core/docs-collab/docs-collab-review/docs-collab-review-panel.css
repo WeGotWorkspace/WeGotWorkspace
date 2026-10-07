@@ -8,17 +8,17 @@
 .docs-collab-review-panel-drawer {
   --side-drawer-width: 22rem;
   --workspace-accent: var(--color-we-got-dark);
-  --wai-bg: var(--color-we-got-blue);
+  --workspace-icon-surface: var(--color-we-got-blue);
 }
 
 .docs-collab-review-panel {
   --docs-collab-sidebar-panel-color: var(
     --docs-comments-panel-color,
-    var(--docs-text, var(--color-we-got-dark))
+    var(--docs-text, var(--workspace-foreground))
   );
   --docs-collab-sidebar-panel-border-color: var(
     --docs-comments-panel-border-color,
-    color-mix(in oklch, var(--color-we-got-dark) 8%, transparent)
+    color-mix(in oklch, var(--workspace-foreground) 8%, transparent)
   );
   /* Horizontal inset inherits shared panel (main-header p-4 md:p-6 / Docs format chrome). */
 }

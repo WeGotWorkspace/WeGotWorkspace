@@ -20,7 +20,7 @@
 .sidebar-segmented-new-menu .sidebar-segmented-new-menu__menu.button {
   @apply w-9 shrink-0 rounded-s-none rounded-e-[var(--control-radius-button-pill)] px-0;
   border-inline-start: 1px solid
-    color-mix(in oklab, var(--button-primary-fg, #ffffff) 22%, transparent);
+    color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
 }
 
 .sidebar-segmented-new-menu--sm .sidebar-segmented-new-menu__menu.button {

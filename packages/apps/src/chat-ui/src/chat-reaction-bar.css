@@ -7,18 +7,21 @@
 .chat-reaction-bar__reaction {
   @apply inline-flex h-6 items-center gap-1 border px-1.5 text-xs transition-colors;
   border-radius: var(--control-radius);
-  border-color: var(--chat-border, color-mix(in oklab, var(--color-we-got-dark) 10%, transparent));
+  border-color: var(
+    --chat-border,
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
+  );
   background-color: var(
     --chat-reaction-bg,
-    color-mix(in oklab, var(--color-we-got-dark) 4%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
   );
-  color: var(--chat-text, var(--color-we-got-dark));
+  color: var(--chat-text, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction:hover {
   background-color: var(
     --chat-hover,
-    color-mix(in oklab, var(--color-we-got-dark) 4%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
   );
 }
 
@@ -28,14 +31,14 @@
     --chat-reaction-selected-bg,
     color-mix(in oklab, var(--chat-accent, #1d4ed8) 10%, transparent)
   );
-  color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 88%, var(--color-we-got-dark));
+  color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 88%, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction--add {
   @apply justify-center px-2;
   border-style: dashed;
-  border-color: color-mix(in oklab, var(--color-we-got-dark) 18%, transparent);
-  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 65%, transparent));
+  border-color: color-mix(in oklab, var(--workspace-foreground) 18%, transparent);
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
 }
 
 .chat-reaction-bar__reaction-add-icon {
@@ -83,6 +86,6 @@
 .chat-reaction-bar__picker-item:hover {
   background-color: var(
     --chat-hover,
-    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }

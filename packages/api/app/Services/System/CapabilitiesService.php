@@ -6,6 +6,7 @@ namespace App\Services\System;
 
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Support\ApiUrlBuilder;
+use App\Support\PublicAppUrl;
 
 final class CapabilitiesService
 {
@@ -41,6 +42,10 @@ final class CapabilitiesService
 
     private function passwordRecoveryEnabled(): bool
     {
+        if (! PublicAppUrl::isConfigured()) {
+            return false;
+        }
+
         try {
             return (bool) ($this->mailDelivery->adminState()['capability']['canSubmit'] ?? false);
         } catch (\Throwable) {

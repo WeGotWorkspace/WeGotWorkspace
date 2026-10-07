@@ -2,9 +2,9 @@
 
 .chat-message-list {
   @apply relative flex min-h-0 min-w-0 max-w-full flex-1 flex-col;
-  --chat-list-surface: var(--workspace-surface, var(--color-we-got-soft));
-  --list-sticky-header-bg: var(--workspace-surface, var(--color-we-got-soft));
-  background-color: var(--chat-list-surface, var(--color-we-got-soft));
+  --chat-list-surface: var(--workspace-surface);
+  --list-sticky-header-bg: var(--workspace-surface);
+  background-color: var(--chat-list-surface, var(--workspace-surface));
 }
 
 .chat-message-list__scroll {
@@ -25,7 +25,7 @@
 
 .chat-message-list__empty {
   @apply flex flex-1 items-center justify-center px-4 py-12 text-sm;
-  color: var(--chat-muted, color-mix(in oklab, var(--color-we-got-dark) 45%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 45%, transparent));
 }
 
 .chat-message-list__group {

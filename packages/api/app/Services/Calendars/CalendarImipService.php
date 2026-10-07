@@ -8,6 +8,7 @@ use App\Models\CalendarRsvpToken;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use App\Services\MailDelivery\OutboundMessage;
+use App\Support\PublicAppUrl;
 use Illuminate\Support\Str;
 use Sabre\VObject\ITip\Message;
 
@@ -89,11 +90,11 @@ final class CalendarImipService
         string $uid,
         string $organizerUsername,
     ): OutboundMessage {
-        $url = rtrim((string) config('app.url'), '/').'/calendar/rsvp/'.$this->issueToken(
+        $url = PublicAppUrl::to('calendar/rsvp/'.$this->issueToken(
             $uid,
             $to,
             $organizerUsername,
-        );
+        ));
 
         return new OutboundMessage(
             from: $from,
