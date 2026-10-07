@@ -147,6 +147,35 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         ])->assertStatus(413);
     }
 
+    public function test_chunked_ics_without_content_length_stops_at_the_cap(): void
+    {
+        $body = str_repeat('A', VObjectPayloadGuard::MAX_ICS_BYTES + 1);
+        $psr = Http::psr7Response($body, 200);
+        $this->assertFalse($psr->hasHeader('Content-Length'));
+
+        Http::fake([
+            self::FEED_URL => Http::response($body, 200),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+        ])->assertStatus(413)
+            ->assertJsonPath('code', 'payload_too_large');
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
+    }
+
+    public function test_rejects_ipv4_mapped_loopback_from_the_resolver(): void
+    {
+        $this->dns->map('mapped.example.test', ['::ffff:127.0.0.1']);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => 'https://mapped.example.test/secret.ics',
+        ])->assertStatus(400);
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
+    }
+
     public function test_refresh_upserts_and_deletes_by_uid(): void
     {
         $keep = 'keep@example.test';
