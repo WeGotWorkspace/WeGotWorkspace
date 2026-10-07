@@ -238,14 +238,19 @@ test("two browsers of one user keep edits moving without reuse fallback", async 
           line.includes("[rtc][collab]") &&
           (line.includes("[dc-open]") || line.includes("[datachannel-open]")),
       );
-    await expect.poll(() => sessions.every(collabDcOpen), { timeout: 45_000 }).toBe(true);
+    await expect.poll(() => sessions.every(collabDcOpen), { timeout: 10_000 }).toBe(true);
 
-    const memberLogs = logs.get(member) ?? [];
-    const windowStart = memberLogs.length;
+    const windowStart = new Map(
+      sessions.map((session) => [session, (logs.get(session) ?? []).length]),
+    );
     await member.page.waitForTimeout(30_000);
-    const quietWindow = memberLogs.slice(windowStart);
-    expect(quietWindow.filter((line) => line.includes("reuse-fallback-connect"))).toEqual([]);
-    expect(quietWindow.filter((line) => line.includes("reuse-fresh-ice-abort"))).toEqual([]);
+    for (const session of sessions) {
+      const quietWindow = (logs.get(session) ?? []).slice(windowStart.get(session) ?? 0);
+      expect(quietWindow.filter((line) => line.includes("dc-send")).length).toBeLessThan(20);
+    }
+    const memberQuiet = (logs.get(member) ?? []).slice(windowStart.get(member) ?? 0);
+    expect(memberQuiet.filter((line) => line.includes("reuse-fallback-connect"))).toEqual([]);
+    expect(memberQuiet.filter((line) => line.includes("reuse-fresh-ice-abort"))).toEqual([]);
 
     const memberCaret = (page: ChaosSession["page"]) =>
       page.locator(".collaboration-carets__caret").filter({
