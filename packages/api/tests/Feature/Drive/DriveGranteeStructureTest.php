@@ -260,4 +260,15 @@ final class DriveGranteeStructureTest extends WgwDatabaseTestCase
         $restored->assertOk();
         $this->assertSame(self::PLAN_BODY, $restored->streamedContent());
     }
+
+    public function test_grantee_service_delete_moves_to_owner_trash(): void
+    {
+        app(DriveService::class)->deleteItems($this->drivePrincipal('bob'), [['path' => self::PLAN]]);
+
+        $this->listWorkspace('owner')->assertOk()->assertJsonMissing(['name' => 'plan.md']);
+        $this->withBearer($this->token('owner'))
+            ->getJson('/api/v1/files/children?path='.urlencode(self::OWNER_TRASH))
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'plan.md', 'type' => 'file']);
+    }
 }
