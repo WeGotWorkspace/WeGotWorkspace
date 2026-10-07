@@ -10,6 +10,11 @@ use App\Models\Principal;
 use App\Services\Calendars\HostIpResolver;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\VObject\VObjectPayloadGuard;
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Psr7\FnStream;
+use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -145,6 +150,78 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
             'url' => self::FEED_URL,
         ])->assertStatus(413);
+    }
+
+    public function test_chunked_ics_without_content_length_stops_at_the_cap(): void
+    {
+        $body = str_repeat('A', VObjectPayloadGuard::MAX_ICS_BYTES + 1);
+        $psr = Http::psr7Response($body, 200);
+        $this->assertFalse($psr->hasHeader('Content-Length'));
+
+        Http::fake([
+            self::FEED_URL => Http::response($body, 200),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+        ])->assertStatus(413)
+            ->assertJsonPath('code', 'payload_too_large');
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
+    }
+
+    public function test_chunked_ics_without_content_length_is_not_fully_buffered(): void
+    {
+        $payload = str_repeat('B', VObjectPayloadGuard::MAX_ICS_BYTES + 65_536 + 1);
+        $meter = new \stdClass;
+        $meter->bytes = 0;
+        $inner = Utils::streamFor($payload);
+        $stream = FnStream::decorate($inner, [
+            'getSize' => static fn (): ?int => null,
+            'read' => static function (int $length) use ($inner, $meter): string {
+                $chunk = $inner->read($length);
+                $meter->bytes += strlen($chunk);
+
+                return $chunk;
+            },
+            '__toString' => static function () use ($inner, $meter): string {
+                $contents = $inner->getContents();
+                $meter->bytes += strlen($contents);
+
+                return $contents;
+            },
+            'getContents' => static function () use ($inner, $meter): string {
+                $contents = $inner->getContents();
+                $meter->bytes += strlen($contents);
+
+                return $contents;
+            },
+        ]);
+        $psr = new Response(200, [], $stream);
+        $this->assertFalse($psr->hasHeader('Content-Length'));
+
+        Http::fake([
+            self::FEED_URL => static fn (): PromiseInterface => Create::promiseFor($psr),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+        ])->assertStatus(413)
+            ->assertJsonPath('code', 'payload_too_large');
+
+        $this->assertLessThan(strlen($payload), $meter->bytes);
+        $this->assertSame(0, CalendarSubscription::query()->count());
+    }
+
+    public function test_rejects_ipv4_mapped_loopback_from_the_resolver(): void
+    {
+        $this->dns->map('mapped.example.test', ['::ffff:127.0.0.1']);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => 'https://mapped.example.test/secret.ics',
+        ])->assertStatus(400);
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
     }
 
     public function test_refresh_upserts_and_deletes_by_uid(): void
