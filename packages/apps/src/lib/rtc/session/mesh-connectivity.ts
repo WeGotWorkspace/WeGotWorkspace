@@ -155,8 +155,9 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
     schedule: host.schedule,
     cancel: host.cancel,
   });
+  const forceRelay = host.settings.forceRelay;
   const relay = new MeshRelay({
-    enabled: host.channel === "meet" && typeof host.postRelay === "function",
+    enabled: typeof host.postRelay === "function" && (host.channel === "meet" || forceRelay),
     roomId: host.room,
     settings: host.settings,
     iceCandidatePoolSize: host.iceCandidatePoolSize,
@@ -165,7 +166,11 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
     peerName: (remoteId) => host.peerEntry(remoteId)?.name ?? "Peer",
     postRelay: host.postRelay,
     getPeerConnection: (remoteId) => host.peerConnection(remoteId),
-    onOutcome: (remoteId, name, outcome) => host.onRelayOutcome?.(remoteId, name, outcome),
+    peerIds: () => host.peerIds(),
+    onOutcome: (remoteId, name, outcome) => {
+      if (outcome.outcome === "issued") host.setTurn(outcome.turn);
+      host.onRelayOutcome?.(remoteId, name, outcome);
+    },
     onApplied: (remoteId) => {
       host.schedule(() => {
         const entry = host.peerEntry(remoteId);

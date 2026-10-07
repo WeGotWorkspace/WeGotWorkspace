@@ -46,7 +46,10 @@ function stubPeerConnection(): RTCPeerConnection {
   return pc as unknown as RTCPeerConnection;
 }
 
-function meshWith(net: "symmetric" | "unknown") {
+function meshWith(
+  net: "symmetric" | "unknown" | "open",
+  options?: { forceRelay?: boolean; channel?: "meet" | "collab" },
+) {
   vi.mocked(netClassForJoin).mockResolvedValue(net);
   const order: string[] = [];
   const relay = vi.fn(async (input: { reason: string; target: string }) => {
@@ -70,15 +73,25 @@ function meshWith(net: "symmetric" | "unknown") {
     leave: vi.fn(async () => ({ ok: true })),
     relay,
   };
+  const configs: RTCConfiguration[] = [];
   const mesh = new RtcPeerMesh({
-    channel: "meet",
+    channel: options?.channel ?? "meet",
     room: "room-1",
     initiatorRule: "higherId",
     signaling: signaling as unknown as HttpSignalingClient,
-    rtcSettings: { stunUrls: "", turnAvailable: false, forceRelay: false },
-    ports: { createPeerConnection: () => stubPeerConnection() },
+    rtcSettings: {
+      stunUrls: "stun:stun.example:3478",
+      turnAvailable: true,
+      forceRelay: options?.forceRelay === true,
+    },
+    ports: {
+      createPeerConnection: (config) => {
+        configs.push(config);
+        return stubPeerConnection();
+      },
+    },
   });
-  return { mesh, order, relay };
+  return { mesh, order, relay, configs };
 }
 
 describe("mesh relay requests", () => {
@@ -94,6 +107,30 @@ describe("mesh relay requests", () => {
     );
     expect(order[0]).toBe("relay:precheck:*");
     expect(order.indexOf("offer")).toBeGreaterThan(0);
+    await mesh.leave();
+  });
+
+  it("force relay mints TURN and sets relay policy before the first offer on an open path", async () => {
+    const { mesh, order, relay, configs } = meshWith("open", { forceRelay: true });
+    await mesh.join({ name: "Host", peerId: "peer-z" });
+    expect(relay).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "precheck", target: "*", net: "open" }),
+    );
+    expect(order[0]).toBe("relay:precheck:*");
+    expect(order.indexOf("offer")).toBeGreaterThan(0);
+    expect(configs[0]?.iceTransportPolicy).toBe("relay");
+    expect(configs[0]?.iceServers?.[0]).toMatchObject({
+      urls: ["turn:turn.example:3478"],
+      username: "user",
+    });
+    await mesh.leave();
+  });
+
+  it("force relay on collab also mints before the first offer", async () => {
+    const { mesh, order, configs } = meshWith("open", { forceRelay: true, channel: "collab" });
+    await mesh.join({ name: "Host", peerId: "peer-z" });
+    expect(order[0]).toBe("relay:precheck:*");
+    expect(configs[0]?.iceTransportPolicy).toBe("relay");
     await mesh.leave();
   });
 

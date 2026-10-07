@@ -39,7 +39,10 @@ function skipUnlessConnectable(dial: MeshRoomDial, peer: RtcPeerDescriptor): boo
 
 function connectPeer(dial: MeshRoomDial, peer: RtcPeerDescriptor): void {
   void dial.connectTo(peer.id, peer.name).catch((error: unknown) => {
-    dial.log("peer-connect-failed", { remoteId: peer.id, error });
+    dial.log("peer-connect-failed", {
+      remoteId: peer.id,
+      error: error instanceof Error ? error.message || error.name : String(error),
+    });
   });
 }
 
@@ -51,6 +54,10 @@ export function dialRoomPeers(dial: MeshRoomDial): void {
     : dial.roomPeers;
   for (const peer of dialOrder) {
     dial.rememberCaps(peer.id, peer.caps);
+    if (dial.droppedGhostIds.has(peer.id)) {
+      dial.log("peer-skipped", { remoteId: peer.id, reason: "dropped-ghost" });
+      continue;
+    }
     if (skipUnlessConnectable(dial, peer)) continue;
     if (dial.principal && !dial.hasPeer(peer.id)) {
       if (newPrincipalConnects >= PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL) {

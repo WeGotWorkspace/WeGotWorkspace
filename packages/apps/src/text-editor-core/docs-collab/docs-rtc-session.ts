@@ -1,3 +1,4 @@
+import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { rtcLog } from "@/lib/rtc/log";
 import { peekNetClass } from "@/lib/rtc/net-probe";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
@@ -180,11 +181,12 @@ export class DocsRtcSession {
 
   constructor(private readonly options: DocsRtcSessionOptions) {
     this.room = options.room;
-    this.httpOnlyUntilRelay = options.rtcSettings.forceRelay && !options.rtcSettings.turnAvailable;
+    const rtcSettings = applyRtcDebugOverrides(options.rtcSettings);
+    this.httpOnlyUntilRelay = rtcSettings.forceRelay && !rtcSettings.turnAvailable;
     const binding = createDataBinding({
       label: DC_LABEL,
       onOpen: (remoteId) => {
-        rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "datachannel-open", {
+        rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-open", {
           remoteId,
           reused: false,
         });
@@ -253,7 +255,10 @@ export class DocsRtcSession {
       },
       onReuseFallback: (id) =>
         id ? this.mesh.retryPeerConnection(id) : this.mesh.retryRoomPeerConnections(),
-      onReuseAttached: (remoteId) => this.mesh.abortPeerConnection(remoteId),
+      onReuseAttached: (remoteId) => {
+        if (this.forceRelayTransport()) return;
+        this.mesh.abortPeerConnection(remoteId);
+      },
       onLinkChange: () => this.emit({ type: "link" }),
       onMessage: (msg) => this.handleReuseMeshMessage(msg),
       onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
@@ -265,7 +270,7 @@ export class DocsRtcSession {
     this.mesh = createRtcSession({
       channel: "collab",
       room: options.room,
-      rtcSettings: options.rtcSettings,
+      rtcSettings: applyRtcDebugOverrides(this.options.rtcSettings),
       binding,
       iceCandidatePoolSize: 2,
       pollIntervals: this.pollIntervals,
@@ -274,10 +279,15 @@ export class DocsRtcSession {
         getAuth: () => ({ bearerToken: options.authToken }),
       },
       shouldConnectToPeer: (peer) => {
+        if (this.forceRelayTransport()) return true;
         if (this.httpOnlyUntilRelay && !this.relayReady.has(peer.id)) return false;
         return !this.reuse.shouldSkipIce(peer);
       },
-      shouldAcceptOffer: (from) => !this.reuse.shouldIgnoreOffer(from),
+      shouldAcceptOffer: (from) =>
+        this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from),
+      // A stale collab offer must not rejoin: that drops the peer id the relay
+      // precheck just minted and the next offer is unknown_peer forever.
+      recoverOnUnknownPeer: !this.forceRelayTransport(),
       onLinkChange: () => this.emit({ type: "link" }),
       // Contract C2 revocation: the poll re-reads the share grant, so a 403
       // means read access is gone. Drop the reuse links so the other peers
@@ -358,6 +368,16 @@ export class DocsRtcSession {
     const myPeerId = this.mesh.getMyId();
     if (myPeerId && payload.peer !== myPeerId) return;
     this.trust.noteOwnAccess(payload.access);
+  }
+
+  /**
+   * Debug force-relay: keep a collab peer connection even when principal reuse
+   * would otherwise carry the document. The mesh mints TURN before the offer
+   * when the server has a relay; without credentials the policy stays `all`.
+   */
+  private forceRelayTransport(): boolean {
+    const settings = applyRtcDebugOverrides(this.options.rtcSettings);
+    return settings.forceRelay;
   }
 
   private webrtcUnavailable(): boolean {

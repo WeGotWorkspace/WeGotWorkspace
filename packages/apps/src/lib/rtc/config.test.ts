@@ -63,6 +63,14 @@ describe("toRtcConfig", () => {
     expect(config.iceServers).toHaveLength(1);
   });
 
+  it("sets relay policy from forceRelay once TURN credentials exist", () => {
+    const config = toRtcConfig({ ...baseSettings, forceRelay: true }, "direct", { turn });
+    expect(config.iceTransportPolicy).toBe("relay");
+    expect(config.iceCandidatePoolSize).toBe(0);
+    expect(config.iceServers).toHaveLength(1);
+    expect(config.iceServers?.[0]?.urls).toContain("turn:turn.example.com:3478?transport=udp");
+  });
+
   it("allows collab pool size override", () => {
     const config = toRtcConfig(baseSettings, "direct", { iceCandidatePoolSize: 2 });
     expect(config.iceCandidatePoolSize).toBe(2);

@@ -1,3 +1,4 @@
+import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { rtcLog } from "@/lib/rtc/log";
 import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import type { NetClass } from "@/lib/rtc/net-probe";
@@ -10,6 +11,7 @@ import {
   hostFromSurface,
   type MeshSurface,
 } from "@/lib/rtc/session/mesh-connectivity";
+import { enqueueMeshJoin } from "@/lib/rtc/session/mesh-join-queue";
 import type { MeshRelay } from "@/lib/rtc/session/mesh-relay";
 import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
@@ -79,6 +81,14 @@ export class RtcPeerMesh {
 
   private rejoinInFlight = false;
 
+  /**
+   * Bumped on every join and leave. An in-flight join from a StrictMode
+   * cleanup must not dial after `leave` has moved the epoch.
+   */
+  private sessionEpoch = 0;
+
+  private activeEpoch = 0;
+
   private localNet: NetClass | undefined;
   private iceOut: IceOutbound | null = null;
   private meshRelay: MeshRelay | null = null;
@@ -95,7 +105,16 @@ export class RtcPeerMesh {
 
   private readonly metrics: SessionMetricsReporter;
 
-  constructor(private readonly options: RtcPeerMeshOptions) {
+  private readonly options: RtcPeerMeshOptions;
+
+  constructor(options: RtcPeerMeshOptions) {
+    const rtcSettings =
+      options.channel === "principal"
+        ? { ...options.rtcSettings, forceRelay: false }
+        : options.channel === "meet" || options.channel === "collab"
+          ? applyRtcDebugOverrides(options.rtcSettings)
+          : options.rtcSettings;
+    this.options = { ...options, rtcSettings };
     this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.log("send-failed", { remoteId, message });
@@ -103,7 +122,7 @@ export class RtcPeerMesh {
     });
     this.dialer = new MeshPeerDialer({
       channel: options.channel,
-      rtcSettings: options.rtcSettings,
+      rtcSettings: this.options.rtcSettings,
       binding: options.binding,
       iceCandidatePoolSize: options.iceCandidatePoolSize,
       peers: this.peers,
@@ -417,6 +436,7 @@ export class RtcPeerMesh {
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
+    if (this.activeEpoch !== this.sessionEpoch) return;
     const messages = this.inbox.claim(data.messages);
     if (data.messages.length > 0 && messages.length === 0) return;
     data = { ...data, messages };
@@ -523,6 +543,7 @@ export class RtcPeerMesh {
    * must not wait for the next poll cycle.
    */
   retryRoomPeerConnections(): void {
+    if (this.activeEpoch !== this.sessionEpoch) return;
     retryUnconnectedRoomPeers(this.roomDial());
   }
 
@@ -554,8 +575,8 @@ export class RtcPeerMesh {
       this.lastRosterSig = null;
       const joined = await this.signalingJoin(previousPeerId ?? undefined);
       this.myId = joined.peerId ?? previousPeerId ?? null;
-      await this.prepareRelay();
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+      await this.prepareRelay();
       await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
     } catch (error) {
@@ -566,7 +587,18 @@ export class RtcPeerMesh {
     }
   }
 
-  async join(input: { name: string; peerId?: string }): Promise<{
+  join(input: { name: string; peerId?: string }): Promise<{
+    peerId: string;
+    peers: RtcPeerDescriptor[];
+    sessionKey?: string | null;
+    limits?: HttpSignalingJoinResult["rtc"];
+    ticket?: string;
+  }> {
+    const key = `${this.options.channel}\0${this.options.room}`;
+    return enqueueMeshJoin(key, () => this.joinSerialized(input));
+  }
+
+  private async joinSerialized(input: { name: string; peerId?: string }): Promise<{
     peerId: string;
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
@@ -575,13 +607,31 @@ export class RtcPeerMesh {
   }> {
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");
+    const epoch = ++this.sessionEpoch;
+    this.activeEpoch = epoch;
     this.log("join-request", { room: this.options.room, name: this.myName });
     this.metrics.begin();
     const joined = await this.signalingJoin(input.peerId);
+    if (epoch !== this.sessionEpoch) {
+      const peerId = joined.peerId ?? input.peerId;
+      if (peerId) {
+        try {
+          await this.options.signaling.leave({
+            room: this.options.room,
+            peerId,
+            sessionKey: joined.sessionKey ?? undefined,
+          });
+        } catch {
+          // The next join must not overlap a peer this attempt already created.
+        }
+      }
+      return { peerId: peerId ?? "", peers: [] };
+    }
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
-    await this.prepareRelay();
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    await this.prepareRelay();
+    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [] };
     this.lastRosterSig = null;
     this.log("join-response", {
       peerId: this.myId,
@@ -677,8 +727,9 @@ export class RtcPeerMesh {
     this.myName = trimmed;
     const joined = await this.signalingJoin(this.myId);
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
-    // Same-peer rename (admit): refresh roster and dial now — do not wait for
-    // the next poll, which may already be on the idle interval.
+    // Admit drops the knocker name. Mint force-relay TURN now, before this
+    // poll creates the first peer connection. A lobby precheck was denied.
+    await this.prepareRelay();
     await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
   }
 
@@ -701,6 +752,7 @@ export class RtcPeerMesh {
   }
 
   async leave(): Promise<void> {
+    this.sessionEpoch += 1;
     this.metrics.flush();
     this.stopPolling();
     this.pollLoop.release();

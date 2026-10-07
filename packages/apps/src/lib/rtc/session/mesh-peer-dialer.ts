@@ -6,6 +6,13 @@ import type { MeshPeerEntry, MeshPeerRegistry } from "@/lib/rtc/session/mesh-pee
 import { logSelectedPairTelemetry } from "@/lib/rtc/telemetry/selected-pair";
 import type { IceMode, RtcSettings, SignalingChannel, TurnCredentials } from "@/lib/rtc/types";
 
+/** `relay` only when debug force-relay is on and TURN is actually configured. */
+export function initialIceMode(
+  settings: Pick<RtcSettings, "forceRelay" | "turnAvailable">,
+): IceMode {
+  return settings.forceRelay && settings.turnAvailable ? "relay" : "direct";
+}
+
 /** What the dialer needs from the mesh that owns the peer registry. */
 export type MeshPeerDialerContext = {
   channel: SignalingChannel;
@@ -45,9 +52,14 @@ export class MeshPeerDialer {
     this.turn = turn;
   }
 
-  /** `relay` only when the settings force it and TURN is actually configured. */
+  /**
+   * `relay` only after a precheck has minted credentials. `turnAvailable`
+   * alone would mark the entry relay while `toRtcConfig` still leaves the
+   * policy at `all`, and that pair never gathers a relay candidate.
+   */
   initialMode(): IceMode {
-    return this.context.rtcSettings.forceRelay && this.turnConfigured ? "relay" : "direct";
+    if (this.context.rtcSettings.forceRelay && this.turn) return "relay";
+    return "direct";
   }
 
   /** Create, register, wire, and bind a peer connection for `remoteId`. */
@@ -78,6 +90,9 @@ export class MeshPeerDialer {
   async connectTo(remoteId: string, remoteName: string, forcedMode?: IceMode): Promise<void> {
     const myId = this.context.localPeerId();
     if (!myId || remoteId === myId) return;
+    // Debug force-relay must not open a direct PC that wins ICE before the
+    // precheck has credentials. The join path awaits that mint first.
+    if (this.context.rtcSettings.forceRelay && !this.turn && !forcedMode) return;
     const initiator = this.context.isInitiator(remoteId);
     if (this.shouldReusePeerEntry(remoteId, initiator)) return;
     if (this.context.peers.has(remoteId)) this.context.removePeer(remoteId);

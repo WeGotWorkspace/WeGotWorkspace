@@ -83,8 +83,15 @@ final class RtcRoomRateLimiters
             $address = self::addressKey($request);
             $actor = self::actorIdentity($request);
 
+            $perActor = (int) config(
+                'wgw.rtc.relay_requests_per_minute',
+                self::RELAY_REQUESTS_PER_MINUTE,
+            );
+
             return [
-                Limit::perMinute(self::RELAY_REQUESTS_PER_MINUTE)->by($actor ?? $address),
+                Limit::perMinute($perActor > 0 ? $perActor : self::RELAY_REQUESTS_PER_MINUTE)->by(
+                    $actor ?? $address,
+                ),
                 Limit::perMinute(self::ADDRESS_RELAY_REQUESTS_PER_MINUTE)->by($address),
             ];
         });

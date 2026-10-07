@@ -74,6 +74,54 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
         $this->assertNotSame($alice['credential'], $guest['credential']);
     }
 
+    public function test_config_override_sets_ttl_and_the_username_timestamp(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => 'north',
+        ]);
+        $previous = config('wgw.rtc.turn_ttl_seconds');
+        config(['wgw.rtc.turn_ttl_seconds' => 90]);
+
+        try {
+            $now = 1_700_000_000;
+            $turn = (new RtcTurnCredentialService(new RtcSettingsService))->mint('u:alice', $now);
+
+            $this->assertNotNull($turn);
+            $this->assertSame(90, $turn['ttl']);
+            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 90), $turn['username']);
+        } finally {
+            config(['wgw.rtc.turn_ttl_seconds' => $previous]);
+        }
+    }
+
+    public function test_ttl_outside_the_allowed_range_is_clamped(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => 'north',
+        ]);
+        $previous = config('wgw.rtc.turn_ttl_seconds');
+        $service = new RtcTurnCredentialService(new RtcSettingsService);
+        $now = 1_700_000_000;
+
+        try {
+            config(['wgw.rtc.turn_ttl_seconds' => 30]);
+            $low = $service->mint('u:alice', $now);
+            $this->assertNotNull($low);
+            $this->assertSame(60, $low['ttl']);
+            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 60), $low['username']);
+
+            config(['wgw.rtc.turn_ttl_seconds' => 100_000]);
+            $high = $service->mint('u:alice', $now);
+            $this->assertNotNull($high);
+            $this->assertSame(86_400, $high['ttl']);
+            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 86_400), $high['username']);
+        } finally {
+            config(['wgw.rtc.turn_ttl_seconds' => $previous]);
+        }
+    }
+
     public function test_mint_returns_nothing_without_a_secret_or_url(): void
     {
         $service = new RtcTurnCredentialService(new RtcSettingsService);
