@@ -42,6 +42,29 @@ import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-ut
 
 const DC_LABEL = "collab";
 
+function hexBytes(bytes: readonly number[], start: number, end: number): string {
+  let out = "";
+  for (let i = start; i < end; i += 1) {
+    out += (bytes[i]! & 0xff).toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+/**
+ * First and last 8 bytes of a collab payload, so a send and its receive match
+ * without putting anything new on the wire. Shorter payloads are hexed once.
+ */
+export function tagOf(msg: { u?: readonly number[] }): string {
+  const bytes = msg.u;
+  if (!bytes || bytes.length === 0) return "";
+  if (bytes.length < 16) return hexBytes(bytes, 0, bytes.length);
+  return hexBytes(bytes, 0, 8) + hexBytes(bytes, bytes.length - 8, bytes.length);
+}
+
+function payloadBytes(msg: DocsCollabMeshMessage): number {
+  return msg.type === "sync" || msg.type === "awareness" ? msg.u.length : 0;
+}
+
 const liveCollabSessions = new Map<string, Set<DocsRtcSession>>();
 
 type MeshListener = (msg: DocsCollabMeshMessage) => void;
@@ -172,6 +195,12 @@ export class DocsRtcSession {
         try {
           const msg = JSON.parse(data) as DocsCollabMeshMessage;
           if (!msg || typeof msg !== "object") return;
+          rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
+            from: remoteId,
+            type: msg.type,
+            bytes: payloadBytes(msg),
+            tag: tagOf(msg),
+          });
           if (msg.type === "peer-hint") {
             this.mesh.applyPeerHint(parsePeerHintPeers(msg.peers));
             return;
@@ -390,6 +419,12 @@ export class DocsRtcSession {
   }
 
   private handleReuseMeshMessage(msg: DocsCollabMeshMessage): void {
+    rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
+      from: msg.from,
+      type: msg.type,
+      bytes: payloadBytes(msg),
+      tag: tagOf(msg),
+    });
     if (msg.type === "peer-hint") {
       this.mesh.applyPeerHint(parsePeerHintPeers(msg.peers));
       return;
@@ -499,12 +534,22 @@ export class DocsRtcSession {
 
   broadcast(msg: DocsCollabMeshMessage): void {
     if (this.isMutedDocumentUpdate(msg)) return;
+    rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-send", {
+      type: msg.type,
+      bytes: payloadBytes(msg),
+      tag: tagOf(msg),
+    });
     this.reuse.broadcast(msg);
     this.mesh.broadcastJson(msg);
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
     if (this.isMutedDocumentUpdate(msg, remoteId)) return;
+    rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-send", {
+      type: msg.type,
+      bytes: payloadBytes(msg),
+      tag: tagOf(msg),
+    });
     if (this.reuse.sendTo(remoteId, msg)) return;
     this.mesh.sendJsonTo(remoteId, msg);
   }

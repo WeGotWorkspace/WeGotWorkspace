@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import type * as Y from "yjs";
+import { rtcLog } from "@/lib/rtc/log";
 import type { DocsCollabSessionRefs, DocsCollabTabSyncApi } from "./docs-collab-types";
+import { tagOf } from "./docs-rtc-session";
 import {
   applyAwarenessUpdate,
   documentUpdateFromSyncMessage,
@@ -29,12 +31,18 @@ export function applyFollowerTabSync(input: {
   broadcast: (message: { type: "sync"; u: number[] }) => void;
   noteLocalUpdate: (update: Uint8Array) => void;
   onDocReady: () => void;
+  peerId?: string | null;
 }): void {
   handleSyncMessage(input.updateBytes, input.ydoc, BC_TAB_ORIGIN);
   if (!isYDocEmpty(input.ydoc)) input.onDocReady();
   if (!input.meshLeader) return;
   const update = documentUpdateFromSyncMessage(input.updateBytes);
   if (!update) return;
+  rtcLog({ channel: "collab", peerId: input.peerId }, "tab-relay", {
+    type: "sync",
+    bytes: input.updateBytes.length,
+    tag: tagOf({ u: input.updateBytes }),
+  });
   input.broadcast({ type: "sync", u: input.updateBytes });
   input.noteLocalUpdate(update);
 }
@@ -109,6 +117,7 @@ export function useDocsCollabTabSync({
           broadcast: (message) => {
             refs.meshRef.current?.broadcast(message);
           },
+          peerId: refs.meshRef.current?.getMyId(),
           noteLocalUpdate: (update) => {
             refs.meshRef.current?.noteLocalUpdate(update);
           },
@@ -119,6 +128,9 @@ export function useDocsCollabTabSync({
       },
       onAwarenessFromTab: (updateBytes) => {
         applyAwarenessUpdate(updateBytes, awareness, BC_TAB_ORIGIN);
+        if (coordinatorRef.current?.meshLeader) {
+          refs.meshRef.current?.broadcast({ type: "awareness", u: updateBytes });
+        }
       },
       onMeshStateFromLeader: (state: TabMeshStateSnapshot) => {
         meshRef.current.applyRelayedMeshState(state);
