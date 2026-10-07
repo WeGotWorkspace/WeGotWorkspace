@@ -158,6 +158,11 @@ function joinCallCount(): number {
   return rtc.instances.reduce((sum, session) => sum + session.join.mock.calls.length, 0);
 }
 
+/** Identity check across the mocked session and the hook's real session type. */
+function sameSession(left: unknown, right: unknown): boolean {
+  return left === right;
+}
+
 function mockFetchResponses() {
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -276,10 +281,14 @@ describe("one DocsRtcSession per tab", () => {
     const parked = resumeDocsCollabMeshSession(ROOM);
     const joined = rtc.instances.filter((session) => session.joined && !session.left);
     expect(joined).toHaveLength(1);
-    expect(held === joined[0] || parked === joined[0]).toBe(true);
+    expect(sameSession(held, joined[0]) || sameSession(parked, joined[0])).toBe(true);
     expect(
       rtc.instances.filter(
-        (session) => session.joined && !session.left && session !== held && session !== parked,
+        (session) =>
+          session.joined &&
+          !session.left &&
+          !sameSession(session, held) &&
+          !sameSession(session, parked),
       ),
     ).toEqual([]);
 

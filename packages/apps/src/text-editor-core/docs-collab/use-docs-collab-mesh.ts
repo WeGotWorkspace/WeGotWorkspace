@@ -277,9 +277,12 @@ export function useDocsCollabMesh({
       }
 
       // Re-check after the await. Between these checks and `new` there must be
-      // no await, so check-and-create stays atomic.
+      // no await, so check-and-create stays atomic. The cast drops the null
+      // narrowing from the pre-await check: another join can fill the ref
+      // while rtc settings were loading.
       if (!isCurrent()) return null;
-      if (refs.meshRef.current) return refs.meshRef.current.getRoomPeers();
+      const meshAfterAwait = refs.meshRef.current as DocsRtcSession | null;
+      if (meshAfterAwait) return meshAfterAwait.getRoomPeers();
       const parked = resumeDocsCollabMeshSession(room);
       if (parked) {
         refs.meshRef.current = parked;
