@@ -92,6 +92,9 @@ export const AppSwitchButton = memo(function AppSwitchButton({
         <button
           type="button"
           disabled={disabled}
+          // Product subtitle alone collides with in-app CTAs (e.g. Meet header
+          // "Meet"); keep the visible label and name the control as the switcher.
+          aria-label={isWorkspaceContext ? undefined : `${subtitle}, switch apps`}
           className={cn(
             "app-switch-button__trigger",
             isWorkspaceContext && "app-switch-button__trigger--workspace",

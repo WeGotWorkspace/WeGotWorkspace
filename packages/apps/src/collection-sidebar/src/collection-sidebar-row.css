@@ -105,7 +105,7 @@
   --checkbox-checked-fg: color-mix(
     in oklab,
     var(--collection-row-color, var(--workspace-foreground)) 32%,
-    var(--color-we-got-dark)
+    var(--workspace-accent)
   );
   @apply relative z-10 shrink-0;
   border-color: var(--collection-row-color, var(--workspace-foreground));
@@ -119,7 +119,7 @@
     color-mix(
       in oklab,
       var(--collection-row-color, var(--workspace-foreground)) 32%,
-      var(--color-we-got-dark)
+      var(--workspace-accent)
     )
   );
 }

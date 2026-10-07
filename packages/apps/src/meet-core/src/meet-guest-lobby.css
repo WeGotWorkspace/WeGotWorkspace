@@ -17,7 +17,7 @@
 
 .meet-guest-lobby__status-body {
   @apply text-sm text-balance;
-  color: var(--meet-muted, color-mix(in oklch, var(--color-we-got-dark) 72%, transparent));
+  color: var(--meet-muted, color-mix(in oklch, var(--workspace-foreground) 72%, transparent));
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger {

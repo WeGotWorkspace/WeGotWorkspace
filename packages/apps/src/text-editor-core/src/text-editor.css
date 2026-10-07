@@ -466,7 +466,7 @@
   background-color: var(--checkbox-bg, transparent);
   color: var(
     --checkbox-checked-fg,
-    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--workspace-accent))
   );
 }
 
@@ -476,7 +476,7 @@
   border-color: var(--checkbox-checked-border, var(--checkbox-border-color, var(--primary)));
   color: var(
     --checkbox-checked-fg,
-    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--workspace-accent))
   );
 }
 
@@ -1012,7 +1012,7 @@
     background: var(--checkbox-checked-bg, var(--_checkbox-tint)) !important;
     color: var(
       --checkbox-checked-fg,
-      color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+      color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--workspace-accent))
     ) !important;
     box-shadow: none !important;
   }

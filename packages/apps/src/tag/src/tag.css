@@ -55,7 +55,7 @@
   --tag-fg: color-mix(
     in oklab,
     var(--collection-row-color, var(--workspace-foreground)) 32%,
-    var(--color-we-got-dark)
+    var(--workspace-accent)
   );
   @apply border;
   border-color: var(--collection-row-color, var(--workspace-foreground));
