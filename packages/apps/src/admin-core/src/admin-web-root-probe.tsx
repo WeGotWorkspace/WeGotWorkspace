@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { Callout } from "@/callout/src/callout";
 
-const PROBE_URL = "/wgw-content/.probe";
 const PROBE_BODY = "wgw-content-probe";
+
+/** Same-origin canary, prefixed with the Vite base so a subdirectory install still hits its own tree. */
+export function webRootProbeUrl(base: string = import.meta.env.BASE_URL): string {
+  const prefix = base.endsWith("/") ? base.slice(0, -1) : base;
+
+  return `${prefix}/wgw-content/.probe`;
+}
 
 export function AdminWebRootProbe() {
   const [exposed, setExposed] = useState(false);
@@ -13,7 +19,7 @@ export function AdminWebRootProbe() {
     }
 
     let cancelled = false;
-    fetch(PROBE_URL, { credentials: "same-origin" })
+    fetch(webRootProbeUrl(), { credentials: "same-origin" })
       .then(async (response) => {
         if (!response.ok) {
           return;

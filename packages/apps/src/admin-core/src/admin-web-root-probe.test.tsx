@@ -1,12 +1,17 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
+import { AdminWebRootProbe, webRootProbeUrl } from "@/admin-core/src/admin-web-root-probe";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("AdminWebRootProbe", () => {
+  it("prefixes the canary with the app base path", () => {
+    expect(webRootProbeUrl("/")).toBe("/wgw-content/.probe");
+    expect(webRootProbeUrl("/wgw/")).toBe("/wgw/wgw-content/.probe");
+  });
+
   it("warns when the canary file is served", async () => {
     vi.stubGlobal(
       "fetch",
