@@ -553,24 +553,26 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       return fetchAdminUiData(opts);
     },
     activatePlugin: async (pluginId, opts) => {
-      const res = await wgwFetch(`/plugins/${encodeURIComponent(pluginId)}/activation`, {
+      const res = await wgwFetch(`/admin/plugins/${encodeURIComponent(pluginId)}/activation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: true }),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`PUT /plugins/${pluginId}/activation failed (${res.status})`);
+      if (!res.ok)
+        throw new Error(`PUT /admin/plugins/${pluginId}/activation failed (${res.status})`);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },
     deactivatePlugin: async (pluginId, opts) => {
-      const res = await wgwFetch(`/plugins/${encodeURIComponent(pluginId)}/activation`, {
+      const res = await wgwFetch(`/admin/plugins/${encodeURIComponent(pluginId)}/activation`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: false }),
         signal: opts?.signal,
       });
-      if (!res.ok) throw new Error(`PUT /plugins/${pluginId}/activation failed (${res.status})`);
+      if (!res.ok)
+        throw new Error(`PUT /admin/plugins/${pluginId}/activation failed (${res.status})`);
       await wgwReadJson(res);
       return fetchAdminUiData(opts);
     },

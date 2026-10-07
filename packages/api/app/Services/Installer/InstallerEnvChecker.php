@@ -23,6 +23,7 @@ final class InstallerEnvChecker
         }
         $checks[] = $this->extension($dbDriver === 'mysql' ? 'pdo_mysql' : 'pdo_sqlite');
         $checks[] = $this->writable($this->paths->dataDir());
+        $this->paths->ensureDataDirWebDeny();
         $checks[] = $this->writable($this->paths->configDir());
         foreach ($this->apiRuntimeChecks($this->paths->installRoot()) as $check) {
             $checks[] = $check;

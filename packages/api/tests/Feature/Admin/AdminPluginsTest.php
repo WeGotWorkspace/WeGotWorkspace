@@ -38,7 +38,7 @@ final class AdminPluginsTest extends WgwDatabaseTestCase
             ]);
 
         $this->withBearer($token)
-            ->putJson('/api/v1/plugins/demo-plugin/activation', ['active' => false])
+            ->putJson('/api/v1/admin/plugins/demo-plugin/activation', ['active' => false])
             ->assertOk()
             ->assertJsonPath('plugin.active', false);
 
@@ -51,7 +51,7 @@ final class AdminPluginsTest extends WgwDatabaseTestCase
             ]);
 
         $this->withBearer($token)
-            ->putJson('/api/v1/plugins/demo-plugin/activation', ['active' => true])
+            ->putJson('/api/v1/admin/plugins/demo-plugin/activation', ['active' => true])
             ->assertOk();
     }
 

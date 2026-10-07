@@ -325,6 +325,7 @@ final class InstallerWizardService
         if ($enableFiles) {
             @mkdir(rtrim($this->paths->dataDir(), '/').'/files', 0775, true);
         }
+        $this->paths->ensureDataDirWebDeny();
 
         $this->paths->clearStaleInstallLock();
         $this->removeEmptySqliteDatabase($db);
@@ -345,7 +346,7 @@ final class InstallerWizardService
                         SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
                         SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
                         SettingKeys::AUTH_REALM => 'SabreDAV',
-                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? true),
+                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
                         SettingKeys::FILES_ENABLED => $enableFiles,
                         SettingKeys::CALENDAR_ENABLED => $enableCalendars,
                         SettingKeys::CONTACTS_ENABLED => $enableContacts,
@@ -397,7 +398,7 @@ final class InstallerWizardService
         $this->saveWizardState([
             'step' => 'done',
             'installed_base_uri' => (string) ($state['base_uri'] ?? '/'),
-            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
+            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'enable_files' => $enableFiles,
             'enable_calendars' => $enableCalendars,
             'enable_contacts' => $enableContacts,
@@ -424,7 +425,7 @@ final class InstallerWizardService
                 'enable_files' => true,
                 'enable_calendars' => true,
                 'enable_contacts' => true,
-                'show_browser_ui' => true,
+                'show_browser_ui' => false,
                 'checks' => $this->env->checkAll('sqlite'),
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
@@ -452,7 +453,7 @@ final class InstallerWizardService
             'enable_files' => (bool) ($state['enable_files'] ?? true),
             'enable_calendars' => (bool) ($state['enable_calendars'] ?? true),
             'enable_contacts' => (bool) ($state['enable_contacts'] ?? true),
-            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
+            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'checks' => $this->env->checkAll($driver),
             'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
         ];
