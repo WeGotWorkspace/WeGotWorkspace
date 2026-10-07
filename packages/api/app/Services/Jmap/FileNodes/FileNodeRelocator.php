@@ -7,6 +7,7 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveShareService;
 use App\Services\Drive\DriveStarService;
 use App\Services\Drive\DriveTrashNames;
@@ -31,6 +32,7 @@ final class FileNodeRelocator
         private readonly DriveShareService $shares,
         private readonly DocsThreadRepository $docsThreads,
         private readonly DriveTrashNames $trashNames,
+        private readonly DriveShareAuthorizer $authorizer,
     ) {}
 
     /**
@@ -51,6 +53,22 @@ final class FileNodeRelocator
         $this->bestEffortThreads(fn () => $this->docsThreads->retargetPath('/'.$fromKey, '/'.$toKey));
 
         return $node;
+    }
+
+    /**
+     * D5: when the principal reaches this node only through a member grant, move it to the owner's trash.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function trashIfGrantee(JmapFileNode $node, array $principal): bool
+    {
+        $owner = $this->authorizer->memberGrantOwner('/'.$node->storage_key, $principal);
+        if ($owner === null) {
+            return false;
+        }
+        $this->trashForOwner($node, $owner);
+
+        return true;
     }
 
     /** D5: move a node into users/{owner}/.Trash under a unique name. */

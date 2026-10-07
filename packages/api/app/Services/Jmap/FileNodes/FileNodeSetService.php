@@ -196,10 +196,7 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'nodeHasChildren', 'description' => 'The directory has children; pass onDestroyRemoveChildren to remove them.']);
         }
 
-        $owner = $this->authorizer->memberGrantOwner('/'.$key, $principal);
-        if ($owner !== null) {
-            $this->relocator->trashForOwner($node, $owner);
-
+        if ($this->relocator->trashIfGrantee($node, $principal)) {
             return;
         }
 

@@ -12,6 +12,12 @@ use Illuminate\Contracts\Filesystem\Filesystem;
  */
 final class DriveTrashNames
 {
+    public function isTrashDestination(string $virtualPath): bool
+    {
+        return preg_match('#/\.Trash$#', $virtualPath) === 1
+            || preg_match('#/Trash$#', $virtualPath) === 1;
+    }
+
     public function unique(Filesystem $disk, string $trashStorageKey, string $name): string
     {
         $name = $this->validateItemName($name);

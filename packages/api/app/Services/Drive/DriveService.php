@@ -9,6 +9,7 @@ use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeRelocator;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -34,6 +35,7 @@ final class DriveService
         private DocsThreadRepository $docsThreads,
         private DocAttachmentsService $docAttachments,
         private DriveTrashNames $trashNames,
+        private FileNodeRelocator $relocator,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -204,7 +206,7 @@ final class DriveService
             throw new \InvalidArgumentException('Source not found.');
         }
         if ($disk->exists($toKey)) {
-            if ($this->isTrashDestination($destination)) {
+            if ($this->trashNames->isTrashDestination($destination)) {
                 $toName = $this->trashNames->unique($disk, $this->paths->virtualToStorageKey($destination), $toName);
                 $toPath = $this->paths->normalizeVirtualPath($destination.'/'.$toName);
                 $toKey = $this->paths->virtualToStorageKey($toPath);
@@ -243,6 +245,10 @@ final class DriveService
             $this->authorizer->assertMayManageStructure($path, $principal);
             $this->authorizer->assertNotGrantScopeRoot($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
+            $node = $this->fileNodes->liveByKey($key) ?? $this->fileNodes->recordCreate($key);
+            if ($node !== null && $this->relocator->trashIfGrantee($node, $principal)) {
+                continue;
+            }
             $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
             if ($disk->directoryExists($key) || $disk->exists($key)) {
                 if ($disk->directoryExists($key)) {
@@ -870,12 +876,6 @@ final class DriveService
     {
         return $this->isHiddenNotesPath($virtualPath)
             || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
-    }
-
-    private function isTrashDestination(string $destination): bool
-    {
-        return preg_match('#/\.Trash$#', $destination) === 1
-            || preg_match('#/Trash$#', $destination) === 1;
     }
 
     private function disk(): Filesystem
