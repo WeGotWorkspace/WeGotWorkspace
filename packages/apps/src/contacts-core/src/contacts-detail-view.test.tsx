@@ -280,7 +280,7 @@ describe("ContactsDetailView empty trailing rows", () => {
     ).toBe(true);
   });
 
-  it("uses sentence-style field-label-row__label for section titles", () => {
+  it("uses field-label-row__label for section titles", () => {
     render(<EditableDetailHarness />);
     const nameSection = screen.getByRole("heading", {
       level: 2,

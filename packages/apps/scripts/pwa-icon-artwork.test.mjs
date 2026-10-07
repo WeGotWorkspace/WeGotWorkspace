@@ -215,4 +215,39 @@ describe("PWA icon artwork", () => {
       }
     }
   });
+
+  it("matches a 192 PNG corner pixel to the SVG surface fill after raster peel", () => {
+    // Header bands / edge glyphs can cover top-left; any of the four corners
+    // must still show the full-bleed surface (catches stale cream Soft pads).
+    const apps = readdirSync(pwaDir)
+      .filter((name) => name.endsWith("-192.png"))
+      .map((name) => name.slice(0, -"-192.png".length));
+    expect(apps.length).toBeGreaterThan(0);
+    for (const app of apps) {
+      const sourceName = app === "home" ? "home-pwa.svg" : `${app}.svg`;
+      const markup = readFileSync(join(sourceDir, sourceName), "utf8");
+      const fill = assertFullBleedSquare(app, svgForRasterization(markup));
+      const hex = /^#([0-9a-fA-F]{6})$/.exec(fill);
+      expect(hex, `${app} surface fill`).not.toBeNull();
+      const expected = [0, 2, 4].map((offset) =>
+        Number.parseInt(hex[1].slice(offset, offset + 2), 16),
+      );
+      const { width, height, rgba } = decodePng(join(pwaDir, `${app}-192.png`));
+      const corners = [
+        [0, 0],
+        [width - 1, 0],
+        [0, height - 1],
+        [width - 1, height - 1],
+      ];
+      const matched = corners.some(([x, y]) => {
+        const index = (y * width + x) * 4;
+        return (
+          rgba[index] === expected[0] &&
+          rgba[index + 1] === expected[1] &&
+          rgba[index + 2] === expected[2]
+        );
+      });
+      expect(matched, `${app}-192.png: no corner matches surface ${fill}`).toBe(true);
+    }
+  });
 });

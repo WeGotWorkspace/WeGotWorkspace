@@ -9,19 +9,19 @@
   "theme_color": "#ba9689",
   "icons": [
     {
-      "src": "/pwa-icons/drive-192.png?v=24",
+      "src": "/pwa-icons/drive-192.png?v=25",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/drive-512.png?v=24",
+      "src": "/pwa-icons/drive-512.png?v=25",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-icons/drive-512-maskable.png?v=24",
+      "src": "/pwa-icons/drive-512-maskable.png?v=25",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

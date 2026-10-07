@@ -22,14 +22,15 @@
   isolation: isolate;
   width: 100%;
   min-height: 100%;
-  border: var(--border);
+  border: var(--_lc-timeline-border);
   /* Consumers composing the timeline into a scroll/swipe context can relax this (e.g. pan-y);
      active gestures still block native panning via a touchmove blocker while they run. */
   touch-action: var(--time-line-touch-action, none);
   user-select: none;
   display: flex;
   --__event-height: var(--event-height, 32px);
-  --border: 0.5px solid var(--_lc-grid-line-color, var(--color-border));
+  /* Private shorthand — do not shadow the color token `--border`. */
+  --_lc-timeline-border: 0.5px solid var(--_lc-grid-line-color, var(--color-border));
   pointer-events: none;
 }
 
@@ -44,14 +45,14 @@
 }
 
 .cell {
-  outline: var(--border);
+  outline: var(--_lc-timeline-border);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .cell:focus {
-  outline: var(--border);
+  outline: var(--_lc-timeline-border);
 }
 
 .cell:focus-visible {

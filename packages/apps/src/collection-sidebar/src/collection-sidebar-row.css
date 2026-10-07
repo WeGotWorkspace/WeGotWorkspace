@@ -97,12 +97,16 @@
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
    * Keep collection-row size (`Checkbox size="sm"` / 0.875rem) even if the editor
-   * overrides `--checkbox-size`. Checked fill uses `.checkbox` event-card
-   * surfaceTint; only border/fg stay saturated. */
+   * overrides `--checkbox-size`. Checked fill uses `.checkbox` surfaceTint;
+   * border stays saturated; glyph uses the shared Dark-mixed recipe. */
   --checkbox-size: var(--collection-sidebar-row-leading-size, 0.875rem);
   --checkbox-border-color: var(--collection-row-color, var(--workspace-foreground));
   --checkbox-checked-border: var(--collection-row-color, var(--workspace-foreground));
-  --checkbox-checked-fg: var(--collection-row-color, var(--workspace-foreground));
+  --checkbox-checked-fg: color-mix(
+    in oklab,
+    var(--collection-row-color, var(--workspace-foreground)) 32%,
+    var(--color-we-got-dark)
+  );
   @apply relative z-10 shrink-0;
   border-color: var(--collection-row-color, var(--workspace-foreground));
   pointer-events: auto;
@@ -110,7 +114,14 @@
 
 .collection-sidebar-row__visibility[data-state="checked"] {
   border-color: var(--collection-row-color, var(--workspace-foreground));
-  color: var(--collection-row-color, var(--workspace-foreground));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(
+      in oklab,
+      var(--collection-row-color, var(--workspace-foreground)) 32%,
+      var(--color-we-got-dark)
+    )
+  );
 }
 
 .collection-sidebar-row__visibility[data-state="unchecked"] {

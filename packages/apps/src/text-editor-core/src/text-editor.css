@@ -451,30 +451,33 @@
 
 .text-editor-prose ul[data-type="taskList"] li > label span {
   /* 1px border matches shared `.checkbox`. No drop shadow.
-   * Checked fill: same light 14% / dark 22% wash as `.checkbox`. */
+   * Checked fill: same 14% surfaceTint wash as `.checkbox`. */
   --_checkbox-fill-accent: var(
     --checkbox-checked-border,
     var(--checkbox-border-color, var(--primary))
   );
   --_checkbox-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  --_checkbox-tint: light-dark(
-    color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface)),
-    color-mix(in srgb, var(--_checkbox-fill-accent) 22%, var(--_checkbox-surface))
-  );
+  --_checkbox-tint: color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface));
   @apply relative grid shrink-0 place-content-center border shadow-none;
   width: var(--checkbox-size, 1.5rem);
   height: var(--checkbox-size, 1.5rem);
   border-radius: var(--checkbox-radius, var(--control-radius-pill));
   border-color: var(--checkbox-border-color, var(--primary));
   background-color: var(--checkbox-bg, transparent);
-  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+  );
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span,
 .text-editor-prose ul[data-type="taskList"] li[data-checked="true"] > label span {
   background-color: var(--checkbox-checked-bg, var(--_checkbox-tint));
   border-color: var(--checkbox-checked-border, var(--checkbox-border-color, var(--primary)));
-  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+  );
 }
 
 .text-editor-prose ul[data-type="taskList"] li > label input:checked + span::after,
@@ -1004,10 +1007,13 @@
     span {
     border-color: var(
       --checkbox-checked-border,
-      var(--checkbox-checked-bg, var(--primary))
+      var(--checkbox-border-color, var(--primary))
     ) !important;
-    background: var(--checkbox-checked-bg, var(--primary)) !important;
-    color: var(--checkbox-checked-fg, var(--primary-foreground)) !important;
+    background: var(--checkbox-checked-bg, var(--_checkbox-tint)) !important;
+    color: var(
+      --checkbox-checked-fg,
+      color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+    ) !important;
     box-shadow: none !important;
   }
 

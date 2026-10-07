@@ -15,7 +15,8 @@
      These tokens are consumed inside <time-line>'s shadow (classes + inline color)
      because outer-tree `::part()` color does not paint year mini-month numbers. */
   --_lc-grid-line-width: 1px;
-  --_lc-grid-line-color: var(--border);
+  /* Denser than shared chrome `--border` (8%) so hour/day rules stay visible. */
+  --_lc-grid-line-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
   --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
@@ -351,7 +352,7 @@ time-line.timeline-timed::part(viewport) {
   time-line.timeline-timed {
     --time-line-grid-color: color-mix(
       in srgb,
-      var(--lc-grid-base-color, var(--workspace-foreground)) 8%,
+      var(--lc-grid-base-color, var(--workspace-foreground)) 12%,
       var(--_lc-surface-bg, var(--workspace-surface))
     );
   }

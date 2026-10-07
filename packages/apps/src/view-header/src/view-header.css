@@ -82,7 +82,7 @@
 
 @media (width >= 48rem) {
   .view-header__title {
-    font-size: var(--text-md, 1rem);
+    @apply text-base;
   }
 }
 

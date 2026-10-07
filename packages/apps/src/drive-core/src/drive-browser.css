@@ -24,7 +24,7 @@
 
 /** Matches sidebar / form labels (`.field-label-row__label`). */
 .drive-workspace .drive-item-label {
-  @apply flex items-center gap-1 capitalize text-sm font-medium truncate min-w-0;
+  @apply flex items-center gap-1 text-sm font-medium truncate min-w-0;
   letter-spacing: normal;
   font-family: var(
     --field-label-font-family,

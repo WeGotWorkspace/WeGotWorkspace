@@ -4,8 +4,9 @@
  * Shared checkbox tokens. Parents override `--checkbox-*` (Notes gold, Docs blue).
  *
  * Checked fill defaults to a slightly stronger wash than calendar event-card
- * `surfaceTint(accent, 11)` — light 14% / dark 22% into the surface
+ * `surfaceTint(accent, 11)` — 14% accent into the surface
  * (`--_lc-surface-bg` → `--workspace-surface`). Border stays fully saturated.
+ * Checked glyph mixes accent into Dark so it stays readable on the wash.
  *
  * Glyph-box sizes (not control-height tokens):
  * - `md` (default): 1.25rem / 20px (`size-5`) — forms / dense lists
@@ -20,11 +21,7 @@
     var(--checkbox-border-color, var(--primary))
   );
   --_checkbox-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  /* Exact mix: light 14% → darkPercent = 14 + 8. */
-  --_checkbox-tint: light-dark(
-    color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface)),
-    color-mix(in srgb, var(--_checkbox-fill-accent) 22%, var(--_checkbox-surface))
-  );
+  --_checkbox-tint: color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface));
 
   @apply grid place-content-center shrink-0 border;
   @apply focus-visible:outline-none focus-visible:ring-1;
@@ -33,7 +30,10 @@
   border-radius: var(--checkbox-radius, var(--control-radius-pill));
   border-color: var(--checkbox-border-color, var(--primary));
   background-color: var(--checkbox-bg, transparent);
-  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+  );
   --tw-ring-color: var(--checkbox-ring-color, var(--ring));
 }
 
@@ -55,7 +55,10 @@
 .checkbox[data-state="checked"] {
   background-color: var(--checkbox-checked-bg, var(--_checkbox-tint));
   border-color: var(--checkbox-checked-border, var(--checkbox-border-color, var(--primary)));
-  color: var(--checkbox-checked-fg, var(--_checkbox-fill-accent));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--color-we-got-dark))
+  );
 }
 
 .checkbox__icon {

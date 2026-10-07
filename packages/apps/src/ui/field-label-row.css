@@ -7,13 +7,14 @@
 }
 
 /**
- * Sentence-style field label (matches `.sidebar-section__title`).
+ * Field label (matches `.sidebar-section__title`). Source strings own casing —
+ * do not Title-Case via `text-transform: capitalize`.
  * Parents override tone via `labelClassName` or `--field-label-color` /
  * `--field-label-font-family` on an ancestor. Face overrides prefer remapping
  * `--font-sans` on the workspace. True uppercase captions stay on `.text-caption`.
  */
 .field-label-row__label {
-  @apply flex items-center gap-1 capitalize text-sm font-medium;
+  @apply flex items-center gap-1 text-sm font-medium;
   letter-spacing: normal;
   font-family: var(
     --field-label-font-family,

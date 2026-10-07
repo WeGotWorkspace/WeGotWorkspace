@@ -10,7 +10,7 @@
   --user-avatar-subtitle-leading: 1.25;
   /*
    * Per-user identity hues. Wash algorithm matches `.checkbox` checked fill:
-   * saturated 1px stroke + surfaceTint light 14% / dark 22% into surface.
+   * saturated 1px stroke + surfaceTint 14% into surface.
    * Glyph fg stays hue→ink for contrast on the soft wash.
    */
   --user-avatar-amber: #f59e0b;
@@ -62,10 +62,11 @@
 /* Colored marks: saturated stroke + checkbox-style surfaceTint fill. */
 .user-avatar--colored {
   --_user-avatar-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  /* Exact mix: light 14% → darkPercent = 14 + 8 (same as `.checkbox`). */
-  --user-avatar-tile-bg: light-dark(
-    color-mix(in srgb, var(--user-avatar-hue) 14%, var(--_user-avatar-surface)),
-    color-mix(in srgb, var(--user-avatar-hue) 22%, var(--_user-avatar-surface))
+  /* Same 14% surfaceTint as `.checkbox`. */
+  --user-avatar-tile-bg: color-mix(
+    in srgb,
+    var(--user-avatar-hue) 14%,
+    var(--_user-avatar-surface)
   );
   --user-avatar-tile-border: var(--user-avatar-hue);
   --user-avatar-tile-fg: color-mix(in oklab, var(--user-avatar-hue) 32%, var(--color-we-got-dark));

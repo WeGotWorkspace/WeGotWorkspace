@@ -6,12 +6,13 @@
  * Photo imgs cover the mark; do not tint `.user-avatar__image`.
  */
 .contacts-user-avatar {
-  /* Same wash as `.checkbox` / hashed `.user-avatar--colored`: sat stroke + 14/22 tint. */
+  /* Same wash as `.checkbox` / hashed `.user-avatar--colored`: sat stroke + 14% tint. */
   --_contacts-avatar-accent: var(--contacts-book-color, var(--workspace-accent));
   --_contacts-avatar-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  --user-avatar-bg: light-dark(
-    color-mix(in srgb, var(--_contacts-avatar-accent) 14%, var(--_contacts-avatar-surface)),
-    color-mix(in srgb, var(--_contacts-avatar-accent) 22%, var(--_contacts-avatar-surface))
+  --user-avatar-bg: color-mix(
+    in srgb,
+    var(--_contacts-avatar-accent) 14%,
+    var(--_contacts-avatar-surface)
   );
   --user-avatar-fg: var(--workspace-foreground);
   --user-avatar-border: var(--_contacts-avatar-accent);

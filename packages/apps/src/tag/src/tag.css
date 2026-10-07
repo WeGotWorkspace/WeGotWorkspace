@@ -44,20 +44,13 @@
 }
 
 /* Same wash as `.checkbox` / colored `.user-avatar`: saturated stroke +
- * surfaceTint light 14% / dark 22% into surface (srgb). */
+ * surfaceTint 14% into surface (srgb). */
 .tag--collection-tint {
   --_tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  --tag-bg: light-dark(
-    color-mix(
-      in srgb,
-      var(--collection-row-color, var(--workspace-foreground)) 14%,
-      var(--_tag-surface)
-    ),
-    color-mix(
-      in srgb,
-      var(--collection-row-color, var(--workspace-foreground)) 22%,
-      var(--_tag-surface)
-    )
+  --tag-bg: color-mix(
+    in srgb,
+    var(--collection-row-color, var(--workspace-foreground)) 14%,
+    var(--_tag-surface)
   );
   --tag-fg: color-mix(
     in oklab,

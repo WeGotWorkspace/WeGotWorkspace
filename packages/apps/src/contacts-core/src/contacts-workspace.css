@@ -49,7 +49,6 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: var(--workspace-accent);
   --switch-on-bg: var(--workspace-accent);
   /* Selected / open list row: same wash as Drive and Docs tiles. */
   --list-item-selected-bg: var(--drive-item-selected-background);

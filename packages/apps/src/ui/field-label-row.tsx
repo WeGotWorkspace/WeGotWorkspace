@@ -35,7 +35,7 @@ export type FieldLabelRowProps = {
    */
   htmlFor?: string;
   /**
-   * `caption` (default): sentence-style text above the control.
+   * `caption` (default): label text above the control (source string owns casing).
    * `icon`: icon only, in front of the control; tooltip shows the label text on hover.
    */
   labelMode?: FieldLabelRowLabelMode;

@@ -61,6 +61,11 @@
   touch-action: manipulation;
 }
 
+.tasks-main-view__complete {
+  --checkbox-size: var(--tasks-marker-size, 1.5rem);
+  --checkbox-check-size: 1rem;
+}
+
 .tasks-main-view__composer-marker svg {
   @apply size-6;
 }

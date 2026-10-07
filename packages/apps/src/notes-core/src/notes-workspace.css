@@ -18,7 +18,7 @@
  * Star/Archive, tags, and editor checks use the live notebook hue.
  * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
  * not full ink). Detail task-list checks share the tag wash (saturated
- * border + surfaceTint light 14% / dark 22% fill, accent-strong mark).
+ * border + surfaceTint 14% fill, accent-strong mark).
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
@@ -91,10 +91,10 @@
   --list-item-checkbox-icon-color: #ffffff;
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
   /* Workspace-level — sidebar collection rows override with row color.
-   * Checked fill uses `.checkbox` event-card surfaceTint; border/fg stay saturated.
-   * Detail editor task-lists use the tag wash on `.note-text-editor-body`. */
+   * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph
+   * uses the shared Dark-mixed default. Detail editor task-lists use the tag
+   * wash on `.note-text-editor-body`. */
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: var(--workspace-accent);
   /* Idle tag chips — sidebar filters + list-row pills share this family.
    * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
    * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
@@ -107,11 +107,12 @@
   --notes-tag-selected-fg: #ffffff;
   --notes-tag-selected-border: var(--workspace-foreground);
   /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
-   * surfaceTint light 14% / dark 22% accent into surface (srgb). */
+   * surfaceTint 14% accent into surface (srgb). */
   --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  --note-detail-tag-bg: light-dark(
-    color-mix(in srgb, var(--notes-detail-accent) 14%, var(--_note-detail-tag-surface)),
-    color-mix(in srgb, var(--notes-detail-accent) 22%, var(--_note-detail-tag-surface))
+  --note-detail-tag-bg: color-mix(
+    in srgb,
+    var(--notes-detail-accent) 14%,
+    var(--_note-detail-tag-surface)
   );
   --note-detail-tag-fg: var(--notes-detail-accent-strong);
   --note-detail-tag-border: var(--notes-detail-accent);
