@@ -215,13 +215,12 @@
   border-top: 1px solid color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
+/**
+ * Layout only — type/color come from `.field-label-row__label` (same as
+ * sidebar section titles and form FieldLabelRow captions).
+ */
 .contacts-detail-view__section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
-  margin: 0 0 0.75rem;
+  @apply mb-3;
 }
 
 .contacts-detail-view__section-body {

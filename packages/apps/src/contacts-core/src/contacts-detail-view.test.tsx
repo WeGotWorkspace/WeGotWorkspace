@@ -279,6 +279,21 @@ describe("ContactsDetailView empty trailing rows", () => {
       screen.getByLabelText(defaultContactsLabels.phoneNumber).classList.contains("input--size-md"),
     ).toBe(true);
   });
+
+  it("uses sentence-style field-label-row__label for section titles", () => {
+    render(<EditableDetailHarness />);
+    const nameSection = screen.getByRole("heading", {
+      level: 2,
+      name: defaultContactsLabels.sectionName,
+    });
+    expect(nameSection.classList.contains("field-label-row__label")).toBe(true);
+    expect(nameSection.classList.contains("contacts-detail-view__section-title")).toBe(true);
+    const phonesSection = screen.getByRole("heading", {
+      level: 2,
+      name: defaultContactsLabels.sectionPhones,
+    });
+    expect(phonesSection.classList.contains("field-label-row__label")).toBe(true);
+  });
 });
 
 const noop = () => undefined;
@@ -609,9 +624,11 @@ describe("ContactsDetailView birthday field", () => {
         {...viewModeHandlers}
       />,
     );
-    expect(
-      screen.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
-    ).toBeTruthy();
+    const birthdaySection = screen.getByRole("heading", {
+      name: defaultContactsLabels.sectionBirthday,
+    });
+    expect(birthdaySection.classList.contains("field-label-row__label")).toBe(true);
+    expect(birthdaySection.classList.contains("contacts-detail-view__section-title")).toBe(true);
     expect(screen.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     expect(screen.getByText(/1985/)).toBeTruthy();
   });
