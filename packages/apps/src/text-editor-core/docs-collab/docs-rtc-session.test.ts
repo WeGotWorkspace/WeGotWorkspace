@@ -43,7 +43,10 @@ const captured = vi.hoisted(() => ({
     getPeerIds: vi.fn(() => [] as string[]),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string }>),
     getPeerLinkStates: vi.fn(() => [] as Array<{ id: string; name: string; link: string }>),
-    join: vi.fn(async () => ({ peerId: "me", peers: [] })),
+    join: vi.fn(async (): Promise<{ peerId: string; peers: []; ticket?: string }> => ({
+      peerId: "me",
+      peers: [],
+    })),
     leave: vi.fn(async () => undefined),
     retryRoomPeerConnections: vi.fn(),
     retryPeerConnection: vi.fn(),

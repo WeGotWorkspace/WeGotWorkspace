@@ -571,6 +571,7 @@ export class RtcPeerMesh {
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
+    ticket?: string;
   }> {
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");

@@ -249,7 +249,8 @@ export function useDocsCollabMesh({
         await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
       }
       if (!isCurrent()) return null;
-      if (refs.meshRef.current) return refs.meshRef.current.getRoomPeers();
+      const raced = refs.meshRef.current;
+      if (raced) return raced.getRoomPeers();
 
       const resumed = resumeDocsCollabMeshSession(room);
       if (resumed) {
@@ -279,7 +280,8 @@ export function useDocsCollabMesh({
       // Re-check after the await. Between these checks and `new` there must be
       // no await, so check-and-create stays atomic.
       if (!isCurrent()) return null;
-      if (refs.meshRef.current) return refs.meshRef.current.getRoomPeers();
+      const racedAfterFetch = refs.meshRef.current;
+      if (racedAfterFetch) return racedAfterFetch.getRoomPeers();
       const parked = resumeDocsCollabMeshSession(room);
       if (parked) {
         refs.meshRef.current = parked;
