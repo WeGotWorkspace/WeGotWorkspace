@@ -227,37 +227,59 @@ export async function clearDocsCollabOfflinePersistence(apiPath: string): Promis
   }
 }
 
+/** IndexedDB names a room may still occupy: the current `:v2` key and pre-v2 keys. */
+function indexedDbNamesForRoom(roomKey: string): string[] {
+  return [docsCollabIndexedDbKey(roomKey), ...docsCollabLegacyIndexedDbKeys(roomKey)];
+}
+
+/**
+ * Copies one y-indexeddb database onto another and clears the source.
+ * An empty source with no pending save is left untouched.
+ */
+async function moveIndexedDbPersistence(fromName: string, toName: string): Promise<void> {
+  if (fromName === toName) return;
+  const oldDoc = new Y.Doc();
+  const oldPersistence = new IndexeddbPersistence(fromName, oldDoc);
+  try {
+    await oldPersistence.whenSynced;
+    const pendingServerSave = Boolean(await oldPersistence.get(PENDING_SERVER_SAVE_KEY));
+    const hasBody = !isYDocEmpty(oldDoc);
+    if (!hasBody && !pendingServerSave) return;
+
+    const update = hasBody ? Y.encodeStateAsUpdate(oldDoc) : null;
+    const newDoc = new Y.Doc();
+    const newPersistence = new IndexeddbPersistence(toName, newDoc);
+    try {
+      await newPersistence.whenSynced;
+      if (update) Y.applyUpdate(newDoc, update);
+      if (pendingServerSave) await newPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    } finally {
+      await newPersistence.destroy();
+      newDoc.destroy();
+    }
+    await oldPersistence.clearData();
+  } finally {
+    await oldPersistence.destroy();
+    oldDoc.destroy();
+  }
+}
+
 /**
  * Renames y-indexeddb persistence when a collab document path changes.
- * Copies Yjs state + pending-server-save meta and clears the old room key.
+ * Copies Yjs state and pending-server-save meta for the `:v2` key and every
+ * pre-v2 key, then clears those names on the old room.
  */
 export async function migrateCollabPersistence(oldPath: string, newPath: string): Promise<void> {
   if (oldPath === newPath) {
     throw new Error("migrateCollabPersistence requires distinct old and new paths");
   }
 
-  const oldRoom = docsCollabRoomKey(oldPath);
-  const newRoom = docsCollabRoomKey(newPath);
-  const oldDoc = new Y.Doc();
-  const newDoc = new Y.Doc();
-  const oldPersistence = new IndexeddbPersistence(docsCollabIndexedDbKey(oldRoom), oldDoc);
-  const newPersistence = new IndexeddbPersistence(docsCollabIndexedDbKey(newRoom), newDoc);
-  try {
-    await Promise.all([oldPersistence.whenSynced, newPersistence.whenSynced]);
-    const oldUpdate = Y.encodeStateAsUpdate(oldDoc);
-    if (oldUpdate.length > 0) {
-      Y.applyUpdate(newDoc, oldUpdate);
-    }
-
-    const pendingServerSave = await oldPersistence.get("pendingServerSave");
-    if (pendingServerSave) {
-      await newPersistence.set("pendingServerSave", 1);
-    }
-    await oldPersistence.clearData();
-  } finally {
-    await oldPersistence.destroy();
-    await newPersistence.destroy();
-    oldDoc.destroy();
-    newDoc.destroy();
+  const oldNames = indexedDbNamesForRoom(docsCollabRoomKey(oldPath));
+  const newNames = indexedDbNamesForRoom(docsCollabRoomKey(newPath));
+  for (let index = 0; index < oldNames.length; index += 1) {
+    const fromName = oldNames[index];
+    const toName = newNames[index];
+    if (!fromName || !toName) continue;
+    await moveIndexedDbPersistence(fromName, toName);
   }
 }

@@ -2,6 +2,8 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
 import {
+  docsCollabIndexedDbKey,
+  docsCollabLegacyIndexedDbKeys,
   docsCollabRoomKey,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -16,14 +18,12 @@ export function noteCollabRoomKey(uid: string): string {
   return docsCollabRoomKey(uid);
 }
 
-async function withRoom<T>(
-  uid: string,
+async function withIndexedDb<T>(
+  indexedDbName: string,
   run: (ydoc: Y.Doc, persistence: IndexeddbPersistence) => Promise<T>,
 ): Promise<T | undefined> {
-  const room = noteCollabRoomKey(uid);
-  if (!room) return undefined;
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(room, ydoc);
+  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
   try {
     await persistence.whenSynced;
     return await run(ydoc, persistence);
@@ -33,6 +33,15 @@ async function withRoom<T>(
     await persistence.destroy();
     ydoc.destroy();
   }
+}
+
+async function withRoom<T>(
+  uid: string,
+  run: (ydoc: Y.Doc, persistence: IndexeddbPersistence) => Promise<T>,
+): Promise<T | undefined> {
+  const room = noteCollabRoomKey(uid);
+  if (!room) return undefined;
+  return withIndexedDb(room, run);
 }
 
 /** Headlessly read markdown from the UID-keyed collab crash buffer. */
@@ -45,8 +54,14 @@ export async function readNoteCollabOfflineContent(uid: string): Promise<string 
 }
 
 export async function hasNoteCollabOfflinePersistence(uid: string): Promise<boolean> {
-  const found = await withRoom(uid, async (ydoc) => !isYDocEmpty(ydoc));
-  return Boolean(found);
+  const room = noteCollabRoomKey(uid);
+  if (!room) return false;
+  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
+  for (const name of names) {
+    const found = await withIndexedDb(name, async (ydoc) => !isYDocEmpty(ydoc));
+    if (found) return true;
+  }
+  return false;
 }
 
 export async function hasNoteCollabPendingServerSave(uid: string): Promise<boolean> {
