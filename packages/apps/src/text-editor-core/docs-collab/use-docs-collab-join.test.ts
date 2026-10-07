@@ -88,6 +88,7 @@ function useEchoSession(userName: string): {
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
   applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
   trySeedFromFile: () => void;
+  snapshotPreview: string | null;
 } {
   const refs = useDocsCollabSessionRefs(DEFAULT_DOCS_COLLAB_WIRE, undefined);
   const markDocReadyRef = useRef<() => void>(() => undefined);
@@ -128,6 +129,7 @@ function useEchoSession(userName: string): {
     handleMeshMessage: mesh.handleMeshMessage,
     applyServerBootstrap: join.applyServerBootstrap,
     trySeedFromFile: join.trySeedFromFile,
+    snapshotPreview: join.snapshotPreview,
   };
 }
 
@@ -264,6 +266,7 @@ describe("useDocsCollabJoin markDocReady", () => {
     await pending;
 
     expect(isYDocEmpty(local)).toBe(true);
+    expect(hook.result.current.snapshotPreview).toContain("Already on the sidecar");
 
     hook.result.current.refs.meshRef.current = {
       getPeerIds: () => ["peer"],
@@ -276,6 +279,8 @@ describe("useDocsCollabJoin markDocReady", () => {
     } as unknown as DocsRtcSession;
     hook.result.current.trySeedFromFile();
     expect(isYDocEmpty(local)).toBe(true);
+    // The doc can already be marked ready when the peer update arrives.
+    hook.result.current.refs.seedDoneRef.current = true;
 
     const peer = new Y.Doc();
     writeBody(peer, "from the peer");
@@ -290,6 +295,7 @@ describe("useDocsCollabJoin markDocReady", () => {
 
     expect(bodyText(local)).toBe("from the peer");
     expect(bodyText(peer)).toBe("from the peer");
+    expect(hook.result.current.snapshotPreview).toBeNull();
 
     awareness.destroy();
     local.destroy();

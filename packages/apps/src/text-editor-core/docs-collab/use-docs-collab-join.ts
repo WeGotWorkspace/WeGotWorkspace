@@ -115,9 +115,10 @@ export function useDocsCollabJoin({
   const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
   const markDocReady = useCallback(() => {
+    // A peer can fill the doc after a failed sidecar already showed the preview.
+    setSnapshotPreview(null);
     if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
-    setSnapshotPreview(null);
     flushMeshSyncIfHydrated();
   }, [flushMeshSyncIfHydrated, refs]);
 
