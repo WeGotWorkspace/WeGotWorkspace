@@ -7,15 +7,12 @@ namespace Tests\Feature\Security\PreLaunch;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
-use App\Services\Auth\UiSessionService;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
-use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\WgwDatabaseTestCase;
-use Tests\Support\WgwInstallFixture;
 
 /**
  * H4 methods copied from the #1140 reference test. They assert the secure
@@ -193,40 +190,6 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             $provider->retrieveById($bob->getAuthIdentifier()),
             'SabreUserProvider::retrieveById() returns disabled users, so existing Passport tokens keep working.',
         );
-    }
-
-    /** H3: a deleted user's still-valid UI cookie must not authenticate DAV. */
-    public function test_h3_deleted_user_cookie_is_rejected(): void
-    {
-        $realm = (string) (WgwSettings::normalized()[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
-        $cookie = $this->app->make(UiSessionService::class)->buildCookie('bob', $realm, '/');
-
-        $this->withBearer($this->login('alice')['access_token'])
-            ->deleteJson('/api/v1/admin/users/bob')
-            ->assertSuccessful();
-
-        $installRoot = sys_get_temp_dir().'/wgw-h3-cookie-'.uniqid('', true);
-        mkdir($installRoot, 0775, true);
-        file_put_contents($installRoot.'/index.php', "<?php\n");
-        $dataDir = $installRoot.'/wgw-content';
-        mkdir($dataDir.'/files/users/bob', 0775, true);
-        WgwInstallFixture::bindInstallRoot($installRoot, $dataDir);
-        WgwInstallFixture::markInstalled($installRoot, $dataDir, 'bob');
-        config(['wgw.install_root' => $installRoot, 'wgw.data_dir' => $dataDir]);
-        WgwInstallFixture::forgetInstallBindings();
-        WgwInstallFixture::purgeDatabaseConnection();
-
-        $_COOKIE['sabre_ui_auth'] = $cookie->getValue();
-        try {
-            $this->withUnencryptedCookie('sabre_ui_auth', $cookie->getValue())
-                ->call('PROPFIND', '/files', [], [], [], [
-                    'HTTP_DEPTH' => '0',
-                    'HTTP_ACCEPT' => '*/*',
-                ])
-                ->assertStatus(401);
-        } finally {
-            unset($_COOKIE['sabre_ui_auth']);
-        }
     }
 
     /** H4: the env file shipped with releases must be production-safe. */

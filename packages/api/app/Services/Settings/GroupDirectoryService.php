@@ -6,6 +6,7 @@ namespace App\Services\Settings;
 
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Auth\UserSessionRevoker;
 use Illuminate\Support\Facades\DB;
 use Sabre\DAVACL\PrincipalBackend\PDO as PrincipalBackend;
 
@@ -13,6 +14,7 @@ final class GroupDirectoryService
 {
     public function __construct(
         private readonly GroupMembershipResolver $membership,
+        private readonly UserSessionRevoker $sessions,
     ) {}
 
     /**
@@ -133,6 +135,7 @@ final class GroupDirectoryService
         if ($enabled && ! $isMember) {
             $members[] = $principal;
             $this->writeMembers($groupUri, $members);
+            $this->revokeAdminSessions($groupUri, $username);
 
             return;
         }
@@ -140,6 +143,7 @@ final class GroupDirectoryService
         if (! $enabled && $isMember) {
             $members = array_values(array_filter($members, static fn (string $m): bool => $m !== $principal));
             $this->writeMembers($groupUri, $members);
+            $this->revokeAdminSessions($groupUri, $username);
         }
     }
 
@@ -162,6 +166,13 @@ final class GroupDirectoryService
         }
 
         return $groups;
+    }
+
+    private function revokeAdminSessions(string $groupUri, string $username): void
+    {
+        if ($groupUri === AdminConstants::ADMIN_GROUP_URI) {
+            $this->sessions->revokeAll($username);
+        }
     }
 
     /**

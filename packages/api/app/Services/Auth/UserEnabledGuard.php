@@ -9,7 +9,8 @@ use App\Models\User;
 /**
  * Shared enabled check so REST/JMAP bearer and Sabre Basic+cookie cannot drift.
  *
- * Missing {@code users} rows (share guests, ephemeral principals) are not disabled.
+ * A missing {@code users} row is disabled. Explicit {@code share:} guest subjects
+ * have no row and stay enabled.
  */
 final class UserEnabledGuard
 {
@@ -19,9 +20,12 @@ final class UserEnabledGuard
         if ($username === '') {
             return false;
         }
+        if (str_starts_with($username, 'share:')) {
+            return true;
+        }
 
         $user = User::query()->where('username', $username)->first();
 
-        return $user === null || $user->isEnabled();
+        return $user !== null && $user->isEnabled();
     }
 }

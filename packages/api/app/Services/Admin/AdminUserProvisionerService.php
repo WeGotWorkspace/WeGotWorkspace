@@ -8,7 +8,7 @@ use App\Models\GroupMember;
 use App\Models\MailUserCredential;
 use App\Models\Principal;
 use App\Models\User;
-use App\Services\Auth\RefreshTokenRepository;
+use App\Services\Auth\UserSessionRevoker;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use App\Support\AppPaths;
@@ -24,7 +24,7 @@ final class AdminUserProvisionerService
         private GroupDirectoryService $groups,
         private InstallerSeeder $installerSeeder,
         private AppPaths $paths,
-        private RefreshTokenRepository $refreshTokens,
+        private UserSessionRevoker $sessions,
     ) {}
 
     /**
@@ -81,7 +81,7 @@ final class AdminUserProvisionerService
             }
             User::query()->where('username', $username)->update(['enabled' => $enabled]);
             if (! $enabled) {
-                $this->refreshTokens->revokeAllForUsername($username);
+                $this->sessions->revokeAll($username);
             }
         }
 
@@ -92,6 +92,7 @@ final class AdminUserProvisionerService
             }
             $hash = password_hash($password, PASSWORD_DEFAULT);
             User::query()->where('username', $username)->update(['digest' => $hash]);
+            $this->sessions->revokeAll($username);
         }
 
         if (array_key_exists('displayName', $input) || array_key_exists('email', $input)) {
@@ -156,6 +157,7 @@ final class AdminUserProvisionerService
                 ->delete();
         }
 
+        $this->sessions->revokeAll($username);
         User::query()->where('username', $username)->delete();
         if (Schema::connection('wgw')->hasTable('mail_user_credentials')) {
             MailUserCredential::query()->where('username', $username)->delete();
