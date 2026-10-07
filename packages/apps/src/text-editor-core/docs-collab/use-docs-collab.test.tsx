@@ -307,7 +307,7 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
   });
 
-  it("waits for server fetch before exposing the collab session", async () => {
+  it("exposes the collab session while server markdown is still loading", async () => {
     let markdownReady: Response | null = null;
     const pendingMarkdown: Array<(value: Response) => void> = [];
     let resolveMarkdown: (() => void) | undefined;
@@ -340,14 +340,16 @@ describe("useDocsCollab offline lifecycle", () => {
       }),
     );
 
-    expect(result.current.session).toBeNull();
+    await waitForCollabSession(result);
     expect(fetchMock).toHaveBeenCalled();
     expect(resolveMarkdown).toBeDefined();
 
     await act(async () => {
       resolveMarkdown?.();
     });
-    await waitForCollabSession(result, 10000);
+    await waitFor(() => {
+      expect(result.current.session?.ydoc.getXmlFragment("default").length).toBeGreaterThan(0);
+    });
   }, 15000);
 
   it("exposes session before mesh join completes", async () => {
@@ -721,7 +723,7 @@ describe("useDocsCollab offline lifecycle", () => {
     );
 
     await waitFor(() => expect(result.current.joined).toBe(true));
-    expect(result.current.session).toBeNull();
+    await waitForCollabSession(result);
     expect(mockJoin).not.toHaveBeenCalled();
     const collabFetchesBeforeToken = fetchMock.mock.calls.filter(([input]) =>
       String(input).includes("/files/collaboration"),

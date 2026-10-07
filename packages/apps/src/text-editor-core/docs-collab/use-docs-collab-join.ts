@@ -26,7 +26,6 @@ import {
   loadYjsSnapshot,
   saveDocument,
 } from "./docs-collab-server-io";
-import { ensureBootstrapEditorBody } from "./docs-collab-bootstrap-body";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -113,8 +112,6 @@ export function useDocsCollabJoin({
   const [joined, setJoined] = useState(false);
   const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
-  const sessionMountIdRef = useRef(0);
-
   const markDocReady = useCallback(() => {
     refs.seedDoneRef.current = true;
     flushMeshSyncIfHydrated();
@@ -276,14 +273,6 @@ export function useDocsCollabJoin({
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
       }
 
-      const bodyOutcome = ensureBootstrapEditorBody(ydoc, seed, room);
-      if (bodyOutcome === "seeded-markdown") {
-        markDocReady();
-        setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
-      } else if (bodyOutcome === "sidecar" && !refs.seedDoneRef.current) {
-        markDocReady();
-      }
-
       flushMeshSyncIfHydrated();
     },
     [
@@ -338,53 +327,19 @@ export function useDocsCollabJoin({
     ],
   );
 
-  const publishSessionIfReady = useCallback(() => {
-    const ydoc = refs.ydocRef.current;
-    const awareness = refs.awarenessRef.current;
-    if (!ydoc || !awareness) return;
-    const name = userName.trim();
-    const mountId = ++sessionMountIdRef.current;
-    setSession({
-      ydoc,
-      awareness,
-      mountId,
-      user: {
-        name,
-        color: colorForName(name),
-        id: trackChangesAuthorIdFromName(name),
-      },
-    });
-  }, [refs, userName]);
-
   const finishAuthenticatedJoin = useCallback(
     async (generation: number, name: string, authToken: string) => {
-      const ydocBefore = refs.ydocRef.current;
-      if (
-        serverJoinStartedRef.current &&
-        refs.authTokenRef.current === authToken &&
-        ydocBefore &&
-        refs.sessionRef.current?.ydoc === ydocBefore &&
-        !isYDocEmpty(ydocBefore)
-      ) {
-        return;
-      }
+      if (serverJoinStartedRef.current && refs.authTokenRef.current === authToken) return;
       serverJoinStartedRef.current = true;
       refs.authTokenRef.current = authToken;
       await applyServerBootstrap(generation, authToken);
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      publishSessionIfReady();
       if (refs.tabSyncRef.current?.isMeshLeader()) {
         await connectMeshInBackground(generation, name, authToken);
       }
       flushPendingSaveIfReady();
     },
-    [
-      applyServerBootstrap,
-      connectMeshInBackground,
-      flushPendingSaveIfReady,
-      publishSessionIfReady,
-      refs,
-    ],
+    [applyServerBootstrap, connectMeshInBackground, flushPendingSaveIfReady, refs],
   );
 
   const join = useCallback(async () => {
@@ -438,6 +393,12 @@ export function useDocsCollabJoin({
     const user = { name, color: colorForName(name), id: trackChangesAuthorIdFromName(name) };
     awareness.setLocalStateField("user", user);
 
+    setSession({
+      ydoc,
+      awareness,
+      user,
+    });
+
     ydoc.on("update", (update, origin) => {
       if (isRemoteUpdateOrigin(origin, refs.persistenceRef.current)) return;
       refs.localDirtySinceLastSaveRef.current = true;
@@ -482,7 +443,6 @@ export function useDocsCollabJoin({
         applyContentSeedToYDoc(ydoc, refs.seedContentRef.current, documentFormat);
         markDocReady();
       }
-      publishSessionIfReady();
       setStatus("Editing offline");
       setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
       void authTokenPromise.then((token) => {
@@ -517,7 +477,6 @@ export function useDocsCollabJoin({
     finishAuthenticatedJoin,
     joinMesh,
     markDocReady,
-    publishSessionIfReady,
     refs,
     room,
     setDocStatus,

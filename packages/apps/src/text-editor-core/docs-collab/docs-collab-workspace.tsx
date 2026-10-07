@@ -646,7 +646,6 @@ function DocsCollabWorkspaceInner({
               {relayBanner ? <DocsCollabRelayBanner copy={relayBanner} /> : null}
               {collabSession ? (
                 <DocsCollabEditor
-                  key={`${urls?.room ?? "doc"}-${collabSession.mountId}`}
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
                   user={collabSession.user}
