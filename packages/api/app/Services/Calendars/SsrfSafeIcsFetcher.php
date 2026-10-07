@@ -22,6 +22,8 @@ final class SsrfSafeIcsFetcher
 
     private const CONNECT_TIMEOUT_SECONDS = 5;
 
+    private const READ_CHUNK_BYTES = 65_536;
+
     public function __construct(
         private readonly HostIpResolver $resolver,
         private readonly VObjectPayloadGuard $payloadGuard,
@@ -70,6 +72,7 @@ final class SsrfSafeIcsFetcher
 
             $length = $response->header('Content-Length');
             if (is_numeric($length) && (int) $length > VObjectPayloadGuard::MAX_ICS_BYTES) {
+                $response->toPsrResponse()->getBody()->close();
                 throw new ApiHttpException(
                     413,
                     'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
@@ -77,13 +80,41 @@ final class SsrfSafeIcsFetcher
                 );
             }
 
-            $body = $response->body();
+            $body = $this->readCappedBody($response);
             $this->payloadGuard->assertIcsSize($body);
 
             return $body;
         }
 
         throw new ApiHttpException(400, 'The calendar feed redirected too many times.', 'bad_request');
+    }
+
+    private function readCappedBody(Response $response): string
+    {
+        $stream = $response->toPsrResponse()->getBody();
+        $body = '';
+
+        try {
+            while (! $stream->eof()) {
+                $chunk = $stream->read(self::READ_CHUNK_BYTES);
+                if ($chunk === '') {
+                    break;
+                }
+
+                $body .= $chunk;
+                if (strlen($body) > VObjectPayloadGuard::MAX_ICS_BYTES) {
+                    throw new ApiHttpException(
+                        413,
+                        'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
+                        'payload_too_large',
+                    );
+                }
+            }
+        } finally {
+            $stream->close();
+        }
+
+        return $body;
     }
 
     /**
@@ -139,6 +170,7 @@ final class SsrfSafeIcsFetcher
         try {
             return Http::withOptions([
                 'allow_redirects' => false,
+                'stream' => true,
                 'timeout' => self::TIMEOUT_SECONDS,
                 'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
                 'curl' => [
