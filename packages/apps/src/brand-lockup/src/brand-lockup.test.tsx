@@ -8,8 +8,9 @@ describe("BrandLockup", () => {
     cleanup();
   });
 
-  it("exposes We Got Workspace as the accessible name", () => {
+  it("exposes WeGotWorkspace as the accessible name", () => {
     render(<BrandLockup />);
+    expect(WE_GOT_WORKSPACE_WORDMARK_LABEL).toBe("WeGotWorkspace");
     expect(screen.getByLabelText(WE_GOT_WORKSPACE_WORDMARK_LABEL)).toBeTruthy();
   });
 

@@ -15,7 +15,3 @@
 .we-got-workspace-wordmark svg {
   @apply block h-full w-auto;
 }
-
-.app-switch-button__trigger--compact .we-got-workspace-wordmark {
-  height: var(--app-switch-lockup-line, 1.59375rem);
-}

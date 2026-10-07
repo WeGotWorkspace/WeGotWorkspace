@@ -60,39 +60,6 @@ export const Workspace: Story = {
   ],
 };
 
-export const CompactWorkspace: Story = {
-  args: {
-    variant: "compact",
-    subtitle: "Workspace",
-  },
-  decorators: [
-    (Story) => (
-      <div
-        className="rounded-lg p-4"
-        style={
-          {
-            backgroundColor: "var(--workspace-home-bg, #1b1d3a)",
-            color: "#ffffff",
-            "--app-switch-label-color": "#ffffff",
-          } as CSSProperties
-        }
-      >
-        <Story />
-      </div>
-    ),
-  ],
-};
-
-/** Compact header in an app shell: user artwork icon + single app name line. */
-export const CompactInApp: Story = {
-  parameters: {
-    routerPath: "/docs",
-  },
-  args: {
-    variant: "compact",
-  },
-};
-
 export const Disabled: Story = {
   args: {
     ...Workspace.args,

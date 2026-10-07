@@ -80,9 +80,11 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Sof
 
 | Category    | Tokens                                                                                                                                                                 | Purpose                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | We Got Soft and We Got Dark                                                          |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | Soft `#eeeeee`, Dark `#222222`                                                       |
 | App chrome  | `--workspace-surface` / `-foreground`, `--workspace-accent` / `-foreground`, `--workspace-sidebar-surface` / `-foreground`, `--workspace-icon-surface` / `-foreground` | Four surface/foreground pairs. Products assign primitives; state washes derive once. |
 | Icon layers | `--workspace-icon-surface`, `--workspace-icon-foreground`                                                                                                              | Remappable pair; switch-trigger / home tiles map it onto `--app-icon-layer-*`        |
+
+**Brand lockup:** Soft is `#eeeeee`, Dark is `#222222`. The suite lockup (Home AppSwitch, Login/Installer BrandLockup) uses the SVG wordmark — the Bebas text stack is retired.
 
 **Pairs:** `--workspace-accent` is We Got Dark (checks, badges, outline glyphs, primary buttons). `--workspace-icon-surface` is the per-app tile hue only. `--workspace-surface` is `color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)`. `--workspace-sidebar-surface` is `var(--color-we-got-soft)` — Soft, not an icon tint. Row hover and selected mix sidebar foreground into that fill (4 / 8 / 12%). A CSS custom property in the panel overrides a token only after you change it. Do not set a token to `var(--itself)` — the addon writes the value onto `body` and a self-reference makes the token invalid.
 

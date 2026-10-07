@@ -37,7 +37,8 @@ describe("NotesNewMenu", () => {
 
     const main = screen.getByRole("button", { name: L.newNote });
     expect(main).toBeTruthy();
-    expect(main.className).toMatch(/sidebar-segmented-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/sidebar-segmented-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/sidebar-segmented-new-menu__main--stretch/);
     expect(screen.queryByRole("button", { name: L.newNoteMenu })).toBeNull();
   });
 

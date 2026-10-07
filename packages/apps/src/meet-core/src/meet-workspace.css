@@ -89,11 +89,6 @@
   --app-sidebar-bg: var(--meet-surface);
   --app-sidebar-color: var(--workspace-foreground);
   --app-switch-lockup-bg: var(--meet-surface);
-  --app-switch-label-tagline-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 92%,
-    var(--meet-surface)
-  );
 }
 
 .meet-workspace .workspace-shell-header .app-switch-button__trigger {

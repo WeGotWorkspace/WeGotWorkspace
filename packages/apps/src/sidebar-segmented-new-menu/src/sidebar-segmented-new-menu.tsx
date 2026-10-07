@@ -48,7 +48,7 @@ export function SidebarSegmentedNewMenu({
       variant="primary"
       disabled={mainDisabled}
       className={cn(
-        hasMenu ? `${blockName}__main` : `${blockName}__main--solo`,
+        hasMenu && `${blockName}__main`,
         !hasMenu && stretch && `${blockName}__main--stretch`,
       )}
     />
@@ -57,14 +57,7 @@ export function SidebarSegmentedNewMenu({
   if (!hasMenu) return mainButton;
 
   return (
-    <div
-      className={cn(
-        blockName,
-        size === "md" && `${blockName}--sm`,
-        stretch && `${blockName}--stretch`,
-        className,
-      )}
-    >
+    <div className={cn(blockName, stretch && `${blockName}--stretch`, className)}>
       {mainButton}
       <DropdownMenu
         align="end"

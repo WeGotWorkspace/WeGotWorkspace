@@ -21,14 +21,10 @@ import "@/app-switch-button/src/app-switch-button.css";
 /** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
 const CHEVRON = "▾";
 
-export type AppSwitchButtonVariant = "default" | "compact";
-
 export type AppSwitchButtonProps = {
   disabled?: boolean;
   /** When set (e.g. `Workspace` on home/install), overrides the subtitle inferred from the route. */
   subtitle?: string;
-  /** `compact` scales the suite wordmark / mark to a single lockup line. */
-  variant?: AppSwitchButtonVariant;
   onSelect?: (app: AppSwitchMenuApp) => void;
 };
 
@@ -39,10 +35,8 @@ export type AppSwitchButtonProps = {
 export const AppSwitchButton = memo(function AppSwitchButton({
   disabled = false,
   subtitle: subtitleProp,
-  variant = "default",
   onSelect: onSelectProp,
 }: AppSwitchButtonProps) {
-  const compact = variant === "compact";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const showAdmin = useShowAdminApp();
@@ -100,7 +94,6 @@ export const AppSwitchButton = memo(function AppSwitchButton({
           disabled={disabled}
           className={cn(
             "app-switch-button__trigger",
-            compact && "app-switch-button__trigger--compact",
             isWorkspaceContext && "app-switch-button__trigger--workspace",
           )}
         >

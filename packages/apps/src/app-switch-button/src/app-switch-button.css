@@ -10,9 +10,6 @@
    */
   /* Beat UA `buttonface` (#efefef) under white lockup labels on accent rails. */
   background-color: transparent;
-  /* Compact mark size — half-step off md control height. */
-  --app-switch-lockup-leading: 0.85;
-  --app-switch-lockup-line: calc(1.875rem * var(--app-switch-lockup-leading));
 }
 
 .app-switch-button__icon,
@@ -43,7 +40,7 @@
 .app-switch-button__label {
   /*
    * In-app AppSwitch: serif face (We Got Serif) at 2xl; sentence/title case
-   * from the data — no uppercase / “we got” tagline.
+   * from the data — no uppercase lockup text.
    */
   @apply font-serif text-2xl flex min-w-0 flex-col items-start text-left font-normal;
   color: var(--app-switch-label-color, currentColor);
@@ -99,16 +96,4 @@
   @apply min-w-48 p-1.5;
   user-select: none;
   border-color: color-mix(in oklab, currentColor 25%, transparent);
-}
-.app-switch-button__trigger--compact {
-  @apply items-center gap-1.5 py-0.5 pl-0.5 pr-1.5;
-}
-
-.app-switch-button__trigger--compact .app-switch-button__icon {
-  height: var(--app-switch-lockup-line);
-  width: var(--app-switch-lockup-line);
-}
-
-.app-switch-button__trigger--compact .workspace-app-icon--switch-trigger {
-  @apply rounded-[4px];
 }
