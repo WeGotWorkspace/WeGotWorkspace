@@ -48,7 +48,7 @@ async function renderTasksApp(initialPath: string) {
   const router = createWeGotWorkspaceRouter({ mode: "mock", history });
   await router.load();
   render(<RouterProvider router={router} />);
-  await screen.findByRole("button", { name: "Tasks" });
+  await screen.findByRole("button", { name: "Tasks, switch apps" });
   return { history, router };
 }
 
