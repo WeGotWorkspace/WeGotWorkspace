@@ -113,6 +113,7 @@ export function useDocsCollabJoin({
   const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
   const markDocReady = useCallback(() => {
+    if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
     flushMeshSyncIfHydrated();
   }, [flushMeshSyncIfHydrated, refs]);
