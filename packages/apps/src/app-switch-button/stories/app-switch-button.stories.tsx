@@ -30,14 +30,14 @@ const meta: Meta<typeof AppSwitchButton> = {
 export default meta;
 type Story = StoryObj<typeof AppSwitchButton>;
 
-/** In-app trigger: user artwork icon + route label. */
+/** In-app trigger: user artwork icon + serif route label (no suite wordmark). */
 export const InApp: Story = {
   parameters: {
     routerPath: "/mail",
   },
 };
 
-/** Workspace home / install: inverted suite icon + Workspace label on dark shell. */
+/** Workspace home / install: inverted suite icon + SVG wordmark on dark shell. */
 export const Workspace: Story = {
   args: {
     subtitle: "Workspace",

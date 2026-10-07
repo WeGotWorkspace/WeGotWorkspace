@@ -12,6 +12,10 @@ import {
   type AppSwitchMenuApp,
 } from "@/app-switch-button/src/app-switch-menu-apps";
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
+import {
+  WE_GOT_WORKSPACE_WORDMARK_LABEL,
+  WeGotWorkspaceWordmark,
+} from "@/brand-lockup/src/we-got-workspace-wordmark";
 import "@/app-switch-button/src/app-switch-button.css";
 
 /** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
@@ -23,7 +27,7 @@ export type AppSwitchButtonProps = {
   disabled?: boolean;
   /** When set (e.g. `Workspace` on home/install), overrides the subtitle inferred from the route. */
   subtitle?: string;
-  /** `compact` scales the mark down for dense chrome (same single-line app name). */
+  /** `compact` scales the suite wordmark / mark to a single lockup line. */
   variant?: AppSwitchButtonVariant;
   onSelect?: (app: AppSwitchMenuApp) => void;
 };
@@ -109,16 +113,28 @@ export const AppSwitchButton = memo(function AppSwitchButton({
               variant="switch-trigger"
             />
           )}
-          <span className="app-switch-button__label">
-            <span className="app-switch-button__label-name">
-              {subtitle}
+          {isWorkspaceContext ? (
+            <span className="app-switch-button__label app-switch-button__label--wordmark">
+              <span className="sr-only">{WE_GOT_WORKSPACE_WORDMARK_LABEL}</span>
+              <WeGotWorkspaceWordmark />
               {!disabled ? (
                 <span className="app-switch-button__chevron" aria-hidden>
                   {CHEVRON}
                 </span>
               ) : null}
             </span>
-          </span>
+          ) : (
+            <span className="app-switch-button__label">
+              <span className="app-switch-button__label-name">
+                {subtitle}
+                {!disabled ? (
+                  <span className="app-switch-button__chevron" aria-hidden>
+                    {CHEVRON}
+                  </span>
+                ) : null}
+              </span>
+            </span>
+          )}
         </button>
       }
       items={menuItems}

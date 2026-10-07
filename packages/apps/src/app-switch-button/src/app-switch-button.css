@@ -42,8 +42,8 @@
 
 .app-switch-button__label {
   /*
-   * App name for AppSwitch + BrandLockup. Serif face (We Got Serif) at 2xl;
-   * no uppercase / mark-face lockup — sentence/title case from the data.
+   * In-app AppSwitch: serif face (We Got Serif) at 2xl; sentence/title case
+   * from the data — no uppercase / “we got” tagline.
    */
   @apply font-serif text-2xl flex min-w-0 flex-col items-start text-left font-normal;
   color: var(--app-switch-label-color, currentColor);
@@ -65,6 +65,34 @@
 
 .app-switch-button__trigger[data-state="open"] .app-switch-button__chevron {
   @apply rotate-180;
+}
+
+/**
+ * Suite lockup (Home AppSwitch + BrandLockup on Login / Installer).
+ * Suite mark + SVG wordmark — not the in-app serif title.
+ * Icon size stays on the base `.app-switch-button__icon` md control height.
+ */
+.app-switch-button__trigger--workspace {
+  @apply items-center;
+}
+
+.app-switch-button__trigger--workspace .app-switch-button__label--wordmark {
+  @apply flex min-w-0 flex-row items-center gap-2 font-sans;
+  /* Reset in-app serif / text-2xl — wordmark owns its own size. */
+  font-size: inherit;
+  line-height: 1;
+}
+
+.app-switch-button__trigger--workspace .app-switch-button__chevron {
+  @apply relative shrink-0 text-base;
+  color: var(
+    --app-switch-chevron-color,
+    color-mix(
+      in oklab,
+      var(--app-switch-label-color, currentColor) 50%,
+      var(--app-switch-lockup-bg, var(--app-switch-label-color, currentColor))
+    )
+  );
 }
 
 .app-switch-button__menu {
