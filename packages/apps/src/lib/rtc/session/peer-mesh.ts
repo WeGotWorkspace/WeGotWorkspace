@@ -592,6 +592,7 @@ export class RtcPeerMesh {
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
+    ticket?: string;
   }> {
     const key = `${this.options.channel}\0${this.options.room}`;
     return enqueueMeshJoin(key, () => this.joinSerialized(input));
