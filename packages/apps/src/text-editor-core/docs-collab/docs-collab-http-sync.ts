@@ -46,6 +46,8 @@ export type DocsCollabHttpSyncPorts = {
   trust: (peerId: string) => { access: DocsCollabAccess; user: string };
   /** This client's own right. Only a writer may answer a state vector. */
   myAccess: () => DocsCollabAccess;
+  /** False while HTTP / sidecar bootstrap has not hydrated the Y.Doc yet. */
+  meshHydrated?: () => boolean;
 };
 
 /**
@@ -152,6 +154,7 @@ export class DocsCollabHttpSync {
   }
 
   noteLocalUpdate(update: Uint8Array): void {
+    if (this.ports.meshHydrated && !this.ports.meshHydrated()) return;
     this.pending.push(update);
     if (this.flushTimer) return;
     this.flushTimer = setTimeout(() => {
@@ -220,6 +223,7 @@ export class DocsCollabHttpSync {
 
   private answerStateVector(peerId: string, stateVector: Uint8Array): void {
     if (this.ports.myAccess() !== "write") return;
+    if (this.ports.meshHydrated && !this.ports.meshHydrated()) return;
     const doc = this.ports.getYDoc();
     if (!doc) return;
     const diff = diffForStateVector(doc, stateVector);

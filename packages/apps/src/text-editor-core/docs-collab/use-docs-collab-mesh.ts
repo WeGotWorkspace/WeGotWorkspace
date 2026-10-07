@@ -14,6 +14,7 @@ import {
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
   handleGuardedSyncMessage,
+  mayInitiateMeshDocumentSync,
   mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
@@ -160,6 +161,7 @@ export function useDocsCollabMesh({
       const ydoc = refs.ydocRef.current;
       const mesh = refs.meshRef.current;
       if (!ydoc || !mesh) return;
+      if (!mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current)) return;
       const msg = { type: "sync" as const, u: encodeSyncStep1(ydoc) };
       if (toPeerId) mesh.sendTo(toPeerId, msg);
       else mesh.broadcast(msg);
@@ -180,6 +182,11 @@ export function useDocsCollabMesh({
     },
     [refs],
   );
+
+  const flushMeshSyncIfHydrated = useCallback(() => {
+    sendSyncStep1();
+    sendAwarenessBroadcast();
+  }, [sendAwarenessBroadcast, sendSyncStep1]);
 
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
@@ -206,6 +213,7 @@ export function useDocsCollabMesh({
           trust: msg.trust,
           from: msg.from,
           origin: MESH_ORIGIN,
+          meshHydrated: mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current),
         });
         if (!isYDocEmpty(ydoc)) markDocReady();
         if (outcome.kind === "reply") {
@@ -218,7 +226,9 @@ export function useDocsCollabMesh({
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
       }
       if ((msg.type === "dc-open" || msg.type === "resync") && msg.from) {
-        sendSyncStep1(msg.from);
+        if (mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current)) {
+          sendSyncStep1(msg.from);
+        }
         sendAwarenessBroadcast(msg.from);
         if (msg.type === "dc-open") trySeedFromFile();
       }
@@ -300,6 +310,11 @@ export function useDocsCollabMesh({
         rtcSettings:
           fetched ?? applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, forceRelay: false }),
         getYDoc: () => refs.ydocRef.current,
+        meshHydrated: () => {
+          const doc = refs.ydocRef.current;
+          if (!doc) return false;
+          return mayInitiateMeshDocumentSync(doc, refs.seedDoneRef.current);
+        },
         onRelayNotice: setRelayNotice,
         collabTicket: fetched?.collabTicket,
       });
@@ -337,6 +352,7 @@ export function useDocsCollabMesh({
     setConnectingPeers,
     refreshMeshUi,
     sendSyncStep1,
+    flushMeshSyncIfHydrated,
     handleMeshMessage,
     joinMesh,
     resetMeshUi,

@@ -197,4 +197,15 @@ describe("handleGuardedSyncMessage", () => {
     expect(isDocumentBearingSyncMessage(encodeSyncStep1(new Y.Doc()))).toBe(false);
     expect(isDocumentBearingSyncMessage(encodeUpdateBroadcast(new Uint8Array([0, 0])))).toBe(true);
   });
+
+  it("blocks answering step 1 for an empty doc that is not mesh-hydrated yet", () => {
+    const local = editedDoc("already here");
+    const outcome = handleGuardedSyncMessage({
+      bytes: encodeSyncStep1(local),
+      ydoc: new Y.Doc(),
+      meshHydrated: false,
+      trust: { user: "bob", access: "write" },
+    });
+    expect(outcome).toEqual({ kind: "hydration-blocked" });
+  });
 });

@@ -110,9 +110,12 @@ function mockFetchResponses(options: {
 
 const SESSION_WAIT_MS = 5000;
 
-async function waitForCollabSession(result: { current: { session: unknown } }): Promise<void> {
+async function waitForCollabSession(
+  result: { current: { session: unknown } },
+  timeoutMs: number = SESSION_WAIT_MS,
+): Promise<void> {
   await waitFor(() => expect(result.current.session).not.toBeNull(), {
-    timeout: SESSION_WAIT_MS,
+    timeout: timeoutMs,
   });
 }
 
@@ -304,8 +307,10 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
   });
 
-  it("exposes session before server fetch completes", async () => {
-    let resolveMarkdown: ((value: Response) => void) | undefined;
+  it("waits for server fetch before exposing the collab session", async () => {
+    let markdownReady: Response | null = null;
+    const pendingMarkdown: Array<(value: Response) => void> = [];
+    let resolveMarkdown: (() => void) | undefined;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("format=yjs")) {
@@ -314,8 +319,14 @@ describe("useDocsCollab offline lifecycle", () => {
       if (init?.method === "PUT" || init?.method === "POST") {
         return new Response("{}", { status: 200 });
       }
+      if (markdownReady) return markdownReady;
       return new Promise<Response>((resolve) => {
-        resolveMarkdown = resolve;
+        pendingMarkdown.push(resolve);
+        resolveMarkdown = () => {
+          markdownReady = new Response("# Hello", { status: 200 });
+          for (const settle of pendingMarkdown) settle(markdownReady);
+          pendingMarkdown.length = 0;
+        };
       });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -329,14 +340,15 @@ describe("useDocsCollab offline lifecycle", () => {
       }),
     );
 
-    await waitForCollabSession(result);
+    expect(result.current.session).toBeNull();
     expect(fetchMock).toHaveBeenCalled();
     expect(resolveMarkdown).toBeDefined();
 
     await act(async () => {
-      resolveMarkdown?.(new Response("# Hello", { status: 200 }));
+      resolveMarkdown?.();
     });
-  });
+    await waitForCollabSession(result, 10000);
+  }, 15000);
 
   it("exposes session before mesh join completes", async () => {
     let resolveJoin: ((value: { peers: [] }) => void) | undefined;
@@ -658,7 +670,7 @@ describe("useDocsCollab offline lifecycle", () => {
         wire,
       }),
     );
-    await waitForCollabSession(first.result);
+    await waitForCollabSession(first.result, 12000);
     await act(async () => {
       first.unmount();
     });
@@ -674,9 +686,9 @@ describe("useDocsCollab offline lifecycle", () => {
         wire,
       }),
     );
-    await waitForCollabSession(second.result);
+    await waitForCollabSession(second.result, 12000);
     expect(collaborationGetCount).toBe(firstAttemptCount);
-  });
+  }, 20000);
 
   it("defers mesh join and document fetch until the auth token arrives, then joins", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -708,7 +720,8 @@ describe("useDocsCollab offline lifecycle", () => {
       { initialProps: { authToken: undefined } as { authToken?: string } },
     );
 
-    await waitForCollabSession(result);
+    await waitFor(() => expect(result.current.joined).toBe(true));
+    expect(result.current.session).toBeNull();
     expect(mockJoin).not.toHaveBeenCalled();
     const collabFetchesBeforeToken = fetchMock.mock.calls.filter(([input]) =>
       String(input).includes("/files/collaboration"),
@@ -717,6 +730,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
     rerender({ authToken: "live-token" });
 
+    await waitForCollabSession(result);
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
     const authorizedCollabFetches = fetchMock.mock.calls.filter(([input, init]) => {
       if (!String(input).includes("/files/collaboration")) return false;

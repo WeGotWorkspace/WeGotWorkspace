@@ -108,6 +108,8 @@ export type DocsRtcSessionOptions = {
   /** Injected in tests; the live app uses the suite-level singleton. */
   reuseRegistry?: PrincipalLinkRegistry;
   getYDoc?: () => import("yjs").Doc | null;
+  /** When false, outbound Yjs HTTP/mesh document sync stays muted until bootstrap finishes. */
+  meshHydrated?: () => boolean;
   onRelayNotice?: (notice: DocsRelayNotice) => void;
 };
 
@@ -307,6 +309,7 @@ export class DocsRtcSession {
             access: this.trust.accessForPeerId(peerId),
           }),
           myAccess: () => this.myAccess(),
+          meshHydrated: options.meshHydrated,
         })
       : null;
   }

@@ -9,7 +9,11 @@ import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
-import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import {
+  encodeAwarenessBroadcast,
+  encodeUpdateBroadcast,
+  mayInitiateMeshDocumentSync,
+} from "./docs-collab-mesh-sync";
 import {
   markRoomServerFailure,
   markRoomServerSuccess,
@@ -54,7 +58,12 @@ import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
-  "joinMesh" | "refreshMeshUi" | "resetMeshUi" | "setStatus" | "setConnectingPeers"
+  | "joinMesh"
+  | "refreshMeshUi"
+  | "resetMeshUi"
+  | "setStatus"
+  | "setConnectingPeers"
+  | "flushMeshSyncIfHydrated"
 >;
 
 type SaveApi = Pick<
@@ -87,7 +96,14 @@ export function useDocsCollabJoin({
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabJoinOptions) {
-  const { joinMesh, refreshMeshUi, resetMeshUi, setStatus, setConnectingPeers } = mesh;
+  const {
+    joinMesh,
+    refreshMeshUi,
+    resetMeshUi,
+    setStatus,
+    setConnectingPeers,
+    flushMeshSyncIfHydrated,
+  } = mesh;
   const { updatePendingState, flushPendingSaveIfReady } = save;
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
@@ -97,7 +113,8 @@ export function useDocsCollabJoin({
 
   const markDocReady = useCallback(() => {
     refs.seedDoneRef.current = true;
-  }, [refs]);
+    flushMeshSyncIfHydrated();
+  }, [flushMeshSyncIfHydrated, refs]);
 
   const trySeedFromFile = useCallback(() => {
     const ydoc = refs.ydocRef.current;
@@ -254,9 +271,12 @@ export function useDocsCollabJoin({
       } else if (hadSnapshot) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
       }
+
+      flushMeshSyncIfHydrated();
     },
     [
       documentFormat,
+      flushMeshSyncIfHydrated,
       markDocReady,
       refs,
       room,
@@ -306,6 +326,23 @@ export function useDocsCollabJoin({
     ],
   );
 
+  const publishSessionIfReady = useCallback(() => {
+    if (refs.sessionRef.current) return;
+    const ydoc = refs.ydocRef.current;
+    const awareness = refs.awarenessRef.current;
+    if (!ydoc || !awareness) return;
+    const name = userName.trim();
+    setSession({
+      ydoc,
+      awareness,
+      user: {
+        name,
+        color: colorForName(name),
+        id: trackChangesAuthorIdFromName(name),
+      },
+    });
+  }, [refs, userName]);
+
   const finishAuthenticatedJoin = useCallback(
     async (generation: number, name: string, authToken: string) => {
       if (serverJoinStartedRef.current && refs.authTokenRef.current === authToken) return;
@@ -313,12 +350,19 @@ export function useDocsCollabJoin({
       refs.authTokenRef.current = authToken;
       await applyServerBootstrap(generation, authToken);
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+      publishSessionIfReady();
       if (refs.tabSyncRef.current?.isMeshLeader()) {
         await connectMeshInBackground(generation, name, authToken);
       }
       flushPendingSaveIfReady();
     },
-    [applyServerBootstrap, connectMeshInBackground, flushPendingSaveIfReady, refs],
+    [
+      applyServerBootstrap,
+      connectMeshInBackground,
+      flushPendingSaveIfReady,
+      publishSessionIfReady,
+      refs,
+    ],
   );
 
   const join = useCallback(async () => {
@@ -375,11 +419,15 @@ export function useDocsCollabJoin({
       refs.localDirtySinceLastSaveRef.current = true;
       const encoded = encodeUpdateBroadcast(update);
       const tabSync = refs.tabSyncRef.current;
+      const mayMeshPublish = mayInitiateMeshDocumentSync(ydoc, refs.seedDoneRef.current);
       if (tabSync) {
         tabSync.onLocalSync(encoded);
-        if (tabSync.isMeshLeader()) refs.meshRef.current?.noteLocalUpdate(update);
+        if (tabSync.isMeshLeader() && mayMeshPublish) {
+          refs.meshRef.current?.noteLocalUpdate(update);
+        }
         return;
       }
+      if (!mayMeshPublish) return;
       refs.meshRef.current?.noteLocalUpdate(update);
       refs.meshRef.current?.broadcast({ type: "sync", u: encoded });
     });
@@ -402,15 +450,15 @@ export function useDocsCollabJoin({
       },
     );
 
-    setSession({ ydoc, awareness, user });
-    setJoined(true);
     refs.joinedRoomRef.current = room;
+    setJoined(true);
 
     if (!online || !allowServerRequests) {
       if (!refs.seedDoneRef.current && isYDocEmpty(ydoc) && refs.seedContentRef.current) {
         applyContentSeedToYDoc(ydoc, refs.seedContentRef.current, documentFormat);
         markDocReady();
       }
+      publishSessionIfReady();
       setStatus("Editing offline");
       setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
       void authTokenPromise.then((token) => {
@@ -419,6 +467,8 @@ export function useDocsCollabJoin({
       });
       return;
     }
+
+    setDocStatus("Loading document…");
 
     void (async () => {
       let authToken: string | undefined;
@@ -443,6 +493,7 @@ export function useDocsCollabJoin({
     finishAuthenticatedJoin,
     joinMesh,
     markDocReady,
+    publishSessionIfReady,
     refs,
     room,
     setDocStatus,

@@ -20,6 +20,7 @@
 import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import type { DocsCollabAccess } from "./docs-collab-access";
+import { isDestructiveBodyWipe } from "./docs-collab-mesh-hydration";
 import { DOCS_COMMENTS_MAP_KEY } from "./docs-comments-types";
 import { DOCS_SUGGESTION_THREADS_MAP_KEY } from "./docs-suggestions-types";
 
@@ -39,7 +40,8 @@ export type DocsCollabUpdateDropReason =
   | "foreign-entry-change"
   | "resolve-by-commenter"
   | "pending-from-commenter"
-  | "malformed-update";
+  | "malformed-update"
+  | "destructive-body-wipe";
 
 export type DocsCollabUpdateVerdict =
   { applied: true } | { applied: false; reason: DocsCollabUpdateDropReason };
@@ -76,6 +78,9 @@ export function applyGuardedRemoteUpdate(input: DocsCollabGuardedUpdate): DocsCo
 
 function runGuard(input: DocsCollabGuardedUpdate): DocsCollabUpdateVerdict {
   if (input.access === "read") return { applied: false, reason: "reader" };
+  if (isDestructiveBodyWipe(input.doc, input.update)) {
+    return { applied: false, reason: "destructive-body-wipe" };
+  }
 
   if (input.access === "write") return applyAsEditor(input);
 
