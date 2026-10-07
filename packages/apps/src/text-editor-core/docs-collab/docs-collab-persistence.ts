@@ -8,12 +8,42 @@ export function docsCollabRoomKey(path: string): string {
   return path.trim().replace(/^\/+/, "");
 }
 
-async function withCollabPersistence<T>(
+/** y-indexeddb database name for a collab room (versioned to drop wiped local state). */
+export function docsCollabIndexedDbKey(roomKey: string): string {
+  return `${roomKey}:v2`;
+}
+
+/** Pre-v2 IndexedDB room keys that may still hold pending-save metadata. */
+export function docsCollabLegacyIndexedDbKeys(roomKey: string): string[] {
+  const keys = [roomKey];
+  const legacy = roomKey.startsWith("/") ? roomKey.slice(1) : `/${roomKey}`;
+  if (legacy !== roomKey) keys.push(legacy);
+  return keys;
+}
+
+/** Copies pending-server-save from a pre-v2 IndexedDB room into the v2 persistence. */
+export async function migrateDocsCollabPendingSaveFromLegacy(
   roomKey: string,
+  v2Persistence: IndexeddbPersistence,
+): Promise<void> {
+  if (await v2Persistence.get(PENDING_SERVER_SAVE_KEY)) return;
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
+    const pending = await withRawIndexedDbPersistence(legacyKey, (persistence) =>
+      persistence.get(PENDING_SERVER_SAVE_KEY),
+    );
+    if (pending) {
+      await v2Persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+      return;
+    }
+  }
+}
+
+async function withRawIndexedDbPersistence<T>(
+  indexedDbName: string,
   run: (persistence: IndexeddbPersistence) => Promise<T>,
 ): Promise<T | undefined> {
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(roomKey, ydoc);
+  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
   try {
     await persistence.whenSynced;
     return await run(persistence);
@@ -25,17 +55,42 @@ async function withCollabPersistence<T>(
   }
 }
 
+async function withCollabPersistence<T>(
+  roomKey: string,
+  run: (persistence: IndexeddbPersistence) => Promise<T>,
+): Promise<T | undefined> {
+  return withRawIndexedDbPersistence(docsCollabIndexedDbKey(roomKey), run);
+}
+
+async function clearIndexedDbRoom(indexedDbName: string): Promise<void> {
+  await withRawIndexedDbPersistence(indexedDbName, async (persistence) => {
+    await persistence.clearData();
+  });
+}
+
 async function persistenceHasPendingSave(roomKey: string): Promise<boolean> {
   const pending = await withCollabPersistence(roomKey, (persistence) =>
     persistence.get(PENDING_SERVER_SAVE_KEY),
   );
-  return Boolean(pending);
+  if (pending) return true;
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
+    const legacyPending = await withRawIndexedDbPersistence(legacyKey, (persistence) =>
+      persistence.get(PENDING_SERVER_SAVE_KEY),
+    );
+    if (legacyPending) return true;
+  }
+  return false;
 }
 
 async function clearPendingSaveInRoom(roomKey: string): Promise<void> {
   await withCollabPersistence(roomKey, async (persistence) => {
     await persistence.del(PENDING_SERVER_SAVE_KEY);
   });
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
+    await withRawIndexedDbPersistence(legacyKey, async (persistence) => {
+      await persistence.del(PENDING_SERVER_SAVE_KEY);
+    });
+  }
 }
 
 /** Whether a collab room has a deferred server save recorded in y-indexeddb. */
@@ -74,11 +129,11 @@ export type DocsCollabOfflinePersistenceSnapshot = {
   pendingServerSave: boolean;
 };
 
-async function captureRoomPersistence(
-  roomKey: string,
+async function captureIndexedDbPersistence(
+  indexedDbName: string,
 ): Promise<DocsCollabOfflinePersistenceSnapshot | undefined> {
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(roomKey, ydoc);
+  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
   try {
     await persistence.whenSynced;
     const yjsUpdate = Y.encodeStateAsUpdate(ydoc);
@@ -89,6 +144,18 @@ async function captureRoomPersistence(
     await persistence.destroy();
     ydoc.destroy();
   }
+}
+
+async function captureRoomPersistence(
+  roomKey: string,
+): Promise<DocsCollabOfflinePersistenceSnapshot | undefined> {
+  const v2 = await captureIndexedDbPersistence(docsCollabIndexedDbKey(roomKey));
+  if (v2) return v2;
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
+    const legacy = await captureIndexedDbPersistence(legacyKey);
+    if (legacy) return legacy;
+  }
+  return undefined;
 }
 
 /** Captures y-indexeddb collab state before offline trash side effects clear it. */
@@ -117,7 +184,7 @@ export async function restoreDocsCollabOfflinePersistence(
   if (!room || !isDocsCollabEditablePath(room)) return;
 
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(room, ydoc);
+  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
   try {
     await persistence.whenSynced;
     if (snapshot.yjsUpdate.length > 0) {
@@ -137,14 +204,9 @@ export async function restoreDocsCollabOfflinePersistence(
 /** Clears y-indexeddb persistence for a collab room (e.g. remove offline copy). */
 export async function clearDocsCollabOfflinePersistence(apiPath: string): Promise<void> {
   const room = docsCollabRoomKey(apiPath);
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(room, ydoc);
-  try {
-    await persistence.whenSynced;
-    await persistence.clearData();
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
+  await clearIndexedDbRoom(docsCollabIndexedDbKey(room));
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(room)) {
+    await clearIndexedDbRoom(legacyKey);
   }
 }
 
@@ -161,8 +223,8 @@ export async function migrateCollabPersistence(oldPath: string, newPath: string)
   const newRoom = docsCollabRoomKey(newPath);
   const oldDoc = new Y.Doc();
   const newDoc = new Y.Doc();
-  const oldPersistence = new IndexeddbPersistence(oldRoom, oldDoc);
-  const newPersistence = new IndexeddbPersistence(newRoom, newDoc);
+  const oldPersistence = new IndexeddbPersistence(docsCollabIndexedDbKey(oldRoom), oldDoc);
+  const newPersistence = new IndexeddbPersistence(docsCollabIndexedDbKey(newRoom), newDoc);
   try {
     await Promise.all([oldPersistence.whenSynced, newPersistence.whenSynced]);
     const oldUpdate = Y.encodeStateAsUpdate(oldDoc);

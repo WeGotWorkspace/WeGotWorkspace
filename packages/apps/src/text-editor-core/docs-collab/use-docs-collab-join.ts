@@ -6,7 +6,11 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
-import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
+import {
+  clearDocsCollabPendingServerSave,
+  docsCollabIndexedDbKey,
+  migrateDocsCollabPendingSaveFromLegacy,
+} from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
@@ -22,6 +26,7 @@ import {
   loadYjsSnapshot,
   saveDocument,
 } from "./docs-collab-server-io";
+import { ensureBootstrapEditorBody } from "./docs-collab-bootstrap-body";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
@@ -108,6 +113,7 @@ export function useDocsCollabJoin({
   const [joined, setJoined] = useState(false);
   const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
+  const sessionMountIdRef = useRef(0);
 
   const markDocReady = useCallback(() => {
     refs.seedDoneRef.current = true;
@@ -170,6 +176,7 @@ export function useDocsCollabJoin({
     clearDocsCollabSyncState(room);
     // The sidecar may move on while the room is parked; re-learn it on rejoin.
     forgetSidecarEtag(room);
+    refs.sessionRef.current = null;
     setSession(null);
     setJoined(false);
     resetMeshUi();
@@ -218,16 +225,13 @@ export function useDocsCollabJoin({
       }
 
       const snapshot = load.snapshot;
-      // C7: the snapshot state is unknown, so seeding would risk a second copy.
-      // The room is already in backoff via onAttemptFailed; the reconnect path
-      // retries the bootstrap once that backoff expires.
-      if (snapshot.kind === "failed") {
+      const snapshotLoadFailed = snapshot.kind === "failed";
+      // C7: when the sidecar is unknown, still hydrate from markdown — an empty
+      // editor is worse than skipping Yjs merge. Reconnect retries the sidecar.
+      if (snapshotLoadFailed) {
         console.warn("[docs-collab] yjs load failed", snapshot.error);
         setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
-        return;
-      }
-
-      if (snapshot.kind === "snapshot") {
+      } else if (snapshot.kind === "snapshot") {
         const adoption = decideServerStateAdoption({
           hasServerSnapshot: true,
           pendingServerSave: refs.pendingServerSaveRef.current,
@@ -270,6 +274,14 @@ export function useDocsCollabJoin({
         }
       } else if (hadSnapshot) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
+      }
+
+      const bodyOutcome = ensureBootstrapEditorBody(ydoc, seed, room);
+      if (bodyOutcome === "seeded-markdown") {
+        markDocReady();
+        setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
+      } else if (bodyOutcome === "sidecar" && !refs.seedDoneRef.current) {
+        markDocReady();
       }
 
       flushMeshSyncIfHydrated();
@@ -327,14 +339,15 @@ export function useDocsCollabJoin({
   );
 
   const publishSessionIfReady = useCallback(() => {
-    if (refs.sessionRef.current) return;
     const ydoc = refs.ydocRef.current;
     const awareness = refs.awarenessRef.current;
     if (!ydoc || !awareness) return;
     const name = userName.trim();
+    const mountId = ++sessionMountIdRef.current;
     setSession({
       ydoc,
       awareness,
+      mountId,
       user: {
         name,
         color: colorForName(name),
@@ -345,7 +358,16 @@ export function useDocsCollabJoin({
 
   const finishAuthenticatedJoin = useCallback(
     async (generation: number, name: string, authToken: string) => {
-      if (serverJoinStartedRef.current && refs.authTokenRef.current === authToken) return;
+      const ydocBefore = refs.ydocRef.current;
+      if (
+        serverJoinStartedRef.current &&
+        refs.authTokenRef.current === authToken &&
+        ydocBefore &&
+        refs.sessionRef.current?.ydoc === ydocBefore &&
+        !isYDocEmpty(ydocBefore)
+      ) {
+        return;
+      }
       serverJoinStartedRef.current = true;
       refs.authTokenRef.current = authToken;
       await applyServerBootstrap(generation, authToken);
@@ -382,7 +404,7 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const persistence = new IndexeddbPersistence(room, ydoc);
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
     refs.persistenceRef.current = persistence;
 
     const authTokenPromise = allowServerRequests
@@ -403,6 +425,8 @@ export function useDocsCollabJoin({
 
     await persistence.whenSynced;
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+
+    await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
 
     const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
     if (pendingSave) {

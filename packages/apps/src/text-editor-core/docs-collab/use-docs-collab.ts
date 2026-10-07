@@ -146,7 +146,7 @@ export function useDocsCollab({
       refs.joinGenerationRef.current += 1;
       teardownRef.current();
     };
-  }, [autoJoin, userName, refs]);
+  }, [autoJoin, room, userName, refs]);
 
   return {
     session,

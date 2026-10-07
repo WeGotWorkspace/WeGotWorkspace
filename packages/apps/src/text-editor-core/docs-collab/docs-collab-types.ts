@@ -78,6 +78,8 @@ export type DocsCollabSession = {
   awareness: awarenessProtocol.Awareness;
   /** `id` is a stable per-name author id used by track-changes (suggestion mode). */
   user: { name: string; color: string; id: string };
+  /** Bumps when bootstrap finishes so TipTap remounts on a hydrated Y.Doc. */
+  mountId: number;
 };
 
 export type UseDocsCollabOptions = {

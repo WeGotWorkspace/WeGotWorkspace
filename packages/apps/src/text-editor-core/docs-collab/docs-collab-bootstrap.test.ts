@@ -191,6 +191,38 @@ describe("decideServerStateAdoption", () => {
 });
 
 describe("adoptServerSnapshot", () => {
+  it("reopens with the same history and keeps content (IndexedDB == server)", () => {
+    const serverDoc = docWithText("shared paragraph");
+    const serverUpdate = Y.encodeStateAsUpdate(serverDoc);
+    const local = new Y.Doc();
+    Y.applyUpdate(local, serverUpdate);
+
+    adoptServerSnapshot(local, serverUpdate, "server");
+
+    expect(fragmentText(local)).toContain("shared paragraph");
+  });
+
+  it("updates local IndexedDB when the server snapshot is ahead", () => {
+    const local = docWithText("old copy");
+    const serverDoc = docWithText("newer server copy");
+    const serverUpdate = Y.encodeStateAsUpdate(serverDoc);
+
+    adoptServerSnapshot(local, serverUpdate, "server");
+
+    const text = fragmentText(local);
+    expect(text).toContain("newer server copy");
+    expect(text).not.toContain("old copy");
+  });
+
+  it("loads the server snapshot into a fresh document", () => {
+    const empty = new Y.Doc();
+    const serverUpdate = Y.encodeStateAsUpdate(docWithText("server copy"));
+
+    adoptServerSnapshot(empty, serverUpdate, "server");
+
+    expect(fragmentText(empty)).toContain("server copy");
+  });
+
   it("replaces an earlier local seed instead of merging it", () => {
     const local = docWithText("local seed");
     const serverUpdate = Y.encodeStateAsUpdate(docWithText("server copy"));
@@ -202,12 +234,19 @@ describe("adoptServerSnapshot", () => {
     expect(text).not.toContain("local seed");
   });
 
-  it("is a no-op on an empty document beyond applying the server state", () => {
-    const empty = new Y.Doc();
-    const serverUpdate = Y.encodeStateAsUpdate(docWithText("server copy"));
+  it("drops a stale local seed when the server snapshot has other content too", () => {
+    const local = docWithText("local seed");
+    const serverDoc = docWithText("server copy");
+    const extra = new Y.XmlElement("paragraph");
+    extra.insert(0, [new Y.XmlText("extra server line")]);
+    serverDoc.getXmlFragment("default").insert(1, [extra]);
+    const serverUpdate = Y.encodeStateAsUpdate(serverDoc);
 
-    adoptServerSnapshot(empty, serverUpdate, "server");
+    adoptServerSnapshot(local, serverUpdate, "server");
 
-    expect(fragmentText(empty)).toContain("server copy");
+    const text = fragmentText(local);
+    expect(text).toContain("server copy");
+    expect(text).toContain("extra server line");
+    expect(text).not.toContain("local seed");
   });
 });
