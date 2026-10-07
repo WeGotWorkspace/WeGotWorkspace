@@ -1,19 +1,23 @@
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
+import { encodePrincipalRoomId } from "@/lib/rtc/room-id";
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
+import { sendPresenceLeaveBeacon } from "@/presence-core/src/presence-leave-beacon";
 import {
   toPresenceMeetFanoutEvent,
   toPresenceNotifyHintEvent,
 } from "@/presence-core/src/presence-fanout-events";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
-import type {
-  PresenceChatMessage,
-  PresenceCoworker,
-  PresenceEnvelope,
-  PresenceMeetFanoutEvent,
-  PresenceMeshSession,
-  PresenceNotifyHintEvent,
-  PresenceSnapshot,
-  PresenceUserStatus,
+import {
+  PRESENCE_WORKSPACE_ROOM,
+  type PresenceChatMessage,
+  type PresenceCoworker,
+  type PresenceEnvelope,
+  type PresenceMeetFanoutEvent,
+  type PresenceMeshSession,
+  type PresenceNotifyHintEvent,
+  type PresenceSnapshot,
+  type PresenceUserStatus,
 } from "@/presence-core/src/presence-types";
 import {
   PrincipalTabCoordinator,
@@ -126,6 +130,9 @@ export class PresenceStore {
 
   private selfUsername = "";
 
+  /** Signaling peer id of the session this tab joined. Null on followers. */
+  private selfPeerId: string | null = null;
+
   private selfDisplayName = "";
 
   private selfStatus: PresenceUserStatus = "online";
@@ -236,6 +243,7 @@ export class PresenceStore {
             this.update({ status: "online" });
           }
         },
+        onOwnerPageHide: () => this.sendOwnerLeaveBeacon(),
       });
       this.coordinator.start();
       // Cold followers never see onResignLeader — attach the proxy while waiting / after loss.
@@ -413,6 +421,7 @@ export class PresenceStore {
     this.followerSession = null;
     this.joined = false;
     this.joinInFlight = false;
+    this.selfPeerId = null;
     if (session) await session.leave();
   }
 
@@ -440,14 +449,26 @@ export class PresenceStore {
     return (this.visibility?.getState() ?? "visible") === "visible";
   }
 
+  /** Keepalive leave from the tab that owns the principal session. */
+  private sendOwnerLeaveBeacon(): void {
+    const peerId = this.selfPeerId;
+    if (!peerId) return;
+    sendPresenceLeaveBeacon({
+      roomId: encodePrincipalRoomId(PRESENCE_WORKSPACE_ROOM),
+      peerId,
+      bearerToken: wgwCurrentAccessToken(),
+    });
+  }
+
   private async joinNow(): Promise<void> {
     if (!this.session || this.joined || this.joinInFlight) return;
     if (this.crossWindowLeader && !this.isMeshLeader) return;
     this.joinInFlight = true;
     this.update({ status: "joining" });
     try {
-      await this.session.join(this.selfDisplayName);
+      const joined = await this.session.join(this.selfDisplayName);
       if (this.stopped) return;
+      this.selfPeerId = joined.peerId;
       this.joined = true;
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       this.update({ status: "online" });

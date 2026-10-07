@@ -4,8 +4,9 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 import type { DocsCollabSenderTrust } from "./docs-collab-types";
+import { mayAnswerSyncStep1WithLocalState } from "./docs-collab-mesh-hydration";
 import { applyGuardedRemoteUpdate, type DocsCollabUpdateVerdict } from "./docs-collab-update-guard";
-import { MESH_ORIGIN } from "./docs-collab-utils";
+import { isYDocEmpty, MESH_ORIGIN } from "./docs-collab-utils";
 
 /** y-protocols/sync message types, read off the first varuint. */
 export const SYNC_STEP_1 = 0;
@@ -58,7 +59,8 @@ export function documentUpdateFromSyncMessage(bytes: readonly number[]): Uint8Ar
 export type GuardedSyncOutcome =
   | { kind: "reply"; reply: SyncReply }
   | { kind: "update"; verdict: DocsCollabUpdateVerdict }
-  | { kind: "ignored" };
+  | { kind: "ignored" }
+  | { kind: "hydration-blocked"; requestPull: true };
 
 /**
  * The receive side of `handleSyncMessage`, split so the access filter sits
@@ -76,11 +78,17 @@ export function handleGuardedSyncMessage(input: {
   trust?: DocsCollabSenderTrust;
   from?: string;
   origin?: string;
+  /** When false and the doc body is still empty, step 1 is not answered. */
+  mayAnswerSyncStep1?: boolean;
 }): GuardedSyncOutcome {
   const decoder = decoding.createDecoder(Uint8Array.from(input.bytes));
   const messageType = decoding.readVarUint(decoder);
+  const mayAnswer = input.mayAnswerSyncStep1 ?? true;
 
   if (messageType === SYNC_STEP_1) {
+    if (!mayAnswer && isYDocEmpty(input.ydoc)) {
+      return { kind: "hydration-blocked", requestPull: true };
+    }
     const encoder = encoding.createEncoder();
     syncProtocol.writeSyncStep2(encoder, input.ydoc, decoding.readVarUint8Array(decoder));
     return {
@@ -111,7 +119,13 @@ export function handleGuardedSyncMessage(input: {
  * the leader only passes on an update the guard accepted.
  */
 export function mayRelayGuardedOutcomeToTabs(outcome: GuardedSyncOutcome): boolean {
+  if (outcome.kind === "hydration-blocked") return false;
   return outcome.kind !== "update" || outcome.verdict.applied;
+}
+
+/** @deprecated Use mayPublishDocumentBearingMeshSync — step 1 pulls are always allowed. */
+export function mayInitiateMeshDocumentSync(ydoc: Y.Doc, seedDone: boolean): boolean {
+  return mayAnswerSyncStep1WithLocalState(ydoc, seedDone);
 }
 
 export function applyAwarenessUpdate(

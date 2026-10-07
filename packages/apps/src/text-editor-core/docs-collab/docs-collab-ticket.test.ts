@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   COLLAB_TICKET_SKEW_SECONDS,
+  clearCollabTicketVerifyCacheForTests,
   collabRoomKey,
   collabTicketNeedsRefresh,
   createCollabTicketKeyCache,
@@ -92,6 +93,10 @@ function payloadOf(ticket: string): Record<string, unknown> {
 }
 
 describe("docs-collab-ticket", () => {
+  beforeEach(() => {
+    clearCollabTicketVerifyCacheForTests();
+  });
+
   it("resolves the contract C5 room key the server named in the ticket", async () => {
     await expect(collabRoomKey(ROOM)).resolves.toBe(ROOM_HASH);
   });
@@ -176,6 +181,37 @@ describe("docs-collab-ticket", () => {
     await expect(verifyCollabTicket(args)).resolves.not.toBeNull();
 
     expect(lookups).toBe(1);
+  });
+
+  it("verifies a reused ticket once until it expires", async () => {
+    let verifies = 0;
+    const subtle: SubtleCrypto = {
+      ...crypto.subtle,
+      verify: async (...args) => {
+        verifies += 1;
+        return crypto.subtle.verify(...args);
+      },
+    };
+    const resolveKey = resolver();
+    const args = {
+      ticket: phpSignedTicket,
+      claims,
+      nowSeconds: INSIDE_LIFETIME,
+      resolveKey,
+      subtle,
+    };
+    await expect(verifyCollabTicket(args)).resolves.not.toBeNull();
+    await expect(verifyCollabTicket(args)).resolves.not.toBeNull();
+    expect(verifies).toBe(1);
+
+    await expect(
+      verifyCollabTicket({ ...args, claims: { ...claims, user: "dave" } }),
+    ).resolves.toBeNull();
+    expect(verifies).toBe(1);
+
+    const expiry = Number(payloadOf(phpSignedTicket).exp);
+    await expect(verifyCollabTicket({ ...args, nowSeconds: expiry })).resolves.not.toBeNull();
+    expect(verifies).toBe(2);
   });
 
   it("does not cache a null key lookup", async () => {

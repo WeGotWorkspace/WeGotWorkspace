@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resetDocsCollabBackoffForTests } from "./docs-collab-room-backoff";
 import { isTransientDocStatus, TRANSIENT_DOC_STATUS_DISMISS_MS } from "./docs-collab-status";
 import {
@@ -37,10 +37,13 @@ export function useDocsCollab({
   wire = DEFAULT_DOCS_COLLAB_WIRE,
   seedContent,
 }: UseDocsCollabOptions) {
-  const urls: DocsCollabUrls = {
-    ...DEFAULT_DOCS_COLLAB_URLS,
-    ...(inputUrls ?? {}),
-  };
+  const urls = useMemo<DocsCollabUrls>(
+    () => ({
+      ...DEFAULT_DOCS_COLLAB_URLS,
+      ...(inputUrls ?? {}),
+    }),
+    [inputUrls],
+  );
   const room = docsCollabRoomKey(urls.room ?? "docs/test-together.md");
 
   const refs = useDocsCollabSessionRefs(wire, seedContent);
@@ -102,7 +105,7 @@ export function useDocsCollab({
     tabSyncRef: refs.tabSyncRef,
   });
 
-  const { join, leave, teardown, session, joined } = joinHook;
+  const { join, leave, teardown, session, joined, snapshotPreview } = joinHook;
   const { saveNow, registerMarkdownGetter, onMarkdownChange } = save;
 
   const joinRef = useRef(join);
@@ -146,7 +149,7 @@ export function useDocsCollab({
       refs.joinGenerationRef.current += 1;
       teardownRef.current();
     };
-  }, [autoJoin, userName, refs]);
+  }, [autoJoin, room, userName, refs]);
 
   return {
     session,
@@ -161,8 +164,10 @@ export function useDocsCollab({
     relayBanner: mesh.relayBanner,
     pendingSync,
     failedSync,
+    snapshotPreview,
     join,
     leave,
+    connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
     registerMarkdownGetter,
     onMarkdownChange,

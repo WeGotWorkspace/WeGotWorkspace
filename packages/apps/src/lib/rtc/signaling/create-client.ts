@@ -58,6 +58,8 @@ export function createRtcSignalingClient(
     sendFromField: options.sendFromField ?? channelDefaults.sendFromField ?? "from",
     caps: channelDefaults.caps,
     getBrowserId:
-      options.channel === "meet" || options.channel === "collab" ? readRtcBrowserId : undefined,
+      options.channel === "meet" || options.channel === "collab" || options.channel === "principal"
+        ? readRtcBrowserId
+        : undefined,
   });
 }

@@ -1,3 +1,4 @@
+import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
 import type { YjsSnapshot } from "./docs-collab-server-io";
 
@@ -134,11 +135,32 @@ export function decideServerStateAdoption({
   return pendingServerSave ? "merge" : "adopt-server";
 }
 
-/** Replaces the document content with the server snapshot (Decision 6, "use theirs"). */
+/**
+ * Adopt the server snapshot: apply it, then delete only the items this doc
+ * has that the server does not (a stale local seed). Never wipe the body —
+ * items the doc already holds are skipped by applyUpdate, so a wipe would stick.
+ */
 export function adoptServerSnapshot(ydoc: Y.Doc, update: Uint8Array, origin: string): void {
-  const fragment = ydoc.getXmlFragment("default");
+  const serverSv = Y.decodeStateVector(Y.encodeStateVectorFromUpdate(update));
+  const localSv = Y.decodeStateVector(Y.encodeStateVector(ydoc));
+  const localOnly: Array<[client: number, clock: number, len: number]> = [];
+  for (const [client, localClock] of localSv) {
+    const serverClock = serverSv.get(client) ?? 0;
+    if (localClock > serverClock) localOnly.push([client, serverClock, localClock - serverClock]);
+  }
   ydoc.transact(() => {
-    if (fragment.length > 0) fragment.delete(0, fragment.length);
+    Y.applyUpdate(ydoc, update, origin);
+    if (localOnly.length === 0) return;
+    const encoder = new Y.UpdateEncoderV1();
+    encoding.writeVarUint(encoder.restEncoder, 0); // no structs, delete set only
+    encoding.writeVarUint(encoder.restEncoder, localOnly.length);
+    for (const [client, clock, len] of localOnly) {
+      encoder.resetDsCurVal();
+      encoding.writeVarUint(encoder.restEncoder, client);
+      encoding.writeVarUint(encoder.restEncoder, 1);
+      encoder.writeDsClock(clock);
+      encoder.writeDsLen(len);
+    }
+    Y.applyUpdate(ydoc, encoder.toUint8Array(), origin);
   }, origin);
-  Y.applyUpdate(ydoc, update, origin);
 }

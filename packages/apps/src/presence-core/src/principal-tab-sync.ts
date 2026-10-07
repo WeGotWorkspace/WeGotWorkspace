@@ -72,6 +72,8 @@ export type PrincipalTabSyncHandlers = {
   }) => void;
   onEnvelopeFromLeader: (msg: { peerId: string; envelope: PresenceEnvelope }) => void;
   onRosterFromLeader: (snapshot: PrincipalRosterSnapshot) => void;
+  /** Pagehide on the tab that owns the principal session. Followers must not leave. */
+  onOwnerPageHide?: () => void;
 };
 
 export function createPrincipalTabId(): string {
@@ -231,6 +233,7 @@ export class PrincipalTabCoordinator {
       this.runElection();
     };
     this.onPageHide = () => {
+      if (this.isLeader) this.handlers.onOwnerPageHide?.();
       this.resignLeadership();
       this.post({ type: "tab-leave", tabId: this.tabId, at: Date.now() });
     };

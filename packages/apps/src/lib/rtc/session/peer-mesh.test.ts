@@ -196,7 +196,7 @@ describe("RtcPeerMesh", () => {
     setTimeoutSpy.mockRestore();
   });
 
-  it("backs off collab polling when topology is stable", async () => {
+  it("backs off collab polling to 2s when the room is empty", async () => {
     const signaling = createMockSignaling({ peerId: "peer-a", peers: [] });
     const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
 
@@ -221,7 +221,7 @@ describe("RtcPeerMesh", () => {
     await vi.advanceTimersByTimeAsync(400);
     await flushAsyncWork();
 
-    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 15000);
+    expect(setTimeoutSpy).toHaveBeenLastCalledWith(expect.any(Function), 2000);
     await mesh.leave();
     setTimeoutSpy.mockRestore();
   });
@@ -667,6 +667,51 @@ describe("RtcPeerMesh", () => {
 
     expect(mesh.getPeerIds()).toHaveLength(1);
     expect(signaling.sends.some((s) => s.type === "offer")).toBe(true);
+    await mesh.leave();
+  });
+
+  it("retryPeerConnection dials only that peer and leaves a connected peer untouched", async () => {
+    const allow = new Set<string>();
+    const signaling = createMockSignaling({
+      peerId: "ZZZZZZZZZZ",
+      peers: [
+        { id: "AAAAAAAAAA", name: "Connected" },
+        { id: "BBBBBBBBBB", name: "Fresh" },
+      ],
+    });
+    const { mesh } = meshWithStubPc(signaling.client, {
+      initiatorRule: "higherId",
+      shouldConnectToPeer: (peer) => allow.has(peer.id),
+    });
+
+    await mesh.join({ name: "Host", peerId: "ZZZZZZZZZZ" });
+    allow.add("AAAAAAAAAA");
+    mesh.retryPeerConnection("AAAAAAAAAA");
+    await flushAsyncWork();
+
+    const connected = mesh.getPeerConnection("AAAAAAAAAA");
+    expect(connected).toBeTruthy();
+    (connected as unknown as { connectionState: RTCPeerConnectionState }).connectionState =
+      "connected";
+    const offersTo = (id: string) =>
+      signaling.sends.filter((send) => send.to === id && send.type === "offer").length;
+    const connectedOffers = offersTo("AAAAAAAAAA");
+    expect(connectedOffers).toBeGreaterThan(0);
+    expect(mesh.getPeerIds()).toEqual(["AAAAAAAAAA"]);
+
+    allow.add("BBBBBBBBBB");
+    mesh.retryPeerConnection("BBBBBBBBBB");
+    await flushAsyncWork();
+
+    expect(mesh.getPeerIds().sort()).toEqual(["AAAAAAAAAA", "BBBBBBBBBB"]);
+    expect(offersTo("BBBBBBBBBB")).toBe(1);
+    expect(offersTo("AAAAAAAAAA")).toBe(connectedOffers);
+    expect(mesh.getPeerConnection("AAAAAAAAAA")).toBe(connected);
+
+    mesh.retryPeerConnection("AAAAAAAAAA");
+    await flushAsyncWork();
+    expect(offersTo("AAAAAAAAAA")).toBe(connectedOffers);
+    expect(mesh.getPeerConnection("AAAAAAAAAA")).toBe(connected);
     await mesh.leave();
   });
 

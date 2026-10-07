@@ -6,10 +6,15 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
-import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
+import {
+  clearDocsCollabPendingServerSave,
+  docsCollabIndexedDbKey,
+  migrateDocsCollabPendingSaveFromLegacy,
+} from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
   markRoomServerSuccess,
@@ -29,6 +34,7 @@ import {
 import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import {
   canSeedFromFile,
+  markSeedDoneAfterSnapshot,
   resolveBootstrapSeed,
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
@@ -54,7 +60,12 @@ import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
-  "joinMesh" | "refreshMeshUi" | "resetMeshUi" | "setStatus" | "setConnectingPeers"
+  | "joinMesh"
+  | "refreshMeshUi"
+  | "resetMeshUi"
+  | "setStatus"
+  | "setConnectingPeers"
+  | "flushMeshSyncIfHydrated"
 >;
 
 type SaveApi = Pick<
@@ -87,17 +98,29 @@ export function useDocsCollabJoin({
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabJoinOptions) {
-  const { joinMesh, refreshMeshUi, resetMeshUi, setStatus, setConnectingPeers } = mesh;
+  const {
+    joinMesh,
+    refreshMeshUi,
+    resetMeshUi,
+    setStatus,
+    setConnectingPeers,
+    flushMeshSyncIfHydrated,
+  } = mesh;
   const { updatePendingState, flushPendingSaveIfReady } = save;
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
-  const meshJoinInFlightRef = useRef(false);
+  /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */
+  const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
+  const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
-
   const markDocReady = useCallback(() => {
+    // A peer can fill the doc after a failed sidecar already showed the preview.
+    setSnapshotPreview(null);
+    if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
-  }, [refs]);
+    flushMeshSyncIfHydrated();
+  }, [flushMeshSyncIfHydrated, refs]);
 
   const trySeedFromFile = useCallback(() => {
     const ydoc = refs.ydocRef.current;
@@ -129,7 +152,7 @@ export function useDocsCollabJoin({
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
-    meshJoinInFlightRef.current = false;
+    meshJoinInFlightRef.current = null;
     serverJoinStartedRef.current = false;
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
@@ -155,8 +178,10 @@ export function useDocsCollabJoin({
     clearDocsCollabSyncState(room);
     // The sidecar may move on while the room is parked; re-learn it on rejoin.
     forgetSidecarEtag(room);
+    refs.sessionRef.current = null;
     setSession(null);
     setJoined(false);
+    setSnapshotPreview(null);
     resetMeshUi();
     setDocStatus("");
     setLastSavedAt(null);
@@ -170,6 +195,7 @@ export function useDocsCollabJoin({
       if (!ydoc) return false;
       const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
       rememberSidecarEtag(room, snapshot.etag);
+      if (snapshot.applied) setSnapshotPreview(null);
       return snapshot.applied;
     },
     [refs, room, urls.yjsUrl],
@@ -205,9 +231,14 @@ export function useDocsCollabJoin({
       const snapshot = load.snapshot;
       // C7: the snapshot state is unknown, so seeding would risk a second copy.
       // The room is already in backoff via onAttemptFailed; the reconnect path
-      // retries the bootstrap once that backoff expires.
+      // retries the sidecar once that backoff allows it. Markdown stays a
+      // read-only preview and is not written into the Y.Doc.
       if (snapshot.kind === "failed") {
         console.warn("[docs-collab] yjs load failed", snapshot.error);
+        const markdown = load.markdown;
+        refs.lastKnownMarkdownRef.current = markdown;
+        refs.pendingMarkdownRef.current = "";
+        setSnapshotPreview(markdown.trim() ? markdown : null);
         setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
         return;
       }
@@ -223,7 +254,9 @@ export function useDocsCollabJoin({
           Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
         }
         rememberSidecarEtag(room, snapshot.etag);
-        refs.seedDoneRef.current = true;
+        if (markSeedDoneAfterSnapshot(ydoc)) {
+          refs.seedDoneRef.current = true;
+        }
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
       }
@@ -254,42 +287,43 @@ export function useDocsCollabJoin({
       } else if (hadSnapshot) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
       }
+
+      flushMeshSyncIfHydrated();
     },
     [
       documentFormat,
+      flushMeshSyncIfHydrated,
       markDocReady,
       refs,
       room,
       setDocStatus,
       trySeedFromFile,
-      urls.documentUrl,
-      urls.loadDocumentMarkdown,
-      urls.onReconnectConflict,
-      urls.skipYjsSnapshot,
-      urls.yjsUrl,
+      urls,
     ],
   );
 
   const connectMeshInBackground = useCallback(
     async (generation: number, name: string, authToken: string) => {
       if (refs.meshRef.current || meshJoinInFlightRef.current) return;
-      meshJoinInFlightRef.current = true;
+      const token = {};
+      meshJoinInFlightRef.current = token;
+      const isCurrent = () => isJoinGenerationCurrent(generation, refs.joinGenerationRef);
       setDocStatus((prev) => prev || "Connecting to collaborators…");
       setStatus(docsLabels.statusConnecting);
       try {
-        const meshPeers = await joinMesh(name, authToken);
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        const meshPeers = await joinMesh(name, authToken, isCurrent);
+        if (meshPeers === null || !isCurrent()) return;
         setConnectingPeers(meshPeers);
         refreshMeshUi();
         setDocStatus((prev) => (prev === "Connecting to collaborators…" ? "" : prev));
         trySeedFromFile();
       } catch (error) {
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
         setDocStatus(error instanceof Error ? error.message : String(error));
       } finally {
-        meshJoinInFlightRef.current = false;
+        if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }
     },
     [
@@ -336,7 +370,7 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const persistence = new IndexeddbPersistence(room, ydoc);
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
     refs.persistenceRef.current = persistence;
 
     const authTokenPromise = allowServerRequests
@@ -358,6 +392,8 @@ export function useDocsCollabJoin({
     await persistence.whenSynced;
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
+    await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
+
     const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
     if (pendingSave) {
       await updatePendingState(true, false);
@@ -368,16 +404,26 @@ export function useDocsCollabJoin({
     const user = { name, color: colorForName(name), id: trackChangesAuthorIdFromName(name) };
     awareness.setLocalStateField("user", user);
 
+    setSession({
+      ydoc,
+      awareness,
+      user,
+    });
+
     ydoc.on("update", (update, origin) => {
       if (isRemoteUpdateOrigin(origin, refs.persistenceRef.current)) return;
       refs.localDirtySinceLastSaveRef.current = true;
       const encoded = encodeUpdateBroadcast(update);
       const tabSync = refs.tabSyncRef.current;
+      const mayMeshPublish = mayPublishDocumentBearingMeshSync(ydoc, refs.seedDoneRef.current);
       if (tabSync) {
         tabSync.onLocalSync(encoded);
-        if (tabSync.isMeshLeader()) refs.meshRef.current?.noteLocalUpdate(update);
+        if (tabSync.isMeshLeader() && mayMeshPublish) {
+          refs.meshRef.current?.noteLocalUpdate(update);
+        }
         return;
       }
+      if (!mayMeshPublish) return;
       refs.meshRef.current?.noteLocalUpdate(update);
       refs.meshRef.current?.broadcast({ type: "sync", u: encoded });
     });
@@ -400,9 +446,8 @@ export function useDocsCollabJoin({
       },
     );
 
-    setSession({ ydoc, awareness, user });
-    setJoined(true);
     refs.joinedRoomRef.current = room;
+    setJoined(true);
 
     if (!online || !allowServerRequests) {
       if (!refs.seedDoneRef.current && isYDocEmpty(ydoc) && refs.seedContentRef.current) {
@@ -417,6 +462,8 @@ export function useDocsCollabJoin({
       });
       return;
     }
+
+    setDocStatus("Loading document…");
 
     void (async () => {
       let authToken: string | undefined;
@@ -439,7 +486,6 @@ export function useDocsCollabJoin({
   }, [
     documentFormat,
     finishAuthenticatedJoin,
-    joinMesh,
     markDocReady,
     refs,
     room,
@@ -499,6 +545,7 @@ export function useDocsCollabJoin({
   return {
     session,
     joined,
+    snapshotPreview,
     join,
     leave,
     teardown,

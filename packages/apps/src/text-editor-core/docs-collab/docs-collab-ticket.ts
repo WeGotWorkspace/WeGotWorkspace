@@ -56,6 +56,24 @@ export type DocsCollabTicketClaims = {
 
 const ACCESS_VALUES = new Set<string>(["read", "comment", "write"]);
 
+/** Successful ECDSA results, keyed by the ticket string, dropped at `exp`. */
+const verifiedTicketPayloads = new Map<string, DocsCollabTicketPayload>();
+
+/** Tests isolate tickets that would otherwise stay verified until `exp`. */
+export function clearCollabTicketVerifyCacheForTests(): void {
+  verifiedTicketPayloads.clear();
+}
+
+function cachedVerifiedPayload(ticket: string, nowSeconds: number): DocsCollabTicketPayload | null {
+  const cached = verifiedTicketPayloads.get(ticket);
+  if (!cached) return null;
+  if (cached.exp <= nowSeconds) {
+    verifiedTicketPayloads.delete(ticket);
+    return null;
+  }
+  return cached;
+}
+
 export function base64UrlToBytes(encoded: string): Uint8Array | null {
   const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
   const remainder = padded.length % 4;
@@ -142,6 +160,9 @@ export async function verifyCollabTicket(input: {
   const key = await input.resolveKey(payload.kid);
   if (!key) return null;
 
+  const cached = cachedVerifiedPayload(input.ticket, now);
+  if (cached) return cached;
+
   const signature = base64UrlToBytes(input.ticket.split(".")[1]!);
   if (!signature || signature.length !== 64) return null;
 
@@ -158,7 +179,9 @@ export async function verifyCollabTicket(input: {
   } catch {
     return null;
   }
-  return valid ? payload : null;
+  if (!valid) return null;
+  verifiedTicketPayloads.set(input.ticket, payload);
+  return payload;
 }
 
 /**

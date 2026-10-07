@@ -12,6 +12,7 @@ type CapturedBinding = {
 
 const captured = vi.hoisted(() => ({
   bindingOptions: null as CapturedBinding | null,
+  pollIntervals: null as { steadyMs: number } | null,
   mesh: {
     getMyId: vi.fn((): string | null => "me"),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string; user?: string }>),
@@ -32,13 +33,17 @@ vi.mock("@/lib/rtc/session/bindings", () => ({
 }));
 
 vi.mock("@/lib/rtc/session/create-rtc-session", () => ({
-  createRtcSession: vi.fn(() => captured.mesh),
+  createRtcSession: vi.fn((options: { pollIntervals: { steadyMs: number } }) => {
+    captured.pollIntervals = options.pollIntervals;
+    return captured.mesh;
+  }),
 }));
 
 describe("PresenceRtcSession principal link publishing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     captured.bindingOptions = null;
+    captured.pollIntervals = null;
     captured.mesh.getRoomPeers.mockReturnValue([]);
     captured.mesh.getDataChannel.mockReturnValue(null);
   });
@@ -135,5 +140,22 @@ describe("PresenceRtcSession principal link publishing", () => {
 
     expect(registry.isConnectingTo("wouter")).toBe(true);
     expect(registry.hasOpenLink("wouter")).toBe(false);
+  });
+
+  it("polls every 4s when the presence room is empty and 20s once peers are linked", () => {
+    new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    captured.mesh.getRoomPeers.mockReturnValue([]);
+    captured.bindingOptions?.onClose();
+    expect(captured.pollIntervals?.steadyMs).toBe(4_000);
+
+    captured.mesh.getRoomPeers.mockReturnValue([
+      { id: "prin-wouter", name: "Wouter", user: "wouter" },
+    ]);
+    captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
+    captured.bindingOptions?.onOpen("prin-wouter");
+    expect(captured.pollIntervals?.steadyMs).toBe(20_000);
   });
 });

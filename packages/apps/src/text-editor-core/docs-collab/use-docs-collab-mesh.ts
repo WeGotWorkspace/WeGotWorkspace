@@ -16,6 +16,10 @@ import {
   handleGuardedSyncMessage,
   mayRelayGuardedOutcomeToTabs,
 } from "./docs-collab-mesh-sync";
+import {
+  mayAnswerSyncStep1WithLocalState,
+  mayPublishDocumentBearingMeshSync,
+} from "./docs-collab-mesh-hydration";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 import { docsRelayCopy, type DocsRelayCopy } from "./docs-relay-copy";
@@ -181,6 +185,11 @@ export function useDocsCollabMesh({
     [refs],
   );
 
+  const flushMeshSyncIfHydrated = useCallback(() => {
+    sendSyncStep1();
+    sendAwarenessBroadcast();
+  }, [sendAwarenessBroadcast, sendSyncStep1]);
+
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
       // Contract C2 revocation: the server refused the poll, so this account
@@ -206,12 +215,15 @@ export function useDocsCollabMesh({
           trust: msg.trust,
           from: msg.from,
           origin: MESH_ORIGIN,
+          mayAnswerSyncStep1: mayAnswerSyncStep1WithLocalState(ydoc, refs.seedDoneRef.current),
         });
         if (!isYDocEmpty(ydoc)) markDocReady();
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
         }
+        // dc-open already pulls once per peer. Answering an empty step 1 with
+        // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && Array.isArray(msg.u)) {
@@ -235,15 +247,22 @@ export function useDocsCollabMesh({
       sendAwarenessBroadcast,
       sendSyncStep1,
       trySeedFromFile,
-      urls.onPersistForbidden,
+      urls,
     ],
   );
 
   const joinMesh = useCallback(
-    async (name: string, authToken: string): Promise<DocsCollabMeshPeer[]> => {
+    async (
+      name: string,
+      authToken: string,
+      isCurrent: () => boolean,
+    ): Promise<DocsCollabMeshPeer[] | null> => {
       if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
         await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
       }
+      if (!isCurrent()) return null;
+      const raced = refs.meshRef.current;
+      if (raced) return raced.getRoomPeers();
 
       const resumed = resumeDocsCollabMeshSession(room);
       if (resumed) {
@@ -270,6 +289,22 @@ export function useDocsCollabMesh({
         fetched = await DEFAULT_DOCS_COLLAB_WIRE.fetchRtcSettings({ channel: "collab" });
       }
 
+      // Re-check after the await. Between these checks and `new` there must be
+      // no await, so check-and-create stays atomic.
+      if (!isCurrent()) return null;
+      const racedAfterFetch = refs.meshRef.current;
+      if (racedAfterFetch) return racedAfterFetch.getRoomPeers();
+      const parked = resumeDocsCollabMeshSession(room);
+      if (parked) {
+        refs.meshRef.current = parked;
+        parked.onMessage(handleMeshMessage);
+        refreshMeshUi();
+        publishMeshStateToTabs();
+        sendSyncStep1();
+        sendAwarenessBroadcast();
+        return parked.getRoomPeers();
+      }
+
       const mesh = new DocsRtcSession({
         apiBase: urls.collabApiBaseUrl ?? "/api/v1/rooms",
         room,
@@ -277,12 +312,20 @@ export function useDocsCollabMesh({
         rtcSettings:
           fetched ?? applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, forceRelay: false }),
         getYDoc: () => refs.ydocRef.current,
+        meshHydrated: () => {
+          const doc = refs.ydocRef.current;
+          if (!doc) return false;
+          return mayPublishDocumentBearingMeshSync(doc, refs.seedDoneRef.current);
+        },
         onRelayNotice: setRelayNotice,
         collabTicket: fetched?.collabTicket,
       });
       refs.meshRef.current = mesh;
       mesh.onMessage(handleMeshMessage);
       const joinedData = await mesh.join(name);
+      // If we went stale during join(), teardown() or the newer reconnect has
+      // already parked or left `mesh` through refs.meshRef. Do not touch it.
+      if (!isCurrent()) return null;
       refreshMeshUi();
       publishMeshStateToTabs();
       return joinedData.peers;
@@ -295,8 +338,7 @@ export function useDocsCollabMesh({
       room,
       sendAwarenessBroadcast,
       sendSyncStep1,
-      urls.collabApiBaseUrl,
-      urls.collabRtcUrl,
+      urls,
     ],
   );
 
@@ -311,6 +353,7 @@ export function useDocsCollabMesh({
     setConnectingPeers,
     refreshMeshUi,
     sendSyncStep1,
+    flushMeshSyncIfHydrated,
     handleMeshMessage,
     joinMesh,
     resetMeshUi,

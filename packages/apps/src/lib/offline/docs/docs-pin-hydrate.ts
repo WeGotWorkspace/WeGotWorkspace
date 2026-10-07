@@ -3,7 +3,10 @@ import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  docsCollabIndexedDbKey,
+  docsCollabRoomKey,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { loadBootstrapInParallel } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
 import { rememberSidecarEtag } from "@/text-editor-core/docs-collab/docs-collab-etag";
@@ -44,7 +47,7 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
 
   const documentFormat = collabDocumentFormat(room);
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(room, ydoc);
+  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
   try {
     await persistence.whenSynced;
     if (isYDocEmpty(ydoc)) {
@@ -72,7 +75,7 @@ export async function hydrateDocsCollabForOffline({
   const urls = buildDocsCollabUrlsForPath(room);
   const documentFormat = collabDocumentFormat(room);
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(room, ydoc);
+  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
 
   try {
     await persistence.whenSynced;

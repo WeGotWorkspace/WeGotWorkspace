@@ -20,8 +20,17 @@ import type {
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
 
-/** Wait this long for an `ack` before falling back to a fresh collab ICE handshake. */
-export const COLLAB_REUSE_ACK_TIMEOUT_MS = 300;
+/**
+ * Wait this long for an `ack` before falling back to a fresh collab ICE handshake.
+ * The responder verifies a ticket asynchronously, and the principal channel has
+ * often only just opened.
+ */
+export const COLLAB_REUSE_ACK_TIMEOUT_MS = 1500;
+
+/** Hold a signed ticket this long while the roster poll catches up. Stays under the ack timeout. */
+export const COLLAB_REUSE_ROSTER_WAIT_MS = 1_000;
+
+const MAX_ROSTER_WAITERS = 8;
 
 /** Brief hold before fresh ICE when the principal mesh is still connecting. */
 export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS = 400;
@@ -37,6 +46,8 @@ type PendingPeer = {
   collabPeerId: string;
   name: string;
   username: string;
+  /** Principal peers the `open` was sent to, so ack-timeout can close that half-attach. */
+  principalPeerIds: string[];
   timer: ReturnType<typeof setTimeout>;
 };
 
@@ -53,8 +64,12 @@ export type DocsCollabPrincipalReusePorts = {
   getMyName: () => string;
   onDcOpen: (collabPeerId: string) => void;
   onLinkChange: () => void;
-  /** Principal reuse ended — dial fresh ICE (not called on successful reuse attach). */
-  onReuseFallback?: () => void;
+  /**
+   * Principal reuse ended — dial fresh ICE for this collab peer.
+   * Omit the id only when the caller cannot name the peer (full roster retry).
+   * Not called on successful reuse attach.
+   */
+  onReuseFallback?: (collabPeerId?: string) => void;
   /** Tear down an in-flight collab ICE handshake once reuse wins for this peer. */
   onReuseAttached?: (collabPeerId: string) => void;
   onMessage: (msg: DocsCollabMeshMessage) => void;
@@ -64,6 +79,8 @@ export type DocsCollabPrincipalReusePorts = {
   resolveTicketKey?: (kid: string) => Promise<CryptoKey | null>;
   /** This client's own ticket, attached to outbound `open` and `ack` when set. */
   getOwnTicket?: () => string | undefined;
+  /** Ask the collab session for an immediate roster poll. */
+  requestRosterRefresh?: () => void;
   /** Clock for ticket expiry. Tests pin it; production uses the wall clock. */
   nowSeconds?: () => number;
   ackTimeoutMs?: number;
@@ -119,6 +136,10 @@ export class DocsCollabPrincipalReuse {
   /** Stale collab peer ids superseded by principal reuse for the same username. */
   private readonly supersededCollabPeerIds = new Set<string>();
 
+  private readonly rosterWaiters = new Map<string, Array<(ok: boolean) => void>>();
+
+  private disposed = false;
+
   private readonly trust = new DocsCollabRosterTrust();
 
   private readonly resolveTicketKey: (kid: string) => Promise<CryptoKey | null>;
@@ -161,21 +182,22 @@ export class DocsCollabPrincipalReuse {
   considerRoster(peers: RtcPeerDescriptor[], myId: string | null): void {
     this.lastRosterPeers = peers;
     this.trust.remember(peers, myId);
+    this.flushRosterWaiters();
     this.dropUnrosteredPeers();
     this.dropDeadPrincipalLinks();
+    this.dropReuseForMultiPeerUsers();
     for (const peer of peers) {
       if (!myId || peer.id === myId) continue;
       this.remapReusedIdentity(peer);
-      if (this.reused.has(peer.id) || this.pending.has(peer.user ?? "")) continue;
-      if (this.failedUsernames.has(peer.user ?? "")) continue;
       this.tryReuse(peer);
     }
   }
 
   /** True when collab must not create a new RTCPeerConnection for this peer. */
   shouldSkipIce(peer: RtcPeerDescriptor): boolean {
-    if (this.reused.has(peer.id)) return true;
     const username = peer.user ?? "";
+    if (username && this.isMultiPeerUser(username)) return false;
+    if (this.reused.has(peer.id)) return true;
     if (!username) return false;
     if (this.pending.get(username)?.collabPeerId === peer.id) return true;
     if (this.deferredFreshIce.get(username)?.collabPeerId === peer.id) return true;
@@ -184,10 +206,11 @@ export class DocsCollabPrincipalReuse {
 
   /** Drop inbound collab signaling offers when reuse already covers this peer/user. */
   shouldIgnoreOffer(fromPeerId: string): boolean {
+    const rosterPeer = this.lastRosterPeers.find((peer) => peer.id === fromPeerId);
+    const username = rosterPeer?.user ?? "";
+    if (username && this.isMultiPeerUser(username)) return false;
     if (this.supersededCollabPeerIds.has(fromPeerId)) return true;
     if (this.reused.has(fromPeerId)) return true;
-    const rosterPeer = this.lastRosterPeers.find((peer) => peer.id === fromPeerId);
-    if (rosterPeer && this.shouldSkipIce(rosterPeer)) return true;
     return false;
   }
 
@@ -232,31 +255,22 @@ export class DocsCollabPrincipalReuse {
     if (!entry) return;
     this.reused.delete(collabPeerId);
     if (sendClose) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, {
-        v: 1,
-        kind: "collab-reuse",
-        room: this.room,
-        op: "close",
-        collabPeerId: this.ports.getMyCollabPeerId() ?? undefined,
-      } satisfies CollabReuseEnvelope);
+      this.registry.sendToPrincipalPeer(entry.principalPeerId, this.closeEnvelope());
     }
-    this.ports.onReuseFallback?.();
+    this.ports.onReuseFallback?.(collabPeerId);
     this.ports.onLinkChange();
   }
 
   dispose(): void {
+    this.disposed = true;
+    for (const list of this.rosterWaiters.values()) for (const finish of list) finish(false);
+    this.rosterWaiters.clear();
     for (const pending of this.pending.values()) this.cancelTimeout(pending.timer);
     this.pending.clear();
     for (const deferred of this.deferredFreshIce.values()) this.cancelTimeout(deferred.timer);
     this.deferredFreshIce.clear();
     for (const entry of [...this.reused.values()]) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, {
-        v: 1,
-        kind: "collab-reuse",
-        room: this.room,
-        op: "close",
-        collabPeerId: this.ports.getMyCollabPeerId() ?? undefined,
-      } satisfies CollabReuseEnvelope);
+      this.registry.sendToPrincipalPeer(entry.principalPeerId, this.closeEnvelope());
     }
     this.reused.clear();
     this.unsubscribe();
@@ -272,8 +286,6 @@ export class DocsCollabPrincipalReuse {
     this.cancelDeferFreshIce(username);
     for (const peer of this.lastRosterPeers) {
       if (peer.id === myId || peer.user !== username) continue;
-      if (this.reused.has(peer.id) || this.pending.has(username)) continue;
-      if (this.failedUsernames.has(username)) continue;
       this.tryReuse(peer);
     }
   }
@@ -316,8 +328,8 @@ export class DocsCollabPrincipalReuse {
    * Verify a presented ticket. `user` and `peer` have to match the principal
    * link and the envelope. The ticket binds identity; the roster is the
    * fresher right, so a rostered peer gets the tighter of the two. A peer
-   * that is not on the roster is dropped. A failure is a drop, not a fall
-   * back to an unchecked ticket.
+   * that is not on the roster is held for up to 1 s while the roster refreshes,
+   * then dropped. A failure is a drop, not a fall back to an unchecked ticket.
    */
   private async verifiedTicketAccess(
     fromUsername: string,
@@ -342,7 +354,7 @@ export class DocsCollabPrincipalReuse {
       this.logMiss(collabPeerId, "ticket-rejected", fromUsername);
       return null;
     }
-    if (!this.trust.isRosteredPeerId(collabPeerId)) {
+    if (!(await this.waitForRosteredPeer(collabPeerId))) {
       this.logMiss(collabPeerId, "ticket-peer-not-rostered", fromUsername);
       return null;
     }
@@ -385,13 +397,13 @@ export class DocsCollabPrincipalReuse {
     for (const entry of [...this.reused.values()]) {
       if (this.registry.getLink(entry.principalPeerId)) continue;
       this.reused.delete(entry.collabPeerId);
-      this.failedUsernames.add(entry.username);
+      this.rememberReuseFailure(entry.username);
       this.log("reuse-miss", {
         remoteId: entry.collabPeerId,
         username: entry.username,
         reason: "principal-link-gone",
       });
-      this.ports.onReuseFallback?.();
+      this.ports.onReuseFallback?.(entry.collabPeerId);
       this.ports.onLinkChange();
     }
   }
@@ -415,6 +427,13 @@ export class DocsCollabPrincipalReuse {
       this.logMiss(peer.id, "no-user", peer.id);
       return;
     }
+    if (this.isMultiPeerUser(username)) {
+      this.cancelPendingReuse(username);
+      this.logMiss(peer.id, "multi-peer-user", username);
+      return;
+    }
+    if (this.reusedEntryFor(username)) return;
+    if (this.pending.has(username) || this.failedUsernames.has(username)) return;
     if (!this.registry.hasOpenLink(username)) {
       if (this.registry.isConnectingTo(username)) {
         this.scheduleDeferFreshIce(peer);
@@ -425,19 +444,26 @@ export class DocsCollabPrincipalReuse {
     }
     const myId = this.ports.getMyCollabPeerId();
     if (!myId) return;
+    const principalPeerIds = this.registry
+      .linksForUsername(username)
+      .map((link) => link.principalPeerId);
     this.log("reuse-hit", { remoteId: peer.id, username });
-    this.ports.onReuseAttached?.(peer.id);
     const timer = this.scheduleTimeout(() => {
+      const pending = this.pending.get(username);
       this.pending.delete(username);
-      this.failedUsernames.add(username);
+      this.rememberReuseFailure(username);
       this.log("reuse-miss", { remoteId: peer.id, username, reason: "ack-timeout" });
-      this.ports.onReuseFallback?.();
+      for (const principalPeerId of pending?.principalPeerIds ?? principalPeerIds) {
+        this.registry.sendToPrincipalPeer(principalPeerId, this.closeEnvelope());
+      }
+      this.ports.onReuseFallback?.(peer.id);
       this.ports.onLinkChange();
     }, this.ackTimeoutMs);
     this.pending.set(username, {
       collabPeerId: peer.id,
       name: peer.name,
       username,
+      principalPeerIds,
       timer,
     });
     this.registry.sendToUsername(username, this.handshakeEnvelope("open", myId));
@@ -466,7 +492,7 @@ export class DocsCollabPrincipalReuse {
     }
     if (envelope.op === "open") {
       if (!this.mayReuseWith(fromUsername, envelope.collabPeerId)) return;
-      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
+      if (!this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open")) return;
       const myId = this.ports.getMyCollabPeerId();
       if (!myId) return;
       this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
@@ -500,7 +526,7 @@ export class DocsCollabPrincipalReuse {
     const access = await this.mayReuseWith(fromUsername, envelope.collabPeerId, ticket);
     if (!access) return;
     if (envelope.op === "open") {
-      this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open");
+      if (!this.acceptRemote(fromUsername, fromPrincipalPeerId, envelope, "open")) return;
       const myId = this.ports.getMyCollabPeerId();
       if (!myId) return;
       this.registry.sendToPrincipalPeer(fromPrincipalPeerId, this.handshakeEnvelope("ack", myId));
@@ -558,9 +584,16 @@ export class DocsCollabPrincipalReuse {
     fromPrincipalPeerId: string,
     envelope: CollabReuseEnvelope,
     via: "open" | "ack",
-  ): void {
+  ): boolean {
     const collabPeerId = envelope.collabPeerId;
-    if (!collabPeerId) return;
+    if (!collabPeerId) return false;
+    if (this.disposed) return false;
+    // One principal link cannot stand in for two collab peers. Attaching would
+    // abort the ICE dial that should carry this username.
+    if (this.isMultiPeerUser(fromUsername)) {
+      this.logMiss(collabPeerId, "multi-peer-user", fromUsername);
+      return false;
+    }
     const pending = this.pending.get(fromUsername);
     if (pending) {
       this.cancelTimeout(pending.timer);
@@ -579,6 +612,7 @@ export class DocsCollabPrincipalReuse {
     this.ports.onReuseAttached?.(collabPeerId);
     if (wasNew) this.ports.onDcOpen(collabPeerId);
     this.ports.onLinkChange();
+    return true;
   }
 
   private dataEnvelope(payload: unknown): CollabReuseEnvelope {
@@ -611,7 +645,7 @@ export class DocsCollabPrincipalReuse {
       this.deferredFreshIce.delete(username);
       if (this.registry.hasOpenLink(username)) return;
       this.logMiss(deferred.collabPeerId, "no-principal-pc", username);
-      this.ports.onReuseFallback?.();
+      this.ports.onReuseFallback?.(deferred.collabPeerId);
       this.ports.onLinkChange();
     };
     const timer = this.scheduleTimeout(tick, this.principalConnectDeferMs);
@@ -628,6 +662,110 @@ export class DocsCollabPrincipalReuse {
     if (!deferred) return;
     this.cancelTimeout(deferred.timer);
     this.deferredFreshIce.delete(username);
+  }
+
+  private waitForRosteredPeer(collabPeerId: string): Promise<boolean> {
+    if (this.disposed) return Promise.resolve(false);
+    if (this.trust.isRosteredPeerId(collabPeerId)) return Promise.resolve(true);
+    if (!this.rosterWaiters.has(collabPeerId) && this.rosterWaiters.size >= MAX_ROSTER_WAITERS) {
+      return Promise.resolve(false);
+    }
+    this.ports.requestRosterRefresh?.();
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        this.cancelTimeout(timer);
+        resolve(ok);
+      };
+      const timer = this.scheduleTimeout(() => {
+        const list = this.rosterWaiters.get(collabPeerId);
+        if (list) {
+          const rest = list.filter((fn) => fn !== finish);
+          if (rest.length > 0) this.rosterWaiters.set(collabPeerId, rest);
+          else this.rosterWaiters.delete(collabPeerId);
+        }
+        finish(false);
+      }, COLLAB_REUSE_ROSTER_WAIT_MS);
+      const list = this.rosterWaiters.get(collabPeerId) ?? [];
+      list.push(finish);
+      this.rosterWaiters.set(collabPeerId, list);
+    });
+  }
+
+  private flushRosterWaiters(): void {
+    for (const [id, list] of [...this.rosterWaiters]) {
+      if (!this.trust.isRosteredPeerId(id)) continue;
+      this.rosterWaiters.delete(id);
+      for (const finish of list) finish(true);
+    }
+  }
+
+  /** A username with two collab peers cannot share one principal link. */
+  private isMultiPeerUser(username: string): boolean {
+    if (!username) return false;
+    let count = 0;
+    for (const peer of this.lastRosterPeers) {
+      if (peer.user !== username) continue;
+      count += 1;
+      if (count > 1) return true;
+    }
+    return false;
+  }
+
+  private reusedEntryFor(username: string): ReusedPeer | undefined {
+    if (!username) return undefined;
+    for (const entry of this.reused.values()) {
+      if (entry.username === username) return entry;
+    }
+    return undefined;
+  }
+
+  /**
+   * A failed handshake must not displace a live reuse of the same username.
+   * The healthy link stays; only the peer that failed falls back to ICE.
+   */
+  private rememberReuseFailure(username: string): void {
+    if (!username || this.reusedEntryFor(username)) return;
+    this.failedUsernames.add(username);
+  }
+
+  /** Second collab peer for a reused user: both sides leave reuse and use ICE. */
+  private dropReuseForMultiPeerUsers(): void {
+    const multi = new Set<string>();
+    const seen = new Set<string>();
+    for (const peer of this.lastRosterPeers) {
+      const username = peer.user ?? "";
+      if (!username) continue;
+      if (seen.has(username)) multi.add(username);
+      seen.add(username);
+    }
+    if (multi.size === 0) return;
+    for (const entry of [...this.reused.values()]) {
+      if (multi.has(entry.username)) this.dropPeer(entry.collabPeerId, true);
+    }
+  }
+
+  /** Close a half-attached open without marking the username failed. */
+  private cancelPendingReuse(username: string): void {
+    const pending = this.pending.get(username);
+    if (!pending) return;
+    this.cancelTimeout(pending.timer);
+    this.pending.delete(username);
+    for (const principalPeerId of pending.principalPeerIds) {
+      this.registry.sendToPrincipalPeer(principalPeerId, this.closeEnvelope());
+    }
+  }
+
+  private closeEnvelope(): CollabReuseEnvelope {
+    return {
+      v: 1,
+      kind: "collab-reuse",
+      room: this.room,
+      op: "close",
+      collabPeerId: this.ports.getMyCollabPeerId() ?? undefined,
+    };
   }
 
   private logMiss(remoteId: string, reason: string, username: string): void {

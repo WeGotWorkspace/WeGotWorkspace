@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import {
   PrincipalLinkRegistry,
@@ -6,7 +7,11 @@ import {
 } from "@/lib/rtc/session/principal-link-registry";
 import { SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
-import { DocsRtcSession, parsePeerHintPeers } from "./docs-rtc-session";
+import { DocsRtcSession, parsePeerHintPeers, tagOf } from "./docs-rtc-session";
+
+vi.mock("@/lib/rtc/log", () => ({
+  rtcLog: vi.fn(),
+}));
 
 type CapturedBinding = {
   onOpen: (remoteId: string) => void;
@@ -38,9 +43,13 @@ const captured = vi.hoisted(() => ({
     getPeerIds: vi.fn(() => [] as string[]),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string }>),
     getPeerLinkStates: vi.fn(() => [] as Array<{ id: string; name: string; link: string }>),
-    join: vi.fn(async () => ({ peerId: "me", peers: [] })),
+    join: vi.fn(async (): Promise<{ peerId: string; peers: []; ticket?: string }> => ({
+      peerId: "me",
+      peers: [],
+    })),
     leave: vi.fn(async () => undefined),
     retryRoomPeerConnections: vi.fn(),
+    retryPeerConnection: vi.fn(),
     abortPeerConnection: vi.fn(),
   },
 }));
@@ -419,7 +428,7 @@ describe("DocsRtcSession principal reuse wiring", () => {
       pollRoster([peer]);
     }).not.toThrow();
 
-    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalled();
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith(peer.id);
     expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
     expect(session.getRoomPeerStatuses()).toEqual([
       { id: peer.id, name: peer.name, link: "connecting" },
@@ -457,11 +466,12 @@ describe("DocsRtcSession principal reuse wiring", () => {
       collabPeerId: "bbbbbbbbbbbbbbbb",
       name: "Wouter",
     });
-    vi.mocked(captured.mesh.retryRoomPeerConnections).mockClear();
+    vi.mocked(captured.mesh.retryPeerConnection).mockClear();
 
     registry.unregisterLink("prin-wouter");
 
-    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalledTimes(1);
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledTimes(1);
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith(peer.id);
     expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
   });
 
@@ -604,5 +614,118 @@ describe("DocsRtcSession principal reuse wiring", () => {
     expect(captured.meshOptions?.shouldAcceptOffer?.("cccccccccccccccc")).toBe(false);
     expect(captured.meshOptions?.shouldAcceptOffer?.("bbbbbbbbbbbbbbbb")).toBe(false);
     expect(captured.meshOptions?.shouldAcceptOffer?.("dddddddddddddddd")).toBe(true);
+  });
+});
+
+describe("DocsRtcSession join access and single session", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+    captured.mesh.getMyId.mockReturnValue("me");
+    captured.mesh.join.mockResolvedValue({ peerId: "me", peers: [] });
+  });
+
+  it("learns write access from the join ticket without a later poll", async () => {
+    const session = createSession();
+    captured.mesh.join.mockResolvedValueOnce({
+      peerId: "me",
+      peers: [],
+      ticket: collabTicket({ peer: "me", access: "write" }),
+    });
+
+    await session.join("Self");
+
+    expect(session.myAccess()).toBe("write");
+    await session.leave();
+  });
+
+  it("logs duplicate-session when two sessions join the same room", async () => {
+    const first = createSession();
+    const second = createSession();
+    await first.join("One");
+    await second.join("Two");
+
+    expect(rtcLog).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "collab", peerId: "me" }),
+      "duplicate-session",
+      expect.objectContaining({
+        room: "docs/gossip-test.md",
+        ids: ["me", "me"],
+      }),
+    );
+
+    await first.leave();
+    await second.leave();
+    vi.mocked(rtcLog).mockClear();
+    const third = createSession();
+    await third.join("Three");
+    expect(rtcLog).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "duplicate-session",
+      expect.anything(),
+    );
+    await third.leave();
+  });
+});
+
+describe("DocsRtcSession data-channel debug tags", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+    captured.mesh.getMyId.mockReturnValue("me");
+  });
+
+  it("logs a send and its receive with the same payload tag", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+    const u = Array.from({ length: 20 }, (_, index) => index + 1);
+    const tag = "01020304050607080d0e0f1011121314";
+
+    session.broadcast({ type: "sync", u });
+    expect(tagOf({ u })).toBe(tag);
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-send", {
+      type: "sync",
+      bytes: 20,
+      tag,
+    });
+
+    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u }));
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-recv", {
+      from: "p1",
+      type: "sync",
+      bytes: 20,
+      tag,
+    });
+
+    vi.mocked(rtcLog).mockClear();
+    session.sendTo("p1", { type: "awareness", u: [1, 2, 3] });
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-send", {
+      type: "awareness",
+      bytes: 3,
+      tag: "010203",
+    });
+  });
+
+  it("does not log a muted document update as sent", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "read" }],
+      messages: [],
+    });
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2, 3] });
+    expect(rtcLog).not.toHaveBeenCalledWith(expect.anything(), "dc-send", expect.anything());
+    expect(rtcLog).toHaveBeenCalledWith(
+      { channel: "collab", peerId: "me" },
+      "update-not-sent",
+      expect.objectContaining({ reason: "reader" }),
+    );
   });
 });

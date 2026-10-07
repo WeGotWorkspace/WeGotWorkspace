@@ -12,6 +12,7 @@ import type { DocsCollabAccess } from "@/text-editor-core/docs-collab/docs-colla
 import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
+  COLLAB_REUSE_ROSTER_WAIT_MS,
   DocsCollabPrincipalReuse,
 } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import {
@@ -85,10 +86,11 @@ async function ticketKit() {
 
 function createHarness(options?: {
   ackTimeoutMs?: number;
-  onReuseFallback?: () => void;
+  onReuseFallback?: (collabPeerId?: string) => void;
   onReuseAttached?: (collabPeerId: string) => void;
   resolveTicketKey?: (kid: string) => Promise<CryptoKey | null>;
   getOwnTicket?: () => string | undefined;
+  requestRosterRefresh?: () => void;
 }) {
   const registry = new PrincipalLinkRegistry();
   const sent: unknown[] = [];
@@ -109,6 +111,7 @@ function createHarness(options?: {
     onMessage: (msg) => messages.push(msg),
     resolveTicketKey: options?.resolveTicketKey,
     getOwnTicket: options?.getOwnTicket,
+    requestRosterRefresh: options?.requestRosterRefresh,
     ackTimeoutMs: options?.ackTimeoutMs ?? COLLAB_REUSE_ACK_TIMEOUT_MS,
     setTimeoutFn: ((fn: () => void, delay?: number) => {
       timers.push({ delay: delay ?? 0, fn });
@@ -364,17 +367,26 @@ describe("DocsCollabPrincipalReuse", () => {
   });
 
   it("falls back to ICE after ack timeout", () => {
-    const { reuse, registerAdminToWouter, timers } = createHarness({ ackTimeoutMs: 300 });
+    const onReuseFallback = vi.fn();
+    const { reuse, registerAdminToWouter, timers, sent } = createHarness({ onReuseFallback });
     registerAdminToWouter();
     const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
     reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
     expect(reuse.shouldSkipIce(peer)).toBe(true);
 
     expect(timers).toHaveLength(1);
-    expect(timers[0]!.delay).toBe(300);
+    expect(timers[0]!.delay).toBe(COLLAB_REUSE_ACK_TIMEOUT_MS);
     timers[0]!.fn();
 
     expect(reuse.shouldSkipIce(peer)).toBe(false);
+    expect(onReuseFallback).toHaveBeenCalledWith(peer.id);
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        kind: "collab-reuse",
+        op: "close",
+        collabPeerId: "aaaaaaaaaaaaaaaa",
+      }),
+    );
   });
 
   it("remaps a reused peer when the collab roster assigns a new id for the same user", () => {
@@ -420,8 +432,33 @@ describe("DocsCollabPrincipalReuse", () => {
     });
   });
 
-  it("keeps the first device when the same user joins from a second browser", () => {
-    const { reuse, registry, registerAdminToWouter } = createHarness();
+  it("does not reuse a username that maps to two collab peers", () => {
+    const { reuse, registerAdminToWouter, sent } = createHarness();
+    registerAdminToWouter();
+    const laptop = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    const tablet = { id: "cccccccccccccccc", name: "Wouter", user: "wouter" };
+
+    reuse.considerRoster([laptop, tablet], "aaaaaaaaaaaaaaaa");
+
+    for (const peer of [laptop, tablet]) {
+      expect(vi.mocked(rtcLog)).toHaveBeenCalledWith(
+        expect.objectContaining({ channel: "collab" }),
+        "reuse-miss",
+        expect.objectContaining({
+          remoteId: peer.id,
+          reason: "multi-peer-user",
+          username: "wouter",
+        }),
+      );
+      expect(reuse.shouldSkipIce(peer)).toBe(false);
+      expect(reuse.shouldIgnoreOffer(peer.id)).toBe(false);
+    }
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toEqual([]);
+  });
+
+  it("drops reuse when a reused user gains a second collab peer", () => {
+    const onReuseFallback = vi.fn();
+    const { reuse, registry, registerAdminToWouter, sent } = createHarness({ onReuseFallback });
     registerAdminToWouter();
     const laptop = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
     const tablet = { id: "cccccccccccccccc", name: "Wouter", user: "wouter" };
@@ -434,13 +471,24 @@ describe("DocsCollabPrincipalReuse", () => {
       collabPeerId: laptop.id,
       name: "Wouter",
     });
+    sent.length = 0;
+    onReuseFallback.mockClear();
 
     reuse.considerRoster([laptop, tablet], "aaaaaaaaaaaaaaaa");
 
-    expect(reuse.sendTo(laptop.id, { type: "sync", u: [1] })).toBe(true);
-    expect(reuse.extraPeers().map((peer) => peer.id)).toContain(laptop.id);
-    expect(reuse.shouldIgnoreOffer(tablet.id)).toBe(true);
-    expect(reuse.shouldSkipIce(tablet)).toBe(true);
+    expect(sent).toContainEqual(
+      expect.objectContaining({
+        kind: "collab-reuse",
+        op: "close",
+        collabPeerId: "aaaaaaaaaaaaaaaa",
+      }),
+    );
+    expect(onReuseFallback).toHaveBeenCalledWith(laptop.id);
+    expect(reuse.sendTo(laptop.id, { type: "sync", u: [1] })).toBe(false);
+    expect(reuse.shouldSkipIce(laptop)).toBe(false);
+    expect(reuse.shouldSkipIce(tablet)).toBe(false);
+    expect(reuse.shouldIgnoreOffer(laptop.id)).toBe(false);
+    expect(reuse.shouldIgnoreOffer(tablet.id)).toBe(false);
   });
 
   it("falls back to fresh ICE silently when a reused principal link disappears", () => {
@@ -587,9 +635,8 @@ describe("DocsCollabPrincipalReuse", () => {
     const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
 
     reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
-    expect(onReuseAttached).toHaveBeenCalledWith(peer.id);
+    expect(onReuseAttached).not.toHaveBeenCalled();
 
-    onReuseAttached.mockClear();
     registry.receive("wouter", "prin-wouter", {
       v: 1,
       kind: "collab-reuse",
@@ -831,5 +878,144 @@ describe("DocsCollabPrincipalReuse ticket", () => {
     expect(opened).toEqual(["bbbbbbbbbbbbbbbb"]);
     expect(sent).toContainEqual(expect.objectContaining({ op: "ack" }));
     expect(sent[0]).not.toHaveProperty("ticket");
+  });
+
+  it("holds a ticket until the peer appears on the roster", async () => {
+    const kit = await ticketKit();
+    const requestRosterRefresh = vi.fn();
+    const { reuse, registry, opened, messages } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+      requestRosterRefresh,
+    });
+    const peer = "bbbbbbbbbbbbbbbb";
+    const pending = registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: peer,
+      name: "Wouter",
+      ticket: await kit.sign({ user: "wouter", peer, access: "write" }),
+    });
+    await vi.waitFor(() => expect(requestRosterRefresh).toHaveBeenCalledTimes(1), {
+      timeout: 5_000,
+    });
+    expect(opened).toEqual([]);
+
+    reuse.considerRoster(
+      [{ id: peer, name: "Wouter", user: "wouter", access: "read" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    await pending;
+
+    expect(opened).toEqual([peer]);
+    await registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "data",
+      collabPeerId: peer,
+      ticket: await kit.sign({ user: "wouter", peer, access: "write" }),
+      payload: { type: "sync", u: [7] },
+    });
+    expect(messages.at(-1)).toMatchObject({ trust: { user: "wouter", access: "read" } });
+  });
+
+  it("drops a ticket after the roster wait when the peer never appears", async () => {
+    const kit = await ticketKit();
+    const { reuse, registry, timers, opened } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+    });
+    const pending = registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+      ticket: await kit.sign({ user: "wouter", peer: "bbbbbbbbbbbbbbbb", access: "write" }),
+    });
+    await vi.waitFor(
+      () => expect(timers.some((timer) => timer.delay === COLLAB_REUSE_ROSTER_WAIT_MS)).toBe(true),
+      { timeout: 5_000 },
+    );
+    timers.find((timer) => timer.delay === COLLAB_REUSE_ROSTER_WAIT_MS)?.fn();
+    await pending;
+
+    expect(opened).toEqual([]);
+    expect(reuse.reusedLinkCount()).toBe(0);
+    expect(vi.mocked(rtcLog)).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "collab" }),
+      "reuse-miss",
+      expect.objectContaining({
+        reason: "ticket-peer-not-rostered",
+        remoteId: "bbbbbbbbbbbbbbbb",
+      }),
+    );
+  });
+
+  it("drops the ninth unknown ticket immediately", async () => {
+    const kit = await ticketKit();
+    const requestRosterRefresh = vi.fn();
+    const { reuse, registry, opened } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+      requestRosterRefresh,
+    });
+    const ids = Array.from({ length: 9 }, (_, index) => index.toString(16).padStart(16, "b"));
+    for (let index = 0; index < 8; index += 1) {
+      const peer = ids[index] ?? "";
+      void registry.receive("wouter", "prin-wouter", {
+        v: 1,
+        kind: "collab-reuse",
+        room: ROOM,
+        op: "open",
+        collabPeerId: peer,
+        name: "Wouter",
+        ticket: await kit.sign({ user: "wouter", peer, access: "write" }),
+      });
+      await vi.waitFor(() => expect(requestRosterRefresh).toHaveBeenCalledTimes(index + 1), {
+        timeout: 5_000,
+      });
+    }
+    const ninth = ids[8] ?? "";
+    await registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: ninth,
+      name: "Wouter",
+      ticket: await kit.sign({ user: "wouter", peer: ninth, access: "write" }),
+    });
+
+    expect(opened).toEqual([]);
+    expect(requestRosterRefresh).toHaveBeenCalledTimes(8);
+    expect(vi.mocked(rtcLog)).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "collab" }),
+      "reuse-miss",
+      expect.objectContaining({ reason: "ticket-peer-not-rostered", remoteId: ninth }),
+    );
+    reuse.dispose();
+  });
+
+  it("resolves a roster wait as not attached when the session is disposed", async () => {
+    const kit = await ticketKit();
+    const { reuse, registry, opened } = createHarness({
+      resolveTicketKey: kit.resolveTicketKey,
+    });
+    const pending = registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: ROOM,
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+      ticket: await kit.sign({ user: "wouter", peer: "bbbbbbbbbbbbbbbb", access: "write" }),
+    });
+    reuse.dispose();
+    await pending;
+
+    expect(opened).toEqual([]);
+    expect(reuse.reusedLinkCount()).toBe(0);
   });
 });

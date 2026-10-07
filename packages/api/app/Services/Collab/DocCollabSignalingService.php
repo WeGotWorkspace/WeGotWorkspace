@@ -7,6 +7,7 @@ namespace App\Services\Collab;
 use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcBrowserId;
 use App\Services\Rtc\Signaling\RtcNetClass;
 use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
@@ -109,7 +110,7 @@ final class DocCollabSignalingService
             $peerId = bin2hex(random_bytes(8));
             $now = time();
             $access = $this->joinAuthorizer->accessFor($room, $principal);
-            $browserId = $this->readBrowserId($body);
+            $browserId = RtcBrowserId::read($body);
             // The access right is computed here and nowhere else: the column
             // defaults to read, so a row that never saw this write cannot edit.
             // It is resolved from the canonical path, while the peer row lives
@@ -256,19 +257,6 @@ final class DocCollabSignalingService
         $this->store->rewriteAccess($roomKey, $peerId, $access);
 
         return $access;
-    }
-
-    /**
-     * Browser-profile token from the client. Invalid or missing values are
-     * stored as empty and do not evict anyone.
-     *
-     * @param  array<string, mixed>  $body
-     */
-    private function readBrowserId(array $body): ?string
-    {
-        $raw = $body['browserId'] ?? null;
-
-        return is_string($raw) && preg_match('/^[a-f0-9]{32}$/', $raw) === 1 ? $raw : null;
     }
 
     /**

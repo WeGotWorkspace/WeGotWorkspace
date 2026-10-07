@@ -1,8 +1,35 @@
-import { describe, expect, it } from "vitest";
+/** @vitest-environment jsdom */
+import { renderHook } from "@testing-library/react";
+import { useRef } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
+import type { DocsRtcSession } from "./docs-rtc-session";
+import type { DocsCollabSessionRefs, DocsCollabTabSyncApi } from "./docs-collab-types";
 import { encodeUpdateBroadcast, handleSyncMessage } from "./docs-collab-mesh-sync";
 import { BC_TAB_ORIGIN, isRemoteUpdateOrigin } from "./docs-collab-utils";
-import { applyFollowerTabSync } from "./use-docs-collab-tab-sync";
+import { applyFollowerTabSync, useDocsCollabTabSync } from "./use-docs-collab-tab-sync";
+
+class MockBroadcastChannel {
+  static peers: MockBroadcastChannel[] = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    MockBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    for (const peer of MockBroadcastChannel.peers) {
+      if (peer !== this) peer.onmessage?.({ data } as MessageEvent);
+    }
+  }
+
+  close(): void {
+    const index = MockBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) MockBroadcastChannel.peers.splice(index, 1);
+  }
+}
 
 /**
  * Two tabs share a document and one of them holds the mesh. Typing in the
@@ -67,5 +94,77 @@ describe("applyFollowerTabSync", () => {
 
     expect(broadcasts).toEqual([]);
     expect(leader.getXmlFragment("default").toString()).toContain("stays local");
+  });
+});
+
+describe("follower awareness relay", () => {
+  afterEach(() => {
+    MockBroadcastChannel.peers = [];
+    vi.unstubAllGlobals();
+  });
+
+  it("broadcasts a follower's awareness from the mesh leader exactly once", () => {
+    MockBroadcastChannel.peers = [];
+    vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
+
+    const ydoc = new Y.Doc();
+    const awareness = new awarenessProtocol.Awareness(ydoc);
+    const followerDoc = new Y.Doc();
+    const followerAwareness = new awarenessProtocol.Awareness(followerDoc);
+    followerAwareness.setLocalStateField("user", { name: "Follower", color: "#dc2626" });
+    const updateBytes = Array.from(
+      awarenessProtocol.encodeAwarenessUpdate(followerAwareness, [followerAwareness.clientID]),
+    );
+    const broadcast = vi.fn();
+
+    const { unmount } = renderHook(() => {
+      const meshRef = useRef<DocsRtcSession | null>({
+        broadcast,
+        getMyId: () => "leader-peer",
+      } as unknown as DocsRtcSession);
+      const ydocRef = useRef(ydoc);
+      const awarenessRef = useRef(awareness);
+      const authTokenRef = useRef<string | undefined>(undefined);
+      const joinGenerationRef = useRef(1);
+      const tabSyncRef = useRef<DocsCollabTabSyncApi | null>(null);
+      const refs = {
+        meshRef,
+        ydocRef,
+        awarenessRef,
+        authTokenRef,
+        joinGenerationRef,
+      } as unknown as DocsCollabSessionRefs;
+
+      useDocsCollabTabSync({
+        refs,
+        room: "docs/awareness-relay.md",
+        userName: "Leader",
+        joined: true,
+        mesh: {
+          joinMesh: vi.fn(),
+          leaveMeshAsFollower: vi.fn(async () => undefined),
+          applyRelayedMeshState: vi.fn(),
+          publishMeshStateToTabs: vi.fn(),
+        },
+        join: {
+          connectMeshInBackground: vi.fn(async () => undefined),
+          markDocReady: vi.fn(),
+          trySeedFromFile: vi.fn(),
+        },
+        tabSyncRef,
+      });
+    });
+
+    const follower = new MockBroadcastChannel("wgw.docs-collab.tab:docs/awareness-relay.md");
+    follower.postMessage({ type: "awareness", u: updateBytes, fromTab: "follower-tab" });
+
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(broadcast).toHaveBeenCalledWith({ type: "awareness", u: updateBytes });
+
+    unmount();
+    awareness.destroy();
+    followerAwareness.destroy();
+    ydoc.destroy();
+    followerDoc.destroy();
   });
 });

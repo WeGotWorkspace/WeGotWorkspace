@@ -10,6 +10,7 @@ import {
   resolveDocsCollabPermissions,
 } from "@/docs-core/src/docs-collab-permissions";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
+import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
@@ -221,6 +222,7 @@ function DocsCollabWorkspaceInner({
     lastSavedAt,
     pendingSync,
     failedSync,
+    snapshotPreview,
     relayBanner,
     saveNow,
     onMarkdownChange,
@@ -644,7 +646,9 @@ function DocsCollabWorkspaceInner({
           main={
             <div className="docs-workspace__editor">
               {relayBanner ? <DocsCollabRelayBanner copy={relayBanner} /> : null}
-              {collabSession ? (
+              {collabSession && snapshotPreview ? (
+                <DocsFilePreview fileName={resolvedDocumentTitle} content={snapshotPreview} />
+              ) : collabSession ? (
                 <DocsCollabEditor
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
