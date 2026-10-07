@@ -2,6 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
+import { isYDocEmpty } from "./docs-collab-utils";
 
 /** Stable y-indexeddb room key for a drive virtual path (no leading slash). */
 export function docsCollabRoomKey(path: string): string {
@@ -21,20 +22,36 @@ export function docsCollabLegacyIndexedDbKeys(roomKey: string): string[] {
   return keys;
 }
 
-/** Copies pending-server-save from a pre-v2 IndexedDB room into the v2 persistence. */
+/**
+ * Moves a pre-v2 room into v2. A non-empty legacy body is applied first when v2
+ * is still empty, then the pending-save flag. A wiped legacy body is skipped
+ * so an empty delete-set cannot replace the v2 document.
+ */
 export async function migrateDocsCollabPendingSaveFromLegacy(
   roomKey: string,
   v2Persistence: IndexeddbPersistence,
 ): Promise<void> {
-  if (await v2Persistence.get(PENDING_SERVER_SAVE_KEY)) return;
+  const v2Doc = v2Persistence.doc;
+  if (!isYDocEmpty(v2Doc) && (await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) return;
+
+  let pending = false;
   for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
-    const pending = await withRawIndexedDbPersistence(legacyKey, (persistence) =>
-      persistence.get(PENDING_SERVER_SAVE_KEY),
-    );
-    if (pending) {
-      await v2Persistence.set(PENDING_SERVER_SAVE_KEY, 1);
-      return;
+    const legacy = await withRawIndexedDbPersistence(legacyKey, async (persistence) => {
+      const empty = isYDocEmpty(persistence.doc);
+      return {
+        update: empty ? null : Y.encodeStateAsUpdate(persistence.doc),
+        pending: Boolean(await persistence.get(PENDING_SERVER_SAVE_KEY)),
+      };
+    });
+    if (!legacy || (!legacy.update && !legacy.pending)) continue;
+    if (legacy.update && isYDocEmpty(v2Doc)) {
+      Y.applyUpdate(v2Doc, legacy.update);
     }
+    if (legacy.pending) pending = true;
+  }
+
+  if (pending && !(await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) {
+    await v2Persistence.set(PENDING_SERVER_SAVE_KEY, 1);
   }
 }
 

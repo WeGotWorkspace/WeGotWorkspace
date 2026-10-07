@@ -60,6 +60,55 @@ describe("docs-collab pending server save persistence", () => {
     v2Doc.destroy();
   });
 
+  it("copies a legacy body into an empty v2 room and keeps the pending flag", async () => {
+    const room = "users/alice/legacy-body.md";
+    const legacyDoc = new Y.Doc();
+    const paragraph = new Y.XmlElement("paragraph");
+    const text = new Y.XmlText();
+    text.insert(0, "legacy body");
+    paragraph.insert(0, [text]);
+    legacyDoc.getXmlFragment("default").insert(0, [paragraph]);
+    const legacyPersistence = new IndexeddbPersistence(room, legacyDoc);
+    await legacyPersistence.whenSynced;
+    await legacyPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await legacyPersistence.destroy();
+    legacyDoc.destroy();
+
+    const v2Doc = new Y.Doc();
+    const v2Persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), v2Doc);
+    await v2Persistence.whenSynced;
+    await migrateDocsCollabPendingSaveFromLegacy(room, v2Persistence);
+
+    expect(v2Doc.getXmlFragment("default").toString()).toContain("legacy body");
+    await expect(v2Persistence.get(PENDING_SERVER_SAVE_KEY)).resolves.toBeTruthy();
+    await v2Persistence.destroy();
+    v2Doc.destroy();
+  });
+
+  it("leaves v2 empty when the legacy room was wiped", async () => {
+    const room = "users/alice/legacy-wiped.md";
+    const legacyDoc = new Y.Doc();
+    const fragment = legacyDoc.getXmlFragment("default");
+    fragment.insert(0, [new Y.XmlElement("paragraph")]);
+    fragment.delete(0, fragment.length);
+    const legacyPersistence = new IndexeddbPersistence(room, legacyDoc);
+    await legacyPersistence.whenSynced;
+    await legacyPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await legacyPersistence.destroy();
+    legacyDoc.destroy();
+
+    const v2Doc = new Y.Doc();
+    const v2Persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), v2Doc);
+    await v2Persistence.whenSynced;
+    const before = Y.encodeStateAsUpdate(v2Doc);
+    await migrateDocsCollabPendingSaveFromLegacy(room, v2Persistence);
+
+    expect(v2Doc.getXmlFragment("default").length).toBe(0);
+    expect(Y.encodeStateAsUpdate(v2Doc)).toEqual(before);
+    await v2Persistence.destroy();
+    v2Doc.destroy();
+  });
+
   it("clears legacy pending save keys stored with a leading slash", async () => {
     await seedPendingSave("/users/alice/legacy-doc.md");
 
