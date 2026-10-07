@@ -27,7 +27,7 @@ function state(patch: Partial<RuntimeWithEnv> = {}): RuntimeWithEnv {
     enable_calendars: true,
     timezone: "UTC",
     base_uri: "/",
-    show_browser_ui: true,
+    show_browser_ui: false,
     checks: [],
     ...patch,
   };
@@ -60,6 +60,7 @@ describe("installer-flow", () => {
     expect(site.enable_files).toBe(true);
     expect(site.enable_calendars).toBe(true);
     expect(site.enable_contacts).toBe(true);
+    expect(site.show_browser_ui).toBe(false);
 
     const install = buildInstallerInstallPayload("jane", "hunter2hunter", " jane@example.test ");
     expect(install.username).toBe("jane");
