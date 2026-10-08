@@ -70,10 +70,10 @@ describe("createDataBinding extra channels", () => {
         for (const listener of listeners.get("datachannel") ?? []) {
           listener(event);
         }
-        pc.ondatachannel?.(event);
+        pc.ondatachannel?.call(pc as unknown as RTCPeerConnection, event);
       },
     };
-    return pc as typeof pc & RTCPeerConnection;
+    return pc as unknown as typeof pc & RTCPeerConnection;
   }
 
   it("forwards an extra channel on the initiator PC", () => {

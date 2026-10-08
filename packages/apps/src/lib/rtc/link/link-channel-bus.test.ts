@@ -241,7 +241,9 @@ describe("link channel bus", () => {
 
     const roomPosts = busTraffic.filter(
       (msg) =>
-        msg.t === "room" && "fromTab" in msg && msg.fromTab === (client as { tabId: string }).tabId,
+        msg.t === "room" &&
+        "fromTab" in msg &&
+        msg.fromTab === (client as unknown as { tabId: string }).tabId,
     );
     expect(roomPosts).toEqual([]);
     expect(getLinkChannelHub().peerStates(ROOM).has("peer-b")).toBe(true);

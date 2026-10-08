@@ -14,6 +14,7 @@ import type {
   PeerChannelState,
   RoomEndpointState,
 } from "@/lib/rtc/link/link-channel-types";
+import { rtcLog } from "@/lib/rtc/log";
 import { createPrincipalTabId } from "@/presence-core/src/principal-tab-sync";
 
 type Target = "local" | "bus" | "none";
