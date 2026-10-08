@@ -1027,7 +1027,8 @@ describe("RtcPeerMesh principal roster cleanup", () => {
 
     const stub = asStubPeerConnection(failedPc!);
     stub.connectionState = "failed";
-    stub.onconnectionstatechange?.(new Event("connectionstatechange"));
+    const onStateChange = stub.onconnectionstatechange as ((ev: Event) => void) | null;
+    onStateChange?.(new Event("connectionstatechange"));
     await flushAsyncWork();
 
     expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
