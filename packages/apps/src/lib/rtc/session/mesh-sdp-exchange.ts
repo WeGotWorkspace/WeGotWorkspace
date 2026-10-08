@@ -60,7 +60,12 @@ export async function acceptMeshOffer(
   const formatted = exchange.formatOutbound(answer);
   await entry.pc.setLocalDescription(formatted);
   try {
-    await exchange.sendSignal(from, "answer", entry.pc.localDescription);
+    const local = entry.pc.localDescription;
+    await exchange.sendSignal(from, "answer", {
+      type: local?.type,
+      sdp: local?.sdp,
+      re: sdpSessionId(sdp.sdp),
+    });
   } catch (error) {
     exchange.onSignalError(from, error);
     return;
@@ -85,6 +90,11 @@ export async function acceptMeshAnswer(
       remoteId: from,
       signalingState: entry.pc.signalingState,
     });
+    return;
+  }
+  const re = (payload as { re?: unknown } | null)?.re;
+  if (typeof re === "string" && re !== sdpSessionId(entry.pc.localDescription?.sdp)) {
+    exchange.log("answer-stale", { remoteId: from });
     return;
   }
   await safeSetRemoteDescription(entry.pc, sdp);
