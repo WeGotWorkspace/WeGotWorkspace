@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Services\Calendars\Conversion\RecurrenceOverrideSupport;
 use App\Services\Calendars\Conversion\VEventToJmapEventConverter;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
 use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
+use Sabre\VObject\Property\ICalendar\Duration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
@@ -207,6 +209,8 @@ final class CalendarEventExpansionService
     /**
      * Unlimited daily/weekly series are shifted onto the same grid so the
      * iterator starts just before the window instead of walking from DTSTART.
+     * The anchor steps back by the master duration so an occurrence that
+     * starts before the window can still overlap it.
      * EXDATE and RECURRENCE-ID values stay absolute.
      *
      * @param  list<VEvent>  $vevents
@@ -234,14 +238,17 @@ final class CalendarEventExpansionService
 
         $origin = DateTimeImmutable::createFromInterface($startProp->getDateTime());
         $firstInWindow = $this->firstStepAtOrAfter($origin, $windowStart, $rule['frequency'], $rule['interval']);
-        if ($firstInWindow <= 1000) {
+        $stepSeconds = $rule['interval'] * ($rule['frequency'] === 'WEEKLY' ? 604800 : 86400);
+        $durationSteps = (int) ceil($this->masterDurationSeconds($master) / $stepSeconds);
+        $anchorSteps = max(0, $firstInWindow - 1 - $durationSteps);
+        if ($anchorSteps <= 1000) {
             return $vevents;
         }
 
         $anchored = clone $master;
         $this->moveAnchoredDates(
             $anchored,
-            $this->addSteps($origin, $rule['frequency'], $rule['interval'], $firstInWindow - 1),
+            $this->addSteps($origin, $rule['frequency'], $rule['interval'], $anchorSteps),
         );
         $vevents[$masterIndex] = $anchored;
 
@@ -283,6 +290,44 @@ final class CalendarEventExpansionService
         }
 
         return ['frequency' => $frequency, 'interval' => $interval];
+    }
+
+    /**
+     * Seconds the master occupies. DTEND wins, then DURATION. A DATE value
+     * with neither lasts one day; a DATE-TIME with neither lasts zero.
+     */
+    private function masterDurationSeconds(VEvent $master): int
+    {
+        $startProp = $master->DTSTART ?? null;
+        if (! $startProp instanceof IcsDateTime) {
+            return 0;
+        }
+
+        if (isset($master->DTEND) && $master->DTEND instanceof IcsDateTime) {
+            $start = DateTimeImmutable::createFromInterface($startProp->getDateTime());
+            $end = DateTimeImmutable::createFromInterface($master->DTEND->getDateTime());
+
+            return max(0, $end->getTimestamp() - $start->getTimestamp());
+        }
+
+        if (isset($master->DURATION) && $master->DURATION instanceof Duration) {
+            return $this->dateIntervalSeconds($master->DURATION->getDateInterval());
+        }
+
+        if (! $startProp->hasTime()) {
+            return 86400;
+        }
+
+        return 0;
+    }
+
+    private function dateIntervalSeconds(DateInterval $interval): int
+    {
+        if ($interval->invert === 1) {
+            return 0;
+        }
+
+        return ((($interval->d * 24) + $interval->h) * 60 + $interval->i) * 60 + $interval->s;
     }
 
     /**
