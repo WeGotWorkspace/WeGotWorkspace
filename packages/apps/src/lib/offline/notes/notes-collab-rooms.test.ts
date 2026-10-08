@@ -17,6 +17,7 @@ import {
 import {
   docsCollabIndexedDbKey,
   docsCollabLegacyIndexedDbKeys,
+  migrateDocsCollabPendingSaveFromLegacy,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
@@ -152,5 +153,25 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     for (const name of docsCollabLegacyIndexedDbKeys(room)) {
       expect(await roomIsEmpty(name)).toBe(true);
     }
+  });
+
+  it("drops a legacy pending flag after migrate and a v2 save", async () => {
+    const uid = "note-legacy-pending-cleared";
+    const room = noteCollabRoomKey(uid);
+    await seedMarkdown(docsCollabIndexedDbKey(room), "v2 body");
+    await seedPendingFlag(room);
+
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
+    try {
+      await persistence.whenSynced;
+      await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
+      await persistence.del(PENDING_SERVER_SAVE_KEY);
+    } finally {
+      await persistence.destroy();
+      ydoc.destroy();
+    }
+
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
   });
 });

@@ -35,6 +35,7 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
   if (!isYDocEmpty(v2Doc) && (await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) return;
 
   let pending = false;
+  const copiedLegacyKeys: string[] = [];
   for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
     const legacy = await withRawIndexedDbPersistence(legacyKey, async (persistence) => {
       const empty = isYDocEmpty(persistence.doc);
@@ -44,14 +45,24 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
       };
     });
     if (!legacy || (!legacy.update && !legacy.pending)) continue;
+    let copied = false;
     if (legacy.update && isYDocEmpty(v2Doc)) {
       Y.applyUpdate(v2Doc, legacy.update);
+      copied = true;
     }
-    if (legacy.pending) pending = true;
+    if (legacy.pending) {
+      pending = true;
+      copied = true;
+    }
+    if (copied) copiedLegacyKeys.push(legacyKey);
   }
 
   if (pending && !(await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) {
     await v2Persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+  }
+
+  for (const legacyKey of copiedLegacyKeys) {
+    await clearIndexedDbRoom(legacyKey);
   }
 }
 
