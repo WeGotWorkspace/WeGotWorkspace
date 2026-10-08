@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import {
@@ -21,7 +22,13 @@ type CapturedBinding = {
 
 type CapturedMeshOptions = {
   onPollData?: (data: {
-    peers: Array<{ id: string; name: string; user?: string; access?: string }>;
+    peers: Array<{
+      id: string;
+      name: string;
+      user?: string;
+      access?: string;
+      caps?: readonly string[];
+    }>;
     messages: [];
     ticket?: string;
   }) => void;
@@ -51,6 +58,9 @@ const captured = vi.hoisted(() => ({
     retryRoomPeerConnections: vi.fn(),
     retryPeerConnection: vi.fn(),
     abortPeerConnection: vi.fn(),
+    sendMailbox: vi.fn(async () => undefined),
+    kickPoll: vi.fn(),
+    localNetClass: vi.fn((): string | undefined => undefined),
   },
 }));
 
@@ -112,6 +122,33 @@ describe("DocsRtcSession send failure", () => {
     captured.meshOptions?.onSendFailed?.("p1");
 
     expect(seen).toEqual([{ type: "resync", from: "p1" }]);
+  });
+
+  it("polls again when a mailbox post is refused", async () => {
+    const doc = new Y.Doc();
+    captured.mesh.sendMailbox.mockRejectedValue(new Error("mailbox_refused"));
+    captured.mesh.getPeerLinkStates.mockReturnValue([
+      { id: "peer-b", name: "Bea", link: "connecting" },
+    ]);
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "docs/mailbox-refused.md",
+      rtcSettings: { ...DEFAULT_RTC_SETTINGS, forceRelay: true, turnAvailable: false },
+      getYDoc: () => doc,
+    });
+
+    captured.mesh.kickPoll.mockClear();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "peer-b", name: "Bea", caps: ["yjs-http"] }],
+      messages: [],
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(captured.mesh.sendMailbox).toHaveBeenCalled();
+    expect(captured.mesh.kickPoll).toHaveBeenCalled();
   });
 });
 

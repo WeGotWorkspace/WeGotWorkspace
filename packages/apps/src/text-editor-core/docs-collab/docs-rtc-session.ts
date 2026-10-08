@@ -315,7 +315,8 @@ export class DocsRtcSession {
           webrtcUnavailable: () => this.webrtcUnavailable(),
           send: (to, type, payload) => {
             void this.mesh.sendMailbox(to, type, payload).catch(() => {
-              // A refused mailbox post must not surface as an unhandled rejection.
+              // A refused post usually means a stale roster. Poll now instead of failing loudly.
+              this.mesh.kickPoll();
             });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
