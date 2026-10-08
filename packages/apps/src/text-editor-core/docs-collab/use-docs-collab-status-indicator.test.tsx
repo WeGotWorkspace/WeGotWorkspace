@@ -11,8 +11,6 @@ const base: UseDocsCollabStatusIndicatorOptions = {
   online: true,
   pendingSync: false,
   failedSync: false,
-  lastSavedAt: null,
-  liveNames: [],
   unreachableCount: 0,
 };
 
@@ -24,16 +22,6 @@ function renderIndicator(overrides: Partial<UseDocsCollabStatusIndicatorOptions>
 }
 
 describe("useDocsCollabStatusIndicator", () => {
-  it("shows the live state once other people are editing", () => {
-    const { result } = renderIndicator({ liveNames: ["Ada", "Bo"] });
-    expect(result.current).toEqual({ kind: "live", label: "Live with Ada and Bo" });
-  });
-
-  it("shows the saved state after a save with nothing outstanding", () => {
-    const { result } = renderIndicator({ lastSavedAt: "2026-10-04T12:00:00Z" });
-    expect(result.current).toEqual({ kind: "saved", label: "Saved" });
-  });
-
   it("shows the saving state while edits are still local", () => {
     const { result } = renderIndicator({ pendingSync: true });
     expect(result.current).toEqual({ kind: "saving", label: "Saving…" });
@@ -45,7 +33,7 @@ describe("useDocsCollabStatusIndicator", () => {
   });
 
   it("shows the offline state", () => {
-    const { result } = renderIndicator({ online: false, liveNames: ["Ada"] });
+    const { result } = renderIndicator({ online: false });
     expect(result.current).toEqual({
       kind: "offline",
       label: "Offline – changes are kept on this device",
@@ -53,7 +41,7 @@ describe("useDocsCollabStatusIndicator", () => {
   });
 
   it("shows the save-only state when someone cannot be reached directly", () => {
-    const { result } = renderIndicator({ unreachableCount: 1, liveNames: ["Ada"] });
+    const { result } = renderIndicator({ unreachableCount: 1 });
     expect(result.current).toEqual({ kind: "saveOnly", label: "Changes sync when saved" });
   });
 
@@ -68,6 +56,8 @@ describe("useDocsCollabStatusIndicator", () => {
   it("renders nothing at all when there is no story to tell", () => {
     const { result } = renderIndicator();
     expect(result.current).toEqual({ kind: "idle", label: "" });
+    expect(result.current.label).not.toMatch(/Live with/);
+    expect(result.current.label).not.toBe("Saved");
   });
 });
 
@@ -94,16 +84,15 @@ describe("useDocsCollabStatusIndicator transient debounce", () => {
   it("never announces a reconnect that resolves inside the window", () => {
     const { result, rerender } = renderIndicator({
       docStatus: "Reconnecting…",
-      lastSavedAt: "2026-10-04T12:00:00Z",
     });
 
     // The reader keeps seeing the calm underlying state throughout.
     act(() => void vi.advanceTimersByTime(1_400));
-    expect(result.current).toEqual({ kind: "saved", label: "Saved" });
+    expect(result.current).toEqual({ kind: "idle", label: "" });
 
-    rerender({ ...base, docStatus: "", lastSavedAt: "2026-10-04T12:00:00Z" });
+    rerender({ ...base, docStatus: "" });
     act(() => void vi.advanceTimersByTime(CONNECTION_PHASE_REVEAL_MS * 2));
-    expect(result.current).toEqual({ kind: "saved", label: "Saved" });
+    expect(result.current).toEqual({ kind: "idle", label: "" });
   });
 
   it("lets offline outrank even a revealed phase", () => {

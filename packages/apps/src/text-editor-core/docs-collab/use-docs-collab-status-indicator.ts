@@ -13,10 +13,6 @@ export type UseDocsCollabStatusIndicatorOptions = {
   pendingSync: boolean;
   /** The last save attempt failed; the retry toast already owns that story. */
   failedSync: boolean;
-  /** Timestamp of the last successful save, in whatever shape the session keeps it. */
-  lastSavedAt: string | number | null;
-  /** The other people editing right now. */
-  liveNames: readonly string[];
   /** People in the room we have given up reaching directly. */
   unreachableCount: number;
 };
@@ -30,8 +26,6 @@ export function useDocsCollabStatusIndicator({
   online,
   pendingSync,
   failedSync,
-  lastSavedAt,
-  liveNames,
   unreachableCount,
 }: UseDocsCollabStatusIndicatorOptions): DocsCollabIndicator {
   const phase = useDocsCollabConnectionPhase(docsCollabConnectionPhase(docStatus));
@@ -44,8 +38,6 @@ export function useDocsCollabStatusIndicator({
     online,
     phase,
     saving: pendingSync && !failedSync,
-    saved: lastSavedAt !== null && lastSavedAt !== "" && !pendingSync,
-    liveNames,
     saveOnly: unreachableCount > 0,
   });
 }

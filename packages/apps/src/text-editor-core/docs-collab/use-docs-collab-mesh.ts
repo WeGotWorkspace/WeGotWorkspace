@@ -1,10 +1,5 @@
 import { useCallback, useState } from "react";
-import {
-  wgwCurrentAccessToken,
-  wgwHasAuthenticatedSession,
-  wgwIsGuestSession,
-} from "@/lib/api/wgw/http";
-import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
+import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
@@ -22,8 +17,7 @@ import {
 } from "./docs-collab-mesh-hydration";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
-import { docsRelayCopy, type DocsRelayCopy } from "./docs-relay-copy";
-import { DocsRtcSession, type DocsRelayNotice } from "./docs-rtc-session";
+import { DocsRtcSession } from "./docs-rtc-session";
 import type {
   DocsCollabMeshMessage,
   DocsCollabMeshPeer,
@@ -62,12 +56,6 @@ export function useDocsCollabMesh({
   const [warningPeers, setWarningPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [linkCount, setLinkCount] = useState(0);
   const [status, setStatus] = useState("Disconnected");
-  const [relayNotice, setRelayNotice] = useState<DocsRelayNotice | null>(null);
-  const relayBanner: DocsRelayCopy | null = docsRelayCopy({
-    role: principalRoleFromToken(wgwCurrentAccessToken()),
-    outcome: relayNotice?.outcome ?? null,
-    name: relayNotice?.name ?? "",
-  });
 
   const resetMeshUi = useCallback(() => {
     setPeers([]);
@@ -317,7 +305,6 @@ export function useDocsCollabMesh({
           if (!doc) return false;
           return mayPublishDocumentBearingMeshSync(doc, refs.seedDoneRef.current);
         },
-        onRelayNotice: setRelayNotice,
         collabTicket: fetched?.collabTicket,
       });
       refs.meshRef.current = mesh;
@@ -347,7 +334,6 @@ export function useDocsCollabMesh({
     connectingPeers,
     warningPeers,
     linkCount,
-    relayBanner,
     status,
     setStatus,
     setConnectingPeers,

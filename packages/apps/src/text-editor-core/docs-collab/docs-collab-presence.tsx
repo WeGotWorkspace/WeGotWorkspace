@@ -55,6 +55,7 @@ export function DocsCollabPresence({
                 compact
                 size="xs"
                 className="docs-collab-presence__avatar"
+                presence="online"
               />
             </span>
           </TooltipTrigger>
@@ -72,6 +73,7 @@ export function DocsCollabPresence({
                 fallback="..."
                 className="docs-collab-presence__avatar docs-collab-presence__avatar--connecting"
                 ariaLabel={connectingSummary}
+                presence="away"
               />
             </span>
           </TooltipTrigger>

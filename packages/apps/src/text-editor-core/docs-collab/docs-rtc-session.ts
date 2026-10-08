@@ -97,11 +97,6 @@ export function parsePeerHintPeers(value: unknown): DocsCollabMeshPeer[] {
   return peers;
 }
 
-export type DocsRelayNotice = {
-  name: string;
-  outcome: RelayRequestOutcome["outcome"];
-};
-
 /** Public JWK from room configuration, or null when the publication is incomplete. */
 function collabJwkFromPublication(
   published: PublishedCollabTicket | undefined,
@@ -134,7 +129,6 @@ export type DocsRtcSessionOptions = {
   getYDoc?: () => import("yjs").Doc | null;
   /** When false, outbound Yjs HTTP/mesh document sync stays muted until bootstrap finishes. */
   meshHydrated?: () => boolean;
-  onRelayNotice?: (notice: DocsRelayNotice) => void;
 };
 
 export class DocsRtcSession {
@@ -323,12 +317,11 @@ export class DocsRtcSession {
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
           requestRelay: (peerId, reason) => this.requestPeerRelay(peerId, reason),
-          onRelay: (peerId, name, outcome) => {
+          onRelay: (peerId, _name, outcome) => {
             if (outcome.outcome === "issued") {
               this.relayReady.add(peerId);
               this.mesh.retryPeerWithRelay(peerId, outcome.turn);
             }
-            this.options.onRelayNotice?.({ name, outcome: outcome.outcome });
           },
           setFastPoll: (active) => {
             this.pollIntervals.steadyMs = active
