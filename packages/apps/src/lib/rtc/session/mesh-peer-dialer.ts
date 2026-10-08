@@ -59,6 +59,11 @@ export class MeshPeerDialer {
     this.turn = turn;
   }
 
+  /** Force-relay is on, TURN is configured, and no credential has been minted yet. */
+  needsRelayCredentials(): boolean {
+    return this.context.rtcSettings.forceRelay && this.turnConfigured && !this.turn;
+  }
+
   /**
    * `relay` only after a precheck has minted credentials. `turnAvailable`
    * alone would mark the entry relay while `toRtcConfig` still leaves the
@@ -76,7 +81,6 @@ export class MeshPeerDialer {
     initiator: boolean,
     forcedMode?: IceMode,
   ): MeshPeerEntry {
-    this.noteMissingRelayCredentials(remoteId);
     const mode = forcedMode ?? this.initialMode();
     const pc = this.makePc(remoteId, mode);
     const entry: MeshPeerEntry = {
@@ -98,6 +102,12 @@ export class MeshPeerDialer {
   async connectTo(remoteId: string, remoteName: string, forcedMode?: IceMode): Promise<void> {
     const myId = this.context.localPeerId();
     if (!myId || remoteId === myId) return;
+    // Debug force-relay must not open a direct PC that wins ICE before the
+    // precheck has credentials. The join path awaits that mint first.
+    if (this.needsRelayCredentials() && !forcedMode) {
+      this.noteMissingRelayCredentials(remoteId);
+      return;
+    }
     // ICE restart passes `forcedMode` after it has already dropped the old PC.
     if (!forcedMode && this.offerIsPending(remoteId)) {
       this.context.log("peer-skipped", { remoteId, reason: "offer-pending" });
@@ -170,7 +180,7 @@ export class MeshPeerDialer {
     }
   }
 
-  /** One log per dialer when force-relay has no credential yet and the PC stays direct. */
+  /** One log per dialer when force-relay has no credential yet, so no direct PC opens. */
   private noteMissingRelayCredentials(remoteId: string): void {
     if (this.loggedMissingRelayCredentials) return;
     if (!this.context.rtcSettings.forceRelay || !this.turnConfigured || this.turn) return;

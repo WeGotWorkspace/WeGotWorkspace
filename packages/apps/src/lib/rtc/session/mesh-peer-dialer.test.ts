@@ -77,25 +77,40 @@ function harness(options?: { forceRelay?: boolean; turnAvailable?: boolean }) {
 }
 
 describe("MeshPeerDialer initial mode", () => {
-  it("stays direct and logs once when force-relay has no credentials", () => {
-    const { dialer, logs, configs } = harness({ forceRelay: true, turnAvailable: true });
+  it("does not open a peer connection when force-relay has no credentials", async () => {
+    const { dialer, logs, configs, offers, peers } = harness({
+      forceRelay: true,
+      turnAvailable: true,
+    });
+    expect(dialer.needsRelayCredentials()).toBe(true);
     expect(dialer.initialMode()).toBe("direct");
-    const first = dialer.createEntry("peer-z", "Ada", true);
-    dialer.createEntry("peer-y", "Bea", true);
-    expect(first.mode).toBe("direct");
-    expect(configs[0]?.iceTransportPolicy).toBe("all");
+    await dialer.connectTo("peer-z", "Ada");
+    await dialer.connectTo("peer-y", "Bea");
+    expect(peers.size).toBe(0);
+    expect(configs).toEqual([]);
+    expect(offers).toEqual([]);
     expect(logs.filter((row) => row.event === "relay-mode-without-credentials")).toEqual([
       { event: "relay-mode-without-credentials", details: { remoteId: "peer-z" } },
     ]);
   });
 
-  it("uses relay once credentials have been fetched", () => {
-    const { dialer, configs } = harness({ forceRelay: true, turnAvailable: true });
+  it("uses relay once credentials have been fetched", async () => {
+    const { dialer, configs, peers } = harness({ forceRelay: true, turnAvailable: true });
     dialer.setTurn(TURN);
+    expect(dialer.needsRelayCredentials()).toBe(false);
     expect(dialer.initialMode()).toBe("relay");
-    const entry = dialer.createEntry("peer-z", "Ada", true);
-    expect(entry.mode).toBe("relay");
+    await dialer.connectTo("peer-z", "Ada");
+    const entry = peers.get("peer-z");
+    expect(entry?.mode).toBe("relay");
     expect(configs[0]?.iceTransportPolicy).toBe("relay");
+  });
+
+  it("still dials an ICE restart while force-relay credentials are missing", async () => {
+    const { dialer, offers, peers, configs } = harness({ forceRelay: true, turnAvailable: true });
+    await dialer.connectTo("peer-z", "Ada", "relay");
+    expect(offers).toEqual(["offer"]);
+    expect(peers.get("peer-z")?.mode).toBe("relay");
+    expect(configs).toHaveLength(1);
   });
 });
 

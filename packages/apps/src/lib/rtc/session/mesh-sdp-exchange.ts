@@ -10,6 +10,8 @@ import { flushPendingIce, safeSetRemoteDescription } from "@/lib/rtc/session/sdp
 export type MeshSdpExchange = {
   getPeer: (remoteId: string) => MeshPeerEntry | undefined;
   createEntry: (remoteId: string, remoteName: string, initiator: boolean) => MeshPeerEntry;
+  needsRelayCredentials: () => boolean;
+  prepareRelay: () => Promise<void>;
   formatInbound: (payload: unknown, fallbackType: RTCSdpType) => RTCSessionDescriptionInit | null;
   formatOutbound: (description: RTCSessionDescriptionInit) => RTCSessionDescriptionInit;
   sendSignal: (to: string, type: string, payload: unknown) => Promise<void>;
@@ -36,6 +38,13 @@ export async function acceptMeshOffer(
   exchange.log("offer-received", { from, ...rtcSdpMeta(payload) });
   const sdp = exchange.formatInbound(payload, "offer");
   if (!sdp) return;
+  if (!exchange.getPeer(from) && exchange.needsRelayCredentials()) {
+    await exchange.prepareRelay();
+    if (exchange.needsRelayCredentials()) {
+      exchange.log("offer-dropped", { from, reason: "relay-credentials-missing" });
+      return;
+    }
+  }
   const entry = exchange.getPeer(from) ?? exchange.createEntry(from, peerName, false);
   await rollBackIfUnstable(entry.pc);
   await safeSetRemoteDescription(entry.pc, sdp);
