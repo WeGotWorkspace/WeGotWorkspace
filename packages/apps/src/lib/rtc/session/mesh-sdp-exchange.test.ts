@@ -165,11 +165,13 @@ describe("acceptMeshOffer", () => {
 
   it("replaces the peer when the offer carries a new session id", async () => {
     const replacePeer = vi.fn();
-    const createEntry = vi.fn(() => {
+    const createEntry = vi.fn((_id: string, _name: string, _initiator: boolean): MeshPeerEntry => {
       const pc = answerablePc();
       return { pc, pendingIce: [] } as unknown as MeshPeerEntry;
     });
-    const existingPc = answerablePc();
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
     existingPc.remoteDescription = {
       type: "offer",
       sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
@@ -207,7 +209,9 @@ describe("acceptMeshOffer", () => {
 
   it("keeps the peer on an ICE restart offer", async () => {
     const replacePeer = vi.fn();
-    const existingPc = answerablePc();
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
     existingPc.remoteDescription = {
       type: "offer",
       sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
@@ -235,7 +239,9 @@ describe("acceptMeshOffer", () => {
 
   it("keeps the peer when it has no remote description yet", async () => {
     const replacePeer = vi.fn();
-    const existingPc = answerablePc();
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
     existingPc.remoteDescription = null;
     const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
     const exchange: MeshSdpExchange = {
