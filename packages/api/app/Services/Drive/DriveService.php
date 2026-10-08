@@ -9,6 +9,7 @@ use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeRelocator;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -33,6 +34,8 @@ final class DriveService
         private FileNodeIndexService $fileNodes,
         private DocsThreadRepository $docsThreads,
         private DocAttachmentsService $docAttachments,
+        private DriveTrashNames $trashNames,
+        private FileNodeRelocator $relocator,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -203,8 +206,8 @@ final class DriveService
             throw new \InvalidArgumentException('Source not found.');
         }
         if ($disk->exists($toKey)) {
-            if ($this->isTrashDestination($destination)) {
-                $toName = $this->resolveUniqueTrashName($disk, $destination, $toName);
+            if ($this->trashNames->isTrashDestination($destination)) {
+                $toName = $this->trashNames->unique($disk, $this->paths->virtualToStorageKey($destination), $toName);
                 $toPath = $this->paths->normalizeVirtualPath($destination.'/'.$toName);
                 $toKey = $this->paths->virtualToStorageKey($toPath);
             } else {
@@ -240,7 +243,12 @@ final class DriveService
         foreach ($items as $item) {
             $path = $this->paths->normalizeVirtualPath((string) ($item['path'] ?? '/'));
             $this->authorizer->assertMayManageStructure($path, $principal);
+            $this->authorizer->assertNotGrantScopeRoot($path, $principal);
             $key = $this->paths->virtualToStorageKey($path);
+            $node = $this->fileNodes->liveByKey($key) ?? $this->fileNodes->recordCreate($key);
+            if ($node !== null && $this->relocator->trashIfGrantee($node, $principal)) {
+                continue;
+            }
             $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
             if ($disk->directoryExists($key) || $disk->exists($key)) {
                 if ($disk->directoryExists($key)) {
@@ -868,40 +876,6 @@ final class DriveService
     {
         return $this->isHiddenNotesPath($virtualPath)
             || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
-    }
-
-    private function isTrashDestination(string $destination): bool
-    {
-        return preg_match('#/\.Trash$#', $destination) === 1
-            || preg_match('#/Trash$#', $destination) === 1;
-    }
-
-    private function resolveUniqueTrashName(Filesystem $disk, string $trashVirtualPath, string $name): string
-    {
-        $name = $this->validateItemName($name);
-        $prefix = $this->paths->virtualToStorageKey($trashVirtualPath);
-        $taken = [];
-        foreach ($disk->files($prefix) as $key) {
-            $taken[] = basename($key);
-        }
-        foreach ($disk->directories($prefix) as $key) {
-            $taken[] = basename($key);
-        }
-        $takenLower = array_map(static fn (string $entry): string => mb_strtolower($entry), $taken);
-
-        $dot = strrpos($name, '.');
-        $hasExt = $dot !== false && $dot > 0;
-        $base = $hasExt ? substr($name, 0, $dot) : $name;
-        $ext = $hasExt ? substr($name, $dot) : '';
-
-        $candidate = $name;
-        $index = 2;
-        while (in_array(mb_strtolower($candidate), $takenLower, true)) {
-            $candidate = $base.' '.$index.$ext;
-            $index++;
-        }
-
-        return $candidate;
     }
 
     private function disk(): Filesystem

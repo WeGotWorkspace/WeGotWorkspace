@@ -148,9 +148,13 @@ final class FileNodeMapper
     {
         $virtual = '/'.ltrim($key, '/');
         try {
-            $rights = $this->authorizer->effectiveRights($virtual, $principal);
+            $context = $this->authorizer->resolvePathContext($virtual, $principal);
+            $rights = $context['rights'];
+            $isGrantRoot = $context['scopeRoot'] !== null
+                && $context['scopeRoot'] === $this->paths->normalizeVirtualPath($virtual);
         } catch (\Throwable) {
             $rights = [];
+            $isGrantRoot = false;
         }
 
         $mayView = (bool) ($rights['mayView'] ?? false);
@@ -171,8 +175,8 @@ final class FileNodeMapper
         return [
             'mayRead' => $mayView,
             'mayAddChildren' => $mayStructure,
-            'mayRename' => $mayStructure,
-            'mayDelete' => $mayStructure,
+            'mayRename' => $mayStructure && ! $isGrantRoot,
+            'mayDelete' => $mayStructure && ! $isGrantRoot,
             'mayModifyContent' => $mayEdit,
             // shareWith writes stay off the envelope; mayShare still
             // reflects DriveShareAuthorizer so the REST share dialog shows.
