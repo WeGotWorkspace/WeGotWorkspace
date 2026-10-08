@@ -33,6 +33,7 @@ describe("MeshRelay credential lifetime", () => {
     };
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: false,
       roomId: "room-1",
       settings,
       localPeerId: () => "self",
@@ -86,6 +87,7 @@ describe("MeshRelay credential lifetime", () => {
     };
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: false,
       roomId: "room-1",
       settings,
       localPeerId: () => "self",
@@ -123,6 +125,7 @@ describe("MeshRelay credential lifetime", () => {
     };
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: false,
       roomId: "room-1",
       settings,
       localPeerId: () => "self",
@@ -155,6 +158,7 @@ describe("MeshRelay credential lifetime", () => {
       .mockResolvedValueOnce({ turn: turn(120, "cred-1") });
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: true,
       roomId: "room-1",
       settings: { ...settings, forceRelay: true },
       localPeerId: () => "self",
@@ -204,6 +208,7 @@ describe("MeshRelay credential lifetime", () => {
     };
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: true,
       roomId: "room-1",
       settings: { ...settings, forceRelay: true },
       localPeerId: () => "self",
@@ -235,10 +240,36 @@ describe("MeshRelay credential lifetime", () => {
     expect(relay.credentials()?.credential).toBe("cred-2");
   });
 
+  it("posts one precheck when forceRelay is true on an open path", async () => {
+    const bodies: Array<{ reason: string; target: string; net?: string }> = [];
+    const relay = new MeshRelay({
+      enabled: true,
+      forceRelay: true,
+      roomId: "room-1",
+      settings,
+      localPeerId: () => "self",
+      localNet: () => "open",
+      peerName: () => "Ada",
+      postRelay: async (_room, body) => {
+        bodies.push(body);
+        return { turn: turn(3600, "cred-1") };
+      },
+      getPeerConnection: () => null,
+      onOutcome: () => undefined,
+      log: () => undefined,
+    });
+
+    await relay.beforeDial();
+    expect(bodies).toEqual([
+      expect.objectContaining({ reason: "precheck", target: "*", net: "open" }),
+    ]);
+  });
+
   it("does not precheck an open path without force relay", async () => {
     const postRelay = vi.fn();
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: false,
       roomId: "room-1",
       settings,
       localPeerId: () => "self",
@@ -258,6 +289,7 @@ describe("MeshRelay credential lifetime", () => {
     const pc = { setConfiguration: vi.fn(), restartIce: vi.fn() };
     const relay = new MeshRelay({
       enabled: true,
+      forceRelay: false,
       roomId: "room-1",
       settings,
       localPeerId: () => "self",

@@ -6,6 +6,9 @@ import type { MeshPeerEntry, MeshPeerRegistry } from "@/lib/rtc/session/mesh-pee
 import { logSelectedPairTelemetry } from "@/lib/rtc/telemetry/selected-pair";
 import type { IceMode, RtcSettings, SignalingChannel, TurnCredentials } from "@/lib/rtc/types";
 
+/** A local offer this fresh is still in flight. A second dial would glare. */
+const OFFER_PENDING_MS = 10_000;
+
 /** `relay` only when debug force-relay is on and TURN is actually configured. */
 export function initialIceMode(
   settings: Pick<RtcSettings, "forceRelay" | "turnAvailable">,
@@ -31,6 +34,8 @@ export type MeshPeerDialerContext = {
   wirePeerConnection: (remoteId: string, entry: MeshPeerEntry) => void;
   /** Text from the negotiated Meet channel. Absent on collab and principal. */
   onMeetData?: (remoteId: string, data: string) => void;
+  /** Test clock. Production uses `Date.now`. */
+  now?: () => number;
 };
 
 /**
@@ -42,6 +47,8 @@ export class MeshPeerDialer {
   private readonly turnConfigured: boolean;
 
   private turn: TurnCredentials | null = null;
+
+  private loggedMissingRelayCredentials = false;
 
   constructor(private readonly context: MeshPeerDialerContext) {
     this.turnConfigured = context.rtcSettings.turnAvailable;
@@ -58,8 +65,8 @@ export class MeshPeerDialer {
    * policy at `all`, and that pair never gathers a relay candidate.
    */
   initialMode(): IceMode {
-    if (this.context.rtcSettings.forceRelay && this.turn) return "relay";
-    return "direct";
+    if (!this.context.rtcSettings.forceRelay || !this.turnConfigured) return "direct";
+    return this.turn ? "relay" : "direct";
   }
 
   /** Create, register, wire, and bind a peer connection for `remoteId`. */
@@ -69,6 +76,7 @@ export class MeshPeerDialer {
     initiator: boolean,
     forcedMode?: IceMode,
   ): MeshPeerEntry {
+    this.noteMissingRelayCredentials(remoteId);
     const mode = forcedMode ?? this.initialMode();
     const pc = this.makePc(remoteId, mode);
     const entry: MeshPeerEntry = {
@@ -90,9 +98,11 @@ export class MeshPeerDialer {
   async connectTo(remoteId: string, remoteName: string, forcedMode?: IceMode): Promise<void> {
     const myId = this.context.localPeerId();
     if (!myId || remoteId === myId) return;
-    // Debug force-relay must not open a direct PC that wins ICE before the
-    // precheck has credentials. The join path awaits that mint first.
-    if (this.context.rtcSettings.forceRelay && !this.turn && !forcedMode) return;
+    // ICE restart passes `forcedMode` after it has already dropped the old PC.
+    if (!forcedMode && this.offerIsPending(remoteId)) {
+      this.context.log("peer-skipped", { remoteId, reason: "offer-pending" });
+      return;
+    }
     const initiator = this.context.isInitiator(remoteId);
     if (this.shouldReusePeerEntry(remoteId, initiator)) return;
     if (this.context.peers.has(remoteId)) this.context.removePeer(remoteId);
@@ -109,6 +119,7 @@ export class MeshPeerDialer {
     const { pc } = entry;
     const offer = await pc.createOffer();
     await pc.setLocalDescription(this.context.formatOutbound(offer));
+    entry.offeredAtMs = this.now();
     try {
       await this.context.sendSignal(remoteId, "offer", pc.localDescription);
     } catch (error) {
@@ -141,6 +152,7 @@ export class MeshPeerDialer {
       if (!next?.initiator) return false;
       const offer = await next.pc.createOffer({ iceRestart: true });
       await next.pc.setLocalDescription(this.context.formatOutbound(offer));
+      next.offeredAtMs = this.now();
       await this.context.sendSignal(remoteId, "offer", next.pc.localDescription);
       next.signalSent = true;
       this.context.log("relay-fallback-offer-sent", { remoteId });
@@ -156,6 +168,26 @@ export class MeshPeerDialer {
       this.context.log("relay-fallback-failed", { remoteId, error });
       return false;
     }
+  }
+
+  /** One log per dialer when force-relay has no credential yet and the PC stays direct. */
+  private noteMissingRelayCredentials(remoteId: string): void {
+    if (this.loggedMissingRelayCredentials) return;
+    if (!this.context.rtcSettings.forceRelay || !this.turnConfigured || this.turn) return;
+    this.loggedMissingRelayCredentials = true;
+    this.context.log("relay-mode-without-credentials", { remoteId });
+  }
+
+  /** The last offer is still in `have-local-offer` and is less than 10s old. */
+  private offerIsPending(remoteId: string): boolean {
+    const entry = this.context.peers.get(remoteId);
+    if (!entry || entry.pc.signalingState !== "have-local-offer") return false;
+    if (entry.offeredAtMs == null) return false;
+    return this.now() - entry.offeredAtMs < OFFER_PENDING_MS;
+  }
+
+  private now(): number {
+    return this.context.now?.() ?? Date.now();
   }
 
   /** Keep a live link instead of renegotiating; drop failed ones so the dial proceeds. */

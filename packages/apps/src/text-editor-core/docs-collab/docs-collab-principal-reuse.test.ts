@@ -181,6 +181,35 @@ describe("DocsCollabPrincipalReuse", () => {
     expect(reuse.shouldSkipIce(peer)).toBe(false);
   });
 
+  it("logs dc-open once when open and ack both attach the same peer", () => {
+    vi.mocked(rtcLog).mockClear();
+    const { reuse, registry, registerAdminToWouter, opened } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "open",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+
+    const dcOpens = vi.mocked(rtcLog).mock.calls.filter((call) => call[1] === "dc-open");
+    expect(dcOpens).toHaveLength(1);
+    expect(opened).toEqual(["bbbbbbbbbbbbbbbb"]);
+  });
+
   it("emits dc-open on ack and routes data over the principal link", () => {
     const { reuse, registry, registerAdminToWouter, opened, messages, sent } = createHarness();
     registerAdminToWouter();

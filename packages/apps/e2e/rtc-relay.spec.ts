@@ -99,6 +99,46 @@ test("forced relay — Docs", async ({ browser }) => {
   }
 });
 
+test("forced relay — Docs principal and collab stay on TURN", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const apiPath = `/users/admin/e2e-relay-hold-${uniqueId()}.md`;
+  const sessions = await openUsers(browser, ["admin", "admin"]);
+  const [left, right] = sessions;
+  const leftLog = collectRtcEvents(left.page);
+  const rightLog = collectRtcEvents(right.page);
+  try {
+    await uploadMarkdown(apiPath, "# Relay hold\n");
+    const url = withForceRelay(`${docsUrlForFile(apiPath)}&rtcDebug=1`);
+    await Promise.all([left.page.goto(url), right.page.goto(url)]);
+    await expect(left.page.locator(".ProseMirror")).toBeVisible();
+    await expect(right.page.locator(".ProseMirror")).toBeVisible();
+    for (const log of [leftLog, rightLog]) {
+      await log.waitFor("selected-pair", (event) => relayChannel(event, "principal"), 45_000);
+      await log.waitFor("selected-pair", (event) => relayChannel(event, "collab"), 45_000);
+    }
+    await left.page.waitForTimeout(60_000);
+    await flushConsole(left.page);
+    await flushConsole(right.page);
+    for (const log of [leftLog, rightLog]) {
+      for (const channel of ["principal", "collab"] as const) {
+        const types = selectedLocalTypes(log.events(), channel);
+        expect(types.length, channel).toBeGreaterThan(0);
+        expect(
+          types.every((type) => type === "relay"),
+          `${channel}:${types.join(",")}`,
+        ).toBe(true);
+      }
+      const events = log.events();
+      expect(events.filter((event) => event.event === "relay-mode-without-credentials")).toEqual(
+        [],
+      );
+      expect(events.filter((event) => event.event === "answer-ignored")).toEqual([]);
+    }
+  } finally {
+    await closeSessions(...sessions);
+  }
+});
+
 test("credential refresh keeps the call", async ({ browser }) => {
   const sessions = await openUsers(browser, ["admin", "admin"]);
   const [left, right] = sessions;
@@ -390,6 +430,10 @@ function issuedRefresh(event: RtcConsoleEvent, reasons: () => string[]): boolean
 
 function meetRelayPair(event: RtcConsoleEvent): boolean {
   return event.channel === "meet" && localType(event) === "relay";
+}
+
+function relayChannel(event: RtcConsoleEvent, channel: string): boolean {
+  return event.channel === channel && localType(event) === "relay";
 }
 
 function meetDirectPair(event: RtcConsoleEvent): boolean {

@@ -160,6 +160,7 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
     enabled: typeof host.postRelay === "function" && (host.channel === "meet" || forceRelay),
     roomId: host.room,
     settings: host.settings,
+    forceRelay,
     iceCandidatePoolSize: host.iceCandidatePoolSize,
     localPeerId: () => host.localPeerId(),
     localNet: () => host.localNet(),

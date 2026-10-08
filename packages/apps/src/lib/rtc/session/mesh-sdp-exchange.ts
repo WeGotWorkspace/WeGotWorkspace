@@ -64,7 +64,13 @@ export async function acceptMeshAnswer(
   if (!entry) return;
   const sdp = exchange.formatInbound(payload, "answer");
   if (!sdp) return;
-  if (entry.pc.signalingState === "stable") return;
+  if (entry.pc.signalingState !== "have-local-offer") {
+    exchange.log("answer-ignored", {
+      remoteId: from,
+      signalingState: entry.pc.signalingState,
+    });
+    return;
+  }
   await safeSetRemoteDescription(entry.pc, sdp);
   await flushPendingIce(entry.pc, entry.pendingIce);
 }
