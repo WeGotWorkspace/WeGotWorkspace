@@ -397,6 +397,7 @@ export class RtcPeerMesh {
     return {
       getPeer: (id) => this.peers.get(id),
       createEntry: (id, name, initiator) => this.dialer.createEntry(id, name, initiator),
+      replacePeer: (id) => this.removePeer(id, "local"),
       needsRelayCredentials: () => this.dialer.needsRelayCredentials(),
       prepareRelay: () => this.prepareRelay(),
       formatInbound: (payload, fallbackType) => this.formatInbound(payload, fallbackType),

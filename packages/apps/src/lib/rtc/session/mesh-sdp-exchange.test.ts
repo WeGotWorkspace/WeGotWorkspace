@@ -22,6 +22,7 @@ function exchangeFor(
   return {
     getPeer: () => entry,
     createEntry: () => entry,
+    replacePeer: () => undefined,
     formatInbound: (payload) => payload as RTCSessionDescriptionInit,
     formatOutbound: (description) => description,
     sendSignal: async () => undefined,
@@ -124,6 +125,9 @@ function offerExchange(mint: "ok" | "fail") {
   const exchange: MeshSdpExchange = {
     getPeer: (id) => peers.get(id),
     createEntry: (id, name, initiator) => dialer.createEntry(id, name, initiator),
+    replacePeer: (id) => {
+      peers.close(id);
+    },
     needsRelayCredentials: () => dialer.needsRelayCredentials(),
     prepareRelay: async () => {
       if (mint === "ok") dialer.setTurn(TURN);
@@ -157,5 +161,100 @@ describe("acceptMeshOffer", () => {
       event: "offer-dropped",
       details: { from: "peer-z", reason: "relay-credentials-missing" },
     });
+  });
+
+  it("replaces the peer when the offer carries a new session id", async () => {
+    const replacePeer = vi.fn();
+    const createEntry = vi.fn(() => {
+      const pc = answerablePc();
+      return { pc, pendingIce: [] } as unknown as MeshPeerEntry;
+    });
+    const existingPc = answerablePc();
+    existingPc.remoteDescription = {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
+    } as RTCSessionDescription;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    let current: MeshPeerEntry | undefined = existing;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => current,
+      createEntry: (id, name, initiator) => {
+        const entry = createEntry(id, name, initiator);
+        current = entry;
+        return entry;
+      },
+      replacePeer: (id) => {
+        replacePeer(id);
+        current = undefined;
+      },
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 222 2 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).toHaveBeenCalledOnce();
+    expect(replacePeer).toHaveBeenCalledWith("peer-z");
+    expect(createEntry).toHaveBeenCalled();
+  });
+
+  it("keeps the peer on an ICE restart offer", async () => {
+    const replacePeer = vi.fn();
+    const existingPc = answerablePc();
+    existingPc.remoteDescription = {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
+    } as RTCSessionDescription;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => existing,
+      createEntry: () => existing,
+      replacePeer,
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 3 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).not.toHaveBeenCalled();
+  });
+
+  it("keeps the peer when it has no remote description yet", async () => {
+    const replacePeer = vi.fn();
+    const existingPc = answerablePc();
+    existingPc.remoteDescription = null;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => existing,
+      createEntry: () => existing,
+      replacePeer,
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 222 2 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).not.toHaveBeenCalled();
   });
 });
