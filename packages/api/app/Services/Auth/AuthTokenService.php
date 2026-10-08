@@ -6,6 +6,7 @@ namespace App\Services\Auth;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\AppSetting;
+use App\Models\User;
 
 final class AuthTokenService
 {
@@ -82,11 +83,15 @@ final class AuthTokenService
         if ($principal === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
         }
-        if (! $this->enabled->isEnabled($principal['username'])) {
+
+        $user = User::query()->where('username', $principal['username'])->first();
+        if ($user === null || ! $user->isEnabled()) {
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
-        return $this->issueTokenPair($principal['username'], $principal['role']);
+        $role = $this->adminRoles->isAdmin($principal['username']) ? 'admin' : 'user';
+
+        return $this->issueTokenPair($principal['username'], $role);
     }
 
     /**

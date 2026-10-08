@@ -7,9 +7,12 @@ namespace App\Services\Settings;
 use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
 use App\Models\User;
+use App\Services\Auth\UserSessionRevoker;
 
 final class UserProfileService
 {
+    public function __construct(private UserSessionRevoker $sessions) {}
+
     public function updateProfile(string $username, string $displayName, ?string $email): void
     {
         $principal = Principal::forUsername($username);
@@ -31,5 +34,6 @@ final class UserProfileService
         if ($updated === 0) {
             throw new ApiHttpException(400, 'User not found.', 'bad_request');
         }
+        $this->sessions->revokeAll($username);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security\PreLaunch;
 
 use App\Models\Principal;
+use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\OutboundMessageMail;
@@ -117,6 +118,99 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             '#(Require all denied|Deny from all|RedirectMatch\s+40[34])#i',
             $outsideRewrite,
             'wgw-content/ and packages/ are only protected inside <IfModule mod_rewrite.c>; without mod_rewrite (or on nginx) db.sqlite and the JWT private key are downloadable.',
+        );
+    }
+
+    /** H3a: a deleted user's refresh token must stop working. */
+    public function test_h3_deleted_user_cannot_refresh(): void
+    {
+        $bob = $this->login('bob');
+
+        $this->withBearer($this->login('alice')['access_token'])
+            ->deleteJson('/api/v1/admin/users/bob')
+            ->assertSuccessful();
+
+        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+            ->assertUnauthorized();
+    }
+
+    /** H3b: removing someone from administrators must remove admin access on the next refresh. */
+    public function test_h3_demoted_admin_loses_admin_on_refresh(): void
+    {
+        $alice = $this->login('alice');
+        $this->seedWgwUser('carol', displayName: 'Carol');
+        $carolPrincipal = Principal::forUsername('carol');
+        $this->assertNotNull($carolPrincipal);
+        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
+        $this->addPrincipalToGroup($admins, $carolPrincipal);
+
+        // carol (second admin) demotes alice.
+        $this->withBearer($this->login('carol')['access_token'])
+            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->assertOk();
+
+        $refreshed = $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $alice['refresh_token']]);
+        if ($refreshed->status() === 401) {
+            $this->assertTrue(true);
+
+            return;
+        }
+        $refreshed->assertOk();
+        $this->assertNotSame('admin', $refreshed->json('role'), 'Refresh re-issued the stale admin role.');
+        $this->withBearer((string) $refreshed->json('access_token'))
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+    }
+
+    /** H3b: a demoted admin's existing access token loses admin rights immediately. */
+    public function test_h3_demoted_admin_loses_admin_immediately(): void
+    {
+        $alice = $this->login('alice');
+        $this->seedWgwUser('carol', displayName: 'Carol');
+        $carolPrincipal = Principal::forUsername('carol');
+        $this->assertNotNull($carolPrincipal);
+        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
+        $this->addPrincipalToGroup($admins, $carolPrincipal);
+
+        $this->withBearer($this->login('carol')['access_token'])
+            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->assertOk();
+
+        $this->withBearer($alice['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+        $this->withBearer($alice['access_token'])
+            ->getJson('/api/v1/me')
+            ->assertOk();
+    }
+
+    /** H3c: an admin password change must revoke the user's existing sessions. */
+    public function test_h3_admin_password_change_revokes_sessions(): void
+    {
+        $bob = $this->login('bob');
+
+        $this->withBearer($this->login('alice')['access_token'])
+            ->patchJson('/api/v1/admin/users/bob', ['password' => 'a-brand-new-password'])
+            ->assertSuccessful();
+
+        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+            ->assertUnauthorized();
+    }
+
+    /** H3d: a disabled user's existing MCP (Passport) identity must not resolve. */
+    public function test_h3_disabled_user_is_not_resolved_for_mcp_tokens(): void
+    {
+        $this->withBearer($this->login('alice')['access_token'])
+            ->patchJson('/api/v1/admin/users/bob', ['enabled' => false])
+            ->assertSuccessful();
+
+        $provider = auth()->createUserProvider('users');
+        $this->assertNotNull($provider);
+        $bob = User::query()->where('username', 'bob')->firstOrFail();
+
+        $this->assertNull(
+            $provider->retrieveById($bob->getAuthIdentifier()),
+            'SabreUserProvider::retrieveById() returns disabled users, so existing Passport tokens keep working.',
         );
     }
 
