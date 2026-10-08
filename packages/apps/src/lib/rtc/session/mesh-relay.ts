@@ -17,6 +17,8 @@ export type MeshRelayPorts = {
   enabled: boolean;
   roomId: string;
   settings: RtcSettings;
+  /** Debug `rtcForceRelay`. Join mints TURN even when the net class is open. */
+  forceRelay: boolean;
   iceCandidatePoolSize?: number;
   localPeerId: () => string | null;
   localNet: () => NetClass | undefined;
@@ -77,9 +79,9 @@ export class MeshRelay {
    */
   async beforeDial(): Promise<void> {
     if (!this.ports.enabled) return;
-    const forced = this.wantsForceRelay();
+    const forced = this.ports.forceRelay;
     if (this.prechecked && !(forced && !this.turn)) return;
-    if (!forced && !needsRelayPrecheck(this.ports.localNet())) return;
+    if (!this.ports.forceRelay && !needsRelayPrecheck(this.ports.localNet())) return;
     const peerId = this.ports.localPeerId();
     if (!peerId || !this.ports.postRelay) return;
     this.prechecked = true;
@@ -181,10 +183,6 @@ export class MeshRelay {
       timer.unref();
     }
     this.refreshTimer = timer;
-  }
-
-  private wantsForceRelay(): boolean {
-    return this.ports.settings.forceRelay;
   }
 
   private async remintRequested(): Promise<void> {

@@ -108,12 +108,12 @@ export class RtcPeerMesh {
   private readonly options: RtcPeerMeshOptions;
 
   constructor(options: RtcPeerMeshOptions) {
+    // Meet, collab, and principal all honor `?rtcForceRelay=1`. Principal used
+    // to clear the flag, so its peer connection stayed on `iceTransportPolicy: all`.
     const rtcSettings =
-      options.channel === "principal"
-        ? { ...options.rtcSettings, forceRelay: false }
-        : options.channel === "meet" || options.channel === "collab"
-          ? applyRtcDebugOverrides(options.rtcSettings)
-          : options.rtcSettings;
+      options.channel === "meet" || options.channel === "collab" || options.channel === "principal"
+        ? applyRtcDebugOverrides(options.rtcSettings)
+        : options.rtcSettings;
     this.options = { ...options, rtcSettings };
     this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
       const message = error instanceof Error ? error.message : String(error);
@@ -396,6 +396,8 @@ export class RtcPeerMesh {
     return {
       getPeer: (id) => this.peers.get(id),
       createEntry: (id, name, initiator) => this.dialer.createEntry(id, name, initiator),
+      needsRelayCredentials: () => this.dialer.needsRelayCredentials(),
+      prepareRelay: () => this.prepareRelay(),
       formatInbound: (payload, fallbackType) => this.formatInbound(payload, fallbackType),
       formatOutbound: (description) => this.formatOutbound(description),
       sendSignal: (to, type, payload) => this.sendSignal(to, type, payload),

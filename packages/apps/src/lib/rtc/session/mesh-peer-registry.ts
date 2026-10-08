@@ -11,6 +11,8 @@ export type MeshPeerEntry = {
   initiator: boolean;
   pendingIce: RTCIceCandidateInit[];
   signalSent: boolean;
+  /** `Date.now` when the local offer was set. The dialer skips a second offer for 10s. */
+  offeredAtMs?: number;
   remoteStream?: MediaStream;
   dataChannel?: RTCDataChannel | null;
   /** Roster capabilities. `bin` selects binary framing on the data channel. */

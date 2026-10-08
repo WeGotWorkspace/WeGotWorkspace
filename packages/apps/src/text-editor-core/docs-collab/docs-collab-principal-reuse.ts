@@ -608,9 +608,11 @@ export class DocsCollabPrincipalReuse {
       username: fromUsername,
       principalPeerId: fromPrincipalPeerId,
     });
-    this.log("dc-open", { remoteId: collabPeerId, username: fromUsername, reused: true, via });
+    if (wasNew) {
+      this.log("dc-open", { remoteId: collabPeerId, username: fromUsername, reused: true, via });
+      this.ports.onDcOpen(collabPeerId);
+    }
     this.ports.onReuseAttached?.(collabPeerId);
-    if (wasNew) this.ports.onDcOpen(collabPeerId);
     this.ports.onLinkChange();
     return true;
   }

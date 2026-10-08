@@ -148,6 +148,10 @@ export function useDocsCollabJoin({
   }, [documentFormat, markDocReady, refs, setDocStatus]);
 
   const teardown = useCallback(() => {
+    const awareness = refs.awarenessRef.current;
+    if (awareness) {
+      awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+    }
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
@@ -188,6 +192,37 @@ export function useDocsCollabJoin({
     setPendingSync(false);
     setFailedSync(false);
   }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
+
+  useEffect(() => {
+    // pagehide also runs when the page enters the back/forward cache. Keep the
+    // cursor we clear so a persisted pageshow can put it back. A real teardown
+    // nulls the awareness ref and drops this listener, so that path stays gone.
+    let parked: {
+      awareness: awarenessProtocol.Awareness;
+      state: NonNullable<ReturnType<awarenessProtocol.Awareness["getLocalState"]>>;
+    } | null = null;
+    const onPageHide = () => {
+      const awareness = refs.awarenessRef.current;
+      if (!awareness) return;
+      const state = awareness.getLocalState();
+      if (state !== null) parked = { awareness, state };
+      awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted || !parked) return;
+      const saved = parked;
+      parked = null;
+      if (refs.awarenessRef.current !== saved.awareness) return;
+      saved.awareness.setLocalState(saved.state);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      parked = null;
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [refs]);
 
   const mergeServerState = useCallback(
     async (authToken: string | undefined): Promise<boolean> => {
