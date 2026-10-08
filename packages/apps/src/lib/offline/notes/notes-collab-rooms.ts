@@ -35,22 +35,26 @@ async function withIndexedDb<T>(
   }
 }
 
-async function withRoom<T>(
+/** The `:v2` database first, then pre-v2 names; the first one that `pick` accepts wins. */
+async function firstFromRoomNames<T>(
   uid: string,
-  run: (ydoc: Y.Doc, persistence: IndexeddbPersistence) => Promise<T>,
-): Promise<T | undefined> {
+  pick: (ydoc: Y.Doc, persistence: IndexeddbPersistence) => Promise<T | null | undefined>,
+): Promise<T | null> {
   const room = noteCollabRoomKey(uid);
-  if (!room) return undefined;
-  return withIndexedDb(room, run);
+  if (!room) return null;
+  for (const name of [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)]) {
+    const value = await withIndexedDb(name, pick);
+    if (value != null) return value;
+  }
+  return null;
 }
 
 /** Headlessly read markdown from the UID-keyed collab crash buffer. */
 export async function readNoteCollabOfflineContent(uid: string): Promise<string | null> {
-  const content = await withRoom(uid, async (ydoc) => {
+  return firstFromRoomNames(uid, async (ydoc) => {
     if (isYDocEmpty(ydoc)) return null;
     return readContentFromYDoc(ydoc, "markdown");
   });
-  return content ?? null;
 }
 
 export async function hasNoteCollabOfflinePersistence(uid: string): Promise<boolean> {
@@ -65,21 +69,28 @@ export async function hasNoteCollabOfflinePersistence(uid: string): Promise<bool
 }
 
 export async function hasNoteCollabPendingServerSave(uid: string): Promise<boolean> {
-  const pending = await withRoom(uid, async (_ydoc, persistence) =>
-    persistence.get(PENDING_SERVER_SAVE_KEY),
+  const result = await firstFromRoomNames(uid, async (_d, p) =>
+    (await p.get(PENDING_SERVER_SAVE_KEY)) ? true : null,
   );
-  return Boolean(pending);
+  return Boolean(result);
 }
 
 /** Replace the UID-keyed Y.Doc with server markdown (Decision 6 “Use theirs”). */
 export async function writeNoteCollabOfflineContent(uid: string, markdown: string): Promise<void> {
-  await withRoom(uid, async (ydoc) => {
+  const room = noteCollabRoomKey(uid);
+  if (!room) return;
+  await withIndexedDb(docsCollabIndexedDbKey(room), async (ydoc) => {
     const fragment = ydoc.getXmlFragment("default");
     ydoc.transact(() => {
       if (fragment.length > 0) fragment.delete(0, fragment.length);
     });
     applyContentSeedToYDoc(ydoc, markdown, "markdown");
   });
+  for (const name of docsCollabLegacyIndexedDbKeys(room)) {
+    await withIndexedDb(name, async (_ydoc, persistence) => {
+      await persistence.clearData();
+    });
+  }
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */
