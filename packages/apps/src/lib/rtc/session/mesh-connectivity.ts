@@ -13,6 +13,14 @@ import type { RelayRequestClient, RelayRequestOutcome } from "@/lib/rtc/session/
  * ICE batching, relay requests, and network-change restart for one mesh.
  * Kept off `RtcPeerMesh` so that file stays under the 800-line ceiling.
  */
+export function meshRelayEnabled(
+  channel: string,
+  forceRelay: boolean,
+  hasPostRelay: boolean,
+): boolean {
+  return hasPostRelay && (channel === "meet" || channel === "principal" || forceRelay);
+}
+
 export type MeshConnectivityHost = {
   room: string;
   channel: string;
@@ -157,7 +165,7 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
   });
   const forceRelay = host.settings.forceRelay;
   const relay = new MeshRelay({
-    enabled: typeof host.postRelay === "function" && (host.channel === "meet" || forceRelay),
+    enabled: meshRelayEnabled(host.channel, forceRelay, typeof host.postRelay === "function"),
     roomId: host.room,
     settings: host.settings,
     forceRelay,

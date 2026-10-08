@@ -6,7 +6,7 @@ describe("createRtcSignalingClient caps", () => {
   it("advertises bin on principal join and the docs caps on collab", async () => {
     const expected = {
       collab: ["bin", "yjs-http", "relay-jit"],
-      principal: ["bin"],
+      principal: ["bin", "relay-jit"],
     } as const;
     for (const channel of ["collab", "principal"] as const) {
       const fetchImpl = vi.fn<HttpSignalingFetch>(
