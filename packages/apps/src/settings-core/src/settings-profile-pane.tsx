@@ -16,6 +16,9 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
   const { form, username, saveProfile } = profile;
   const usernameId = useId();
   const [newPasswordWatch, confirmPasswordWatch] = form.watch(["newPassword", "confirmPassword"]);
+  const emailDirty = Boolean(form.formState.dirtyFields.email);
+  const passwordActive = Boolean(newPasswordWatch || confirmPasswordWatch);
+  const showCurrentPassword = emailDirty || passwordActive;
 
   const identityDisabled =
     !(form.formState.dirtyFields.displayName || form.formState.dirtyFields.email) &&
@@ -41,6 +44,15 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           label="Email"
           type="email"
         />
+        {showCurrentPassword ? (
+          <FormTextField
+            {...settingsWorkspacePaneClasses.formTextField}
+            name="currentPassword"
+            label="Current password"
+            variant="password"
+            autoComplete="current-password"
+          />
+        ) : null}
         <FormSaveActionRow
           className={settingsWorkspacePaneClasses.saveActionRow}
           label="Save changes"

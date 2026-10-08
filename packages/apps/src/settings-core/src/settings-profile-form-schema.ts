@@ -15,6 +15,7 @@ export const settingsProfileFormSchema = z
     email: z.string().trim().email("Enter a valid email"),
     newPassword: z.string(),
     confirmPassword: z.string(),
+    currentPassword: z.string(),
   })
   .superRefine((values, ctx) => {
     const pwd = values.newPassword;
@@ -32,18 +33,46 @@ export const settingsProfileFormSchema = z
         path: ["confirmPassword"],
       });
     }
+    if (pwd.length > 0 && values.currentPassword.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Current password is required",
+        path: ["currentPassword"],
+      });
+    }
   });
 
 export type SettingsProfileFormValues = z.infer<typeof settingsProfileFormSchema>;
 
+/** Require the current password when the email differs from the loaded address. */
+export function settingsProfileFormSchemaFor(baselineEmail: string) {
+  return settingsProfileFormSchema.superRefine((values, ctx) => {
+    const emailChanged = values.email.trim().toLowerCase() !== baselineEmail.trim().toLowerCase();
+    if (emailChanged && values.currentPassword.trim() === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Current password is required",
+        path: ["currentPassword"],
+      });
+    }
+  });
+}
+
 /** Map UI form values to OpenAPI `SettingsProfileRequest` and validate against the spec. */
 export function settingsProfileFormToRequest(
   values: SettingsProfileFormValues,
+  baselineEmail?: string,
 ): SettingsProfileRequest {
   const password = values.newPassword.trim();
+  const currentPassword = values.currentPassword.trim();
+  const email = values.email.trim();
+  const includeEmail =
+    baselineEmail === undefined || email.toLowerCase() !== baselineEmail.trim().toLowerCase();
+
   return settingsProfileRequestOpenapiSchema.parse({
     displayName: values.displayName,
-    email: values.email,
+    ...(includeEmail ? { email } : {}),
     ...(password.length > 0 ? { password } : {}),
+    ...(currentPassword.length > 0 ? { currentPassword } : {}),
   }) as SettingsProfileRequest;
 }

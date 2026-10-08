@@ -16,6 +16,7 @@ function ProfilePaneHarness() {
       email: "demo@example.test",
       newPassword: "",
       confirmPassword: "",
+      currentPassword: "",
     },
     mode: "onSubmit",
   });

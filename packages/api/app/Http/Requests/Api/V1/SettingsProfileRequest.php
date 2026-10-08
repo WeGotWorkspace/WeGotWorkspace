@@ -22,6 +22,7 @@ final class SettingsProfileRequest extends FormRequest
             'displayName' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['sometimes', 'nullable', 'string', 'min:10', 'max:4096'],
+            'currentPassword' => ['required_with:password,email', 'string', 'max:4096'],
         ];
     }
 }

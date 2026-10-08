@@ -1399,6 +1399,11 @@
                     },
                     "password": {
                         "type": "string"
+                    },
+                    "currentPassword": {
+                        "type": "string",
+                        "maxLength": 4096,
+                        "description": "Current password. Required when password or email is changed."
                     }
                 },
                 "example": {
@@ -12936,6 +12941,16 @@
                         "bearerAuth": []
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettingsProfileRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Updated settings state",

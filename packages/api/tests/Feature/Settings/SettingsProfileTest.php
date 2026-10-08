@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use App\Models\Principal;
+use App\Models\User;
 use App\Services\Auth\LoginRateLimiter;
 use Tests\Support\SettingsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -55,6 +56,7 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
         $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'displayName' => 'Robert',
             'email' => 'robert@example.test',
+            'currentPassword' => 'secret',
         ])
             ->assertOk()
             ->assertJsonPath('user.displayName', 'Robert')
@@ -74,6 +76,7 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             'displayName' => 'Robert',
             'email' => 'robert@example.test',
             'username' => 'hacker',
+            'currentPassword' => 'secret',
         ])
             ->assertOk()
             ->assertJsonPath('user.username', 'bob');
@@ -102,7 +105,10 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
 
         $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'password' => $newPassword,
-        ])->assertOk();
+            'currentPassword' => 'secret',
+        ])->assertOk()
+            ->assertJsonPath('user.displayName', 'Bob')
+            ->assertJsonPath('user.email', 'bob@example.test');
 
         $this->postJson('/api/v1/auth/token', [
             'username' => 'bob',
@@ -121,6 +127,7 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
 
         $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'password' => 'short',
+            'currentPassword' => 'secret',
         ])->assertStatus(400)
             ->assertJsonPath('error', 'The password field must be at least 10 characters.');
     }
@@ -275,12 +282,19 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             'password' => 'secret',
         ])->assertOk();
         $otherRefresh = (string) $other->json('refresh_token');
+        $epochBefore = (int) User::query()->where('username', 'bob')->value('ui_session_epoch');
 
         $this->withBearer($access)->putJson('/api/v1/settings/profile', [
             'password' => 'newpassword12',
             'currentPassword' => 'secret',
             'refreshToken' => $refresh,
         ])->assertOk();
+
+        $this->assertSame(
+            $epochBefore + 1,
+            (int) User::query()->where('username', 'bob')->value('ui_session_epoch'),
+        );
+        $this->withBearer($access)->getJson('/api/v1/settings/state')->assertOk();
 
         $this->postJson('/api/v1/auth/refresh', [
             'refresh_token' => $refresh,
@@ -315,6 +329,9 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             'password' => 'secret',
         ])->assertStatus(429)
             ->assertJsonPath('code', 'throttled');
+
+        putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
+        $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = '1';
     }
 
     private function enableLoginThrottle(): void
