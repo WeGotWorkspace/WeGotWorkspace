@@ -101,8 +101,9 @@ test("forced relay — Docs", async ({ browser }) => {
 
 test("forced relay — Docs principal and collab stay on TURN", async ({ browser }) => {
   test.setTimeout(180_000);
-  const apiPath = `/users/admin/e2e-relay-hold-${uniqueId()}.md`;
-  const sessions = await openUsers(browser, ["admin", "admin"]);
+  // Both seeded users belong to principals/groups/administrators, so member can open this file.
+  const apiPath = `/groups/administrators/e2e-relay-hold-${uniqueId()}.md`;
+  const sessions = await openUsers(browser, ["admin", "member"]);
   const [left, right] = sessions;
   const leftLog = collectRtcEvents(left.page);
   const rightLog = collectRtcEvents(right.page);
@@ -116,6 +117,10 @@ test("forced relay — Docs principal and collab stay on TURN", async ({ browser
       await log.waitFor("selected-pair", (event) => relayChannel(event, "principal"), 45_000);
       await log.waitFor("selected-pair", (event) => relayChannel(event, "collab"), 45_000);
     }
+    await Promise.any([
+      leftLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
+      rightLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
+    ]);
     await left.page.waitForTimeout(60_000);
     await flushConsole(left.page);
     await flushConsole(right.page);
@@ -133,6 +138,7 @@ test("forced relay — Docs principal and collab stay on TURN", async ({ browser
         [],
       );
       expect(events.filter((event) => event.event === "answer-ignored")).toEqual([]);
+      expect(events.filter((event) => event.event === "offer-dropped")).toEqual([]);
     }
   } finally {
     await closeSessions(...sessions);
