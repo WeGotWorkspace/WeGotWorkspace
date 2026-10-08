@@ -277,8 +277,11 @@ export class DocsRtcSession {
         if (this.httpOnlyUntilRelay && !this.relayReady.has(peer.id)) return false;
         return !this.reuse.shouldSkipIce(peer);
       },
-      shouldAcceptOffer: (from) =>
-        this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from),
+      shouldAcceptOffer: (from) => {
+        if (this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from)) return true;
+        this.reuse.reopenAfterIgnoredOffer(from);
+        return false;
+      },
       // A stale collab offer must not rejoin: that drops the peer id the relay
       // precheck just minted and the next offer is unknown_peer forever.
       recoverOnUnknownPeer: !this.forceRelayTransport(),
@@ -312,7 +315,8 @@ export class DocsRtcSession {
           webrtcUnavailable: () => this.webrtcUnavailable(),
           send: (to, type, payload) => {
             void this.mesh.sendMailbox(to, type, payload).catch(() => {
-              // A refused mailbox post must not surface as an unhandled rejection.
+              // A refused post usually means a stale roster. Poll now instead of failing loudly.
+              this.mesh.kickPoll();
             });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),

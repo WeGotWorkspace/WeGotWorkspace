@@ -418,6 +418,30 @@ describe("DocsCollabPrincipalReuse", () => {
     );
   });
 
+  it("retries reuse when the principal link reopens after an ack timeout", () => {
+    const { reuse, registry, registerAdminToWouter, timers, sent } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(1);
+
+    expect(timers).toHaveLength(1);
+    expect(timers[0]!.delay).toBe(COLLAB_REUSE_ACK_TIMEOUT_MS);
+    timers[0]!.fn();
+
+    const opensBefore = sent.filter((payload) => (payload as { op?: string }).op === "open").length;
+    registry.unregisterLink("prin-wouter");
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: (payload) => sent.push(payload),
+    });
+
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore + 1,
+    );
+  });
+
   it("remaps a reused peer when the collab roster assigns a new id for the same user", () => {
     const { reuse, registry, registerAdminToWouter, messages } = createHarness();
     registerAdminToWouter();
@@ -704,6 +728,78 @@ describe("DocsCollabPrincipalReuse", () => {
     const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
     reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
     expect(reuse.shouldIgnoreOffer("bbbbbbbbbbbbbbbb")).toBe(false);
+  });
+
+  it("re-opens reuse over the principal link when a reused peer's offer is ignored", () => {
+    const { reuse, registry, registerAdminToWouter, sent } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    const opensBefore = sent.filter((payload) => (payload as { op?: string }).op === "open").length;
+    // nowMs must be ≥ COLLAB_REUSE_REOPEN_GAP_MS: missing entries compare against 0.
+    reuse.reopenAfterIgnoredOffer(peer.id, 10_000);
+
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore + 1,
+    );
+    expect(sent.at(-1)).toEqual(
+      expect.objectContaining({
+        kind: "collab-reuse",
+        op: "open",
+        collabPeerId: "aaaaaaaaaaaaaaaa",
+      }),
+    );
+  });
+
+  it("re-opens at most once per 5 s", () => {
+    const { reuse, registry, registerAdminToWouter, sent } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    registry.receive("wouter", "prin-wouter", {
+      v: 1,
+      kind: "collab-reuse",
+      room: "/groups/administrators/team-notes.md",
+      op: "ack",
+      collabPeerId: "bbbbbbbbbbbbbbbb",
+      name: "Wouter",
+    });
+    const opensBefore = sent.filter((payload) => (payload as { op?: string }).op === "open").length;
+
+    reuse.reopenAfterIgnoredOffer(peer.id, 10_000);
+    reuse.reopenAfterIgnoredOffer(peer.id, 12_000);
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore + 1,
+    );
+
+    reuse.reopenAfterIgnoredOffer(peer.id, 16_000);
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore + 2,
+    );
+  });
+
+  it("does nothing for a peer that is not reused", () => {
+    const { reuse, registerAdminToWouter, sent } = createHarness();
+    registerAdminToWouter();
+    reuse.considerRoster(
+      [{ id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" }],
+      "aaaaaaaaaaaaaaaa",
+    );
+    const opensBefore = sent.filter((payload) => (payload as { op?: string }).op === "open").length;
+
+    reuse.reopenAfterIgnoredOffer("bbbbbbbbbbbbbbbb", 10_000);
+
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore,
+    );
   });
 });
 

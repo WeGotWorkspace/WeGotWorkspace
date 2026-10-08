@@ -17,6 +17,7 @@ import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
   applyPeerHint as applyIncomingPeerHint,
   dialRoomPeers as dialListedRoomPeers,
+  PRINCIPAL_FAILED_RETRY_MS,
   retryRoomPeer,
   retryRoomPeerConnections as retryUnconnectedRoomPeers,
 } from "@/lib/rtc/session/mesh-room-dial";
@@ -421,20 +422,19 @@ export class RtcPeerMesh {
     this.metrics.noteFailedPair();
     if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
-      this.droppedGhostIds.add(remoteId);
       this.removePeer(remoteId, "roster");
       this.log("peer-skipped", { remoteId, reason: "connect-failed" });
+      this.scheduleTimeout(() => this.retryPeerConnection(remoteId), PRINCIPAL_FAILED_RETRY_MS);
     }
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }
 
   /**
-   * Principal still collapses a reloaded tab into one peer. Collab does not:
-   * two devices of the same user are both live, and a same-browser reload is
-   * evicted by `browserId` on the server.
+   * No channel collapses peers by user any more. The server evicts a reloaded
+   * tab by browser id, and two browsers of one user are both live.
    */
   private collapseIdentityOnPoll(): boolean {
-    return this.options.channel === "principal";
+    return false;
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
