@@ -16,16 +16,29 @@ final class UserEnabledGuard
 {
     public function isEnabled(string $username): bool
     {
+        return $this->enabledSession($username) !== null;
+    }
+
+    /**
+     * Enabled flag and UI-cookie epoch from one users query.
+     *
+     * @return array{enabled: true, epoch: int}|null
+     */
+    public function enabledSession(string $username): ?array
+    {
         $username = strtolower(trim($username));
         if ($username === '') {
-            return false;
+            return null;
         }
         if (str_starts_with($username, 'share:')) {
-            return true;
+            return ['enabled' => true, 'epoch' => 0];
         }
 
         $user = User::query()->where('username', $username)->first();
+        if ($user === null || ! $user->isEnabled()) {
+            return null;
+        }
 
-        return $user !== null && $user->isEnabled();
+        return ['enabled' => true, 'epoch' => (int) $user->ui_session_epoch];
     }
 }

@@ -11,8 +11,8 @@ use Laravel\Passport\Passport;
 /**
  * Drops bearer refresh tokens, Passport grants, and push subscriptions for one user.
  *
- * #1145 adds the UI-cookie epoch bump here. Pass $exceptRefreshTokenHash to leave
- * that still-valid refresh token in place. An already revoked hash is not restored.
+ * Pass $exceptRefreshTokenHash to leave that still-valid refresh token in place.
+ * An already revoked hash is not restored. Each call bumps ui_session_epoch.
  */
 final class UserSessionRevoker
 {
@@ -44,5 +44,16 @@ final class UserSessionRevoker
         }
 
         PushSubscription::query()->where('principal', $username)->delete();
+        $this->bumpEpoch($username);
+    }
+
+    public function bumpEpoch(string $username): void
+    {
+        $username = strtolower(trim($username));
+        if ($username === '') {
+            return;
+        }
+
+        User::query()->where('username', $username)->increment('ui_session_epoch');
     }
 }
