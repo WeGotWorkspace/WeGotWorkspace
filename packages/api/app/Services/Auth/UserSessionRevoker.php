@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
-use App\Models\ApiRefreshToken;
 use App\Models\PushSubscription;
 use App\Models\User;
 use Laravel\Passport\Passport;
@@ -12,8 +11,8 @@ use Laravel\Passport\Passport;
 /**
  * Drops bearer refresh tokens, Passport grants, and push subscriptions for one user.
  *
- * #1145 adds the UI-cookie epoch bump here. Pass $exceptRefreshTokenHash to keep
- * the caller's current refresh token.
+ * #1145 adds the UI-cookie epoch bump here. Pass $exceptRefreshTokenHash to leave
+ * that still-valid refresh token in place. An already revoked hash is not restored.
  */
 final class UserSessionRevoker
 {
@@ -26,13 +25,10 @@ final class UserSessionRevoker
             return;
         }
 
-        $this->refreshTokens->revokeAllForUsername($username);
-        if ($exceptRefreshTokenHash !== null && $exceptRefreshTokenHash !== '') {
-            ApiRefreshToken::query()
-                ->where('token_hash', $exceptRefreshTokenHash)
-                ->where('username', $username)
-                ->update(['revoked' => 0]);
-        }
+        $exceptHash = ($exceptRefreshTokenHash !== null && $exceptRefreshTokenHash !== '')
+            ? $exceptRefreshTokenHash
+            : null;
+        $this->refreshTokens->revokeAllForUsername($username, $exceptHash);
 
         $user = User::query()->where('username', $username)->first();
         if ($user !== null) {

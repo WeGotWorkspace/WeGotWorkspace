@@ -11,6 +11,7 @@ final class BearerAuthenticationService
         private JwtTokenService $jwtTokens,
         private RevokedTokenRepository $revokedTokens,
         private UserEnabledGuard $enabled,
+        private AdminRoleResolver $adminRoles,
     ) {}
 
     /**
@@ -42,9 +43,16 @@ final class BearerAuthenticationService
             return null;
         }
 
+        $role = $claims['role'];
+        // The admin claim is trusted only while the subject is still an administrator.
+        // Demotion must take effect before this access token expires.
+        if ($role === 'admin' && ! $this->adminRoles->isAdmin($claims['sub'])) {
+            $role = 'user';
+        }
+
         return [
             'username' => $claims['sub'],
-            'role' => $claims['role'],
+            'role' => $role,
         ];
     }
 
