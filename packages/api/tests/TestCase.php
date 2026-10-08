@@ -25,5 +25,13 @@ abstract class TestCase extends BaseTestCase
         // TrustHosts writes a process-wide host list. A production-env test
         // leaves it set, and later tests then reject every other Host.
         Request::setTrustedHosts([]);
+        // SabreWebdavFront copies Authorization into $_SERVER for CGI hosting.
+        // PHPUnit keeps that for the next test in the same process.
+        unset(
+            $_SERVER['HTTP_AUTHORIZATION'],
+            $_SERVER['REDIRECT_HTTP_AUTHORIZATION'],
+            $_SERVER['PHP_AUTH_USER'],
+            $_SERVER['PHP_AUTH_PW'],
+        );
     }
 }

@@ -83,11 +83,16 @@ final class SabreWebdavGetTest extends WgwDatabaseTestCase
         $realm = (string) (WgwSettings::normalized()[WgwSettings::AUTH_REALM] ?? 'SabreDAV');
         $cookie = $this->app->make(UiSessionService::class)->buildCookie('alice', $realm, '/');
 
-        $response = $this->withUnencryptedCookie('sabre_ui_auth', $cookie->getValue())
-            ->get('/files/users/alice/cookie.docx');
+        $_COOKIE['sabre_ui_auth'] = $cookie->getValue();
+        try {
+            $response = $this->withUnencryptedCookie('sabre_ui_auth', $cookie->getValue())
+                ->get('/files/users/alice/cookie.docx');
 
-        $response->assertSuccessful();
-        $this->assertSame($payload, $response->streamedContent());
+            $response->assertSuccessful();
+            $this->assertSame($payload, $response->streamedContent());
+        } finally {
+            unset($_COOKIE['sabre_ui_auth']);
+        }
     }
 
     public function test_propfind_rejects_disabled_user_with_basic_auth(): void
