@@ -12130,7 +12130,8 @@
                             "chat",
                             "yjs",
                             "yjs-sv",
-                            "relay-hint"
+                            "relay-hint",
+                            "link-down"
                         ],
                         "description": "`relay-hint` is server-inserted only: a client that sends it is answered with `bad_type`."
                     },
@@ -12193,7 +12194,8 @@
                             "ice",
                             "bye",
                             "yjs",
-                            "yjs-sv"
+                            "yjs-sv",
+                            "link-down"
                         ]
                     },
                     "payload": {}

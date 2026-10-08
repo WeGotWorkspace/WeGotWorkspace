@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { PresenceRtcSession } from "@/presence-core/src/presence-rtc-session";
@@ -13,16 +13,31 @@ type CapturedBinding = {
 const captured = vi.hoisted(() => ({
   bindingOptions: null as CapturedBinding | null,
   pollIntervals: null as { steadyMs: number } | null,
+  onPollData: null as
+    | ((data: {
+        messages: Array<{ from: string; type: string; payload: unknown }>;
+        peers: unknown[];
+      }) => void)
+    | null,
   mesh: {
     getMyId: vi.fn((): string | null => "me"),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string; user?: string }>),
     getDataChannel: vi.fn((_id: string) => null as { readyState: string } | null),
     getPeerConnection: vi.fn(() => null as { connectionState: string } | null),
+    isInitiatorFor: vi.fn((peerId: string) => "me" < peerId),
+    abortPeerConnection: vi.fn(),
+    retryPeerConnection: vi.fn(),
+    sendMailbox: vi.fn(async () => undefined),
     sendJsonTo: vi.fn(),
     broadcastJson: vi.fn(),
     join: vi.fn(async () => ({ peerId: "me" })),
     leave: vi.fn(async () => undefined),
   },
+  rtcLog: vi.fn(),
+}));
+
+vi.mock("@/lib/rtc/log", () => ({
+  rtcLog: (...args: unknown[]) => captured.rtcLog(...args),
 }));
 
 vi.mock("@/lib/rtc/session/bindings", () => ({
@@ -33,10 +48,19 @@ vi.mock("@/lib/rtc/session/bindings", () => ({
 }));
 
 vi.mock("@/lib/rtc/session/create-rtc-session", () => ({
-  createRtcSession: vi.fn((options: { pollIntervals: { steadyMs: number } }) => {
-    captured.pollIntervals = options.pollIntervals;
-    return captured.mesh;
-  }),
+  createRtcSession: vi.fn(
+    (options: {
+      pollIntervals: { steadyMs: number };
+      onPollData?: (data: {
+        messages: Array<{ from: string; type: string; payload: unknown }>;
+        peers: unknown[];
+      }) => void;
+    }) => {
+      captured.pollIntervals = options.pollIntervals;
+      captured.onPollData = options.onPollData ?? null;
+      return captured.mesh;
+    },
+  ),
 }));
 
 describe("PresenceRtcSession principal link publishing", () => {
@@ -44,8 +68,15 @@ describe("PresenceRtcSession principal link publishing", () => {
     vi.clearAllMocks();
     captured.bindingOptions = null;
     captured.pollIntervals = null;
+    captured.onPollData = null;
     captured.mesh.getRoomPeers.mockReturnValue([]);
     captured.mesh.getDataChannel.mockReturnValue(null);
+    captured.mesh.getPeerConnection.mockReturnValue(null);
+    captured.mesh.isInitiatorFor.mockImplementation((peerId: string) => "me" < peerId);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("registers an open principal DC in the link registry", () => {
@@ -157,5 +188,52 @@ describe("PresenceRtcSession principal link publishing", () => {
     captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
     captured.bindingOptions?.onOpen("prin-wouter");
     expect(captured.pollIntervals?.steadyMs).toBe(20_000);
+  });
+
+  it("passes link-down hints from the poll to the supervisor", () => {
+    new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    captured.mesh.getMyId.mockReturnValue("me");
+    captured.mesh.getRoomPeers.mockReturnValue([{ id: "peer-z", name: "Zed", user: "zed" }]);
+    captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
+    captured.bindingOptions?.onOpen("peer-z");
+    captured.rtcLog.mockClear();
+
+    captured.onPollData?.({
+      peers: [{ id: "peer-z", name: "Zed", user: "zed" }],
+      messages: [{ from: "peer-z", type: "link-down", payload: { v: 1, since: 1 } }],
+    });
+
+    const events = captured.rtcLog.mock.calls.map((call) => call[1] as string);
+    expect(events.includes("link-hint-received") || events.includes("link-hint-ignored")).toBe(
+      true,
+    );
+  });
+
+  it("dials a rostered initiator-side peer after the grace period", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    captured.mesh.getMyId.mockReturnValue("aaaaaaaa");
+    captured.mesh.isInitiatorFor.mockReturnValue(true);
+    captured.mesh.getRoomPeers.mockReturnValue([{ id: "zzzzzzzz", name: "Zed", user: "zed" }]);
+    captured.mesh.getDataChannel.mockReturnValue(null);
+    captured.mesh.getPeerConnection.mockReturnValue({ connectionState: "connecting" });
+    captured.rtcLog.mockClear();
+
+    captured.bindingOptions?.onClose();
+    vi.advanceTimersByTime(10_000);
+
+    expect(captured.rtcLog).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "principal" }),
+      "link-dial",
+      { remoteId: "zzzzzzzz" },
+    );
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith("zzzzzzzz");
   });
 });

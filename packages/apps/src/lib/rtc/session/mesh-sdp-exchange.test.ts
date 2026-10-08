@@ -12,9 +12,11 @@ function exchangeFor(
   signalingState: RTCSignalingState,
   setRemoteDescription: ReturnType<typeof vi.fn>,
   log: MeshSdpExchange["log"],
+  localSdp = "v=0\r\no=- 222 2 IN IP4 0.0.0.0\r\n",
 ): MeshSdpExchange {
   const pc = {
     signalingState,
+    localDescription: { type: "offer", sdp: localSdp } as RTCSessionDescription,
     setRemoteDescription,
     addIceCandidate: vi.fn(async () => undefined),
   } as unknown as RTCPeerConnection;
@@ -22,7 +24,11 @@ function exchangeFor(
   return {
     getPeer: () => entry,
     createEntry: () => entry,
-    formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+    replacePeer: () => undefined,
+    formatInbound: (payload) => {
+      const row = payload as { type?: string; sdp?: string };
+      return { type: row.type, sdp: row.sdp } as RTCSessionDescriptionInit;
+    },
     formatOutbound: (description) => description,
     sendSignal: async () => undefined,
     onSignalError: () => undefined,
@@ -54,6 +60,44 @@ describe("acceptMeshAnswer", () => {
   });
 
   it("applies an answer while the local offer is still outstanding", async () => {
+    const setRemoteDescription = vi.fn(async () => undefined);
+    await acceptMeshAnswer(
+      exchangeFor("have-local-offer", setRemoteDescription, () => undefined),
+      "peer-z",
+      answer,
+    );
+    expect(setRemoteDescription).toHaveBeenCalledWith(answer);
+  });
+
+  it("an answer for an older offer session is ignored", async () => {
+    const setRemoteDescription = vi.fn(async () => undefined);
+    const logs: Array<{ event: string; details?: unknown }> = [];
+    await acceptMeshAnswer(
+      exchangeFor("have-local-offer", setRemoteDescription, (event, details) =>
+        logs.push({ event, details }),
+      ),
+      "peer-z",
+      { type: "answer", sdp: "v=0\r\n", re: "111" },
+    );
+    expect(setRemoteDescription).not.toHaveBeenCalled();
+    expect(logs).toContainEqual({
+      event: "answer-stale",
+      details: { remoteId: "peer-z" },
+    });
+  });
+
+  it("an answer for the current offer session is applied", async () => {
+    const setRemoteDescription = vi.fn(async () => undefined);
+    const payload = { type: "answer" as const, sdp: "v=0\r\n", re: "222" };
+    await acceptMeshAnswer(
+      exchangeFor("have-local-offer", setRemoteDescription, () => undefined),
+      "peer-z",
+      payload,
+    );
+    expect(setRemoteDescription).toHaveBeenCalledWith({ type: "answer", sdp: "v=0\r\n" });
+  });
+
+  it("an answer without re is applied", async () => {
     const setRemoteDescription = vi.fn(async () => undefined);
     await acceptMeshAnswer(
       exchangeFor("have-local-offer", setRemoteDescription, () => undefined),
@@ -124,6 +168,9 @@ function offerExchange(mint: "ok" | "fail") {
   const exchange: MeshSdpExchange = {
     getPeer: (id) => peers.get(id),
     createEntry: (id, name, initiator) => dialer.createEntry(id, name, initiator),
+    replacePeer: (id) => {
+      peers.close(id);
+    },
     needsRelayCredentials: () => dialer.needsRelayCredentials(),
     prepareRelay: async () => {
       if (mint === "ok") dialer.setTurn(TURN);
@@ -157,5 +204,137 @@ describe("acceptMeshOffer", () => {
       event: "offer-dropped",
       details: { from: "peer-z", reason: "relay-credentials-missing" },
     });
+  });
+
+  it("replaces the peer when the offer carries a new session id", async () => {
+    const replacePeer = vi.fn();
+    const createEntry = vi.fn((_id: string, _name: string, _initiator: boolean): MeshPeerEntry => {
+      const pc = answerablePc();
+      return { pc, pendingIce: [] } as unknown as MeshPeerEntry;
+    });
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
+    existingPc.remoteDescription = {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
+    } as RTCSessionDescription;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    let current: MeshPeerEntry | undefined = existing;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => current,
+      createEntry: (id, name, initiator) => {
+        const entry = createEntry(id, name, initiator);
+        current = entry;
+        return entry;
+      },
+      replacePeer: (id) => {
+        replacePeer(id);
+        current = undefined;
+      },
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 222 2 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).toHaveBeenCalledOnce();
+    expect(replacePeer).toHaveBeenCalledWith("peer-z");
+    expect(createEntry).toHaveBeenCalled();
+  });
+
+  it("keeps the peer on an ICE restart offer", async () => {
+    const replacePeer = vi.fn();
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
+    existingPc.remoteDescription = {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 2 IN IP4 0.0.0.0\r\n",
+    } as RTCSessionDescription;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => existing,
+      createEntry: () => existing,
+      replacePeer,
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 111 3 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).not.toHaveBeenCalled();
+  });
+
+  it("keeps the peer when it has no remote description yet", async () => {
+    const replacePeer = vi.fn();
+    const existingPc = answerablePc() as RTCPeerConnection & {
+      remoteDescription: RTCSessionDescription | null;
+    };
+    existingPc.remoteDescription = null;
+    const existing = { pc: existingPc, pendingIce: [] } as unknown as MeshPeerEntry;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => existing,
+      createEntry: () => existing,
+      replacePeer,
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async () => undefined,
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 222 2 IN IP4 0.0.0.0\r\n",
+    });
+    expect(replacePeer).not.toHaveBeenCalled();
+  });
+
+  it("the answer echoes the offer session id", async () => {
+    const sent: unknown[] = [];
+    const pc = answerablePc();
+    const entry = { pc, pendingIce: [] } as unknown as MeshPeerEntry;
+    const exchange: MeshSdpExchange = {
+      getPeer: () => undefined,
+      createEntry: () => entry,
+      replacePeer: () => undefined,
+      needsRelayCredentials: () => false,
+      prepareRelay: async () => undefined,
+      formatInbound: (payload) => payload as RTCSessionDescriptionInit,
+      formatOutbound: (description) => description,
+      sendSignal: async (_to, type, payload) => {
+        if (type === "answer") sent.push(payload);
+      },
+      onSignalError: () => undefined,
+      onSignaled: () => undefined,
+      log: () => undefined,
+    };
+    await acceptMeshOffer(exchange, "peer-z", "Ada", {
+      type: "offer",
+      sdp: "v=0\r\no=- 333 2 IN IP4 0.0.0.0\r\n",
+    });
+    expect(sent).toEqual([
+      expect.objectContaining({
+        type: "answer",
+        re: "333",
+      }),
+    ]);
   });
 });

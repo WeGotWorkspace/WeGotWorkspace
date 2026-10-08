@@ -1,4 +1,10 @@
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
+import {
+  isLinkDownHint,
+  LINK_DOWN_TYPE,
+  type LinkObservation,
+} from "@/lib/rtc/link/link-supervisor";
+import { LinkSupervisor, subscribeNetworkChange } from "@/lib/rtc/link/link-supervisor-runtime";
 import { rtcLog } from "@/lib/rtc/log";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import { parseCollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
@@ -54,6 +60,10 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   private readonly registry: PrincipalLinkRegistry;
 
+  private readonly supervisor: LinkSupervisor;
+
+  private unsubscribeNetwork: () => void = () => undefined;
+
   private readonly pollIntervals: RtcPollIntervals = {
     connectingMs: 400,
     steadyMs: ACTIVE_STEADY_POLL_MS,
@@ -101,13 +111,55 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.emit({ type: "roster" });
       },
       onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
-      onPollData: () => {
+      onPollData: (data) => {
+        this.receiveLinkHints(data.messages);
         this.syncPrincipalLinks();
         this.updatePollCadence();
         this.emit({ type: "roster" });
       },
     });
+    this.supervisor = new LinkSupervisor({
+      now: () => Date.now(),
+      setTimeout: (fn, ms) => setTimeout(fn, ms),
+      clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+      isInitiator: (peerId) => this.mesh.isInitiatorFor(peerId),
+      dial: (peerId) => {
+        this.mesh.abortPeerConnection(peerId);
+        this.mesh.retryPeerConnection(peerId);
+      },
+      sendHint: (peerId, hint) => {
+        void this.mesh.sendMailbox(peerId, LINK_DOWN_TYPE, hint).catch(() => undefined);
+      },
+      log: (event, details) =>
+        rtcLog({ channel: "principal", peerId: this.mesh.getMyId() }, event, details),
+    });
     this.installDebugHook();
+  }
+
+  private observeLink(peerId: string): LinkObservation {
+    if (this.mesh.getDataChannel(peerId)?.readyState === "open") return "open";
+    const pc = this.mesh.getPeerConnection(peerId);
+    if (!pc) return "absent";
+    if (pc.connectionState === "failed" || pc.connectionState === "closed") return "failed";
+    return "connecting";
+  }
+
+  private superviseLinks(): void {
+    const myId = this.mesh.getMyId();
+    if (!myId) return;
+    const peers = this.mesh.getRoomPeers().filter((peer) => peer.id !== myId);
+    this.supervisor.roster(peers.map((peer) => peer.id));
+    for (const peer of peers) this.supervisor.observe(peer.id, this.observeLink(peer.id));
+  }
+
+  private receiveLinkHints(
+    messages: readonly { from: string; type: string; payload: unknown }[],
+  ): void {
+    for (const message of messages) {
+      if (message.type === LINK_DOWN_TYPE && isLinkDownHint(message.payload)) {
+        this.supervisor.hint(message.from);
+      }
+    }
   }
 
   private emit(event: PresenceMeshEvent): void {
@@ -145,10 +197,13 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   async join(name: string): Promise<{ peerId: string }> {
     const joined = await this.mesh.join({ name });
+    this.unsubscribeNetwork = subscribeNetworkChange(() => this.supervisor.networkChange());
     return { peerId: joined.peerId };
   }
 
   async leave(): Promise<void> {
+    this.unsubscribeNetwork();
+    this.supervisor.dispose();
     this.registry.retain(new Set());
     await this.mesh.leave();
   }
@@ -197,6 +252,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
     }
     this.registry.retain(live);
     this.registry.setConnectingUsernames(connectingUsernames);
+    this.superviseLinks();
   }
 }
 

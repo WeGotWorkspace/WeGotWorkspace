@@ -12214,7 +12214,7 @@ export interface components {
              * @description `relay-hint` is server-inserted only: a client that sends it is answered with `bad_type`.
              * @enum {string}
              */
-            type: "offer" | "answer" | "ice" | "bye" | "chat" | "yjs" | "yjs-sv" | "relay-hint";
+            type: "offer" | "answer" | "ice" | "bye" | "chat" | "yjs" | "yjs-sv" | "relay-hint" | "link-down";
             payload?: unknown;
         };
         RtcPollResponse: {
@@ -12232,7 +12232,7 @@ export interface components {
             from?: string;
             to: string;
             /** @enum {string} */
-            type: "offer" | "answer" | "ice" | "bye" | "yjs" | "yjs-sv";
+            type: "offer" | "answer" | "ice" | "bye" | "yjs" | "yjs-sv" | "link-down";
             payload?: unknown;
         };
         RtcRelayRequest: {

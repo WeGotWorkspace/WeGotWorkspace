@@ -1,7 +1,7 @@
 import { rtcSdpMeta } from "@/lib/rtc/log";
 import { icePayloadCandidates } from "@/lib/rtc/session/ice-batch";
 import type { MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
-import { flushPendingIce, safeSetRemoteDescription } from "@/lib/rtc/session/sdp";
+import { flushPendingIce, safeSetRemoteDescription, sdpSessionId } from "@/lib/rtc/session/sdp";
 
 /**
  * Offer, answer, and ICE application for one mesh. Kept off `RtcPeerMesh` so
@@ -10,6 +10,7 @@ import { flushPendingIce, safeSetRemoteDescription } from "@/lib/rtc/session/sdp
 export type MeshSdpExchange = {
   getPeer: (remoteId: string) => MeshPeerEntry | undefined;
   createEntry: (remoteId: string, remoteName: string, initiator: boolean) => MeshPeerEntry;
+  replacePeer: (remoteId: string) => void;
   needsRelayCredentials: () => boolean;
   prepareRelay: () => Promise<void>;
   formatInbound: (payload: unknown, fallbackType: RTCSdpType) => RTCSessionDescriptionInit | null;
@@ -38,6 +39,12 @@ export async function acceptMeshOffer(
   exchange.log("offer-received", { from, ...rtcSdpMeta(payload) });
   const sdp = exchange.formatInbound(payload, "offer");
   if (!sdp) return;
+  const existing = exchange.getPeer(from);
+  const previousSession = sdpSessionId(existing?.pc.remoteDescription?.sdp);
+  if (existing && previousSession && previousSession !== sdpSessionId(sdp.sdp)) {
+    exchange.log("offer-new-session", { from });
+    exchange.replacePeer(from);
+  }
   if (!exchange.getPeer(from) && exchange.needsRelayCredentials()) {
     await exchange.prepareRelay();
     if (exchange.needsRelayCredentials()) {
@@ -53,7 +60,12 @@ export async function acceptMeshOffer(
   const formatted = exchange.formatOutbound(answer);
   await entry.pc.setLocalDescription(formatted);
   try {
-    await exchange.sendSignal(from, "answer", entry.pc.localDescription);
+    const local = entry.pc.localDescription;
+    await exchange.sendSignal(from, "answer", {
+      type: local?.type,
+      sdp: local?.sdp,
+      re: sdpSessionId(sdp.sdp),
+    });
   } catch (error) {
     exchange.onSignalError(from, error);
     return;
@@ -78,6 +90,11 @@ export async function acceptMeshAnswer(
       remoteId: from,
       signalingState: entry.pc.signalingState,
     });
+    return;
+  }
+  const re = (payload as { re?: unknown } | null)?.re;
+  if (typeof re === "string" && re !== sdpSessionId(entry.pc.localDescription?.sdp)) {
+    exchange.log("answer-stale", { remoteId: from });
     return;
   }
   await safeSetRemoteDescription(entry.pc, sdp);

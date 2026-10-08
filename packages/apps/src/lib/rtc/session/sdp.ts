@@ -3,6 +3,13 @@ export function parseCandidateType(candidate: string): string {
   return match?.[1]?.toLowerCase() ?? "unknown";
 }
 
+/** `o=` session id of an SDP, or null. It stays the same across ICE restarts of one peer connection. */
+export function sdpSessionId(sdp: string | undefined | null): string | null {
+  if (!sdp) return null;
+  const match = /^o=\S+\s+(\S+)\s/m.exec(sdp);
+  return match?.[1] ?? null;
+}
+
 export function parseCandidateProtocol(candidate: string): string {
   const parts = candidate.trim().split(/\s+/);
   return parts[2]?.toLowerCase() ?? "unknown";

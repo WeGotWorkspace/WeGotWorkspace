@@ -9,9 +9,6 @@ import type { RtcLinkState, RtcPeerDescriptor } from "@/lib/rtc/types";
 /** Limit how many new principal dials start on a single poll (ghost roster protection). */
 const PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL = 3;
 
-/** A failed principal link is dialed again after this delay. It is never ghosted. */
-export const PRINCIPAL_FAILED_RETRY_MS = 10_000;
-
 export type MeshRoomDial = {
   myId: string | null;
   principal: boolean;
