@@ -283,6 +283,7 @@ export class DocsCollabPrincipalReuse {
   onPrincipalLinkOpen(username: string): void {
     const myId = this.ports.getMyCollabPeerId();
     if (!myId || !username) return;
+    this.failedUsernames.delete(username);
     this.cancelDeferFreshIce(username);
     for (const peer of this.lastRosterPeers) {
       if (peer.id === myId || peer.user !== username) continue;

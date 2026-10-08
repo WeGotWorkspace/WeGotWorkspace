@@ -418,6 +418,30 @@ describe("DocsCollabPrincipalReuse", () => {
     );
   });
 
+  it("retries reuse when the principal link reopens after an ack timeout", () => {
+    const { reuse, registry, registerAdminToWouter, timers, sent } = createHarness();
+    registerAdminToWouter();
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(1);
+
+    expect(timers).toHaveLength(1);
+    expect(timers[0]!.delay).toBe(COLLAB_REUSE_ACK_TIMEOUT_MS);
+    timers[0]!.fn();
+
+    const opensBefore = sent.filter((payload) => (payload as { op?: string }).op === "open").length;
+    registry.unregisterLink("prin-wouter");
+    registry.registerLink({
+      username: "wouter",
+      principalPeerId: "prin-wouter",
+      send: (payload) => sent.push(payload),
+    });
+
+    expect(sent.filter((payload) => (payload as { op?: string }).op === "open")).toHaveLength(
+      opensBefore + 1,
+    );
+  });
+
   it("remaps a reused peer when the collab roster assigns a new id for the same user", () => {
     const { reuse, registry, registerAdminToWouter, messages } = createHarness();
     registerAdminToWouter();
