@@ -35,6 +35,9 @@ const MAX_ROSTER_WAITERS = 8;
 /** Brief hold before fresh ICE when the principal mesh is still connecting. */
 export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS = 400;
 
+/** At most one re-open per peer in this window when its ICE offers are ignored. */
+export const COLLAB_REUSE_REOPEN_GAP_MS = 5_000;
+
 type ReusedPeer = {
   collabPeerId: string;
   name: string;
@@ -133,6 +136,8 @@ export class DocsCollabPrincipalReuse {
 
   private readonly loggedMiss = new Set<string>();
 
+  private readonly reopenSentAt = new Map<string, number>();
+
   /** Stale collab peer ids superseded by principal reuse for the same username. */
   private readonly supersededCollabPeerIds = new Set<string>();
 
@@ -212,6 +217,17 @@ export class DocsCollabPrincipalReuse {
     if (this.supersededCollabPeerIds.has(fromPeerId)) return true;
     if (this.reused.has(fromPeerId)) return true;
     return false;
+  }
+
+  /** An ignored ICE offer means that peer left reuse. Ask it to attach again. */
+  reopenAfterIgnoredOffer(fromPeerId: string, nowMs: number = Date.now()): void {
+    const entry = this.reused.get(fromPeerId);
+    const myId = this.ports.getMyCollabPeerId();
+    if (!entry || !myId) return;
+    if (nowMs - (this.reopenSentAt.get(fromPeerId) ?? 0) < COLLAB_REUSE_REOPEN_GAP_MS) return;
+    this.reopenSentAt.set(fromPeerId, nowMs);
+    this.log("reuse-reopen", { remoteId: fromPeerId, username: entry.username });
+    this.registry.sendToPrincipalPeer(entry.principalPeerId, this.handshakeEnvelope("open", myId));
   }
 
   sendTo(collabPeerId: string, msg: unknown): boolean {
