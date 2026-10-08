@@ -7,6 +7,8 @@ namespace App\Services\Calendars;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarObject;
 use App\Services\VObject\VObjectPayloadGuard;
+use Illuminate\Support\Facades\Log;
+use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 final class CalendarEventRepository
 {
@@ -45,8 +47,15 @@ final class CalendarEventRepository
             try {
                 foreach ($this->mapper->toCalendarEvents($object, $calendarId, $username) as $event) {
                     if ($expandRecurrences && $after !== null && $before !== null && $this->expansion->isRecurring($event)) {
-                        foreach ($this->expansion->expandInWindow($event, $raw, $calendarId, $after, $before) as $instance) {
-                            $events[] = $instance;
+                        try {
+                            foreach ($this->expansion->expandInWindow($event, $raw, $calendarId, $after, $before) as $instance) {
+                                $events[] = $instance;
+                            }
+                        } catch (MaxInstancesExceededException) {
+                            Log::warning('calendar.recurrence_limit', [
+                                'uid' => $event['uid'] ?? null,
+                                'calendarUri' => $calendarId,
+                            ]);
                         }
                     } else {
                         $events[] = $event;
@@ -98,7 +107,16 @@ final class CalendarEventRepository
                         if ($title !== null && stripos((string) ($event['title'] ?? ''), $title) === false) {
                             continue;
                         }
-                        if ($window !== null && ! $this->queries->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
+                        try {
+                            if ($window !== null && ! $this->queries->eventIntersectsWindow($event, $raw, $calendarApiId, $window)) {
+                                continue;
+                            }
+                        } catch (MaxInstancesExceededException) {
+                            Log::warning('calendar.recurrence_limit', [
+                                'uid' => $event['uid'] ?? null,
+                                'calendarUri' => $calendarApiId,
+                            ]);
+
                             continue;
                         }
                         $matches[] = $event;

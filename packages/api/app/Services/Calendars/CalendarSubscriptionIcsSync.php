@@ -91,6 +91,9 @@ final class CalendarSubscriptionIcsSync
         foreach ($series as $group) {
             $uid = $this->uidOf($group['master']);
             $vevents = [$group['master'], ...$group['overrides']];
+            if ($this->recurrenceRejected($vevents)) {
+                continue;
+            }
             $documents[$uid] = $this->serializeSeries($calendar, $vevents);
         }
 
@@ -112,6 +115,24 @@ final class CalendarSubscriptionIcsSync
         }
 
         return $out->serialize();
+    }
+
+    /**
+     * @param  list<VEvent>  $vevents
+     */
+    private function recurrenceRejected(array $vevents): bool
+    {
+        $calendar = new VCalendar;
+        foreach ($vevents as $vevent) {
+            $calendar->add(clone $vevent);
+        }
+        try {
+            RecurrenceRuleGuard::assertAllowed($calendar);
+        } catch (ApiHttpException) {
+            return true;
+        }
+
+        return false;
     }
 
     private function uidOf(VEvent $vevent): string
