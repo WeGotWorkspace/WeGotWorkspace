@@ -143,12 +143,13 @@ describe("DocsRtcSession send failure", () => {
       peers: [{ id: "peer-b", name: "Bea", caps: ["yjs-http"] }],
       messages: [],
     });
+    const kicksBeforeRejection = captured.mesh.kickPoll.mock.calls.length;
 
     await Promise.resolve();
     await Promise.resolve();
 
     expect(captured.mesh.sendMailbox).toHaveBeenCalled();
-    expect(captured.mesh.kickPoll).toHaveBeenCalled();
+    expect(captured.mesh.kickPoll.mock.calls.length).toBe(kicksBeforeRejection + 1);
   });
 });
 

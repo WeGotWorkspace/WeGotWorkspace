@@ -1032,13 +1032,21 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     await flushAsyncWork();
 
     expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
+    signaling.setPollHandler(async () => ({ unchanged: true }));
 
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(9_999);
     await flushAsyncWork();
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
 
+    await vi.advanceTimersByTimeAsync(1);
+    await flushAsyncWork();
     expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeTruthy();
     expect(pcs.size).toBeGreaterThan(pcsBeforeFailure);
 
+    signaling.setPollHandler(async () => ({
+      peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
+      messages: [],
+    }));
     await vi.advanceTimersByTimeAsync(400);
     await flushAsyncWork();
     expect(mesh.getRoomPeers().map((peer) => peer.id)).toContain("BBBBBBBBBB");
