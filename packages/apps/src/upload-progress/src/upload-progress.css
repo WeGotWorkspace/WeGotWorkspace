@@ -3,7 +3,7 @@
   border-bottom: 1px solid
     var(
       --upload-progress-border-color,
-      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
     );
 }
 
@@ -30,7 +30,7 @@
   white-space: nowrap;
   color: var(
     --upload-progress-label-color,
-    color-mix(in oklab, var(--color-we-got-dark) 85%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 85%, transparent)
   );
 }
 
@@ -39,7 +39,7 @@
   font-variant-numeric: tabular-nums;
   color: var(
     --upload-progress-muted-color,
-    color-mix(in oklab, var(--color-we-got-dark) 68%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 68%, transparent)
   );
 }
 
@@ -51,7 +51,7 @@
   border-radius: 9999px;
   background-color: var(
     --upload-progress-track-bg,
-    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -75,6 +75,6 @@
   line-height: 1rem;
   color: var(
     --upload-progress-muted-color,
-    color-mix(in oklab, var(--color-we-got-dark) 65%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
   );
 }

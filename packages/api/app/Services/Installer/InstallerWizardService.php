@@ -6,6 +6,7 @@ namespace App\Services\Installer;
 
 use App\Services\Settings\SettingKeys;
 use App\Support\AppPaths;
+use App\Support\InstallLayout;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwRuntimeEnvBridge;
 use Illuminate\Support\Facades\Cache;
@@ -324,6 +325,7 @@ final class InstallerWizardService
         if ($enableFiles) {
             @mkdir(rtrim($this->paths->dataDir(), '/').'/files', 0775, true);
         }
+        $this->paths->ensureDataDirWebDeny();
 
         $this->paths->clearStaleInstallLock();
         $this->removeEmptySqliteDatabase($db);
@@ -344,7 +346,7 @@ final class InstallerWizardService
                         SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
                         SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
                         SettingKeys::AUTH_REALM => 'SabreDAV',
-                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? true),
+                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
                         SettingKeys::FILES_ENABLED => $enableFiles,
                         SettingKeys::CALENDAR_ENABLED => $enableCalendars,
                         SettingKeys::CONTACTS_ENABLED => $enableContacts,
@@ -371,6 +373,13 @@ final class InstallerWizardService
             'data_dir' => $this->paths->tryRelativeToInstallRoot($this->paths->dataDir()) ?? $this->paths->dataDir(),
             'pdo' => $this->pdoConfigForWrite($db),
         ];
+        // ZIP extracts have no channel. Docker already wrote WGW_INSTALL_CHANNEL
+        // before this wizard runs, so an existing channel is left as-is.
+        // A monorepo app shell (apps/wegotworkspace) is not a ZIP release.
+        if ($this->installConfig->installChannel() === null
+            && InstallLayout::isReleaseInstallRoot($this->installConfig->installRoot())) {
+            $bootstrap['install_channel'] = 'zip';
+        }
 
         try {
             $this->envWriter->writeBootstrap($bootstrap);
@@ -389,7 +398,7 @@ final class InstallerWizardService
         $this->saveWizardState([
             'step' => 'done',
             'installed_base_uri' => (string) ($state['base_uri'] ?? '/'),
-            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
+            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'enable_files' => $enableFiles,
             'enable_calendars' => $enableCalendars,
             'enable_contacts' => $enableContacts,
@@ -416,7 +425,7 @@ final class InstallerWizardService
                 'enable_files' => true,
                 'enable_calendars' => true,
                 'enable_contacts' => true,
-                'show_browser_ui' => true,
+                'show_browser_ui' => false,
                 'checks' => $this->env->checkAll('sqlite'),
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
@@ -444,7 +453,7 @@ final class InstallerWizardService
             'enable_files' => (bool) ($state['enable_files'] ?? true),
             'enable_calendars' => (bool) ($state['enable_calendars'] ?? true),
             'enable_contacts' => (bool) ($state['enable_contacts'] ?? true),
-            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? true),
+            'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'checks' => $this->env->checkAll($driver),
             'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
         ];

@@ -54,7 +54,7 @@ pnpm dev:ui       # alias for `pnpm dev`
 pnpm preview      # built UI + API (no HMR)
 ```
 
-First-time host API JWT (without full install tree): copy `packages/api/.env.example` → `packages/api/.env`, then `bash packages/api/scripts/generate-jwt-keys.sh`. For install-tree keys, `php packages/api/artisan wgw:jwt-keys` (also run by `pnpm dev` / `pnpm preview` bootstrap).
+First-time host API JWT (without full install tree): copy `packages/api/.env.example` → `packages/api/.env`, set `APP_ENV=local` and `APP_DEBUG=true` (optional: `WGW_DISABLE_LOGIN_THROTTLE=1`), then `bash packages/api/scripts/generate-jwt-keys.sh`. For install-tree keys, `php packages/api/artisan wgw:jwt-keys` (also run by `pnpm dev` / `pnpm preview` bootstrap).
 
 ## Offline / PWA (contacts pilot)
 

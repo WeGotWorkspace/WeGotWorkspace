@@ -30,14 +30,14 @@ const meta: Meta<typeof AppSwitchButton> = {
 export default meta;
 type Story = StoryObj<typeof AppSwitchButton>;
 
-/** In-app trigger: user artwork icon + “we got” / route label. */
+/** In-app trigger: user artwork icon + serif route label (no suite wordmark). */
 export const InApp: Story = {
   parameters: {
     routerPath: "/mail",
   },
 };
 
-/** Workspace home / install: inverted suite icon + “we got Workspace” lockup on dark shell. */
+/** Workspace home / install: inverted suite icon + SVG wordmark on dark shell. */
 export const Workspace: Story = {
   args: {
     subtitle: "Workspace",
@@ -58,39 +58,6 @@ export const Workspace: Story = {
       </div>
     ),
   ],
-};
-
-export const CompactWorkspace: Story = {
-  args: {
-    variant: "compact",
-    subtitle: "Workspace",
-  },
-  decorators: [
-    (Story) => (
-      <div
-        className="rounded-lg p-4"
-        style={
-          {
-            backgroundColor: "var(--workspace-home-bg, #1b1d3a)",
-            color: "#ffffff",
-            "--app-switch-label-color": "#ffffff",
-          } as CSSProperties
-        }
-      >
-        <Story />
-      </div>
-    ),
-  ],
-};
-
-/** Compact header in an app shell: user artwork icon + single app name line. */
-export const CompactInApp: Story = {
-  parameters: {
-    routerPath: "/docs",
-  },
-  args: {
-    variant: "compact",
-  },
 };
 
 export const Disabled: Story = {
@@ -158,7 +125,7 @@ export const AppIcons: Story = {
             >
               <WorkspaceAppIcon
                 appId={appId}
-                className="size-[calc(2*1.875rem*0.85)]"
+                className="size-[var(--control-height-md,2.25rem)]"
                 variant="switch-trigger"
               />
             </div>
@@ -169,7 +136,10 @@ export const AppIcons: Story = {
       <div className="flex flex-wrap items-end gap-4">
         {WORKSPACE_APP_IDS.map((appId) => (
           <div key={`orig-${appId}`} className="flex flex-col items-center gap-2">
-            <WorkspaceAppIcon appId={appId} className="size-[calc(2*1.875rem*0.85)] rounded-lg" />
+            <WorkspaceAppIcon
+              appId={appId}
+              className="size-[var(--control-height-md,2.25rem)] rounded-lg"
+            />
             <span className="text-xs capitalize text-muted-foreground">{appId} original</span>
           </div>
         ))}

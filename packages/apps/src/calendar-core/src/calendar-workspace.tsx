@@ -852,10 +852,9 @@ export function CalendarWorkspace({
                     goToday();
                     closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
                   }}
-                  size="xl"
+                  size="md"
                   pill
                   variant="primary"
-                  className="w-full"
                 />
               )
             }

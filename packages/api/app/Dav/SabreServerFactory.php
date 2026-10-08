@@ -117,7 +117,7 @@ final class SabreServerFactory
         $server->addPlugin(new DriveShareMovePlugin($this->driveShares));
         $locksPath = rtrim($this->install->dataDir(), '/').'/webdav-locks.dat';
         $server->addPlugin(new Locks\Plugin(new Locks\Backend\File($locksPath)));
-        if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? true)) {
+        if ((bool) ($cfg[WgwSettings::BROWSER_PLUGIN] ?? false)) {
             $server->addPlugin(new DAV\Browser\Plugin);
         }
         $server->addPlugin(new DAV\Sync\Plugin);

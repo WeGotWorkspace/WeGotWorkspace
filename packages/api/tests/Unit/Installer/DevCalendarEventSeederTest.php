@@ -140,6 +140,9 @@ final class DevCalendarEventSeederTest extends WgwDatabaseTestCase
         $isolated = sys_get_temp_dir().'/wgw-zip-seed-'.uniqid('', true);
         mkdir($isolated.'/packages/api', 0775, true);
         $this->app['env'] = 'local';
+        config(['wgw.install_channel' => null]);
+        putenv('WGW_INSTALL_CHANNEL');
+        unset($_ENV['WGW_INSTALL_CHANNEL'], $_SERVER['WGW_INSTALL_CHANNEL']);
         $this->app->setBasePath($isolated.'/packages/api');
 
         try {

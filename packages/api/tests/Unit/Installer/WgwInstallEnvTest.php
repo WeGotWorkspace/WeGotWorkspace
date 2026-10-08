@@ -139,6 +139,37 @@ final class WgwInstallEnvTest extends TestCase
         $this->assertSame('admin', $plan['payload']['username'] ?? null);
     }
 
+    public function test_headless_plan_defaults_the_browser_off_unless_opted_in(): void
+    {
+        $this->setInstallConfig([
+            'headless' => true,
+            'db_driver' => 'sqlite',
+            'base_uri' => '/',
+            'admin_username' => 'admin',
+            'admin_email' => 'admin@example.test',
+            'admin_password' => 'longpassword',
+        ]);
+
+        $off = app(WgwInstallEnv::class)->headlessPlan('');
+        $this->assertIsArray($off);
+        $this->assertFalse($off['state']['show_browser_ui']);
+
+        $this->setInstallConfig([
+            'show_browser_ui' => true,
+        ]);
+
+        $on = app(WgwInstallEnv::class)->headlessPlan('');
+        $this->assertIsArray($on);
+        $this->assertTrue($on['state']['show_browser_ui']);
+    }
+
+    public function test_wizard_defaults_leave_the_browser_off(): void
+    {
+        $defaults = app(WgwInstallEnv::class)->wizardDefaults('');
+
+        $this->assertFalse($defaults['show_browser_ui']);
+    }
+
     public function test_bootstrap_endpoint_prefills_mysql_from_env(): void
     {
         $this->setInstallConfig([

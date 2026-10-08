@@ -40,7 +40,6 @@ const meetHeaderShellStyle = {
   "--app-sidebar-color": "#ffffff",
   "--app-switch-lockup-bg": "var(--workspace-home-bg, #1b1d3a)",
   "--app-switch-label-color": "#ffffff",
-  "--app-switch-label-tagline-color": "color-mix(in oklab, #ffffff 92%, #1b1d3a)",
 } as CSSProperties;
 
 function MeetDarkHeader(args: WorkspaceShellHeaderProps) {

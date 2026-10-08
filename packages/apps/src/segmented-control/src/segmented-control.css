@@ -25,7 +25,7 @@
   );
   --segmented-control-severity-success-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--color-we-got-dark))
+    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--workspace-foreground))
   );
   --segmented-control-severity-success-hover-bg: var(
     --button-severity-success-hover-background,
@@ -88,7 +88,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
       )
     )
   );
@@ -149,7 +149,7 @@
   /* Kill UA line-box strut so icon+label stay optically centered in the thumb. */
   line-height: 0;
   /* Match outline Button / IconButton idle foreground (no muted fade). */
-  color: var(--segmented-control-color, var(--button-outline-color, var(--color-we-got-dark)));
+  color: var(--segmented-control-color, var(--button-outline-color, var(--workspace-foreground)));
   background: transparent;
   transition:
     color 150ms,
@@ -181,7 +181,10 @@
 }
 
 .segmented-control__button--active {
-  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-we-got-dark)));
+  color: var(
+    --segmented-control-active-fg,
+    var(--button-active-color, var(--workspace-foreground))
+  );
   /* Fallback when the sliding thumb has not measured yet (Storybook a11y). */
   background-color: var(--segmented-control-active-bg, transparent);
 }
@@ -190,13 +193,13 @@
 .segmented-control__button:hover:not(:disabled) {
   color: var(
     --segmented-control-hover-color,
-    var(--button-outline-hover-color, var(--button-outline-color, var(--color-we-got-dark)))
+    var(--button-outline-hover-color, var(--button-outline-color, var(--workspace-foreground)))
   );
   background-color: var(
     --segmented-control-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
     )
   );
 }
@@ -206,7 +209,10 @@
 /* Keep the sliding thumb wash — avoid painting a second hover layer on the active segment. */
 .segmented-control__button--active:hover:not(:disabled) {
   background-color: transparent;
-  color: var(--segmented-control-active-fg, var(--button-active-color, var(--color-we-got-dark)));
+  color: var(
+    --segmented-control-active-fg,
+    var(--button-active-color, var(--workspace-foreground))
+  );
 }
 
 .segmented-control__button--active.segmented-control__button--severity-success {

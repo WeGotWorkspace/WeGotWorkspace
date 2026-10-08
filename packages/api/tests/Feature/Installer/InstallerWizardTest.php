@@ -290,6 +290,23 @@ final class InstallerWizardTest extends TestCase
         $this->assertAdminCanSignIn('owner', 'longpassword');
     }
 
+    public function test_fresh_install_leaves_the_browser_plugin_off(): void
+    {
+        $sqlite = $this->sqlitePath('browser-off.sqlite');
+        $this->advanceToSite($sqlite);
+
+        $this->postAction('install', $this->installPayload([
+            'username' => 'admin',
+            'email' => 'admin@example.test',
+        ]))->assertOk()->assertJsonPath('ok', true);
+
+        $db = $this->installedPdo($sqlite);
+        $this->assertSame(
+            'false',
+            $this->scalar($db, "SELECT value FROM app_settings WHERE name = 'browser_plugin'"),
+        );
+    }
+
     public function test_happy_path_creates_first_admin_and_sets_realm(): void
     {
         $sqlite = $this->sqlitePath('happy-path.sqlite');

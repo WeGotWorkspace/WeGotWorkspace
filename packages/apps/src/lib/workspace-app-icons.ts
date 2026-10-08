@@ -29,9 +29,9 @@ export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   tasks: "#ffbdc2",
   drive: "#8ACE00",
   docs: "#0045ff",
-  settings: "#003311",
+  settings: "#222222",
   meet: "#ffc800",
-  admin: "#003311",
+  admin: "#222222",
 };
 
 const APPLE_TOUCH_SIZE = 180;
@@ -40,7 +40,7 @@ const APPLE_TOUCH_SIZE = 180;
  * Canonical vector artwork for in-app UI — `/app-icons/{app}.svg`.
  * Install manifests do not use this file. WebKit prefers apple-touch-icon when
  * it is in the document head, and otherwise reads the generated PNGs. The SVG
- * fills use `var(--wai-*)`, which are unreliable in an external image.
+ * fills use `var(--app-icon-layer-*)`, which are unreliable in an external image.
  */
 export function workspaceAppIconUiSrc(appId: WorkspaceAppId): string {
   return `/app-icons/${appId}.svg`;

@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import type {
-  AppSwitchButtonProps,
-  AppSwitchButtonVariant,
-} from "@/app-switch-button/src/app-switch-button";
+import type { AppSwitchButtonProps } from "@/app-switch-button/src/app-switch-button";
 import { BrandLockup } from "@/brand-lockup/src/brand-lockup";
 import { WorkspaceAppSwitcher } from "@/workspace-app-switcher/src/workspace-app-switcher";
 import { WorkspaceShellHeaderUserMenu } from "@/workspace-shell/src/workspace-shell-header-user-menu";
@@ -21,7 +18,6 @@ export type WorkspaceShellHeaderProps = {
   /** Passed to `WorkspaceAppSwitcher` (ignored when `brandLockup`). */
   appSwitchDisabled?: boolean;
   appSwitchSubtitle?: string;
-  appSwitchVariant?: AppSwitchButtonVariant;
   /** Rendered beside the app switcher / brand lockup (e.g. open document name in Docs). */
   startAccessory?: ReactNode;
   /** Rendered on the right before the account chip (e.g. word count in Docs). */
@@ -44,7 +40,6 @@ export function WorkspaceShellHeader({
   brandLockup = false,
   appSwitchDisabled = false,
   appSwitchSubtitle,
-  appSwitchVariant,
   startAccessory,
   endAccessory,
   onAppSelect,
@@ -66,7 +61,6 @@ export function WorkspaceShellHeader({
           <WorkspaceAppSwitcher
             disabled={appSwitchDisabled}
             subtitle={appSwitchSubtitle}
-            variant={appSwitchVariant}
             onSelect={onAppSelect}
           />
         )}

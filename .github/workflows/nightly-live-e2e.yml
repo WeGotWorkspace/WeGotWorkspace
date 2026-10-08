@@ -61,6 +61,9 @@ jobs:
       - name: Prepare Laravel env
         run: |
           cp packages/api/.env.example packages/api/.env
+          # The example is production-safe. This job is a local dev bootstrap.
+          sed -i 's/^APP_ENV=.*/APP_ENV=local/' packages/api/.env
+          sed -i 's/^APP_DEBUG=.*/APP_DEBUG=true/' packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
       - name: Install JS workspace

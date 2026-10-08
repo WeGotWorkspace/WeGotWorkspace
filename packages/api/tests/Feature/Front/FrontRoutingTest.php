@@ -159,13 +159,13 @@ final class FrontRoutingTest extends TestCase
             ->assertHeader('Content-Type', 'text/html; charset=utf-8');
     }
 
-    public function test_api_docs_login_persists_authorization_to_local_storage(): void
+    public function test_api_docs_does_not_persist_authorization(): void
     {
         $content = (string) $this->get('/api/docs')->assertOk()->getContent();
 
-        $this->assertStringContainsString('persistAuthorization: true', $content);
+        $this->assertStringContainsString('persistAuthorization: false', $content);
         $this->assertStringContainsString('preauthorizeApiKey("bearerAuth"', $content);
-        $this->assertStringContainsString('authActions.persistAuthorizationIfNeeded()', $content);
+        $this->assertStringNotContainsString('persistAuthorizationIfNeeded()', $content);
     }
 
     public function test_openapi_json_is_served(): void

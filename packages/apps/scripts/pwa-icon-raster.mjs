@@ -1,7 +1,7 @@
 /**
  * librsvg does not resolve CSS custom properties. Peel `var(--token, fallback)`
  * from the inside out so a nested brand token collapses to its hex fallback:
- * `var(--wai-bg, var(--color-we-got-yellow, #ffc800))` → `#ffc800`.
+ * `var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))` → `#ffc800`.
  */
 export function svgForRasterization(markup) {
   const pattern = /var\(\s*--[\w-]+\s*,\s*([^()]+?)\s*\)/g;

@@ -189,7 +189,7 @@ describe("TasksMainView composer", () => {
     const task = bootstrap.data.tasks[0];
     renderMainView({ displayTasks: [task], onToggleComplete, onEditTask });
 
-    fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.markComplete }));
+    fireEvent.click(screen.getByRole("checkbox", { name: defaultTasksLabels.markComplete }));
 
     expect(onToggleComplete).toHaveBeenCalledTimes(1);
     expect(onToggleComplete).toHaveBeenCalledWith(task.id);
@@ -202,11 +202,13 @@ describe("TasksMainView composer", () => {
     const task = bootstrap.data.tasks[0];
     renderMainView({ displayTasks: [task], onToggleComplete, onEditTask });
 
-    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    const checkbox = screen.getByRole("checkbox", { name: defaultTasksLabels.markComplete });
     const wrap = checkbox.closest(".tasks-main-view__complete-wrap");
     expect(wrap).toBeTruthy();
     expect(wrap?.querySelector("[class*='overlay']")).toBeNull();
     expect(checkbox.getAttribute("draggable")).toBe("false");
+    expect(checkbox.classList.contains("checkbox")).toBe(true);
+    expect(checkbox.classList.contains("checkbox--size-md")).toBe(true);
 
     fireEvent.pointerDown(checkbox);
     fireEvent.click(checkbox);
@@ -227,7 +229,7 @@ describe("TasksMainView composer", () => {
       onToggleComplete,
     });
 
-    const checkbox = screen.getByRole("button", { name: defaultTasksLabels.markComplete });
+    const checkbox = screen.getByRole("checkbox", { name: defaultTasksLabels.markComplete });
     expect(checkbox).toHaveProperty("disabled", true);
     expect(checkbox.closest(".tasks-main-view__complete-wrap")).toBeTruthy();
 
@@ -357,7 +359,7 @@ describe("TasksMainView composer", () => {
   it("shows a plus icon marker in the composer instead of a checkbox", () => {
     renderComposer();
 
-    expect(screen.queryByRole("button", { name: defaultTasksLabels.markComplete })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: defaultTasksLabels.markComplete })).toBeNull();
 
     const composer = document.querySelector(".tasks-main-view__composer");
     const marker = composer?.querySelector(".tasks-main-view__composer-marker svg");

@@ -1,0 +1,17 @@
+@import "../../styles.css" reference;
+
+/**
+ * Suite wordmark — height matches the suite / in-app icon tile
+ * (`--control-height-md`). Width stays auto for aspect. Color inherits from
+ * the trigger (`--app-switch-label-color` → `currentColor` on the SVG path).
+ */
+.we-got-workspace-wordmark {
+  @apply block shrink-0;
+  height: var(--control-height-md, 2.25rem);
+  width: auto;
+  color: var(--app-switch-label-color, currentColor);
+}
+
+.we-got-workspace-wordmark svg {
+  @apply block h-full w-auto;
+}

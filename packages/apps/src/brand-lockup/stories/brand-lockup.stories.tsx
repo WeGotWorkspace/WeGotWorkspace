@@ -14,7 +14,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof BrandLockup>;
 
-/** Cream shell — dark `#003311` mark + ink wordmark (home / login / install). */
+/** Auth shell — suite mark + SVG wordmark (home / login / install). */
 export const OnCream: Story = {
   render: () => (
     <main className="login-screen min-h-40">

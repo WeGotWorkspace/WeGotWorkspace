@@ -1,5 +1,11 @@
 Options -Indexes -MultiViews
 
+# Deny private trees and known sensitive dotfiles even when mod_rewrite is off.
+# mod_alias is effectively always present. Other "/." segments stay reachable
+# so WebDAV can serve .attachments, .notes, .Trash, and AppleDouble files.
+RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)
+RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+
 # Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
 # see .user.ini. Must stay in sync with docker/php/uploads.ini.
 <IfModule mod_php.c>

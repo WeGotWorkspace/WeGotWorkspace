@@ -34,11 +34,15 @@
   --workspace-panel-width: var(--docs-comments-column-width);
   --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
   /* Accent is already Dark, so chip ink stays Dark and clears AA on the cream footer. */
-  --docs-stat-tag-color: color-mix(in oklch, var(--workspace-accent) 40%, var(--color-we-got-dark));
-  --docs-text: var(--sidebar-on, var(--color-we-got-dark));
+  --docs-stat-tag-color: color-mix(
+    in oklch,
+    var(--workspace-accent) 40%,
+    var(--workspace-foreground)
+  );
+  --docs-text: var(--workspace-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
-  --docs-muted: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent);
-  --docs-border: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent);
+  --docs-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  --docs-border: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   /*
    * Shared horizontal inset for ViewHeader (`main-header`), format bar, and
    * detail footer — matches shell `p-4` / `md:p-6` (1rem → 1.5rem).
@@ -51,30 +55,13 @@
 
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
+  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-foreground: #ffffff;
   --checkbox-border-color: var(--workspace-accent);
-  --checkbox-checked-bg: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --checkbox-checked-fg: #ffffff;
 
   /* Outline / header chrome: accent-strong for text-on-wash (not primary fills). */
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
-  /* Quiet menu washes: shared `ui/workspace-menu-item-sst.css` (accent 14/18/24).
+  /* Quiet menu washes: shared `workspace-derive.css`.
    * Nav item SST lives on `.app-sidebar__scroll` (black→sidebar, white on-color). */
 
   --foreground: var(--docs-text);
@@ -83,16 +70,6 @@
   background-color: var(--docs-surface);
   color: var(--docs-text);
   font-family: var(--font-sans);
-}
-
-/*
- * Header outline actions (sidebar toggle + DocsHeaderActions): accent glyph via
- * `--button-active-color`; soft washes come from shared `.view-header` SST.
- */
-.docs-workspace .view-header {
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
 }
 
 /*
@@ -121,24 +98,9 @@
 :is(.docs-workspace, .docs-dialog-surface) .drive-workspace {
   --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
-  /* Menu/select washes: shared `ui/workspace-menu-item-sst.css`. */
+  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-foreground: #ffffff;
+  /* Menu/select washes: shared `workspace-derive.css`. */
 }
 
 @media (min-width: 768px) {
@@ -165,22 +127,21 @@
 
 /** Sidebar lockup: blue tile + white marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--color-we-got-blue);
-  --app-switch-icon-fg: #ffffff;
-  background-color: var(--color-we-got-blue);
+  --app-switch-icon-bg: var(--workspace-icon-surface);
+  --app-switch-icon-fg: var(--workspace-icon-foreground);
+  background-color: var(--workspace-icon-surface);
 }
 
 .docs-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
+  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-foreground: #ffffff;
 }
 
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 .docs-workspace__header-actions-leading {
@@ -234,9 +195,9 @@
 /* Mute last-edited chip so it stays distinct from accent word/char stats. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 6%, transparent);
+  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
-  --tag-fg: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 72%, transparent);
+  --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--edited .tag {
@@ -297,14 +258,9 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --wai-bg: var(--color-we-got-blue);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
-  --button-active-color: var(--workspace-accent-strong);
-  /* Soft outline + menu washes: shared `ui/workspace-menu-item-sst.css`. */
+  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-foreground: #ffffff;
+  /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 
 .docs-workspace__editor {

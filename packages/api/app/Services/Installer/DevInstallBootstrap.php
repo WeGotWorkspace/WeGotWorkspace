@@ -64,6 +64,7 @@ final class DevInstallBootstrap
         ];
 
         @mkdir(rtrim($this->paths->dataDir(), '/').'/files', 0775, true);
+        $this->paths->ensureDataDirWebDeny();
 
         $this->database->installFresh(
             $db,

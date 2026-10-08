@@ -38,10 +38,10 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
         }
         $key = $this->childKey($name);
         if ($this->filesystem->directoryExists($key)) {
-            return new self($this->filesystem, $key);
+            return $this->makeDirectoryNode($key);
         }
         if ($this->filesystem->fileExists($key)) {
-            return new FlysystemFile($this->filesystem, $key);
+            return $this->makeFileNode($key);
         }
 
         throw new DAV\Exception\NotFound('File could not be located');
@@ -70,7 +70,7 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
                 continue;
             }
             if ($name !== '' && $name !== '.' && $name !== '..') {
-                $nodes[] = new self($this->filesystem, $dirKey);
+                $nodes[] = $this->makeDirectoryNode($dirKey);
             }
         }
         foreach ($this->filesystem->files($this->key) as $fileKey) {
@@ -79,7 +79,7 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
                 continue;
             }
             if ($name !== '' && $name !== '.' && $name !== '..') {
-                $nodes[] = new FlysystemFile($this->filesystem, $fileKey);
+                $nodes[] = $this->makeFileNode($fileKey);
             }
         }
 
@@ -125,5 +125,15 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
         }
 
         return false;
+    }
+
+    protected function makeDirectoryNode(string $key): self
+    {
+        return new self($this->filesystem, $key);
+    }
+
+    protected function makeFileNode(string $key): FlysystemFile
+    {
+        return new FlysystemFile($this->filesystem, $key);
     }
 }

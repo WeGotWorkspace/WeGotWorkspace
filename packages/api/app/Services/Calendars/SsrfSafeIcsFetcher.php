@@ -6,7 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\VObject\VObjectPayloadGuard;
-use Illuminate\Http\Client\ConnectionException;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -135,25 +135,50 @@ final class SsrfSafeIcsFetcher
         $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
         $port = isset($parts['port']) ? (int) $parts['port'] : ($scheme === 'http' ? 80 : 443);
         $connectIp = $validatedIps[0] ?? $host;
+        $options = $this->requestOptions($host, $port, $connectIp);
+        /** @var CappedSinkStream $sink */
+        $sink = $options['sink'];
 
         try {
-            return Http::withOptions([
-                'allow_redirects' => false,
-                'timeout' => self::TIMEOUT_SECONDS,
-                'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
-                'curl' => [
-                    CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
-                ],
-            ])->withHeaders([
+            return Http::withOptions($options)->withHeaders([
                 'Accept' => 'text/calendar, text/plain, */*',
             ])->get($url);
-        } catch (ConnectionException) {
-            throw new ApiHttpException(400, 'Could not fetch the calendar feed.', 'bad_request');
         } catch (ApiHttpException $exception) {
             throw $exception;
         } catch (\Throwable) {
+            if ($sink->tooLarge) {
+                throw new ApiHttpException(
+                    413,
+                    'iCalendar payload exceeds the maximum allowed size of '.VObjectPayloadGuard::MAX_ICS_BYTES.' bytes.',
+                    'payload_too_large',
+                );
+            }
+
             throw new ApiHttpException(400, 'Could not fetch the calendar feed.', 'bad_request');
         }
+    }
+
+    /**
+     * cURL options for one hop. No `stream` key: that selects Guzzle's
+     * StreamHandler, which drops CURLOPT_RESOLVE and resolves DNS again.
+     * The sink aborts the transfer with a short write once the body crosses the cap.
+     *
+     * @return array<string, mixed>
+     */
+    public function requestOptions(string $host, int $port, string $connectIp): array
+    {
+        return [
+            'allow_redirects' => false,
+            'timeout' => self::TIMEOUT_SECONDS,
+            'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'sink' => new CappedSinkStream(
+                Utils::streamFor(Utils::tryFopen('php://temp', 'w+')),
+                VObjectPayloadGuard::MAX_ICS_BYTES,
+            ),
+            'curl' => [
+                CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
+            ],
+        ];
     }
 
     private function absoluteUrl(string $current, string $location): string

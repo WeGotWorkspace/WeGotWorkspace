@@ -7,6 +7,8 @@ export type MeetChatLine = {
   body: string;
   ts: number;
   isSelf: boolean;
+  /** Saved channel message this room line echoes. Members already have that row. */
+  channelMessageId?: string;
 };
 
 /** Guest in-channel rail uses MeetChatColumn; room poll lines are a thinner shape. */
@@ -66,9 +68,11 @@ export function buildLocalMeetChatLine(
 
 /**
  * Host channel collection + guest room-poll lines share one MeetChatColumn.
- * Signaling does not deliver a peer's own chat. `sendChat` drops that local
- * line once the channel send has saved it, so a line still here is a call
- * with no channel, or a channel send that did not save.
+ * A copy of a saved channel message is marked with `channelMessageId` and
+ * skipped: members already have that row under the account principal. Every
+ * other room line is shown once — a guest, a signed-in person admitted from
+ * the lobby, or a channel send that did not save. Copies stay in the call
+ * store so guests, who have no channel collection, can still read them.
  */
 export function mergeMeetRoomChatIntoChannel(
   channelMessages: ChatMessage[],
@@ -79,6 +83,7 @@ export function mergeMeetRoomChatIntoChannel(
   const ids = new Set(channelMessages.map((message) => message.id));
   const merged = [...channelMessages];
   for (const line of roomLines) {
+    if (line.channelMessageId) continue;
     const message = meetChatLineToChannelMessage(line, channelId);
     if (ids.has(message.id)) continue;
     ids.add(message.id);

@@ -20,6 +20,18 @@ final class InstallLayout
     }
 
     /**
+     * True for a shipped ZIP/Docker tree: packages/api lives in the install root,
+     * and the root is not the monorepo app shell (apps/wegotworkspace).
+     */
+    public static function isReleaseInstallRoot(string $installRoot): bool
+    {
+        $normalized = rtrim(str_replace('\\', '/', $installRoot), '/');
+
+        return is_dir($normalized.'/packages/api')
+            && self::monorepoRoot($normalized) === null;
+    }
+
+    /**
      * True for the git checkout root (has {@code pnpm-workspace.yaml} + {@code apps/wegotworkspace}).
      * That directory is not the install tree — artisan cwd often is the repo root.
      */

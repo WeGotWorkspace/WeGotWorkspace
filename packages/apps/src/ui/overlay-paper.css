@@ -1,60 +1,15 @@
 @import "../styles.css" reference;
 
 /**
- * Light dialogs and popovers use the main-area paper (`--workspace-surface`):
- * 40% Soft mixed into white. Fields match that paper at rest. Focus adds a
- * very light Dark wash. Primary buttons and switches are brand Dark, not the
- * app icon color.
- *
- * The mix is repeated here because these surfaces portal to `document.body`
- * and do not inherit the workspace rule. Do not change root `--background` /
- * `--popover` — those also paint the app shell, menus, and select dropdowns.
+ * Light dialogs and popovers inherit `:root` `--workspace-surface`. They
+ * portal to `document.body`, so the paper must resolve from the root pair
+ * (not a workspace ancestor). Derive already lists `.overlay-paper` and
+ * paints shadcn aliases from the local pair. Primary actions stay on the
+ * accent pair, not the per-app brand.
  *
  * Dark Meet lobby (`.meet-dialog-surface`, `.meet-popover-surface`) opts out.
- * Inset cards use the panel paper (`--card-surface-bg: transparent`) so they
- * do not add a third gray wash.
  */
 .overlay-paper:not(.meet-dialog-surface):not(.meet-popover-surface) {
-  --workspace-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
-  --background: var(--workspace-surface);
-  --popover: var(--workspace-surface);
-  --card: var(--workspace-surface);
-  --color-background: var(--workspace-surface);
-  --color-popover: var(--workspace-surface);
-  --color-card: var(--workspace-surface);
-  --input-background: var(--workspace-surface);
-  --input-background-focus: color-mix(
-    in oklch,
-    var(--color-we-got-dark) 4%,
-    var(--workspace-surface)
-  );
-  --input-background-disabled: var(--workspace-surface);
-  --button-primary-bg: var(--color-we-got-dark);
-  --button-primary-fg: #ffffff;
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 8%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 12%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 16%,
-    var(--workspace-surface)
-  );
-  --button-outline-hover-color: var(--workspace-accent);
-  --button-ghost-hover-background: var(--button-outline-hover-background);
-  --menu-item-hover-background: var(--button-outline-hover-background);
-  --menu-item-selected-background: var(--button-outline-active-background);
-  --menu-item-selected-hover-background: var(--button-outline-active-hover-background);
-  --switch-off-bg: color-mix(in oklch, var(--workspace-accent) 18%, var(--workspace-surface));
-  --switch-on-bg: var(--workspace-accent);
-  --primary: var(--color-we-got-dark);
-  --primary-foreground: #ffffff;
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
   background-color: var(--workspace-surface);

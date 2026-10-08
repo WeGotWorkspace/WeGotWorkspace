@@ -6,16 +6,14 @@
  * Photo imgs cover the mark; do not tint `.user-avatar__image`.
  */
 .contacts-user-avatar {
+  /* Same wash as `.checkbox` / hashed `.user-avatar--colored`: sat stroke + 14% tint. */
+  --_contacts-avatar-accent: var(--contacts-book-color, var(--workspace-accent));
+  --_contacts-avatar-surface: var(--_lc-surface-bg, var(--workspace-surface));
   --user-avatar-bg: color-mix(
-    in oklab,
-    var(--contacts-book-color, var(--workspace-accent)) 24%,
-    var(--color-we-got-soft)
+    in srgb,
+    var(--_contacts-avatar-accent) 14%,
+    var(--_contacts-avatar-surface)
   );
-  --user-avatar-fg: var(--color-we-got-dark);
-  /* Soft stroke matches `.user-avatar` palette tiles; width stays default 1px. */
-  --user-avatar-border: color-mix(
-    in oklab,
-    var(--contacts-book-color, var(--workspace-accent)) 38%,
-    transparent
-  );
+  --user-avatar-fg: var(--workspace-foreground);
+  --user-avatar-border: var(--_contacts-avatar-accent);
 }

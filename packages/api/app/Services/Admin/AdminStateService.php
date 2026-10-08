@@ -11,6 +11,7 @@ use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
 use App\Services\Update\UpdateStateService;
 use App\Support\ApiUrlBuilder;
+use App\Support\PublicAppUrl;
 use App\Support\WgwSettings;
 
 final class AdminStateService
@@ -49,7 +50,7 @@ final class AdminStateService
                 'tasks' => (bool) ($cfg[SettingKeys::TASKS_ENABLED] ?? true),
             ],
             'webdav' => [
-                'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? true),
+                'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? false),
                 'timezone' => (string) ($cfg[SettingKeys::TIMEZONE] ?? 'UTC'),
                 'baseUri' => (string) ($cfg[SettingKeys::BASE_URI] ?? '/'),
                 'authRealm' => (string) ($cfg[SettingKeys::AUTH_REALM] ?? 'SabreDAV'),
@@ -61,7 +62,27 @@ final class AdminStateService
             ],
             'currentUser' => $adminUsername,
             'logoutUrl' => $this->urls->logout(),
+            'securityWarnings' => $this->securityWarnings(),
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function securityWarnings(): array
+    {
+        $warnings = [];
+        if (config('app.debug') === true) {
+            $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
+        }
+        if (! app()->environment('production')) {
+            $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
+        }
+        if (! PublicAppUrl::isConfigured()) {
+            $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
+        }
+
+        return $warnings;
     }
 
     /**

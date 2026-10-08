@@ -23,17 +23,16 @@
 }
 
 .tag {
-  @apply inline-flex min-w-0 items-center font-medium normal-case tracking-normal;
+  @apply inline-flex min-w-0 items-center font-sans font-medium normal-case tracking-normal;
   gap: var(--tag-gap, 0.375rem);
   padding-inline: var(--tag-padding-inline, 0.5rem);
-  font-family: var(--font-mono);
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
   min-height: var(--tag-height, 1.5rem);
   height: var(--tag-height, 1.5rem);
   border-radius: var(--tag-radius, var(--control-radius));
-  background-color: var(--tag-bg, color-mix(in oklab, var(--color-we-got-dark) 8%, transparent));
-  color: var(--tag-fg, var(--color-we-got-dark));
+  background-color: var(--tag-bg, color-mix(in oklab, var(--workspace-foreground) 8%, transparent));
+  color: var(--tag-fg, var(--workspace-foreground));
 }
 
 .tag--size-lg {
@@ -44,13 +43,22 @@
   --tag-gap: 0.375rem;
 }
 
+/* Same wash as `.checkbox` / colored `.user-avatar`: saturated stroke +
+ * surfaceTint 14% into surface (srgb). */
 .tag--collection-tint {
+  --_tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
   --tag-bg: color-mix(
-    in oklab,
-    var(--collection-row-color, var(--color-we-got-dark)) 18%,
-    transparent
+    in srgb,
+    var(--collection-row-color, var(--workspace-foreground)) 14%,
+    var(--_tag-surface)
   );
-  --tag-fg: color-mix(in oklab, var(--collection-row-color, var(--color-we-got-dark)) 62%, #003311);
+  --tag-fg: color-mix(
+    in oklab,
+    var(--collection-row-color, var(--workspace-foreground)) 32%,
+    var(--workspace-accent)
+  );
+  @apply border;
+  border-color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .tag__icon {
@@ -104,8 +112,7 @@
 /* Idle “Add tag” and the add field share one type scale. */
 .tag-group__add-button,
 .tag-group__input {
-  @apply font-medium tracking-normal;
-  font-family: var(--font-mono);
+  @apply font-sans font-medium tracking-normal;
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1;
 }
@@ -119,15 +126,15 @@
   border-radius: var(--tag-radius, var(--control-radius));
   background-color: var(
     --tag-group-add-bg,
-    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
-  color: var(--tag-group-add-fg, var(--color-we-got-dark));
+  color: var(--tag-group-add-fg, var(--workspace-foreground));
 }
 
 .tag-group__add-button:hover {
   background-color: var(
     --tag-group-add-bg-hover,
-    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
@@ -156,7 +163,7 @@
     --tag-group-input-bg,
     color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
   );
-  color: var(--tag-group-input-fg, var(--color-we-got-dark));
+  color: var(--tag-group-input-fg, var(--workspace-foreground));
 }
 
 .tag-group--size-lg .tag-group__input {
@@ -186,17 +193,16 @@
   background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
   box-shadow: var(
     --tag-group-suggestions-shadow,
-    0 4px 16px color-mix(in oklab, var(--color-we-got-dark) 12%, transparent)
+    0 4px 16px color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
   );
   min-width: 10rem;
 }
 
 .tag-group__suggestion {
-  @apply flex w-full items-center px-2.5 py-1.5 text-left font-medium;
-  font-family: var(--font-mono);
+  @apply flex w-full items-center px-2.5 py-1.5 text-left font-sans font-medium;
   font-size: var(--tag-font-size, 0.75rem);
   line-height: 1.25;
-  color: var(--tag-group-suggestion-fg, var(--color-we-got-dark));
+  color: var(--tag-group-suggestion-fg, var(--workspace-foreground));
   background-color: transparent;
 }
 
@@ -209,6 +215,6 @@
 .tag-group__suggestion--active {
   background-color: var(
     --tag-group-suggestion-bg-active,
-    color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
   );
 }

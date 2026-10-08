@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--wai-bg, var(--color-we-got-soft, #fff5e9))"/>
-<path fill="var(--wai-fg, var(--color-we-got-dark, #003311))" d="M20 10a5 5 0 0 1 4.583 3H48a2 2 0 1 1 0 4H24.583a5 5 0 0 1-9.166 0H12a2 2 0 1 1 0-4h3.417A5 5 0 0 1 20 10m18.963 15a4.96 4.96 0 0 1 4.55 3H48a2 2 0 1 1 0 4h-4.487a4.96 4.96 0 0 1-4.55 3 4.96 4.96 0 0 1-4.549-3H12a2 2 0 1 1 0-4h22.414a4.96 4.96 0 0 1 4.549-3M30 40a5 5 0 0 1 4.583 3H48a2 2 0 1 1 0 4H34.583a5 5 0 0 1-9.166 0H12a2 2 0 1 1 0-4h13.417A5 5 0 0 1 30 40"/>
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-soft, #eeeeee))"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-dark, #222222))" d="M20 10a5 5 0 0 1 4.583 3H48a2 2 0 1 1 0 4H24.583a5 5 0 0 1-9.166 0H12a2 2 0 1 1 0-4h3.417A5 5 0 0 1 20 10m18.963 15a4.96 4.96 0 0 1 4.55 3H48a2 2 0 1 1 0 4h-4.487a4.96 4.96 0 0 1-4.55 3 4.96 4.96 0 0 1-4.549-3H12a2 2 0 1 1 0-4h22.414a4.96 4.96 0 0 1 4.549-3M30 40a5 5 0 0 1 4.583 3H48a2 2 0 1 1 0 4H34.583a5 5 0 0 1-9.166 0H12a2 2 0 1 1 0-4h13.417A5 5 0 0 1 30 40"/>
 </svg>

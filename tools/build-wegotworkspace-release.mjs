@@ -13,6 +13,21 @@ const appRoot = resolve(repoRoot, "apps/wegotworkspace");
 const outputRoot = resolve(repoRoot, "dist/releases");
 const stagingRoot = resolve(outputRoot, "wgw-release");
 
+export const PACKAGES_HTACCESS = `<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>
+`;
+
+export function writePackagesHtaccess(root) {
+  const packagesDir = resolve(root, "packages");
+  ensureDir(packagesDir);
+  writeFileSync(resolve(packagesDir, ".htaccess"), PACKAGES_HTACCESS);
+}
+
+function buildRelease() {
 const version = resolveVersion();
 const packageName = `wegotworkspace-deploy-${version}.zip`;
 const packagePath = resolve(outputRoot, packageName);
@@ -76,6 +91,7 @@ for (const entry of repoReleaseEntries) {
     filter: createApiPackageCopyFilter(source, { forRelease: true }),
   });
 }
+writePackagesHtaccess(stagingRoot);
 const rootDocs = ["INSTALL.md", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.md"];
 for (const file of rootDocs) {
   const source = resolve(repoRoot, file);
@@ -122,6 +138,11 @@ if (privateKey !== "") {
 
 rmSafe(stagingRoot);
 console.log(`Release assets written to ${relative(repoRoot, outputRoot)}`);
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  buildRelease();
+}
 
 function resolveVersion() {
   const fromEnv = process.env.WGW_RELEASE_VERSION?.trim();
