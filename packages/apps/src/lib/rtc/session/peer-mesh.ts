@@ -17,7 +17,6 @@ import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
   applyPeerHint as applyIncomingPeerHint,
   dialRoomPeers as dialListedRoomPeers,
-  PRINCIPAL_FAILED_RETRY_MS,
   retryRoomPeer,
   retryRoomPeerConnections as retryUnconnectedRoomPeers,
 } from "@/lib/rtc/session/mesh-room-dial";
@@ -311,6 +310,10 @@ export class RtcPeerMesh {
     this.schedulePoll(false);
   }
 
+  isInitiatorFor(remoteId: string): boolean {
+    return this.isInitiator(remoteId);
+  }
+
   /** Collab mailbox send (`yjs` / `yjs-sv`). Piggybacked rows still hit the poll. */
   sendMailbox(to: string, type: string, payload: unknown): Promise<void> {
     return this.sendSignal(to, type, payload);
@@ -425,7 +428,6 @@ export class RtcPeerMesh {
     if (this.options.channel === "principal") {
       this.removePeer(remoteId, "roster");
       this.log("peer-skipped", { remoteId, reason: "connect-failed" });
-      this.scheduleTimeout(() => this.retryPeerConnection(remoteId), PRINCIPAL_FAILED_RETRY_MS);
     }
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }

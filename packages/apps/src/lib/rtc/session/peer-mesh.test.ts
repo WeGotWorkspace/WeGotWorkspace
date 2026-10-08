@@ -1008,12 +1008,12 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     vi.useRealTimers();
   });
 
-  it("retries a failed principal peer instead of ghosting it", async () => {
+  it("removes a failed principal peer without ghosting it", async () => {
     const signaling = createMockSignaling({
       peerId: "AAAAAAAAAA",
       peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
     });
-    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+    const { mesh } = meshWithStubPc(signaling.client, {
       channel: "principal",
       initiatorRule: "lowerId",
     });
@@ -1023,7 +1023,6 @@ describe("RtcPeerMesh principal roster cleanup", () => {
 
     const failedPc = mesh.getPeerConnection("BBBBBBBBBB");
     expect(failedPc).toBeTruthy();
-    const pcsBeforeFailure = pcs.size;
 
     const stub = asStubPeerConnection(failedPc!);
     stub.connectionState = "failed";
@@ -1032,16 +1031,6 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     await flushAsyncWork();
 
     expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
-    signaling.setPollHandler(async () => ({ unchanged: true }));
-
-    await vi.advanceTimersByTimeAsync(9_999);
-    await flushAsyncWork();
-    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
-
-    await vi.advanceTimersByTimeAsync(1);
-    await flushAsyncWork();
-    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeTruthy();
-    expect(pcs.size).toBeGreaterThan(pcsBeforeFailure);
 
     signaling.setPollHandler(async () => ({
       peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
