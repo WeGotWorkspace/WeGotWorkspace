@@ -85,9 +85,9 @@ function session(room, name, pollSeconds, polls = 4) {
   check(join, { "join accepted": (res) => res.status === 200 || res.status === 201 });
   let peerId = name;
   try {
-    peerId = join.json("peerId") || name;
+    peerId = join.json("peerId") || peerId;
   } catch {
-    peerId = name;
+    // Non-JSON join body: the local name remains the peer id.
   }
   for (let i = 0; i < polls; i += 1) {
     const poll = http.get(
