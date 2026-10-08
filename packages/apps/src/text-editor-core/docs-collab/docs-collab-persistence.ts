@@ -24,8 +24,9 @@ export function docsCollabLegacyIndexedDbKeys(roomKey: string): string[] {
 
 /**
  * Moves a pre-v2 room into v2. A non-empty legacy body is applied first when v2
- * is still empty, then the pending-save flag. A wiped legacy body is skipped
- * so an empty delete-set cannot replace the v2 document.
+ * is still empty, then the pending-save flag. When v2 already has a body, that
+ * body stays authoritative and the legacy body is discarded. A wiped legacy
+ * body is skipped so an empty delete-set cannot replace the v2 document.
  */
 export async function migrateDocsCollabPendingSaveFromLegacy(
   roomKey: string,
@@ -35,7 +36,7 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
   if (!isYDocEmpty(v2Doc) && (await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) return;
 
   let pending = false;
-  const copiedLegacyKeys: string[] = [];
+  const legacyKeysToClear: string[] = [];
   for (const legacyKey of docsCollabLegacyIndexedDbKeys(roomKey)) {
     const legacy = await withRawIndexedDbPersistence(legacyKey, async (persistence) => {
       const empty = isYDocEmpty(persistence.doc);
@@ -45,23 +46,18 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
       };
     });
     if (!legacy || (!legacy.update && !legacy.pending)) continue;
-    let copied = false;
     if (legacy.update && isYDocEmpty(v2Doc)) {
       Y.applyUpdate(v2Doc, legacy.update);
-      copied = true;
     }
-    if (legacy.pending) {
-      pending = true;
-      copied = true;
-    }
-    if (copied) copiedLegacyKeys.push(legacyKey);
+    if (legacy.pending) pending = true;
+    legacyKeysToClear.push(legacyKey);
   }
 
   if (pending && !(await v2Persistence.get(PENDING_SERVER_SAVE_KEY))) {
     await v2Persistence.set(PENDING_SERVER_SAVE_KEY, 1);
   }
 
-  for (const legacyKey of copiedLegacyKeys) {
+  for (const legacyKey of legacyKeysToClear) {
     await clearIndexedDbRoom(legacyKey);
   }
 }

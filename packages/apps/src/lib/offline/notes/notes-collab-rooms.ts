@@ -25,12 +25,17 @@ function noteCollabLegacyIndexedDbKeys(room: string): string[] {
 }
 
 /**
- * Databases that already exist. `null` when `indexedDB.databases` is missing;
- * callers then open the legacy name without an existence check.
+ * Databases that already exist. `null` when `indexedDB.databases` is missing
+ * or rejects; callers then open the legacy name without an existence check.
  */
 export async function listExistingNoteCollabDatabaseNames(): Promise<ReadonlySet<string> | null> {
   if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
-  const rows = await indexedDB.databases();
+  let rows: IDBDatabaseInfo[];
+  try {
+    rows = await indexedDB.databases();
+  } catch {
+    return null;
+  }
   const names = new Set<string>();
   for (const row of rows) {
     if (row.name) names.add(row.name);

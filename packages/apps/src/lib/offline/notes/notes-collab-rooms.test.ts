@@ -192,6 +192,22 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(names.has(`/${room}`)).toBe(false);
   });
 
+  it("falls back to opening the database when indexedDB.databases rejects", async () => {
+    const uid = "note-databases-api-rejects";
+    const room = noteCollabRoomKey(uid);
+    await seedPendingFlag(room);
+    const databases = indexedDB.databases;
+    Object.defineProperty(indexedDB, "databases", {
+      configurable: true,
+      value: () => Promise.reject(new Error("databases unavailable")),
+    });
+    try {
+      await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(true);
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
+  });
+
   it("opens the legacy database when indexedDB.databases is unavailable", async () => {
     const uid = "note-databases-api-missing";
     const room = noteCollabRoomKey(uid);
