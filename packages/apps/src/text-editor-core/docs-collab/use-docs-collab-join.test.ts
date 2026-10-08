@@ -366,4 +366,61 @@ describe("useDocsCollabJoin teardown", () => {
     });
     resetDocsCollabMeshLingerForTests();
   });
+
+  it("restores local awareness when pageshow returns from the back/forward cache", () => {
+    const hook = renderHook(() => useEchoSession("Ada"));
+    const doc = new Y.Doc();
+    const awareness = attachSession(hook.result.current.refs, new LinkedMesh("ada", "Ada"), doc);
+    const before = awareness.getLocalState();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+    });
+    expect(awareness.getLocalState()).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: false }));
+    });
+    expect(awareness.getLocalState()).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+    expect(awareness.getLocalState()).toBe(before);
+
+    awareness.destroy();
+    doc.destroy();
+    hook.unmount();
+  });
+
+  it("does not restore awareness after the hook has torn down", () => {
+    const hook = renderHook(() => useEchoSession("Ada"));
+    const doc = new Y.Doc();
+    const awareness = attachSession(hook.result.current.refs, new LinkedMesh("ada", "Ada"), doc);
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
+    });
+    expect(awareness.getLocalState()).toBeNull();
+
+    hook.result.current.refs.meshRef.current = {
+      clearMessageListeners: () => undefined,
+      leave: async () => undefined,
+      broadcast: () => undefined,
+    } as unknown as DocsRtcSession;
+    act(() => {
+      hook.result.current.teardown();
+    });
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+    });
+    expect(hook.result.current.refs.awarenessRef.current).toBeNull();
+    expect(awareness.getLocalState()).toBeNull();
+
+    awareness.destroy();
+    doc.destroy();
+    hook.unmount();
+    resetDocsCollabMeshLingerForTests();
+  });
 });
