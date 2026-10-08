@@ -124,6 +124,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     const uid = "note-use-theirs";
     const room = noteCollabRoomKey(uid);
     await seedMarkdown(docsCollabIndexedDbKey(room), "mine");
+    await seedPendingFlag(docsCollabIndexedDbKey(room));
     for (const name of docsCollabLegacyIndexedDbKeys(room)) {
       await seedMarkdown(name, "old");
     }
@@ -147,6 +148,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     const stored = await readRoomMarkdown(docsCollabIndexedDbKey(room));
     expect(stored).toContain("Server body");
     expect(stored).not.toContain("mine");
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
     for (const name of docsCollabLegacyIndexedDbKeys(room)) {
       expect(await roomIsEmpty(name)).toBe(true);
     }

@@ -79,12 +79,13 @@ export async function hasNoteCollabPendingServerSave(uid: string): Promise<boole
 export async function writeNoteCollabOfflineContent(uid: string, markdown: string): Promise<void> {
   const room = noteCollabRoomKey(uid);
   if (!room) return;
-  await withIndexedDb(docsCollabIndexedDbKey(room), async (ydoc) => {
+  await withIndexedDb(docsCollabIndexedDbKey(room), async (ydoc, persistence) => {
     const fragment = ydoc.getXmlFragment("default");
     ydoc.transact(() => {
       if (fragment.length > 0) fragment.delete(0, fragment.length);
     });
     applyContentSeedToYDoc(ydoc, markdown, "markdown");
+    await persistence.del(PENDING_SERVER_SAVE_KEY);
   });
   for (const name of docsCollabLegacyIndexedDbKeys(room)) {
     await withIndexedDb(name, async (_ydoc, persistence) => {
