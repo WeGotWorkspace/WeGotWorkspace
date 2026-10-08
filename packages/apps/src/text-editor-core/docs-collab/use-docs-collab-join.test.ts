@@ -1,9 +1,12 @@
 /** @vitest-environment jsdom */
+import "fake-indexeddb/auto";
 import { act, renderHook } from "@testing-library/react";
-import { useCallback, useRef } from "react";
+import * as decoding from "lib0/decoding";
+import { useCallback, useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
+import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
 import { isYDocEmpty } from "./docs-collab-utils";
 import {
@@ -89,6 +92,8 @@ function useEchoSession(userName: string): {
   applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
   trySeedFromFile: () => void;
   snapshotPreview: string | null;
+  join: () => Promise<void>;
+  teardown: () => void;
 } {
   const refs = useDocsCollabSessionRefs(DEFAULT_DOCS_COLLAB_WIRE, undefined);
   const markDocReadyRef = useRef<() => void>(() => undefined);
@@ -130,7 +135,22 @@ function useEchoSession(userName: string): {
     applyServerBootstrap: join.applyServerBootstrap,
     trySeedFromFile: join.trySeedFromFile,
     snapshotPreview: join.snapshotPreview,
+    join: join.join,
+    teardown: join.teardown,
   };
+}
+
+function decodeAwarenessStates(update: Uint8Array): Array<{ clientID: number; state: unknown }> {
+  const decoder = decoding.createDecoder(update);
+  const len = decoding.readVarUint(decoder);
+  const states: Array<{ clientID: number; state: unknown }> = [];
+  for (let index = 0; index < len; index += 1) {
+    const clientID = decoding.readVarUint(decoder);
+    decoding.readVarUint(decoder);
+    const state = JSON.parse(decoding.readVarString(decoder)) as unknown;
+    states.push({ clientID, state });
+  }
+  return states;
 }
 
 function writeBody(doc: Y.Doc, text: string): Y.XmlText {
@@ -303,5 +323,47 @@ describe("useDocsCollabJoin markDocReady", () => {
     hook.unmount();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+});
+
+describe("useDocsCollabJoin teardown", () => {
+  it("broadcasts a null awareness state for this client when the joined hook unmounts", async () => {
+    const broadcasts: DocsCollabMeshMessage[] = [];
+    const hook = renderHook(() => {
+      const session = useEchoSession("Ada");
+      const teardownRef = useRef(session.teardown);
+      teardownRef.current = session.teardown;
+      useEffect(() => () => teardownRef.current(), []);
+      return session;
+    });
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+
+    const awareness = hook.result.current.refs.awarenessRef.current;
+    if (!awareness) throw new Error("expected a joined awareness");
+    const clientId = awareness.clientID;
+    hook.result.current.refs.meshRef.current = {
+      broadcast: (msg: DocsCollabMeshMessage) => {
+        broadcasts.push(msg);
+      },
+      clearMessageListeners: () => undefined,
+      leave: async () => undefined,
+    } as unknown as DocsRtcSession;
+
+    act(() => {
+      hook.unmount();
+    });
+
+    const awarenessMessages = broadcasts.filter((msg) => msg.type === "awareness");
+    expect(awarenessMessages).toHaveLength(1);
+    const message = awarenessMessages[0];
+    if (!message || message.type !== "awareness") throw new Error("missing awareness broadcast");
+    expect(decodeAwarenessStates(Uint8Array.from(message.u))).toContainEqual({
+      clientID: clientId,
+      state: null,
+    });
+    resetDocsCollabMeshLingerForTests();
   });
 });

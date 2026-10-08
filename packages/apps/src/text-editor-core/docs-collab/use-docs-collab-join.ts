@@ -148,6 +148,10 @@ export function useDocsCollabJoin({
   }, [documentFormat, markDocReady, refs, setDocStatus]);
 
   const teardown = useCallback(() => {
+    const awareness = refs.awarenessRef.current;
+    if (awareness) {
+      awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+    }
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
@@ -188,6 +192,17 @@ export function useDocsCollabJoin({
     setPendingSync(false);
     setFailedSync(false);
   }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
+
+  useEffect(() => {
+    const onPageHide = () => {
+      const awareness = refs.awarenessRef.current;
+      if (awareness) {
+        awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+      }
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [refs]);
 
   const mergeServerState = useCallback(
     async (authToken: string | undefined): Promise<boolean> => {

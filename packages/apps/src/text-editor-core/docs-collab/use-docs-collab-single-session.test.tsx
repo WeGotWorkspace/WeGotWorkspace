@@ -47,6 +47,8 @@ vi.mock("./docs-rtc-session", () => ({
 
     clearMessageListeners = vi.fn();
 
+    broadcast = vi.fn();
+
     constructor() {
       rtcMocks.sessions.push(this);
     }
