@@ -90,6 +90,57 @@ final class OversizedRecurrenceExpansionTest extends TestCase
         ], array_column($instances, 'start'));
     }
 
+    public function test_shifted_multiday_daily_series_matches_unshifted_overlap(): void
+    {
+        $expected = [
+            '2026-10-05T10:00:00Z',
+            '2026-10-06T10:00:00Z',
+            '2026-10-07T10:00:00Z',
+            '2026-10-08T10:00:00Z',
+        ];
+        $after = '2026-10-08T00:00:00Z';
+        $before = '2026-10-09T00:00:00Z';
+
+        $shifted = $this->expand('long-span', 'daily', null, [
+            'DTSTART:19000101T100000Z',
+            'DTEND:19000104T100000Z',
+            'RRULE:FREQ=DAILY',
+        ], $after, $before);
+        $recent = $this->expand('recent-span', 'daily', null, [
+            'DTSTART:20260901T100000Z',
+            'DTEND:20260904T100000Z',
+            'RRULE:FREQ=DAILY',
+        ], $after, $before);
+
+        $this->assertSame($expected, array_column($recent, 'start'));
+        $this->assertSame($expected, array_column($shifted, 'start'));
+    }
+
+    public function test_shifted_weekly_series_longer_than_a_week_keeps_overlapping_starts(): void
+    {
+        $expected = [
+            '2026-09-28T10:00:00Z',
+            '2026-10-05T10:00:00Z',
+        ];
+        $after = '2026-10-06T00:00:00Z';
+        $before = '2026-10-07T00:00:00Z';
+        $byDay = [['@type' => 'NDay', 'day' => 'mo']];
+
+        $shifted = $this->expand('long-week', 'weekly', $byDay, [
+            'DTSTART:19000101T100000Z',
+            'DTEND:19000109T100000Z',
+            'RRULE:FREQ=WEEKLY;BYDAY=MO',
+        ], $after, $before);
+        $recent = $this->expand('recent-week', 'weekly', $byDay, [
+            'DTSTART:20260901T100000Z',
+            'DTEND:20260909T100000Z',
+            'RRULE:FREQ=WEEKLY;BYDAY=MO',
+        ], $after, $before);
+
+        $this->assertSame($expected, array_column($recent, 'start'));
+        $this->assertSame($expected, array_column($shifted, 'start'));
+    }
+
     public function test_counted_daily_series_over_the_cap_is_skipped(): void
     {
         $instances = $this->expand('counted-daily', 'daily', null, [
