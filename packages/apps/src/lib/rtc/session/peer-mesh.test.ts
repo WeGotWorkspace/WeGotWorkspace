@@ -1008,6 +1008,43 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     vi.useRealTimers();
   });
 
+  it("retries a failed principal peer instead of ghosting it", async () => {
+    const signaling = createMockSignaling({
+      peerId: "AAAAAAAAAA",
+      peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
+    });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "principal",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Host", peerId: "AAAAAAAAAA" });
+    await flushAsyncWork();
+
+    const failedPc = mesh.getPeerConnection("BBBBBBBBBB");
+    expect(failedPc).toBeTruthy();
+    const pcsBeforeFailure = pcs.size;
+
+    const stub = asStubPeerConnection(failedPc!);
+    stub.connectionState = "failed";
+    stub.onconnectionstatechange?.(new Event("connectionstatechange"));
+    await flushAsyncWork();
+
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await flushAsyncWork();
+
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeTruthy();
+    expect(pcs.size).toBeGreaterThan(pcsBeforeFailure);
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(mesh.getRoomPeers().map((peer) => peer.id)).toContain("BBBBBBBBBB");
+
+    await mesh.leave();
+  });
+
   it("drops a same-user ghost on the principal channel", async () => {
     const signaling = createMockSignaling({
       peerId: "admin-abc123",

@@ -17,6 +17,7 @@ import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
   applyPeerHint as applyIncomingPeerHint,
   dialRoomPeers as dialListedRoomPeers,
+  PRINCIPAL_FAILED_RETRY_MS,
   retryRoomPeer,
   retryRoomPeerConnections as retryUnconnectedRoomPeers,
 } from "@/lib/rtc/session/mesh-room-dial";
@@ -421,9 +422,9 @@ export class RtcPeerMesh {
     this.metrics.noteFailedPair();
     if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
-      this.droppedGhostIds.add(remoteId);
       this.removePeer(remoteId, "roster");
       this.log("peer-skipped", { remoteId, reason: "connect-failed" });
+      this.scheduleTimeout(() => this.retryPeerConnection(remoteId), PRINCIPAL_FAILED_RETRY_MS);
     }
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }
