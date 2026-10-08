@@ -19,9 +19,15 @@ Three layers — keep secrets in one place per runtime.
 
 ```bash
 cp packages/api/.env.example packages/api/.env
+# Local dev: the example ships production-safe defaults. Set these in your own .env:
+#   APP_ENV=local
+#   APP_DEBUG=true
+# Optional, local only: WGW_DISABLE_LOGIN_THROTTLE=1
 php artisan key:generate --working-dir packages/api   # or set APP_KEY manually
 bash packages/api/scripts/generate-jwt-keys.sh          # RS256 keys for auth/token
 ```
+
+`packages/api/.env.example` sets `APP_ENV=production` and `APP_DEBUG=false` so ZIP and Docker installs do not boot in debug with login throttling off. Local dev must set `APP_ENV=local` and `APP_DEBUG=true` in its own `.env`. Login and password-reset throttling stay on unless `WGW_DISABLE_LOGIN_THROTTLE=1`.
 
 `pnpm dev:api` loads **repo-root** `.env` via `tools/with-root-env.sh` before the PHP trap script. **Laravel reads `packages/api/.env` only** — put JWT paths and `APP_KEY` there, not in the repo root. Turbo does not run the API.
 

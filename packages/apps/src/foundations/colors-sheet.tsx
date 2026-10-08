@@ -93,21 +93,25 @@ export function ColorsSheet() {
   const [filter, setFilter] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
   const contractRef = useRef<HTMLDivElement>(null);
-  const waiRef = useRef<SVGSVGElement>(null);
+  const iconRef = useRef<SVGSVGElement>(null);
 
   const primitiveRows = useResolvedColors(rootRef, COLOR_WE_GOT_PRIMITIVES);
   const semanticRows = useResolvedColors(rootRef, COLOR_SEMANTIC);
 
   const [contractRows, setContractRows] = useState<ColorRow[]>([]);
-  const [waiRows, setWaiRows] = useState<ColorRow[]>([]);
+  const [iconRows, setIconRows] = useState<ColorRow[]>([]);
 
   useLayoutEffect(() => {
     const contractHost = contractRef.current;
-    const waiHost = waiRef.current;
+    const iconHost = iconRef.current;
     if (!contractHost) return;
 
-    const contractTokens = COLOR_COMPONENT_CONTRACT.filter((t) => !t.startsWith("--wai-"));
-    const waiTokens = COLOR_COMPONENT_CONTRACT.filter((t) => t.startsWith("--wai-"));
+    const contractTokens = COLOR_COMPONENT_CONTRACT.filter(
+      (t) => t !== "--workspace-icon-surface" && t !== "--workspace-icon-foreground",
+    );
+    const iconTokens = COLOR_COMPONENT_CONTRACT.filter(
+      (t) => t === "--workspace-icon-surface" || t === "--workspace-icon-foreground",
+    );
 
     setContractRows(
       contractTokens.map((token) => ({
@@ -117,12 +121,12 @@ export function ColorsSheet() {
       })),
     );
 
-    if (waiHost) {
-      setWaiRows(
-        waiTokens.map((token) => ({
+    if (iconHost) {
+      setIconRows(
+        iconTokens.map((token) => ({
           token,
-          cascaded: readCssVar(waiHost, token),
-          resolved: resolveCssColor(waiHost, token),
+          cascaded: readCssVar(iconHost, token),
+          resolved: resolveCssColor(iconHost, token),
         })),
       );
     }
@@ -131,7 +135,7 @@ export function ColorsSheet() {
   return (
     <FoundationSheetChrome
       title="Colors"
-      description="Brand primitives, semantic roles, and the shared workspace component contract. Click a row to copy var(--…). Per-app accent / --wai-* remaps live under Themes — not here."
+      description="Brand primitives, semantic roles, and the eight-token workspace core. Click a row to copy var(--…). Per-app brand remaps live under Themes — not here."
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Filter by token or value…"
@@ -144,9 +148,9 @@ export function ColorsSheet() {
       />
 
       {/*
-        Shared contract demo: workspace-color.css recipes + default switch-trigger
-        --wai-* (workspace-app-icon.css). Accent is a representative brand primitive;
-        apps remap accent and icon layers under Themes.
+        Shared contract demo: core pairs + default switch-trigger brand layers
+        (workspace-app-icon.css). Accent is a representative primitive; apps remap
+        brand and icon layers under Themes.
       */}
       <div
         ref={contractRef}
@@ -158,7 +162,7 @@ export function ColorsSheet() {
         }
       >
         <span className="workspace-app-icon--switch-trigger sr-only" aria-hidden>
-          <svg ref={waiRef} viewBox="0 0 1 1" width="1" height="1" />
+          <svg ref={iconRef} viewBox="0 0 1 1" width="1" height="1" />
         </span>
       </div>
 
@@ -175,9 +179,9 @@ export function ColorsSheet() {
         filter={filter}
       />
       <ColorGroup
-        title="Component contract"
-        note="Shared workspace-color.css recipe with a demo --workspace-accent. Per-app values (accent, primary, icon layers) are remapped in Themes stories."
-        rows={[...contractRows, ...waiRows]}
+        title="Workspace core"
+        note="The eight surface/foreground pairs plus derived chrome. Per-app brand values are remapped in Themes stories."
+        rows={[...contractRows, ...iconRows]}
         filter={filter}
       />
     </FoundationSheetChrome>

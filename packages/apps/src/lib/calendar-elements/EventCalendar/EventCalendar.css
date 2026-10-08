@@ -40,11 +40,13 @@
 }
 
 :host .event-calendar-divider {
-  @apply inline-block h-5 w-px bg-[light-dark(rgb(15_23_42_/_16%),rgb(255_255_255_/_18%))];
+  @apply inline-block h-5 w-px;
+  background-color: var(--border);
 }
 
 :host .event-calendar-range-label {
-  @apply m-0 min-w-0 truncate px-1 text-start text-xl font-bold text-[light-dark(rgb(15_23_42_/_95%),rgb(255_255_255_/_98%))];
+  @apply m-0 min-w-0 truncate px-1 text-start text-xl font-bold;
+  color: var(--workspace-foreground);
 }
 
 :host .event-calendar-range-year {
@@ -56,7 +58,8 @@
 }
 
 :host .event-calendar-controls-row {
-  @apply flex items-center justify-end gap-0 border-t border-[light-dark(rgb(15_23_42_/_10%),rgb(255_255_255_/_12%))] pt-2;
+  @apply flex items-center justify-end gap-0 border-t pt-2;
+  border-top-color: var(--border);
 }
 
 :host .event-calendar-switch {
@@ -259,7 +262,7 @@
 
   :host .event-calendar-calendars-dialog .event-calendar-calendars-panel-header {
     @apply flex shrink-0 items-center justify-start border-b px-4 pt-4 pb-2;
-    border-color: light-dark(rgb(226 232 240), rgb(51 65 85));
+    border-color: var(--border);
     display: flex;
   }
 }

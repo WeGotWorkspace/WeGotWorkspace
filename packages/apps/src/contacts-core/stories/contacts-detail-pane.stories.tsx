@@ -179,6 +179,10 @@ export const Editable: Story = {
   args: {},
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const nameSection = canvas.getByRole("heading", {
+      name: defaultContactsLabels.sectionName,
+    });
+    await expect(nameSection).toHaveClass("field-label-row__label");
     const nameInput = canvas.getByLabelText("First name");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Jane Updated");
@@ -253,9 +257,11 @@ export const ReadOnly: Story = {
     await expect(canvas.getByText("Acme Corp")).toBeInTheDocument();
     expect(identity?.contains(canvas.getByRole("heading", { name: "Jane Doe" }))).toBe(true);
     expect(identity?.contains(canvas.getByText("Acme Corp"))).toBe(true);
-    await expect(
-      canvas.getByRole("heading", { name: defaultContactsLabels.sectionBirthday }),
-    ).toBeInTheDocument();
+    const birthdayHeading = canvas.getByRole("heading", {
+      name: defaultContactsLabels.sectionBirthday,
+    });
+    await expect(birthdayHeading).toBeInTheDocument();
+    await expect(birthdayHeading).toHaveClass("field-label-row__label");
     expect(canvas.queryByRole("button", { name: /Birthday:/ })).toBeNull();
     await expect(canvas.getByText(/1985/)).toBeInTheDocument();
   },

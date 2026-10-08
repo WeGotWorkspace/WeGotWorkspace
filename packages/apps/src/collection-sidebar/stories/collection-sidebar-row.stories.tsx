@@ -38,10 +38,12 @@ export const Default: Story = {
   tags: ["vitest-ci"],
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    const checkbox = canvas.getByRole("checkbox", { name: "Hide Work" });
+    await expect(checkbox).toHaveClass("checkbox--size-sm");
     await userEvent.click(canvas.getByRole("button", { name: "Work" }));
     await expect(args.onSelect).toHaveBeenCalledOnce();
     await expect(args.onToggleVisibility).not.toHaveBeenCalled();
-    await userEvent.click(canvas.getByRole("checkbox", { name: "Hide Work" }));
+    await userEvent.click(checkbox);
     await expect(args.onToggleVisibility).toHaveBeenCalledOnce();
     await expect(args.onSelect).toHaveBeenCalledOnce();
   },
@@ -121,9 +123,8 @@ export const VisibilityTintUnderWorkspaceTokens: Story = {
           {
             "--checkbox-border-color":
               "color-mix(in oklab, var(--color-we-got-dark) 30%, transparent)",
-            "--checkbox-checked-bg": "#ffc800",
             "--checkbox-checked-border": "#ffc800",
-            "--checkbox-checked-fg": "var(--color-we-got-dark)",
+            "--checkbox-checked-fg": "#ffc800",
           } as CSSProperties
         }
       >

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notify;
 
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
@@ -44,7 +45,11 @@ final class MinishlinkWebPushSender implements WebPushSender
                     'publicKey' => $vapid['publicKey'],
                     'privateKey' => $vapid['privateKey'],
                 ],
-            ]);
+            ], [], new Client([
+                'allow_redirects' => false,
+                'timeout' => 10,
+                'connect_timeout' => 5,
+            ]));
             $subscription = Subscription::create([
                 'endpoint' => $endpoint,
                 'publicKey' => $p256dh,

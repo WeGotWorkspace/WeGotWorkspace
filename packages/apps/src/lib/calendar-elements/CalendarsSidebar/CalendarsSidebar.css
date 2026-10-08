@@ -11,10 +11,7 @@
   --_lc-calendars-sidebar-visibility-min-target: 2.25rem;
   /* Neutral row tint (same ink as foreground); selected/hover steps stay subtle */
   --_lc-calendars-sidebar-tint-hover-bg: light-dark(rgb(15 23 42 / 3.5%), rgb(248 250 252 / 4.5%));
-  --_lc-calendars-sidebar-tint-selected-border: light-dark(
-    rgb(15 23 42 / 14%),
-    rgb(248 250 252 / 12%)
-  );
+  --_lc-calendars-sidebar-tint-selected-border: var(--border);
   --_lc-calendars-sidebar-tint-selected-bg: light-dark(rgb(15 23 42 / 7%), rgb(248 250 252 / 8%));
   --_lc-calendars-sidebar-tint-selected-hover-bg: light-dark(
     rgb(15 23 42 / 8%),
@@ -29,27 +26,9 @@
     --_lc-calendars-sidebar-bg,
     var(--lg-background-color, var(--_lc-surface-bg, light-dark(#f8fafc, #1e293b)))
   );
-  /* Grid hue, very light touch (opaque grid colors need low mix %; override with --_lc-calendars-sidebar-border) */
   border-inline-end: var(
     --_lc-calendars-sidebar-inline-end,
-    1px solid
-      var(
-        --_lc-calendars-sidebar-border,
-        light-dark(
-          color-mix(
-            in srgb,
-            var(--_lc-grid-line-color, rgb(15 23 42))
-              var(--_lc-calendars-sidebar-border-mix-light, 11%),
-            transparent
-          ),
-          color-mix(
-            in srgb,
-            var(--_lc-grid-line-color, rgb(255 255 255))
-              var(--_lc-calendars-sidebar-border-mix-dark, 8%),
-            transparent
-          )
-        )
-      )
+    1px solid var(--_lc-calendars-sidebar-border, var(--border))
   );
   /* Full card: set --_lc-calendars-sidebar-card-radius (e.g. docked desktop). Else only inline-end corners. */
   border-radius: var(--_lc-calendars-sidebar-card-radius, 0);

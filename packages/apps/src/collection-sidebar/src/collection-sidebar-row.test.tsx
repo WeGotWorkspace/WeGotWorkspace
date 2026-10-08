@@ -45,9 +45,9 @@ describe("CollectionSidebarRow", () => {
     );
     const row = screen.getByText("Work").closest(".collection-sidebar-row") as HTMLElement;
     expect(row.style.getPropertyValue("--collection-row-color")).toBe("#0ea5e9");
-    expect(screen.getByRole("checkbox", { name: "Hide Work" }).className).toMatch(
-      /collection-sidebar-row__visibility/,
-    );
+    const checkbox = screen.getByRole("checkbox", { name: "Hide Work" });
+    expect(checkbox.className).toMatch(/collection-sidebar-row__visibility/);
+    expect(checkbox.className).toMatch(/checkbox--size-sm/);
   });
 
   it("renders a leading mark in the shared leading column", () => {

@@ -11,25 +11,22 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
   border: 1px solid transparent;
   background-color: transparent;
-  color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 75%, transparent);
-  /* Shared leading column width (checkbox / icon / color-dot). */
-  --collection-sidebar-row-leading-size: 1rem;
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
+  /* Shared leading column width (checkbox / icon / color-dot) — size-3.5. */
+  --collection-sidebar-row-leading-size: 0.875rem;
 }
 
 .collection-sidebar-row:hover:not(.collection-sidebar-row--selected) {
   border-color: transparent;
   color: var(
     --collection-sidebar-row-hover-color,
-    var(
-      --button-outline-hover-color,
-      var(--button-outline-color, var(--sidebar-on, var(--color-we-got-dark)))
-    )
+    var(--button-outline-hover-color, var(--button-outline-color, var(--workspace-foreground)))
   );
   background-color: var(
     --collection-sidebar-row-hover-bg,
     var(
       --button-outline-hover-background,
-      color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
     )
   );
 }
@@ -47,7 +44,7 @@
       --button-outline-active-background,
       var(
         --button-outline-hover-background,
-        color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
+        color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
       )
     )
   );
@@ -66,7 +63,7 @@
         --button-outline-active-background,
         var(
           --button-outline-hover-background,
-          color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 8%, transparent)
+          color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
         )
       )
     )
@@ -82,9 +79,9 @@
 
 /* Shared leading column: checkbox, icon, or color-dot — one width so labels align. */
 .collection-sidebar-row__leading {
-  width: var(--collection-sidebar-row-leading-size, 1rem);
-  min-width: var(--collection-sidebar-row-leading-size, 1rem);
-  height: var(--collection-sidebar-row-leading-size, 1rem);
+  width: var(--collection-sidebar-row-leading-size, 0.875rem);
+  min-width: var(--collection-sidebar-row-leading-size, 0.875rem);
+  height: var(--collection-sidebar-row-leading-size, 0.875rem);
   @apply relative z-10 inline-flex shrink-0 items-center justify-center self-center;
   /* Decorative marks: let the select stretch handle clicks. Checkbox opts back in. */
   pointer-events: none;
@@ -95,28 +92,36 @@
 }
 
 .collection-sidebar-row__visibility {
-  --primary: var(--collection-row-color, var(--color-we-got-dark));
-  --primary-foreground: #ffffff;
+  --primary: var(--collection-row-color, var(--workspace-foreground));
+  --primary-foreground: var(--workspace-accent-foreground);
   /* Beat parent workspace `--checkbox-*` (Notes gold, Docs accent) so the
    * primitive paints calendarcolor / list / notebook color, not the app accent.
-   * Keep collection-row size (16px) even if the editor overrides `--checkbox-size`. */
-  --checkbox-size: var(--collection-sidebar-row-leading-size, 1rem);
-  --checkbox-border-color: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
-  --checkbox-checked-bg: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
-  --checkbox-checked-border: var(
-    --collection-row-color,
-    var(--sidebar-on, var(--color-we-got-dark))
+   * Keep collection-row size (`Checkbox size="sm"` / 0.875rem) even if the editor
+   * overrides `--checkbox-size`. Checked fill uses `.checkbox` surfaceTint;
+   * border stays saturated; glyph uses the shared Dark-mixed recipe. */
+  --checkbox-size: var(--collection-sidebar-row-leading-size, 0.875rem);
+  --checkbox-border-color: var(--collection-row-color, var(--workspace-foreground));
+  --checkbox-checked-border: var(--collection-row-color, var(--workspace-foreground));
+  --checkbox-checked-fg: color-mix(
+    in oklab,
+    var(--collection-row-color, var(--workspace-foreground)) 32%,
+    var(--workspace-accent)
   );
-  --checkbox-checked-fg: #ffffff;
   @apply relative z-10 shrink-0;
-  border-color: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
+  border-color: var(--collection-row-color, var(--workspace-foreground));
   pointer-events: auto;
 }
 
 .collection-sidebar-row__visibility[data-state="checked"] {
-  background-color: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
-  border-color: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
-  color: #ffffff;
+  border-color: var(--collection-row-color, var(--workspace-foreground));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(
+      in oklab,
+      var(--collection-row-color, var(--workspace-foreground)) 32%,
+      var(--workspace-accent)
+    )
+  );
 }
 
 .collection-sidebar-row__visibility[data-state="unchecked"] {
@@ -126,7 +131,7 @@
 
 .collection-sidebar-row__dot {
   @apply relative z-10 size-2.5 shrink-0 rounded-full;
-  background-color: var(--collection-row-color, var(--sidebar-on, var(--color-we-got-dark)));
+  background-color: var(--collection-row-color, var(--workspace-foreground));
 }
 
 .collection-sidebar-row__select {
@@ -170,7 +175,7 @@
 
 .collection-sidebar-row__mark {
   @apply inline-flex size-3.5 shrink-0 items-center justify-center;
-  color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
 }
 
 .collection-sidebar-row__action.button,
@@ -180,14 +185,14 @@
   height: var(--control-height-xs, 1.75rem);
   min-width: var(--control-height-xs, 1.75rem);
   min-height: var(--control-height-xs, 1.75rem);
-  color: color-mix(in oklab, var(--sidebar-on, var(--color-we-got-dark)) 45%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
 }
 
 .collection-sidebar-row__action:hover,
 .collection-sidebar-row__action:focus-visible,
 .collection-sidebar-row__expand:hover,
 .collection-sidebar-row__expand:focus-visible {
-  color: var(--sidebar-on, var(--color-we-got-dark));
+  color: var(--workspace-foreground);
 }
 
 /* Fine pointers: hide until row hover / focus-within. Touch keeps actions visible. */

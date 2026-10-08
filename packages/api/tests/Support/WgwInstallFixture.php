@@ -191,6 +191,7 @@ final class WgwInstallFixture
         foreach ([
             'WGW_APP_ROOT',
             'WGW_DATA_DIR',
+            'WGW_INSTALL_CHANNEL',
             'WGW_DB_CONNECTION',
             'WGW_DB_DATABASE',
             'WGW_UPDATE_FEED_URL',

@@ -34,11 +34,10 @@ function AppSidebarHarness() {
           <Button
             label="Compose"
             onClick={() => {}}
-            size="xl"
+            size="md"
             pill
             variant="primary"
             icon={<Pencil />}
-            className="w-full"
           />
         }
         children={

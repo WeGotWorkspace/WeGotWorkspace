@@ -28,6 +28,13 @@ If that file is missing or empty, re-upload the full deploy ZIP — do not uploa
 
 Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. On **nginx** (common on Plesk), ensure requests are routed to `index.php` (Plesk often sets this automatically when PHP is enabled for the domain). Without that, `/install/` may 404 even when files are on disk. Also set `client_max_body_size 32m;` so uploads are not rejected before PHP (`post_max_size` / `upload_max_filesize` are aligned to 32M; lockstep-tested in `UploadLimitParityTest`). `.user.ini` / `.htaccess` also set `display_errors=0` so PHP's line-0 `post_max_size` warning cannot leak HTML before the JSON 413.
 
+Nginx does not read `.htaccess`. Deny the private trees and the same sensitive dotfiles. Leave other `/.` segments alone so WebDAV can serve `.attachments`, `.notes`, `.Trash`, and AppleDouble files:
+
+```nginx
+location ~ ^/(wgw-content|wgw-private|wgw-modules|packages)(/|$) { deny all; }
+location ~ /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
+```
+
 ## 2) First request bootstrap
 
 On the first HTTP request, the install bootstrap automatically:
@@ -37,7 +44,7 @@ On the first HTTP request, the install bootstrap automatically:
 
 Existing installs are not overwritten: a present `.env` or `.htaccess` is left as-is (including custom `RewriteBase` rules).
 
-Set `APP_ENV=production` and `APP_DEBUG=false` on a live host after install.  
+The shipped `.env.example` already sets `APP_ENV=production` and `APP_DEBUG=false`. Existing ZIP and Docker installs are rewritten to those values on the next schema migration.  
 Default drivers use files under `packages/api/storage/` so you do not need `packages/api/database/database.sqlite`.  
 In-place updates preserve `.env`, `.htaccess`, session files, and logs, and copy `.env` into the update backup folder as `packages-api.env`.
 

@@ -104,6 +104,22 @@ describe("CalendarTimelineView month double-click and header + create", { timeou
     vi.restoreAllMocks();
   });
 
+  it("paints month day numbers from the shared in/outside host tokens", async () => {
+    const { el } = mountMonthView();
+    await el.updateComplete;
+
+    const inMonth = monthDayButton(el, "August 18");
+    const inHeader = inMonth?.closest(".timeline-day-header") as HTMLElement | null;
+    expect(inHeader).toBeTruthy();
+    expect(inHeader!.getAttribute("style") ?? "").toContain("--_lc-in-month-day-color");
+    expect(inHeader!.getAttribute("style") ?? "").not.toContain("lc-grid-base-color");
+
+    const outside = monthDayButton(el, "August 31", true) ?? monthDayButton(el, "July", true);
+    const outHeader = outside?.closest(".timeline-day-header") as HTMLElement | null;
+    expect(outHeader).toBeTruthy();
+    expect(outHeader!.getAttribute("style") ?? "").toContain("--_lc-outside-month-day-color");
+  });
+
   it("emits day-selection from an empty month day-number click, not create", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const { el } = mountMonthView();

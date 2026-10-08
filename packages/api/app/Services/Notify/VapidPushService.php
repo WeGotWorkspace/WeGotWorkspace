@@ -17,6 +17,7 @@ final class VapidPushService
     public function __construct(
         private readonly InstallerVapidKeyGenerator $keys,
         private readonly WebPushSender $sender,
+        private readonly PushEndpointPolicy $endpoints,
     ) {}
 
     public function publicKey(): string
@@ -30,6 +31,9 @@ final class VapidPushService
     public function subscribe(string $username, array $input, ?string $userAgent = null): PushSubscription
     {
         $endpoint = trim($input['endpoint']);
+        if (! $this->endpoints->isAllowed($endpoint)) {
+            throw new ApiHttpException(400, 'Push endpoint is not allowed.', 'bad_request');
+        }
         $hash = hash('sha256', $endpoint);
         $now = Carbon::now();
         $existing = PushSubscription::query()
@@ -129,6 +133,11 @@ final class VapidPushService
             ->get();
         $completed = 0;
         foreach ($subs as $sub) {
+            if (! $this->endpoints->isAllowed((string) $sub->endpoint)) {
+                $this->pruneEndpoint((string) $sub->endpoint);
+
+                continue;
+            }
             $status = $this->sender->send(
                 (string) $sub->endpoint,
                 (string) $sub->p256dh,

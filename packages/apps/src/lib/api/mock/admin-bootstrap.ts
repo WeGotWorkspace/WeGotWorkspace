@@ -126,6 +126,7 @@ const DEFAULT_DATA: AdminUIData = {
   },
   currentUser: "alice",
   logoutUrl: "/logout",
+  securityWarnings: [],
   updateLogLines: [],
 };
 

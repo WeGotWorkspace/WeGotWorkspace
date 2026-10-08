@@ -78,36 +78,38 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Sof
 
 ### CSS props (colors)
 
-| Category    | Tokens                                                                                                                    | Purpose                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                              | We Got Soft and We Got Dark                                                                                   |
-| App chrome  | `--workspace-accent`, `--workspace-surface`, `--sidebar-bg`, `--sidebar-on`, `--button-primary-bg`, `--button-primary-fg` | Accent (Dark); app paper; sidebar fill (5% icon into white); ink for text, borders, and icons; primary button |
-| Icon layers | `--wai-bg`, `--wai-fg`                                                                                                    | Switch-trigger SVG fills                                                                                      |
+| Category    | Tokens                                                                                                                                                                 | Purpose                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | Soft `#eeeeee`, Dark `#222222`                                                       |
+| App chrome  | `--workspace-surface` / `-foreground`, `--workspace-accent` / `-foreground`, `--workspace-sidebar-surface` / `-foreground`, `--workspace-icon-surface` / `-foreground` | Four surface/foreground pairs. Products assign primitives; state washes derive once. |
+| Icon layers | `--workspace-icon-surface`, `--workspace-icon-foreground`                                                                                                              | Remappable pair; switch-trigger / home tiles map it onto `--app-icon-layer-*`        |
 
-**Accent vs `--wai-*`:** `--workspace-accent` is We Got Dark and drives checks, badges, and outline glyphs. `--sidebar-bg` is `color-mix(in oklch, var(--wai-bg) 5%, #fff)`, the sidebar fill. Tasks use 20% and Notes use 15%. Row hover and focus mix Sand into that fill. Outline washes use `--sidebar-bg`. `--sidebar-on` (Dark) is the ink for text, borders, and icons. App paper is `--workspace-surface`, a very light tint of Soft. Themes paints the same `*-workspace.css` as the app. The primary button follows that app's icon (`--wai-bg` / `--wai-fg`), except Drive (brat fill, Dark label), Meet (Sand fill, Dark label), and Notes (yellow fill, Dark label). A CSS custom property in the panel overrides a token only after you change it.
+**Brand lockup:** Soft is `#eeeeee`, Dark is `#222222`. The suite lockup (Home AppSwitch, Login/Installer BrandLockup) uses the SVG wordmark — the Bebas text stack is retired.
+
+**Pairs:** `--workspace-accent` is We Got Dark (checks, badges, outline glyphs, primary buttons). `--workspace-icon-surface` is the per-app tile hue only. `--workspace-surface` is `color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)`. `--workspace-sidebar-surface` is `var(--color-we-got-soft)` — Soft, not an icon tint. Row hover and selected mix sidebar foreground into that fill (4 / 8 / 12%). A CSS custom property in the panel overrides a token only after you change it. Do not set a token to `var(--itself)` — the addon writes the value onto `body` and a self-reference makes the token invalid.
 
 **Defaults match production chrome**, not the PWA/home-tile swatch. Every app’s `--workspace-accent` is Dark, which differs from per-app `WORKSPACE_APP_ACCENT` (tile theme). The panel lists the same tokens the workspace CSS sets; the canvas keeps that CSS until a control changes. `iconPreset` defaults to **current** (that app’s real mark).
 
 ### WCAG AA ratios (resolved brand hex / Soft)
 
-Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes after Soft cream remap.
+Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes.
 
-| Pair                                                  | Ratio   | AA        |
-| ----------------------------------------------------- | ------- | --------- |
-| `--color-we-got-dark` on `--color-we-got-soft` (Soft) | 13.15:1 | text PASS |
-| white on Docs `--workspace-accent` (blue)             | 6.37:1  | text PASS |
-| Docs `--wai-fg` on `--wai-bg`                         | 6.37:1  | text PASS |
-| Admin / Settings Dark on white                        | 14.17:1 | text PASS |
-| Calendar white on Prince                              | 6.42:1  | text PASS |
-| Docs white on blue                                    | 6.37:1  | text PASS |
-| Mail white on Red                                     | 4.10:1  | UI PASS   |
-| Meet Sand on white                                    | 2.69:1  | UI FAIL   |
-| Drive Brat on white                                   | 1.92:1  | UI FAIL   |
-| Contacts white on Sky                                 | 1.81:1  | UI FAIL   |
-| Tasks white on Pink                                   | 1.58:1  | UI FAIL   |
-| Notes white on Yellow                                 | 1.55:1  | UI FAIL   |
+| Pair                                                             | Ratio   | AA        |
+| ---------------------------------------------------------------- | ------- | --------- |
+| `--color-we-got-dark` on `--color-we-got-soft` (Soft)            | 13.71:1 | text PASS |
+| white on Docs `--workspace-accent` (blue)                        | 6.37:1  | text PASS |
+| Docs `--workspace-icon-foreground` on `--workspace-icon-surface` | 6.37:1  | text PASS |
+| Admin / Settings Dark on white                                   | 15.91:1 | text PASS |
+| Calendar white on Prince                                         | 6.42:1  | text PASS |
+| Docs white on blue                                               | 6.37:1  | text PASS |
+| Mail white on Red                                                | 4.10:1  | UI PASS   |
+| Meet Sand on white                                               | 2.69:1  | UI FAIL   |
+| Drive Brat on white                                              | 1.92:1  | UI FAIL   |
+| Contacts white on Sky                                            | 1.81:1  | UI FAIL   |
+| Tasks white on Pink                                              | 1.58:1  | UI FAIL   |
+| Notes white on Yellow                                            | 1.55:1  | UI FAIL   |
 
-Home uses Soft and Dark (and `--workspace-home-bg`); it has no per-app accent. The suite mark may use fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` rather than `--wai-*`.
+Home uses Soft and Dark (and `--workspace-home-bg`); it has no per-app accent. The suite mark may use fixed fills or `var(--color-we-got-soft)` / `var(--color-we-got-dark)` rather than `--workspace-icon-surface*`.
 
 Login and Installer use Soft and Dark only on `.login-screen` (no home navy, no app accent). `iconPreset` retargets the BrandLockup suite mark. Knobs apply to every story in those matrices.
 
@@ -118,20 +120,22 @@ Custom switch-trigger artwork must use the same CSS variable fills as production
 ```svg
 <svg viewBox="0 0 270 270" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
-  <path fill="var(--wai-bg, #de4b0e)" d="…" />
+  <path fill="var(--app-icon-layer-surface, #de4b0e)" d="…" />
   <!-- Foreground marks -->
-  <path fill="var(--wai-fg, #ffbdc2)" d="…" />
+  <path fill="var(--app-icon-layer-foreground, #ffbdc2)" d="…" />
 </svg>
 ```
 
-Knockouts that should stay the tile color use `--wai-bg`, not a third token.
+Knockouts that should stay the tile color use `--app-icon-layer-surface`, not a third token.
 
-| Token      | Role             |
-| ---------- | ---------------- |
-| `--wai-bg` | Icon background  |
-| `--wai-fg` | Foreground marks |
+| Token                         | Role                                   |
+| ----------------------------- | -------------------------------------- |
+| `--app-icon-layer-surface`    | SVG background (fallback = app hue)    |
+| `--app-icon-layer-foreground` | SVG marks                              |
+| `--workspace-icon-surface`    | Remappable pair mapped onto the layers |
+| `--workspace-icon-foreground` | Remappable pair mapped onto the layers |
 
-Hard-coded `#hex` fills ignore the Icon layers cssprops. Prefer `fill="var(--wai-…, fallback)"` with a sensible fallback for non-Storybook use.
+Hard-coded `#hex` fills ignore the Icon layers cssprops. Prefer `fill="var(--app-icon-layer-surface…, fallback)"` with a sensible fallback for non-Storybook use.
 
 ## Hand values back to engineers
 
@@ -140,11 +144,11 @@ Storybook does **not** write to the repo. When a combination looks right:
 1. **Screenshot** the story (sidebar + lockup + a primary CTA is enough).
 2. **Token table** — list final values, for example:
 
-   | Token                | Value     |
-   | -------------------- | --------- |
-   | `--workspace-accent` | `#de4b0e` |
-   | `--wai-bg`           | `#de4b0e` |
-   | `--wai-fg`           | `#ffbdc2` |
+   | Token                         | Value     |
+   | ----------------------------- | --------- |
+   | `--workspace-accent`          | `#de4b0e` |
+   | `--workspace-icon-surface`    | `#de4b0e` |
+   | `--workspace-icon-foreground` | `#ffbdc2` |
 
 3. If you changed the mark: attach the **SVG markup** (or the file) from `svgMarkup` / your export.
 4. Send screenshot + table (+ SVG) to engineering. They update `packages/apps/src/{app}-core/src/*-workspace.css` and/or `packages/apps/public/app-icons/*.svg` (inline copies live under `workspace-app-icon-svgs`).

@@ -5,7 +5,7 @@
 @import "./calendar-event-dialog.css";
 
 /**
- * Calendar product shell: cream main pane, Sand sidebar wash, Dark solid
+ * Calendar product shell: cream main pane, brand-tinted sidebar rail, Dark solid
  * accents (today pill, primary CTA, checks). Tile accent stays pink `#ffbdc2`
  * (WORKSPACE_APP_ACCENT); UI accent and tile may diverge. Primary CTAs use
  * Dark with white glyphs. Import only from {@link CalendarWorkspace}.
@@ -14,11 +14,7 @@
  */
 .calendar-workspace {
   --workspace-accent: var(--color-we-got-dark);
-  --calendar-muted: color-mix(
-    in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 80%,
-    var(--color-we-got-soft)
-  );
+  --calendar-muted: color-mix(in oklch, var(--workspace-foreground) 80%, var(--workspace-surface));
 
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
@@ -27,128 +23,73 @@
 
   /* Alias for DocsCollabSidebarPanel wash consumers (invitations = sidebar tint). */
   --docs-collab-sidebar-panel-wash: var(--app-sidebar-bg);
-  --app-sidebar-border-color: color-mix(
-    in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 12%,
-    transparent
-  );
-  --app-sidebar-color: var(--sidebar-on, var(--color-we-got-dark));
-  --sidebar-logo-close-button-color: var(--sidebar-on, var(--color-we-got-dark));
+  --app-sidebar-border-color: var(--border);
+  --app-sidebar-color: var(--workspace-foreground);
+  --sidebar-logo-close-button-color: var(--workspace-foreground);
   --sidebar-badge-fg: #ffffff;
   --workspace-user-footer-link-hover-bg: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 80%,
-    var(--color-we-got-soft)
+    var(--workspace-foreground) 80%,
+    var(--workspace-surface)
   );
   --workspace-user-footer-subtitle-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 80%,
-    var(--color-we-got-soft)
+    var(--workspace-foreground) 80%,
+    var(--workspace-surface)
   );
   --workspace-user-footer-border-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 10%,
+    var(--workspace-foreground) 10%,
     transparent
   );
   --workspace-user-footer-link-color: color-mix(
     in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 85%,
-    var(--color-we-got-soft)
-  );
-  --workspace-user-footer-link-bg: color-mix(
-    in oklch,
-    var(--sidebar-on, var(--color-we-got-dark)) 6%,
-    transparent
-  );
-
-  --field-label-color: var(--sidebar-on, var(--color-we-got-dark));
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
-  --button-primary-bg: var(--wai-bg);
-  --button-primary-fg: var(--wai-fg);
-  --primary: var(--workspace-accent);
-  --primary-foreground: #ffffff;
-
-  /* Outline action language for header + collection sidebar rows. */
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(in oklch, var(--sidebar-bg) 14%, transparent);
-  --button-outline-active-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 18%,
+    var(--workspace-foreground) 85%,
     var(--workspace-surface)
   );
-  --button-outline-active-hover-background: color-mix(
-    in oklch,
-    var(--sidebar-bg) 24%,
-    var(--workspace-surface)
-  );
-
+  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
 
   /* The lit views highlight "today" and previews with this. */
   --lc-higlight-color: var(--workspace-accent);
+  --lc-today-on-color: var(--workspace-accent-foreground);
+  /* Grid chrome follows the workspace pair — not light-dark() slate. */
+  --lc-grid-base-color: var(--workspace-foreground);
+  --lc-weekend-day-label-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  --_lc-surface-bg: var(--workspace-surface);
 
   /* Docs comments/review panel tokens reused by the invitations inbox. */
   --docs-surface: var(--workspace-surface);
-  --docs-text: var(--sidebar-on, var(--color-we-got-dark));
+  --docs-text: var(--workspace-foreground);
   --docs-muted: var(--calendar-muted);
-  --docs-border: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 12%, transparent);
+  --docs-border: var(--border);
   /* 23rem fits Accept | Maybe | Decline on one line inside invitation cards. */
   --calendar-invitations-column-width: 23rem;
   --workspace-panel-width: var(--calendar-invitations-column-width);
-}
-
-.calendar-workspace .app-sidebar__scroll {
-  /* Primary fill inherits the workspace (`--button-primary-*`), including Storybook controls. */
-  /* Nav hover fg: ink like idle/selected — not header accent-strong. */
-  --button-outline-hover-color: var(--sidebar-on, var(--color-we-got-dark));
 }
 
 /** App switcher lockup: calendar.svg literals (`#962fa8` tile / white marks). */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--color-we-got-prince);
+  background-color: var(--workspace-icon-surface);
 }
 
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --wai-bg: var(--color-we-got-prince);
-  --wai-fg: #ffffff;
-}
-
-/*
- * Header outline actions (sidebar toggle, Today, prev/next, inbox, view switch):
- * accent glyph via `--button-active-color`; soft washes from shared `.view-header` SST.
- * SegmentedControl consumes these (and --segmented-control-*) so the grid/list
- * track matches outline IconButtons; active thumb matches pressed Today/Inbox wash.
- * Idle Week select + outline buttons share --button-outline-color (ink).
- */
-.calendar-workspace .view-header {
-  /* Soft `--control-radius` is global (styles.css); header only owns outline washes. */
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-color: var(--sidebar-on, var(--color-we-got-dark));
-  --button-outline-hover-color: var(--workspace-accent-strong);
-  --select-trigger-color: var(--button-outline-color);
-  --segmented-control-color: var(--button-outline-color);
-  --segmented-control-track-bg: transparent;
-  --segmented-control-track-border-color: var(
-    --button-outline-border-color,
-    var(--control-border-color)
-  );
-  --segmented-control-active-bg: var(--button-outline-active-background);
-  --segmented-control-active-fg: var(--button-active-color);
-  --segmented-control-active-shadow: none;
+  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-foreground: #ffffff;
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */
@@ -448,12 +389,13 @@
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     left: auto;
     z-index: calc(var(--_lc-z-sticky, 30) + 10);
-    border-color: color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 16%, transparent);
+    /* Floating over the grid on a blur; stronger than the shared hairline so the circle still reads. */
+    border-color: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
     box-shadow:
-      0 1px 2px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 10%, transparent),
-      0 10px 28px color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 22%, transparent);
-    --collection-search-input-bg: color-mix(in oklch, var(--color-we-got-soft) 78%, transparent);
-    --collection-search-input-color: var(--sidebar-on, var(--color-we-got-dark));
+      0 1px 2px color-mix(in oklch, var(--workspace-foreground) 10%, transparent),
+      0 10px 28px color-mix(in oklch, var(--workspace-foreground) 22%, transparent);
+    --collection-search-input-bg: color-mix(in oklch, var(--workspace-surface) 78%, transparent);
+    --collection-search-input-color: var(--workspace-foreground);
   }
 
   .calendar-workspace .calendar-search-field--expanded {
@@ -479,15 +421,14 @@
   .calendar-workspace .calendar-search-field:focus-within {
     --collection-search-input-bg: color-mix(
       in oklch,
-      var(--sidebar-on, var(--color-we-got-dark)) 6%,
-      var(--color-we-got-soft)
+      var(--workspace-foreground) 6%,
+      var(--workspace-surface)
     );
     @apply shadow-xl;
   }
 
   .calendar-workspace .calendar-search-field:focus-within:has(:focus-visible) {
-    outline: 2px solid
-      color-mix(in oklch, var(--sidebar-on, var(--color-we-got-dark)) 35%, transparent);
+    outline: 2px solid color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
     outline-offset: 1px;
   }
 }

@@ -1,4 +1,4 @@
-/** Palette tokens for hashed user tiles (washed fill + saturated ring in CSS). */
+/** Palette tokens for hashed user tiles (checkbox-style wash + saturated ring in CSS). */
 export const USER_AVATAR_COLORS = [
   "amber",
   "cyan",

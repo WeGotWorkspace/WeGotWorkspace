@@ -57,7 +57,7 @@ export function buildInstallerSitePayload(
     enable_files: true,
     enable_calendars: true,
     enable_contacts: true,
-    show_browser_ui: true,
+    show_browser_ui: false,
   };
 }
 

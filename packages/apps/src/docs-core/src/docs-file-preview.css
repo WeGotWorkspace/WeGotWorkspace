@@ -4,7 +4,7 @@
   @apply flex h-full w-full min-h-0 flex-col overflow-auto;
   background-color: color-mix(
     in oklab,
-    var(--color-background, var(--color-we-got-soft)) 96%,
+    var(--color-background, var(--workspace-surface)) 96%,
     transparent
   );
 }

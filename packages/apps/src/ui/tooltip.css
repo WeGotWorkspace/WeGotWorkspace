@@ -1,0 +1,34 @@
+@import "../styles.css" reference;
+
+/*
+ * Inverse chip of the local paper pair — not `--primary` / accent (Dark).
+ * Portaled under `body`, so `--workspace-*` must inherit or be bridged
+ * from the open trigger (see `tooltip.tsx`).
+ */
+.tooltip-ui {
+  @apply z-50 overflow-hidden rounded-md px-3 py-1.5 text-xs;
+  background-color: var(--workspace-foreground);
+  color: var(--workspace-surface);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  @apply animate-in fade-in-0 zoom-in-95;
+}
+
+.tooltip-ui[data-state="closed"] {
+  @apply animate-out fade-out-0 zoom-out-95;
+}
+
+.tooltip-ui[data-side="bottom"] {
+  @apply slide-in-from-top-2;
+}
+
+.tooltip-ui[data-side="left"] {
+  @apply slide-in-from-right-2;
+}
+
+.tooltip-ui[data-side="right"] {
+  @apply slide-in-from-left-2;
+}
+
+.tooltip-ui[data-side="top"] {
+  @apply slide-in-from-bottom-2;
+}

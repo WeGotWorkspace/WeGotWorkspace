@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Calendars;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Calendars\CappedSinkStream;
 use App\Services\Calendars\SsrfSafeIcsFetcher;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\Http;
@@ -63,6 +64,16 @@ final class SsrfSafeIcsFetcherTest extends TestCase
         $safe = $fetcher->assertSafeUrl('https://feeds.example.test/cal.ics');
         $this->assertSame('https://feeds.example.test/cal.ics', $safe['url']);
         $this->assertSame([self::PUBLIC_IP], $safe['ips']);
+    }
+
+    public function test_request_options_keep_the_curl_pin_and_cap_the_sink(): void
+    {
+        $options = $this->fetcher()->requestOptions('feeds.example.test', 443, self::PUBLIC_IP);
+
+        $this->assertArrayNotHasKey('stream', $options);
+        $this->assertInstanceOf(CappedSinkStream::class, $options['sink']);
+        $this->assertSame([CURLOPT_RESOLVE], array_keys($options['curl']));
+        $this->assertSame(['feeds.example.test:443:'.self::PUBLIC_IP], $options['curl'][CURLOPT_RESOLVE]);
     }
 
     public function test_pins_http_client_to_first_validated_ip_and_does_not_resolve_again(): void

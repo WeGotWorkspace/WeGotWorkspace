@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
-<rect width="60" height="60" fill="var(--wai-bg, var(--color-we-got-prince, #962fa8))"/>
-<rect width="60" height="13" fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))"/>
-<path fill="var(--wai-fg, var(--color-we-got-soft, #fff5e9))" d="M15 40.002a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 40.002M15 23a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 23"/>
+<rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-prince, #962fa8))"/>
+<rect width="60" height="13" fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))" d="M15 40.002a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 40.002m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 40.002M15 23a5 5 0 1 1-.001 10.001A5 5 0 0 1 15 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 30 23m15 0a5 5 0 1 1-.001 10.001A5 5 0 0 1 45 23"/>
 </svg>

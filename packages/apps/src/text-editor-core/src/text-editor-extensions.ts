@@ -55,6 +55,31 @@ export const LegacySuggestionMark = Mark.create({
   },
 });
 
+const SafeTextAlign = TextAlign.extend({
+  addGlobalAttributes() {
+    const allowed = this.options.alignments;
+
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          textAlign: {
+            default: this.options.defaultAlignment,
+            parseHTML: (el) => {
+              const v = el.style.textAlign;
+              return allowed.includes(v) ? v : this.options.defaultAlignment;
+            },
+            renderHTML: (attrs) =>
+              typeof attrs.textAlign === "string" && allowed.includes(attrs.textAlign)
+                ? { style: `text-align: ${attrs.textAlign}` }
+                : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
 export type CreateTextEditorExtensionsOptions = {
   placeholder?: string;
   format?: TextEditorContentFormat;
@@ -78,7 +103,7 @@ export function createTextEditorExtensions(
     Highlight.configure({ multicolor: false }),
     TaskList,
     TextEditorTaskItem.configure({ nested: true }),
-    TextAlign.configure({ types: ["heading", "paragraph"] }),
+    SafeTextAlign.configure({ types: ["heading", "paragraph"] }),
     Typography,
     Table.configure({ resizable: false }),
     TableRow,

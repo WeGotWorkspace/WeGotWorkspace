@@ -42,9 +42,9 @@ LocaleDatePicker, Textarea (padding/font), SegmentedControl, UserChip, and UserA
 |------|--------|-----|
 | `xs` | 28px | Compact icon-only / dense chips |
 | `sm` | 32px | Tighter chrome when needed |
-| `md` | **36px** | **Default** — action bar, view header, event forms, share marks beside md inputs |
+| `md` | **36px** | **Default** — action bar, view header, event forms, sidebar primary, share marks beside md inputs |
 | `lg` | 40px | Spacious forms / emphasis |
-| `xl` | 44px | Sidebar primary New / hero CTAs |
+| `xl` | 44px | Hero CTAs |
 
 Tokens: `--control-height-xs|sm|md|lg|xl`. `--input-height` aliases `md`.
 UserAvatar adds display-only `2xl` (80px) for Meet lobby / large idle tiles outside this scale.
@@ -84,7 +84,7 @@ Refactor checklist:
 
 Example:
 
-- Parent CSS: set `--button-outline-*`, `--button-ghost-*`, `--button-primary-*` on the workspace or dialog root.
+- Parent CSS: set `--button-outline-*` and `--button-ghost-*` on the workspace or dialog root. Primary paint is `--workspace-accent` / `--workspace-accent-foreground` (do not reintroduce `--button-primary-*`).
 - Primitive CSS: read those vars in `.button--variant-*` rules with sensible fallbacks.
 
 ### Tailwind and `className` in workspace panes

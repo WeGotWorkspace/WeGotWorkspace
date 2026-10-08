@@ -22,6 +22,7 @@ use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
+use App\Support\PublicAppUrl;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -71,6 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
+        $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         $middleware->append(BindMcpPublicOrigin::class);
         $middleware->append(McpCors::class);
@@ -140,6 +142,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $code = match ($status) {
+                400 => 'bad_request',
                 401 => 'unauthorized',
                 403 => 'forbidden',
                 404 => 'not_found',
@@ -151,6 +154,7 @@ return Application::configure(basePath: dirname(__DIR__))
             $message = config('app.debug')
                 ? ($e->getMessage() ?: 'Internal server error.')
                 : match ($code) {
+                    'bad_request' => 'Bad request.',
                     'unauthorized' => 'Unauthorized.',
                     'forbidden' => 'Forbidden.',
                     'not_found' => 'Not found.',

@@ -2646,6 +2646,41 @@
         "x-wgw-access": "admin"
       }
     },
+    "/admin/plugins/{id}/activation": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Set plugin activation",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "403": {
+            "description": "Admin role required"
+          },
+          "404": {
+            "description": "Plugin not found"
+          }
+        },
+        "x-wgw-access": "admin"
+      }
+    },
     "/admin/search/jobs": {
       "post": {
         "tags": [
@@ -4870,35 +4905,6 @@
         "responses": {
           "200": {
             "description": "Plugin registry snapshot"
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
-    "/plugins/{id}/activation": {
-      "put": {
-        "tags": [
-          "Plugins"
-        ],
-        "summary": "Set plugin activation",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated"
           }
         },
         "x-wgw-access": "user"

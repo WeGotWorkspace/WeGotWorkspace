@@ -1,6 +1,4 @@
 @import "../styles.css" reference;
-@import "./workspace-menu-item-sst.css";
-
 .dropdown-menu-ui__sub-trigger {
   @apply flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none;
   border-radius: var(--control-radius);
@@ -10,11 +8,7 @@
 .dropdown-menu-ui__sub-trigger[data-state="open"] {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 8%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 4%, var(--workspace-surface))
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -76,18 +70,15 @@
 .dropdown-menu-ui__item {
   @apply relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors;
   border-radius: var(--control-radius);
+  color: var(--workspace-foreground);
 }
 
 .dropdown-menu-ui__item:focus:not(.menu-item--severity-danger) {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 8%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-foreground) 4%, var(--workspace-surface))
   );
-  color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
+  color: var(--workspace-foreground);
 }
 
 .dropdown-menu-ui__item[data-disabled] {
@@ -112,11 +103,7 @@
 .dropdown-menu-ui__radio-item:focus {
   background-color: var(
     --menu-item-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 8%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 4%, var(--workspace-surface))
   );
   color: var(--button-outline-hover-color, var(--button-outline-color, inherit));
 }
@@ -125,11 +112,7 @@
 .dropdown-menu-ui__radio-item[data-state="checked"] {
   background-color: var(
     --menu-item-selected-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 12%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface))
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -138,11 +121,7 @@
 .dropdown-menu-ui__radio-item[data-state="checked"]:focus {
   background-color: var(
     --menu-item-selected-hover-background,
-    color-mix(
-      in oklab,
-      var(--workspace-accent, var(--color-we-got-dark)) 16%,
-      var(--workspace-surface, #fff)
-    )
+    color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface))
   );
   color: var(--button-active-color, var(--workspace-accent, inherit));
 }
@@ -175,7 +154,7 @@
 }
 
 .dropdown-menu-ui__separator {
-  @apply -mx-1 my-1 h-px bg-muted;
+  @apply -mx-1 my-1 h-px bg-border;
 }
 
 .dropdown-menu-ui__shortcut {

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  COLOR_CORE_TOKENS,
   COLOR_SEMANTIC,
   COLOR_WE_GOT_PRIMITIVES,
   CONTROL_SIZE_TOKENS,
@@ -52,6 +53,12 @@ describe("foundations token catalog", () => {
 
   it("lists control size tokens from styles.css", () => {
     for (const token of CONTROL_SIZE_TOKENS) {
+      expect(styles).toContain(`${token}:`);
+    }
+  });
+
+  it("lists the eight workspace core tokens from styles.css", () => {
+    for (const token of COLOR_CORE_TOKENS) {
       expect(styles).toContain(`${token}:`);
     }
   });

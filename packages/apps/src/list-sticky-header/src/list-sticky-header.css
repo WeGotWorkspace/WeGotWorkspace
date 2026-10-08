@@ -8,25 +8,25 @@
 .list-sticky-header {
   @apply sticky top-0 z-[5] flex items-baseline gap-2.5 border-b px-4 py-1.5 font-normal md:px-6;
   font-size: var(--list-sticky-header-font-size, 0.875rem);
-  color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
+  color: var(--list-sticky-header-color, var(--workspace-foreground));
   background-color: var(
     --list-sticky-header-bg,
-    var(--workspace-root-bg, var(--color-we-got-soft))
+    var(--workspace-root-bg, var(--workspace-surface))
   );
   border-color: var(
     --list-sticky-header-border,
-    color-mix(in oklab, var(--color-we-got-dark) 10%, transparent)
+    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
 }
 
 .list-sticky-header__emphasis {
   @apply font-[650] leading-[1.2] tracking-normal;
   font-size: var(--list-sticky-header-emphasis-font-size, 15px);
-  color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
+  color: var(--list-sticky-header-color, var(--workspace-foreground));
 }
 
 .list-sticky-header__rest {
   @apply font-[450] leading-[1.2] tracking-normal opacity-[0.82];
   font-size: var(--list-sticky-header-rest-font-size, 0.875rem);
-  color: var(--list-sticky-header-color, light-dark(rgb(15 23 42 / 96%), rgb(255 255 255 / 95%)));
+  color: var(--list-sticky-header-color, var(--workspace-foreground));
 }

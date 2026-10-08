@@ -2,18 +2,50 @@
 
 /**
  * Shared checkbox tokens. Parents override `--checkbox-*` (Notes gold, Docs blue).
- * Defaults match the Radix `Checkbox` primitive: size-4, radius-sm, primary fill, ring-1.
+ *
+ * Checked fill defaults to a slightly stronger wash than calendar event-card
+ * `surfaceTint(accent, 11)` — 14% accent into the surface
+ * (`--_lc-surface-bg` → `--workspace-surface`). Border stays fully saturated.
+ * Checked glyph mixes accent into `--workspace-accent` (Dark) so it stays readable on the wash.
+ *
+ * Glyph-box sizes (not control-height tokens):
+ * - `md` (default): 1.25rem / 20px (`size-5`) — forms / dense lists
+ * - `sm`: 0.875rem / 14px (`size-3.5`) — sidebar row icons
+ *
+ * Parents may still override `--checkbox-size` / `--checkbox-check-size`.
  */
 .checkbox {
-  @apply grid place-content-center shrink-0 border shadow;
+  /* Tint from saturated accent (checked border), not a muted unchecked border. */
+  --_checkbox-fill-accent: var(
+    --checkbox-checked-border,
+    var(--checkbox-border-color, var(--primary))
+  );
+  --_checkbox-surface: var(--_lc-surface-bg, var(--workspace-surface));
+  --_checkbox-tint: color-mix(in srgb, var(--_checkbox-fill-accent) 14%, var(--_checkbox-surface));
+
+  @apply grid place-content-center shrink-0 border;
   @apply focus-visible:outline-none focus-visible:ring-1;
-  width: var(--checkbox-size, 1rem);
-  height: var(--checkbox-size, 1rem);
-  border-radius: var(--checkbox-radius, var(--radius-sm));
+  width: var(--checkbox-size, var(--_checkbox-size));
+  height: var(--checkbox-size, var(--_checkbox-size));
+  border-radius: var(--checkbox-radius, var(--control-radius-pill));
   border-color: var(--checkbox-border-color, var(--primary));
   background-color: var(--checkbox-bg, transparent);
-  color: var(--checkbox-checked-fg, var(--primary-foreground));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--workspace-accent))
+  );
   --tw-ring-color: var(--checkbox-ring-color, var(--ring));
+}
+
+.checkbox--size-md {
+  --_checkbox-size: 1.25rem;
+  --_checkbox-check-size: 0.75rem;
+}
+
+.checkbox--size-sm {
+  /* Matches sidebar leading icons (`size-3.5`). */
+  --_checkbox-size: 0.875rem;
+  --_checkbox-check-size: 0.5rem;
 }
 
 .checkbox:disabled {
@@ -21,15 +53,16 @@
 }
 
 .checkbox[data-state="checked"] {
-  background-color: var(--checkbox-checked-bg, var(--primary));
-  border-color: var(--checkbox-checked-border, var(--checkbox-checked-bg, var(--primary)));
-  color: var(--checkbox-checked-fg, var(--primary-foreground));
-}
-
-.checkbox__indicator {
-  @apply grid place-content-center text-current;
+  background-color: var(--checkbox-checked-bg, var(--_checkbox-tint));
+  border-color: var(--checkbox-checked-border, var(--checkbox-border-color, var(--primary)));
+  color: var(
+    --checkbox-checked-fg,
+    color-mix(in oklab, var(--_checkbox-fill-accent) 32%, var(--workspace-accent))
+  );
 }
 
 .checkbox__icon {
-  @apply size-4;
+  @apply shrink-0;
+  width: var(--checkbox-check-size, var(--_checkbox-check-size, 0.75rem));
+  height: var(--checkbox-check-size, var(--_checkbox-check-size, 0.75rem));
 }

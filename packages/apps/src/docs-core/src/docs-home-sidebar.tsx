@@ -45,10 +45,9 @@ export function DocsHomeSidebar({
           <Button
             label={newDocumentLabel}
             icon={<Plus />}
-            size="xl"
+            size="md"
             pill
             variant="primary"
-            className="w-full"
             onClick={onNewDocument}
           />
         ) : undefined

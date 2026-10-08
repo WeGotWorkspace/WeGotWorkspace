@@ -81,7 +81,7 @@ final class ApiDocsController
     dom_id: "#swagger-ui",
     presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
     layout: "BaseLayout",
-    persistAuthorization: true
+    persistAuthorization: false
   });
 
   document.getElementById("wgw-docs-auth-form").addEventListener("submit", function (event) {
@@ -110,8 +110,7 @@ final class ApiDocsController
             return;
           }
           window.ui.preauthorizeApiKey("bearerAuth", data.access_token);
-          window.ui.authActions.persistAuthorizationIfNeeded();
-          setStatus("Authorized" + (data.username ? " as " + data.username : "") + ". Token saved for this browser.", "success");
+          setStatus("Authorized" + (data.username ? " as " + data.username : "") + ".", "success");
         });
       })
       .catch(function () {

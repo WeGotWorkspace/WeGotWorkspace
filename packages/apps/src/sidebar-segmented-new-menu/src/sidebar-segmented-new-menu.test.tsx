@@ -18,9 +18,12 @@ describe("SidebarSegmentedNewMenu", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "New task" }));
+    const main = screen.getByRole("button", { name: "New task" });
+    fireEvent.click(main);
     expect(onMainAction).toHaveBeenCalledOnce();
     expect(screen.queryByRole("menu")).toBeNull();
+    expect(main.className).toMatch(/button--size-md/);
+    expect(main.closest(".sidebar-segmented-new-menu")?.className).not.toMatch(/--stretch/);
   });
 
   it("hides the chevron when there are no menu items", () => {
@@ -31,11 +34,13 @@ describe("SidebarSegmentedNewMenu", () => {
         onMainAction={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "New event" }).className).toMatch(/__main--solo/);
+    const main = screen.getByRole("button", { name: "New event" });
+    expect(main.className).not.toMatch(/__main--solo/);
+    expect(main.className).not.toMatch(/__main--stretch/);
     expect(screen.queryByRole("button", { name: "More create actions" })).toBeNull();
   });
 
-  it("accepts a custom icon, sm size, and stretch=false", () => {
+  it("accepts a custom icon and stretch=false without dead size modifiers", () => {
     render(
       <SidebarSegmentedNewMenu
         mainLabel="Meet"
@@ -49,8 +54,9 @@ describe("SidebarSegmentedNewMenu", () => {
     );
     const main = screen.getByRole("button", { name: "Meet" });
     const root = main.closest(".sidebar-segmented-new-menu");
-    expect(root?.className).toMatch(/--sm/);
+    expect(root?.className).not.toMatch(/--sm/);
     expect(root?.className).not.toMatch(/--stretch/);
+    expect(main.className).toMatch(/button--size-md/);
     expect(screen.getByTestId("custom-icon")).toBeTruthy();
   });
 });

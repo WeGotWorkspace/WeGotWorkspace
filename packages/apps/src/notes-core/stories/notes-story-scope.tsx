@@ -6,15 +6,22 @@ export type NotesStoryScopeVariant = "pane" | "list-column" | "detail";
 
 /**
  * Storybook Vitest does not emit `@theme` tokens onto `:root` (apps Vite config
- * is disabled). Seed brand hexes on the notes root so product CSS `var(--color-*)`
- * chains resolve without enabling `@tailwindcss/vite` for the whole catalog.
+ * is disabled). Seed brand hexes and the paper pair on the notes root so
+ * product CSS `var(--color-*)` / `var(--workspace-surface)` chains resolve
+ * without enabling `@tailwindcss/vite` for the whole catalog.
+ * `--workspace-surface` must be the concrete Soft→white mix (same as
+ * `BRANDING_WORKSPACE_SURFACE_DEFAULT`): inheriting `:root`'s
+ * `var(--color-we-got-soft)` mix stays invalid when `@theme` is missing,
+ * which drops sheet and desk washes to transparent.
  */
 const NOTES_STORY_BRAND_TOKENS = {
-  "--color-we-got-soft": "#fff5e9",
-  "--color-we-got-dark": "#003311",
+  "--color-we-got-soft": "#eeeeee",
+  "--color-we-got-dark": "#222222",
   "--color-we-got-yellow": "#ffc800",
   // Sidebar wash still reads Sand. Storybook Vitest does not emit `@theme` onto `:root`.
   "--color-we-got-sand": "#ba9689",
+  "--workspace-surface": "color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)",
+  "--workspace-foreground": "var(--color-we-got-dark)",
 } as CSSProperties;
 
 function notesStoryStyle(detailTint?: string): CSSProperties {

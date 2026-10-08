@@ -9,25 +9,25 @@
    * Soften to action-bar cream-surface intensity (18%/24%). No solid accent fill.
    * Apps set `--docs-collab-presence-accent` (e.g. notes-accent / docs-accent).
    */
-  --button-active-color: var(--color-we-got-dark);
+  --button-active-color: var(--workspace-foreground);
   /* Punch-out behind the Meet presence pip, matched to the footer surface. */
   --user-avatar-presence-ring: var(--workspace-surface, var(--color-we-got-soft));
   /* Pin glyph to ink — UserAvatar falls back to `--button-active-color` / emerald
    * otherwise; keep wash on outline-active tokens (no `--user-avatar-bg` override). */
-  --user-avatar-fg: var(--color-we-got-dark);
+  --user-avatar-fg: var(--workspace-foreground);
   --button-outline-active-background: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--color-we-got-dark)) 18%,
-    var(--color-we-got-soft)
+    var(--docs-collab-presence-accent, var(--workspace-accent)) 18%,
+    var(--workspace-surface)
   );
   --button-outline-active-hover-background: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--color-we-got-dark)) 24%,
-    var(--color-we-got-soft)
+    var(--docs-collab-presence-accent, var(--workspace-accent)) 24%,
+    var(--workspace-surface)
   );
   --button-outline-active-border-color: color-mix(
     in oklab,
-    var(--docs-collab-presence-accent, var(--color-we-got-dark)) 28%,
+    var(--docs-collab-presence-accent, var(--workspace-accent)) 28%,
     transparent
   );
 }

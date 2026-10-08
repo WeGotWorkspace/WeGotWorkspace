@@ -6,6 +6,7 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import { Callout } from "@/callout/src/callout";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -21,9 +22,24 @@ import { AdminPluginsPane } from "@/admin-core/src/admin-plugins-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
+import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
+
+function AdminSecurityWarnings({ warnings }: { warnings: readonly string[] }) {
+  if (warnings.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="admin-security-warnings">
+      {warnings.map((warning) => (
+        <Callout key={warning} severity="error" title="Security warning" message={warning} />
+      ))}
+    </div>
+  );
+}
 
 export function AdminWorkspace(props: AdminWorkspaceProps) {
   const { data, session, className, onLogout, section, initialSection, onSectionChange } = props;
@@ -106,6 +122,8 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         }
         main={
           <>
+            <AdminWebRootProbe />
+            <AdminSecurityWarnings warnings={data.securityWarnings} />
             {controller.section === "users" ? (
               <AdminUsersPane
                 controller={controller}

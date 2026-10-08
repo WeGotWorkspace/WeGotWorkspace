@@ -110,23 +110,27 @@ const BRAND_ICON_TOKEN = {
 describe("svgForRasterization", () => {
   it("peels nested brand tokens down to the hex fallback", () => {
     expect(
-      svgForRasterization('<rect fill="var(--wai-bg, var(--color-we-got-yellow, #ffc800))"/>'),
+      svgForRasterization(
+        '<rect fill="var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))"/>',
+      ),
     ).toBe('<rect fill="#ffc800"/>');
   });
 
   it("keeps a single-level white fallback", () => {
-    expect(svgForRasterization('<rect fill="var(--wai-fg, #ffffff)"/>')).toBe(
+    expect(svgForRasterization('<rect fill="var(--app-icon-layer-foreground, #ffffff)"/>')).toBe(
       '<rect fill="#ffffff"/>',
     );
   });
 });
 
 describe("PWA icon artwork", () => {
-  it("nests a brand token inside --wai-* and keeps a hex fallback for install PNGs", () => {
+  it("nests a brand token inside --app-icon-layer-* and keeps a hex fallback for install PNGs", () => {
     for (const [app, token] of Object.entries(BRAND_ICON_TOKEN)) {
       const markup = readFileSync(join(sourceDir, `${app}.svg`), "utf8");
       expect(markup, app).toMatch(
-        new RegExp(`var\\(--wai-(?:bg|fg), var\\(${token}, #[0-9a-f]{6}\\)\\)`),
+        new RegExp(
+          `var\\(--app-icon-layer-(?:surface|foreground), var\\(${token}, #[0-9a-f]{6}\\)\\)`,
+        ),
       );
       const raster = svgForRasterization(markup);
       expect(raster, app).not.toContain("var(");
@@ -139,14 +143,14 @@ describe("PWA icon artwork", () => {
     const inApp = readFileSync(join(sourceDir, "home.svg"), "utf8");
 
     expect(install).toContain('viewBox="0 0 60 60"');
-    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #222222)"');
     expect(install).toContain('fill="url(#home-pwa-clover)"');
     expect(install).toContain('stop-color="var(--color-we-got-blue, #0045ff)"');
     expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
     expect(install).not.toContain("--wai-");
     const raster = svgForRasterization(install);
     expect(raster).not.toContain("var(");
-    expect(raster).toContain("#003311");
+    expect(raster).toContain("#222222");
     expect(raster).toContain("#0045ff");
     expect(raster).toContain("#8ace00");
     expect(inApp).toContain('viewBox="0 0 270 270"');
@@ -209,6 +213,41 @@ describe("PWA icon artwork", () => {
         expect(decoded.width).toBe(size);
         expect(decoded.height).toBe(size);
       }
+    }
+  });
+
+  it("matches a 192 PNG corner pixel to the SVG surface fill after raster peel", () => {
+    // Header bands / edge glyphs can cover top-left; any of the four corners
+    // must still show the full-bleed surface (catches stale cream Soft pads).
+    const apps = readdirSync(pwaDir)
+      .filter((name) => name.endsWith("-192.png"))
+      .map((name) => name.slice(0, -"-192.png".length));
+    expect(apps.length).toBeGreaterThan(0);
+    for (const app of apps) {
+      const sourceName = app === "home" ? "home-pwa.svg" : `${app}.svg`;
+      const markup = readFileSync(join(sourceDir, sourceName), "utf8");
+      const fill = assertFullBleedSquare(app, svgForRasterization(markup));
+      const hex = /^#([0-9a-fA-F]{6})$/.exec(fill);
+      expect(hex, `${app} surface fill`).not.toBeNull();
+      const expected = [0, 2, 4].map((offset) =>
+        Number.parseInt(hex[1].slice(offset, offset + 2), 16),
+      );
+      const { width, height, rgba } = decodePng(join(pwaDir, `${app}-192.png`));
+      const corners = [
+        [0, 0],
+        [width - 1, 0],
+        [0, height - 1],
+        [width - 1, height - 1],
+      ];
+      const matched = corners.some(([x, y]) => {
+        const index = (y * width + x) * 4;
+        return (
+          rgba[index] === expected[0] &&
+          rgba[index + 1] === expected[1] &&
+          rgba[index + 2] === expected[2]
+        );
+      });
+      expect(matched, `${app}-192.png: no corner matches surface ${fill}`).toBe(true);
     }
   });
 });

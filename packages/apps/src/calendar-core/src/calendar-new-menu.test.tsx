@@ -64,7 +64,8 @@ describe("CalendarNewMenu", () => {
 
     const main = screen.getByRole("button", { name: L.newEvent });
     expect(main).toBeTruthy();
-    expect(main.className).toMatch(/calendar-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/calendar-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/calendar-new-menu__main--stretch/);
     expect(screen.queryByRole("button", { name: L.newEventMenu })).toBeNull();
   });
 

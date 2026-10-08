@@ -9,22 +9,6 @@
   left: auto;
   transform: none;
   cursor: grab;
-  --button-active-color: var(--workspace-accent-strong);
-  --button-outline-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 20%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 26%,
-    var(--workspace-surface)
-  );
-  --button-outline-active-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 32%,
-    var(--workspace-surface)
-  );
 }
 
 .meet-mini-player.floating-action-bar:not(.meet-mini-player--moved) {
@@ -42,12 +26,12 @@
 
 .meet-mini-player__preview {
   @apply relative flex h-12 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md;
-  background-color: color-mix(in oklab, #000 35%, var(--color-we-got-dark));
+  background-color: var(--meet-screen-bg, #000);
   cursor: inherit;
 }
 
 .meet-mini-player__preview .user-avatar__mark {
-  color: var(--color-we-got-brat);
+  color: var(--meet-mark);
 }
 
 .meet-mini-player__video {

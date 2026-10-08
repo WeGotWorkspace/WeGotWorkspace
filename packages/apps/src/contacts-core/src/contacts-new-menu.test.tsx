@@ -53,7 +53,8 @@ describe("ContactsNewMenu", () => {
     render(<ContactsNewMenu labels={L} onCreateContact={vi.fn()} />);
 
     const main = screen.getByRole("button", { name: L.newContact });
-    expect(main.className).toMatch(/sidebar-segmented-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/sidebar-segmented-new-menu__main--solo/);
+    expect(main.className).not.toMatch(/sidebar-segmented-new-menu__main--stretch/);
     expect(screen.queryByRole("button", { name: L.newContactMenu })).toBeNull();
   });
 });

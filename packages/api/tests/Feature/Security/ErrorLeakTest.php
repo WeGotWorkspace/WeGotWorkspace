@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Security;
 
 use Illuminate\Support\Facades\Route;
+use ReflectionProperty;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -59,5 +60,38 @@ final class ErrorLeakTest extends TestCase
                 'error' => 'Not found.',
                 'code' => 'not_found',
             ]);
+    }
+
+    public function test_500_with_debug_disabled_hides_exception_message_on_non_api_routes(): void
+    {
+        config(['app.debug' => false]);
+
+        $marker = 'wgw-secret-leak-marker';
+        // The front catch-all is registered first and would swallow this path.
+        $route = Route::get('/security-probe/trigger-error', function () use ($marker): void {
+            throw new RuntimeException($marker.' at /var/www/html/app/Services/SecretStore.php:42');
+        });
+        $this->matchRouteBeforeFrontCatchAll($route);
+
+        $response = $this->get('/security-probe/trigger-error');
+
+        $response->assertStatus(500);
+        $body = (string) $response->getContent();
+        $this->assertStringNotContainsString($marker, $body);
+        $this->assertStringNotContainsString('SecretStore.php', $body);
+        $this->assertStringNotContainsString('RuntimeException', $body);
+        $this->assertStringNotContainsString('Stack trace', $body);
+    }
+
+    private function matchRouteBeforeFrontCatchAll(\Illuminate\Routing\Route $route): void
+    {
+        $collection = Route::getRoutes();
+        $routes = new ReflectionProperty($collection, 'routes');
+        $byMethod = $routes->getValue($collection);
+        $key = $route->getDomain().$route->uri();
+        $entry = $byMethod['GET'][$key];
+        unset($byMethod['GET'][$key]);
+        $byMethod['GET'] = [$key => $entry] + $byMethod['GET'];
+        $routes->setValue($collection, $byMethod);
     }
 }

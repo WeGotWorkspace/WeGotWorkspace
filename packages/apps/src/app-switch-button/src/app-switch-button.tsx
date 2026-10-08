@@ -12,20 +12,19 @@ import {
   type AppSwitchMenuApp,
 } from "@/app-switch-button/src/app-switch-menu-apps";
 import { useShowAdminApp } from "@/app-switch-button/src/use-show-admin-app";
+import {
+  WE_GOT_WORKSPACE_WORDMARK_LABEL,
+  WeGotWorkspaceWordmark,
+} from "@/brand-lockup/src/we-got-workspace-wordmark";
 import "@/app-switch-button/src/app-switch-button.css";
 
-const TAGLINE = "we got";
 /** Typographic dropdown mark — same font metrics as the app name (not a Lucide glyph). */
 const CHEVRON = "▾";
-
-export type AppSwitchButtonVariant = "default" | "compact";
 
 export type AppSwitchButtonProps = {
   disabled?: boolean;
   /** When set (e.g. `Workspace` on home/install), overrides the subtitle inferred from the route. */
   subtitle?: string;
-  /** `compact` drops the “we got” tagline and scales the mark to a single app line. */
-  variant?: AppSwitchButtonVariant;
   onSelect?: (app: AppSwitchMenuApp) => void;
 };
 
@@ -36,10 +35,8 @@ export type AppSwitchButtonProps = {
 export const AppSwitchButton = memo(function AppSwitchButton({
   disabled = false,
   subtitle: subtitleProp,
-  variant = "default",
   onSelect: onSelectProp,
 }: AppSwitchButtonProps) {
-  const compact = variant === "compact";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const showAdmin = useShowAdminApp();
@@ -95,9 +92,11 @@ export const AppSwitchButton = memo(function AppSwitchButton({
         <button
           type="button"
           disabled={disabled}
+          // Product subtitle alone collides with in-app CTAs (e.g. Meet header
+          // "Meet"); keep the visible label and name the control as the switcher.
+          aria-label={isWorkspaceContext ? undefined : `${subtitle}, switch apps`}
           className={cn(
             "app-switch-button__trigger",
-            compact && "app-switch-button__trigger--compact",
             isWorkspaceContext && "app-switch-button__trigger--workspace",
           )}
         >
@@ -110,17 +109,28 @@ export const AppSwitchButton = memo(function AppSwitchButton({
               variant="switch-trigger"
             />
           )}
-          <span className="app-switch-button__label">
-            {!compact ? <span className="app-switch-button__label-top">{TAGLINE}</span> : null}
-            <span className="app-switch-button__label-name">
-              {subtitle}
+          {isWorkspaceContext ? (
+            <span className="app-switch-button__label app-switch-button__label--wordmark">
+              <span className="sr-only">{WE_GOT_WORKSPACE_WORDMARK_LABEL}</span>
+              <WeGotWorkspaceWordmark />
               {!disabled ? (
                 <span className="app-switch-button__chevron" aria-hidden>
                   {CHEVRON}
                 </span>
               ) : null}
             </span>
-          </span>
+          ) : (
+            <span className="app-switch-button__label">
+              <span className="app-switch-button__label-name">
+                {subtitle}
+                {!disabled ? (
+                  <span className="app-switch-button__chevron" aria-hidden>
+                    {CHEVRON}
+                  </span>
+                ) : null}
+              </span>
+            </span>
+          )}
         </button>
       }
       items={menuItems}

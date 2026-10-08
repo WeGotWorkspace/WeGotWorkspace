@@ -20,6 +20,9 @@ services:
       WGW_APP_ROOT: /var/www/install
       WGW_API_ROOT: /var/www/packages/api
       WGW_DEV_DOMAIN: ${WGW_DEV_DOMAIN:-wegotworkspace.localhost}
+      # Shipped packages/api/.env.example is production-safe. This stack is local dev.
+      APP_ENV: local
+      APP_DEBUG: "true"
     volumes:
       - ./apps/wegotworkspace:/var/www/install
       - ./packages/api:/var/www/packages/api
@@ -44,6 +47,8 @@ services:
       WGW_APP_ROOT: /var/www/install
       WGW_API_ROOT: /var/www/packages/api
       WGW_DEV_DOMAIN: ${WGW_DEV_DOMAIN:-wegotworkspace.localhost}
+      APP_ENV: local
+      APP_DEBUG: "true"
     volumes:
       - ./apps/wegotworkspace:/var/www/install
       - ./packages/api:/var/www/packages/api

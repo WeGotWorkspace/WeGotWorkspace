@@ -22,14 +22,15 @@
   isolation: isolate;
   width: 100%;
   min-height: 100%;
-  border: var(--border);
+  border: var(--_lc-timeline-border);
   /* Consumers composing the timeline into a scroll/swipe context can relax this (e.g. pan-y);
      active gestures still block native panning via a touchmove blocker while they run. */
   touch-action: var(--time-line-touch-action, none);
   user-select: none;
   display: flex;
   --__event-height: var(--event-height, 32px);
-  --border: 0.5px solid light-dark(#d0d0d0, #505050);
+  /* Private shorthand — do not shadow the color token `--border`. */
+  --_lc-timeline-border: 0.5px solid var(--_lc-grid-line-color, var(--color-border));
   pointer-events: none;
 }
 
@@ -44,14 +45,14 @@
 }
 
 .cell {
-  outline: var(--border);
+  outline: var(--_lc-timeline-border);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .cell:focus {
-  outline: var(--border);
+  outline: var(--_lc-timeline-border);
 }
 
 .cell:focus-visible {
@@ -87,10 +88,7 @@
    next interval boundary; earlier when the window starts off-interval). Background renders
    behind events/markers/create-preview by nature. */
 .cell-main--grid {
-  --__grid-line-color: var(
-    --time-line-grid-color,
-    light-dark(rgb(0 0 0 / 8%), rgb(255 255 255 / 10%))
-  );
+  --__grid-line-color: var(--time-line-grid-color, var(--_lc-grid-line-color, var(--color-border)));
 }
 
 :host([flow="vertical"]) .cell-main--grid {
@@ -444,13 +442,18 @@
   align-items: center;
   width: 100%;
   min-width: 0;
-  color: var(--_lc-in-month-day-color, light-dark(rgb(15 23 42 / 100%), rgb(255 255 255 / 100%)));
+  color: var(--_lc-in-month-day-color, var(--workspace-foreground));
 }
 
 .timeline-day-header-button {
   padding: 0;
   flex: 0 1 auto;
   min-width: 0;
+  /* UA `ButtonText` is dark and does not inherit. In-month numbers live in this
+     button; without inherit they stay dark-on-dark while outside-month spans
+     (explicit ::part color) stay readable. */
+  color: inherit;
+  font: inherit;
 }
 
 .day-create-button {
@@ -497,7 +500,7 @@
 .timeline-day-header.is-outside-month {
   color: var(
     --_lc-outside-month-day-color,
-    light-dark(rgb(15 23 42 / 63%), rgb(255 255 255 / 63%))
+    color-mix(in oklch, var(--workspace-foreground) 63%, transparent)
   );
 }
 

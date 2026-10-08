@@ -74,8 +74,8 @@ export function Tag({
             ? {
                 "--tag-bg":
                   colors.backgroundColor ??
-                  "color-mix(in oklab, var(--color-we-got-dark) 8%, transparent)",
-                "--tag-fg": colors.color ?? "var(--color-we-got-dark)",
+                  "color-mix(in oklab, var(--workspace-foreground) 8%, transparent)",
+                "--tag-fg": colors.color ?? "var(--workspace-foreground)",
               }
             : {}),
         } as CSSProperties)

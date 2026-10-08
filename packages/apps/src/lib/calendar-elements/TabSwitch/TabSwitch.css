@@ -6,10 +6,7 @@
     --lc-switch-active-color,
     light-dark(rgb(15 23 42 / 95%), rgb(255 255 255 / 98%))
   );
-  --_lc-switch-border-color: light-dark(
-    var(--_lc-grid-line-color, rgb(15 23 42 / 14%)),
-    var(--_lc-grid-line-color, rgb(255 255 255 / 16%))
-  );
+  --_lc-switch-border-color: var(--_lc-grid-line-color, var(--border));
   border-color: var(--_lc-switch-border-color);
 }
 
