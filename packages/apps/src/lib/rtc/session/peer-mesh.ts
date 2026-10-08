@@ -430,12 +430,11 @@ export class RtcPeerMesh {
   }
 
   /**
-   * Principal still collapses a reloaded tab into one peer. Collab does not:
-   * two devices of the same user are both live, and a same-browser reload is
-   * evicted by `browserId` on the server.
+   * No channel collapses peers by user any more. The server evicts a reloaded
+   * tab by browser id, and two browsers of one user are both live.
    */
   private collapseIdentityOnPoll(): boolean {
-    return this.options.channel === "principal";
+    return false;
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
