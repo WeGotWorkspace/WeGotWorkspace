@@ -186,6 +186,36 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'bad_type']);
     }
 
+    public function test_link_down_hint_is_delivered(): void
+    {
+        $aliceToken = $this->issueBearerTokenFor('alice');
+        $bobToken = $this->issueBearerTokenFor('bob');
+
+        $alicePeerId = $this->joinWorkspace($aliceToken, 'Alice');
+        $bobPeerId = $this->joinWorkspace($bobToken, 'Bob');
+
+        $payload = ['v' => 1, 'since' => 1];
+        $this->withBearer($aliceToken)
+            ->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events', [
+                'peerId' => $alicePeerId,
+                'to' => $bobPeerId,
+                'type' => 'link-down',
+                'payload' => $payload,
+            ])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $poll = $this->withBearer($bobToken)
+            ->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/events?peerId='.$bobPeerId.'&since=0');
+        $poll->assertOk();
+        $messages = $poll->json('messages');
+        $this->assertIsArray($messages);
+        $this->assertCount(1, $messages);
+        $this->assertSame('link-down', $messages[0]['type']);
+        $this->assertSame($alicePeerId, $messages[0]['from']);
+        $this->assertSame($payload, $messages[0]['payload']);
+    }
+
     public function test_conditional_poll_answers_204_on_matching_sig(): void
     {
         $token = $this->issueBearerTokenFor('alice');
