@@ -14,7 +14,6 @@ use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
 use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
-use Sabre\VObject\Property\ICalendar\Duration;
 use Sabre\VObject\Reader;
 use Sabre\VObject\Recur\EventIterator;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
@@ -303,14 +302,14 @@ final class CalendarEventExpansionService
             return 0;
         }
 
-        if (isset($master->DTEND) && $master->DTEND instanceof IcsDateTime) {
+        if (isset($master->DTEND)) {
             $start = DateTimeImmutable::createFromInterface($startProp->getDateTime());
             $end = DateTimeImmutable::createFromInterface($master->DTEND->getDateTime());
 
             return max(0, $end->getTimestamp() - $start->getTimestamp());
         }
 
-        if (isset($master->DURATION) && $master->DURATION instanceof Duration) {
+        if (isset($master->DURATION)) {
             return $this->dateIntervalSeconds($master->DURATION->getDateInterval());
         }
 
