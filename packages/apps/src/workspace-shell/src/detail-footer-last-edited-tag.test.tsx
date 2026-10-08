@@ -71,6 +71,67 @@ describe("detailFooterLastEditedTag", () => {
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
   });
 
+  it("puts a green presence pip beside a saved timestamp", () => {
+    const { container } = renderTag(
+      <>
+        {detailFooterLastEditedTag({
+          lastEdited: "10 Aug 2026, 14:00",
+          editedLabel: "Last edited",
+          sync: "saved",
+        })}
+      </>,
+    );
+
+    const chip = container.querySelector(".workspace-detail-footer__meta-tag--edited");
+    expect(chip!.getAttribute("data-save-sync")).toBe("saved");
+    expect(chip!.getAttribute("aria-label")).toBe("Last edited, saved");
+    expect(screen.getByText("10 Aug 2026, 14:00")).toBeTruthy();
+    expect(chip!.textContent).not.toContain("Saved");
+    expect(container.querySelector("[data-presence='online']")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--online")).toBeTruthy();
+  });
+
+  it("puts an amber presence pip beside the timestamp while a save is pending", () => {
+    const { container } = renderTag(
+      <>
+        {detailFooterLastEditedTag({
+          lastEdited: "10 Aug 2026, 14:00",
+          editedLabel: "Last edited",
+          sync: "pending",
+          busyLabel: "Unsaved changes",
+        })}
+      </>,
+    );
+
+    const chip = container.querySelector(".workspace-detail-footer__meta-tag--edited");
+    expect(chip!.getAttribute("data-save-sync")).toBe("pending");
+    expect(chip!.getAttribute("aria-label")).toBe("Unsaved changes");
+    expect(screen.getByText("10 Aug 2026, 14:00")).toBeTruthy();
+    expect(container.querySelector("[data-presence='away']")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--away")).toBeTruthy();
+  });
+
+  it("keeps the failed-sync label when the chip is busy and the save is still pending", () => {
+    const { container } = renderTag(
+      <>
+        {detailFooterLastEditedTag({
+          lastEdited: "10 Aug 2026, 14:00",
+          editedLabel: "Last edited",
+          busy: true,
+          busyLabel: "Save failed — changes not on server",
+          sync: "pending",
+        })}
+      </>,
+    );
+
+    expect(
+      screen.getByRole("status", { name: "Save failed — changes not on server" }),
+    ).toBeTruthy();
+    expect(screen.getByText("10 Aug 2026, 14:00")).toBeTruthy();
+    expect(container.querySelector(".loading-spinner")).toBeTruthy();
+    expect(container.querySelector("[data-presence='away']")).toBeTruthy();
+  });
+
   it("omits the chip when idle without a real timestamp", () => {
     const { container } = renderTag(<>{detailFooterLastEditedTag({})}</>);
     expect(container.querySelector(".workspace-detail-footer__meta-tag--edited")).toBeNull();

@@ -161,7 +161,6 @@ export function useDocsCollab({
     connectingPeers: mesh.connectingPeers,
     warningPeers: mesh.warningPeers,
     linkCount: mesh.linkCount,
-    relayBanner: mesh.relayBanner,
     pendingSync,
     failedSync,
     snapshotPreview,
