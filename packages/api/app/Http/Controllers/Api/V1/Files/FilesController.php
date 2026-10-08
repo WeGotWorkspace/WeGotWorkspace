@@ -155,20 +155,53 @@ final class FilesController
 
         if ($request->query('format') === 'yjs') {
             $binary = $this->collabDocuments->getYjsBinary($request, $path);
+            // C7: a 204 means "no sidecar" and carries no entity tag.
             if ($binary === null) {
                 return response('', 204);
             }
 
-            return response($binary, 200, [
-                'Content-Type' => 'application/octet-stream',
-            ]);
+            return $this->collaborationBody($request, $binary, 'application/octet-stream');
         }
 
-        return response(
+        return $this->collaborationBody(
+            $request,
             $this->collabDocuments->getMarkdown($request, $path),
-            200,
-            ['Content-Type' => 'text/markdown; charset=utf-8'],
+            'text/markdown; charset=utf-8',
         );
+    }
+
+    /** 304 when `If-None-Match` still names this body. `*` matches any stored representation. */
+    private function collaborationBody(Request $request, string $bytes, string $contentType): Response
+    {
+        $etag = DocCollabDocumentService::sidecarEtag($bytes);
+        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+        if ($ifNoneMatch === '*' || $this->etagListed($ifNoneMatch, $etag)) {
+            return response('', 304, ['ETag' => $etag]);
+        }
+
+        return response($bytes, 200, [
+            'Content-Type' => $contentType,
+            'ETag' => $etag,
+        ]);
+    }
+
+    private function etagListed(string $header, string $etag): bool
+    {
+        if ($header === '') {
+            return false;
+        }
+
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = trim(substr($candidate, 2));
+            }
+            if ($candidate === $etag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function updateCollaboration(Request $request): JsonResponse
@@ -178,7 +211,11 @@ final class FilesController
         $payload['room'] = $path;
         $request->json()->replace($payload);
 
-        return response()->json($this->collabDocuments->put($request, $payload));
+        $result = $this->collabDocuments->put($request, $payload);
+        $etag = $result['etag'];
+        $response = response()->json(['ok' => $result['ok']]);
+
+        return $etag === null ? $response : $response->header('ETag', $etag);
     }
 
     public function star(Request $request): JsonResponse

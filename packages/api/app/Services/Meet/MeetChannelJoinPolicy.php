@@ -153,11 +153,29 @@ final class MeetChannelJoinPolicy
      */
     public function admittedPeerIdFromControlText(string $text): ?string
     {
+        return $this->controlPeerIdFromText($text, ['admit']);
+    }
+
+    /**
+     * Extracts the peer id of the knocker a lobby decision is meant for
+     * (`admit` / `deny`); null for every other text. Chat fan-out uses this to
+     * reach a waiting peer with the answer to its knock and nothing else.
+     */
+    public function lobbyDecisionPeerIdFromControlText(string $text): ?string
+    {
+        return $this->controlPeerIdFromText($text, ['admit', 'deny']);
+    }
+
+    /**
+     * @param  list<string>  $kinds
+     */
+    private function controlPeerIdFromText(string $text, array $kinds): ?string
+    {
         if (! str_starts_with($text, self::CONTROL_MESSAGE_PREFIX)) {
             return null;
         }
         $decoded = json_decode(substr($text, strlen(self::CONTROL_MESSAGE_PREFIX)), true);
-        if (! is_array($decoded) || ($decoded['kind'] ?? null) !== 'admit') {
+        if (! is_array($decoded) || ! in_array($decoded['kind'] ?? null, $kinds, true)) {
             return null;
         }
         $peerId = $decoded['peerId'] ?? null;

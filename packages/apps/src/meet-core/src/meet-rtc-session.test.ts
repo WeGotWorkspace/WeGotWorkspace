@@ -6,9 +6,7 @@ import type { RtcSettings } from "@/lib/rtc/types";
 
 const RTC_SETTINGS: RtcSettings = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
 };
 
@@ -22,7 +20,7 @@ describe("MeetRtcSession SDP wiring", () => {
       "offer",
     );
     expect(inbound?.sdp).toBeDefined();
-    const sanitized = sanitizeRtcSdp(inbound!.sdp!);
+    const sanitized = sanitizeRtcSdp(inbound!.sdp!, "chromium");
     expect(sanitized).not.toContain("a=ssrc:");
     expect(sanitized).not.toContain("a=rtcp-rsize");
   });

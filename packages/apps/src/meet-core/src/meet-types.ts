@@ -127,8 +127,13 @@ export type MeetChatOperations = {
   sendMessage?: (
     channelId: string,
     body: string,
-    opts?: { parentId?: string | null },
+    opts?: { parentId?: string | null; messageId?: string },
   ) => Promise<ChatMessage>;
+  /**
+   * Mints the client ULID the next `sendMessage` will save under. The room
+   * echo needs that id before the save starts, so it cannot be minted inside.
+   */
+  newMessageId?: () => string;
   editMessage?: (messageId: string, body: string) => Promise<ChatMessage>;
   deleteMessage?: (messageId: string) => Promise<void>;
   react?: (messageId: string, emoji: string) => Promise<ChatMessage>;

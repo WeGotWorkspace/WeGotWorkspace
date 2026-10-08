@@ -1,19 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
+import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
+import { presentMeetRelayOutcome } from "@/meet-core/src/meet-relay-present";
+import type { MeetRelayCopy } from "@/meet-core/src/meet-relay-copy";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
 import type { RtcPeerDescriptor } from "@/lib/rtc/types";
 import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
+import { acceptMeetDataChat } from "@/meet-core/src/meet-data-chat";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
+import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
 import { useMeetInboundMediaHints } from "@/meet-core/src/use-meet-inbound-media-hints";
 import { useMeetLocalMedia } from "@/meet-core/src/use-meet-local-media";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 import { useMeetRtc } from "@/meet-core/src/use-meet-rtc";
+import { useMeetSendEncoding } from "@/meet-core/src/use-meet-send-encoding";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
 export type UseMeetCallSessionArgs = {
@@ -35,13 +42,17 @@ export function useMeetCallSession({
   callStore,
 }: UseMeetCallSessionArgs) {
   const toast = useAppToast();
+  const presence = usePresenceStoreContext();
+  const cameraBlockedRef = useRef(false);
+  const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
+  const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
+  const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
   const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
 
   const meetRtcRef = useRef<ReturnType<typeof useMeetRtc> | null>(null);
   const muteMicRef = useRef<null | (() => boolean)>(null);
-  const unmuteMicRef = useRef<null | (() => boolean)>(null);
   const getLocalStreamRef = useRef<() => MediaStream | null>(() => null);
   const announceMediaPresenceRef = useRef<
     (mic: boolean, camera: boolean, screen?: boolean) => Promise<void>
@@ -61,6 +72,7 @@ export function useMeetCallSession({
     displayNameRef: room.displayNameRef,
     waitingForAdmissionRef: room.waitingForAdmissionRef,
     rosterRef: room.rosterRef,
+    signalingRosterRef: room.signalingRosterRef,
     participantRosterDiffReadyRef: room.participantRosterDiffReadyRef,
     peerNamesRef: room.peerNamesRef,
     peerDisclosedMediaRef: room.peerDisclosedMediaRef,
@@ -68,7 +80,7 @@ export function useMeetCallSession({
     leaveRef,
     meetRtcRef,
     muteMicRef,
-    unmuteMicRef,
+    viewerSeesAccounts: !isGuestSession,
     setKnockers: room.setKnockers,
     setEndedMessage: room.setEndedMessage,
     setStatus: room.setStatus,
@@ -92,6 +104,10 @@ export function useMeetCallSession({
     shouldConnectToPeer: (peer: RtcPeerDescriptor) =>
       shouldConnectMeetPeer(peer, room.selfIdRef.current, room.waitingForAdmissionRef.current),
     shouldHandleRtcSignals: () => !room.waitingForAdmissionRef.current,
+    // The lobby is not the call: a knocker's offer is dropped here too, not
+    // only by the server, so a forged or racing one is never answered.
+    shouldAcceptOffer: (from: string) =>
+      shouldAcceptMeetOffer(room.signalingRosterRef.current, from),
     onPeerRemoved: (peerId, name) => {
       room.peerNamesRef.current.delete(peerId);
       room.peerInboundSampleRef.current.delete(peerId);
@@ -117,17 +133,56 @@ export function useMeetCallSession({
     onPeerConnected: () => {
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
+    onMeetData: (remoteId, raw) => {
+      acceptMeetDataChat({
+        remoteId,
+        raw,
+        selfPeerId: room.selfIdRef.current,
+        peerNames: room.peerNamesRef.current,
+        setChatMessages: room.setChatMessages,
+      });
+    },
+    onRelayOutcome: (remoteId, name, outcome) => {
+      const selfId = room.selfIdRef.current;
+      const displayName = remoteId === selfId ? (room.displayNameRef.current ?? name) : name;
+      const presented = presentMeetRelayOutcome({
+        role: principalRoleFromToken(wgwCurrentAccessToken()),
+        selfId,
+        remoteId,
+        name: displayName,
+        outcome: outcome.outcome,
+      });
+      if (presented.toast) toast.show(presented.toast, { severity: "warning" });
+      if (presented.banner) setRelayBanner(presented.banner);
+      const tile = presented.tile;
+      if (tile) {
+        setRelayTiles((current) => ({ ...current, [tile.peerId]: tile.message }));
+      }
+    },
+    onVideoLimits: (limits) => {
+      const blocked = limits.maxVideoProfile === "audio";
+      cameraBlockedRef.current = blocked;
+      setCameraSendingDisabled(blocked);
+      if (blocked) room.setVideoOn(false);
+    },
   });
   meetRtcRef.current = meetRtc;
+  const { lowData, setLowData } = useMeetSendEncoding(meetRtc);
+
+  useEffect(() => {
+    if (!presence) return;
+    return presence.subscribeMeetJoinHint((hintRoom) => {
+      if (hintRoom !== room.roomCodeRef.current) return;
+      meetRtcRef.current?.kickPoll();
+    });
+  }, [presence, room.roomCodeRef]);
 
   useEffect(() => {
     debugRtc("controller-init", {
       rtcDebugEnabled: rtcDebugEnabledRef.current,
       stunCount: parseUrlList(rtc.stunUrls, "stun").length,
-      turnCount: parseUrlList(rtc.turnUrls, "turn").length,
       forceRelay: rtc.forceRelay,
-      turnUsernameConfigured: rtc.turnUsername.trim() !== "",
-      turnPasswordConfigured: rtc.turnPassword.trim() !== "",
+      turnAvailable: rtc.turnAvailable,
     });
   }, [debugRtc, rtc]);
 
@@ -193,9 +248,12 @@ export function useMeetCallSession({
     stopLocalMedia,
     toggleMic,
     muteMic,
-    unmuteMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
     switchMic,
     switchCamera,
     getLocalStream,
@@ -218,13 +276,13 @@ export function useMeetCallSession({
     setScreenOn: room.setScreenOn,
     setError: room.setError,
     announceMediaPresence,
+    cameraBlockedRef,
     micOnRef: room.micOnRef,
     videoOnRef: room.videoOnRef,
     screenOnRef: room.screenOnRef,
   });
   getLocalStreamRef.current = getLocalStream;
   muteMicRef.current = muteMic;
-  unmuteMicRef.current = unmuteMic;
   // Mini-player (outside `/meet`) calls the same toggles so mic/camera stay in sync.
   if (callStore) {
     callStore.toggleMicRef.current = toggleMic;
@@ -274,6 +332,15 @@ export function useMeetCallSession({
     toggleMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
+    cameraSendingDisabled,
+    lowData,
+    setLowData,
+    relayBanner,
+    relayTiles,
     switchMic,
     switchCamera,
   };

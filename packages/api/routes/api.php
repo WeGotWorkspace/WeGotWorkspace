@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberC
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
 use App\Http\Controllers\Api\V1\Admin\PluginInstallController as AdminPluginInstallController;
+use App\Http\Controllers\Api\V1\Admin\RealtimeHealthController as AdminRealtimeHealthController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
@@ -52,6 +53,7 @@ use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivatio
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
+use App\Http\Controllers\Api\V1\Rtc\MetricsController as RtcMetricsController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
@@ -63,6 +65,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
+use App\Http\RateLimiting\RtcRoomRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -101,19 +104,31 @@ Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
     ->middleware('wgw.auth')
     ->where('roomId', '[A-Za-z0-9_-]+');
 
-Route::post('rooms/{roomId}/participants', [RoomSessionController::class, 'storeParticipant'])
-    ->where('roomId', '[A-Za-z0-9_.-]+');
-Route::get('rooms/{roomId}/events', [RoomSessionController::class, 'indexEvents'])
-    ->where('roomId', '[A-Za-z0-9_.-]+');
-Route::post('rooms/{roomId}/events', [RoomSessionController::class, 'storeEvent'])
-    ->where('roomId', '[A-Za-z0-9_.-]+');
-Route::delete('rooms/{roomId}/participants/{participantId}', [RoomSessionController::class, 'destroyParticipant'])
-    ->where('roomId', '[A-Za-z0-9_.-]+')
-    ->where('participantId', '[A-Za-z0-9_-]+|me');
-Route::get('rooms/{roomId}/configuration', [RoomSessionController::class, 'configuration'])
-    ->where('roomId', '[A-Za-z0-9_.-]+');
-Route::post('rooms/{roomId}/messages', [RoomSessionController::class, 'storeMessage'])
-    ->where('roomId', '[A-Za-z0-9_.-]+');
+// Signaling is unauthenticated by design (guests join meetings with a session
+// key), so every room route carries the per-actor throttle from
+// RtcRoomRateLimiters — otherwise one script owns the whole table.
+Route::middleware('throttle:'.RtcRoomRateLimiters::ROOMS)->group(function (): void {
+    Route::post('rooms/{roomId}/participants', [RoomSessionController::class, 'storeParticipant'])
+        ->middleware('throttle:'.RtcRoomRateLimiters::ANONYMOUS_JOIN)
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+    Route::get('rooms/{roomId}/events', [RoomSessionController::class, 'indexEvents'])
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+    Route::post('rooms/{roomId}/events', [RoomSessionController::class, 'storeEvent'])
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+    Route::delete('rooms/{roomId}/participants/{participantId}', [RoomSessionController::class, 'destroyParticipant'])
+        ->where('roomId', '[A-Za-z0-9_.-]+')
+        ->where('participantId', '[A-Za-z0-9_-]+|me');
+    Route::get('rooms/{roomId}/configuration', [RoomSessionController::class, 'configuration'])
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+    Route::post('rooms/{roomId}/messages', [RoomSessionController::class, 'storeMessage'])
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+    Route::post('rooms/{roomId}/relay', [RoomSessionController::class, 'storeRelay'])
+        ->middleware('throttle:'.RtcRoomRateLimiters::RELAY)
+        ->where('roomId', '[A-Za-z0-9_.-]+');
+});
+
+Route::post('rtc/metrics', RtcMetricsController::class)
+    ->middleware('throttle:'.RtcRoomRateLimiters::METRICS);
 
 Route::middleware([
     EncryptCookies::class,
@@ -354,6 +369,7 @@ Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store
 
 Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
+    Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);
     Route::patch('users/{username}', [AdminUsersController::class, 'update'])
         ->where('username', '[a-z0-9_-]+');

@@ -734,18 +734,44 @@
                     "turnUrls": {
                         "type": "string"
                     },
-                    "turnUsername": {
-                        "type": "string"
+                    "turnSecretSet": {
+                        "type": "boolean",
+                        "description": "Whether a TURN shared secret is stored. The secret itself is write-only and never returned."
                     },
-                    "turnPassword": {
-                        "type": "string"
+                    "turnStaticCredentialsPresent": {
+                        "type": "boolean",
+                        "description": "Whether credentials from the removed static TURN username and password settings still exist."
+                    },
+                    "maxVideoProfile": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile Meet may select. Clients still pick the profile automatically."
+                    },
+                    "maxVideoProfileRelay": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
                     }
                 },
                 "required": [
                     "stunUrls",
                     "turnUrls",
-                    "turnUsername",
-                    "turnPassword"
+                    "turnSecretSet",
+                    "turnStaticCredentialsPresent",
+                    "maxVideoProfile",
+                    "maxVideoProfileRelay"
                 ]
             },
             "AdminAppsSettings": {
@@ -11794,6 +11820,615 @@
                         "format": "uri"
                     }
                 }
+            },
+            "RtcNetClass": {
+                "type": "string",
+                "enum": [
+                    "open",
+                    "symmetric",
+                    "udp-blocked",
+                    "unknown"
+                ],
+                "description": "Network class the peer measured for itself before joining."
+            },
+            "RtcPeerCapability": {
+                "type": "string",
+                "enum": [
+                    "bin",
+                    "ice-batch",
+                    "ticket",
+                    "meet-dc",
+                    "yjs-http",
+                    "relay-jit",
+                    "since-ack"
+                ],
+                "description": "Wire capability a peer advertises at join. Stored on the peer row and mirrored on rosters."
+            },
+            "RtcPeerAccess": {
+                "type": "string",
+                "enum": [
+                    "read",
+                    "comment",
+                    "write"
+                ],
+                "description": "Collaboration rights computed by the server at join from the drive share rights. Fail-closed: a peer row without a server-written value reads as `read`."
+            },
+            "RtcRosterPeer": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "string",
+                        "description": "Username of the owning account. Collaboration and principal rosters always carry it; meeting rosters only when the polling actor is authenticated, so guests never see member usernames."
+                    },
+                    "access": {
+                        "$ref": "#/components/schemas/RtcPeerAccess"
+                    },
+                    "caps": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcPeerCapability"
+                        }
+                    },
+                    "net": {
+                        "$ref": "#/components/schemas/RtcNetClass"
+                    }
+                }
+            },
+            "RtcRoomLimits": {
+                "type": "object",
+                "description": "Server-side ceilings for the room, advertised on the meeting join response.",
+                "required": [
+                    "maxPeers",
+                    "maxVideoProfile",
+                    "maxVideoProfileRelay"
+                ],
+                "properties": {
+                    "maxPeers": {
+                        "type": "integer",
+                        "description": "Peers allowed in the room (`MEET_MAX_PEERS`, default 4, clamped 2-15)."
+                    },
+                    "maxVideoProfile": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile Meet may select. Clients still pick the profile automatically."
+                    },
+                    "maxVideoProfileRelay": {
+                        "type": "string",
+                        "enum": [
+                            "p720",
+                            "p360",
+                            "p270",
+                            "p180",
+                            "audio"
+                        ],
+                        "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
+                    }
+                }
+            },
+            "RtcTurnCredentials": {
+                "type": "object",
+                "required": [
+                    "urls",
+                    "username",
+                    "credential",
+                    "ttl"
+                ],
+                "description": "Short-lived relay credentials in the TURN REST convention (coturn `use-auth-secret`). Issued only by the relay request, never at join and never by the room configuration endpoint.",
+                "properties": {
+                    "urls": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "username": {
+                        "type": "string",
+                        "description": "`<unixExpiry>:<first 16 hex of sha1(actor marker)>`."
+                    },
+                    "credential": {
+                        "type": "string",
+                        "description": "`base64(HMAC-SHA1(turnSecret, username))`."
+                    },
+                    "ttl": {
+                        "type": "integer",
+                        "description": "Lifetime in seconds."
+                    }
+                }
+            },
+            "RtcRoomConfiguration": {
+                "type": "object",
+                "required": [
+                    "rtc"
+                ],
+                "properties": {
+                    "rtc": {
+                        "type": "object",
+                        "required": [
+                            "stunUrls",
+                            "turnAvailable"
+                        ],
+                        "properties": {
+                            "stunUrls": {
+                                "type": "string",
+                                "description": "Comma-separated STUN URLs."
+                            },
+                            "turnAvailable": {
+                                "type": "boolean",
+                                "description": "True when a relay secret is configured. Credentials are never part of this response."
+                            }
+                        }
+                    },
+                    "collabTicket": {
+                        "type": "object",
+                        "required": [
+                            "kid",
+                            "jwk"
+                        ],
+                        "description": "Public half of the contract C2 ticket signing key. No private material is ever part of this response.",
+                        "properties": {
+                            "kid": {
+                                "type": "string",
+                                "description": "Key id the ticket header names."
+                            },
+                            "jwk": {
+                                "type": "object",
+                                "required": [
+                                    "kty",
+                                    "crv",
+                                    "x",
+                                    "y",
+                                    "kid"
+                                ],
+                                "properties": {
+                                    "kty": {
+                                        "type": "string",
+                                        "enum": [
+                                            "EC"
+                                        ]
+                                    },
+                                    "crv": {
+                                        "type": "string",
+                                        "enum": [
+                                            "P-256"
+                                        ]
+                                    },
+                                    "x": {
+                                        "type": "string",
+                                        "description": "base64url, 32 bytes."
+                                    },
+                                    "y": {
+                                        "type": "string",
+                                        "description": "base64url, 32 bytes."
+                                    },
+                                    "kid": {
+                                        "type": "string"
+                                    },
+                                    "alg": {
+                                        "type": "string",
+                                        "enum": [
+                                            "ES256"
+                                        ]
+                                    },
+                                    "use": {
+                                        "type": "string",
+                                        "enum": [
+                                            "sig"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "RtcJoinRequest": {
+                "type": "object",
+                "properties": {
+                    "peerId": {
+                        "type": "string",
+                        "description": "Client-chosen peer id (meeting rooms). Collaboration and principal rooms get one from the server."
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "net": {
+                        "$ref": "#/components/schemas/RtcNetClass"
+                    },
+                    "caps": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcPeerCapability"
+                        }
+                    },
+                    "browserId": {
+                        "type": "string",
+                        "description": "Opaque per-browser-profile token used to evict leftover peers from the same browser."
+                    },
+                    "sessionKey": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Server-issued guest session key from an earlier join. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. A caller-chosen key is ignored."
+                    }
+                }
+            },
+            "RtcJoinResponse": {
+                "type": "object",
+                "required": [
+                    "peers"
+                ],
+                "properties": {
+                    "peerId": {
+                        "type": "string",
+                        "description": "Server-assigned peer id (collaboration and principal rooms)."
+                    },
+                    "peers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcRosterPeer"
+                        }
+                    },
+                    "sessionKey": {
+                        "type": "string",
+                        "nullable": true,
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Server-issued guest session key for meeting rooms. 64 hex characters: 16 random bytes plus the leading HMAC-SHA256 under APP_KEY. Null for an authenticated member."
+                    },
+                    "ticket": {
+                        "type": "string",
+                        "description": "Signed collaboration ticket a peer presents to the other peers in the mesh."
+                    },
+                    "rtc": {
+                        "type": "object",
+                        "properties": {
+                            "limits": {
+                                "$ref": "#/components/schemas/RtcRoomLimits"
+                            }
+                        }
+                    }
+                }
+            },
+            "RtcMailboxMessage": {
+                "type": "object",
+                "required": [
+                    "from",
+                    "type"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Monotonic mailbox id. Present on channels that poll with a `since` cursor."
+                    },
+                    "from": {
+                        "type": "string"
+                    },
+                    "to": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "offer",
+                            "answer",
+                            "ice",
+                            "bye",
+                            "chat",
+                            "yjs",
+                            "yjs-sv",
+                            "relay-hint"
+                        ],
+                        "description": "`relay-hint` is server-inserted only: a client that sends it is answered with `bad_type`."
+                    },
+                    "payload": {}
+                }
+            },
+            "RtcPollResponse": {
+                "type": "object",
+                "required": [
+                    "peers",
+                    "messages",
+                    "rosterSig"
+                ],
+                "properties": {
+                    "peers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcRosterPeer"
+                        }
+                    },
+                    "messages": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcMailboxMessage"
+                        }
+                    },
+                    "rosterSig": {
+                        "type": "string",
+                        "description": "Roster signature to echo as `?sig=` on the next poll."
+                    },
+                    "ticket": {
+                        "type": "string",
+                        "description": "Signed collaboration ticket, refreshed on every poll."
+                    }
+                }
+            },
+            "RtcSendEventRequest": {
+                "type": "object",
+                "required": [
+                    "to",
+                    "type"
+                ],
+                "properties": {
+                    "peerId": {
+                        "type": "string",
+                        "description": "Sending peer on collaboration and principal rooms."
+                    },
+                    "from": {
+                        "type": "string",
+                        "description": "Sending peer on meeting rooms."
+                    },
+                    "to": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "offer",
+                            "answer",
+                            "ice",
+                            "bye",
+                            "yjs",
+                            "yjs-sv"
+                        ]
+                    },
+                    "payload": {}
+                }
+            },
+            "RtcRelayRequest": {
+                "type": "object",
+                "required": [
+                    "peerId",
+                    "target",
+                    "reason"
+                ],
+                "properties": {
+                    "peerId": {
+                        "type": "string",
+                        "description": "Peer id owned by the calling actor."
+                    },
+                    "target": {
+                        "type": "string",
+                        "description": "Peer id in the room roster, or `*` when the reason is `precheck`."
+                    },
+                    "reason": {
+                        "type": "string",
+                        "enum": [
+                            "precheck",
+                            "timeout",
+                            "failed"
+                        ]
+                    },
+                    "net": {
+                        "$ref": "#/components/schemas/RtcNetClass"
+                    }
+                }
+            },
+            "RtcRelayResponse": {
+                "type": "object",
+                "required": [
+                    "turn"
+                ],
+                "properties": {
+                    "turn": {
+                        "$ref": "#/components/schemas/RtcTurnCredentials"
+                    }
+                }
+            },
+            "RtcSessionMetricReport": {
+                "type": "object",
+                "required": [
+                    "channel"
+                ],
+                "description": "One session sample for the real-time health page. Fields map to `rtc_session_metrics`; the row carries no addresses, room names, or user ids.",
+                "properties": {
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "meet",
+                            "collab"
+                        ]
+                    },
+                    "joinMs": {
+                        "type": "integer",
+                        "description": "Milliseconds from join to the first connected peer (`join_ms`)."
+                    },
+                    "candidateType": {
+                        "type": "string",
+                        "enum": [
+                            "host",
+                            "srflx",
+                            "prflx",
+                            "relay"
+                        ],
+                        "description": "Winning candidate type (`candidate_type`)."
+                    },
+                    "failedPairs": {
+                        "type": "integer",
+                        "description": "Candidate pairs that never connected (`failed_pairs`)."
+                    },
+                    "iceRestarts": {
+                        "type": "integer",
+                        "description": "ICE restarts during the session (`ice_restarts`)."
+                    },
+                    "httpFallback": {
+                        "type": "boolean",
+                        "description": "Session fell back to HTTP transport (`http_fallback`)."
+                    },
+                    "pollRttMs": {
+                        "type": "integer",
+                        "description": "Median signaling poll round trip (`poll_rtt_ms`)."
+                    },
+                    "net": {
+                        "$ref": "#/components/schemas/RtcNetClass"
+                    }
+                }
+            },
+            "RtcRealtimeHealthWindow": {
+                "type": "object",
+                "required": [
+                    "samples",
+                    "joinP50Ms",
+                    "joinP95Ms",
+                    "relayPercent",
+                    "failedPairsPercent",
+                    "fallbackPercent",
+                    "pollP95Ms",
+                    "constrainedPercent",
+                    "byChannel"
+                ],
+                "properties": {
+                    "samples": {
+                        "type": "integer"
+                    },
+                    "joinP50Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "joinP95Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "relayPercent": {
+                        "type": "number"
+                    },
+                    "failedPairsPercent": {
+                        "type": "number"
+                    },
+                    "fallbackPercent": {
+                        "type": "number"
+                    },
+                    "pollP95Ms": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "constrainedPercent": {
+                        "type": "number",
+                        "description": "Share of samples whose net class is symmetric or udp-blocked."
+                    },
+                    "byChannel": {
+                        "type": "object",
+                        "required": [
+                            "meet",
+                            "collab"
+                        ],
+                        "properties": {
+                            "meet": {
+                                "type": "integer"
+                            },
+                            "collab": {
+                                "type": "integer",
+                                "description": "Docs sessions. The wire name stays collab."
+                            }
+                        }
+                    }
+                }
+            },
+            "RtcRealtimeHealthDay": {
+                "type": "object",
+                "required": [
+                    "date",
+                    "issued",
+                    "unavailable",
+                    "denied"
+                ],
+                "properties": {
+                    "date": {
+                        "type": "string"
+                    },
+                    "issued": {
+                        "type": "integer"
+                    },
+                    "unavailable": {
+                        "type": "integer"
+                    },
+                    "denied": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "RtcRealtimeHealth": {
+                "type": "object",
+                "required": [
+                    "day",
+                    "week",
+                    "relayDays",
+                    "turnConfigured",
+                    "unavailablePeopleThisWeek",
+                    "callout",
+                    "retentionDays"
+                ],
+                "properties": {
+                    "day": {
+                        "$ref": "#/components/schemas/RtcRealtimeHealthWindow"
+                    },
+                    "week": {
+                        "$ref": "#/components/schemas/RtcRealtimeHealthWindow"
+                    },
+                    "relayDays": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RtcRealtimeHealthDay"
+                        }
+                    },
+                    "turnConfigured": {
+                        "type": "boolean"
+                    },
+                    "unavailablePeopleThisWeek": {
+                        "type": "integer"
+                    },
+                    "callout": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Set when TURN is not configured and someone could not connect directly this week."
+                    },
+                    "retentionDays": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "RtcSendEventResponse": {
+                "description": "The send was queued. The same object carries the sender's pending mailbox so the client can apply it without waiting for the next poll.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/OkResponse"
+                    },
+                    {
+                        "$ref": "#/components/schemas/RtcPollResponse"
+                    }
+                ]
             }
         },
         "responses": {
@@ -14219,11 +14854,51 @@
                                 "yjs"
                             ]
                         }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Document"
+                        "description": "Document",
+                        "headers": {
+                            "ETag": {
+                                "description": "Entity tag of the representation in this response. Markdown (format omitted or `markdown`) is sha1 of those bytes and is only valid for `If-None-Match` on a markdown load. `?format=yjs` is sha1 of the Yjs sidecar; only that tag is valid for `If-Match` on save.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag."
+                    },
+                    "403": {
+                        "description": "No read access to the path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14246,11 +14921,77 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Saved"
+                        "description": "Saved",
+                        "headers": {
+                            "ETag": {
+                                "description": "Entity tag of the stored Yjs sidecar (sha1 of the sidecar bytes). This is the tag `If-Match` checks. It is not the markdown representation tag.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "No write access to the path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "412": {
+                        "description": "The stored document moved on — reload and merge",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "`payload_too_large`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14702,15 +15443,20 @@
                 "x-wgw-access": "user"
             }
         },
-        "/rooms/{roomId}/configuration": {
-            "get": {
+        "/plugins/{id}/activation": {
+            "put": {
                 "tags": [
-                    "Rooms"
+                    "Plugins"
                 ],
-                "summary": "RTC configuration",
+                "summary": "Set plugin activation",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
                 "parameters": [
                     {
-                        "name": "roomId",
+                        "name": "id",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -14720,7 +15466,88 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Updated"
+                    }
+                },
+                "x-wgw-access": "user"
+            }
+        },
+        "/rooms/{roomId}/configuration": {
+            "get": {
+                "tags": [
+                    "Rooms"
+                ],
+                "summary": "RTC configuration",
+                "description": "STUN URLs and whether a relay is available. Requires an authenticated actor or a valid meeting guest `sessionKey`. Relay credentials are never returned here — ask `POST /rooms/{roomId}/relay` for them.",
+                "parameters": [
+                    {
+                        "name": "roomId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sessionKey",
+                        "in": "query",
+                        "required": false,
+                        "description": "Meeting guest session key, for actors without an account.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ICE configuration",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcRoomConfiguration"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "`auth_required`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The actor may not read this room",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown room",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14777,10 +15604,57 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Roster and mailbox",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcPollResponse"
+                                }
+                            }
+                        }
                     },
                     "204": {
                         "description": "Nothing new — roster unchanged for the provided `sig` and no pending messages."
+                    },
+                    "401": {
+                        "description": "Authentication required (`auth_required`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Peer not owned by the calling actor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown peer — refresh and join again",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14802,10 +15676,87 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Queued, with the sender's pending mailbox",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcSendEventResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`bad_type` or `invalid_peer`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required (`auth_required`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Peer not owned by the calling actor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown peer — refresh and join again",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "`payload_too_large`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "guest"
+                "x-wgw-access": "guest",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RtcSendEventRequest"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/rooms/{roomId}/messages": {
@@ -14826,7 +15777,74 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Delivered",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`empty_text` or `invalid_peer`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required (`auth_required`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Guests cannot join this conversation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "405": {
+                        "description": "Chat is only supported in meeting rooms",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "`payload_too_large`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14838,6 +15856,7 @@
                     "Rooms"
                 ],
                 "summary": "Join participant",
+                "description": "Join a meeting, collaboration, or principal room. The response never carries relay credentials: a peer asks for them with `POST /rooms/{roomId}/relay`.",
                 "parameters": [
                     {
                         "name": "roomId",
@@ -14848,9 +15867,86 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RtcJoinRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Roster",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcJoinResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid room, peer id, or name",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required (`auth_required`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Guest or non-member refused",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Room not active",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "`peer_id_taken` when the peer id belongs to another actor, `room_full` when the room is at `maxPeers`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14882,7 +15978,54 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "Left",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/OkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required (`auth_required`)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Peer not owned by the calling actor",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown peer",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests — per-actor room throttle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -19165,6 +20308,208 @@
                     }
                 },
                 "x-wgw-access": "user"
+            }
+        },
+        "/rooms/{roomId}/relay": {
+            "post": {
+                "tags": [
+                    "Rooms"
+                ],
+                "summary": "Request relay credentials",
+                "description": "Mint short-lived TURN credentials for the calling peer and drop a `relay-hint` in the target's mailbox. Guests are served only once admitted, or while an authenticated member is in an unreserved ad-hoc room; a knocking peer is refused. Every request writes one `rtc_relay_events` row. Rate limit: 6 per minute per actor.",
+                "parameters": [
+                    {
+                        "name": "roomId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RtcRelayRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Relay credentials",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcRelayResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "`invalid_peer` or `invalid_reason`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "`auth_required`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "`relay_denied`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown peer or target",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many relay requests",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "`relay_unavailable` — no relay secret configured",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/rtc/metrics": {
+            "post": {
+                "tags": [
+                    "Rooms"
+                ],
+                "summary": "Report a real-time session sample",
+                "description": "Anonymous telemetry for the real-time health page. The caller is signed in or has a live guest session. The body is at most 8 KiB. The stored row has no addresses, room names, or user ids, and is pruned after 30 days.",
+                "parameters": [
+                    {
+                        "name": "sessionKey",
+                        "in": "query",
+                        "required": false,
+                        "description": "Live guest session (`g:` owner on a signaling peer). Omitted when the caller sends a bearer token. Never stored.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{32}$"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RtcSessionMetricReport"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Invalid sample, or a batch larger than 8 KiB",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in and no live guest session",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many samples",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
+        },
+        "/admin/realtime-health": {
+            "get": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Real-time health",
+                "description": "Join time, relay share, failed pairs, HTTP fallback, and poll RTT over 24 hours and 7 days, plus relay outcomes. No addresses, room names, or user ids. Samples are kept for 30 days.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Health windows",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RtcRealtimeHealth"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Not signed in"
+                    },
+                    "403": {
+                        "description": "Not an administrator"
+                    }
+                },
+                "x-wgw-access": "admin"
             }
         },
         "/admin/plugins/{id}/activation": {

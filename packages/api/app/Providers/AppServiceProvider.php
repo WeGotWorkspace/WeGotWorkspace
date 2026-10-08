@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Events\EventDispatch;
 use App\Events\NotifyListener;
+use App\Http\RateLimiting\RtcRoomRateLimiters;
 use App\Models\OauthClient;
 use App\Services\Mcp\ConsentIntent;
 use App\Services\Mcp\McpOAuthSubscriber;
@@ -47,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         JsonResource::withoutWrapping();
+
+        RtcRoomRateLimiters::register();
 
         Passport::useClientModel(OauthClient::class);
         Passport::$deviceCodeGrantEnabled = false;

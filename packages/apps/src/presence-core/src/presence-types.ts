@@ -92,7 +92,8 @@ export type PresenceEnvelope =
     }
   | { v: 1; kind: "channel-changed"; channel: string }
   | { v: 1; kind: "call-active"; channel: string; active: boolean; audioOnly?: boolean }
-  | { v: 1; kind: "notify-hint"; tag?: string };
+  | { v: 1; kind: "notify-hint"; tag?: string }
+  | { v: 1; kind: "meet-join-hint"; room: string };
 
 /** Inbound Meet acceleration events (after sender-username checks). */
 export type PresenceMeetFanoutEvent =

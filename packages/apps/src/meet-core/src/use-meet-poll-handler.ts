@@ -1,13 +1,20 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import type { HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
-import { meetPollChatLine } from "@/meet-core/src/meet-channel-chat-echo";
-import { type MeetChatLine } from "@/meet-core/src/meet-chat-line";
-import { parseMeetControlMessage } from "@/meet-core/src/meet-control-messages";
+import {
+  appendMeetRoomChatLine,
+  meetPollChatLine,
+  type MeetChatLine,
+} from "@/meet-core/src/meet-chat-line";
+import {
+  parseMeetControlMessage,
+  type MeetControlMessage,
+} from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { completeMeetKnockAdmission } from "@/meet-core/src/meet-knock-admission";
 import {
   buildActiveMeetRoster,
+  buildMeetSignalingRoster,
   listKnockersFromRoster,
   listNewParticipantNames,
   type MeetKnocker,
@@ -24,6 +31,36 @@ type MeetPollMessage = {
   payload: unknown;
 };
 
+/** Host commands. Knock announcements and media presence are not in this set. */
+const HOST_CONTROL_KINDS = new Set<MeetControlMessage["kind"]>([
+  "admit",
+  "deny",
+  "end",
+  "mute",
+  "unmute",
+]);
+
+/**
+ * The server stamps `host: true` on a privileged control only after
+ * `assertPrivilegedControlAuthorized` passes. Trust that stamp. The live
+ * roster is not a substitute: the host posts `end` and then leaves, so the
+ * next poll often no longer lists them.
+ *
+ * Guest polls strip every account name, so this client cannot tell; the
+ * server already refused the rest. A client-supplied `host` inside the
+ * control text is not this stamp.
+ */
+function hostControlSenderIsTrusted(viewerSeesAccounts: boolean, payload: unknown): boolean {
+  if (isServerHostStamp(payload)) return true;
+  if (!viewerSeesAccounts) return true;
+  return false;
+}
+
+function isServerHostStamp(payload: unknown): boolean {
+  if (payload === null || typeof payload !== "object") return false;
+  return (payload as { host?: unknown }).host === true;
+}
+
 export type UseMeetPollHandlerArgs = {
   selfIdRef: MutableRefObject<string | null>;
   statusRef: MutableRefObject<CallStatus>;
@@ -31,6 +68,8 @@ export type UseMeetPollHandlerArgs = {
   displayNameRef: MutableRefObject<string>;
   waitingForAdmissionRef: MutableRefObject<boolean>;
   rosterRef: MutableRefObject<Map<string, string>>;
+  /** Raw roster for the offer gate — knock rows included. */
+  signalingRosterRef: MutableRefObject<Map<string, string>>;
   participantRosterDiffReadyRef: MutableRefObject<boolean>;
   peerNamesRef: MutableRefObject<Map<string, string>>;
   peerDisclosedMediaRef: MutableRefObject<
@@ -40,7 +79,11 @@ export type UseMeetPollHandlerArgs = {
   leaveRef: MutableRefObject<null | ((opts?: { preserveEndedMessage?: boolean }) => Promise<void>)>;
   meetRtcRef: MutableRefObject<MeetRtc | null>;
   muteMicRef: MutableRefObject<null | (() => boolean)>;
-  unmuteMicRef: MutableRefObject<null | (() => boolean)>;
+  /**
+   * Signed-in polls disclose account names on the roster. Guest polls do not,
+   * so they cannot apply the same sender check.
+   */
+  viewerSeesAccounts: boolean;
   setKnockers: Dispatch<SetStateAction<MeetKnocker[]>>;
   setEndedMessage: Dispatch<SetStateAction<string | null>>;
   setStatus: Dispatch<SetStateAction<CallStatus>>;
@@ -56,6 +99,7 @@ export function useMeetPollHandler({
   displayNameRef,
   waitingForAdmissionRef,
   rosterRef,
+  signalingRosterRef,
   participantRosterDiffReadyRef,
   peerNamesRef,
   peerDisclosedMediaRef,
@@ -63,7 +107,7 @@ export function useMeetPollHandler({
   leaveRef,
   meetRtcRef,
   muteMicRef,
-  unmuteMicRef,
+  viewerSeesAccounts,
   setKnockers,
   setEndedMessage,
   setStatus,
@@ -78,6 +122,9 @@ export function useMeetPollHandler({
       const incoming = (poll.messages ?? []) as MeetPollMessage[];
       const selfPeerId = selfIdRef.current;
       if (!selfPeerId) return;
+
+      // Before the signals of this same poll are applied: the offer gate reads it.
+      signalingRosterRef.current = buildMeetSignalingRoster(roster);
 
       const pendingKnockers = listKnockersFromRoster(roster);
       setKnockers((prev) => {
@@ -114,6 +161,12 @@ export function useMeetPollHandler({
         if (typeof text !== "string" || text.trim() === "") continue;
         const control = parseMeetControlMessage(text.trim());
         if (control) {
+          if (
+            HOST_CONTROL_KINDS.has(control.kind) &&
+            !hostControlSenderIsTrusted(viewerSeesAccounts, msg.payload)
+          ) {
+            continue;
+          }
           if (control.kind === "knock") {
             setKnockers((prev) => {
               if (prev.some((entry) => entry.id === control.peerId)) return prev;
@@ -140,13 +193,14 @@ export function useMeetPollHandler({
             continue;
           }
           if (control.kind === "mute" || control.kind === "unmute") {
-            if (control.peerId === selfPeerId) {
-              if (control.kind === "mute" && muteMicRef.current?.()) {
-                toast.show(meetLabels.mutedByHost, { severity: "info" });
-              }
-              if (control.kind === "unmute" && unmuteMicRef.current?.()) {
-                toast.show(meetLabels.unmutedByHost, { severity: "info" });
-              }
+            // Remote unmute used to force `track.enabled = true`. That stays
+            // off until a consent UI exists; mute is still applied.
+            if (
+              control.kind === "mute" &&
+              control.peerId === selfPeerId &&
+              muteMicRef.current?.()
+            ) {
+              toast.show(meetLabels.mutedByHost, { severity: "info" });
             }
             continue;
           }
@@ -177,10 +231,9 @@ export function useMeetPollHandler({
           continue;
         }
         const fromName = roster.find((peer) => peer.id === msg.from)?.name ?? "Peer";
-        setChatMessages((prev) => [
-          ...prev,
-          meetPollChatLine(msg.from, fromName, text, selfPeerId),
-        ]);
+        setChatMessages((prev) =>
+          appendMeetRoomChatLine(prev, meetPollChatLine(msg.from, fromName, text, selfPeerId)),
+        );
       }
     },
     [
@@ -188,7 +241,7 @@ export function useMeetPollHandler({
       leaveRef,
       meetRtcRef,
       muteMicRef,
-      unmuteMicRef,
+      viewerSeesAccounts,
       participantRosterDiffReadyRef,
       peerDisclosedMediaRef,
       peerNamesRef,
@@ -196,6 +249,7 @@ export function useMeetPollHandler({
       roomCodeRef,
       rosterRef,
       selfIdRef,
+      signalingRosterRef,
       setChatMessages,
       setEndedMessage,
       setKnockers,

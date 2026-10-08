@@ -59,7 +59,7 @@ pnpm test:meet-api
 | Topic | Rule |
 |-------|------|
 | A/V | WebRTC media binding only |
-| Chat + control | HTTP messages + poll — **not** data channels |
+| Chat + control | Chat over the Meet data channel with HTTP as fallback and dedupe; admit and server-recorded control stay on HTTP |
 | Signaling | HTTP on `/api/v1/rooms/{roomId}/*` |
 | Meet SDP | Sanitize **inbound remote** SDP only — never rewrite local before `setLocalDescription` |
 | Initiator | Meet uses `higherId` (lexicographic peer id) |

@@ -2,6 +2,8 @@ node_modules/
 .turbo/
 .env
 .env.local
+.coturn.env
+coturn.log
 docker/install/.env
 /docker/apache/certs/*.pem
 

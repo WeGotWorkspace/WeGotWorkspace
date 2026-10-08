@@ -27,6 +27,7 @@ describe("useSettingsSidebarModel", () => {
       "tasks",
       "contacts",
       "notes",
+      "meet",
     ]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(
       true,
@@ -45,6 +46,7 @@ describe("useSettingsSidebarModel", () => {
       "tasks",
       "contacts",
       "notes",
+      "meet",
     ]);
     expect(result.current.account.some((section) => section.label === "Connected assistants")).toBe(
       false,

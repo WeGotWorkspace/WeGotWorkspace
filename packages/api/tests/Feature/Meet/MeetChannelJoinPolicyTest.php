@@ -203,10 +203,22 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
             ->json('sessionKey');
         $this->sendChat('alice', 'g744-8kfg-adjz', 'peer-alice', 'the call is open')
             ->assertOk();
+        // Still knocking, so the room's chat stays out of reach (#1099).
         $this->flushHeaders()
             ->getJson('/api/v1/rooms/g744-8kfg-adjz/events?peerId=peer-reader&sessionKey='.$sessionKey)
             ->assertOk()
-            ->assertJsonPath('messages.0.payload.text', 'the call is open');
+            ->assertJsonPath('messages', [])
+            ->assertDontSee('the call is open');
+
+        $this->sendControl('alice', 'g744-8kfg-adjz', 'peer-alice', ['kind' => 'admit', 'peerId' => 'peer-reader'])
+            ->assertOk();
+        $this->guestJoin('g744-8kfg-adjz', 'peer-reader', 'Reader', $sessionKey)->assertOk();
+        $this->sendChat('alice', 'g744-8kfg-adjz', 'peer-alice', 'welcome in')
+            ->assertOk();
+        $this->flushHeaders()
+            ->getJson('/api/v1/rooms/g744-8kfg-adjz/events?peerId=peer-reader&sessionKey='.$sessionKey)
+            ->assertOk()
+            ->assertJsonPath('messages.1.payload.text', 'welcome in');
     }
 
     public function test_meeting_room_code_resolves_to_the_channel_acl(): void
@@ -248,7 +260,7 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // An unreserved ad-hoc code has no host who can admit, so a direct
         // guest join still passes. A reserved code does not — see below.
         $direct = $this->guestJoin('abcd-efgh-jklm', 'peer-code', 'Visitor')->assertOk();
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $direct->json('sessionKey'));
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) $direct->json('sessionKey'));
 
         // Authenticated users join plain rooms unconditionally, knock or not.
         $this->join('carol', 'empty-room', 'peer-carol', 'Carol')->assertOk();
@@ -303,7 +315,8 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
         // Someone who did not reserve the room cannot admit, even after joining.
         $this->join('carol', $room, 'peer-carol', 'Carol')->assertOk();
         $this->sendControl('carol', $room, 'peer-carol', ['kind' => 'admit', 'peerId' => 'peer-guest'])
-            ->assertOk();
+            ->assertForbidden()
+            ->assertJsonPath('error', 'forbidden');
         $this->guestJoin($room, 'peer-guest', 'Visitor', $sessionKey)
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
 
@@ -328,7 +341,8 @@ final class MeetChannelJoinPolicyTest extends WgwDatabaseTestCase
 
         // A knocked-in internal non-member cannot admit themselves.
         $this->sendControl('carol', $this->channelId, 'peer-carol', ['kind' => 'admit', 'peerId' => 'peer-carol'])
-            ->assertOk();
+            ->assertForbidden()
+            ->assertJsonPath('error', 'forbidden');
         $this->join('carol', $this->channelId, 'peer-carol', 'Carol')
             ->assertStatus(403)->assertJsonPath('error', 'knock_required');
 

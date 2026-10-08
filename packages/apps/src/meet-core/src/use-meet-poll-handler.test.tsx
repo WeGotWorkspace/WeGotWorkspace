@@ -8,6 +8,7 @@ import type { MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import type { MeetKnocker } from "@/meet-core/src/meet-poll-roster";
+import { shouldAcceptMeetOffer } from "@/meet-core/src/meet-rtc-peers";
 import { useMeetPollHandler } from "@/meet-core/src/use-meet-poll-handler";
 
 type CallStatus = "idle" | "preparing" | "waiting" | "in-call" | "failed";
@@ -23,19 +24,29 @@ vi.mock("@/hooks/use-app-toast", () => ({
   useAppToast: () => toastApi,
 }));
 
+const accountHost = { id: "host-1", name: "Admin", user: "admin" };
+
+/** Server stamp from a privileged control that passed authority. */
+function stamped(text: string): { text: string; host: true } {
+  return { text, host: true };
+}
+
 function createPollHandler(
   overrides: {
     waitingForAdmissionRef?: { current: boolean };
+    signalingRosterRef?: { current: Map<string, string> };
     setWaitingForAdmission?: ReturnType<typeof vi.fn>;
     setStatus?: ReturnType<typeof vi.fn>;
     setStartedAt?: ReturnType<typeof vi.fn>;
     setKnockers?: ReturnType<typeof vi.fn>;
     setChatMessages?: ReturnType<typeof vi.fn>;
     updateJoinName?: ReturnType<typeof vi.fn>;
+    viewerSeesAccounts?: boolean;
+    leave?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
   const muteMic = vi.fn(() => true);
-  const unmuteMic = vi.fn(() => true);
+  const leave = overrides.leave ?? vi.fn();
   const setWaitingForAdmission = (overrides.setWaitingForAdmission ?? vi.fn()) as Dispatch<
     SetStateAction<boolean>
   >;
@@ -58,14 +69,17 @@ function createPollHandler(
       displayNameRef: { current: "Alex" },
       waitingForAdmissionRef: overrides.waitingForAdmissionRef ?? { current: false },
       rosterRef: { current: new Map() },
+      signalingRosterRef: overrides.signalingRosterRef ?? { current: new Map() },
       participantRosterDiffReadyRef: { current: true },
       peerNamesRef: { current: new Map() },
       peerDisclosedMediaRef: { current: new Map() },
       refreshPeersRef: { current: () => {} },
-      leaveRef: { current: vi.fn() },
+      leaveRef: {
+        current: leave as (opts?: { preserveEndedMessage?: boolean }) => Promise<void>,
+      },
       meetRtcRef: { current: { updateJoinName, retryRoomPeerConnections } as never },
       muteMicRef: { current: muteMic },
-      unmuteMicRef: { current: unmuteMic },
+      viewerSeesAccounts: overrides.viewerSeesAccounts ?? true,
       setKnockers,
       setEndedMessage,
       setStatus,
@@ -77,7 +91,7 @@ function createPollHandler(
   return {
     handlePoll: result.current,
     muteMic,
-    unmuteMic,
+    leave,
     setWaitingForAdmission,
     setStatus,
     setEndedMessage,
@@ -99,14 +113,12 @@ describe("useMeetPollHandler mute", () => {
     const { handlePoll, muteMic } = createPollHandler();
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
         },
       ],
     });
@@ -118,14 +130,12 @@ describe("useMeetPollHandler mute", () => {
     const { handlePoll, muteMic } = createPollHandler();
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "peer-other" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "peer-other" })),
         },
       ],
     });
@@ -133,27 +143,81 @@ describe("useMeetPollHandler mute", () => {
     expect(muteMic).not.toHaveBeenCalled();
   });
 
-  it("unmutes the local mic when an unmute control targets this peer", async () => {
-    const { handlePoll, unmuteMic } = createPollHandler();
+  it("does not force the local mic on for an unmute control", async () => {
+    const { handlePoll, muteMic } = createPollHandler();
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "unmute", peerId: "self-1" })),
         },
       ],
     });
 
-    expect(unmuteMic).toHaveBeenCalledTimes(1);
+    expect(muteMic).not.toHaveBeenCalled();
+    expect(toastApi.show).not.toHaveBeenCalled();
+  });
+});
+
+describe("useMeetPollHandler host control sender", () => {
+  it("ignores end, mute, admit, and deny from a roster entry with no account", async () => {
+    const leave = vi.fn();
+    const setWaitingForAdmission = vi.fn();
+    const { handlePoll, muteMic, setEndedMessage } = createPollHandler({
+      waitingForAdmissionRef: { current: true },
+      setWaitingForAdmission,
+      leave,
+    });
+
+    await handlePoll({
+      peers: [{ id: "guest-1", name: "Visitor" }],
+      messages: [
+        {
+          from: "guest-1",
+          type: "chat",
+          payload: { text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }) },
+        },
+        {
+          from: "guest-1",
+          type: "chat",
+          payload: { text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }) },
+        },
+        {
+          from: "guest-1",
+          type: "chat",
+          payload: { text: buildMeetControlMessage({ kind: "end", by: "Visitor" }) },
+        },
+        {
+          from: "guest-1",
+          type: "chat",
+          payload: { text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }) },
+        },
+        {
+          from: "guest-1",
+          type: "chat",
+          payload: { text: buildMeetControlMessage({ kind: "deny", peerId: "self-1" }) },
+        },
+      ],
+    });
+
+    expect(muteMic).not.toHaveBeenCalled();
+    expect(leave).not.toHaveBeenCalled();
+    expect(setWaitingForAdmission).not.toHaveBeenCalled();
+    expect(setEndedMessage).not.toHaveBeenCalled();
+    expect(toastApi.show).not.toHaveBeenCalled();
+    expect(toastApi.showError).not.toHaveBeenCalled();
   });
 
-  it("ignores unmute controls aimed at someone else", async () => {
-    const { handlePoll, unmuteMic } = createPollHandler();
+  it("still applies admit for a guest viewer, whose roster hides account names", async () => {
+    const setWaitingForAdmission = vi.fn();
+    const { handlePoll } = createPollHandler({
+      viewerSeesAccounts: false,
+      waitingForAdmissionRef: { current: true },
+      setWaitingForAdmission,
+    });
 
     await handlePoll({
       peers: [{ id: "host-1", name: "Admin" }],
@@ -161,33 +225,62 @@ describe("useMeetPollHandler mute", () => {
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "unmute", peerId: "peer-other" }),
-          },
+          payload: { text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }) },
         },
       ],
     });
 
-    expect(unmuteMic).not.toHaveBeenCalled();
+    expect(setWaitingForAdmission).toHaveBeenCalledWith(false);
+    expect(toastApi.showSuccess).toHaveBeenCalledWith(meetLabels.youWereLetIn);
   });
 
-  it("toasts through useAppToast when this peer is unmuted", async () => {
-    const { handlePoll } = createPollHandler();
+  it("still leaves when a stamped end arrives after the host has left the roster", async () => {
+    const leave = vi.fn();
+    const { handlePoll, setEndedMessage } = createPollHandler({ leave });
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost, { id: "self-1", name: "Alex", user: "alex" }],
+      messages: [],
+    });
+
+    await handlePoll({
+      peers: [{ id: "self-1", name: "Alex", user: "alex" }],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "unmute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "end", by: "Admin" })),
         },
       ],
     });
 
-    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.unmutedByHost, { severity: "info" });
+    expect(setEndedMessage).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"));
+    expect(toastApi.show).toHaveBeenCalledWith(meetLabels.callEndedBy("Admin"), {
+      severity: "info",
+    });
+    expect(leave).toHaveBeenCalledWith({ preserveEndedMessage: true });
+  });
+
+  it("still mutes when a stamped mute arrives after the host has left the roster", async () => {
+    const { handlePoll, muteMic } = createPollHandler();
+
+    await handlePoll({
+      peers: [accountHost],
+      messages: [],
+    });
+
+    await handlePoll({
+      peers: [{ id: "self-1", name: "Alex", user: "alex" }],
+      messages: [
+        {
+          from: "host-1",
+          type: "chat",
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
+        },
+      ],
+    });
+
+    expect(muteMic).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -207,14 +300,12 @@ describe("useMeetPollHandler admit", () => {
     });
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -236,14 +327,12 @@ describe("useMeetPollHandler admit", () => {
     });
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -308,6 +397,25 @@ describe("useMeetPollHandler chat", () => {
   });
 });
 
+describe("useMeetPollHandler offer gate", () => {
+  it("records the knock rows the offer gate needs", async () => {
+    const signalingRosterRef = { current: new Map<string, string>() };
+    const { handlePoll } = createPollHandler({ signalingRosterRef });
+
+    await handlePoll({
+      peers: [
+        { id: "host-1", name: "Admin" },
+        { id: "knocker-1", name: "__wgw_knock__:Mallory" },
+      ],
+      messages: [],
+    });
+
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "host-1")).toBe(true);
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "knocker-1")).toBe(false);
+    expect(shouldAcceptMeetOffer(signalingRosterRef.current, "forged-1")).toBe(false);
+  });
+});
+
 describe("useMeetPollHandler knockers", () => {
   it("clears leftover knocker rows once the roster has no knock names", async () => {
     const setKnockers = vi.fn();
@@ -347,14 +455,12 @@ describe("useMeetPollHandler call toasts", () => {
     const { handlePoll, setEndedMessage } = createPollHandler();
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "end", by: "Admin" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "end", by: "Admin" })),
         },
       ],
     });
@@ -369,14 +475,12 @@ describe("useMeetPollHandler call toasts", () => {
     const { handlePoll } = createPollHandler();
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "mute", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "mute", peerId: "self-1" })),
         },
       ],
     });
@@ -390,14 +494,12 @@ describe("useMeetPollHandler call toasts", () => {
     });
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "admit", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "admit", peerId: "self-1" })),
         },
       ],
     });
@@ -411,14 +513,12 @@ describe("useMeetPollHandler call toasts", () => {
     });
 
     await handlePoll({
-      peers: [{ id: "host-1", name: "Admin" }],
+      peers: [accountHost],
       messages: [
         {
           from: "host-1",
           type: "chat",
-          payload: {
-            text: buildMeetControlMessage({ kind: "deny", peerId: "self-1" }),
-          },
+          payload: stamped(buildMeetControlMessage({ kind: "deny", peerId: "self-1" })),
         },
       ],
     });

@@ -152,8 +152,10 @@ export function mapWgwAdminStateToUI(
     rtc: {
       stunUrls: state.rtc.stunUrls,
       turnUrls: state.rtc.turnUrls,
-      turnUsername: state.rtc.turnUsername,
-      turnPassword: state.rtc.turnPassword,
+      turnSecretSet: state.rtc.turnSecretSet,
+      turnStaticCredentialsPresent: state.rtc.turnStaticCredentialsPresent,
+      maxVideoProfile: state.rtc.maxVideoProfile,
+      maxVideoProfileRelay: state.rtc.maxVideoProfileRelay,
     },
     apps: {
       calendars: state.apps.calendars,
@@ -336,6 +338,7 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       const payload: WgwAdminSettingsSaveRequest = {
         values,
         ...(opts?.clearSmtpPassword ? { clearSmtpPassword: true } : {}),
+        ...(opts?.clearTurnSecret ? { clearTurnSecret: true } : {}),
       };
       const res = await wgwFetch("/admin/settings", {
         method: "PUT",

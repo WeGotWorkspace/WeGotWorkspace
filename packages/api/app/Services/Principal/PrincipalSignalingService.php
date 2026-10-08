@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Principal;
 
+use App\Services\Rtc\RtcRelayService;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
+use App\Services\Rtc\Signaling\RtcBrowserId;
+use App\Services\Rtc\Signaling\RtcNetClass;
+use App\Services\Rtc\Signaling\RtcPeerCaps;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
 use Illuminate\Http\Request;
@@ -29,16 +33,35 @@ final class PrincipalSignalingService
         private PrincipalActorResolver $actors,
         private PrincipalRoomAuthorizer $rooms,
         private RtcSettingsService $rtcSettingsService,
+        private RtcRelayService $relays,
     ) {
         $this->store = new HttpSignalingStore(RtcSignalingPolicy::principal());
     }
 
     /**
-     * @return array{stunUrls: string, turnUrls: string, turnUsername: string, turnPassword: string}
+     * @return array{stunUrls: string, turnAvailable: bool}
      */
-    public function rtcSettings(): array
+    public function rtcSettings(Request $request): array
     {
-        return $this->rtcSettingsService->settings();
+        return $this->run(function () use ($request): array {
+            $this->actors->requireUsername($request);
+
+            return $this->rtcSettingsService->publicSettings();
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $body
+     * @return array{turn: array{urls: list<string>, username: string, credential: string, ttl: int}}
+     */
+    public function relay(Request $request, array $body): array
+    {
+        return $this->run(function () use ($request, $body): array {
+            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+
+            return $this->relays->issue($this->store, 'principal', $room, $ownerMarker, $body);
+        });
     }
 
     /**
@@ -48,7 +71,7 @@ final class PrincipalSignalingService
     public function join(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $username = $this->actors->requireUsername($request);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
@@ -61,8 +84,15 @@ final class PrincipalSignalingService
 
             $peerId = $this->makePeerId($username);
             $ownerMarker = $this->actors->ownerMarker($username);
+            $browserId = RtcBrowserId::read($body);
             $this->store->deleteOwnedPeersExcept($room, $ownerMarker);
-            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time());
+            $this->store->upsertPeer($room, $peerId, $name, $ownerMarker, time(), $browserId, [
+                'caps' => RtcPeerCaps::encode($body['caps'] ?? null),
+                'net' => RtcNetClass::normalize($body['net'] ?? null),
+            ]);
+            if ($browserId !== null) {
+                $this->store->deletePeersForBrowser($room, $browserId, $peerId);
+            }
 
             if ($this->store->countPeers($room) > self::MAX_PEERS_PER_ROOM) {
                 $this->store->deletePeer($room, $peerId);
@@ -83,7 +113,7 @@ final class PrincipalSignalingService
     public function poll(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
@@ -103,12 +133,12 @@ final class PrincipalSignalingService
 
     /**
      * @param  array<string, mixed>  $body
-     * @return array{ok: true}
+     * @return array{ok: true, peers: list<array<string, mixed>>, messages: list<array<string, mixed>>, rosterSig: string}
      */
     public function send(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
@@ -119,7 +149,7 @@ final class PrincipalSignalingService
             $type = (string) ($body['type'] ?? '');
             $this->store->send($room, $from, $to, $type, $body['payload'] ?? null);
 
-            return ['ok' => true];
+            return ['ok' => true] + $this->store->pendingMailbox($room, $from);
         });
     }
 
@@ -130,7 +160,7 @@ final class PrincipalSignalingService
     public function leave(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $this->store->pruneOldRows();
+            $this->store->pruneOldRowsSampled();
 
             $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
             $room = $this->rooms->cleanRoom($body['room'] ?? null);

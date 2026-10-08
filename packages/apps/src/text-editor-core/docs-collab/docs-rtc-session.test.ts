@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import {
   PrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
 } from "@/lib/rtc/session/principal-link-registry";
+import { SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
-import { DocsRtcSession, parsePeerHintPeers } from "./docs-rtc-session";
+import { DocsRtcSession, parsePeerHintPeers, tagOf } from "./docs-rtc-session";
+
+vi.mock("@/lib/rtc/log", () => ({
+  rtcLog: vi.fn(),
+}));
 
 type CapturedBinding = {
   onOpen: (remoteId: string) => void;
@@ -15,11 +21,14 @@ type CapturedBinding = {
 
 type CapturedMeshOptions = {
   onPollData?: (data: {
-    peers: Array<{ id: string; name: string; user?: string }>;
+    peers: Array<{ id: string; name: string; user?: string; access?: string }>;
     messages: [];
+    ticket?: string;
   }) => void;
   shouldConnectToPeer?: (peer: { id: string; name: string; user?: string }) => boolean;
   shouldAcceptOffer?: (from: string) => boolean;
+  onPollError?: (error: unknown) => void;
+  onSendFailed?: (remoteId: string) => void;
 };
 
 const captured = vi.hoisted(() => ({
@@ -34,9 +43,13 @@ const captured = vi.hoisted(() => ({
     getPeerIds: vi.fn(() => [] as string[]),
     getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string }>),
     getPeerLinkStates: vi.fn(() => [] as Array<{ id: string; name: string; link: string }>),
-    join: vi.fn(async () => ({ peerId: "me", peers: [] })),
+    join: vi.fn(async (): Promise<{ peerId: string; peers: []; ticket?: string }> => ({
+      peerId: "me",
+      peers: [],
+    })),
     leave: vi.fn(async () => undefined),
     retryRoomPeerConnections: vi.fn(),
+    retryPeerConnection: vi.fn(),
     abortPeerConnection: vi.fn(),
   },
 }));
@@ -63,9 +76,44 @@ function createSession(): DocsRtcSession {
   });
 }
 
+/** Unsigned stand-in. `decodeCollabTicketPayload` does not check the signature. */
+function collabTicket(input: { peer: string; access: string }): string {
+  const json = JSON.stringify({
+    v: 1,
+    kid: "k",
+    room: "r",
+    user: "admin",
+    peer: input.peer,
+    access: input.access,
+    iat: 1,
+    exp: 9,
+  });
+  const body = btoa(json).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return `${body}.sig`;
+}
+
 function pollRoster(peers: Array<{ id: string; name: string }>): void {
   captured.meshOptions?.onPollData?.({ peers, messages: [] });
 }
+
+describe("DocsRtcSession send failure", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  it("marks the peer for resync when a data-channel send fails", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+
+    captured.meshOptions?.onSendFailed?.("p1");
+
+    expect(seen).toEqual([{ type: "resync", from: "p1" }]);
+  });
+});
 
 describe("DocsRtcSession gossip discovery", () => {
   beforeEach(() => {
@@ -150,7 +198,117 @@ describe("DocsRtcSession gossip discovery", () => {
 
     captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u: [1, 2] }));
 
-    expect(seen).toEqual([{ type: "sync", u: [1, 2], from: "p1" }]);
+    expect(seen).toEqual([
+      { type: "sync", u: [1, 2], from: "p1", trust: { user: "", access: "read" } },
+    ]);
+  });
+
+  it("takes a direct peer's rights from the roster, not from the message", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "p1", name: "Carol", user: "carol", access: "comment" }],
+      messages: [],
+    });
+
+    captured.bindingOptions?.onMessage(
+      "p1",
+      JSON.stringify({ type: "sync", u: [2, 1], trust: { user: "bob", access: "write" } }),
+    );
+
+    expect(seen.at(-1)).toMatchObject({ trust: { user: "carol", access: "comment" } });
+  });
+
+  it("keeps a viewer from putting a document update on the wire", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [
+        { id: "me", name: "Self", user: "carol", access: "read" },
+        { id: "p1", name: "Bob", user: "bob", access: "write" },
+      ],
+      messages: [],
+    });
+    expect(session.myAccess()).toBe("read");
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_2, 1, 2] });
+    expect(captured.mesh.broadcastJson).not.toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
+    expect(captured.mesh.sendJsonTo).not.toHaveBeenCalled();
+
+    // A step 1 only asks for state, which is the whole point of a viewer.
+    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_1, 0] });
+    session.broadcast({ type: "awareness", u: [1] });
+    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith("p1", {
+      type: "sync",
+      u: [SYNC_STEP_1, 0],
+    });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({ type: "awareness", u: [1] });
+  });
+
+  it("ends the session and drops the reuse links when a poll comes back 403", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+    expect(session.myAccess()).toBe("write");
+
+    captured.meshOptions?.onPollError?.(new Error("Collab poll failed (403)"));
+
+    expect(seen).toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("read");
+  });
+
+  it("leaves a poll failure that is not a 403 alone", () => {
+    const session = createSession();
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+
+    captured.meshOptions?.onPollError?.(new Error("network down"));
+
+    expect(seen).not.toContainEqual({ type: "forbidden" });
+    expect(session.myAccess()).toBe("write");
+  });
+
+  it("learns its own write right from the poll ticket when the roster omits self", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "other", name: "Other", user: "member", access: "write" }],
+      messages: [],
+      ticket: collabTicket({ peer: "me", access: "write" }),
+    });
+
+    expect(session.myAccess()).toBe("write");
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
+  });
+
+  it("lets an editor broadcast document updates", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "bob", access: "write" }],
+      messages: [],
+    });
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
+      type: "sync",
+      u: [SYNC_UPDATE, 1, 2],
+    });
   });
 
   it("drops all listeners on clearMessageListeners", () => {
@@ -270,7 +428,7 @@ describe("DocsRtcSession principal reuse wiring", () => {
       pollRoster([peer]);
     }).not.toThrow();
 
-    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalled();
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith(peer.id);
     expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
     expect(session.getRoomPeerStatuses()).toEqual([
       { id: peer.id, name: peer.name, link: "connecting" },
@@ -280,7 +438,7 @@ describe("DocsRtcSession principal reuse wiring", () => {
     expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(peer.id, { type: "sync", u: [7] });
 
     captured.bindingOptions?.onMessage(peer.id, JSON.stringify({ type: "sync", u: [8] }));
-    expect(seen).toContainEqual({ type: "sync", u: [8], from: peer.id });
+    expect(seen).toContainEqual(expect.objectContaining({ type: "sync", u: [8], from: peer.id }));
   });
 
   it("retries fresh ICE immediately when a reused principal link drops without a poll", () => {
@@ -308,11 +466,12 @@ describe("DocsRtcSession principal reuse wiring", () => {
       collabPeerId: "bbbbbbbbbbbbbbbb",
       name: "Wouter",
     });
-    vi.mocked(captured.mesh.retryRoomPeerConnections).mockClear();
+    vi.mocked(captured.mesh.retryPeerConnection).mockClear();
 
     registry.unregisterLink("prin-wouter");
 
-    expect(captured.mesh.retryRoomPeerConnections).toHaveBeenCalledTimes(1);
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledTimes(1);
+    expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith(peer.id);
     expect(captured.meshOptions?.shouldConnectToPeer?.(peer)).toBe(true);
   });
 
@@ -455,5 +614,118 @@ describe("DocsRtcSession principal reuse wiring", () => {
     expect(captured.meshOptions?.shouldAcceptOffer?.("cccccccccccccccc")).toBe(false);
     expect(captured.meshOptions?.shouldAcceptOffer?.("bbbbbbbbbbbbbbbb")).toBe(false);
     expect(captured.meshOptions?.shouldAcceptOffer?.("dddddddddddddddd")).toBe(true);
+  });
+});
+
+describe("DocsRtcSession join access and single session", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+    captured.mesh.getMyId.mockReturnValue("me");
+    captured.mesh.join.mockResolvedValue({ peerId: "me", peers: [] });
+  });
+
+  it("learns write access from the join ticket without a later poll", async () => {
+    const session = createSession();
+    captured.mesh.join.mockResolvedValueOnce({
+      peerId: "me",
+      peers: [],
+      ticket: collabTicket({ peer: "me", access: "write" }),
+    });
+
+    await session.join("Self");
+
+    expect(session.myAccess()).toBe("write");
+    await session.leave();
+  });
+
+  it("logs duplicate-session when two sessions join the same room", async () => {
+    const first = createSession();
+    const second = createSession();
+    await first.join("One");
+    await second.join("Two");
+
+    expect(rtcLog).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "collab", peerId: "me" }),
+      "duplicate-session",
+      expect.objectContaining({
+        room: "docs/gossip-test.md",
+        ids: ["me", "me"],
+      }),
+    );
+
+    await first.leave();
+    await second.leave();
+    vi.mocked(rtcLog).mockClear();
+    const third = createSession();
+    await third.join("Three");
+    expect(rtcLog).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "duplicate-session",
+      expect.anything(),
+    );
+    await third.leave();
+  });
+});
+
+describe("DocsRtcSession data-channel debug tags", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+    captured.mesh.getMyId.mockReturnValue("me");
+  });
+
+  it("logs a send and its receive with the same payload tag", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
+      messages: [],
+    });
+    const u = Array.from({ length: 20 }, (_, index) => index + 1);
+    const tag = "01020304050607080d0e0f1011121314";
+
+    session.broadcast({ type: "sync", u });
+    expect(tagOf({ u })).toBe(tag);
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-send", {
+      type: "sync",
+      bytes: 20,
+      tag,
+    });
+
+    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u }));
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-recv", {
+      from: "p1",
+      type: "sync",
+      bytes: 20,
+      tag,
+    });
+
+    vi.mocked(rtcLog).mockClear();
+    session.sendTo("p1", { type: "awareness", u: [1, 2, 3] });
+    expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-send", {
+      type: "awareness",
+      bytes: 3,
+      tag: "010203",
+    });
+  });
+
+  it("does not log a muted document update as sent", () => {
+    const session = createSession();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "carol", access: "read" }],
+      messages: [],
+    });
+
+    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2, 3] });
+    expect(rtcLog).not.toHaveBeenCalledWith(expect.anything(), "dc-send", expect.anything());
+    expect(rtcLog).toHaveBeenCalledWith(
+      { channel: "collab", peerId: "me" },
+      "update-not-sent",
+      expect.objectContaining({ reason: "reader" }),
+    );
   });
 });

@@ -230,6 +230,43 @@ describe("formatNotificationCopy", () => {
     });
   });
 
+  it("names people and Meet or Docs without network details", () => {
+    const copy = formatNotificationCopy({
+      domain: "rtc",
+      action: "direct_connect",
+      title: "legacy",
+      body: "legacy",
+      data: {
+        count: 2,
+        people: [
+          { name: "bob", where: "Docs and Meet" },
+          { name: "carol", where: "Docs" },
+        ],
+        net: "symmetric",
+      },
+    });
+    expect(copy).toEqual({
+      title: "2 people couldn't connect directly to a call or document today.",
+      body: "bob (Docs and Meet), carol (Docs)",
+    });
+    expect(copy.body).not.toContain("symmetric");
+  });
+
+  it("shows a guest label instead of the hashed session key", () => {
+    const copy = formatNotificationCopy({
+      domain: "rtc",
+      action: "direct_connect",
+      title: "legacy",
+      body: "legacy",
+      data: {
+        count: 1,
+        people: [{ name: "guest:ab12cd34", where: "Meet" }],
+      },
+    });
+    expect(copy.body).toBe("a guest (Meet)");
+    expect(copy.body).not.toContain("guest:");
+  });
+
   it("falls back to stored title/body when data is missing", () => {
     expect(
       formatNotificationCopy({

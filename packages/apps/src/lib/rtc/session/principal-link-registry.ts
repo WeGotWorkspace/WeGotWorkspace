@@ -12,7 +12,7 @@ export type PrincipalCollabReuseListener = (
   fromUsername: string,
   fromPrincipalPeerId: string,
   envelope: CollabReuseEnvelope,
-) => void;
+) => void | Promise<void>;
 
 export type PrincipalLinkOpenListener = (username: string, principalPeerId: string) => void;
 
@@ -32,6 +32,8 @@ export class PrincipalLinkRegistry {
   private readonly linkListeners = new Set<() => void>();
 
   private readonly linkOpenListeners = new Set<PrincipalLinkOpenListener>();
+
+  private readonly sendFailedListeners = new Set<(principalPeerId: string) => void>();
 
   private connectingUsernames = new Set<string>();
 
@@ -101,10 +103,18 @@ export class PrincipalLinkRegistry {
     return true;
   }
 
-  receive(fromUsername: string, fromPrincipalPeerId: string, envelope: CollabReuseEnvelope): void {
+  receive(
+    fromUsername: string,
+    fromPrincipalPeerId: string,
+    envelope: CollabReuseEnvelope,
+  ): void | Promise<void> {
+    const pending: Promise<void>[] = [];
     for (const listener of this.listeners) {
-      listener(fromUsername, fromPrincipalPeerId, envelope);
+      const result = listener(fromUsername, fromPrincipalPeerId, envelope);
+      if (result) pending.push(result);
     }
+    if (pending.length === 0) return;
+    return Promise.all(pending).then(() => undefined);
   }
 
   subscribe(listener: PrincipalCollabReuseListener): () => void {
@@ -119,6 +129,18 @@ export class PrincipalLinkRegistry {
     this.linkListeners.add(listener);
     return () => {
       this.linkListeners.delete(listener);
+    };
+  }
+
+  /** A principal data-channel send failed. Collab marks the attached peers for resync. */
+  markSendFailed(principalPeerId: string): void {
+    for (const listener of this.sendFailedListeners) listener(principalPeerId);
+  }
+
+  subscribeSendFailed(listener: (principalPeerId: string) => void): () => void {
+    this.sendFailedListeners.add(listener);
+    return () => {
+      this.sendFailedListeners.delete(listener);
     };
   }
 

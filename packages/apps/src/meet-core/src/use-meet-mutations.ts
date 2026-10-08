@@ -1,7 +1,13 @@
 import { useCallback, useEffect, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
+import { sendRoomChat } from "@/lib/rtc/session/meet-room-chat";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import { meetRoomChatOutbound } from "@/meet-core/src/meet-channel-chat-echo";
+import {
+  meetRoomChatEchoId,
+  meetRoomChatEchoText,
+  type MeetChannelChatSend,
+} from "@/meet-core/src/meet-channel-chat-echo";
 import { buildLocalMeetChatLine } from "@/meet-core/src/meet-chat-line";
 import {
   buildMeetControlMessage,
@@ -15,7 +21,6 @@ import { meetLabels } from "@/meet-core/src/meet-labels";
 import { sendMeetLeaveBeacon } from "@/meet-core/src/meet-leave-beacon";
 import { meetJoinAlreadyEngaged } from "@/meet-core/src/meet-join-reuse";
 import { createMeetPeerId, createMeetRoomCode } from "@/meet-core/src/meet-room-id";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
 import type { MeetCallSessionState } from "@/meet-core/src/use-meet-call-session";
 import type { MeetRoomState } from "@/meet-core/src/use-meet-room-state";
 
@@ -302,36 +307,58 @@ export function useMeetMutations({
     await leave();
   }, [leave, meetRtc, operationsRef, room]);
 
+  /**
+   * Guests only ever see room lines, so the room copy goes out right away,
+   * beside the channel write and never behind it. It carries the client ULID
+   * that write saves under, which is how members recognize their own copy.
+   */
   const sendChat = useCallback(
-    async (body: string, persisted?: Promise<ChatMessage | null>) => {
+    async (body: string, channelSend?: MeetChannelChatSend) => {
       const text = body.trim();
       if (!text) return;
       const me = room.selfIdRef.current;
-      if (!me || !room.roomCodeRef.current) return;
-
-      const localLine = buildLocalMeetChatLine(
-        me,
-        room.displayNameRef.current.trim() || "You",
-        text,
-      );
-      room.setChatMessages((prev) => [...prev, localLine]);
-      const outbound = await meetRoomChatOutbound(text, persisted);
-      if (outbound.saved) {
-        room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
-      }
-
       const roomCode = room.roomCodeRef.current;
-      if (!operationsRef.current || !roomCode) return;
+      if (!me || !roomCode) return;
+
+      const echoId = meetRoomChatEchoId(channelSend?.echoId) ?? createChatMessageUlid();
+      const sentAt = Date.now();
+      const localLine = {
+        ...buildLocalMeetChatLine(me, room.displayNameRef.current.trim() || "You", text, sentAt),
+        clientId: echoId,
+      };
+      room.setChatMessages((prev) => [...prev, localLine]);
+      // The saved channel row takes over from the optimistic line. A save that
+      // fails, returns nothing, or never settles leaves the line in place.
+      const saved = channelSend?.saved
+        ? channelSend.saved.then(
+            (row) => {
+              if (row) {
+                room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
+              }
+              return row;
+            },
+            () => null,
+          )
+        : Promise.resolve(null);
+
+      const operations = operationsRef.current;
+      if (!operations) return;
       try {
-        await operationsRef.current.chat({
-          room: roomCode,
-          from: me,
-          text: outbound.text,
-          sessionKey: meetRtc.getSessionKey() ?? undefined,
+        await sendRoomChat({
+          dataPath: { sendRoomChat: (message) => meetRtc.sendRoomChat(message) },
+          message: { id: echoId, text, ts: sentAt },
+          postHttp: () =>
+            operations.chat({
+              room: roomCode,
+              from: me,
+              text: meetRoomChatEchoText(echoId, text),
+              sessionKey: meetRtc.getSessionKey() ?? undefined,
+            }),
         });
       } catch (e) {
-        // The channel row is already saved. Guests miss this echo; members do not.
-        if (outbound.saved) return;
+        // A saved channel row still reaches members; only a message that landed
+        // nowhere is worth taking back off the screen.
+        if (await saved) return;
         room.setChatMessages((prev) => prev.filter((line) => line.id !== localLine.id));
         toast.showError(e instanceof Error ? e.message : meetLabels.couldNotSendMessage);
       }

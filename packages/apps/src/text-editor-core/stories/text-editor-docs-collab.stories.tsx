@@ -33,9 +33,9 @@ function collabStoryUrls(room: string) {
 const storyDescription = `
 Collaborative markdown editing over artifact-based REST endpoints.
 
-- Signaling: \`/api/v1/rooms/{roomId}/participants|events\`
+- Room: \`/api/v1/rooms/{roomId}/participants|events\`
 - Document: \`/api/v1/files/collaboration?path=\`
-- Sync: Yjs over WebRTC data channels.
+- Sync: live between the people in the document.
 
 ### Run
 

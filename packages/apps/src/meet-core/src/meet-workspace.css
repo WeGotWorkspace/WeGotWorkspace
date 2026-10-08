@@ -355,6 +355,15 @@
   border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
 }
 
+.meet-call-stage__relay {
+  @apply flex flex-wrap items-center gap-3 px-4 py-2 text-sm;
+  background-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+}
+
+.meet-call-stage__relay-link {
+  @apply font-medium underline;
+}
+
 /* Device menu: quiet group labels, hairline between segments. Checks are MenuItem. */
 .meet-device-menu .dropdown-menu__menu-item,
 .meet-device-menu .meet-device-menu__label {

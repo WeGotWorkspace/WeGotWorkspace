@@ -30,7 +30,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Offline Yjs-backed collaborative editor surface — no signaling or REST persistence required.",
+          "Offline collaborative editor surface. It edits locally and does not talk to the server.",
       },
     },
   },

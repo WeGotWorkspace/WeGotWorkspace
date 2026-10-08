@@ -37,10 +37,26 @@ final readonly class RtcSignalingPolicy
         public bool $requireLivePeersOnSend,
         /** Expose the peer's owner username (`owner_user` minus the `u:` marker) as `user` in rosters. */
         public bool $rosterIncludesOwner = false,
-        /** Persist client `browserId` and evict same-browser leftovers on join (Meet only). */
+        /** Persist the client `browserId` on the peer row and evict same-browser leftovers on join. */
         public bool $persistBrowserId = false,
+        /** Carry the join-computed `access` right on the peer row and in rosters (collab only). */
+        public bool $rosterIncludesAccess = false,
+        /**
+         * Capability that gates {@see RtcSignalingPollMode::SinceCursor}. When set, `since`
+         * is read as an ack: rows at or below it are deleted on poll, and a peer that does
+         * not advertise the capability falls back to delete-on-read, so an old cached client
+         * is not handed its whole mailbox on every poll. Null means the poll mode is
+         * unconditional and no row is deleted on poll.
+         */
+        public ?string $sinceAckCap = null,
     ) {}
 
+    /**
+     * Meet mailboxes are acked, not drained: a client that advertises `since-ack`
+     * polls with a cursor, so a lost response redelivers the offer, the chat line,
+     * or the `admit` instead of dropping it. Clients without the capability keep
+     * delete-on-read.
+     */
     public static function meet(): self
     {
         return new self(
@@ -48,10 +64,10 @@ final readonly class RtcSignalingPolicy
             messagesTable: 'meet_messages',
             peerModelClass: MeetPeer::class,
             messageModelClass: MeetMessage::class,
-            peerTimeoutSeconds: 600,
+            peerTimeoutSeconds: 60,
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: null,
-            pollMode: RtcSignalingPollMode::DeleteOnRead,
+            pollMode: RtcSignalingPollMode::SinceCursor,
             allowedSendTypes: ['offer', 'answer', 'ice', 'bye'],
             peerIdPattern: '/^[A-Za-z0-9_-]{4,64}$/',
             sendFromField: 'from',
@@ -60,6 +76,7 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: false,
             requireLivePeersOnSend: false,
             persistBrowserId: true,
+            sinceAckCap: RtcPeerCaps::SINCE_ACK,
         );
     }
 
@@ -70,11 +87,11 @@ final readonly class RtcSignalingPolicy
             messagesTable: 'collab_messages',
             peerModelClass: CollabPeer::class,
             messageModelClass: CollabMessage::class,
-            peerTimeoutSeconds: 30,
+            peerTimeoutSeconds: 90,
             messageRetentionSeconds: 600,
             maxMessagesPerRoom: 1000,
             pollMode: RtcSignalingPollMode::SinceCursor,
-            allowedSendTypes: ['offer', 'answer', 'ice'],
+            allowedSendTypes: ['offer', 'answer', 'ice', 'yjs', 'yjs-sv'],
             peerIdPattern: '/^[a-f0-9]{16}$/',
             sendFromField: 'peerId',
             unknownPeerWhenMissing: true,
@@ -82,6 +99,8 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
             rosterIncludesOwner: true,
+            persistBrowserId: true,
+            rosterIncludesAccess: true,
         );
     }
 
@@ -109,6 +128,7 @@ final readonly class RtcSignalingPolicy
             trimMessagesOnSend: true,
             requireLivePeersOnSend: true,
             rosterIncludesOwner: true,
+            persistBrowserId: true,
         );
     }
 }

@@ -30,11 +30,11 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |
 | `app_migrations` | `App\Models\AppMigration` | Legacy schema version audit (upgraded installs) |
-| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key; optional `browser_id` for same-device leftover eviction) |
-| `meet_messages` | `App\Models\MeetMessage` | Meet signaling messages |
+| `meet_peers` | `App\Models\MeetPeer` | Meet signaling peers (composite key; optional `browser_id` for same-device leftover eviction; `caps` + `net` from join; `idx_meet_peers_seen` for pruning) |
+| `meet_messages` | `App\Models\MeetMessage` | Meet signaling messages (`idx_meet_msg_created` for retention pruning) |
 | `meet_reservations` | `App\Models\MeetReservation` | Reserved Meet rooms (`id` = room code; `owner_principal`; `created_by`; nullable `expires_at`; `activated_at` when first joinable) |
-| `collab_peers` | `App\Models\CollabPeer` | Collab signaling peers |
-| `collab_messages` | `App\Models\CollabMessage` | Collab signaling messages |
+| `collab_peers` | `App\Models\CollabPeer` | Collab signaling peers (`access` defaults to `read` and is written only by join, so a row that skipped it cannot edit; `caps`, `net`, `browser_id`; `idx_collab_peers_seen`) |
+| `collab_messages` | `App\Models\CollabMessage` | Collab signaling messages (`idx_collab_msg_created` for retention pruning) |
 | `search_documents` | `App\Models\SearchDocument` | Unified search index documents |
 | `search_terms` | `App\Models\SearchTerm` | Search token weights (FK → `search_documents`) |
 | `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths. `idx_drive_starred_path` covers prefix rewrite and delete (`path` / `path/%`) so those updates are not a full-table lock. |
@@ -54,6 +54,8 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `notifications` | `App\Models\Notification` | Suite notify inbox (one row per principal + event) |
 | `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
+| `rtc_relay_events` | `App\Models\RtcRelayEvent` | One row per relay request (`channel`, `actor`, `reason`, `outcome`). No room name, no addresses; 30-day retention |
+| `rtc_session_metrics` | `App\Models\RtcSessionMetric` | Anonymous real-time session samples for the health page. No addresses, room names, or user ids; 30-day retention |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 

@@ -1,113 +1,62 @@
-import { toRtcConfig, turnUrlCount } from "@/lib/rtc/config";
-import { rtcLog, rtcSdpMeta } from "@/lib/rtc/log";
+import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
+import { rtcLog } from "@/lib/rtc/log";
+import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
+import type { NetClass } from "@/lib/rtc/net-probe";
+import { netClassForJoin } from "@/lib/rtc/net-probe-session";
+import type { IceOutbound } from "@/lib/rtc/session/ice-batch";
+import type { IceRecovery } from "@/lib/rtc/session/ice-recovery";
 import {
-  collapseStaleIdentityPeers,
-  peerIdentityKey,
-  sortPrincipalDialPeers,
-} from "@/lib/rtc/session/stale-identity-peers";
+  bindNetworkRecovery,
+  buildMeshConnectivity,
+  hostFromSurface,
+  type MeshSurface,
+} from "@/lib/rtc/session/mesh-connectivity";
+import { enqueueMeshJoin } from "@/lib/rtc/session/mesh-join-queue";
+import type { MeshRelay } from "@/lib/rtc/session/mesh-relay";
+import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
-  isUnchangedPollResponse,
-  type HttpSignalingClient,
-  type HttpSignalingPollResult,
-} from "@/lib/rtc/signaling/http-client";
-import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
-import {
-  flushPendingIce,
-  parseCandidateProtocol,
-  parseCandidateType,
-  safeSetRemoteDescription,
-  toSessionDescriptionPayload,
-} from "@/lib/rtc/session/sdp";
-import { logSelectedPairTelemetry } from "@/lib/rtc/telemetry/selected-pair";
+  applyPeerHint as applyIncomingPeerHint,
+  dialRoomPeers as dialListedRoomPeers,
+  retryRoomPeer,
+  retryRoomPeerConnections as retryUnconnectedRoomPeers,
+} from "@/lib/rtc/session/mesh-room-dial";
+import type { MeshRoomDial } from "@/lib/rtc/session/mesh-room-dial";
+import { collapseStaleIdentityPeers } from "@/lib/rtc/session/stale-identity-peers";
 import type {
-  IceMode,
-  RtcLinkState,
-  RtcPeerDescriptor,
-  RtcPollIntervals,
-  RtcSettings,
-  SignalingChannel,
+  HttpSignalingJoinResult,
+  HttpSignalingPollResult,
+} from "@/lib/rtc/signaling/http-client";
+import type { RelayReason } from "@/lib/rtc/session/relay-request";
+import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
+import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
+import { MeshPollLoop } from "@/lib/rtc/session/mesh-poll-loop";
+import {
+  acceptMeshAnswer,
+  acceptMeshIce,
+  acceptMeshOffer,
+  type MeshSdpExchange,
+} from "@/lib/rtc/session/mesh-sdp-exchange";
+import { MeshSignalInbox } from "@/lib/rtc/session/mesh-signal-inbox";
+import { wirePeerConnectionListeners } from "@/lib/rtc/session/peer-connection-listeners";
+import {
+  defaultVisibilityPort,
+  type InitiatorRule,
+  type RtcMeshVisibilityPort,
+  type RtcPeerMeshOptions,
+  type RtcPeerMeshPorts,
+} from "@/lib/rtc/session/peer-mesh-options";
+import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
+import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
+import { SessionMetricsReporter } from "@/lib/rtc/telemetry/session-metrics-reporter";
+import {
+  DEFAULT_RTC_POLL_INTERVALS,
+  type RtcLinkState,
+  type RtcPeerDescriptor,
+  type RtcPollIntervals,
+  type TurnCredentials,
 } from "@/lib/rtc/types";
-import { sortRtcSignalMessages } from "@/lib/rtc/types";
 
-export type InitiatorRule = "lowerId" | "higherId";
-
-export type RtcMeshVisibilityPort = {
-  getState: () => DocumentVisibilityState;
-  subscribe: (listener: () => void) => () => void;
-};
-
-export type RtcPeerMeshPorts = {
-  createPeerConnection?: (config: RTCConfiguration) => RTCPeerConnection;
-  setTimeout?: typeof setTimeout;
-  clearTimeout?: typeof clearTimeout;
-  visibility?: RtcMeshVisibilityPort;
-};
-
-function defaultVisibilityPort(): RtcMeshVisibilityPort | null {
-  if (typeof document === "undefined") return null;
-  return {
-    getState: () => document.visibilityState,
-    subscribe: (listener) => {
-      document.addEventListener("visibilitychange", listener);
-      return () => document.removeEventListener("visibilitychange", listener);
-    },
-  };
-}
-
-export type RtcPeerMeshOptions = {
-  channel: SignalingChannel;
-  room: string;
-  signaling: HttpSignalingClient;
-  rtcSettings: RtcSettings;
-  binding?: RtcSessionBinding;
-  pollIntervals?: RtcPollIntervals;
-  iceCandidatePoolSize?: number;
-  initiatorRule?: InitiatorRule;
-  recoverOnUnknownPeer?: boolean;
-  ports?: RtcPeerMeshPorts;
-  formatInboundDescription?: (
-    payload: unknown,
-    fallbackType: RTCSdpType,
-  ) => RTCSessionDescriptionInit | null;
-  formatOutboundDescription?: (description: RTCSessionDescriptionInit) => RTCSessionDescriptionInit;
-  onLinkChange?: () => void;
-  onUnknownPeer?: () => void;
-  shouldConnectToPeer?: (peer: RtcPeerDescriptor) => boolean;
-  shouldHandleRtcSignals?: () => boolean;
-  onPollData?: (data: HttpSignalingPollResult) => void | Promise<void>;
-  onPeerRemoved?: (remoteId: string, name: string, reason: "bye" | "roster") => void;
-  onConnectionFailed?: (remoteId: string, name: string) => void;
-  onPollError?: (error: unknown) => void;
-  onPeerConnected?: (remoteId: string) => void;
-  /** When false, inbound offers are dropped without creating a peer connection. */
-  shouldAcceptOffer?: (from: string) => boolean;
-};
-
-type MeshPeerEntry = {
-  name: string;
-  pc: RTCPeerConnection;
-  mode: IceMode;
-  relayFallbackTried: boolean;
-  initiator: boolean;
-  pendingIce: RTCIceCandidateInit[];
-  signalSent: boolean;
-  remoteStream?: MediaStream;
-  dataChannel?: RTCDataChannel | null;
-};
-
-const DEFAULT_POLL_INTERVALS: RtcPollIntervals = {
-  connectingMs: 400,
-  steadyMs: 1200,
-};
-const COLLAB_IDLE_POLL_INTERVAL_MS = 15000;
-/** Meet idle backoff when connected with no knockers — shorter than collab for chat/control UX. */
-const MEET_IDLE_POLL_INTERVAL_MS = 4000;
-/** Hidden-tab backoff — applies only when the mesh holds no peer connections at all. */
-const HIDDEN_IDLE_POLL_INTERVAL_MS = 60000;
-/** Encoded knocker roster names — keep fast poll while guests wait for admit. */
-const MEET_KNOCK_ROSTER_PREFIX = "__wgw_knock__:";
-/** Limit how many new principal dials start on a single poll (ghost roster protection). */
-const PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL = 3;
+export type { InitiatorRule, RtcMeshVisibilityPort, RtcPeerMeshOptions, RtcPeerMeshPorts };
 
 export class RtcPeerMesh {
   private myId: string | null = null;
@@ -116,27 +65,35 @@ export class RtcPeerMesh {
 
   private sessionKey: string | null = null;
 
-  private lastMsgId = 0;
-
   private lastRosterSig: string | null = null;
 
   private lastRoomPeers: RtcPeerDescriptor[] = [];
 
-  private lastLoggedPollDelayMs: number | null = null;
-
   private readonly droppedGhostIds = new Set<string>();
 
-  private readonly peers = new Map<string, MeshPeerEntry>();
+  private readonly peers: MeshPeerRegistry;
 
-  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly dialer: MeshPeerDialer;
 
-  private pollInFlight = false;
+  private readonly inbox: MeshSignalInbox;
+
+  private readonly pollLoop: MeshPollLoop;
 
   private rejoinInFlight = false;
 
-  private readonly turnConfigured: boolean;
+  /**
+   * Bumped on every join and leave. An in-flight join from a StrictMode
+   * cleanup must not dial after `leave` has moved the epoch.
+   */
+  private sessionEpoch = 0;
 
-  private readonly createPeerConnection: (config: RTCConfiguration) => RTCPeerConnection;
+  private activeEpoch = 0;
+
+  private localNet: NetClass | undefined;
+  private iceOut: IceOutbound | null = null;
+  private meshRelay: MeshRelay | null = null;
+  private recovery: IceRecovery | null = null;
+  private networkUnsubscribe: (() => void) | null = null;
 
   private readonly scheduleTimeout: typeof setTimeout;
 
@@ -146,13 +103,91 @@ export class RtcPeerMesh {
 
   private visibilityUnsubscribe: (() => void) | null = null;
 
-  constructor(private readonly options: RtcPeerMeshOptions) {
-    this.turnConfigured = turnUrlCount(options.rtcSettings) > 0;
-    this.createPeerConnection =
-      options.ports?.createPeerConnection ?? ((config) => new RTCPeerConnection(config));
+  private readonly metrics: SessionMetricsReporter;
+
+  private readonly options: RtcPeerMeshOptions;
+
+  constructor(options: RtcPeerMeshOptions) {
+    // Meet, collab, and principal all honor `?rtcForceRelay=1`. Principal used
+    // to clear the flag, so its peer connection stayed on `iceTransportPolicy: all`.
+    const rtcSettings =
+      options.channel === "meet" || options.channel === "collab" || options.channel === "principal"
+        ? applyRtcDebugOverrides(options.rtcSettings)
+        : options.rtcSettings;
+    this.options = { ...options, rtcSettings };
+    this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log("send-failed", { remoteId, message });
+      options.onSendFailed?.(remoteId);
+    });
+    this.dialer = new MeshPeerDialer({
+      channel: options.channel,
+      rtcSettings: this.options.rtcSettings,
+      binding: options.binding,
+      iceCandidatePoolSize: options.iceCandidatePoolSize,
+      peers: this.peers,
+      createPeerConnection:
+        options.ports?.createPeerConnection ?? ((config) => new RTCPeerConnection(config)),
+      localPeerId: () => this.myId,
+      isInitiator: (remoteId) => this.isInitiator(remoteId),
+      log: (event, details) => this.log(event, details),
+      formatOutbound: (description) => this.formatOutbound(description),
+      sendSignal: (to, type, payload) => this.sendSignal(to, type, payload),
+      onRemoteSignalError: (remoteId, error) => this.handleRemoteSignalError(remoteId, error),
+      removePeer: (remoteId) => this.removePeer(remoteId),
+      wirePeerConnection: (remoteId, entry) => this.wirePcEvents(remoteId, entry),
+      onMeetData: (remoteId, data) => this.options.onMeetData?.(remoteId, data),
+    });
+    this.inbox = new MeshSignalInbox({
+      shouldAcceptOffer: options.shouldAcceptOffer,
+      handleOffer: (from, peerName, payload) =>
+        acceptMeshOffer(this.sdpExchange(), from, peerName, payload),
+      handleAnswer: (from, payload) => acceptMeshAnswer(this.sdpExchange(), from, payload),
+      handleIce: (from, payload) => acceptMeshIce(this.sdpExchange(), from, payload),
+      handleBye: (from) => this.handleBye(from),
+      handleRelayHint: () => this.schedulePoll(false),
+      log: (event, details) => this.log(event, details),
+    });
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
     this.visibility = options.ports?.visibility ?? defaultVisibilityPort();
+    const reportSessionMetric = options.signaling.reportSessionMetric?.bind(options.signaling);
+    this.metrics = new SessionMetricsReporter({
+      channel: options.channel,
+      post:
+        typeof options.signaling.reportSessionMetric === "function"
+          ? reportSessionMetric
+          : undefined,
+      sessionKey: () => this.sessionKey,
+      net: () => this.localNet,
+      schedule: this.scheduleTimeout,
+      cancel: this.cancelTimeout,
+    });
+    this.pollLoop = new MeshPollLoop({
+      myId: () => this.myId,
+      poll: (input) => options.signaling.poll(input),
+      pollInput: () => ({
+        room: options.room,
+        since: this.inbox.cursor(),
+        sig: this.lastRosterSig ?? undefined,
+        sessionKey: this.sessionKey ?? undefined,
+      }),
+      setRosterSig: (sig) => {
+        this.lastRosterSig = sig;
+      },
+      onPoll: (data) => this.onPoll(data),
+      pollIntervals: () => this.pollIntervals(),
+      cadence: () => this.pollCadenceSnapshot(),
+      shouldRecover: (error) =>
+        Boolean(options.recoverOnUnknownPeer && this.isUnknownPeerError(error)),
+      recover: () => this.recoverUnknownPeer(),
+      onPollError: options.onPollError,
+      onPollRoundTrip: (elapsedMs) => this.metrics.notePollRtt(elapsedMs),
+      isVisible: () => this.visibility?.getState() === "visible",
+      log: (event, details) => this.log(event, details),
+      scheduleTimeout: this.scheduleTimeout,
+      cancelTimeout: this.cancelTimeout,
+    });
   }
 
   private log(event: string, details?: unknown): void {
@@ -160,17 +195,13 @@ export class RtcPeerMesh {
   }
 
   private pollIntervals(): RtcPollIntervals {
-    return this.options.pollIntervals ?? DEFAULT_POLL_INTERVALS;
+    return this.options.pollIntervals ?? DEFAULT_RTC_POLL_INTERVALS;
   }
 
   private isInitiator(remoteId: string): boolean {
     if (!this.myId) return false;
     const rule = this.options.initiatorRule ?? "lowerId";
     return rule === "lowerId" ? this.myId < remoteId : this.myId > remoteId;
-  }
-
-  private initialMode(): IceMode {
-    return this.options.rtcSettings.forceRelay && this.turnConfigured ? "relay" : "direct";
   }
 
   private formatInbound(
@@ -190,18 +221,6 @@ export class RtcPeerMesh {
     return description;
   }
 
-  private linkState(entry: MeshPeerEntry): RtcLinkState {
-    if (this.options.binding?.kind === "data") {
-      return this.options.binding.linkState(entry.dataChannel ?? null, entry.pc);
-    }
-    const state = entry.pc.connectionState;
-    if (state === "connected") return "connected";
-    if (state === "connecting" || state === "new") return "connecting";
-    if (state === "failed") return "failed";
-    if (state === "disconnected") return "disconnected";
-    return "closed";
-  }
-
   getMyId(): string | null {
     return this.myId;
   }
@@ -211,66 +230,38 @@ export class RtcPeerMesh {
   }
 
   getPeerLinkStates(): Array<RtcPeerDescriptor & { link: RtcLinkState }> {
-    return this.lastRoomPeers.map((peer) => {
-      const entry = this.peers.get(peer.id);
-      return {
-        ...peer,
-        link: entry ? this.linkState(entry) : "connecting",
-      };
-    });
+    return this.lastRoomPeers.map((peer) => ({
+      ...peer,
+      link: this.peers.linkStateOf(peer.id) ?? "connecting",
+    }));
   }
 
   getPeerConnection(remoteId: string): RTCPeerConnection | null {
-    return this.peers.get(remoteId)?.pc ?? null;
+    return this.peers.peerConnection(remoteId);
   }
 
   getDataChannel(remoteId: string): RTCDataChannel | null {
-    return this.peers.get(remoteId)?.dataChannel ?? null;
+    return this.peers.dataChannel(remoteId);
   }
 
   getRemoteStream(remoteId: string): MediaStream | null {
-    return this.peers.get(remoteId)?.remoteStream ?? null;
+    return this.peers.remoteStream(remoteId);
   }
 
   getPeerIds(): string[] {
-    return [...this.peers.keys()];
+    return this.peers.ids();
   }
 
   linkCount(): number {
-    if (this.options.binding?.kind === "data") {
-      let count = 0;
-      for (const entry of this.peers.values()) {
-        if (entry.dataChannel?.readyState === "open") count += 1;
-      }
-      return count;
-    }
-    let count = 0;
-    for (const entry of this.peers.values()) {
-      if (entry.pc.connectionState === "connected") count += 1;
-    }
-    return count;
+    return this.peers.linkCount();
   }
 
   broadcastJson(message: unknown): void {
-    const raw = JSON.stringify(message);
-    for (const entry of this.peers.values()) {
-      if (entry.dataChannel?.readyState !== "open") continue;
-      try {
-        entry.dataChannel.send(raw);
-      } catch {
-        // ignore
-      }
-    }
+    this.peers.broadcastJson(message);
   }
 
   sendJsonTo(remoteId: string, message: unknown): void {
-    const entry = this.peers.get(remoteId);
-    if (entry?.dataChannel?.readyState !== "open") return;
-    try {
-      entry.dataChannel.send(JSON.stringify(message));
-    } catch {
-      // ignore
-    }
+    this.peers.sendJsonTo(remoteId, message);
   }
 
   private isUnknownPeerError(error: unknown): boolean {
@@ -301,7 +292,7 @@ export class RtcPeerMesh {
 
   private async sendSignal(to: string, type: string, payload: unknown): Promise<void> {
     if (!this.myId) return;
-    await this.options.signaling.send({
+    const response = await this.options.signaling.send({
       room: this.options.room,
       from: this.myId,
       to,
@@ -309,15 +300,62 @@ export class RtcPeerMesh {
       payload,
       sessionKey: this.sessionKey ?? undefined,
     });
+    if (type === "offer" || type === "answer") this.recovery?.onSignaled(to);
+    const piggy = piggybackPoll(response);
+    if (!piggy || piggy.messages.length === 0) return;
+    await this.onPoll(piggy);
+  }
+
+  kickPoll(): void {
+    this.schedulePoll(false);
+  }
+
+  /** Collab mailbox send (`yjs` / `yjs-sv`). Piggybacked rows still hit the poll. */
+  sendMailbox(to: string, type: string, payload: unknown): Promise<void> {
+    return this.sendSignal(to, type, payload);
+  }
+
+  localNetClass(): NetClass | undefined {
+    return this.localNet;
+  }
+
+  /**
+   * Put just-in-time TURN on the existing connection and dial again. Docs calls
+   * this after `requestRelay` returns credentials; Meet keeps its own timer.
+   */
+  retryPeerWithRelay(remoteId: string, turn: TurnCredentials): void {
+    const pc = this.peers.peerConnection(remoteId);
+    if (pc) {
+      applyTurnOnPeerConnection(
+        pc,
+        this.options.rtcSettings,
+        turn,
+        this.options.iceCandidatePoolSize,
+      );
+    }
+    this.retryRoomPeerConnections();
+  }
+
+  postRelay(body: {
+    target: string;
+    reason: RelayReason;
+    net?: NetClass;
+  }): Promise<{ turn: TurnCredentials }> {
+    if (!this.myId) return Promise.reject(new Error("not_joined"));
+    return this.options.signaling.relay({
+      room: this.options.room,
+      peerId: this.myId,
+      target: body.target,
+      reason: body.reason,
+      net: body.net,
+      sessionKey: this.sessionKey ?? undefined,
+    });
   }
 
   private removePeer(remoteId: string, reason: "bye" | "roster" | "local" = "local"): void {
-    const entry = this.peers.get(remoteId);
-    if (!entry) return;
-    const name = entry.name;
-    entry.dataChannel?.close();
-    entry.pc.close();
-    this.peers.delete(remoteId);
+    this.iceOut?.drop(remoteId);
+    const name = this.peers.close(remoteId);
+    if (name === null) return;
     this.log("peer-removed", { remoteId, reason });
     if (reason !== "local") {
       this.options.onPeerRemoved?.(remoteId, name, reason);
@@ -326,264 +364,49 @@ export class RtcPeerMesh {
   }
 
   private wirePcEvents(remoteId: string, entry: MeshPeerEntry): void {
-    const { pc } = entry;
-    pc.onicecandidate = (event) => {
-      const candidate = event.candidate?.toJSON();
-      if (
-        !candidate ||
-        typeof candidate.candidate !== "string" ||
-        candidate.candidate.trim() === ""
-      ) {
-        if (event.candidate === null) this.log("ice-candidate-local-end", { remoteId });
-        return;
-      }
-      this.log("ice-candidate-local", {
-        remoteId,
-        mode: entry.mode,
-        candidateType: parseCandidateType(candidate.candidate),
-        protocol: parseCandidateProtocol(candidate.candidate),
-      });
-      void this.sendSignal(remoteId, "ice", candidate).catch((error) => {
-        this.handleRemoteSignalError(remoteId, error);
-      });
-    };
-    pc.onconnectionstatechange = () => {
-      this.log("pc-connection-state", {
-        remoteId,
-        mode: entry.mode,
-        connectionState: pc.connectionState,
-        iceConnectionState: pc.iceConnectionState,
-      });
-      if (pc.connectionState === "connected") {
-        void logSelectedPairTelemetry(this.options.channel, this.myId, remoteId, pc, "connected");
-        this.options.onPeerConnected?.(remoteId);
-      }
-      if (pc.connectionState === "failed") {
-        void logSelectedPairTelemetry(this.options.channel, this.myId, remoteId, pc, "failed");
-        void this.restartWithRelay(remoteId, entry).then((retried) => {
-          if (!retried) this.handleConnectionFailed(remoteId, entry);
+    wirePeerConnectionListeners(remoteId, entry, {
+      channel: this.options.channel,
+      localPeerId: () => this.myId,
+      log: (event, details) => this.log(event, details),
+      sendIceCandidate: (id, candidate) => {
+        this.ensureConnectivity();
+        this.iceOut?.note(id, candidate);
+      },
+      onConnected: (id) => {
+        this.recovery?.onConnected(id);
+        this.options.onPeerConnected?.(id);
+        void this.metrics.noteConnected(entry.pc);
+      },
+      onIceState: (id, state) => {
+        if (state === "disconnected") this.recovery?.onDisconnected(id);
+        if (state === "connected" || state === "completed") this.recovery?.onConnected(id);
+      },
+      onFailure: (id, failed) => {
+        this.recovery?.onFailed(id);
+        if (this.meshRelay?.hasRequested(id)) return;
+        void this.dialer.restartWithRelay(id, failed).then((retried) => {
+          if (!retried) this.handleConnectionFailed(id, failed);
         });
-      }
-      this.notifyLinkChange();
-    };
-    pc.oniceconnectionstatechange = () => {
-      this.log("ice-connection-state", {
-        remoteId,
-        iceConnectionState: pc.iceConnectionState,
-        connectionState: pc.connectionState,
-      });
-      if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
-        void logSelectedPairTelemetry(this.options.channel, this.myId, remoteId, pc, "connected");
-      }
-      if (pc.iceConnectionState === "failed") {
-        void this.restartWithRelay(remoteId, entry).then((retried) => {
-          if (!retried) this.handleConnectionFailed(remoteId, entry);
-        });
-      }
-      this.notifyLinkChange();
-    };
-    pc.onicegatheringstatechange = () => {
-      this.log("ice-gathering-state", { remoteId, iceGatheringState: pc.iceGatheringState });
-    };
-  }
-
-  private makePc(remoteId: string, mode: IceMode): RTCPeerConnection {
-    const config = toRtcConfig(this.options.rtcSettings, mode, {
-      iceCandidatePoolSize: this.options.iceCandidatePoolSize,
-    });
-    this.log("pc-created", { remoteId, mode, iceTransportPolicy: config.iceTransportPolicy });
-    const pc = this.createPeerConnection(config);
-    return pc;
-  }
-
-  private attachBinding(remoteId: string, pc: RTCPeerConnection, initiator: boolean): void {
-    const binding = this.options.binding;
-    const entry = this.peers.get(remoteId);
-    if (!binding || !entry) return;
-    if (binding.kind === "media") {
-      entry.remoteStream = binding.attach(pc, remoteId);
-      return;
-    }
-    if (initiator) {
-      entry.dataChannel = binding.attachInitiator(pc, remoteId);
-      return;
-    }
-    binding.attachReceiver(pc, remoteId, (channel) => {
-      entry.dataChannel = channel;
+      },
+      onLinkChange: () => this.notifyLinkChange(),
     });
   }
 
-  private async restartWithRelay(remoteId: string, entry: MeshPeerEntry): Promise<boolean> {
-    if (
-      !entry.initiator ||
-      entry.mode === "relay" ||
-      entry.relayFallbackTried ||
-      !this.turnConfigured
-    ) {
-      return false;
-    }
-    entry.relayFallbackTried = true;
-    this.log("relay-fallback-start", { remoteId, initiator: entry.initiator });
-    try {
-      this.removePeer(remoteId);
-      await this.connectTo(remoteId, entry.name, "relay");
-      const next = this.peers.get(remoteId);
-      if (!next?.initiator) return false;
-      const offer = await next.pc.createOffer({ iceRestart: true });
-      const formatted = this.formatOutbound(offer);
-      await next.pc.setLocalDescription(formatted);
-      await this.sendSignal(remoteId, "offer", next.pc.localDescription);
-      next.signalSent = true;
-      this.log("relay-fallback-offer-sent", { remoteId });
-      void logSelectedPairTelemetry(
-        this.options.channel,
-        this.myId,
-        remoteId,
-        next.pc,
-        "relay-fallback",
-      );
-      return true;
-    } catch (error) {
-      this.log("relay-fallback-failed", { remoteId, error });
-      return false;
-    }
-  }
-
-  private shouldReusePeerEntry(remoteId: string, initiator: boolean): boolean {
-    const entry = this.peers.get(remoteId);
-    if (!entry) return false;
-    if (entry.pc.connectionState === "failed" || entry.pc.iceConnectionState === "failed") {
-      this.removePeer(remoteId);
-      return false;
-    }
-    if (this.options.binding?.kind === "data" && entry.dataChannel?.readyState === "open") {
-      return true;
-    }
-    if (this.options.binding?.kind === "media" && entry.pc.connectionState === "connected") {
-      return true;
-    }
-    if (!initiator) return true;
-    if (entry.signalSent) return true;
-    return false;
-  }
-
-  private async connectTo(
-    remoteId: string,
-    remoteName: string,
-    forcedMode?: IceMode,
-  ): Promise<void> {
-    if (!this.myId || remoteId === this.myId) return;
-    const initiator = this.isInitiator(remoteId);
-    if (this.shouldReusePeerEntry(remoteId, initiator)) return;
-    if (this.peers.has(remoteId)) this.removePeer(remoteId);
-
-    const mode = forcedMode ?? this.initialMode();
-    const pc = this.makePc(remoteId, mode);
-    const entry: MeshPeerEntry = {
-      name: remoteName,
-      pc,
-      mode,
-      relayFallbackTried: mode === "relay",
-      initiator,
-      pendingIce: [],
-      signalSent: false,
-      dataChannel: null,
+  private sdpExchange(): MeshSdpExchange {
+    return {
+      getPeer: (id) => this.peers.get(id),
+      createEntry: (id, name, initiator) => this.dialer.createEntry(id, name, initiator),
+      needsRelayCredentials: () => this.dialer.needsRelayCredentials(),
+      prepareRelay: () => this.prepareRelay(),
+      formatInbound: (payload, fallbackType) => this.formatInbound(payload, fallbackType),
+      formatOutbound: (description) => this.formatOutbound(description),
+      sendSignal: (to, type, payload) => this.sendSignal(to, type, payload),
+      onSignalError: (id, error) => this.handleRemoteSignalError(id, error),
+      onSignaled: (id) => {
+        this.recovery?.onSignaled(id);
+      },
+      log: (event, details) => this.log(event, details),
     };
-    this.peers.set(remoteId, entry);
-    this.wirePcEvents(remoteId, entry);
-    this.attachBinding(remoteId, pc, initiator);
-    this.log("peer-connect-start", { remoteId, remoteName, initiator, mode });
-
-    if (initiator) {
-      const offer = await pc.createOffer();
-      const formatted = this.formatOutbound(offer);
-      await pc.setLocalDescription(formatted);
-      try {
-        await this.sendSignal(remoteId, "offer", pc.localDescription);
-      } catch (error) {
-        this.handleRemoteSignalError(remoteId, error);
-        throw error;
-      }
-      entry.signalSent = true;
-      this.log("offer-sent", { remoteId, ...rtcSdpMeta(pc.localDescription) });
-    }
-  }
-
-  private async handleOffer(from: string, peerName: string, payload: unknown): Promise<void> {
-    this.log("offer-received", { from, ...rtcSdpMeta(payload) });
-    const sdp = this.formatInbound(payload, "offer");
-    if (!sdp) return;
-    let entry = this.peers.get(from);
-    if (!entry) {
-      const mode = this.initialMode();
-      const pc = this.makePc(from, mode);
-      entry = {
-        name: peerName,
-        pc,
-        mode,
-        relayFallbackTried: mode === "relay",
-        initiator: false,
-        pendingIce: [],
-        signalSent: false,
-        dataChannel: null,
-      };
-      this.peers.set(from, entry);
-      this.wirePcEvents(from, entry);
-      this.attachBinding(from, pc, false);
-    }
-    if (entry.pc.signalingState !== "stable") {
-      try {
-        await entry.pc.setLocalDescription({ type: "rollback" });
-      } catch {
-        // Ignore rollback failures on incompatible states.
-      }
-    }
-    await safeSetRemoteDescription(entry.pc, sdp);
-    await flushPendingIce(entry.pc, entry.pendingIce);
-    const answer = await entry.pc.createAnswer();
-    const formatted = this.formatOutbound(answer);
-    await entry.pc.setLocalDescription(formatted);
-    try {
-      await this.sendSignal(from, "answer", entry.pc.localDescription);
-    } catch (error) {
-      this.handleRemoteSignalError(from, error);
-      return;
-    }
-    entry.signalSent = true;
-    this.log("answer-sent", { to: from, ...rtcSdpMeta(entry.pc.localDescription) });
-  }
-
-  private async handleAnswer(from: string, payload: unknown): Promise<void> {
-    this.log("answer-received", { from, ...rtcSdpMeta(payload) });
-    const entry = this.peers.get(from);
-    if (!entry) return;
-    const sdp = this.formatInbound(payload, "answer");
-    if (!sdp) return;
-    if (entry.pc.signalingState === "stable") return;
-    await safeSetRemoteDescription(entry.pc, sdp);
-    await flushPendingIce(entry.pc, entry.pendingIce);
-  }
-
-  private async handleIce(from: string, payload: unknown): Promise<void> {
-    const entry = this.peers.get(from);
-    if (!entry) return;
-    const candidate = payload as RTCIceCandidateInit | null;
-    if (
-      !candidate ||
-      typeof candidate.candidate !== "string" ||
-      candidate.candidate.trim() === ""
-    ) {
-      return;
-    }
-    if (!entry.pc.remoteDescription) {
-      entry.pendingIce.push(candidate);
-      return;
-    }
-    try {
-      await entry.pc.addIceCandidate(candidate);
-    } catch {
-      if (!entry.pc.remoteDescription) entry.pendingIce.push(candidate);
-    }
   }
 
   private async handleBye(from: string): Promise<void> {
@@ -595,6 +418,8 @@ export class RtcPeerMesh {
   }
 
   private handleConnectionFailed(remoteId: string, entry: MeshPeerEntry): void {
+    this.metrics.noteFailedPair();
+    if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
       this.droppedGhostIds.add(remoteId);
       this.removePeer(remoteId, "roster");
@@ -603,11 +428,20 @@ export class RtcPeerMesh {
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }
 
+  /**
+   * Principal still collapses a reloaded tab into one peer. Collab does not:
+   * two devices of the same user are both live, and a same-browser reload is
+   * evicted by `browserId` on the server.
+   */
   private collapseIdentityOnPoll(): boolean {
-    return this.options.channel === "collab" || this.options.channel === "principal";
+    return this.options.channel === "principal";
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
+    if (this.activeEpoch !== this.sessionEpoch) return;
+    const messages = this.inbox.claim(data.messages);
+    if (data.messages.length > 0 && messages.length === 0) return;
+    data = { ...data, messages };
     const rawIds = new Set(data.peers.map((peer) => peer.id));
     for (const id of [...this.droppedGhostIds]) {
       if (!rawIds.has(id)) this.droppedGhostIds.delete(id);
@@ -634,184 +468,65 @@ export class RtcPeerMesh {
     this.lastRoomPeers = collapsed.keep;
 
     if (this.rtcSignalsEnabled()) {
-      let newPrincipalConnects = 0;
-      const dialOrder =
-        this.options.channel === "principal"
-          ? sortPrincipalDialPeers(this.lastRoomPeers, this.peers.keys(), this.droppedGhostIds)
-          : this.lastRoomPeers;
-      for (const peer of dialOrder) {
-        if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-          this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-          continue;
-        }
-        if (
-          this.options.channel === "principal" &&
-          !this.peers.has(peer.id) &&
-          newPrincipalConnects >= PRINCIPAL_MAX_NEW_CONNECTS_PER_POLL
-        ) {
-          this.log("peer-skipped", { remoteId: peer.id, reason: "dial-cap" });
-          continue;
-        }
-        if (this.options.channel === "principal" && !this.peers.has(peer.id)) {
-          newPrincipalConnects += 1;
-        }
-        void this.connectTo(peer.id, peer.name).catch((error) => {
-          this.log("peer-connect-failed", { remoteId: peer.id, error });
-        });
-      }
-
-      for (const id of [...this.peers.keys()]) {
+      this.dialRoomPeers();
+      for (const id of this.peers.ids()) {
         if (!roomIds.has(id)) this.removePeer(id, "roster");
       }
     }
 
-    if (!this.rtcSignalsEnabled()) {
-      this.notifyLinkChange();
-      return;
+    if (this.rtcSignalsEnabled()) {
+      await this.inbox.applySignals(data);
     }
-
-    const signals = sortRtcSignalMessages(
-      data.messages.filter((message) => message.type !== "chat"),
-    );
-    for (const message of signals) {
-      if (message.id !== undefined) {
-        this.lastMsgId = Math.max(this.lastMsgId, message.id);
-      }
-      const peerName = data.peers.find((peer) => peer.id === message.from)?.name ?? "Peer";
-      try {
-        if (message.type === "offer") {
-          if (this.options.shouldAcceptOffer && !this.options.shouldAcceptOffer(message.from)) {
-            this.log("offer-ignored", { from: message.from, reason: "should-accept-false" });
-            continue;
-          }
-          await this.handleOffer(message.from, peerName, message.payload);
-        } else if (message.type === "answer") {
-          await this.handleAnswer(message.from, message.payload);
-        } else if (message.type === "ice") {
-          await this.handleIce(message.from, message.payload);
-        } else if (message.type === "bye") {
-          await this.handleBye(message.from);
-        }
-      } catch (error) {
-        this.log("signal-handle-failed", { type: message.type, from: message.from, error });
-      }
-    }
+    // Ack last, and for every row: a lobby guest handles no RTC signals but must
+    // still move its cursor, or the server keeps resending its `admit`.
+    this.inbox.ack(data.messages);
     this.notifyLinkChange();
   }
 
-  private async pollOnce(): Promise<void> {
-    if (!this.myId || this.pollInFlight) return;
-    this.pollInFlight = true;
-    try {
-      const data = await this.options.signaling.poll({
-        room: this.options.room,
-        peerId: this.myId,
-        since: this.lastMsgId,
-        sig: this.lastRosterSig ?? undefined,
-        sessionKey: this.sessionKey ?? undefined,
-      });
-      if (isUnchangedPollResponse(data)) {
-        this.log("poll-unchanged", { status: 204 });
-        return;
-      }
-      this.log("poll-changed", { status: 200, peerCount: data.peers.length });
-      this.lastRosterSig = typeof data.rosterSig === "string" ? data.rosterSig : null;
-      await this.onPoll(data);
-    } finally {
-      this.pollInFlight = false;
-    }
+  private roomDial(): MeshRoomDial {
+    return {
+      myId: this.myId,
+      principal: this.options.channel === "principal",
+      roomPeers: this.lastRoomPeers,
+      droppedGhostIds: this.droppedGhostIds,
+      hasPeer: (id) => this.peers.has(id),
+      peerIds: () => this.peers.ids(),
+      linkStateOf: (id) => this.peers.linkStateOf(id),
+      shouldConnectToPeer: this.options.shouldConnectToPeer,
+      isInitiator: (id) => this.isInitiator(id),
+      rtcSignalsEnabled: () => this.rtcSignalsEnabled(),
+      allowNameFallback: this.collapseIdentityOnPoll(),
+      rememberCaps: (id, caps) => this.peers.rememberCaps(id, caps),
+      connectTo: (id, name) => this.dialer.connectTo(id, name),
+      log: (event, details) => this.log(event, details),
+      kickPoll: () => this.schedulePoll(false),
+      notifyLinkChange: () => this.notifyLinkChange(),
+    };
   }
 
-  private hasStableCollabTopology(): boolean {
-    if (this.options.channel !== "collab" || this.options.binding?.kind !== "data") return false;
-    if (!this.rtcSignalsEnabled()) return false;
-    for (const peer of this.lastRoomPeers) {
-      const entry = this.peers.get(peer.id);
-      if (!entry || this.linkState(entry) !== "connected") return false;
-    }
-    return true;
+  /** Dial everyone on the fresh roster, respecting the principal per-poll dial cap. */
+  private dialRoomPeers(): void {
+    dialListedRoomPeers(this.roomDial());
   }
 
-  private hasKnockersInRoster(): boolean {
-    return this.lastRoomPeers.some((peer) => peer.name.startsWith(MEET_KNOCK_ROSTER_PREFIX));
-  }
-
-  private hasStableMeetTopology(): boolean {
-    if (this.options.channel !== "meet" || this.options.binding?.kind !== "media") return false;
-    if (!this.rtcSignalsEnabled()) return false;
-    if (this.hasKnockersInRoster()) return false;
-    const activePeers = this.lastRoomPeers.filter(
-      (peer) => !peer.name.startsWith(MEET_KNOCK_ROSTER_PREFIX),
-    );
-    for (const peer of activePeers) {
-      const entry = this.peers.get(peer.id);
-      if (!entry || this.linkState(entry) !== "connected") return false;
-    }
-    return true;
-  }
-
-  /** Hidden-tab backoff only applies to meshes without any peer connections. */
-  private isHiddenWithoutPeerConnections(): boolean {
-    return this.visibility?.getState() === "hidden" && this.peers.size === 0;
-  }
-
-  private steadyPollDelayMs(intervals: RtcPollIntervals): number {
-    let delay = intervals.steadyMs;
-    if (this.hasStableCollabTopology()) {
-      delay = Math.max(delay, COLLAB_IDLE_POLL_INTERVAL_MS);
-    } else if (this.hasStableMeetTopology()) {
-      delay = Math.max(delay, MEET_IDLE_POLL_INTERVAL_MS);
-    }
-    if (this.isHiddenWithoutPeerConnections()) {
-      delay = Math.max(delay, HIDDEN_IDLE_POLL_INTERVAL_MS);
-    }
-    return delay;
-  }
-
-  private onVisibilityChange(): void {
-    if (!this.myId) return;
-    if (this.visibility?.getState() === "visible") {
-      this.log("visibility-poll-restore");
-      this.schedulePoll(false);
-      return;
-    }
-    // Reschedule so the hidden backoff (when applicable) kicks in without waiting a tick.
-    this.schedulePoll(true);
+  private pollCadenceSnapshot(): MeshPollCadenceSnapshot {
+    return {
+      channel: this.options.channel,
+      bindingKind: this.options.binding?.kind ?? null,
+      rtcSignalsEnabled: this.rtcSignalsEnabled(),
+      roomPeers: this.lastRoomPeers,
+      linkStateOf: (peerId) => this.peers.linkStateOf(peerId),
+      hidden: this.visibility?.getState() === "hidden",
+      peerConnectionCount: this.peers.size,
+    };
   }
 
   private schedulePoll(steady = false): void {
-    if (!this.myId) return;
-    this.stopPolling();
-    const intervals = this.pollIntervals();
-    const delay = !steady ? intervals.connectingMs : this.steadyPollDelayMs(intervals);
-    if (this.lastLoggedPollDelayMs !== delay) {
-      this.lastLoggedPollDelayMs = delay;
-      this.log("poll-interval", {
-        delayMs: delay,
-        steady,
-        connectingMs: intervals.connectingMs,
-        idleCollab: this.hasStableCollabTopology(),
-      });
-    }
-    this.pollTimer = this.scheduleTimeout(() => {
-      void this.pollOnce()
-        .catch((error) => {
-          if (this.options.recoverOnUnknownPeer && this.isUnknownPeerError(error)) {
-            void this.recoverUnknownPeer();
-            return;
-          }
-          this.log("poll-failed", { error });
-          this.options.onPollError?.(error);
-        })
-        .finally(() => this.schedulePoll(true));
-    }, delay);
+    this.pollLoop.schedule(steady);
   }
 
   stopPolling(): void {
-    if (this.pollTimer !== null) {
-      this.cancelTimeout(this.pollTimer);
-      this.pollTimer = null;
-    }
+    this.pollLoop.stop();
   }
 
   /**
@@ -830,33 +545,13 @@ export class RtcPeerMesh {
    * must not wait for the next poll cycle.
    */
   retryRoomPeerConnections(): void {
-    if (!this.myId || !this.rtcSignalsEnabled()) return;
-    let awaitingRemoteOffer = false;
-    for (const peer of this.lastRoomPeers) {
-      if (peer.id === this.myId) continue;
-      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-        continue;
-      }
-      const entry = this.peers.get(peer.id);
-      if (entry && this.linkState(entry) === "connected") {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "already-connected" });
-        continue;
-      }
-      if (this.isInitiator(peer.id)) {
-        this.log("reuse-fallback-connect", { remoteId: peer.id });
-        void this.connectTo(peer.id, peer.name).catch((error) => {
-          this.log("peer-connect-failed", { remoteId: peer.id, error });
-        });
-      } else {
-        awaitingRemoteOffer = true;
-      }
-    }
-    if (awaitingRemoteOffer) {
-      this.log("reuse-fallback-poll-kick");
-      this.schedulePoll(false);
-    }
-    this.notifyLinkChange();
+    if (this.activeEpoch !== this.sessionEpoch) return;
+    retryUnconnectedRoomPeers(this.roomDial());
+  }
+
+  /** Re-dial one roster peer. Connected peers are left untouched. */
+  retryPeerConnection(remoteId: string): void {
+    retryRoomPeer(this.roomDial(), remoteId);
   }
 
   /**
@@ -867,46 +562,7 @@ export class RtcPeerMesh {
    * remains the source of truth and a lost hint costs nothing.
    */
   applyPeerHint(peers: RtcPeerDescriptor[]): void {
-    if (!this.myId || !this.rtcSignalsEnabled()) return;
-    let awaitingRemoteOffer = false;
-    const allowNameFallback = this.collapseIdentityOnPoll();
-    const knownIdentities = new Set(
-      this.lastRoomPeers
-        .map((peer) => peerIdentityKey(peer, allowNameFallback))
-        .filter((key): key is string => key !== null),
-    );
-    for (const peer of peers) {
-      if (peer.id === this.myId) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "self" });
-        continue;
-      }
-      if (this.droppedGhostIds.has(peer.id) || this.peers.has(peer.id)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "already-known" });
-        continue;
-      }
-      const identity = peerIdentityKey(peer, allowNameFallback);
-      if (identity && knownIdentities.has(identity)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "stale-hint-identity" });
-        this.droppedGhostIds.add(peer.id);
-        continue;
-      }
-      if (this.options.shouldConnectToPeer && !this.options.shouldConnectToPeer(peer)) {
-        this.log("peer-skipped", { remoteId: peer.id, reason: "should-connect-false" });
-        continue;
-      }
-      if (this.isInitiator(peer.id)) {
-        this.log("peer-hint-connect", { remoteId: peer.id });
-        void this.connectTo(peer.id, peer.name).catch((error) => {
-          this.log("peer-connect-failed", { remoteId: peer.id, error });
-        });
-      } else {
-        awaitingRemoteOffer = true;
-      }
-    }
-    if (awaitingRemoteOffer) {
-      this.log("peer-hint-poll-kick");
-      this.schedulePoll(false);
-    }
+    applyIncomingPeerHint(this.roomDial(), peers);
   }
 
   async recoverUnknownPeer(): Promise<void> {
@@ -915,19 +571,15 @@ export class RtcPeerMesh {
     const previousPeerId = this.myId;
     this.log("peer-recover-start", { previousPeerId });
     try {
-      for (const id of [...this.peers.keys()]) this.removePeer(id);
+      for (const id of this.peers.ids()) this.removePeer(id);
       this.myId = null;
-      this.lastMsgId = 0;
+      this.inbox.reset();
       this.lastRosterSig = null;
-      const joined = await this.options.signaling.join({
-        room: this.options.room,
-        name: this.myName,
-        peerId: previousPeerId ?? undefined,
-        sessionKey: this.sessionKey ?? undefined,
-      });
+      const joined = await this.signalingJoin(previousPeerId ?? undefined);
       this.myId = joined.peerId ?? previousPeerId ?? null;
       if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
-      await this.onPoll({ peers: joined.peers, messages: [] });
+      await this.prepareRelay();
+      await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
     } catch (error) {
       this.log("peer-recover-error", { previousPeerId, error });
@@ -937,37 +589,130 @@ export class RtcPeerMesh {
     }
   }
 
-  async join(input: { name: string; peerId?: string }): Promise<{
+  join(input: { name: string; peerId?: string }): Promise<{
     peerId: string;
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
+    limits?: HttpSignalingJoinResult["rtc"];
+    ticket?: string;
+  }> {
+    const key = `${this.options.channel}\0${this.options.room}`;
+    return enqueueMeshJoin(key, () => this.joinSerialized(input));
+  }
+
+  private async joinSerialized(input: { name: string; peerId?: string }): Promise<{
+    peerId: string;
+    peers: RtcPeerDescriptor[];
+    sessionKey?: string | null;
+    limits?: HttpSignalingJoinResult["rtc"];
+    ticket?: string;
   }> {
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");
+    const epoch = ++this.sessionEpoch;
+    this.activeEpoch = epoch;
     this.log("join-request", { room: this.options.room, name: this.myName });
-    const joined = await this.options.signaling.join({
-      room: this.options.room,
-      name: this.myName,
-      peerId: input.peerId,
-      sessionKey: this.sessionKey ?? undefined,
-    });
+    this.metrics.begin();
+    const joined = await this.signalingJoin(input.peerId);
+    if (epoch !== this.sessionEpoch) {
+      const peerId = joined.peerId ?? input.peerId;
+      if (peerId) {
+        try {
+          await this.options.signaling.leave({
+            room: this.options.room,
+            peerId,
+            sessionKey: joined.sessionKey ?? undefined,
+          });
+        } catch {
+          // The next join must not overlap a peer this attempt already created.
+        }
+      }
+      return { peerId: peerId ?? "", peers: [] };
+    }
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    await this.prepareRelay();
+    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [] };
     this.lastRosterSig = null;
     this.log("join-response", {
       peerId: this.myId,
       roster: joined.peers.map((peer) => ({ id: peer.id, name: peer.name, user: peer.user })),
     });
     this.visibilityUnsubscribe ??=
-      this.visibility?.subscribe(() => this.onVisibilityChange()) ?? null;
+      this.visibility?.subscribe(() => this.pollLoop.onVisibilityChange()) ?? null;
     this.schedulePoll();
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
+    this.installNetworkRecovery();
     return {
       peerId: this.myId,
       peers: joined.peers,
       sessionKey: joined.sessionKey,
+      limits: joined.rtc,
+      ticket: joined.ticket,
     };
+  }
+
+  private async signalingJoin(peerId?: string) {
+    this.ensureConnectivity();
+    const net =
+      this.options.channel === "meet" || this.options.channel === "collab"
+        ? await netClassForJoin(this.options.rtcSettings)
+        : undefined;
+    if (net) this.localNet = net;
+    return this.options.signaling.join({
+      room: this.options.room,
+      name: this.myName,
+      peerId,
+      sessionKey: this.sessionKey ?? undefined,
+      net,
+    });
+  }
+
+  private async prepareRelay(): Promise<void> {
+    await this.meshRelay?.beforeDial();
+    this.dialer.setTurn(this.meshRelay?.credentials() ?? null);
+  }
+
+  private surface(): MeshSurface {
+    return {
+      options: this.options,
+      scheduleTimeout: this.scheduleTimeout,
+      cancelTimeout: this.cancelTimeout,
+      getMyId: () => this.myId,
+      getLocalNet: () => this.localNet,
+      setLocalNet: (net) => {
+        this.localNet = net;
+      },
+      getRoomPeers: () => this.lastRoomPeers,
+      peerEntry: (id) => this.peers.get(id),
+      peerIds: () => this.peers.ids(),
+      peerConnection: (id) => this.peers.peerConnection(id),
+      isInitiator: (id) => this.isInitiator(id),
+      sendSignal: (to, type, payload) => this.sendSignal(to, type, payload),
+      onSignalError: (id, error) => this.handleRemoteSignalError(id, error),
+      formatOutbound: (description) => this.formatOutbound(description),
+      setTurn: (turn) => this.dialer.setTurn(turn),
+      restartWithRelay: (id, entry) => this.dialer.restartWithRelay(id, entry),
+      onGiveUp: (id, entry) => this.handleConnectionFailed(id, entry),
+      kickPoll: () => this.schedulePoll(false),
+      log: (event, details) => this.log(event, details),
+      sessionKey: () => this.sessionKey,
+      onIceRestart: () => this.metrics.noteIceRestart(),
+    };
+  }
+
+  private ensureConnectivity(): void {
+    if (this.iceOut) return;
+    const built = buildMeshConnectivity(hostFromSurface(this.surface()));
+    this.iceOut = built.iceOut;
+    this.meshRelay = built.relay;
+    this.recovery = built.recovery;
+  }
+
+  private installNetworkRecovery(): void {
+    if (this.networkUnsubscribe || !this.recovery) return;
+    this.networkUnsubscribe = bindNetworkRecovery(hostFromSurface(this.surface()), this.recovery);
   }
 
   getSessionKey(): string | null {
@@ -982,20 +727,16 @@ export class RtcPeerMesh {
     const trimmed = name.trim();
     if (!trimmed || !this.myId) return;
     this.myName = trimmed;
-    const joined = await this.options.signaling.join({
-      room: this.options.room,
-      name: this.myName,
-      peerId: this.myId,
-      sessionKey: this.sessionKey ?? undefined,
-    });
+    const joined = await this.signalingJoin(this.myId);
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
-    // Same-peer rename (admit): refresh roster and dial now — do not wait for
-    // the next poll, which may already be on the idle interval.
-    await this.onPoll({ peers: joined.peers, messages: [] });
+    // Admit drops the knocker name. Mint force-relay TURN now, before this
+    // poll creates the first peer connection. A lobby precheck was denied.
+    await this.prepareRelay();
+    await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
   }
 
   async sendByeToAll(): Promise<void> {
-    for (const remoteId of [...this.peers.keys()]) {
+    for (const remoteId of this.peers.ids()) {
       try {
         await this.sendSignal(remoteId, "bye", null);
       } catch {
@@ -1005,30 +746,25 @@ export class RtcPeerMesh {
   }
 
   async replaceAudioTrack(track: MediaStreamTrack): Promise<void> {
-    const updates: Promise<void>[] = [];
-    for (const entry of this.peers.values()) {
-      const sender = entry.pc.getSenders().find((s) => s.track?.kind === "audio");
-      if (!sender) continue;
-      updates.push(sender.replaceTrack(track));
-    }
-    await Promise.all(updates);
+    await this.peers.replaceSenderTrack("audio", track);
   }
 
   async replaceVideoTrack(track: MediaStreamTrack): Promise<void> {
-    const updates: Promise<void>[] = [];
-    for (const entry of this.peers.values()) {
-      const sender = entry.pc.getSenders().find((s) => s.track?.kind === "video");
-      if (!sender) continue;
-      updates.push(sender.replaceTrack(track));
-    }
-    await Promise.all(updates);
+    await this.peers.replaceSenderTrack("video", track);
   }
 
   async leave(): Promise<void> {
+    this.sessionEpoch += 1;
+    this.metrics.flush();
     this.stopPolling();
+    this.pollLoop.release();
+    this.networkUnsubscribe?.();
+    this.networkUnsubscribe = null;
+    this.meshRelay?.dispose();
+    this.iceOut?.dispose();
+    this.recovery?.dispose();
     this.visibilityUnsubscribe?.();
     this.visibilityUnsubscribe = null;
-    this.pollInFlight = false;
     const peerId = this.myId;
     const sessionKey = this.sessionKey;
     this.myId = null;
@@ -1043,13 +779,12 @@ export class RtcPeerMesh {
         // Ignore leave failures during cleanup.
       }
     }
-    for (const id of [...this.peers.keys()]) this.removePeer(id);
+    for (const id of this.peers.ids()) this.removePeer(id);
     this.myName = "";
     this.sessionKey = null;
-    this.lastMsgId = 0;
+    this.inbox.reset();
     this.lastRosterSig = null;
     this.lastRoomPeers = [];
     this.droppedGhostIds.clear();
-    this.lastLoggedPollDelayMs = null;
   }
 }

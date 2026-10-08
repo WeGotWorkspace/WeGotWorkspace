@@ -1,5 +1,21 @@
 import * as Y from "yjs";
-import { isYDocEmpty } from "./docs-collab-utils";
+import { hash32, isYDocEmpty } from "./docs-collab-utils";
+
+/**
+ * Bump when a change to the seeding pipeline would alter the Yjs items built
+ * from the same markdown. Clients on different versions then seed under
+ * different ids instead of interleaving two near-identical item runs.
+ */
+export const SEED_FORMAT_VERSION = "1";
+
+/**
+ * Seeding writes into a throwaway Y.Doc whose clientID is derived from the
+ * content, so every client that seeds the same markdown produces byte-identical
+ * items. Merging those is then a no-op instead of a second copy.
+ */
+export function seedClientId(documentFormat: string, markdown: string): number {
+  return hash32(`${SEED_FORMAT_VERSION}\u0000${documentFormat}\u0000${markdown}`);
+}
 
 export type SeedMeshContext = {
   getPeerIds: () => string[];
@@ -63,6 +79,10 @@ export function shouldApplyImmediateSeed(
   return false;
 }
 
-export function markSeedDoneAfterSnapshot(hadSnapshot: boolean): boolean {
-  return hadSnapshot;
+/**
+ * A sidecar can exist while the body is still empty (e.g. a prior wipe persisted).
+ * In that case markdown must still seed the editor on solo open.
+ */
+export function markSeedDoneAfterSnapshot(ydoc: Y.Doc): boolean {
+  return !isYDocEmpty(ydoc);
 }

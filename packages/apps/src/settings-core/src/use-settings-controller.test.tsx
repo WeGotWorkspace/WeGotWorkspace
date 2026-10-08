@@ -56,6 +56,7 @@ describe("useSettingsController MCP kill-switch", () => {
       "tasks",
       "contacts",
       "notes",
+      "meet",
     ]);
     expect(result.current.section).toBe("profile");
     expect(result.current.currentSection.id).toBe("profile");

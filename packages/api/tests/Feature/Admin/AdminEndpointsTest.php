@@ -102,8 +102,7 @@ final class AdminEndpointsTest extends WgwDatabaseTestCase
                 'values' => [
                     'rtc_stun_url' => 'stun:stun.example.test:3478,stuns:stun-backup.example.test:5349',
                     'rtc_turn_url' => 'turn:turn.example.test:3478?transport=udp,turns:turn-backup.example.test:5349?transport=tcp',
-                    'rtc_turn_username' => 'rtc-user',
-                    'rtc_turn_credential' => 'rtc-secret',
+                    'rtc_turn_secret' => 'rtc-secret',
                 ],
             ])
             ->assertOk()
@@ -112,8 +111,7 @@ final class AdminEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/admin/state')
             ->assertOk()
-            ->assertJsonPath('rtc.turnUsername', 'rtc-user')
-            ->assertJsonPath('rtc.turnPassword', 'rtc-secret')
+            ->assertJsonPath('rtc.turnSecretSet', true)
             ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478, stuns:stun-backup.example.test:5349')
             ->assertJsonPath('rtc.turnUrls', 'turn:turn.example.test:3478?transport=udp, turns:turn-backup.example.test:5349?transport=tcp');
 

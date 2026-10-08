@@ -1,5 +1,7 @@
 import { useCallback, useRef } from "react";
+import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
+import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
@@ -14,13 +16,14 @@ import {
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
 import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
+import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { docSignature, isCollabPayloadTooLarge, SERVER_ORIGIN } from "./docs-collab-utils";
-
-function isServerDivergenceError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /\((409|412)\)/.test(message) || /precondition failed/i.test(message);
-}
+import {
+  docSignature,
+  isCollabPayloadTooLarge,
+  isServerDivergenceError,
+  SERVER_ORIGIN,
+} from "./docs-collab-utils";
 
 export const PENDING_SERVER_SAVE_KEY = "pendingServerSave";
 
@@ -92,7 +95,7 @@ export function useDocsCollabSave({
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
     if (!ydoc || !getMd) return;
-    const markdown = getMd();
+    const markdown = markdownForSave(ydoc, getMd());
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -116,14 +119,16 @@ export function useDocsCollabSave({
           await urls.persistMarkdown(markdown, refs.authTokenRef.current);
           return;
         }
-        await saveDocument(
+        const etag = await saveDocument(
           urls.documentUrl,
           markdown,
           ydoc,
           urls.room,
           refs.authTokenRef.current,
           urls.documentSaveMethod === "PATCH" ? "PUT" : (urls.documentSaveMethod ?? "POST"),
+          sidecarPrecondition(room),
         );
+        rememberSidecarEtag(room, etag);
       };
 
       try {
@@ -135,22 +140,25 @@ export function useDocsCollabSave({
           getConnectivitySnapshot()
         ) {
           conflictRemergeAttemptedRef.current = true;
-          const merged = await loadYjsSnapshot(
+          const reload = await loadYjsSnapshot(
             urls.yjsUrl,
             ydoc,
             refs.authTokenRef.current,
             SERVER_ORIGIN,
           );
-          if (merged) {
-            const remergedMarkdown = getMd();
-            await saveDocument(
+          rememberSidecarEtag(room, reload.etag);
+          if (reload.applied) {
+            const remergedMarkdown = markdownForSave(ydoc, getMd());
+            const etag = await saveDocument(
               urls.documentUrl,
               remergedMarkdown,
               ydoc,
               urls.room,
               refs.authTokenRef.current,
               urls.documentSaveMethod ?? "POST",
+              sidecarPrecondition(room),
             );
+            rememberSidecarEtag(room, etag);
           } else {
             throw firstError;
           }
@@ -264,3 +272,23 @@ export function useDocsCollabSave({
 }
 
 export { SAVE_DELAY_MS };
+
+/**
+ * A reconnect can apply the server Y.Doc before the editor view catches up.
+ * Saving the shorter view would replace the other person's edit.
+ */
+function markdownForSave(ydoc: Y.Doc, editorMarkdown: string): string {
+  try {
+    const fromDoc = readContentFromYDoc(ydoc);
+    if (
+      editorMarkdown !== "" &&
+      fromDoc.includes(editorMarkdown) &&
+      fromDoc.length > editorMarkdown.length
+    ) {
+      return fromDoc;
+    }
+  } catch {
+    // The editor string is still a valid save body.
+  }
+  return editorMarkdown;
+}

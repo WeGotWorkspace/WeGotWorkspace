@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
+import type { MeetRoomChatMessage } from "@/lib/rtc/session/meet-room-chat";
+import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
+import type { MeetEncodingPrefs } from "@/meet-core/src/meet-send-encoding";
 import { MeetRtcSession } from "@/meet-core/src/meet-rtc-session";
+import type { VideoLimits } from "@/meet-core/src/meet-video-sender";
 
 export type UseMeetRtcOptions = {
   rtcSettings: RtcSettings;
@@ -11,10 +15,15 @@ export type UseMeetRtcOptions = {
   onPollData: (data: HttpSignalingPollResult) => void | Promise<void>;
   shouldConnectToPeer: (peer: RtcPeerDescriptor) => boolean;
   shouldHandleRtcSignals: () => boolean;
+  /** Offer gate: a knocker or an id outside the roster is never answered. */
+  shouldAcceptOffer?: (from: string) => boolean;
   onPeerRemoved: (remoteId: string, name: string, reason: "bye" | "roster") => void;
   onConnectionFailed: (remoteId: string, name: string) => void;
   onPollError: (error: unknown) => void;
   onPeerConnected: (remoteId: string) => void;
+  onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
+  onVideoLimits?: (limits: VideoLimits) => void;
+  onMeetData?: (remoteId: string, data: string) => void;
   /**
    * Suite-level session holder (from `MeetCallStore`). When provided, the RTC
    * session survives route unmounts instead of living in a per-mount ref.
@@ -31,10 +40,14 @@ function createSession(options: UseMeetRtcOptions): MeetRtcSession {
     onPollData: options.onPollData,
     shouldConnectToPeer: options.shouldConnectToPeer,
     shouldHandleRtcSignals: options.shouldHandleRtcSignals,
+    shouldAcceptOffer: options.shouldAcceptOffer,
     onPeerRemoved: options.onPeerRemoved,
     onConnectionFailed: options.onConnectionFailed,
     onPollError: options.onPollError,
     onPeerConnected: options.onPeerConnected,
+    onRelayOutcome: options.onRelayOutcome,
+    onVideoLimits: options.onVideoLimits,
+    onMeetData: options.onMeetData,
   });
 }
 
@@ -126,6 +139,29 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
     [getSessionRef],
   );
 
+  const kickPoll = useCallback(() => {
+    getSessionRef().current?.kickPoll();
+  }, [getSessionRef]);
+
+  const sendRoomChat = useCallback(
+    (message: MeetRoomChatMessage) => {
+      getSessionRef().current?.sendRoomChat(message);
+    },
+    [getSessionRef],
+  );
+
+  const setEncodingPrefs = useCallback(
+    (prefs: Partial<MeetEncodingPrefs>) => {
+      getSessionRef().current?.setEncodingPrefs(prefs);
+    },
+    [getSessionRef],
+  );
+
+  const isCameraSendingDisabled = useCallback(
+    () => getSessionRef().current?.isCameraSendingDisabled() ?? false,
+    [getSessionRef],
+  );
+
   return useMemo(
     () => ({
       join,
@@ -139,6 +175,10 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
       getPeerIds,
       getMyId,
       getSessionKey,
+      kickPoll,
+      sendRoomChat,
+      setEncodingPrefs,
+      isCameraSendingDisabled,
     }),
     [
       getMyId,
@@ -146,11 +186,15 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
       getPeerIds,
       getRemoteStream,
       getSessionKey,
+      isCameraSendingDisabled,
       join,
+      kickPoll,
       leave,
+      sendRoomChat,
       replaceAudioTrack,
       replaceVideoTrack,
       retryRoomPeerConnections,
+      setEncodingPrefs,
       updateJoinName,
     ],
   );

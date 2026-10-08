@@ -76,8 +76,10 @@ const DEFAULT_DATA: AdminUIData = {
   rtc: {
     stunUrls: "",
     turnUrls: "",
-    turnUsername: "",
-    turnPassword: "",
+    turnSecretSet: false,
+    turnStaticCredentialsPresent: false,
+    maxVideoProfile: "p720",
+    maxVideoProfileRelay: "p360",
   },
   apps: {
     calendars: true,

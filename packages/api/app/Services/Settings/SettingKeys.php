@@ -30,9 +30,19 @@ final class SettingKeys
 
     public const RTC_TURN_URL = 'rtc_turn_url';
 
-    public const RTC_TURN_USERNAME = 'rtc_turn_username';
+    /**
+     * Shared secret for TURN REST credentials (coturn `use-auth-secret`).
+     * Write-only: never returned by the admin API and never logged.
+     */
+    public const RTC_TURN_SECRET = 'rtc_turn_secret';
 
-    public const RTC_TURN_CREDENTIAL = 'rtc_turn_credential';
+    public const MEET_MAX_PEERS = 'meet_max_peers';
+
+    /** Highest video profile any client on this instance may send. */
+    public const MEET_MAX_VIDEO_PROFILE = 'meet_max_video_profile';
+
+    /** Highest video profile a sender may use while its pair is relayed. */
+    public const MEET_MAX_VIDEO_PROFILE_RELAY = 'meet_max_video_profile_relay';
 
     public const MAIL_IMAP_HOST = 'mail_imap_host';
 
@@ -80,8 +90,10 @@ final class SettingKeys
             self::MCP_ENABLED,
             self::RTC_STUN_URL,
             self::RTC_TURN_URL,
-            self::RTC_TURN_USERNAME,
-            self::RTC_TURN_CREDENTIAL,
+            self::RTC_TURN_SECRET,
+            self::MEET_MAX_PEERS,
+            self::MEET_MAX_VIDEO_PROFILE,
+            self::MEET_MAX_VIDEO_PROFILE_RELAY,
             self::MAIL_IMAP_HOST,
             self::MAIL_IMAP_PORT,
             self::MAIL_IMAP_SECURITY,

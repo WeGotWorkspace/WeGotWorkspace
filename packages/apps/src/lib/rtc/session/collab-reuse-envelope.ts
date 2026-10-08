@@ -17,6 +17,8 @@ export type CollabReuseEnvelope = {
   collabPeerId?: string;
   /** Display name from the collab join, for roster overlay before the poll. */
   name?: string;
+  /** C2 collaboration ticket, present on `open` and `ack`. */
+  ticket?: string;
   /** Collab mesh payload when `op` is `data`. */
   payload?: unknown;
 };
@@ -57,6 +59,9 @@ export function parseCollabReuseEnvelopeValue(data: unknown): CollabReuseEnvelop
   }
   if (typeof envelope.name === "string" && envelope.name !== "") {
     parsed.name = envelope.name;
+  }
+  if (typeof envelope.ticket === "string" && envelope.ticket !== "") {
+    parsed.ticket = envelope.ticket;
   }
   if (envelope.op === "data") {
     if (envelope.payload === undefined) return null;

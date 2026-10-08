@@ -42,7 +42,7 @@ export function DocsCollabWorkspace({ userName, autoJoin = true }: DocsCollabWor
             disabled={joined}
             onClick={() => void join()}
           >
-            Join mesh
+            Join
           </button>
         ) : null}
         <button
@@ -64,17 +64,16 @@ export function DocsCollabWorkspace({ userName, autoJoin = true }: DocsCollabWor
         <span className="text-muted-foreground">{status}</span>
         {docStatus ? <span className="text-muted-foreground">· {docStatus}</span> : null}
         <span className="ml-auto text-muted-foreground">
-          {linkCount} WebRTC link(s) · {peers.length} connected · {connectingPeers.length}{" "}
-          connecting · {warningPeers.length} warning
+          {linkCount === 1 ? "1 connection" : `${linkCount} connections`} · {peers.length} connected
+          · {connectingPeers.length} connecting · {warningPeers.length} warning
         </span>
       </header>
 
       <div className="border-b bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
         Open this story in <strong>two browser windows</strong> (or Storybook + iframe) with
-        different <strong>userName</strong> controls — e.g. Alex and Sam. Uses a local signaling
-        service on <strong>8081</strong> (started by Storybook or{" "}
-        <code>pnpm dev:docs-collab-signal</code>). Enable verbose RTC diagnostics with{" "}
-        <code>?rtcDebug=1</code>.
+        different <strong>userName</strong> controls — e.g. Alex and Sam. A local room service on{" "}
+        <strong>8081</strong> has to be running (Storybook starts it, or{" "}
+        <code>pnpm dev:docs-collab-signal</code>). Verbose diagnostics: <code>?rtcDebug=1</code>.
       </div>
 
       <main className="flex-1 p-4">
@@ -86,7 +85,7 @@ export function DocsCollabWorkspace({ userName, autoJoin = true }: DocsCollabWor
             onMarkdownChange={onMarkdownChange}
           />
         ) : (
-          <p className="text-muted-foreground">Join the mesh to start editing…</p>
+          <p className="text-muted-foreground">Join to start editing…</p>
         )}
       </main>
     </div>

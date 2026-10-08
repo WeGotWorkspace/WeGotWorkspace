@@ -148,6 +148,64 @@ describe("HttpSignalingClient", () => {
     expect(body.sessionKey).toBe("guest-key");
   });
 
+  it("advertises the configured caps on join", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peers: [] }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      caps: ["since-ack"],
+    });
+    await client.join({ room: "abcd-efgh-ijkl", name: "Alice", peerId: "peer-1" });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body.caps).toEqual(["since-ack"]);
+  });
+
+  it("omits caps entirely when none are configured", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      async () => new Response(JSON.stringify({ peers: [] }), { status: 200 }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "collab",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+    await client.join({ room: "docs/x.md", name: "Alice" });
+    const body = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("caps");
+  });
+
+  it("aborts a poll that hangs past the ten second budget", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const controller = new AbortController();
+    timeout.mockReturnValue(controller.signal);
+
+    const fetchImpl = vi.fn<HttpSignalingFetch>(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+          });
+        }),
+    );
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+    });
+
+    const pending = client.poll({ room: "abcd-efgh-ijkl", peerId: "p1" });
+    expect(timeout).toHaveBeenCalledWith(10_000);
+    expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+
+    controller.abort();
+    await expect(pending).rejects.toThrow(/aborted/i);
+
+    timeout.mockRestore();
+  });
+
   it("sends leave with keepalive so a pagehide leave can finish", async () => {
     const fetchImpl = vi.fn<HttpSignalingFetch>(
       async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
@@ -159,5 +217,23 @@ describe("HttpSignalingClient", () => {
     });
     await client.leave({ room: "docs/x.md", peerId: "aaaaaaaaaaaaaaaa" });
     expect(fetchImpl.mock.calls[0]?.[1]?.keepalive).toBe(true);
+  });
+
+  it("posts a session sample to /rtc/metrics without the room name", async () => {
+    const fetchImpl = vi.fn<HttpSignalingFetch>(async () => new Response(null, { status: 202 }));
+    const client = new HttpSignalingClient({
+      channel: "meet",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({ bearerToken: "token-1", sessionKey: "a".repeat(32) }),
+    });
+    await client.reportSessionMetric({ channel: "meet", joinMs: 10 }, "b".repeat(32));
+    const [url, init] = fetchImpl.mock.calls[0] ?? [];
+    expect(url).toBe(`/api/v1/rtc/metrics?sessionKey=${"b".repeat(32)}`);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ channel: "meet", joinMs: 10 });
+    expect(String(init?.headers && (init.headers as Record<string, string>).Authorization)).toBe(
+      "Bearer token-1",
+    );
   });
 });

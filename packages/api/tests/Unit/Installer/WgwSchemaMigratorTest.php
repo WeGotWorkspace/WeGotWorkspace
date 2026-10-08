@@ -6,6 +6,7 @@ namespace Tests\Unit\Installer;
 
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\WgwConnectionConfigurator;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\WgwTestDatabase;
@@ -26,6 +27,22 @@ final class WgwSchemaMigratorTest extends TestCase
 
         $this->assertSame(WgwSchemaMigrator::CURRENT_SCHEMA_VERSION, $migrator->currentVersion());
         $this->assertExpectedSchemaAtCurrentVersion();
+    }
+
+    public function test_rtc_hardening_down_drops_collab_browser_id_only_when_present(): void
+    {
+        app(WgwSchemaMigrator::class)->migrate();
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+
+        Schema::connection('wgw')->table('collab_peers', function (Blueprint $table): void {
+            $table->dropColumn('browser_id');
+        });
+
+        $migration = require database_path('migrations/wgw/2026_10_03_000440_wgw_rtc_signaling_hardening.php');
+        $migration->down();
+
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
     }
 
     public function test_migrate_is_idempotent_when_already_at_current_version(): void
@@ -123,6 +140,8 @@ final class WgwSchemaMigratorTest extends TestCase
             'notifications',
             'notification_deliveries',
             'push_subscriptions',
+            'rtc_relay_events',
+            'rtc_session_metrics',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -143,6 +162,78 @@ final class WgwSchemaMigratorTest extends TestCase
             ->pluck('name')
             ->all();
         $this->assertContains('idx_drive_starred_path', $starIndexes);
+
+        $this->assertRtcSignalingSchema();
+    }
+
+    /**
+     * Contract C9 of the real-time hardening programme: one migration carries
+     * every schema change, so a fresh install and an upgrade both land here.
+     */
+    private function assertRtcSignalingSchema(): void
+    {
+        foreach (['meet_peers', 'collab_peers', 'principal_peers'] as $table) {
+            foreach (['caps', 'net'] as $column) {
+                $this->assertTrue(
+                    Schema::connection('wgw')->hasColumn($table, $column),
+                    "Expected column {$table}.{$column} to exist.",
+                );
+            }
+            $this->assertContains(
+                'idx_'.str_replace('_peers', '', $table).'_peers_seen',
+                collect(Schema::connection('wgw')->getIndexes($table))->pluck('name')->all(),
+            );
+        }
+
+        foreach (['meet_messages', 'collab_messages', 'principal_messages'] as $table) {
+            $this->assertContains(
+                'idx_'.str_replace('_messages', '', $table).'_msg_created',
+                collect(Schema::connection('wgw')->getIndexes($table))->pluck('name')->all(),
+            );
+        }
+
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));
+
+        // Fail-closed default: a collab peer row that was not written by join
+        // comes back as read-only.
+        Schema::connection('wgw')->getConnection()->table('collab_peers')->insert([
+            'room' => 'schema-default-probe',
+            'peer_id' => '0123456789abcdef',
+            'name' => 'probe',
+            'owner_user' => 'u:probe',
+            'seen_at' => time(),
+        ]);
+        $this->assertSame('read', (string) Schema::connection('wgw')->getConnection()
+            ->table('collab_peers')
+            ->where('room', 'schema-default-probe')
+            ->value('access'));
+
+        foreach (['created_at', 'channel', 'actor', 'reason', 'outcome'] as $column) {
+            $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_relay_events', $column));
+        }
+        foreach ([
+            'created_at',
+            'channel',
+            'join_ms',
+            'candidate_type',
+            'failed_pairs',
+            'ice_restarts',
+            'http_fallback',
+            'poll_rtt_ms',
+            'net',
+        ] as $column) {
+            $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_session_metrics', $column));
+        }
+        $this->assertContains(
+            'idx_rtc_relay_events_created',
+            collect(Schema::connection('wgw')->getIndexes('rtc_relay_events'))->pluck('name')->all(),
+        );
+        $this->assertContains(
+            'idx_rtc_session_metrics_created',
+            collect(Schema::connection('wgw')->getIndexes('rtc_session_metrics'))->pluck('name')->all(),
+        );
     }
 
     private static function legacyAppMigrationVersion(\PDO $pdo): int

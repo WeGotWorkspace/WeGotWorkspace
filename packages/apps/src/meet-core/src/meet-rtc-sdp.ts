@@ -1,7 +1,25 @@
 /**
- * Normalize SDP before setLocalDescription, setRemoteDescription, or HTTP signaling.
- * Browsers emit different SDP shapes; Chromium's parser is strict on cross-browser mesh.
+ * Normalize an inbound remote description before setRemoteDescription.
+ *
+ * The pair that required stripping is Safari (WebKit) against Chromium:
+ * - Safari parsing a Chromium description drops RTX and Opus RED.
+ * - Chromium parsing a Safari description drops `a=extmap-allow-mixed`,
+ *   `a=rtcp-rsize`, and plan-b `a=ssrc` / `a=ssrc-group`.
+ * H.265/HEVC, AV1, and VP9 are stripped for every parser. RTX and Opus RED
+ * stay for everyone else. `usedtx=1` is added to the inbound Opus fmtp only;
+ * outbound descriptions are not passed through this function.
  */
+
+export type SdpParser = "chromium" | "safari" | "other";
+
+/** WebKit Safari, excluding Chrome, Chromium, CriOS, and Edge. */
+export function detectSdpParser(userAgent?: string): SdpParser {
+  const ua = userAgent ?? (typeof navigator === "undefined" ? "" : navigator.userAgent);
+  const isWebKitSafari = /Safari\//.test(ua) && !/Chrome\/|Chromium\/|CriOS\/|Edg\//.test(ua);
+  if (isWebKitSafari) return "safari";
+  if (/Chrome\/|Chromium\/|CriOS\/|Edg\//.test(ua)) return "chromium";
+  return "other";
+}
 
 function isAuxiliaryRtpCodec(codec: string): boolean {
   return (
@@ -64,10 +82,6 @@ function rewriteFmtpLine(line: string, codecByPt: ReadonlyMap<number, string>): 
     return `a=fmtp:${pt} apt=${apt}`;
   }
 
-  if (/^rtx\//i.test(codec)) {
-    return null;
-  }
-
   const profileLevelId = params.match(/profile-level-id=([0-9a-fA-F]{6})/i)?.[1];
   if (profileLevelId) {
     const packetizationMode = params.match(/packetization-mode=([01])/i)?.[1] ?? "1";
@@ -81,7 +95,29 @@ function rewriteFmtpLine(line: string, codecByPt: ReadonlyMap<number, string>): 
   return line;
 }
 
-export function sanitizeRtcSdp(sdp: string): string {
+function withOpusUsedtx(lines: string[], codecByPt: ReadonlyMap<number, string>): string[] {
+  let opusPt: number | null = null;
+  for (const [pt, codec] of codecByPt) {
+    if (/^opus\//i.test(codec)) opusPt = pt;
+  }
+  if (opusPt === null) return lines;
+  let seen = false;
+  const rewritten = lines.map((line) => {
+    const match = line.match(new RegExp(`^a=fmtp:${opusPt}\\s+(.+)$`));
+    if (!match) return line;
+    seen = true;
+    return /(?:^|;)usedtx=1\b/.test(match[1]!) ? line : `a=fmtp:${opusPt} ${match[1]};usedtx=1`;
+  });
+  if (seen) return rewritten;
+  const inserted: string[] = [];
+  for (const line of rewritten) {
+    inserted.push(line);
+    if (line.startsWith(`a=rtpmap:${opusPt} `)) inserted.push(`a=fmtp:${opusPt} usedtx=1`);
+  }
+  return inserted;
+}
+
+export function sanitizeRtcSdp(sdp: string, parser: SdpParser = detectSdpParser()): string {
   const usesCrLf = sdp.includes("\r\n");
   const lines = sdp.replace(/\r\n/g, "\n").split("\n");
   const codecByPt = buildCodecByPayloadType(lines);
@@ -92,7 +128,8 @@ export function sanitizeRtcSdp(sdp: string): string {
     if (rtpmap) {
       const pt = Number(rtpmap[1]);
       const codec = rtpmap[2]!;
-      if (isAuxiliaryRtpCodec(codec) || isUnsupportedNegotiationCodec(codec)) {
+      const auxiliary = parser === "safari" && isAuxiliaryRtpCodec(codec);
+      if (auxiliary || isUnsupportedNegotiationCodec(codec)) {
         dropPayloadTypes.add(pt);
       }
     }
@@ -102,7 +139,7 @@ export function sanitizeRtcSdp(sdp: string): string {
     }
     const pt = Number(fmtp[1]);
     const params = fmtp[2]!;
-    if (/(?:^|;)apt=\d+\b/.test(params)) {
+    if (parser === "safari" && /(?:^|;)apt=\d+\b/.test(params)) {
       dropPayloadTypes.add(pt);
     }
     if (isH265FmtpParams(params) || isAv1FmtpParams(params)) {
@@ -110,16 +147,41 @@ export function sanitizeRtcSdp(sdp: string): string {
     }
   }
 
+  // RTX that points at a dropped codec has to go too. A leftover apt= makes
+  // Chromium reject the video section when it applies the offer.
+  let droppedApt = true;
+  while (droppedApt) {
+    droppedApt = false;
+    for (const line of lines) {
+      const fmtp = line.match(/^a=fmtp:(\d+)\s+(.+)/);
+      if (!fmtp) continue;
+      const pt = Number(fmtp[1]);
+      if (dropPayloadTypes.has(pt)) continue;
+      const apt = fmtp[2]!.match(/(?:^|;)apt=(\d+)\b/)?.[1];
+      if (apt && dropPayloadTypes.has(Number(apt))) {
+        dropPayloadTypes.add(pt);
+        droppedApt = true;
+      }
+    }
+  }
+
+  // Plan B descriptions have no mid. Chromium rejects those ssrc lines.
+  // A unified-plan offer uses a=mid and keeps its ssrc lines.
+  const unifiedPlan = lines.some((line) => line.startsWith("a=mid:"));
   const filtered = lines
     .map((line) => (line.startsWith("a=fmtp:") ? rewriteFmtpLine(line, codecByPt) : line))
     .filter((line): line is string => {
       if (line === null || line === "") {
         return false;
       }
-      if (isRejectedSessionAttribute(line)) {
+      if (parser === "chromium" && isRejectedSessionAttribute(line)) {
         return false;
       }
-      if (line.startsWith("a=ssrc:") || line.startsWith("a=ssrc-group:")) {
+      if (
+        parser === "chromium" &&
+        !unifiedPlan &&
+        (line.startsWith("a=ssrc:") || line.startsWith("a=ssrc-group:"))
+      ) {
         return false;
       }
       const rtpmap = line.match(/^a=rtpmap:(\d+)\s+/);
@@ -154,7 +216,7 @@ export function sanitizeRtcSdp(sdp: string): string {
     })
     .filter((line): line is string => line !== null);
 
-  let out = cleaned.join("\n");
+  let out = withOpusUsedtx(cleaned, codecByPt).join("\n");
   if (!out.endsWith("\n")) {
     out += "\n";
   }

@@ -105,14 +105,30 @@ final class RoomSessionController
         };
     }
 
-    public function configuration(string $roomId): JsonResponse
+    public function configuration(Request $request, string $roomId): JsonResponse
     {
         $decoded = $this->decodeRoom($roomId);
+        $body = $this->bodyWithRoom($request, $decoded['room']);
+        if ($request->query('sessionKey') !== null) {
+            $body['sessionKey'] = $request->query('sessionKey');
+        }
 
         return match ($decoded['channel']) {
-            'meet' => response()->json(['rtc' => $this->meet->rtcSettings()]),
-            'collab' => response()->json(['rtc' => $this->collab->rtcSettings()]),
-            'principal' => response()->json(['rtc' => $this->principal->rtcSettings()]),
+            'meet' => response()->json(['rtc' => $this->meet->rtcSettings($request, $body)]),
+            'collab' => response()->json($this->collab->configuration($request, $body)),
+            'principal' => response()->json(['rtc' => $this->principal->rtcSettings($request)]),
+        };
+    }
+
+    public function storeRelay(Request $request, string $roomId): JsonResponse
+    {
+        $decoded = $this->decodeRoom($roomId);
+        $body = $this->bodyWithRoom($request, $decoded['room']);
+
+        return match ($decoded['channel']) {
+            'meet' => response()->json($this->meet->relay($request, $body)),
+            'collab' => response()->json($this->collab->relay($request, $body)),
+            'principal' => response()->json($this->principal->relay($request, $body)),
         };
     }
 

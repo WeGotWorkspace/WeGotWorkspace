@@ -4,16 +4,17 @@ Shared browser RTC stack for **meet**, **docs**, and future **chat / sheet / sli
 
 ## Layers
 
-| Module                          | Role                                              |
-| ------------------------------- | ------------------------------------------------- |
-| `config.ts`                     | ICE / TURN → `RTCConfiguration`                   |
-| `signaling/http-client.ts`      | HTTP join / poll / send / leave                   |
-| `session/peer-mesh.ts`          | **`RtcPeerMesh`** — one ICE engine per room       |
-| `session/bindings.ts`           | Media or data-channel attachment                  |
-| `telemetry/selected-pair.ts`    | Logs selected candidate pair on connect           |
-| `hooks/use-rtc-session.ts`      | React lifecycle wrapper over `createRtcSession()` |
-| `signaling/create-client.ts`    | `createRtcSignalingClient()` — channel defaults   |
-| `session/create-rtc-session.ts` | `createRtcSession()` — signaling + mesh factory   |
+| Module                          | Role                                                |
+| ------------------------------- | --------------------------------------------------- |
+| `config.ts`                     | ICE / TURN → `RTCConfiguration`                     |
+| `signaling/http-client.ts`      | HTTP join / poll / send / leave                     |
+| `session/peer-mesh.ts`          | **`RtcPeerMesh`** — one ICE engine per room         |
+| `session/mesh-signal-inbox.ts`  | Delivery cursor (`since` ack) + RTC signal dispatch |
+| `session/bindings.ts`           | Media or data-channel attachment                    |
+| `telemetry/selected-pair.ts`    | Logs selected candidate pair on connect             |
+| `hooks/use-rtc-session.ts`      | React lifecycle wrapper over `createRtcSession()`   |
+| `signaling/create-client.ts`    | `createRtcSignalingClient()` — channel defaults     |
+| `session/create-rtc-session.ts` | `createRtcSession()` — signaling + mesh factory     |
 
 Meet uses `meet-core/src/meet-rtc-session.ts` + `use-meet-rtc.ts` (media binding, meet SDP sanitization).
 Docs uses `text-editor-core/docs-collab/docs-rtc-session.ts` (data binding).
@@ -68,15 +69,17 @@ On `connectionState === "failed"`, initiator **recreates** the peer connection i
 
 These rules are enforced in product code and covered by unit tests under `session/peer-mesh.test.ts` and `meet-core/src/meet-rtc-session.test.ts`:
 
-| Topic          | Rule                                                                                               |
-| -------------- | -------------------------------------------------------------------------------------------------- |
-| A/V transport  | WebRTC media binding only (`createMediaBinding`)                                                   |
-| Chat + control | HTTP `POST /rooms/{roomId}/messages` → poll delivery; **not** data channels                        |
-| Signaling      | HTTP join / poll / send / leave on `/rooms/{roomId}/*`                                             |
-| Meet SDP       | **Sanitize inbound (remote) only** — never rewrite outbound/local SDP before `setLocalDescription` |
-| Guest tabs     | Unauthenticated `fetchImpl` + `sessionKey` on poll/send/chat                                       |
-| Initiator      | Meet uses `higherId` (lexicographically higher peer id sends the offer)                            |
-| Poll order     | `onPollData` runs before RTC signal handling (chat/control before offer/answer)                    |
+| Topic          | Rule                                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A/V transport  | WebRTC media binding only (`createMediaBinding`)                                                                 |
+| Chat + control | Chat over the Meet data channel with HTTP as fallback and dedupe; admit and server-recorded control stay on HTTP |
+| Signaling      | HTTP join / poll / send / leave on `/rooms/{roomId}/*`                                                           |
+| Meet SDP       | **Sanitize inbound (remote) only** — never rewrite outbound/local SDP before `setLocalDescription`               |
+| Guest tabs     | Unauthenticated `fetchImpl` + `sessionKey` on poll/send/chat                                                     |
+| Initiator      | Meet uses `higherId` (lexicographically higher peer id sends the offer)                                          |
+| Poll order     | `onPollData` runs before RTC signal handling (chat/control before offer/answer)                                  |
+| Poll cursor    | `MeshSignalInbox` acks **every** delivered row — chat, control, and while RTC signals are off                    |
+| Poll timeout   | `AbortSignal.timeout(10_000)`; an aborted poll reschedules like any other poll failure                           |
 
 Run kernel tests:
 
