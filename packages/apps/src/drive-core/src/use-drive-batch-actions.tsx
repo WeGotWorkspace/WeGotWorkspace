@@ -16,7 +16,11 @@ import {
   unrestoredDriveFilesMessage,
   type DriveRestoreMove,
 } from "@/drive-core/src/drive-batch-utils";
-import { apiPathFromUiPath, DRIVE_TRASH_UI_PATH } from "@/drive-core/src/drive-path-utils";
+import {
+  apiPathFromUiPath,
+  DRIVE_TRASH_UI_PATH,
+  isForeignDriveApiPath,
+} from "@/drive-core/src/drive-path-utils";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 
@@ -153,6 +157,17 @@ export function useDriveBatchActions({
         file,
         previousParent: file.parent,
       }));
+      const foreignIds = new Set(
+        rows
+          .filter((file) =>
+            isForeignDriveApiPath(
+              resolveDriveFileApiPath(file, currentUsername, groupRootNames),
+              currentUsername,
+              groupRootNames,
+            ),
+          )
+          .map((file) => file.id),
+      );
       const previousFiles = files;
       const previousSelectedIds = selectedIds;
       const trashedNameById = new Map<string, string>();
@@ -177,29 +192,42 @@ export function useDriveBatchActions({
         },
         execute: async (signal, markCompleted) => {
           if (!operations) return;
-          await ensureTrashFolder(operations, currentUsername, groupRootNames, signal);
-          const destination = apiPathFromUiPath(
-            DRIVE_TRASH_UI_PATH,
-            currentUsername,
-            groupRootNames,
-          );
-          const trashNames = await listTrashEntryNames(operations, destination, signal);
-          for (const file of rows) {
-            signal.throwIfAborted();
-            const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
-            const to = resolveFreeName(file.title, trashNames);
-            trashNames.add(to);
-            trashedNameById.set(file.id, to);
-            await operations.renameItem({ destination, from, to }, { refreshState: false });
-            markCompleted(file.id);
+          const ownRows = rows.filter((file) => !foreignIds.has(file.id));
+          const foreignRows = rows.filter((file) => foreignIds.has(file.id));
+          if (ownRows.length > 0) {
+            await ensureTrashFolder(operations, currentUsername, groupRootNames, signal);
+            const destination = apiPathFromUiPath(
+              DRIVE_TRASH_UI_PATH,
+              currentUsername,
+              groupRootNames,
+            );
+            const trashNames = await listTrashEntryNames(operations, destination, signal);
+            for (const file of ownRows) {
+              signal.throwIfAborted();
+              const from = resolveDriveFileApiPath(file, currentUsername, groupRootNames);
+              const to = resolveFreeName(file.title, trashNames);
+              trashNames.add(to);
+              trashedNameById.set(file.id, to);
+              await operations.renameItem({ destination, from, to }, { refreshState: false });
+              markCompleted(file.id);
+            }
+          }
+          if (foreignRows.length > 0) {
+            const foreignPaths = foreignRows.map((file) =>
+              resolveDriveFileApiPath(file, currentUsername, groupRootNames),
+            );
+            await operations.deleteItems(foreignPaths, { refreshState: false, signal });
+            for (const file of foreignRows) markCompleted(file.id);
           }
           await refreshOpenFolderAfterBatch(refreshOpenFolder, signal);
         },
         revert: async (completedKeys) => {
           if (!operations) return;
+          const ownCompleted = new Set([...completedKeys].filter((id) => !foreignIds.has(id)));
+          if (ownCompleted.size === 0) return;
           await finishDriveRestore({
             operations,
-            completedKeys,
+            completedKeys: ownCompleted,
             username: currentUsername,
             groupRoots: groupRootNames,
             folderPath: view.type === "folder" ? view.path : "My Drive",

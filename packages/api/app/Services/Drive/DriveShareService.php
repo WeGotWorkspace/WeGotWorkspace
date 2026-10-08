@@ -9,6 +9,7 @@ use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\DriveShareSession;
 use App\Services\Auth\JwtTokenService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -32,6 +33,7 @@ final class DriveShareService
         private DriveShareAtPathQuery $atPathQuery,
         private DriveShareByPrincipalQuery $byPrincipalQuery,
         private DriveShareNotifier $notifier,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -395,6 +397,9 @@ final class DriveShareService
             if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
                 continue;
             }
+            if ($this->scope->isInProductTrash((string) $share->path)) {
+                continue;
+            }
             $directByShareId[(string) $share->id] = $grant;
         }
 
@@ -411,6 +416,10 @@ final class DriveShareService
             $entry = $this->presenter->directoryEntryForSharePath((string) $share->path, $access);
             if ($entry !== null) {
                 $row['entry'] = $entry;
+                $fileNodeId = $this->fileNodeIdForSharePath((string) $share->path);
+                if ($fileNodeId !== null) {
+                    $row['fileNodeId'] = $fileNodeId;
+                }
             }
             $rows[] = $row;
         }
@@ -418,6 +427,9 @@ final class DriveShareService
         foreach ($groupGrants as $grant) {
             $share = $grant->share;
             if ($share === null || ! $this->presenter->isShareLive($share, $now)) {
+                continue;
+            }
+            if ($this->scope->isInProductTrash((string) $share->path)) {
                 continue;
             }
             $shareId = (string) $share->id;
@@ -433,11 +445,23 @@ final class DriveShareService
             $entry = $this->presenter->directoryEntryForSharePath((string) $share->path, $access);
             if ($entry !== null) {
                 $row['entry'] = $entry;
+                $fileNodeId = $this->fileNodeIdForSharePath((string) $share->path);
+                if ($fileNodeId !== null) {
+                    $row['fileNodeId'] = $fileNodeId;
+                }
             }
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    private function fileNodeIdForSharePath(string $virtualPath): ?string
+    {
+        $key = $this->paths->virtualToStorageKey($virtualPath);
+        $node = $this->fileNodes->liveByKey($key) ?? $this->fileNodes->recordCreate($key);
+
+        return $node !== null ? (string) $node->node_id : null;
     }
 
     /**

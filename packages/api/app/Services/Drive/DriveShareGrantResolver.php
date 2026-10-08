@@ -169,6 +169,47 @@ final class DriveShareGrantResolver
     }
 
     /**
+     * Live member-grant share roots for a user (direct + via member groups),
+     * as normalized virtual paths. Revoked/expired shares are skipped.
+     *
+     * @param  list<string>  $groupSlugs
+     * @return list<string>
+     */
+    public function memberShareRootPaths(string $username, array $groupSlugs): array
+    {
+        $user = strtolower(trim($username));
+        $now = Carbon::now();
+        $grants = DriveShareGrant::query()
+            ->with('share')
+            ->where('status', 'active')
+            ->where(function ($query) use ($user, $groupSlugs): void {
+                $query->where(fn ($q) => $q->where('grantee_type', 'user')->where('grantee_user', $user));
+                if ($groupSlugs !== []) {
+                    $query->orWhere(fn ($q) => $q->where('grantee_type', 'group')->whereIn('grantee_group', $groupSlugs));
+                }
+            })
+            ->get();
+
+        $paths = [];
+        foreach ($grants as $grant) {
+            $share = $grant->share;
+            if ($share === null || $share->revoked_at !== null) {
+                continue;
+            }
+            if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {
+                continue;
+            }
+            $path = $this->scope->normalize((string) $share->path);
+            if ($this->scope->isInProductTrash($path)) {
+                continue;
+            }
+            $paths[$path] = true;
+        }
+
+        return array_keys($paths);
+    }
+
+    /**
      * @return array{
      *   shareId: string,
      *   rootPath: string,
@@ -195,6 +236,9 @@ final class DriveShareGrantResolver
             return null;
         }
         $sharePath = $this->scope->normalize($share->path);
+        if ($this->scope->isInProductTrash($sharePath)) {
+            return null;
+        }
         if (! $this->scope->isWithin($sharePath, $requestedPath)) {
             return null;
         }

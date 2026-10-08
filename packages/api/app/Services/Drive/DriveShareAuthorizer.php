@@ -98,6 +98,63 @@ final class DriveShareAuthorizer
     }
 
     /**
+     * scopeRoot for the principal at this path (null = own/group tree). Throws (deny) when no access.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function scopeRootFor(string $virtualPath, array $principal): ?string
+    {
+        return $this->resolvePathContext($virtualPath, $principal)['scopeRoot'];
+    }
+
+    /**
+     * True when the path is exactly the root of the grant/share the principal reaches it through.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function isGrantScopeRoot(string $virtualPath, array $principal): bool
+    {
+        try {
+            $scopeRoot = $this->scopeRootFor($virtualPath, $principal);
+        } catch (\InvalidArgumentException) {
+            return false;
+        }
+
+        return $scopeRoot !== null && $scopeRoot === $this->scope->normalize($virtualPath);
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function assertNotGrantScopeRoot(string $virtualPath, array $principal): void
+    {
+        if ($this->isGrantScopeRoot($virtualPath, $principal)) {
+            $this->deny();
+        }
+    }
+
+    /**
+     * Share owner when a non-guest principal reaches the path only through a member grant; else null.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function memberGrantOwner(string $virtualPath, array $principal): ?string
+    {
+        $path = $this->scope->normalize($virtualPath);
+        $username = strtolower(trim((string) $principal['username']));
+        if (strtolower(trim((string) $principal['role'])) === 'guest') {
+            return null;
+        }
+        $groupSlugs = $this->groups->allowedGroupSlugs($username);
+        if ($this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
+            return null;
+        }
+        $grant = $this->grantResolver->resolveMemberGrant($username, $path, $groupSlugs);
+
+        return $grant !== null ? $grant['ownerUsername'] : null;
+    }
+
+    /**
      * @param  array{username: string, role: string}  $principal
      */
     public function listingRightsContext(array $principal, string $listingDir): DriveShareListingRightsContext
@@ -190,6 +247,9 @@ final class DriveShareAuthorizer
             }
 
             $rootPath = $this->scope->normalize((string) $share->path);
+            if ($this->scope->isInProductTrash($rootPath)) {
+                $this->deny();
+            }
             if (! $this->scope->isWithin($rootPath, $path)) {
                 $this->deny();
             }
