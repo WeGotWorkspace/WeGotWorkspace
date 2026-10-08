@@ -16,7 +16,6 @@ import {
 } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
   docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
   migrateDocsCollabPendingSaveFromLegacy,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
@@ -105,9 +104,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     const room = noteCollabRoomKey(uid);
     const serverMarkdown = "Server markdown";
     await seedMarkdown(docsCollabIndexedDbKey(room), "mine");
-    for (const name of docsCollabLegacyIndexedDbKeys(room)) {
-      await seedMarkdown(name, "old");
-    }
+    await seedMarkdown(room, "old");
 
     await writeNoteCollabOfflineContent(uid, serverMarkdown);
 
@@ -116,9 +113,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(stored).not.toContain("mine");
     expect(stored).not.toContain("old");
     await expect(readNoteCollabOfflineContent(uid)).resolves.toContain(serverMarkdown);
-    for (const name of docsCollabLegacyIndexedDbKeys(room)) {
-      expect(await roomIsEmpty(name)).toBe(true);
-    }
+    expect(await roomIsEmpty(room)).toBe(true);
   });
 
   it("stores the server body from Use theirs in the v2 room", async () => {
@@ -126,9 +121,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     const room = noteCollabRoomKey(uid);
     await seedMarkdown(docsCollabIndexedDbKey(room), "mine");
     await seedPendingFlag(docsCollabIndexedDbKey(room));
-    for (const name of docsCollabLegacyIndexedDbKeys(room)) {
-      await seedMarkdown(name, "old");
-    }
+    await seedMarkdown(room, "old");
     getNote.mockResolvedValue({
       id: uid,
       notebookId: "nb-1",
@@ -150,9 +143,7 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(stored).toContain("Server body");
     expect(stored).not.toContain("mine");
     await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
-    for (const name of docsCollabLegacyIndexedDbKeys(room)) {
-      expect(await roomIsEmpty(name)).toBe(true);
-    }
+    expect(await roomIsEmpty(room)).toBe(true);
   });
 
   it("drops a legacy pending flag after migrate and a v2 save", async () => {
@@ -173,5 +164,44 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     }
 
     await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
+  });
+
+  it("does not create a missing legacy database while checking the pending flag", async () => {
+    const uid = "note-missing-legacy";
+    const room = noteCollabRoomKey(uid);
+
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
+
+    const names = new Set(
+      (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : [])),
+    );
+    expect(names.has(room)).toBe(false);
+    expect(names.has(`/${room}`)).toBe(false);
+  });
+
+  it("reads a pending flag that already exists in the unsuffixed legacy database", async () => {
+    const uid = "note-legacy-pending-exists";
+    const room = noteCollabRoomKey(uid);
+    await seedPendingFlag(room);
+
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(true);
+
+    const names = new Set(
+      (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : [])),
+    );
+    expect(names.has(`/${room}`)).toBe(false);
+  });
+
+  it("opens the legacy database when indexedDB.databases is unavailable", async () => {
+    const uid = "note-databases-api-missing";
+    const room = noteCollabRoomKey(uid);
+    await seedPendingFlag(room);
+    const databases = indexedDB.databases;
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    try {
+      await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(true);
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
   });
 });

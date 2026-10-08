@@ -3,7 +3,6 @@ import * as Y from "yjs";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
 import {
   docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
   docsCollabRoomKey,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -16,6 +15,36 @@ import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
 export function noteCollabRoomKey(uid: string): string {
   return docsCollabRoomKey(uid);
+}
+
+/**
+ * Pre-v2 name for a note. `noteCollabRoomKey` strips slashes, so `/uid` was never stored.
+ */
+function noteCollabLegacyIndexedDbKeys(room: string): string[] {
+  return [room];
+}
+
+/**
+ * Databases that already exist. `null` when `indexedDB.databases` is missing;
+ * callers then open the legacy name without an existence check.
+ */
+export async function listExistingNoteCollabDatabaseNames(): Promise<ReadonlySet<string> | null> {
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
+  const rows = await indexedDB.databases();
+  const names = new Set<string>();
+  for (const row of rows) {
+    if (row.name) names.add(row.name);
+  }
+  return names;
+}
+
+function legacyNamesToOpen(
+  room: string,
+  existingDatabaseNames: ReadonlySet<string> | null,
+): string[] {
+  const names = noteCollabLegacyIndexedDbKeys(room);
+  if (existingDatabaseNames == null) return names;
+  return names.filter((name) => existingDatabaseNames.has(name));
 }
 
 async function withIndexedDb<T>(
@@ -39,10 +68,16 @@ async function withIndexedDb<T>(
 async function firstFromRoomNames<T>(
   uid: string,
   pick: (ydoc: Y.Doc, persistence: IndexeddbPersistence) => Promise<T | null | undefined>,
+  existingDatabaseNames?: ReadonlySet<string> | null,
 ): Promise<T | null> {
   const room = noteCollabRoomKey(uid);
   if (!room) return null;
-  for (const name of [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)]) {
+  const known =
+    existingDatabaseNames === undefined
+      ? await listExistingNoteCollabDatabaseNames()
+      : existingDatabaseNames;
+  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  for (const name of names) {
     const value = await withIndexedDb(name, pick);
     if (value != null) return value;
   }
@@ -60,7 +95,8 @@ export async function readNoteCollabOfflineContent(uid: string): Promise<string 
 export async function hasNoteCollabOfflinePersistence(uid: string): Promise<boolean> {
   const room = noteCollabRoomKey(uid);
   if (!room) return false;
-  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
+  const known = await listExistingNoteCollabDatabaseNames();
+  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
     const found = await withIndexedDb(name, async (ydoc) => !isYDocEmpty(ydoc));
     if (found) return true;
@@ -68,9 +104,14 @@ export async function hasNoteCollabOfflinePersistence(uid: string): Promise<bool
   return false;
 }
 
-export async function hasNoteCollabPendingServerSave(uid: string): Promise<boolean> {
-  const result = await firstFromRoomNames(uid, async (_d, p) =>
-    (await p.get(PENDING_SERVER_SAVE_KEY)) ? true : null,
+export async function hasNoteCollabPendingServerSave(
+  uid: string,
+  existingDatabaseNames?: ReadonlySet<string> | null,
+): Promise<boolean> {
+  const result = await firstFromRoomNames(
+    uid,
+    async (_d, p) => ((await p.get(PENDING_SERVER_SAVE_KEY)) ? true : null),
+    existingDatabaseNames,
   );
   return Boolean(result);
 }
@@ -87,7 +128,8 @@ export async function writeNoteCollabOfflineContent(uid: string, markdown: strin
     applyContentSeedToYDoc(ydoc, markdown, "markdown");
     await persistence.del(PENDING_SERVER_SAVE_KEY);
   });
-  for (const name of docsCollabLegacyIndexedDbKeys(room)) {
+  const known = await listExistingNoteCollabDatabaseNames();
+  for (const name of legacyNamesToOpen(room, known)) {
     await withIndexedDb(name, async (_ydoc, persistence) => {
       await persistence.clearData();
     });
