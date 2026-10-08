@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Settings;
 
 use App\Models\Principal;
+use App\Services\Auth\LoginRateLimiter;
 use Tests\Support\SettingsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -145,5 +146,180 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
         $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'displayName' => str_repeat('a', 256),
         ])->assertStatus(400);
+    }
+
+    public function test_password_change_without_current_password_is_rejected(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'password' => 'newpassword12',
+        ])->assertStatus(400);
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertOk();
+    }
+
+    public function test_password_change_with_wrong_current_password_is_rejected(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'password' => 'newpassword12',
+            'currentPassword' => 'not-the-password',
+        ])->assertStatus(403)
+            ->assertJsonPath('code', 'current_password_invalid');
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertOk();
+    }
+
+    public function test_password_change_with_right_current_password_succeeds(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'password' => 'newpassword12',
+            'currentPassword' => 'secret',
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'newpassword12',
+        ])->assertOk();
+    }
+
+    public function test_email_change_without_current_password_is_rejected(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'email' => 'stolen@example.test',
+        ])->assertStatus(400);
+
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'bob@example.test');
+    }
+
+    public function test_email_change_with_wrong_current_password_is_rejected(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'email' => 'stolen@example.test',
+            'currentPassword' => 'not-the-password',
+        ])->assertStatus(403)
+            ->assertJsonPath('code', 'current_password_invalid');
+
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'bob@example.test');
+    }
+
+    public function test_email_change_with_right_current_password_succeeds(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'email' => 'robert@example.test',
+            'currentPassword' => 'secret',
+        ])->assertOk()
+            ->assertJsonPath('user.email', 'robert@example.test');
+    }
+
+    public function test_clearing_email_without_current_password_is_rejected(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'email' => '',
+        ])->assertStatus(403)
+            ->assertJsonPath('code', 'current_password_invalid');
+
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'bob@example.test');
+    }
+
+    public function test_mail_settings_do_not_change_the_profile_email(): void
+    {
+        $token = $this->userBearerToken();
+
+        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
+            'imapUsername' => 'bob.sync@example.test',
+            'imapPassword' => 'mail-secret',
+        ])->assertOk()
+            ->assertJsonPath('user.email', 'bob@example.test');
+
+        $this->withBearer($token)->getJson('/api/v1/settings/state')
+            ->assertOk()
+            ->assertJsonPath('user.email', 'bob@example.test');
+    }
+
+    public function test_password_change_revokes_other_refresh_tokens_and_keeps_the_callers(): void
+    {
+        $caller = $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertOk();
+        $access = (string) $caller->json('access_token');
+        $refresh = (string) $caller->json('refresh_token');
+
+        $other = $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertOk();
+        $otherRefresh = (string) $other->json('refresh_token');
+
+        $this->withBearer($access)->putJson('/api/v1/settings/profile', [
+            'password' => 'newpassword12',
+            'currentPassword' => 'secret',
+            'refreshToken' => $refresh,
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $refresh,
+        ])->assertOk();
+
+        $this->postJson('/api/v1/auth/refresh', [
+            'refresh_token' => $otherRefresh,
+        ])->assertUnauthorized();
+    }
+
+    public function test_wrong_current_password_shares_the_login_rate_limit(): void
+    {
+        $token = $this->userBearerToken();
+        $this->enableLoginThrottle();
+
+        for ($attempt = 0; $attempt < LoginRateLimiter::USER_IP_LIMIT; $attempt++) {
+            $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+                'password' => 'newpassword12',
+                'currentPassword' => 'not-the-password',
+            ])->assertStatus(403)
+                ->assertJsonPath('code', 'current_password_invalid');
+        }
+
+        $this->withBearer($token)->putJson('/api/v1/settings/profile', [
+            'password' => 'newpassword12',
+            'currentPassword' => 'secret',
+        ])->assertStatus(429)
+            ->assertJsonPath('code', 'throttled');
+
+        $this->postJson('/api/v1/auth/token', [
+            'username' => 'bob',
+            'password' => 'secret',
+        ])->assertStatus(429)
+            ->assertJsonPath('code', 'throttled');
+    }
+
+    private function enableLoginThrottle(): void
+    {
+        putenv('WGW_DISABLE_LOGIN_THROTTLE');
+        unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
     }
 }

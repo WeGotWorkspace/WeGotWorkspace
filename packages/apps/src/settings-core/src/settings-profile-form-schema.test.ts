@@ -54,6 +54,17 @@ describe("settingsProfileFormToRequest", () => {
     expect(result.success).toBe(false);
   });
 
+  it("requires the current password when a new password is set", () => {
+    const values = {
+      displayName: "Jane Doe",
+      email: "jane@example.com",
+      newPassword: "newpassword",
+      confirmPassword: "newpassword",
+      currentPassword: "",
+    };
+    expect(settingsProfileFormSchema.safeParse(values).success).toBe(false);
+  });
+
   it("returns only OpenAPI SettingsProfileRequest fields", () => {
     const result = settingsProfileFormToRequest({
       displayName: "Jane Doe",
