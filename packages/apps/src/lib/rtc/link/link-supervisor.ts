@@ -9,7 +9,7 @@
 
 export const LINK_CONNECT_GRACE_MS = 10_000;
 export const LINK_BACKOFF_MS = [5_000, 10_000, 20_000, 30_000, 60_000] as const;
-export const LINK_DIAL_MIN_GAP_MS = 3_000;
+export const LINK_DIAL_MIN_GAP_MS = 10_000;
 export const LINK_DOWN_TYPE = "link-down";
 
 export type LinkObservation = "open" | "connecting" | "failed" | "absent";

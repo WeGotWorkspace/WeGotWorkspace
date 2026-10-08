@@ -142,6 +142,10 @@ function runSeed(seed: number): {
   };
 
   const deliverOffer = (session: number, atY: Side): void => {
+    if (atY.pc) {
+      atY.pc = null;
+      observe(atY);
+    }
     atY.pc = { session, state: "connecting" };
     observe(atY);
     httpSend(atY, otherOf(atY), () => deliverAnswer(session, otherOf(atY)));

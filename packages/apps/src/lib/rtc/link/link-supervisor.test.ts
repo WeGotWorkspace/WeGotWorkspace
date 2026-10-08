@@ -160,22 +160,22 @@ describe("reduceLink T1–T16", () => {
     });
   });
 
-  it("T11 a hint within 3 s of the last dial does nothing", () => {
+  it("T11 a hint within 10 s of the last dial does nothing", () => {
     const before = new Map([
       ["p", peer({ phase: "down", since: 0, downSince: 0, attempt: 1, lastDialAt: 1_000 })],
     ]);
-    const { state, effects } = reduceLink(before, { type: "hint", peerId: "p" }, ctx(3_500));
+    const { state, effects } = reduceLink(before, { type: "hint", peerId: "p" }, ctx(10_500));
     expect(state.get("p")).toEqual(before.get("p"));
     expect(nonLog(effects)).toEqual([]);
-    expect(3_500 - 1_000).toBeLessThan(LINK_DIAL_MIN_GAP_MS);
+    expect(10_500 - 1_000).toBeLessThan(LINK_DIAL_MIN_GAP_MS);
   });
 
-  it("T12 a hint after 3 s dials again without rescheduling", () => {
+  it("T12 a hint after 10 s dials again without rescheduling", () => {
     const before = new Map([
       ["p", peer({ phase: "down", since: 0, downSince: 0, attempt: 1, lastDialAt: 1_000 })],
     ]);
-    const { state, effects } = reduceLink(before, { type: "hint", peerId: "p" }, ctx(4_000));
-    expect(state.get("p")?.lastDialAt).toBe(4_000);
+    const { state, effects } = reduceLink(before, { type: "hint", peerId: "p" }, ctx(11_000));
+    expect(state.get("p")?.lastDialAt).toBe(11_000);
     expect(nonLog(effects)).toEqual([{ type: "dial", peerId: "p" }]);
   });
 
