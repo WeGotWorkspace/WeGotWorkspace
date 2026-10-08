@@ -194,7 +194,7 @@ function hubPorts(): LinkChannelHubPorts {
     now: () => Date.now(),
     setInterval: (fn, ms) => setInterval(fn, ms),
     clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
-    log: () => undefined,
+    log: (event, details) => rtcLog({ channel: "principal" }, event, details),
   };
 }
 
