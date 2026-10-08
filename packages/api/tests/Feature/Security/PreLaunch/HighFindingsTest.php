@@ -162,6 +162,28 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->assertForbidden();
     }
 
+    /** H3b: a demoted admin's existing access token loses admin rights immediately. */
+    public function test_h3_demoted_admin_loses_admin_immediately(): void
+    {
+        $alice = $this->login('alice');
+        $this->seedWgwUser('carol', displayName: 'Carol');
+        $carolPrincipal = Principal::forUsername('carol');
+        $this->assertNotNull($carolPrincipal);
+        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
+        $this->addPrincipalToGroup($admins, $carolPrincipal);
+
+        $this->withBearer($this->login('carol')['access_token'])
+            ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
+            ->assertOk();
+
+        $this->withBearer($alice['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertForbidden();
+        $this->withBearer($alice['access_token'])
+            ->getJson('/api/v1/me')
+            ->assertOk();
+    }
+
     /** H3c: an admin password change must revoke the user's existing sessions. */
     public function test_h3_admin_password_change_revokes_sessions(): void
     {
