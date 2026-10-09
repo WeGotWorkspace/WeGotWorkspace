@@ -78,6 +78,17 @@
   border-color: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
 }
 
+:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__title-row {
+  @apply flex min-w-0 flex-wrap items-center gap-2;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__status-tag {
+  @apply shrink-0;
+  /* Same washed warning chip as `.admin-user-status-tag`. */
+  --tag-fg: color-mix(in oklab, #c98a1f 32%, var(--workspace-foreground));
+  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--workspace-surface));
+}
+
 :is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__title {
   @apply text-sm font-medium;
   color: var(--workspace-foreground);

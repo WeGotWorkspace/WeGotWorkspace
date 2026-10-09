@@ -60,4 +60,23 @@ describe("adminSettingsFormToMap", () => {
     const values = adminSettingsFormToMap(buildAdminSettingsFormState(data));
     expect(values.mcp_enabled).toBe(false);
   });
+
+  it("round-trips rtc diagnostics switches", () => {
+    const { data } = createAdminAppBootstrap({
+      data: {
+        ...createAdminAppBootstrap().data,
+        rtc: {
+          ...createAdminAppBootstrap().data.rtc,
+          debugLogging: true,
+          forceRelay: true,
+        },
+      },
+    });
+    const form = buildAdminSettingsFormState(data);
+    expect(form.rtcDebugLogging).toBe(true);
+    expect(form.rtcForceRelay).toBe(true);
+    const values = adminSettingsFormToMap(form);
+    expect(values.rtc_debug_logging).toBe(true);
+    expect(values.rtc_force_relay).toBe(true);
+  });
 });

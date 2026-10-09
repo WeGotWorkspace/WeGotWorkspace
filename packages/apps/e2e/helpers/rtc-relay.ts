@@ -132,11 +132,6 @@ export function selectedLocalTypes(events: readonly RtcConsoleEvent[], channel: 
   return types;
 }
 
-export function withForceRelay(url: string): string {
-  const joiner = url.includes("?") ? "&" : "?";
-  return `${url}${joiner}rtcForceRelay=1`;
-}
-
 /** Remote tile media clock moves. The 2s gap is the observation window. */
 export async function remoteVideoAdvances(page: Page): Promise<void> {
   const currentTime = () =>

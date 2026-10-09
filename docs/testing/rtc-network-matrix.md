@@ -1,6 +1,6 @@
 # RTC network matrix (manual audit)
 
-Enable browser logging with `?rtcDebug=1` on meet or docs URLs. Logs use prefix `[rtc][channel][peerId][event]`.
+Enable browser logging with **Admin → Real-time collaboration → Detailed connection logs** (or a Playwright test override). Logs use prefix `[rtc][channel][peerId][event]`.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ Enable browser logging with `?rtcDebug=1` on meet or docs URLs. Logs use prefix 
 | N0 | Direct LAN | Two browsers, same network, meet room | `[rtc][meet][…][selected-pair]` shows `host` or `srflx`; A/V connected | |
 | N1 | Guest meet TURN | Guest join URL (no auth) | Configuration returns `turnAvailable` only. Credentials come from `POST /rooms/{id}/relay`. A knocking peer receives 403 | |
 | N2 | Docs collab | Two users, same doc | Data channel open; Yjs sync; `[rtc][collab][…][dc-open]` | Passed 2026-10-07/08 ([M1](#manual-runs-2026-10-07-08), [M3](#manual-runs-2026-10-07-08)) |
-| N3 | Force relay (debug) | Add `?rtcForceRelay=1` or set `VITE_WGW_RTC_FORCE_RELAY=1` | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | |
+| N3 | Force relay (debug) | Admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1`, or a Playwright `forceRelay` override | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | |
 | N4 | Relay fallback | Symmetric NAT or firewall block direct | `[relay-fallback-start]` then `[relay-fallback-offer-sent]` or connected | |
 | N5 | Hotspot | Phone hotspot client | Session connects (often via `relay`); no endless `failed` | |
 | N6 | Unknown peer recovery | Docs: stale tab after server prune | `[peer-recover-start]` / `[peer-recover-success]` | |
@@ -24,7 +24,7 @@ Enable browser logging with `?rtcDebug=1` on meet or docs URLs. Logs use prefix 
 | N8 | Leave cleanup | Leave meet/docs | Peers removed; `/leave` succeeds | |
 | N9 | Collab signaling API | `pnpm test:collab-api` | join/poll/send/leave return JSON | |
 | N10 | Meet signaling API | `pnpm test:meet-api` | Guest join/poll/leave on `/api/v1/rooms/*` return JSON | |
-| N11 | Meet mesh smoke | Two tabs, same room, `?rtcDebug=1` | `[rtc][meet][…][pc-connection-state]` has `connectionState` `connected`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console | |
+| N11 | Meet mesh smoke | Two tabs, same room, detailed connection logs on | `[rtc][meet][…][pc-connection-state]` has `connectionState` `connected`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console | |
 | N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate | |
 | N13 | iOS Safari remote audio | **Human-only.** Join a Meet call in iOS Safari | Remote audio stays silent until a user gesture, then plays | |
 | N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows | |

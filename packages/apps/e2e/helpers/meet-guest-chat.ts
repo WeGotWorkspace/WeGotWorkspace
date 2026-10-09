@@ -5,6 +5,7 @@ import {
   type Locator,
   type Page,
 } from "@playwright/test";
+import { setRtcTestOverrides } from "./rtc-test-overrides";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
@@ -129,7 +130,8 @@ export async function joinMeetRoom(page: Page, room: string): Promise<void> {
     (request) =>
       request.method() === "POST" && request.url().includes(`/api/v1/rooms/${room}/participants`),
   );
-  await page.goto(`/meet/meetings/${room}?rtcDebug=1`);
+  await setRtcTestOverrides(page.context(), { debug: true, forceRelay: false });
+  await page.goto(`/meet/meetings/${room}`);
   const meetButton = page
     .locator(".meet-workspace__header-actions")
     .getByRole("button", { name: "Meet", exact: true });
@@ -138,7 +140,8 @@ export async function joinMeetRoom(page: Page, room: string): Promise<void> {
 }
 
 export async function knockAsGuest(page: Page, room: string, name: string): Promise<void> {
-  await page.goto(`/meet/meetings/${room}?rtcDebug=1`);
+  await setRtcTestOverrides(page.context(), { debug: true, forceRelay: false });
+  await page.goto(`/meet/meetings/${room}`);
   const nameField = page.getByLabel("Your name");
   await expect(nameField).toBeVisible();
   await nameField.fill(name);
@@ -285,13 +288,15 @@ export function trackRoomMessagePosts(
 }
 
 async function openContext(browser: Browser): Promise<BrowserContext> {
-  return browser.newContext({
+  const context = await browser.newContext({
     baseURL: APP,
     viewport: { width: 1440, height: 900 },
     storageState: { cookies: [], origins: [] },
     permissions: ["camera", "microphone"],
     ignoreHTTPSErrors: process.env.WGW_APPS_E2E_IGNORE_HTTPS === "1",
   });
+  await setRtcTestOverrides(context, { debug: true, forceRelay: false });
+  return context;
 }
 
 function newAdHocRoomCode(): string {

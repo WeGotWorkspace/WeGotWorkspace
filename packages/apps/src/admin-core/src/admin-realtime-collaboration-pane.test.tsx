@@ -60,4 +60,38 @@ describe("AdminRealtimeCollaborationPane", () => {
     render(<RealtimePaneHarness form={{ turnStaticCredentialsPresent: true }} />);
     expect(screen.getByText(/static TURN username and password/)).toBeTruthy();
   });
+
+  it("shows forced relay off and disabled without TURN", () => {
+    render(
+      <RealtimePaneHarness
+        form={{
+          turnSecretSet: false,
+          turnUrls: "",
+          rtcDebugLogging: false,
+          rtcForceRelay: true,
+        }}
+      />,
+    );
+    expect(screen.getByText("Diagnostics")).toBeTruthy();
+    expect(screen.getByLabelText("Detailed connection logs enabled")).toBeTruthy();
+    const relay = screen.getByLabelText("Always use the TURN relay enabled");
+    expect((relay as HTMLButtonElement).disabled).toBe(true);
+    expect((relay as HTMLButtonElement).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByText("Needs TURN Credentials")).toBeTruthy();
+  });
+
+  it("enables the forced relay switch when TURN URL and secret are saved", () => {
+    render(
+      <RealtimePaneHarness
+        form={{
+          turnSecretSet: true,
+          turnUrls: "turn:relay.example.test:3478",
+          rtcForceRelay: false,
+        }}
+      />,
+    );
+    const relay = screen.getByLabelText("Always use the TURN relay enabled");
+    expect((relay as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Needs TURN Credentials")).toBeNull();
+  });
 });

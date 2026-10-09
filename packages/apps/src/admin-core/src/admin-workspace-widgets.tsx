@@ -31,19 +31,32 @@ export function FeatureRow({
   desc,
   value,
   onChange,
+  disabled,
+  labelAccessory,
 }: {
   label: string;
   desc?: string;
   value: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
+  /** Optional chip next to the title (for example a washed warning Tag). */
+  labelAccessory?: ReactNode;
 }) {
   return (
     <div className="admin-feature-row">
       <div className="min-w-0">
-        <div className="admin-feature-row__title">{label}</div>
+        <div className="admin-feature-row__title-row">
+          <div className="admin-feature-row__title">{label}</div>
+          {labelAccessory}
+        </div>
         {desc ? <div className="admin-feature-row__desc">{desc}</div> : null}
       </div>
-      <BooleanSegmentedControl value={value} onChange={onChange} aria-label={`${label} enabled`} />
+      <BooleanSegmentedControl
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        aria-label={`${label} enabled`}
+      />
     </div>
   );
 }

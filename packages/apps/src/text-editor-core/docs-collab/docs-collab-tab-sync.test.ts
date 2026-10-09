@@ -302,7 +302,7 @@ describe("docs-collab-tab-sync coordinator", () => {
 
 /**
  * Manual QA (two-tab same doc):
- * 1. Open the same collab doc in two tabs with ?rtcDebug=1.
+ * 1. Open the same collab doc in two tabs with detailed connection logs on.
  * 2. Confirm only one tab logs mesh join / WebRTC links (follower shows relayed mesh-state).
  * 3. Type in tab A — text appears in tab B without refresh.
  * 4. Close the leader tab — follower promotes and remote edits still sync.
