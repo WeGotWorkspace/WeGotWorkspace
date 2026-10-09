@@ -4,11 +4,6 @@ import {
   getPrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
 } from "@/lib/rtc/session/principal-link-registry";
-import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
-
-function openEnvelope(room = "doc-a"): CollabReuseEnvelope {
-  return { v: 1, kind: "collab-reuse", room, op: "open", collabPeerId: "aa" };
-}
 
 describe("PrincipalLinkRegistry", () => {
   it("indexes open links by username and supports multi-tab fan-out", () => {
@@ -22,7 +17,7 @@ describe("PrincipalLinkRegistry", () => {
 
     expect(registry.hasOpenLink("admin")).toBe(true);
     expect(registry.hasOpenLink("carol")).toBe(false);
-    expect(registry.sendToUsername("admin", openEnvelope())).toBe(2);
+    expect(registry.sendToUsername("admin", { hello: 1 })).toBe(2);
     expect(sendTab1).toHaveBeenCalledTimes(1);
     expect(sendTab2).toHaveBeenCalledTimes(1);
     expect(sendOther).not.toHaveBeenCalled();
@@ -37,27 +32,6 @@ describe("PrincipalLinkRegistry", () => {
     expect(registry.hasOpenLink("wouter")).toBe(true);
   });
 
-  it("notifies link subscribers when a live principal link disappears", () => {
-    const registry = new PrincipalLinkRegistry();
-    const seen: string[] = [];
-    registry.subscribeLinks(() => seen.push("drop"));
-    registry.registerLink({ username: "wouter", principalPeerId: "p1", send: vi.fn() });
-    registry.unregisterLink("p1");
-    registry.unregisterLink("missing");
-    registry.registerLink({ username: "admin", principalPeerId: "p2", send: vi.fn() });
-    registry.retain(new Set());
-    expect(seen).toEqual(["drop", "drop"]);
-  });
-
-  it("notifies link-open subscribers when a principal DC registers", () => {
-    const registry = new PrincipalLinkRegistry();
-    const opened: string[] = [];
-    registry.subscribeLinkOpen((username, peerId) => opened.push(`${username}:${peerId}`));
-    registry.registerLink({ username: "wouter", principalPeerId: "p1", send: vi.fn() });
-    registry.registerLink({ username: "wouter", principalPeerId: "p1", send: vi.fn() });
-    expect(opened).toEqual(["wouter:p1"]);
-  });
-
   it("tracks usernames whose principal mesh link is still connecting", () => {
     const registry = new PrincipalLinkRegistry();
     registry.setConnectingUsernames(new Set(["admin"]));
@@ -65,18 +39,6 @@ describe("PrincipalLinkRegistry", () => {
     expect(registry.isConnectingTo("wouter")).toBe(false);
     registry.setConnectingUsernames(new Set());
     expect(registry.isConnectingTo("admin")).toBe(false);
-  });
-
-  it("dispatches inbound envelopes to subscribers", () => {
-    const registry = new PrincipalLinkRegistry();
-    const seen: string[] = [];
-    const unsubscribe = registry.subscribe((username, peerId, envelope) => {
-      seen.push(`${username}:${peerId}:${envelope.op}`);
-    });
-    registry.receive("admin", "p1", openEnvelope());
-    unsubscribe();
-    registry.receive("admin", "p1", openEnvelope());
-    expect(seen).toEqual(["admin:p1:open"]);
   });
 
   it("waits for principal join attempt and resolves immediately once marked", async () => {

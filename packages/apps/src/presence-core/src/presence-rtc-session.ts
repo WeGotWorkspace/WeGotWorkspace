@@ -9,7 +9,6 @@ import {
 import { LinkSupervisor, subscribeNetworkChange } from "@/lib/rtc/link/link-supervisor-runtime";
 import { rtcLog } from "@/lib/rtc/log";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
-import { parseCollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import { peerAdvertisesBin } from "@/lib/rtc/session/data-channel-frames";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
@@ -89,12 +88,6 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.emit({ type: "dc-open", peerId: remoteId });
       },
       onMessage: (remoteId, data) => {
-        const reuse = parseCollabReuseEnvelope(data);
-        if (reuse) {
-          const username = this.mesh.getRoomPeers().find((peer) => peer.id === remoteId)?.user;
-          if (username) this.registry.receive(username, remoteId, reuse);
-          return;
-        }
         const envelope = parsePresenceEnvelope(data);
         if (envelope) this.emit({ type: "envelope", peerId: remoteId, envelope });
       },
@@ -122,7 +115,6 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.updatePollCadence();
         this.emit({ type: "roster" });
       },
-      onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
       onPollData: (data) => {
         this.receiveLinkHints(data.messages);
         this.syncPrincipalLinks();

@@ -51,7 +51,7 @@ const captured = vi.hoisted(() => ({
       peers: [],
     })),
     leave: vi.fn(async () => undefined),
-    sendMailbox: vi.fn(async (_to: string, _type: string, _payload: unknown) => undefined),
+    sendMailbox: vi.fn(async (_to: string, _type: string, _payload?: unknown) => undefined),
     kickPoll: vi.fn(),
   },
 }));

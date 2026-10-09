@@ -241,7 +241,7 @@ describe("PresenceStore join timing", () => {
     store.start(SELF);
     await flushMicrotasks();
 
-    // Collab waits PRINCIPAL_JOIN_WAIT_MS for this flag; a failed join must not
+    // Docs waits PRINCIPAL_JOIN_WAIT_MS for this flag; a failed join must not
     // leave every document stalled for the full timeout.
     expect(getPrincipalLinkRegistry().hasPrincipalJoinAttempted()).toBe(true);
   });

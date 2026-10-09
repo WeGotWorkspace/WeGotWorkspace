@@ -356,7 +356,12 @@ export class DocsRtcSession {
         from,
       });
     }
-    this.emit({ ...(typed as DocsCollabMeshMessage), from, trust } as DocsCollabMeshMessage);
+    // Sync carries sender trust from the link channel; other variants omit it.
+    this.emit(
+      (typed.type === "sync"
+        ? { ...typed, from, trust }
+        : { ...typed, from }) as DocsCollabMeshMessage,
+    );
   }
 
   private onLinkState(states: ReadonlyMap<string, PeerChannelState>): void {

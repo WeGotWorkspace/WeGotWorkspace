@@ -12,7 +12,7 @@ paths:
 
 # Meet and RTC
 
-Meet spans **Laravel signaling** (`packages/api`) and **browser RTC** (`packages/apps`). File collab (docs) shares room routes but uses a data-channel binding — see `lib/rtc/README.md`.
+Meet spans **Laravel signaling** (`packages/api`) and **browser RTC** (`packages/apps`). File collab (docs) keeps collab room routes for join/roster/ticket/mailbox, but live Yjs rides **link channels** on the principal peer connection — see `lib/rtc/README.md` and `lib/rtc/link/`.
 
 ## Quick decision matrix
 

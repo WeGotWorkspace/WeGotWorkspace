@@ -111,36 +111,16 @@ describe("PresenceRtcSession principal link publishing", () => {
     expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith("prin-wouter", { hello: 1 });
   });
 
-  it("routes collab-reuse envelopes to the registry and keeps presence chat local", () => {
-    const registry = new PrincipalLinkRegistry();
+  it("emits presence envelopes from the principal data channel", () => {
     const session = new PresenceRtcSession({
       room: "workspace",
       rtcSettings: DEFAULT_RTC_SETTINGS,
-      linkRegistry: registry,
-    });
-    captured.mesh.getRoomPeers.mockReturnValue([
-      { id: "prin-wouter", name: "Wouter", user: "wouter" },
-    ]);
-    const reuseEvents: string[] = [];
-    registry.subscribe((username, peerId, envelope) => {
-      reuseEvents.push(`${username}:${peerId}:${envelope.op}`);
     });
     const presenceEvents: PresenceMeshEvent[] = [];
     session.onEvent((event) => presenceEvents.push(event));
 
-    captured.bindingOptions?.onMessage(
-      "prin-wouter",
-      JSON.stringify({
-        v: 1,
-        kind: "collab-reuse",
-        room: "/doc.md",
-        op: "open",
-        collabPeerId: "bbbbbbbbbbbbbbbb",
-      }),
-    );
     captured.bindingOptions?.onMessage("prin-wouter", JSON.stringify({ v: 1, kind: "typing" }));
 
-    expect(reuseEvents).toEqual(["wouter:prin-wouter:open"]);
     expect(presenceEvents).toEqual([
       { type: "envelope", peerId: "prin-wouter", envelope: { v: 1, kind: "typing" } },
     ]);

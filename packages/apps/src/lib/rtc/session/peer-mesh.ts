@@ -533,19 +533,19 @@ export class RtcPeerMesh {
   }
 
   /**
-   * Tear down an in-flight collab ICE handshake when principal reuse wins for
-   * the same remote. Does not invoke `onPeerRemoved` — the peer was never live.
+   * Tear down an in-flight peer connection (for example when the link
+   * supervisor re-dials). Does not invoke `onPeerRemoved` — the peer was never
+   * live on the product channel.
    */
   abortPeerConnection(remoteId: string): void {
     if (!this.peers.has(remoteId)) return;
-    this.log("reuse-fresh-ice-abort", { remoteId });
+    this.log("peer-abort", { remoteId });
     this.removePeer(remoteId, "local");
   }
 
   /**
-   * Re-dial room peers after a collab reuse path ends (principal DC gone /
-   * ack timeout). Poll may return 204 while the roster is unchanged, so this
-   * must not wait for the next poll cycle.
+   * Re-dial room peers that are not yet connected. Poll may return 204 while
+   * the roster is unchanged, so this must not wait for the next poll cycle.
    */
   retryRoomPeerConnections(): void {
     if (this.activeEpoch !== this.sessionEpoch) return;

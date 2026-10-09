@@ -138,14 +138,13 @@ describe("large Yjs state over a capped data channel", () => {
     });
   });
 
-  it("frames a collab-reuse data envelope the same way", async () => {
+  it("frames a large nested JSON envelope the same way", async () => {
     const { message, json } = largeSyncMessage();
     const envelope = {
       v: 1 as const,
-      kind: "collab-reuse" as const,
+      kind: "sync-batch" as const,
       room: "docs/notes.md",
-      op: "data" as const,
-      collabPeerId: "aaaaaaaaaaaaaaaa",
+      peerId: "aaaaaaaaaaaaaaaa",
       payload: message,
     };
     const wire = JSON.stringify(envelope);

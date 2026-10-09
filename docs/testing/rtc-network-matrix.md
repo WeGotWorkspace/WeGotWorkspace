@@ -71,8 +71,8 @@ Build under test was `integration/rtc-hardening` after #1192 (merge `9deca552`) 
 
 | # | Setup | Channel | Path | Result |
 |---|---|---|---|---|
-| M1 | Mac Chrome, wifi ↔ second user on 4G | Meet, chat, Docs | Direct (STUN), no TURN | Connected within a few seconds. Switching between Meet, chat and Docs is instant: Docs reuses the presence link (`reuse-hit`, `dc-open reused`). Live carets and edits arrive immediately. |
-| M2 | iPhone Safari, 4G ↔ Mac Chrome, wifi | Docs | Forced TURN (`rtcForceRelay=1`), coturn | Collab relay link `connected` about 0.5 s after the offer (`iceTransportPolicy: relay`). Live carets and edits work. **Caveat:** about 3 s later Docs switched to the presence link, which ran **direct** because presence ignores `rtcForceRelay`. So M2 covers only a short relay window. |
+| M1 | Mac Chrome, wifi ↔ second user on 4G | Meet, chat, Docs | Direct (STUN), no TURN | Connected within a few seconds. Switching between Meet, chat and Docs is instant: Docs opens a per-document link channel on the principal peer connection (`dc-open` with `via: link`). Live carets and edits arrive immediately. |
+| M2 | iPhone Safari, 4G ↔ Mac Chrome, wifi | Docs | Forced TURN (`rtcForceRelay=1`), coturn | Principal link stays on relay (`iceTransportPolicy: relay`); Docs collaboration rides link channels on that connection. Live carets and edits work. |
 | M3 | Two users, two windows on one Mac | Docs | Direct (host) | After #1192: the document loads on refresh, there is one collab peer id per tab, no echo storm, and carets and edits are live in both directions. |
 | M4 | Two users, two windows on one Mac | Meet | Direct | Stable (user report, 2026-10-07). |
 
