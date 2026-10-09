@@ -566,6 +566,119 @@ describe("LinkChannelHub", () => {
     expect(sinkB.messages.at(-1)).toEqual({ from: "peer-a", msg: { ping: 1 }, access: "read" });
   });
 
+  it("a frame that arrives after revocation is not delivered", async () => {
+    const net = new FakeLinkNet();
+    const hostA = net.add("A", "alice");
+    const hostB = net.add("B", "bob");
+    const { hub: hubA } = makeHub();
+    const { hub: hubB } = makeHub();
+    const sinkB = sinkRecorder();
+    hubA.setLocalOwner("tab-a");
+    hubB.setLocalOwner("tab-b");
+    hubA.setSink("tab-a", sinkRecorder().sink);
+    hubB.setSink("tab-b", sinkB.sink);
+    hubA.attachHost(hostA);
+    hubB.attachHost(hostB);
+    const roster = [
+      { id: "peer-a", user: "alice", access: "write" as const },
+      { id: "peer-b", user: "bob", access: "write" as const },
+    ];
+    hubA.setRoom("tab-a", room("peer-a", roster));
+    hubB.setRoom("tab-b", room("peer-b", roster));
+    net.link("A", "B", true);
+    await settle();
+    expect(hubB.peerStates(ROOM).get("peer-a")).toEqual({ out: true, in: true });
+
+    const inboundChannel = [
+      ...(hubB as unknown as { inbound: Map<FakeEnd, unknown> }).inbound.keys(),
+    ][0];
+    expect(inboundChannel).toBeTruthy();
+
+    hubB.setRoom("tab-b", room("peer-b", [{ id: "peer-b", user: "bob", access: "write" }]));
+    inboundChannel!.onmessage?.({
+      data: JSON.stringify({ t: "d", m: { x: 1 } }),
+    } as MessageEvent);
+    await settle();
+
+    expect(sinkB.messages).toEqual([]);
+    expect(hubB.peerStates(ROOM).get("peer-a")?.in).toBeFalsy();
+  });
+
+  it("a second channel from the same peer replaces the first without delivering on the old one", async () => {
+    const net = new FakeLinkNet();
+    const hostA = net.add("A", "alice");
+    const baseHostB = net.add("B", "bob");
+    const incomingListeners: Array<(linkPeer: string, channel: ChannelLike) => void> = [];
+    const hostB: LinkHost = {
+      livePeers: () => baseHostB.livePeers(),
+      createChannel: (linkPeer, label) => baseHostB.createChannel(linkPeer, label),
+      peerAdvertisesBin: () => false,
+      onIncomingChannel: (listener) => {
+        incomingListeners.push(listener);
+        return baseHostB.onIncomingChannel(listener);
+      },
+      onLinksChanged: (listener) => baseHostB.onLinksChanged(listener),
+    };
+    const { hub: hubA } = makeHub();
+    const { hub: hubB } = makeHub();
+    const sinkB = sinkRecorder();
+    hubA.setLocalOwner("tab-a");
+    hubB.setLocalOwner("tab-b");
+    hubA.setSink("tab-a", sinkRecorder().sink);
+    hubB.setSink("tab-b", sinkB.sink);
+    hubA.attachHost(hostA);
+    hubB.attachHost(hostB);
+    const roster = [
+      { id: "peer-a", user: "alice", access: "write" as const },
+      { id: "peer-b", user: "bob", access: "write" as const },
+    ];
+    hubA.setRoom("tab-a", room("peer-a", roster));
+    hubB.setRoom("tab-b", room("peer-b", roster));
+    net.link("A", "B", true);
+    await settle();
+
+    const firstInbound = [
+      ...(hubB as unknown as { inbound: Map<FakeEnd, unknown> }).inbound.keys(),
+    ][0];
+    expect(firstInbound).toBeTruthy();
+
+    const label = firstInbound!.label;
+    const second: FakeEnd = {
+      label,
+      readyState: "open",
+      binaryType: "arraybuffer",
+      bufferedAmount: 0,
+      bufferedAmountLowThreshold: 0,
+      onopen: null,
+      onmessage: null,
+      onclose: null,
+      _peer: null,
+      _closedOnce: false,
+      send() {},
+      close() {
+        if (this._closedOnce) return;
+        this._closedOnce = true;
+        this.readyState = "closed";
+        queueMicrotask(() => this.onclose?.(new Event("close")));
+      },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    for (const listener of incomingListeners) listener("A", second);
+    second.onmessage?.({
+      data: JSON.stringify({ t: "hello", v: 1, peer: "peer-a" }),
+    } as MessageEvent);
+    await settle();
+
+    expect(hubB.peerStates(ROOM).get("peer-a")?.in).toBe(true);
+    sinkB.messages.length = 0;
+    firstInbound!.onmessage?.({
+      data: JSON.stringify({ t: "d", m: { stale: true } }),
+    } as MessageEvent);
+    await settle();
+    expect(sinkB.messages).toEqual([]);
+  });
+
   it("an accept naming another user's peer is rejected", async () => {
     const net = new FakeLinkNet();
     const hostA = net.add("A", "alice");

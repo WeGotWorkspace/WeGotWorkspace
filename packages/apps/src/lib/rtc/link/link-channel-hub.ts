@@ -151,6 +151,7 @@ export class LinkChannelHub {
       if (record.state === "bound" && record.peer) {
         const row = state.roster.find((candidate) => candidate.id === record.peer);
         if (!row || row.user !== record.user) {
+          this.inbound.delete(channel);
           this.closeChannel(channel);
           continue;
         }
@@ -537,6 +538,7 @@ export class LinkChannelHub {
         other.state === "bound" &&
         other.peer === verdict.peer
       ) {
+        this.inbound.delete(channel);
         this.closeChannel(channel);
       }
     }
