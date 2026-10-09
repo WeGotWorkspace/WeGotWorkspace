@@ -7,10 +7,13 @@ namespace Tests\Unit\Services\Plugins;
 use App\Services\Plugins\PluginPaths;
 use App\Support\AppPaths;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\WithPluginsEnabled;
 use Tests\TestCase;
 
 final class PluginPathsTest extends TestCase
 {
+    use WithPluginsEnabled;
+
     private string $installRoot;
 
     protected function setUp(): void

@@ -205,9 +205,12 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('search/results/{resultId}/content', [UnifiedSearchDownloadController::class, 'contentByResultId'])
         ->where('resultId', '.+');
 
-    Route::get('plugins', PluginsIndexController::class);
-    Route::post('plugins/{id}/session', PluginsSessionController::class)
-        ->where('id', '[a-z0-9_-]+');
+    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
+    if (config('wgw.plugins.enabled')) {
+        Route::get('plugins', PluginsIndexController::class);
+        Route::post('plugins/{id}/session', PluginsSessionController::class)
+            ->where('id', '[a-z0-9_-]+');
+    }
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
@@ -392,9 +395,12 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
     Route::get('search/jobs/current', [AdminSearchJobController::class, 'showCurrent']);
     Route::delete('search/jobs/{jobId}', [AdminSearchJobController::class, 'destroy'])
         ->where('jobId', '[a-z0-9_-]+');
-    Route::post('plugins', AdminPluginInstallController::class);
-    Route::put('plugins/{id}/activation', PluginsActivationController::class)
-        ->where('id', '[a-z0-9_-]+');
+    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
+    if (config('wgw.plugins.enabled')) {
+        Route::post('plugins', AdminPluginInstallController::class);
+        Route::put('plugins/{id}/activation', PluginsActivationController::class)
+            ->where('id', '[a-z0-9_-]+');
+    }
     Route::get('backups/{name}', [AdminUpdateBackupController::class, 'show']);
     Route::delete('backups/{name}', [AdminUpdateBackupController::class, 'destroy']);
     Route::put('groups/{group}/members/{username}', [AdminGroupMemberController::class, 'store']);

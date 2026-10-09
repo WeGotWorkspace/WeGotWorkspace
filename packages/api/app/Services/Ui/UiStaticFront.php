@@ -63,9 +63,11 @@ final class UiStaticFront
             return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
         }
 
-        $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
-        if ($pluginMatch !== null) {
-            return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
+        if (config('wgw.plugins.enabled')) {
+            $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
+            if ($pluginMatch !== null) {
+                return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
+            }
         }
 
         if ($this->static->matchesShellPath($webBase, $path)) {
