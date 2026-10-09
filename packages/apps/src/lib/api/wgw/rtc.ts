@@ -52,7 +52,6 @@ export function parseRtcSettingsPayload(payload: RtcSettingsCarrier): RtcPublicS
 }
 
 export function resolveRtcSettings(publicSettings: RtcPublicSettings): RtcSettings {
-  setRtcDebugEnabled(publicSettings.debug);
   return applyRtcDebugOverrides({
     ...DEFAULT_RTC_SETTINGS,
     stunUrls: publicSettings.stunUrls,
@@ -86,7 +85,9 @@ export async function fetchRtcSettings(options?: {
   }
   try {
     const payload = (await wgwReadJson(res)) as RtcRoomConfiguration;
-    const settings = resolveRtcSettings(parseRtcSettingsPayload(payload));
+    const parsed = parseRtcSettingsPayload(payload);
+    setRtcDebugEnabled(parsed.debug);
+    const settings = resolveRtcSettings(parsed);
     rtcLog({ channel }, "rtc-settings-response", {
       requestUrl,
       ok: true,
