@@ -118,8 +118,8 @@ test("forced relay — Docs principal and collab stay on TURN", async ({ browser
       await log.waitFor("selected-pair", (event) => relayChannel(event, "collab"), 45_000);
     }
     await Promise.any([
-      leftLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
-      rightLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
+      leftLog.waitFor("chan-ready", (event) => event.channel === "collab", 45_000),
+      rightLog.waitFor("chan-ready", (event) => event.channel === "collab", 45_000),
     ]);
     await left.page.waitForTimeout(60_000);
     await flushConsole(left.page);

@@ -16,8 +16,7 @@ Draws from the real-time hardening milestone on issue #1112. Displaces no other 
 
 ## What exists
 
-- `CollabReuseEnvelope` has `collabPeerId` and `name`, and the parser copies only those fields. `path: packages/apps/src/lib/rtc/session/collab-reuse-envelope.ts:11`
-- `mayReuseWith` accepts a sender from the collab roster and `onEnvelope` reads `access` from `accessForUser`. `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-principal-reuse.ts:266`
+- Application-level `CollabReuseEnvelope` / `DocsCollabPrincipalReuse` were removed; ticket checks for Docs now run on link-channel hellos (`lib/rtc/link/collab-hello-verify.ts`) with the collab roster published via `LinkChannelClient.setRoom`.
 - `verifyCollabTicket` and `createCollabTicketKeyCache` already check the signature, `kid`, claims, and skew. `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-ticket.ts:124`
 - `configuration()` returns `collabTicket` from `publicJwk()`, and `RtcRoomConfiguration` documents only `rtc`. `path: packages/api/app/Services/Collab/DocCollabSignalingService.php:61` `path: packages/api/openapi/schemas/rtc/rtc-signaling.json:117` `path: packages/api/app/Services/Collab/CollabTicketKeyring.php:44`
 - `RtcPeerDescriptor` has no `access`, so the roster reader casts. `path: packages/apps/src/lib/rtc/types.ts:53` `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-access.ts:56`
@@ -36,16 +35,16 @@ Considered: keeping `mayReuseWith` synchronous by pre-warming `createCollabTicke
 ## Dependencies
 
 1. OpenAPI `collabTicket` slot and regenerated `openapi-types.ts`.
-2. Envelope field and parser, then the reuse gate, then the configuration client.
+2. Ticket publication on the collab room configuration client, then link-channel hello verification.
 
 ## Open decisions
 
-The envelope handler awaits `verifyCollabTicket` when `envelope.ticket` is present. A fully synchronous `mayReuseWith` was rejected: WebCrypto verify returns a promise. `createCollabTicketKeyCache` is still pre-warmed from the configuration JWK before the session joins, so that await is the signature check.
+Ticket verification awaits `verifyCollabTicket` (WebCrypto). `createCollabTicketKeyCache` is still pre-warmed from the configuration JWK before the session joins. Access is the tighter of ticket claims and the published collab roster (D5).
 
 ## Invariants
 
-- An envelope with no `ticket` still has to pass the roster check, and a rostered `open` still gets an `ack`. A change that requires `ticket` drops a mixed-version room. Proof: `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-principal-reuse.test.ts`
-- A present ticket that names a different `user` or `peer` is rejected, and the roster is not a fallback for that envelope. Proof: `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-principal-reuse.test.ts`
+- A missing ticket still has to pass the roster check on the receiving browser. Proof: `path: packages/apps/src/lib/rtc/link/collab-hello-verify.test.ts`
+- A present ticket that names a different `user` or `peer` is rejected, and the roster is not a fallback for that hello. Proof: `path: packages/apps/src/lib/rtc/link/collab-hello-verify.test.ts`
 - `RtcRoomConfiguration.required` stays `rtc` only, and the published JWK stays the public half. Proof: `path: packages/api/tests/Feature/Collab/CollabTicketTest.php`
 
 ## Chunks
@@ -54,9 +53,9 @@ The envelope handler awaits `verifyCollabTicket` when `envelope.ticket` is prese
 
 - **id:** `collab-ticket-envelope`
 - **Skill:** workspace
-- **Inputs:** parser copies only known fields — `path: packages/apps/src/lib/rtc/session/collab-reuse-envelope.ts:49`
-- **Done when:** optional `ticket` survives parsing; `mayReuseWith` verifies a present ticket and takes `access` from the payload; a missing ticket uses the roster; `collabTicket` is on the configuration schema and the generated type; `RtcPeerDescriptor.access` replaces the cast; issue #1112 acceptance criteria pass via [verify-issue](../../skills/verify-issue/SKILL.md).
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc/session/collab-reuse-envelope.test.ts src/text-editor-core/docs-collab/docs-collab-principal-reuse.test.ts src/text-editor-core/docs-collab/docs-collab-ticket.test.ts` and `pnpm --filter @wgw/apps typecheck`
+- **Inputs:** ticket + JWK published on `setRoom`; hello verify in `lib/rtc/link/collab-hello-verify.ts`
+- **Done when:** optional `ticket` is verified on the receiving browser; a missing ticket uses the roster; `collabTicket` is on the configuration schema and the generated type; `RtcPeerDescriptor.access` replaces the cast; issue #1112 acceptance criteria pass via [verify-issue](../../skills/verify-issue/SKILL.md).
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/rtc/link/collab-hello-verify.test.ts src/text-editor-core/docs-collab/docs-collab-ticket.test.ts` and `pnpm --filter @wgw/apps typecheck`
 - **Parallel with:** none
 
 ## Test plan
