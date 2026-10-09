@@ -76,7 +76,7 @@ Phased RTC improvements: collab-join authorization (security, first), Meet call 
 
 ### Phase 3b verification (folded into `principal-reuse`) — **done**
 
-Live verified 2026-09-04 (user-confirmed). Keep `?rtcDebug=1` as a **number** (never `"1"`). Isolated cookies: cursor-ide-browser vs Chrome DevTools. Live URL: `http://127.0.0.1:5173/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1`. Creds: `admin` / `storybook-dev`, `wouter` / `storybook-dev`. SPA navigation after login (do not hard-reload the doc).
+Live verified 2026-09-04 (user-confirmed). RTC logs: Admin → Real-time collaboration → Diagnostics → Detailed connection logs (reload after changing). Isolated cookies: cursor-ide-browser vs Chrome DevTools. Live URL: `http://127.0.0.1:5173/docs?file=groups%2Fadministrators%2Fteam-notes.md`. Creds: `admin` / `storybook-dev`, `wouter` / `storybook-dev`. SPA navigation after login (do not hard-reload the doc).
 
 1. [x] **Reuse-hit confirmation.** Both users log in, wait until the principal mesh is up, one opens the doc, the other follows. Console: `[rtc][collab][reuse-hit]` then `[dc-open]` `{ reused: true }` — not a fresh ICE round.
 2. [x] **Bidirectional sync over the reused channel.** A→B and B→A Yjs updates on the reused DC; sender must not apply their own echo.
