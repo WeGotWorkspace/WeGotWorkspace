@@ -8,6 +8,7 @@ export const settingsProfileRequestOpenapiSchema = z.object({
   email: z.string().optional(),
   password: z.string().optional(),
   currentPassword: z.string().optional(),
+  refreshToken: z.string().optional(),
 });
 
 /** OpenAPI `components.schemas.SettingsMailRequest` */

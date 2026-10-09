@@ -49,6 +49,11 @@
             "type": "string",
             "maxLength": 4096,
             "description": "Current password. Required when password or email is changed."
+          },
+          "refreshToken": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "Current device refresh token. Sent with a password change so this session stays signed in."
           }
         }
       },

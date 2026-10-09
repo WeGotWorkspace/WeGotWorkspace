@@ -8625,6 +8625,8 @@ export interface components {
             password?: string;
             /** @description Current password. Required when password or email is changed. */
             currentPassword?: string;
+            /** @description Current device refresh token. Sent with a password change so this session stays signed in. */
+            refreshToken?: string;
         };
         /**
          * @example {

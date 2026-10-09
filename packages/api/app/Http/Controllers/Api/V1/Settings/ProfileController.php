@@ -116,7 +116,7 @@ final class ProfileController
 
     private function callerRefreshTokenHash(SettingsProfileRequest $request): ?string
     {
-        $token = $request->input('refreshToken');
+        $token = $request->validated()['refreshToken'] ?? null;
         if (! is_string($token)) {
             return null;
         }
