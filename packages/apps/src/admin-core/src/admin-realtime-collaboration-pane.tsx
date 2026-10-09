@@ -3,6 +3,7 @@ import { Card } from "@/card/src/card";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
+import { Tag } from "@/tag/src/tag";
 import { VIDEO_PROFILE_LABELS, VIDEO_PROFILES_RANKED } from "@/lib/rtc/video-profile";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
@@ -170,15 +171,15 @@ export function AdminRealtimeCollaborationPane({
           desc="Sends all real-time traffic through your TURN server, even when a direct connection would work. This uses more server bandwidth."
           value={relayReady ? controller.settingsForm.rtcForceRelay : false}
           disabled={!relayReady}
+          labelAccessory={
+            relayReady ? undefined : (
+              <Tag label="Needs TURN Credentials" className="admin-feature-row__status-tag" />
+            )
+          }
           onChange={(next) =>
             controller.setSettingsForm((prev) => ({ ...prev, rtcForceRelay: next }))
           }
         />
-        {relayReady ? null : (
-          <p className="mb-3 text-sm text-muted-foreground">
-            Enabling Force Relay needs a saved TURN URL and shared secret.
-          </p>
-        )}
       </Card>
       <div className="flex justify-end">
         <Button

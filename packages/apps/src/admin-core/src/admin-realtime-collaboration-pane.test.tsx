@@ -77,9 +77,7 @@ describe("AdminRealtimeCollaborationPane", () => {
     const relay = screen.getByLabelText("Always use the TURN relay enabled");
     expect((relay as HTMLButtonElement).disabled).toBe(true);
     expect((relay as HTMLButtonElement).getAttribute("aria-checked")).toBe("false");
-    expect(
-      screen.getByText("Enabling Force Relay needs a saved TURN URL and shared secret."),
-    ).toBeTruthy();
+    expect(screen.getByText("Needs TURN Credentials")).toBeTruthy();
   });
 
   it("enables the forced relay switch when TURN URL and secret are saved", () => {
@@ -94,8 +92,6 @@ describe("AdminRealtimeCollaborationPane", () => {
     );
     const relay = screen.getByLabelText("Always use the TURN relay enabled");
     expect((relay as HTMLButtonElement).disabled).toBe(false);
-    expect(
-      screen.queryByText("Enabling Force Relay needs a saved TURN URL and shared secret."),
-    ).toBeNull();
+    expect(screen.queryByText("Needs TURN Credentials")).toBeNull();
   });
 });
