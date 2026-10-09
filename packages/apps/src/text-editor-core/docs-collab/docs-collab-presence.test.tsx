@@ -1,4 +1,4 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { DocsCollabPresence } from "./docs-collab-presence";
@@ -27,5 +27,21 @@ describe("DocsCollabPresence status dots", () => {
     expect(container.querySelector(".user-avatar__presence--online")).toBeTruthy();
     expect(container.querySelector(".user-avatar__presence--away")).toBeTruthy();
     expect(container.textContent).not.toMatch(/Live with/);
+  });
+
+  it("shows peers on the server path with their own label", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <DocsCollabPresence
+          localUser={{ displayName: "Ada" }}
+          peers={[]}
+          serverPeers={[{ id: "2", name: "Cy" }]}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByLabelText("Syncing with 1 person through the server")).toBeTruthy();
+    expect(container.querySelector(".docs-collab-presence__avatar--connecting")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/Connecting to/);
   });
 });

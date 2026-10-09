@@ -91,7 +91,7 @@ test("forced relay — Docs", async ({ browser }) => {
     await leftLog.waitFor("dc-open", (event) => event.channel === "collab", 30_000);
     await rightLog.waitFor(
       "selected-pair",
-      (event) => event.channel === "collab" && localType(event) === "relay",
+      (event) => event.channel === "principal" && localType(event) === "relay",
       45_000,
     );
   } finally {
@@ -99,7 +99,7 @@ test("forced relay — Docs", async ({ browser }) => {
   }
 });
 
-test("forced relay — Docs principal and collab stay on TURN", async ({ browser }) => {
+test("forced relay — Docs stays on the TURN principal link", async ({ browser }) => {
   test.setTimeout(180_000);
   // Both seeded users belong to principals/groups/administrators, so member can open this file.
   const apiPath = `/groups/administrators/e2e-relay-hold-${uniqueId()}.md`;
@@ -115,17 +115,16 @@ test("forced relay — Docs principal and collab stay on TURN", async ({ browser
     await expect(right.page.locator(".ProseMirror")).toBeVisible();
     for (const log of [leftLog, rightLog]) {
       await log.waitFor("selected-pair", (event) => relayChannel(event, "principal"), 45_000);
-      await log.waitFor("selected-pair", (event) => relayChannel(event, "collab"), 45_000);
     }
     await Promise.any([
-      leftLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
-      rightLog.waitFor("reuse-hit", (event) => event.channel === "collab", 45_000),
+      leftLog.waitFor("chan-ready", (event) => event.channel === "principal", 45_000),
+      rightLog.waitFor("chan-ready", (event) => event.channel === "principal", 45_000),
     ]);
     await left.page.waitForTimeout(60_000);
     await flushConsole(left.page);
     await flushConsole(right.page);
     for (const log of [leftLog, rightLog]) {
-      for (const channel of ["principal", "collab"] as const) {
+      for (const channel of ["principal"] as const) {
         const types = selectedLocalTypes(log.events(), channel);
         expect(types.length, channel).toBeGreaterThan(0);
         expect(

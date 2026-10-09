@@ -53,6 +53,7 @@ export function useDocsCollabMesh({
 }: UseDocsCollabMeshOptions) {
   const [peers, setPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [connectingPeers, setConnectingPeers] = useState<DocsCollabMeshPeer[]>([]);
+  const [serverPeers, setServerPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [warningPeers, setWarningPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [linkCount, setLinkCount] = useState(0);
   const [status, setStatus] = useState("Disconnected");
@@ -60,6 +61,7 @@ export function useDocsCollabMesh({
   const resetMeshUi = useCallback(() => {
     setPeers([]);
     setConnectingPeers([]);
+    setServerPeers([]);
     setWarningPeers([]);
     refs.failedSinceRef.current.clear();
     setLinkCount(0);
@@ -74,13 +76,17 @@ export function useDocsCollabMesh({
       .filter((peer) => peer.link === "connected")
       .map(({ id, name }) => ({ id, name }));
     const pendingPeers = roomPeerStatuses
-      .filter((peer) => peer.link !== "connected")
+      .filter((peer) => peer.link !== "connected" && peer.link !== "server")
+      .map(({ id, name }) => ({ id, name }));
+    const viaServerPeers = roomPeerStatuses
+      .filter((peer) => peer.link === "server")
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
     const warning = collectCollabWarningPeers(roomPeerStatuses, refs.failedSinceRef.current, now);
     return {
       peers: connectedPeers,
       connectingPeers: pendingPeers,
+      serverPeers: viaServerPeers,
       warningPeers: warning,
       linkCount: mesh.linkCount(),
       status: docsCollabSessionStatus(mesh.getMyName(), roomPeerStatuses.length, mesh.linkCount()),
@@ -100,6 +106,7 @@ export function useDocsCollabMesh({
       setLinkCount(state.linkCount);
       setPeers(state.peers);
       setConnectingPeers(state.connectingPeers);
+      setServerPeers(state.serverPeers);
       setWarningPeers(state.warningPeers);
       setStatus(state.status);
     },
@@ -121,7 +128,10 @@ export function useDocsCollabMesh({
       .filter((peer) => peer.link === "connected")
       .map(({ id, name }) => ({ id, name }));
     const pendingPeers = roomPeerStatuses
-      .filter((peer) => peer.link !== "connected")
+      .filter((peer) => peer.link !== "connected" && peer.link !== "server")
+      .map(({ id, name }) => ({ id, name }));
+    const viaServerPeers = roomPeerStatuses
+      .filter((peer) => peer.link === "server")
       .map(({ id, name }) => ({ id, name }));
     const now = Date.now();
     const failedNow = new Set<string>();
@@ -143,6 +153,7 @@ export function useDocsCollabMesh({
     setLinkCount(mesh.linkCount());
     setPeers(connectedPeers);
     setConnectingPeers(pendingPeers);
+    setServerPeers(viaServerPeers);
     setWarningPeers(warning);
     setStatus(docsCollabSessionStatus(mesh.getMyName(), roomPeerStatuses.length, mesh.linkCount()));
   }, [refs]);
@@ -332,6 +343,7 @@ export function useDocsCollabMesh({
   return {
     peers,
     connectingPeers,
+    serverPeers,
     warningPeers,
     linkCount,
     status,

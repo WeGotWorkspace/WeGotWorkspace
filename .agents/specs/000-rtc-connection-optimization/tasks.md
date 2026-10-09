@@ -14,7 +14,7 @@ Source plan: [plan.md](./plan.md)
 | `poll-efficiency` | phase-1 agent | api, apps-ui | `packages/apps/src/lib/rtc/session/peer-mesh.ts`, `packages/api/app/Services/Rtc/Signaling/` | apps Vitest + API poll feature tests | done |
 | `collab-linger-gossip` | phase-2 agent | workspace | `packages/apps/src/text-editor-core/docs-collab/` | apps Vitest | done |
 | `principal-room` | phase-3a agent | api, workspace | `packages/api/app/Services/Rtc/`, `packages/api/app/Services/Principal/`, `packages/api/database/migrations/wgw/`, `packages/apps/src/lib/rtc/`, `packages/apps/src/presence-core/` | API feature tests + apps Vitest | done |
-| `principal-reuse` | phase-3b agent | workspace, meet | `packages/apps/src/lib/rtc/session/principal-link-registry.ts`, `packages/apps/src/lib/rtc/session/collab-reuse-envelope.ts`, `packages/apps/src/presence-core/`, `packages/apps/src/text-editor-core/docs-collab/` | apps Vitest (`collab-reuse`, `principal-link-registry`, `docs-collab-principal-reuse`, `docs-rtc-session`, `presence-rtc-session`, `docs-collab-mesh-warnings`) + live items 1–3 below | done |
+| `principal-reuse` | phase-3b agent | workspace, meet | `packages/apps/src/lib/rtc/session/principal-link-registry.ts`, `packages/apps/src/presence-core/`, `packages/apps/src/text-editor-core/docs-collab/` (collab-reuse envelope **removed**; Docs uses `lib/rtc/link/` channels) | apps Vitest (`principal-link-registry`, `docs-rtc-session`, `presence-rtc-session`, `docs-collab-mesh-warnings`) + live items 1–3 below (superseded by link channels) | done |
 
 ## Notes
 
@@ -27,6 +27,6 @@ Source plan: [plan.md](./plan.md)
 
 `?rtcDebug=1` stays a number. Isolated cookies: cursor-ide-browser vs Chrome DevTools. Doc: `/docs?file=groups%2Fadministrators%2Fteam-notes.md` on `http://127.0.0.1:5173`.
 
-1. [x] **Reuse-hit.** Both users idle until principal mesh is up; one opens the doc, the other follows. Console: `reuse-hit` then `dc-open` `{ reused: true }` — not a fresh ICE round. (live ✓)
-2. [x] **Bidirectional Yjs over reuse.** A→B and B→A updates appear in the other doc on the reused DC; sender must not apply their own echo. (live ✓)
-3. [x] **Principal-link drop mid-session.** Unregister / close the principal PC during active collab. No warning banner. Sync continues via fresh ICE. Log: `reuse-miss` `{ reason: "principal-link-gone" }`, `datachannel-open` `{ reused: false }`. (live ✓)
+1. [x] **Reuse-hit.** (superseded by link channels) Both users idle until principal mesh is up; one opens the doc, the other follows. Expect `chan-ready` / `dc-open` `{ via: "link" }`. (live ✓ historically)
+2. [x] **Bidirectional Yjs over reuse.** (superseded) A→B and B→A updates on the document link channel; sender must not apply their own echo. (live ✓ historically)
+3. [x] **Principal-link drop mid-session.** (superseded) Unregister / close the principal PC during active collab. No warning banner. Channel retry + HTTP mailbox without reload. (live ✓ historically)

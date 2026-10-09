@@ -10,6 +10,5 @@ export * from "@/lib/rtc/telemetry/selected-pair";
 export * from "@/lib/rtc/force-relay";
 export * from "@/lib/rtc/signaling/create-client";
 export * from "@/lib/rtc/session/create-rtc-session";
-export * from "@/lib/rtc/session/collab-reuse-envelope";
 export * from "@/lib/rtc/session/principal-link-registry";
 export * from "@/lib/rtc/hooks/use-rtc-session";

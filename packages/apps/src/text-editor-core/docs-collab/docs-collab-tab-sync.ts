@@ -13,6 +13,7 @@ export type TabPresence = {
 export type TabMeshStateSnapshot = {
   peers: DocsCollabMeshPeer[];
   connectingPeers: DocsCollabMeshPeer[];
+  serverPeers: DocsCollabMeshPeer[];
   warningPeers: DocsCollabMeshPeer[];
   linkCount: number;
   status: string;
@@ -113,6 +114,7 @@ export function routeTabSyncMessage(
     handlers.onMeshStateFromLeader({
       peers: msg.peers,
       connectingPeers: msg.connectingPeers,
+      serverPeers: msg.serverPeers,
       warningPeers: msg.warningPeers,
       linkCount: msg.linkCount,
       status: msg.status,

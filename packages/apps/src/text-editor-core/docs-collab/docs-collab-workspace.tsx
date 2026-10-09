@@ -216,6 +216,7 @@ function DocsCollabWorkspaceInner({
     session: collabSession,
     peers,
     connectingPeers,
+    serverPeers,
     warningPeers,
     docStatus,
     lastSavedAt,
@@ -686,6 +687,7 @@ function DocsCollabWorkspaceInner({
                       }}
                       peers={presencePeers}
                       connectingPeers={connectingPeers}
+                      serverPeers={serverPeers}
                       warningPeers={warningPeers}
                     />
                   ) : undefined

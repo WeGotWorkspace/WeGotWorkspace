@@ -17,9 +17,9 @@ Shared browser RTC stack for **meet**, **docs**, and future **chat / sheet / sli
 | `session/create-rtc-session.ts` | `createRtcSession()` — signaling + mesh factory     |
 
 Meet uses `meet-core/src/meet-rtc-session.ts` + `use-meet-rtc.ts` (media binding, meet SDP sanitization).
-Docs uses `text-editor-core/docs-collab/docs-rtc-session.ts` (data binding).
+Docs uses `text-editor-core/docs-collab/docs-rtc-session.ts` — live Yjs over **link channels** on the principal peer connection (`lib/rtc/link/`), with the collab signaling room for join, roster, ticket, and the HTTP mailbox.
 
-Both use `recoverOnUnknownPeer: true` via `createRtcSession()`. Meet selects `MEET_RTC_POLL_INTERVALS` (400 ms connecting, 1200 ms active steady) and backs off to **4 s** when all media peers are connected and no knockers are waiting; collab data channels idle at **15 s**.
+Meet uses `recoverOnUnknownPeer: true` via `createRtcSession()`. Meet selects `MEET_RTC_POLL_INTERVALS` (400 ms connecting, 1200 ms active steady) and backs off to **4 s** when all media peers are connected and no knockers are waiting. Docs does not dial its own ICE mesh; the principal link’s poll cadence covers peer discovery.
 
 Signaling uses `/api/v1/rooms/{roomId}/*` (`signalingApiSegment()` returns `rooms` in `types.ts`).
 
@@ -48,18 +48,22 @@ Manual network checks: [`docs/testing/rtc-network-matrix.md`](../../../../docs/t
 
 ## Initiator rules
 
-| Channel           | Rule                       |
-| ----------------- | -------------------------- |
-| `meet` (Meet A/V) | Higher peer id sends offer |
-| `collab` (docs)   | Lower peer id sends offer  |
+| Channel                | Rule                       |
+| ---------------------- | -------------------------- |
+| `meet` (Meet A/V)      | Higher peer id sends offer |
+| `principal` (presence) | Lower peer id sends offer  |
 
-Set via `initiatorRule: "higherId" | "lowerId"` on `RtcPeerMesh`.
+Set via `initiatorRule: "higherId" | "lowerId"` on `RtcPeerMesh`. Docs no longer opens a separate collab peer connection.
 
 ## Principal mesh (presence) — cross-window leadership
 
 Suite presence (`presence-core`) dials the workspace principal room from **one sticky leader window** (`BroadcastChannel` `wgw.principal.tab`, Phase 4 / #695). Followers proxy presence/chat/typing envelopes through the leader and do not join signaling.
 
-**Handoff blip:** when the leader window closes, a follower becomes leader and re-dials. `RTCPeerConnection` cannot transfer across windows, so expect a short **~0.5–2 s** gap on the shared presence/collab-reuse layer until the new leader’s mesh is up. Leadership does **not** bounce on `visibilitychange` hide (unlike docs-collab tab sync).
+**Handoff blip:** when the leader window closes, a follower becomes leader and re-dials. `RTCPeerConnection` cannot transfer across windows, so expect a short **~0.5–2 s** gap on the principal link (and any Docs link channels on it) until the new leader’s mesh is up. Leadership does **not** bounce on `visibilitychange` hide (unlike docs-collab tab sync).
+
+## Docs link channels
+
+Each open document is a separate `RTCDataChannel` on the principal link (one outbound channel per side per room). The receiving browser checks the collab hello ticket and roster. Windows that do not own the principal link reach channels through `BroadcastChannel` `wgw.link.channels`. When a channel is not up, Docs falls back to the collab HTTP mailbox.
 
 ## Relay fallback
 

@@ -9,7 +9,7 @@ import type { DocsRtcSession } from "./docs-rtc-session";
 export type DocsCollabMeshPeer = { id: string; name: string };
 
 export type DocsCollabPeerLinkState =
-  "connected" | "connecting" | "failed" | "disconnected" | "closed";
+  "connected" | "connecting" | "server" | "failed" | "disconnected" | "closed";
 
 export type DocsCollabMeshPeerStatus = DocsCollabMeshPeer & { link: DocsCollabPeerLinkState };
 

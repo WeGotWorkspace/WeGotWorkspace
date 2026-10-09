@@ -208,7 +208,7 @@ test("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
   }
 });
 
-test("two browsers of one user keep edits moving without reuse fallback", async ({ browser }) => {
+test("two browsers of one user keep edits moving on link channels", async ({ browser }) => {
   test.setTimeout(180_000);
   const seed = `Two browsers ${uniqueId()}`;
   const memberSentence = `Member says ${uniqueId()}`;
@@ -249,8 +249,7 @@ test("two browsers of one user keep edits moving without reuse fallback", async 
       expect(quietWindow.filter((line) => line.includes("dc-send")).length).toBeLessThan(20);
     }
     const memberQuiet = (logs.get(member) ?? []).slice(windowStart.get(member) ?? 0);
-    expect(memberQuiet.filter((line) => line.includes("reuse-fallback-connect"))).toEqual([]);
-    expect(memberQuiet.filter((line) => line.includes("reuse-fresh-ice-abort"))).toEqual([]);
+    expect(memberQuiet.filter((line) => line.includes("[chan-reject]"))).toEqual([]);
 
     const memberCaret = (page: ChaosSession["page"]) =>
       page.locator(".collaboration-carets__caret").filter({
@@ -295,10 +294,47 @@ test("two browsers of one user keep edits moving without reuse fallback", async 
       const lines = logs.get(session) ?? [];
       expect(collabPeerIds(lines).size, session.username).toBe(1);
       expect(lines.some((line) => line.includes("duplicate-session"))).toBe(false);
-      expect(lines.some((line) => line.includes("ticket-peer-not-rostered"))).toBe(false);
+      expect(lines.some((line) => line.includes("[chan-reject-sent]"))).toBe(false);
       expect(lines.some((line) => line.includes("update-dropped"))).toBe(false);
       expect(lines.some((line) => line.includes("update-not-sent"))).toBe(false);
     }
+  } finally {
+    await closeSessions(...sessions);
+  }
+});
+
+test("a dropped principal link recovers live docs without a reload", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const seed = `Link drop ${uniqueId()}`;
+  const after = `After drop ${uniqueId()}`;
+  const apiPath = `/users/admin/e2e-chaos-link-drop-${uniqueId()}.md`;
+  const sessions = await openUsers(browser, ["admin", "member"]);
+  const [admin, member] = sessions;
+  if (!admin || !member) throw new Error("expected two chaos sessions");
+  const memberLogs: string[] = [];
+  member.page.on("console", (message) => memberLogs.push(message.text()));
+  try {
+    await uploadMarkdown(apiPath, `# Notes\n\n${seed}\n`);
+    await admin.page.goto("/docs");
+    await shareWithViewer(admin.page, apiPath, member.username, "edit");
+    const url = `${docsUrlForFile(apiPath)}&rtcDebug=1`;
+    await Promise.all(sessions.map((session) => session.page.goto(url)));
+    for (const session of sessions) await waitForLiveDoc(session.page, seed);
+    const dropAt = memberLogs.length;
+    const closed = await member.page.evaluate(
+      () =>
+        (
+          window as Window & { __wgwDropPrincipalLinks?: () => number }
+        ).__wgwDropPrincipalLinks?.() ?? -1,
+    );
+    expect(closed).toBeGreaterThan(0);
+    await expect
+      .poll(() => memberLogs.slice(dropAt).some((line) => line.includes("[chan-ready]")), {
+        timeout: 60_000,
+      })
+      .toBe(true);
+    await typeIntoDoc(admin.page, after);
+    await expect(member.page.locator(".ProseMirror")).toContainText(after, { timeout: 10_000 });
   } finally {
     await closeSessions(...sessions);
   }

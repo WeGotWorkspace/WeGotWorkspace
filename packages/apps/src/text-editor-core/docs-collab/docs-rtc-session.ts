@@ -1,12 +1,15 @@
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
+import { getLinkChannelClient } from "@/lib/rtc/link/link-channel-client";
+import type {
+  LinkChannelClient,
+  LinkRoomListener,
+  LinkTrust,
+  PeerChannelState,
+} from "@/lib/rtc/link/link-channel-types";
 import { rtcLog } from "@/lib/rtc/log";
-import { peekNetClass } from "@/lib/rtc/net-probe";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
-import type { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
-import { needsRelayPrecheck } from "@/lib/rtc/session/relay-policy";
-import { requestRelay, type RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
   type RtcPeerDescriptor,
@@ -18,6 +21,7 @@ import {
   type DocsCollabAccess,
   DocsCollabRosterTrust,
   docsCollabAccessMayBroadcast,
+  normalizeDocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
 import {
   DocsCollabHttpSync,
@@ -28,14 +32,14 @@ import {
   isDocumentBearingSyncMessage,
 } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
 import { YJS_HTTP_POLL_MS } from "@/text-editor-core/docs-collab/docs-collab-http-wire";
-import { DocsCollabPrincipalReuse } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import type {
   DocsCollabMeshMessage,
   DocsCollabMeshPeer,
   DocsCollabMeshPeerStatus,
+  DocsCollabPeerLinkState,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
 import {
-  createCollabTicketKeyCache,
+  collabRoomKey,
   decodeCollabTicketPayload,
   type DocsCollabTicketJwk,
 } from "@/text-editor-core/docs-collab/docs-collab-ticket";
@@ -125,7 +129,7 @@ export type DocsRtcSessionOptions = {
   /** Public C2 key from room configuration. Absent on older servers. */
   collabTicket?: PublishedCollabTicket;
   /** Injected in tests; the live app uses the suite-level singleton. */
-  reuseRegistry?: PrincipalLinkRegistry;
+  linkClient?: LinkChannelClient;
   getYDoc?: () => import("yjs").Doc | null;
   /** When false, outbound Yjs HTTP/mesh document sync stays muted until bootstrap finishes. */
   meshHydrated?: () => boolean;
@@ -146,12 +150,11 @@ export class DocsRtcSession {
 
   private readonly mesh: RtcPeerMesh;
 
-  private readonly reuse: DocsCollabPrincipalReuse;
+  private readonly links: LinkChannelClient;
 
-  /** Collab peer ids that have appeared in a signaling roster while reused. */
-  private readonly seenReusedRosterIds = new Set<string>();
+  private readonly publishedJwk: DocsCollabTicketJwk | null;
 
-  /** Rights the server resolved, for direct data-channel peers and for us. */
+  /** Rights the server resolved, for link-channel peers and for us. */
   private readonly trust = new DocsCollabRosterTrust();
 
   private readonly pollIntervals: RtcPollIntervals = {
@@ -159,160 +162,74 @@ export class DocsRtcSession {
     steadyMs: DEFAULT_RTC_POLL_INTERVALS.steadyMs,
   };
 
-  private readonly relayReady = new Set<string>();
-
-  private readonly httpOnlyUntilRelay: boolean;
-
   private rosterPeers: RtcPeerDescriptor[] = [];
 
   private readonly http: DocsCollabHttpSync | null;
 
-  /** Latest ticket from join or poll, sent on reuse `open` and `ack`. */
+  /** Latest ticket from join or poll, published on the link room. */
   private ownTicket: string | undefined;
 
-  /** Outbound tickets stay off the wire until a published JWK can verify them. */
-  private readonly sendTicket: boolean;
+  private roomKey: string | null = null;
+
+  private unsubscribeLinks: (() => void) | null = null;
+
+  private states = new Map<string, PeerChannelState>();
+
+  private readonly linkListener: LinkRoomListener = {
+    onMessage: (from, msg, trust) => this.onLinkMessage(from, msg, trust),
+    onState: (states) => this.onLinkState(states),
+    onNeedRoster: () => this.mesh.kickPoll(),
+  };
 
   constructor(private readonly options: DocsRtcSessionOptions) {
     this.room = options.room;
-    const rtcSettings = applyRtcDebugOverrides(options.rtcSettings);
-    this.httpOnlyUntilRelay = rtcSettings.forceRelay && !rtcSettings.turnAvailable;
-    const binding = createDataBinding({
-      label: DC_LABEL,
-      onOpen: (remoteId) => {
-        rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-open", {
-          remoteId,
-          reused: false,
-        });
-        this.emit({ type: "dc-open", from: remoteId });
-        this.http?.evaluate();
-      },
-      onMessage: (remoteId, data) => {
-        try {
-          const msg = JSON.parse(data) as DocsCollabMeshMessage;
-          if (!msg || typeof msg !== "object") return;
-          rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
-            from: remoteId,
-            type: msg.type,
-            bytes: payloadBytes(msg),
-            tag: tagOf(msg),
-          });
-          if (msg.type === "peer-hint") {
-            this.mesh.applyPeerHint(parsePeerHintPeers(msg.peers));
-            return;
-          }
-          if (msg.type === "sync" && !this.loggedFirstSync) {
-            this.loggedFirstSync = true;
-            rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-sync", {
-              from: remoteId,
-              bytes: Array.isArray(msg.u) ? msg.u.length : 0,
-            });
-          }
-          if (msg.type === "awareness" && !this.loggedFirstAwareness) {
-            this.loggedFirstAwareness = true;
-            rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-awareness", {
-              from: remoteId,
-            });
-          }
-          // A direct collab data channel takes its rights from the server
-          // roster — the peer's own claim is not part of the message.
-          this.emit({
-            ...msg,
-            from: remoteId,
-            trust: {
-              user: this.trust.userForPeerId(remoteId),
-              access: this.trust.accessForPeerId(remoteId),
-            },
-          } as DocsCollabMeshMessage);
-        } catch {
-          // ignore malformed payloads
-        }
-      },
-      onClose: () => this.emit({ type: "link" }),
-    });
-
-    const publishedJwk = collabJwkFromPublication(options.collabTicket);
-    this.sendTicket = publishedJwk !== null;
-    const resolveTicketKey = publishedJwk
-      ? createCollabTicketKeyCache(async (kid) => (kid === publishedJwk.kid ? publishedJwk : null))
-      : async () => null;
-    if (publishedJwk) void resolveTicketKey(publishedJwk.kid);
-
-    this.reuse = new DocsCollabPrincipalReuse({
-      room: options.room,
-      registry: options.reuseRegistry,
-      getMyCollabPeerId: () => this.mesh.getMyId(),
-      getMyName: () => this.myName,
-      onDcOpen: (remoteId) => {
-        this.emit({ type: "dc-open", from: remoteId });
-        this.http?.evaluate();
-      },
-      onReuseFallback: (id) =>
-        id ? this.mesh.retryPeerConnection(id) : this.mesh.retryRoomPeerConnections(),
-      onReuseAttached: (remoteId) => {
-        if (this.forceRelayTransport()) return;
-        this.mesh.abortPeerConnection(remoteId);
-      },
-      onLinkChange: () => this.emit({ type: "link" }),
-      onMessage: (msg) => this.handleReuseMeshMessage(msg),
-      onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
-      resolveTicketKey,
-      getOwnTicket: () => (this.sendTicket ? this.ownTicket : undefined),
-      requestRosterRefresh: () => this.mesh.kickPoll(),
-    });
+    this.links = options.linkClient ?? getLinkChannelClient();
+    this.publishedJwk = collabJwkFromPublication(options.collabTicket);
 
     this.mesh = createRtcSession({
       channel: "collab",
       room: options.room,
       rtcSettings: applyRtcDebugOverrides(this.options.rtcSettings),
-      binding,
+      binding: createDataBinding({ label: DC_LABEL }),
       iceCandidatePoolSize: 2,
       pollIntervals: this.pollIntervals,
       signaling: {
         apiBase: options.apiBase,
         getAuth: () => ({ bearerToken: options.authToken }),
       },
-      shouldConnectToPeer: (peer) => {
-        if (this.forceRelayTransport()) return true;
-        if (this.httpOnlyUntilRelay && !this.relayReady.has(peer.id)) return false;
-        return !this.reuse.shouldSkipIce(peer);
-      },
-      shouldAcceptOffer: (from) => {
-        if (this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from)) return true;
-        this.reuse.reopenAfterIgnoredOffer(from);
-        return false;
-      },
-      // A stale collab offer must not rejoin: that drops the peer id the relay
-      // precheck just minted and the next offer is unknown_peer forever.
-      recoverOnUnknownPeer: !this.forceRelayTransport(),
+      shouldConnectToPeer: () => false,
+      shouldAcceptOffer: () => false,
+      recoverOnUnknownPeer: true,
       onLinkChange: () => this.emit({ type: "link" }),
-      // Contract C2 revocation: the poll re-reads the share grant, so a 403
-      // means read access is gone. Drop the reuse links so the other peers
-      // stop treating this client as a collaborator, and tell the session.
       onSendFailed: (remoteId) => this.emit({ type: "resync", from: remoteId }),
       onPollError: (error) => {
         if (collabErrorStatus(error) !== 403) return;
+        if (this.roomKey) this.links.removeRoom(this.roomKey);
         this.trust.forget();
-        this.reuse.considerRoster([], this.mesh.getMyId());
         this.emit({ type: "forbidden" });
       },
       onPollData: (data) => {
         this.rosterPeers = data.peers;
         this.trust.remember(data.peers, this.mesh.getMyId());
         this.noteOwnAccessFromPoll(data);
-        this.reuse.considerRoster(data.peers, this.mesh.getMyId());
-        this.dropStaleReusedPeers(data.peers);
         this.gossipNewRosterPeers(data.peers);
         const messages = mailboxMessages(data);
+        if (
+          this.roomKey &&
+          messages.some((message) => this.states.get(message.from)?.out !== true)
+        ) {
+          this.links.kick(this.roomKey);
+        }
         this.http?.ingest(messages);
         this.http?.evaluate();
+        this.publishRoom();
       },
     });
     this.http = options.getYDoc
       ? new DocsCollabHttpSync({
           now: () => Date.now(),
           peers: () => this.httpRoster(),
-          webrtcUnavailable: () => this.webrtcUnavailable(),
+          webrtcUnavailable: () => !this.links.available(),
           send: (to, type, payload) => {
             void this.mesh.sendMailbox(to, type, payload).catch(() => {
               // A refused post usually means a stale roster. Poll now instead of failing loudly.
@@ -320,13 +237,8 @@ export class DocsRtcSession {
             });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
-          requestRelay: (peerId, reason) => this.requestPeerRelay(peerId, reason),
-          onRelay: (peerId, _name, outcome) => {
-            if (outcome.outcome === "issued") {
-              this.relayReady.add(peerId);
-              this.mesh.retryPeerWithRelay(peerId, outcome.turn);
-            }
-          },
+          requestRelay: () => Promise.resolve({ outcome: "relay_unavailable" } as const),
+          onRelay: () => undefined,
           setFastPoll: (active) => {
             this.pollIntervals.steadyMs = active
               ? YJS_HTTP_POLL_MS
@@ -346,6 +258,7 @@ export class DocsRtcSession {
           }),
           myAccess: () => this.myAccess(),
           meshHydrated: options.meshHydrated,
+          onHttpPeersChanged: () => this.emit({ type: "link" }),
         })
       : null;
   }
@@ -353,33 +266,41 @@ export class DocsRtcSession {
   /**
    * Join and poll responses carry this client's ticket. The roster omits self,
    * so without this the broadcast mute stays at the default `read` and an
-   * editor never puts a document update on the wire. The same string rides
-   * on outbound reuse `open` and `ack` once a JWK was published.
+   * editor never puts a document update on the wire.
    */
   private noteOwnAccessFromPoll(data: { ticket?: string }): void {
     const ticket = data.ticket;
     if (!ticket) return;
+    const changed = ticket !== this.ownTicket;
     this.ownTicket = ticket;
     const payload = decodeCollabTicketPayload(ticket);
-    if (!payload) return;
+    if (payload) {
+      const myPeerId = this.mesh.getMyId();
+      if (!myPeerId || payload.peer === myPeerId) {
+        this.trust.noteOwnAccess(payload.access);
+      }
+    }
+    if (changed) this.publishRoom();
+  }
+
+  private publishRoom(): void {
+    if (!this.roomKey) return;
     const myPeerId = this.mesh.getMyId();
-    if (myPeerId && payload.peer !== myPeerId) return;
-    this.trust.noteOwnAccess(payload.access);
-  }
-
-  /**
-   * Debug force-relay: keep a collab peer connection even when principal reuse
-   * would otherwise carry the document. The mesh mints TURN before the offer
-   * when the server has a relay; without credentials the policy stays `all`.
-   */
-  private forceRelayTransport(): boolean {
-    const settings = applyRtcDebugOverrides(this.options.rtcSettings);
-    return settings.forceRelay;
-  }
-
-  private webrtcUnavailable(): boolean {
-    if (this.httpOnlyUntilRelay) return true;
-    return needsRelayPrecheck(this.mesh.localNetClass() ?? peekNetClass() ?? undefined);
+    if (!myPeerId) return;
+    this.links.setRoom({
+      kind: "collab",
+      roomKey: this.roomKey,
+      myPeerId,
+      ticket: this.ownTicket,
+      jwk: this.publishedJwk,
+      roster: this.rosterPeers
+        .filter((peer) => typeof peer.user === "string" && peer.user !== "")
+        .map((peer) => ({
+          id: peer.id,
+          user: peer.user!,
+          access: normalizeDocsCollabAccess(peer.access ?? "read"),
+        })),
+    });
   }
 
   private httpRoster(): Array<{
@@ -388,11 +309,6 @@ export class DocsRtcSession {
     caps?: RtcPeerDescriptor["caps"];
     connected: boolean;
   }> {
-    const connected = new Set(
-      this.getRoomPeerStatuses()
-        .filter((peer) => peer.link === "connected")
-        .map((peer) => peer.id),
-    );
     const mine = this.mesh.getMyId();
     return this.rosterPeers
       .filter((peer) => peer.id !== mine)
@@ -400,29 +316,8 @@ export class DocsRtcSession {
         id: peer.id,
         name: peer.name,
         caps: peer.caps,
-        connected: connected.has(peer.id),
+        connected: this.states.get(peer.id)?.out === true,
       }));
-  }
-
-  private requestPeerRelay(
-    peerId: string,
-    reason: "timeout" | "refresh" = "timeout",
-  ): Promise<RelayRequestOutcome> {
-    const peerIdLocal = this.mesh.getMyId();
-    if (!peerIdLocal) return Promise.resolve({ outcome: "error", error: "not_joined" });
-    const net = this.mesh.localNetClass() ?? peekNetClass() ?? undefined;
-    return requestRelay(
-      {
-        postRelay: (_roomId, body) => this.mesh.postRelay(body),
-      },
-      {
-        roomId: this.options.room,
-        peerId: peerIdLocal,
-        target: peerId,
-        reason,
-        ...(net ? { net } : {}),
-      },
-    );
   }
 
   private sendChannelStateVector(peerId: string): void {
@@ -435,45 +330,56 @@ export class DocsRtcSession {
     for (const listener of this.listeners) listener(msg);
   }
 
-  private handleReuseMeshMessage(msg: DocsCollabMeshMessage): void {
+  private onLinkMessage(from: string, msg: unknown, trust: LinkTrust): void {
+    if (!msg || typeof msg !== "object") return;
+    const typed = msg as DocsCollabMeshMessage;
+    if (!typed.type) return;
     rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
-      from: "from" in msg ? msg.from : undefined,
-      type: msg.type,
-      bytes: payloadBytes(msg),
-      tag: tagOf(msg),
+      from,
+      type: typed.type,
+      bytes: payloadBytes(typed),
+      tag: tagOf(typed),
     });
-    if (msg.type === "peer-hint") {
-      this.mesh.applyPeerHint(parsePeerHintPeers(msg.peers));
+    if (typed.type === "peer-hint") {
+      this.mesh.kickPoll();
       return;
     }
-    if (msg.type === "sync" && !this.loggedFirstSync) {
+    if (typed.type === "sync" && !this.loggedFirstSync) {
       this.loggedFirstSync = true;
       rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-sync", {
-        from: msg.from,
-        bytes: Array.isArray(msg.u) ? msg.u.length : 0,
-        reused: true,
+        from,
+        bytes: Array.isArray(typed.u) ? typed.u.length : 0,
       });
     }
-    if (msg.type === "awareness" && !this.loggedFirstAwareness) {
+    if (typed.type === "awareness" && !this.loggedFirstAwareness) {
       this.loggedFirstAwareness = true;
       rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-awareness", {
-        from: msg.from,
-        reused: true,
+        from,
       });
     }
-    this.emit(msg);
+    // Sync carries sender trust from the link channel; other variants omit it.
+    this.emit(
+      (typed.type === "sync"
+        ? { ...typed, from, trust }
+        : { ...typed, from }) as DocsCollabMeshMessage,
+    );
   }
 
-  private dropStaleReusedPeers(rosterPeers: RtcPeerDescriptor[]): void {
-    const roomIds = new Set(rosterPeers.map((peer) => peer.id));
-    for (const extra of this.reuse.extraPeers()) {
-      if (roomIds.has(extra.id)) this.seenReusedRosterIds.add(extra.id);
+  private onLinkState(states: ReadonlyMap<string, PeerChannelState>): void {
+    const previous = this.states;
+    this.states = new Map(states);
+    for (const [remoteId, state] of this.states) {
+      const live = state.out && state.in;
+      const wasLive = previous.get(remoteId)?.out === true && previous.get(remoteId)?.in === true;
+      if (!live || wasLive) continue;
+      rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-open", {
+        remoteId,
+        via: "link",
+      });
+      this.emit({ type: "dc-open", from: remoteId });
     }
-    for (const id of [...this.seenReusedRosterIds]) {
-      if (roomIds.has(id)) continue;
-      this.seenReusedRosterIds.delete(id);
-      this.reuse.dropPeer(id, true);
-    }
+    this.emit({ type: "link" });
+    this.http?.evaluate();
   }
 
   /**
@@ -495,6 +401,13 @@ export class DocsRtcSession {
     });
   }
 
+  private peerLinkState(peer: RtcPeerDescriptor): DocsCollabPeerLinkState {
+    const state = this.states.get(peer.id);
+    if (state?.out && state.in) return "connected";
+    if (this.http?.isOnHttp(peer.id)) return "server";
+    return "connecting";
+  }
+
   onMessage(listener: MeshListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
@@ -514,30 +427,25 @@ export class DocsRtcSession {
   }
 
   getPeerIds(): string[] {
-    const ids = new Set(this.mesh.getPeerIds());
-    for (const peer of this.reuse.extraPeers()) ids.add(peer.id);
-    return [...ids];
+    return this.getRoomPeers().map((peer) => peer.id);
   }
 
   getRoomPeers(): DocsCollabMeshPeer[] {
-    const byId = new Map<string, DocsCollabMeshPeer>();
-    for (const peer of this.mesh.getRoomPeers()) {
-      byId.set(peer.id, { id: peer.id, name: peer.name });
-    }
-    for (const peer of this.reuse.extraPeers()) {
-      if (!byId.has(peer.id)) byId.set(peer.id, peer);
-    }
-    return [...byId.values()];
+    const mine = this.mesh.getMyId();
+    return this.rosterPeers
+      .filter((peer) => peer.id !== mine)
+      .map((peer) => ({ id: peer.id, name: peer.name }));
   }
 
   getRoomPeerStatuses(): DocsCollabMeshPeerStatus[] {
-    return this.reuse.overlayStatuses(
-      this.mesh.getPeerLinkStates().map((peer) => ({
+    const mine = this.mesh.getMyId();
+    return this.rosterPeers
+      .filter((peer) => peer.id !== mine)
+      .map((peer) => ({
         id: peer.id,
         name: peer.name,
-        link: peer.link as DocsCollabMeshPeerStatus["link"],
-      })),
-    );
+        link: this.peerLinkState(peer),
+      }));
   }
 
   linkCount(): number {
@@ -556,8 +464,7 @@ export class DocsRtcSession {
       bytes: payloadBytes(msg),
       tag: tagOf(msg),
     });
-    this.reuse.broadcast(msg);
-    this.mesh.broadcastJson(msg);
+    if (this.roomKey) this.links.broadcast(this.roomKey, msg);
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
@@ -567,8 +474,7 @@ export class DocsRtcSession {
       bytes: payloadBytes(msg),
       tag: tagOf(msg),
     });
-    if (this.reuse.sendTo(remoteId, msg)) return;
-    this.mesh.sendJsonTo(remoteId, msg);
+    if (this.roomKey) this.links.send(this.roomKey, remoteId, msg);
   }
 
   /**
@@ -598,6 +504,10 @@ export class DocsRtcSession {
     this.myName = name.trim();
     const joined = await this.mesh.join({ name: this.myName });
     this.noteOwnAccessFromPoll(joined);
+    this.roomKey = await collabRoomKey(this.room);
+    this.unsubscribeLinks?.();
+    this.unsubscribeLinks = this.links.subscribe(this.roomKey, this.linkListener);
+    this.publishRoom();
     const live = liveCollabSessions.get(this.room) ?? new Set<DocsRtcSession>();
     live.add(this);
     liveCollabSessions.set(this.room, live);
@@ -614,8 +524,11 @@ export class DocsRtcSession {
   async leave(): Promise<void> {
     liveCollabSessions.get(this.room)?.delete(this);
     this.http?.stop();
-    this.reuse.dispose();
-    this.seenReusedRosterIds.clear();
+    this.unsubscribeLinks?.();
+    this.unsubscribeLinks = null;
+    if (this.roomKey) this.links.removeRoom(this.roomKey);
+    this.roomKey = null;
+    this.states = new Map();
     await this.mesh.leave();
     this.myName = "";
   }

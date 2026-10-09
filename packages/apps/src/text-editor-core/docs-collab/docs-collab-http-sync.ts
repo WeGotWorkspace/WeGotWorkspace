@@ -50,6 +50,8 @@ export type DocsCollabHttpSyncPorts = {
   myAccess: () => DocsCollabAccess;
   /** False while HTTP / sidecar bootstrap has not hydrated the Y.Doc yet. */
   meshHydrated?: () => boolean;
+  /** Fired once when `httpSince` gains or loses a peer id during `evaluate()`. */
+  onHttpPeersChanged?: () => void;
 };
 
 /**
@@ -85,6 +87,11 @@ export class DocsCollabHttpSync {
 
   constructor(private readonly ports: DocsCollabHttpSyncPorts) {}
 
+  /** True once the mailbox fallback has started for this peer id. */
+  isOnHttp(peerId: string): boolean {
+    return this.httpSince.has(peerId);
+  }
+
   start(): void {
     if (this.resyncTimer) return;
     this.resyncTimer = setInterval(() => this.resyncDue(), YJS_HTTP_RESYNC_MS);
@@ -99,6 +106,7 @@ export class DocsCollabHttpSync {
     this.evaluateTimer = null;
     this.resyncTimer = null;
     this.pending = [];
+    this.httpSince.clear();
     if (this.fastPoll) {
       this.fastPoll = false;
       this.ports.setFastPoll(false);
@@ -111,15 +119,20 @@ export class DocsCollabHttpSync {
     const immediate = this.ports.webrtcUnavailable();
     const httpPeers = httpFallbackPeers(peers, now, immediate);
     const httpIds = new Set(httpPeers.map((peer) => peer.id));
+    let httpPeersChanged = false;
     for (const peer of httpPeers) {
       if (this.httpSince.has(peer.id)) continue;
       this.httpSince.add(peer.id);
+      httpPeersChanged = true;
       this.sendStateVector(peer.id);
       this.lastResync.set(peer.id, now);
     }
     for (const id of [...this.httpSince]) {
-      if (!httpIds.has(id)) this.httpSince.delete(id);
+      if (httpIds.has(id)) continue;
+      this.httpSince.delete(id);
+      httpPeersChanged = true;
     }
+    if (httpPeersChanged) this.ports.onHttpPeersChanged?.();
     const wantFast = httpPeers.length > 0;
     if (wantFast !== this.fastPoll) {
       this.fastPoll = wantFast;

@@ -221,4 +221,65 @@ describe("DocsCollabHttpSync evaluate scheduling", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     expect(sent).toEqual([]);
   });
+
+  it("isOnHttp is true only after the fallback starts", async () => {
+    const onHttpPeersChanged = vi.fn();
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [{ id: "peer-b", name: "Bea", caps: ["yjs-http"], connected: false }],
+      webrtcUnavailable: () => false,
+      send: () => {},
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async () => ({ outcome: "relay_unavailable" }),
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => new Y.Doc(),
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+      onHttpPeersChanged,
+    });
+
+    sync.start();
+    expect(sync.isOnHttp("peer-b")).toBe(false);
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(sync.isOnHttp("peer-b")).toBe(false);
+    expect(onHttpPeersChanged).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sync.isOnHttp("peer-b")).toBe(true);
+    expect(onHttpPeersChanged).toHaveBeenCalledTimes(1);
+
+    sync.stop();
+  });
+
+  it("isOnHttp clears when the peer connects", async () => {
+    let connected = false;
+    const onHttpPeersChanged = vi.fn();
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [{ id: "peer-b", name: "Bea", caps: ["yjs-http"], connected }],
+      webrtcUnavailable: () => false,
+      send: () => {},
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async () => ({ outcome: "relay_unavailable" }),
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => new Y.Doc(),
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+      onHttpPeersChanged,
+    });
+
+    sync.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(sync.isOnHttp("peer-b")).toBe(true);
+    expect(onHttpPeersChanged).toHaveBeenCalledTimes(1);
+
+    connected = true;
+    sync.evaluate();
+    expect(sync.isOnHttp("peer-b")).toBe(false);
+    expect(onHttpPeersChanged).toHaveBeenCalledTimes(2);
+
+    sync.stop();
+  });
 });
