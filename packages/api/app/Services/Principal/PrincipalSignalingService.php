@@ -39,7 +39,7 @@ final class PrincipalSignalingService
     }
 
     /**
-     * @return array{stunUrls: string, turnAvailable: bool}
+     * @return array{stunUrls: string, turnAvailable: bool, forceRelay: bool, debug: bool}
      */
     public function rtcSettings(Request $request): array
     {

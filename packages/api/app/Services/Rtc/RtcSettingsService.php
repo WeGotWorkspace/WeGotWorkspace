@@ -34,14 +34,28 @@ final class RtcSettingsService
      * Everything a client may know about the relay. Credentials are minted per
      * request by {@see RtcTurnCredentialService} and never appear here.
      *
-     * @return array{stunUrls: string, turnAvailable: bool}
+     * @return array{stunUrls: string, turnAvailable: bool, forceRelay: bool, debug: bool}
      */
     public function publicSettings(): array
     {
         return [
             'stunUrls' => $this->normalizeRtcUrls(AppSetting::getValue(SettingKeys::RTC_STUN_URL, ''), 'stun'),
             'turnAvailable' => $this->turnAvailable(),
+            'forceRelay' => $this->forceRelay(),
+            'debug' => $this->storedFlag(SettingKeys::RTC_DEBUG_LOGGING),
         ];
+    }
+
+    /** Forced relay is only served while a relay is configured, so calls never break. */
+    public function forceRelay(): bool
+    {
+        return $this->storedFlag(SettingKeys::RTC_FORCE_RELAY) && $this->turnAvailable();
+    }
+
+    /** The stored admin value of a boolean RTC switch. */
+    public function storedFlag(string $key): bool
+    {
+        return AppSetting::getValue($key, false) === true;
     }
 
     /**

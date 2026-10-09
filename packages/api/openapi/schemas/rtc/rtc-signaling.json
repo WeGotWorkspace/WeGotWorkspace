@@ -102,7 +102,7 @@
     "properties": {
       "rtc": {
         "type": "object",
-        "required": ["stunUrls", "turnAvailable"],
+        "required": ["stunUrls", "turnAvailable", "forceRelay", "debug"],
         "properties": {
           "stunUrls": {
             "type": "string",
@@ -111,6 +111,14 @@
           "turnAvailable": {
             "type": "boolean",
             "description": "True when a relay secret is configured. Credentials are never part of this response."
+          },
+          "forceRelay": {
+            "type": "boolean",
+            "description": "Every peer connection uses the relay only. Never true without a configured relay."
+          },
+          "debug": {
+            "type": "boolean",
+            "description": "Write detailed RTC logs to the browser console."
           }
         }
       },

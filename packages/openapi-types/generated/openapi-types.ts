@@ -8463,6 +8463,10 @@ export interface components {
              * @enum {string}
              */
             maxVideoProfileRelay: "p720" | "p360" | "p270" | "p180" | "audio";
+            /** @description Browsers write detailed RTC logs to their console after a reload. */
+            debugLogging: boolean;
+            /** @description Stored switch. Served to clients only while a TURN relay is configured. */
+            forceRelay: boolean;
         };
         AdminAppsSettings: {
             calendars: boolean;
@@ -12160,6 +12164,10 @@ export interface components {
                 stunUrls: string;
                 /** @description True when a relay secret is configured. Credentials are never part of this response. */
                 turnAvailable: boolean;
+                /** @description Every peer connection uses the relay only. Never true without a configured relay. */
+                forceRelay: boolean;
+                /** @description Write detailed RTC logs to the browser console. */
+                debug: boolean;
             };
             /** @description Public half of the contract C2 ticket signing key. No private material is ever part of this response. */
             collabTicket?: {

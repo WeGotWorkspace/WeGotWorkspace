@@ -39,7 +39,7 @@ final class DocCollabSignalingService
     }
 
     /**
-     * @return array{stunUrls: string, turnAvailable: bool}
+     * @return array{stunUrls: string, turnAvailable: bool, forceRelay: bool, debug: bool}
      */
     public function rtcSettings(Request $request): array
     {
@@ -57,7 +57,7 @@ final class DocCollabSignalingService
      * the document — the room id alone is not a capability.
      *
      * @param  array<string, mixed>  $body
-     * @return array{rtc: array{stunUrls: string, turnAvailable: bool}, collabTicket: array{kid: string, jwk: array<string, string>}}
+     * @return array{rtc: array{stunUrls: string, turnAvailable: bool, forceRelay: bool, debug: bool}, collabTicket: array{kid: string, jwk: array<string, string>}}
      */
     public function configuration(Request $request, array $body): array
     {
