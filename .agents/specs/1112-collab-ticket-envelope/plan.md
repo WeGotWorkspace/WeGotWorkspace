@@ -16,7 +16,7 @@ Draws from the real-time hardening milestone on issue #1112. Displaces no other 
 
 ## What exists
 
-- Application-level `CollabReuseEnvelope` / `DocsCollabPrincipalReuse` were removed; ticket checks for Docs now run on link-channel hellos (`lib/rtc/link/collab-hello-verify.ts`) with the collab roster published via `LinkChannelClient.setRoom`.
+- Application-level `CollabReuseEnvelope` / `DocsCollabPrincipalReuse` were removed; ticket checks for Docs now run on link-channel hellos with the collab roster published via `LinkChannelClient.setRoom`. `path: packages/apps/src/lib/rtc/link/collab-hello-verify.ts:20`
 - `verifyCollabTicket` and `createCollabTicketKeyCache` already check the signature, `kid`, claims, and skew. `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-ticket.ts:124`
 - `configuration()` returns `collabTicket` from `publicJwk()`, and `RtcRoomConfiguration` documents only `rtc`. `path: packages/api/app/Services/Collab/DocCollabSignalingService.php:61` `path: packages/api/openapi/schemas/rtc/rtc-signaling.json:117` `path: packages/api/app/Services/Collab/CollabTicketKeyring.php:44`
 - `RtcPeerDescriptor` has no `access`, so the roster reader casts. `path: packages/apps/src/lib/rtc/types.ts:53` `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-access.ts:56`

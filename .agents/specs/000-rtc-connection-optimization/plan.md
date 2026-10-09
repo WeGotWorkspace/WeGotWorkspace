@@ -22,6 +22,15 @@ Phased RTC improvements: collab-join authorization (security, first), Meet call 
 3. Phase 2 depends on phase 1 poll changes only loosely (can parallel).
 4. Phase 3a after 0; 3b only after 3a go/no-go.
 
+## Open decisions
+
+None — every choice for this work is made. Principal reuse was removed in favor of link channels (D1–D10); no open design choice remains here.
+
+## Invariants
+
+- Docs collaboration registers each document as a link channel and does not load `DocsCollabPrincipalReuse` or collab-reuse envelopes. A wrong change reintroduces those modules or skips `setRoom` on join. Proof: `path: packages/apps/src/text-editor-core/docs-collab/docs-rtc-session.test.ts` assertion `join registers the room with the SHA-1 room key, my peer id, ticket and roster`.
+- Presence still registers open principal data channels for Meet join hints and does not parse collab-reuse envelopes on the principal channel. A wrong change drops `registerLink` or treats unknown JSON as a presence envelope. Proof: `path: packages/apps/src/presence-core/src/presence-rtc-session.test.ts` assertion `registers an open principal DC in the link registry`.
+
 ## Chunks
 
 ### Chunk 0: collab-join authorization
@@ -81,3 +90,9 @@ Historical live checks from 2026-09-04 for application-level collab reuse on the
 1. [x] **Reuse-hit confirmation.** (superseded by link-channel ready) Both users log in, wait until the principal mesh is up, one opens the doc, the other follows.
 2. [x] **Bidirectional sync over the reused channel.** (superseded) A→B and B→A Yjs updates on the link channel; sender must not apply their own echo.
 3. [x] **Silent fallback when the principal link drops mid-session.** (superseded) Drop principal PC/DC during active collab → channel retry + HTTP mailbox; no reload.
+
+## Removed since previous revision
+
+- Phase 3b verification (folded into `principal-reuse`) — **done** because the heading gained a supersession note after collab-reuse removal (Docs now uses link channels, D1–D10)
+
+
