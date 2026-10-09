@@ -45,8 +45,6 @@ const ACTION_NAMES = [
   "createGroup",
   "updateGroup",
   "deleteGroup",
-  "setPluginActive",
-  "installPluginZip",
 ] as const;
 
 describe("useAdminMutations", () => {

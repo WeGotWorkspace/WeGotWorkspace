@@ -31,7 +31,6 @@ export function useAdminShell({
   const [users, setUsers] = useState(data.users);
   const [currentUser, setCurrentUser] = useState(data.currentUser);
   const [groups, setGroups] = useState(data.groups);
-  const [plugins, setPlugins] = useState(data.plugins);
   const [settingsForm, setSettingsForm] = useState<AdminSettingsFormState>(() =>
     buildAdminSettingsFormState(data),
   );
@@ -46,7 +45,6 @@ export function useAdminShell({
     setUsers(data.users);
     setCurrentUser(data.currentUser);
     setGroups(data.groups);
-    setPlugins(data.plugins);
     setUpdates(data.updates);
     setSearchReindex(data.searchReindex);
     setUpdateLogLines(data.updateLogLines);
@@ -57,7 +55,6 @@ export function useAdminShell({
     setUsers(next.users);
     setCurrentUser(next.currentUser);
     setGroups(next.groups);
-    setPlugins(next.plugins);
     setSettingsForm(buildAdminSettingsFormState(next));
     setUpdates(next.updates);
     setSearchReindex(next.searchReindex);
@@ -189,8 +186,6 @@ export function useAdminShell({
     currentUser,
     groups,
     setGroups,
-    plugins,
-    setPlugins,
     settingsForm,
     setSettingsForm,
     mailDelivery,

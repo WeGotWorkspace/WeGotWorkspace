@@ -3,7 +3,6 @@ import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props
 import type { AdminShellState } from "@/admin-core/src/use-admin-shell";
 import { useAdminBackupMutations } from "@/admin-core/src/use-admin-backup-mutations";
 import { useAdminGroupMutations } from "@/admin-core/src/use-admin-group-mutations";
-import { useAdminPluginMutations } from "@/admin-core/src/use-admin-plugin-mutations";
 import { useAdminSearchMutations } from "@/admin-core/src/use-admin-search-mutations";
 import { useAdminSettingsMutations } from "@/admin-core/src/use-admin-settings-mutations";
 import { useAdminStateRefresh } from "@/admin-core/src/use-admin-state-refresh";
@@ -26,7 +25,6 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
   const search = useAdminSearchMutations({ operations, shell, ...toast });
   const users = useAdminUserMutations({ operations, shell, ...toast });
   const groups = useAdminGroupMutations({ operations, shell, ...toast });
-  const plugins = useAdminPluginMutations({ operations, shell, ...toast });
 
   return {
     checkingUpdates: updates.checkingUpdates,
@@ -58,8 +56,6 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       createGroup: groups.createGroup,
       updateGroup: groups.updateGroup,
       deleteGroup: groups.deleteGroup,
-      setPluginActive: plugins.setPluginActive,
-      installPluginZip: plugins.installPluginZip,
     },
   };
 }

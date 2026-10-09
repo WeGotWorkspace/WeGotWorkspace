@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const navigate = vi.fn(async (_opts?: unknown) => undefined);
 const flush = vi.fn();
-let mockPathname = "/admin/plugins";
+let mockPathname = "/admin/webdav";
 
 vi.mock("@tanstack/react-router", async () => {
   const actual =
@@ -25,12 +25,12 @@ describe("useAdminRouteSync", () => {
   beforeEach(() => {
     navigate.mockClear();
     flush.mockClear();
-    mockPathname = "/admin/plugins";
+    mockPathname = "/admin/webdav";
   });
 
   it("keeps a named admin section from the URL", () => {
     const { result } = renderHook(() => useAdminRouteSync());
-    expect(result.current.section).toBe("plugins");
+    expect(result.current.section).toBe("webdav");
     expect(navigate).not.toHaveBeenCalled();
   });
 
