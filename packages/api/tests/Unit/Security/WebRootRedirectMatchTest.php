@@ -34,15 +34,23 @@ final class WebRootRedirectMatchTest extends TestCase
     {
         $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
         $htaccess = (string) file_get_contents($path);
-        $caldav = strpos($htaccess, 'RewriteRule ^\\.well-known/caldav$  / [R=301,L]');
-        $carddav = strpos($htaccess, 'RewriteRule ^\\.well-known/carddav$ / [R=301,L]');
+        $base = strpos($htaccess, 'RewriteBase /');
         $front = strpos($htaccess, 'RewriteRule . index.php [L]');
+        preg_match_all(
+            '/RewriteRule\s+\^\\\\\.well-known\/(caldav|carddav)\$\s+""\s+\[R=301,L\]/',
+            $htaccess,
+            $rules,
+            PREG_OFFSET_CAPTURE,
+        );
 
-        $this->assertNotFalse($caldav, $filename.' is missing the caldav discovery redirect');
-        $this->assertNotFalse($carddav, $filename.' is missing the carddav discovery redirect');
+        $this->assertNotFalse($base, $filename.' is missing RewriteBase');
         $this->assertNotFalse($front, $filename.' is missing the index.php fallback');
-        $this->assertLessThan($front, $caldav);
-        $this->assertLessThan($front, $carddav);
+        $services = array_column($rules[1], 0);
+        $this->assertEqualsCanonicalizing(['caldav', 'carddav'], $services);
+        foreach ($rules[0] as [$rule, $offset]) {
+            $this->assertGreaterThan($base, $offset, $rule.' must follow RewriteBase');
+            $this->assertLessThan($front, $offset, $rule.' must run before the front controller');
+        }
     }
 
     /**
@@ -67,6 +75,8 @@ final class WebRootRedirectMatchTest extends TestCase
             '/files/users/alice/.Trash/x.txt',
             '/files/users/alice/._photo.jpg',
             '/.well-known/oauth-authorization-server/mcp',
+            '/.well-known/caldav',
+            '/.well-known/carddav',
         ];
     }
 

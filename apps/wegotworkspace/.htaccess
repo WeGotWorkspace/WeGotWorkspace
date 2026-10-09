@@ -32,12 +32,12 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-
-    # RFC 6764 — CalDAV/CardDAV service discovery
-    RewriteRule ^\.well-known/caldav$  / [R=301,L]
-    RewriteRule ^\.well-known/carddav$ / [R=301,L]
-
     RewriteBase /
+
+    # RFC 6764 — CalDAV/CardDAV service discovery.
+    # Empty substitution is relative, so RewriteBase (including a subfolder) is the target.
+    RewriteRule ^\.well-known/caldav$ "" [R=301,L]
+    RewriteRule ^\.well-known/carddav$ "" [R=301,L]
 
     # Origin-root MCP OAuth discovery (/.well-known/oauth-*) falls through to
     # index.php with other unknown paths. Do not require /api for those URLs.
