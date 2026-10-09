@@ -9,6 +9,7 @@ export type DocsCollabPresenceProps = {
   localUser: { displayName: string };
   peers: DocsCollabMeshPeer[];
   connectingPeers?: DocsCollabMeshPeer[];
+  serverPeers?: DocsCollabMeshPeer[];
   warningPeers?: DocsCollabMeshPeer[];
   className?: string;
 };
@@ -17,15 +18,21 @@ export function DocsCollabPresence({
   localUser,
   peers,
   connectingPeers = [],
+  serverPeers = [],
   warningPeers = [],
   className,
 }: DocsCollabPresenceProps) {
   const connectingNames = connectingPeers.map((peer) => peer.name).join(", ");
+  const serverNames = serverPeers.map((peer) => peer.name).join(", ");
   const warningNames = warningPeers.map((peer) => peer.name).join(", ");
   const connectingSummary =
     connectingPeers.length === 1
       ? docsLabels.presenceConnectingOne
       : docsLabels.presenceConnectingMany(connectingPeers.length);
+  const serverSummary =
+    serverPeers.length === 1
+      ? docsLabels.presenceViaServerOne
+      : docsLabels.presenceViaServerMany(serverPeers.length);
   const unreachableSummary =
     warningPeers.length === 1
       ? docsLabels.presenceUnreachableOne
@@ -81,6 +88,26 @@ export function DocsCollabPresence({
             {connectingNames
               ? docsLabels.presenceWithNames(connectingSummary, connectingNames)
               : connectingSummary}
+          </TooltipContent>
+        </Tooltip>
+      ) : null}
+      {serverPeers.length > 0 ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="docs-collab-presence__chip docs-collab-presence__chip--overlap">
+              <UserAvatar
+                displayName={docsLabels.presenceViaServerAvatar}
+                compact
+                size="xs"
+                fallback="..."
+                className="docs-collab-presence__avatar docs-collab-presence__avatar--connecting"
+                ariaLabel={serverSummary}
+                presence="away"
+              />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {serverNames ? docsLabels.presenceWithNames(serverSummary, serverNames) : serverSummary}
           </TooltipContent>
         </Tooltip>
       ) : null}

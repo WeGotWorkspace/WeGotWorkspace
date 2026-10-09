@@ -64,6 +64,7 @@ export type TeardownUiReset = {
   joined: false;
   peers: [];
   connectingPeers: [];
+  serverPeers: [];
   warningPeers: [];
   linkCount: 0;
   status: "Disconnected";
@@ -78,6 +79,7 @@ export function createTeardownUiReset(): TeardownUiReset {
     joined: false,
     peers: [],
     connectingPeers: [],
+    serverPeers: [],
     warningPeers: [],
     linkCount: 0,
     status: "Disconnected",

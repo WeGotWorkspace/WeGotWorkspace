@@ -159,6 +159,7 @@ export function useDocsCollab({
     lastSavedAt,
     peers: mesh.peers,
     connectingPeers: mesh.connectingPeers,
+    serverPeers: mesh.serverPeers,
     warningPeers: mesh.warningPeers,
     linkCount: mesh.linkCount,
     pendingSync,
