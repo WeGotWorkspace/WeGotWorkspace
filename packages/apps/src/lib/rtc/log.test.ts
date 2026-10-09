@@ -22,7 +22,7 @@ describe("rtcLog", () => {
     vi.restoreAllMocks();
   });
 
-  it("does not touch console when the query flag is off", () => {
+  it("does not touch console when debug logging is off", () => {
     vi.mocked(isRtcDebugEnabled).mockReturnValue(false);
     const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     rtcLog({ channel: "collab" }, "join-request", { room: "docs/x.md" });
