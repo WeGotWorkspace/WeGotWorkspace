@@ -241,24 +241,44 @@ describe("DocsRtcSession link channels", () => {
     await session.leave();
   });
 
-  it("a peer with yjs-http that is not live shows as server", async () => {
-    const session = createSession(links);
+  it("a peer shows as connecting until the http fallback starts, then as server", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const doc = new Y.Doc();
+    const session = createSession(links, { getYDoc: () => doc });
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
     await session.join("Self");
 
     captured.meshOptions?.onPollData?.({
       peers: [
         { id: "p1", name: "Ann", user: "ann", caps: ["yjs-http"] },
-        { id: "p2", name: "Bob", user: "bob" },
+        { id: "p2", name: "Bob", user: "bob", caps: ["yjs-http"] },
       ],
       messages: [],
     });
 
     expect(session.getRoomPeerStatuses()).toEqual([
-      { id: "p1", name: "Ann", link: "server" },
+      { id: "p1", name: "Ann", link: "connecting" },
       { id: "p2", name: "Bob", link: "connecting" },
     ]);
+
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(session.getRoomPeerStatuses()).toEqual([
+      { id: "p1", name: "Ann", link: "connecting" },
+      { id: "p2", name: "Bob", link: "connecting" },
+    ]);
+    expect(seen.filter((msg) => msg.type === "link")).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(session.getRoomPeerStatuses()).toEqual([
+      { id: "p1", name: "Ann", link: "server" },
+      { id: "p2", name: "Bob", link: "server" },
+    ]);
+    expect(seen.filter((msg) => msg.type === "link")).toEqual([{ type: "link" }]);
     expect(session.linkCount()).toBe(0);
     await session.leave();
+    vi.useRealTimers();
   });
 
   it("the HTTP sync treats only out-ready peers as connected", async () => {

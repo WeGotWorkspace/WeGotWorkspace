@@ -258,6 +258,7 @@ export class DocsRtcSession {
           }),
           myAccess: () => this.myAccess(),
           meshHydrated: options.meshHydrated,
+          onHttpPeersChanged: () => this.emit({ type: "link" }),
         })
       : null;
   }
@@ -403,7 +404,7 @@ export class DocsRtcSession {
   private peerLinkState(peer: RtcPeerDescriptor): DocsCollabPeerLinkState {
     const state = this.states.get(peer.id);
     if (state?.out && state.in) return "connected";
-    if (peer.caps?.includes("yjs-http")) return "server";
+    if (this.http?.isOnHttp(peer.id)) return "server";
     return "connecting";
   }
 
