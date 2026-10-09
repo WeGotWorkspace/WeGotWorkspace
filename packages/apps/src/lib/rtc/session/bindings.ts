@@ -39,6 +39,7 @@ export type DataBindingOptions = {
   onOpen?: (remoteId: string, channel: RTCDataChannel) => void;
   onMessage?: (remoteId: string, data: string) => void;
   onClose?: (remoteId: string) => void;
+  onExtraChannel?: (remoteId: string, channel: RTCDataChannel) => void;
 };
 
 export function createDataBinding(options: DataBindingOptions) {
@@ -57,10 +58,19 @@ export function createDataBinding(options: DataBindingOptions) {
     return channel;
   };
 
+  const watchExtraChannels = (pc: RTCPeerConnection, remoteId: string) => {
+    const onExtra = options.onExtraChannel;
+    if (!onExtra || typeof pc.addEventListener !== "function") return;
+    pc.addEventListener("datachannel", (event) => {
+      if (event.channel.label !== options.label) onExtra(remoteId, event.channel);
+    });
+  };
+
   return {
     kind: "data" as const,
     label: options.label,
     attachInitiator(pc: RTCPeerConnection, remoteId: string): RTCDataChannel {
+      watchExtraChannels(pc, remoteId);
       return attachChannel(remoteId, pc.createDataChannel(options.label));
     },
     attachReceiver(
@@ -68,6 +78,7 @@ export function createDataBinding(options: DataBindingOptions) {
       remoteId: string,
       onChannel?: (channel: RTCDataChannel) => void,
     ): void {
+      watchExtraChannels(pc, remoteId);
       pc.ondatachannel = (event) => {
         if (event.channel.label !== options.label) return;
         onChannel?.(event.channel);

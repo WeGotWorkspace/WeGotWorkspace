@@ -1,4 +1,6 @@
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
+import { attachLinkHost, detachLinkHost } from "@/lib/rtc/link/link-channel-client";
+import type { ChannelLike, LinkHost } from "@/lib/rtc/link/link-channel-types";
 import {
   isLinkDownHint,
   LINK_DOWN_TYPE,
@@ -9,6 +11,7 @@ import { rtcLog } from "@/lib/rtc/log";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import { parseCollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
+import { peerAdvertisesBin } from "@/lib/rtc/session/data-channel-frames";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import {
   getPrincipalLinkRegistry,
@@ -56,6 +59,12 @@ export type PresenceRtcSessionOptions = {
 export class PresenceRtcSession implements PresenceMeshSession {
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
+  private readonly incomingListeners = new Set<(linkPeer: string, channel: ChannelLike) => void>();
+
+  private readonly linksListeners = new Set<() => void>();
+
+  private readonly linkHost: LinkHost;
+
   private readonly mesh: RtcPeerMesh;
 
   private readonly registry: PrincipalLinkRegistry;
@@ -93,6 +102,9 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.syncPrincipalLinks();
         this.updatePollCadence();
         this.emit({ type: "roster" });
+      },
+      onExtraChannel: (remoteId, channel) => {
+        for (const listener of this.incomingListeners) listener(remoteId, channel);
       },
     });
 
@@ -133,6 +145,28 @@ export class PresenceRtcSession implements PresenceMeshSession {
       log: (event, details) =>
         rtcLog({ channel: "principal", peerId: this.mesh.getMyId() }, event, details),
     });
+    this.linkHost = {
+      livePeers: () => {
+        const myId = this.mesh.getMyId();
+        return this.mesh
+          .getRoomPeers()
+          .filter((peer) => peer.id !== myId && peer.user)
+          .filter((peer) => this.mesh.getDataChannel(peer.id)?.readyState === "open")
+          .map((peer) => ({ linkPeer: peer.id, user: peer.user ?? "" }));
+      },
+      createChannel: (linkPeer, label) =>
+        this.mesh.getPeerConnection(linkPeer)?.createDataChannel(label, { ordered: true }) ?? null,
+      peerAdvertisesBin: (linkPeer) =>
+        peerAdvertisesBin(this.mesh.getRoomPeers().find((peer) => peer.id === linkPeer)?.caps),
+      onIncomingChannel: (listener) => {
+        this.incomingListeners.add(listener);
+        return () => this.incomingListeners.delete(listener);
+      },
+      onLinksChanged: (listener) => {
+        this.linksListeners.add(listener);
+        return () => this.linksListeners.delete(listener);
+      },
+    };
     this.installDebugHook();
   }
 
@@ -198,6 +232,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
   async join(name: string): Promise<{ peerId: string }> {
     const joined = await this.mesh.join({ name });
     this.unsubscribeNetwork = subscribeNetworkChange(() => this.supervisor.networkChange());
+    attachLinkHost(this.linkHost);
     return { peerId: joined.peerId };
   }
 
@@ -205,6 +240,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
     this.unsubscribeNetwork();
     this.supervisor.dispose();
     this.registry.retain(new Set());
+    detachLinkHost(this.linkHost);
     await this.mesh.leave();
   }
 
@@ -253,6 +289,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
     this.registry.retain(live);
     this.registry.setConnectingUsernames(connectingUsernames);
     this.superviseLinks();
+    for (const listener of this.linksListeners) listener();
   }
 }
 

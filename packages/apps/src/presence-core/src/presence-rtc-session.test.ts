@@ -8,6 +8,7 @@ type CapturedBinding = {
   onOpen: (remoteId: string) => void;
   onMessage: (remoteId: string, data: string) => void;
   onClose: () => void;
+  onExtraChannel?: (remoteId: string, channel: RTCDataChannel) => void;
 };
 
 const captured = vi.hoisted(() => ({
@@ -21,9 +22,14 @@ const captured = vi.hoisted(() => ({
     | null,
   mesh: {
     getMyId: vi.fn((): string | null => "me"),
-    getRoomPeers: vi.fn(() => [] as Array<{ id: string; name: string; user?: string }>),
+    getRoomPeers: vi.fn(
+      () => [] as Array<{ id: string; name: string; user?: string; caps?: string[] }>,
+    ),
     getDataChannel: vi.fn((_id: string) => null as { readyState: string } | null),
-    getPeerConnection: vi.fn(() => null as { connectionState: string } | null),
+    getPeerConnection: vi.fn(
+      () =>
+        null as { connectionState: string; createDataChannel?: ReturnType<typeof vi.fn> } | null,
+    ),
     isInitiatorFor: vi.fn((peerId: string) => "me" < peerId),
     abortPeerConnection: vi.fn(),
     retryPeerConnection: vi.fn(),
@@ -34,10 +40,17 @@ const captured = vi.hoisted(() => ({
     leave: vi.fn(async () => undefined),
   },
   rtcLog: vi.fn(),
+  attachLinkHost: vi.fn(),
+  detachLinkHost: vi.fn(),
 }));
 
 vi.mock("@/lib/rtc/log", () => ({
   rtcLog: (...args: unknown[]) => captured.rtcLog(...args),
+}));
+
+vi.mock("@/lib/rtc/link/link-channel-client", () => ({
+  attachLinkHost: (...args: unknown[]) => captured.attachLinkHost(...args),
+  detachLinkHost: (...args: unknown[]) => captured.detachLinkHost(...args),
 }));
 
 vi.mock("@/lib/rtc/session/bindings", () => ({
@@ -235,5 +248,36 @@ describe("PresenceRtcSession principal link publishing", () => {
       { remoteId: "zzzzzzzz" },
     );
     expect(captured.mesh.retryPeerConnection).toHaveBeenCalledWith("zzzzzzzz");
+  });
+
+  it("attaches the link host after join and detaches on leave", async () => {
+    const session = new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    expect(captured.attachLinkHost).not.toHaveBeenCalled();
+    await session.join("Alice");
+    expect(captured.attachLinkHost).toHaveBeenCalledTimes(1);
+    const host = captured.attachLinkHost.mock.calls[0]?.[0];
+    expect(host).toBeTruthy();
+    await session.leave();
+    expect(captured.detachLinkHost).toHaveBeenCalledWith(host);
+  });
+
+  it("forwards extra data channels to incoming listeners", () => {
+    const session = new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+    });
+    const host = (
+      session as unknown as {
+        linkHost: { onIncomingChannel: (l: (p: string, c: unknown) => void) => () => void };
+      }
+    ).linkHost;
+    const incoming = vi.fn();
+    host.onIncomingChannel(incoming);
+    const channel = { label: "wgw1/collab/abc" } as RTCDataChannel;
+    captured.bindingOptions?.onExtraChannel?.("peer-z", channel);
+    expect(incoming).toHaveBeenCalledWith("peer-z", channel);
   });
 });
