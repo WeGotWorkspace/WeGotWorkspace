@@ -61,17 +61,28 @@ describe("AdminRealtimeCollaborationPane", () => {
     expect(screen.getByText(/static TURN username and password/)).toBeTruthy();
   });
 
-  it("shows detailed connection logs and hides forced relay without TURN", () => {
+  it("shows forced relay off and disabled without TURN", () => {
     render(
-      <RealtimePaneHarness form={{ turnSecretSet: false, turnUrls: "", rtcDebugLogging: false }} />,
+      <RealtimePaneHarness
+        form={{
+          turnSecretSet: false,
+          turnUrls: "",
+          rtcDebugLogging: false,
+          rtcForceRelay: true,
+        }}
+      />,
     );
     expect(screen.getByText("Diagnostics")).toBeTruthy();
     expect(screen.getByLabelText("Detailed connection logs enabled")).toBeTruthy();
-    expect(screen.queryByLabelText("Always use the TURN relay enabled")).toBeNull();
-    expect(screen.getByText(/needs a saved TURN URL and shared secret/)).toBeTruthy();
+    const relay = screen.getByLabelText("Always use the TURN relay enabled");
+    expect((relay as HTMLButtonElement).disabled).toBe(true);
+    expect((relay as HTMLButtonElement).getAttribute("aria-checked")).toBe("false");
+    expect(
+      screen.getByText("Enabling Force Relay needs a saved TURN URL and shared secret."),
+    ).toBeTruthy();
   });
 
-  it("shows the forced relay switch when TURN URL and secret are saved", () => {
+  it("enables the forced relay switch when TURN URL and secret are saved", () => {
     render(
       <RealtimePaneHarness
         form={{
@@ -81,6 +92,10 @@ describe("AdminRealtimeCollaborationPane", () => {
         }}
       />,
     );
-    expect(screen.getByLabelText("Always use the TURN relay enabled")).toBeTruthy();
+    const relay = screen.getByLabelText("Always use the TURN relay enabled");
+    expect((relay as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      screen.queryByText("Enabling Force Relay needs a saved TURN URL and shared secret."),
+    ).toBeNull();
   });
 });

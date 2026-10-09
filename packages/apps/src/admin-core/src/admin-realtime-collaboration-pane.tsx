@@ -165,18 +165,18 @@ export function AdminRealtimeCollaborationPane({
             controller.setSettingsForm((prev) => ({ ...prev, rtcDebugLogging: next }))
           }
         />
-        {relayReady ? (
-          <FeatureRow
-            label="Always use the TURN relay"
-            desc="Sends all real-time traffic through your TURN server, even when a direct connection would work. This uses more server bandwidth."
-            value={controller.settingsForm.rtcForceRelay}
-            onChange={(next) =>
-              controller.setSettingsForm((prev) => ({ ...prev, rtcForceRelay: next }))
-            }
-          />
-        ) : (
+        <FeatureRow
+          label="Always use the TURN relay"
+          desc="Sends all real-time traffic through your TURN server, even when a direct connection would work. This uses more server bandwidth."
+          value={relayReady ? controller.settingsForm.rtcForceRelay : false}
+          disabled={!relayReady}
+          onChange={(next) =>
+            controller.setSettingsForm((prev) => ({ ...prev, rtcForceRelay: next }))
+          }
+        />
+        {relayReady ? null : (
           <p className="mb-3 text-sm text-muted-foreground">
-            Always using the relay needs a saved TURN URL and shared secret.
+            Enabling Force Relay needs a saved TURN URL and shared secret.
           </p>
         )}
       </Card>

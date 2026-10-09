@@ -31,11 +31,13 @@ export function FeatureRow({
   desc,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   desc?: string;
   value: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="admin-feature-row">
@@ -43,7 +45,12 @@ export function FeatureRow({
         <div className="admin-feature-row__title">{label}</div>
         {desc ? <div className="admin-feature-row__desc">{desc}</div> : null}
       </div>
-      <BooleanSegmentedControl value={value} onChange={onChange} aria-label={`${label} enabled`} />
+      <BooleanSegmentedControl
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        aria-label={`${label} enabled`}
+      />
     </div>
   );
 }
