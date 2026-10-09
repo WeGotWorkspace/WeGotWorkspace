@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Services\VObject\ICalendarDateTime;
+use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 /**
  * Builds the CalendarEvent patch for an invitee RSVP, including per-occurrence
@@ -259,7 +260,11 @@ final class CalendarSchedulingRsvpScope
             return [];
         }
 
-        $instances = $this->expansion->expandInWindow($event, $ics, 'default', $start, $splitId);
+        try {
+            $instances = $this->expansion->expandInWindow($event, $ics, 'default', $start, $splitId);
+        } catch (MaxInstancesExceededException) {
+            return [];
+        }
         $ids = [];
         foreach ($instances as $instance) {
             $rid = $instance['recurrenceId'] ?? null;
