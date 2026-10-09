@@ -4,6 +4,7 @@ import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { VIDEO_PROFILE_LABELS, VIDEO_PROFILES_RANKED } from "@/lib/rtc/video-profile";
+import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 export type AdminRealtimeCollaborationPaneProps = {
@@ -13,6 +14,8 @@ export type AdminRealtimeCollaborationPaneProps = {
 export function AdminRealtimeCollaborationPane({
   controller,
 }: AdminRealtimeCollaborationPaneProps) {
+  const relayReady =
+    controller.settingsForm.turnSecretSet && controller.settingsForm.turnUrls.trim() !== "";
   return (
     <>
       <Card title="WebRTC ICE servers">
@@ -149,6 +152,33 @@ export function AdminRealtimeCollaborationPane({
           Used when someone&apos;s connection has to go through the TURN relay, which costs your
           server bandwidth. It can never exceed the maximum above.
         </p>
+      </Card>
+      <Card title="Diagnostics">
+        <p className="mb-3 text-sm text-muted-foreground">
+          For troubleshooting connection problems. Changes apply when people reload the page.
+        </p>
+        <FeatureRow
+          label="Detailed connection logs"
+          desc="Writes real-time connection details to each browser's developer console. Turn this off when you are done."
+          value={controller.settingsForm.rtcDebugLogging}
+          onChange={(next) =>
+            controller.setSettingsForm((prev) => ({ ...prev, rtcDebugLogging: next }))
+          }
+        />
+        {relayReady ? (
+          <FeatureRow
+            label="Always use the TURN relay"
+            desc="Sends all real-time traffic through your TURN server, even when a direct connection would work. This uses more server bandwidth."
+            value={controller.settingsForm.rtcForceRelay}
+            onChange={(next) =>
+              controller.setSettingsForm((prev) => ({ ...prev, rtcForceRelay: next }))
+            }
+          />
+        ) : (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Always using the relay needs a saved TURN URL and shared secret.
+          </p>
+        )}
       </Card>
       <div className="flex justify-end">
         <Button

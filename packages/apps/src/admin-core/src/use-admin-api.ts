@@ -30,6 +30,8 @@ export function useAdminAPI(source?: AdminApiSource) {
         turnStaticCredentialsPresent: false,
         maxVideoProfile: "p720",
         maxVideoProfileRelay: "p360",
+        debugLogging: false,
+        forceRelay: false,
       },
       apps: {
         calendars: true,
