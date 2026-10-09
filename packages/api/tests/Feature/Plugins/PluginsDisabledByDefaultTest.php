@@ -103,8 +103,11 @@ final class PluginsDisabledByDefaultTest extends WgwDatabaseTestCase
             ->withUnencryptedCookie('sabre_ui_auth', $cookie)
             ->get('/apps/demo-editor');
 
+        $response->assertStatus(302);
+        $response->assertHeader('Location', url('/'));
         $response->assertDontSee('PLUGIN_HTML_PROBE_9f3a', false);
         $response->assertDontSee('__WGW_PLUGIN_CONFIG__', false);
+        $this->assertStringNotContainsString('Sabre\\DAV', (string) $response->getContent());
         $response->assertCookieMissing('sabre_ui_auth');
     }
 }

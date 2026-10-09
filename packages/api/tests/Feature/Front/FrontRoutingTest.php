@@ -148,6 +148,25 @@ final class FrontRoutingTest extends TestCase
         }
     }
 
+    /**
+     * 302, not 301. Plugins return after the beta; a permanent redirect would stick in browsers.
+     */
+    public function test_installed_plugin_app_paths_redirect_home_temporarily(): void
+    {
+        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
+        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
+        $data = $installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($installRoot, $data);
+        WgwInstallFixture::syncDatabaseConnection();
+
+        foreach (['/apps', '/apps/', '/apps/office'] as $path) {
+            $response = $this->get($path);
+            $response->assertStatus(302);
+            $response->assertHeader('Location', url('/'));
+            $this->assertStringNotContainsString('Sabre\\DAV', (string) $response->getContent());
+        }
+    }
+
     public function test_api_docs_not_handled_by_webdav_catch_all(): void
     {
         $this->get('/api/docs')

@@ -66,15 +66,12 @@ function tileFromMenuApp(
 export function orderedWorkspaceHomeApps(
   onSelect: (app: AppSwitchMenuApp) => void,
   visibility: WorkspaceHomeAppVisibility = {},
-  extraProductTiles: AppsHomeScreenItem[] = [],
 ): AppsHomeScreenItem[] {
   const showAdmin = visibility.showAdmin !== false;
   const products = APP_SWITCH_PRODUCT_APPS.filter((app) => productVisible(app.id, visibility)).map(
     (app) => tileFromMenuApp(app, onSelect),
   );
-
-  const extras = [...extraProductTiles].sort((a, b) => a.label.localeCompare(b.label));
   const utilities = appSwitchUtilityApps(showAdmin).map((app) => tileFromMenuApp(app, onSelect));
 
-  return [...products, ...extras, ...utilities];
+  return [...products, ...utilities];
 }

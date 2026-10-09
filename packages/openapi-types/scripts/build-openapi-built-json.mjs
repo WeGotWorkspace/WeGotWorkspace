@@ -75,6 +75,11 @@ function mergePathsFromSource(baseDoc, sourceDoc) {
     // Contract source wins for every path it defines (requestBody, responses, etc.).
     baseDoc.paths[pathKey] = pathItem;
   }
+
+  // Paths that exist only in the built file are kept. openapi.json omits unshipped
+  // and retired operations (mail, legacy drive/meet) that typegen still emits.
+  // Deleting every built path absent from the source would drop those on the next run.
+  // When an operation leaves both contracts, delete its built path by hand, then typegen.
 }
 
 function mergeComponentsFromSource(baseDoc, sourceDoc) {

@@ -2,8 +2,8 @@
 
 > **Not available in the beta.** The plugin subsystem is disabled by default
 > (`WGW_PLUGINS_ENABLED`, default `false`). The REST endpoints are not registered, no plugin
-> routes are served, and there is no Admin → Plugins pane. This document describes the contract
-> as it will return after the beta.
+> HTML is served, and there is no Admin → Plugins pane. `GET /apps` and `GET /apps/*` answer
+> **302** to `/` (never 301). This document describes the contract as it will return after the beta.
 
 Optional product features ship as **plugins**. They are always installed separately from the core WeGotWorkspace release — never bundled in the deploy ZIP.
 
