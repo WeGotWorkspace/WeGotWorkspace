@@ -38,7 +38,6 @@ function driveData(fileNames: string[]): DriveUIData {
       location: MY_DRIVE_CWD,
       files: fileNames.map(directoryEntry),
     },
-    plugins: [],
   };
 }
 

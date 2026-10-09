@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Support\AppPaths;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WithPluginsEnabled;
 
 final class AdminPluginsTest extends WgwDatabaseTestCase
 {
     use AdminTestFixtures;
+    use WithPluginsEnabled;
 
     protected function setUp(): void
     {
@@ -60,6 +64,43 @@ final class AdminPluginsTest extends WgwDatabaseTestCase
         $this->withBearer($this->userBearerToken())
             ->post('/api/v1/admin/plugins', [])
             ->assertForbidden();
+    }
+
+    public function test_admin_can_install_plugin_zip(): void
+    {
+        $zipPath = $this->adminDataDirectory().'/demo-plugin-2.zip';
+        $sourceRoot = $this->adminDataDirectory().'/plugin-source/demo-plugin-2';
+        File::ensureDirectoryExists($sourceRoot.'/assets');
+        File::put($sourceRoot.'/assets/index.html', '<!doctype html><title>Plugin</title>');
+        File::put($sourceRoot.'/plugin.json', json_encode([
+            'id' => 'demo-plugin-2',
+            'name' => 'Demo plugin 2',
+            'active' => true,
+            'drive' => [
+                'openFileExtensions' => ['docx'],
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        $zip = new \ZipArchive;
+        $opened = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $this->assertSame(true, $opened);
+        $zip->addFile($sourceRoot.'/plugin.json', 'demo-plugin-2/plugin.json');
+        $zip->addFile($sourceRoot.'/assets/index.html', 'demo-plugin-2/assets/index.html');
+        $zip->close();
+
+        $upload = new UploadedFile($zipPath, 'demo-plugin-2.zip', 'application/zip', null, true);
+        $pluginsRoot = app(AppPaths::class)->pluginsRoot();
+        $this->assertFileDoesNotExist($pluginsRoot.'/demo-plugin-2/plugin.json');
+
+        $this->withBearer($this->adminBearerToken())
+            ->post('/api/v1/admin/plugins', ['plugin' => $upload])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('plugin.id', 'demo-plugin-2')
+            ->assertJsonPath('plugin.active', true);
+
+        $this->assertFileExists($pluginsRoot.'/demo-plugin-2/plugin.json');
+        $this->assertFileExists($pluginsRoot.'/demo-plugin-2/assets/index.html');
     }
 
     private function seedDemoPlugin(): void

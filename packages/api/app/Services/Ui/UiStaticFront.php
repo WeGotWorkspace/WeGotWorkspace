@@ -63,9 +63,14 @@ final class UiStaticFront
             return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
         }
 
-        $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
-        if ($pluginMatch !== null) {
-            return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
+        if (config('wgw.plugins.enabled')) {
+            $pluginMatch = $this->plugins->findActiveByRequestPath($webBase, $path);
+            if ($pluginMatch !== null) {
+                return $this->handlePluginRoutes($webBase, $path, $method, $pluginMatch);
+            }
+        } elseif ($this->isUnshippedPluginAppPath($webBase, $path)) {
+            // Temporary. A 301 would stick in browsers after plugins return.
+            return redirect(InstallerWebBase::url($webBase, '/'), 302)->setContent('');
         }
 
         if ($this->static->matchesShellPath($webBase, $path)) {
@@ -149,6 +154,18 @@ final class UiStaticFront
         $served = $this->static->tryServe($dist, $webBase, $path, true);
 
         return $served ?? $this->notFound();
+    }
+
+    /**
+     * Bookmarks and an installed plugin PWA still request `/apps`. That prefix is
+     * not a shell route, and the shell service worker does not claim it, so without
+     * this redirect the request falls through to SabreDAV.
+     */
+    private function isUnshippedPluginAppPath(string $webBase, string $path): bool
+    {
+        $prefix = InstallerWebBase::url($webBase, '/apps');
+
+        return $path === $prefix || $path === $prefix.'/' || str_starts_with($path, $prefix.'/');
     }
 
     /**

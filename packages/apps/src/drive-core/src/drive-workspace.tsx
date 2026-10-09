@@ -55,7 +55,6 @@ export function DriveWorkspace({
   view,
   onViewChange,
   onOpenDocsFile,
-  onNavigate,
   onOpenShare,
   onLogout,
   className,
@@ -74,7 +73,6 @@ export function DriveWorkspace({
     view,
     onViewChange,
     onOpenDocsFile,
-    onNavigate,
   });
 
   const shareDialog = useDriveShareDialog({
@@ -369,16 +367,8 @@ function DriveSidebar({
   primarySidebarItems: ReturnType<typeof useDriveSidebarModel>["primarySidebarItems"];
   groupSidebarItems: ReturnType<typeof useDriveSidebarModel>["groupSidebarItems"];
 }) {
-  const {
-    labels,
-    sidebarOpen,
-    setSidebarOpen,
-    createFolder,
-    createMarkdown,
-    createFromTemplate,
-    newFileTemplates,
-    fileInputRef,
-  } = controller;
+  const { labels, sidebarOpen, setSidebarOpen, createFolder, createMarkdown, fileInputRef } =
+    controller;
 
   return (
     <AppSidebar
@@ -402,8 +392,6 @@ function DriveSidebar({
           onCreateFolder={createFolder}
           onUploadFiles={() => fileInputRef.current?.click()}
           onCreateMarkdown={onOpenDocsFile ? createMarkdown : undefined}
-          newFileTemplates={newFileTemplates}
-          onCreateTemplate={createFromTemplate}
         />
       }
     >

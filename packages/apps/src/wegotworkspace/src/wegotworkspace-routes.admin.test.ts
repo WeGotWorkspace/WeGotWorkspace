@@ -24,15 +24,11 @@ describe("wegotworkspace admin routes", () => {
 
     await router.navigate({ to: "/admin/$section", params: { section: "mail" } });
     expect(router.state.location.pathname).toBe("/admin/mail");
-
-    await router.navigate({ to: "/admin/plugins" });
-    expect(router.state.location.pathname).toBe("/admin/plugins");
   });
 
   it("matches sidebar section slugs on /admin/:section deep links", async () => {
     for (const section of [
       "mail",
-      "plugins",
       "updates",
       "mcp",
       "email-delivery",

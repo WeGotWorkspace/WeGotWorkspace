@@ -46,6 +46,10 @@ final class PluginRegistryService
      */
     public function list(): array
     {
+        if (! config('wgw.plugins.enabled')) {
+            return [];
+        }
+
         $pluginsById = [];
         foreach ($this->loadInstalledPlugins() as $plugin) {
             $pluginsById[$plugin['id']] = $plugin;

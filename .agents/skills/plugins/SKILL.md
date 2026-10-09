@@ -8,6 +8,13 @@ paths:
   - "packages/api/tests/Feature/Plugins/**"
 ---
 
+> **Not available in the beta.** The plugin subsystem is disabled by default
+> (`WGW_PLUGINS_ENABLED`, default `false`). The REST endpoints are not registered, no plugin
+> HTML is served, and there is no Admin → Plugins pane. `GET /apps` and `GET /apps/*` answer
+> **302** to `/` (never 301). This document describes the contract as it will return after the beta.
+
+The subsystem tests opt in with `WithPluginsEnabled`. Set `WGW_PLUGINS_ENABLED=true` before running them; with the flag off the routes are not registered.
+
 # Plugins
 
 Plugins are **installed ZIP packages** under `wgw-plugins/{id}/` with a `plugin.json` manifest and built static assets. Laravel discovers them via `PluginRegistryService`; the UI loads active plugin routes through `PluginHtmlResponder`.

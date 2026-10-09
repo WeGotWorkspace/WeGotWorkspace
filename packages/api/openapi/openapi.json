@@ -2627,60 +2627,6 @@
         "x-wgw-access": "admin"
       }
     },
-    "/admin/plugins": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Install plugin",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Installed"
-          }
-        },
-        "x-wgw-access": "admin"
-      }
-    },
-    "/admin/plugins/{id}/activation": {
-      "put": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "Set plugin activation",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated"
-          },
-          "403": {
-            "description": "Admin role required"
-          },
-          "404": {
-            "description": "Plugin not found"
-          }
-        },
-        "x-wgw-access": "admin"
-      }
-    },
     "/admin/search/jobs": {
       "post": {
         "tags": [
@@ -4886,57 +4832,6 @@
           },
           "404": {
             "description": "Not reserved"
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
-    "/plugins": {
-      "get": {
-        "tags": [
-          "Plugins"
-        ],
-        "summary": "List discovered plugins and capabilities",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Plugin registry snapshot"
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
-    "/plugins/{id}/session": {
-      "post": {
-        "tags": [
-          "Plugins"
-        ],
-        "summary": "Establish browser UI session cookie for a plugin surface",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Session established"
-          },
-          "404": {
-            "description": "Plugin not found"
           }
         },
         "x-wgw-access": "user"

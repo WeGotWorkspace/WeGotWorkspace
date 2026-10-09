@@ -8,10 +8,12 @@ use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
 use Tests\Support\WgwRoleFixtures;
+use Tests\Support\WithPluginsEnabled;
 
 final class PluginsEndpointsTest extends WgwDatabaseTestCase
 {
     use WgwRoleFixtures;
+    use WithPluginsEnabled;
 
     private string $dataDir = '';
 
