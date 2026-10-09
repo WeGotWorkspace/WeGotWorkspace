@@ -31,18 +31,15 @@ Signaling uses `/api/v1/rooms/{roomId}/*` (`signalingApiSegment()` returns `room
 
 ## Debug
 
-Add `?rtcDebug=1` to the page URL (declared on `/docs` and `/meet` search schemas so TanStack does not strip it). Refresh with the param on to log; without it the logger is silent.
-
-Docs example:
-
-`/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1`
+Turn on detailed connection logs in **Admin → Real-time collaboration → Diagnostics**. After a reload, browsers write `[rtc]` lines. Without the switch (or a test override) the logger is silent.
 
 Logs use prefix `[rtc][channel][peerId][event]` plus `tMs` (`performance.now()`) and ISO `at` on every line. Events cover join, roster, linger park/resume/drop, poll 200/204 and interval, offer/answer sent/received (SDP type + byte length only), ICE gathering/connection state, data-channel open, first remote sync/awareness, and why a peer was skipped. No tokens, no full SDP.
 
-Force TURN relay-only mode (dev/debug, not admin):
+Force TURN relay-only mode:
 
-- URL: `?rtcForceRelay=1`
-- Vite/Storybook: `VITE_WGW_RTC_FORCE_RELAY=1` in `.env.local`
+- Admin → Real-time collaboration → Diagnostics → Always use the TURN relay (only while TURN is configured)
+- Vite/Storybook local: `VITE_WGW_RTC_FORCE_RELAY=1` in `.env.local`
+- Playwright: `setRtcTestOverrides(context, { debug: true, forceRelay: true })`
 
 Manual network checks: [`docs/testing/rtc-network-matrix.md`](../../../../docs/testing/rtc-network-matrix.md)
 
