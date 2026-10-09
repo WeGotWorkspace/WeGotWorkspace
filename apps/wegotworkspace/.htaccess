@@ -32,6 +32,11 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # RFC 6764 — CalDAV/CardDAV service discovery
+    RewriteRule ^\.well-known/caldav$  / [R=301,L]
+    RewriteRule ^\.well-known/carddav$ / [R=301,L]
+
     RewriteBase /
 
     # Origin-root MCP OAuth discovery (/.well-known/oauth-*) falls through to

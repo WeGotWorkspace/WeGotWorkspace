@@ -21,6 +21,16 @@ $wgwFrontMethods = [
     'PROPFIND', 'PROPPATCH', 'MKCOL', 'COPY', 'MOVE', 'LOCK', 'UNLOCK', 'REPORT', 'SEARCH',
 ];
 
+// RFC 6764 — CalDAV/CardDAV service discovery.
+// Must remain unauthenticated: clients probe these paths before sending credentials.
+// RedirectController emits a relative Location; clients need an absolute one.
+Route::get('/.well-known/caldav', function () {
+    return redirect()->away(rtrim((string) config('app.url'), '/').'/', 301);
+});
+Route::get('/.well-known/carddav', function () {
+    return redirect()->away(rtrim((string) config('app.url'), '/').'/', 301);
+});
+
 // When Apache serves Laravel via Alias /api → public/index.php, PATH_INFO is relative
 // to that script (e.g. /v1/health), not /api/v1/health — exclude versioned API segments too.
 // MCP OAuth discovery (RFC 8414 / 9728) is at the origin root: /.well-known/oauth-*.

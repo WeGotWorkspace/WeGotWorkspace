@@ -29,6 +29,22 @@ final class WebRootRedirectMatchTest extends TestCase
         }
     }
 
+    #[DataProvider('htaccessFiles')]
+    public function test_dav_discovery_redirects_run_before_the_front_controller(string $filename): void
+    {
+        $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
+        $htaccess = (string) file_get_contents($path);
+        $caldav = strpos($htaccess, 'RewriteRule ^\\.well-known/caldav$  / [R=301,L]');
+        $carddav = strpos($htaccess, 'RewriteRule ^\\.well-known/carddav$ / [R=301,L]');
+        $front = strpos($htaccess, 'RewriteRule . index.php [L]');
+
+        $this->assertNotFalse($caldav, $filename.' is missing the caldav discovery redirect');
+        $this->assertNotFalse($carddav, $filename.' is missing the carddav discovery redirect');
+        $this->assertNotFalse($front, $filename.' is missing the index.php fallback');
+        $this->assertLessThan($front, $caldav);
+        $this->assertLessThan($front, $carddav);
+    }
+
     /**
      * @return list<array{0: string}>
      */
