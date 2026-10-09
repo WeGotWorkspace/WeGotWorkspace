@@ -26,7 +26,6 @@ const EMPTY_DRIVE_UI: DriveUIData = {
   user: { username: USER, name: USER, role: "user", roots: ["/users"] },
   cwd: "",
   directory: { location: "", files: [] },
-  plugins: [],
 };
 
 function driveFile(

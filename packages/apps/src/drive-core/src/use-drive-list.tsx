@@ -5,9 +5,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useIsTouch } from "@/hooks/use-is-touch";
 import { useSelectionResetOnKeyChange } from "@/hooks/use-selection-reset-on-key-change";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
-import { findDrivePluginForExtension } from "@/drive-core/src/drive-plugin-utils";
 import { filterDriveVisibleItems } from "@/drive-core/src/drive-visible-items";
-import { extensionFromFileName } from "@/drive-core/src/drive-file-utils";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
@@ -36,8 +34,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     operations,
     viewResetKey,
     selectView,
-    data,
-    ensurePluginSessionBeforeNavigate,
   } = shell;
 
   const { showError } = useAppToast();
@@ -153,8 +149,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
       return;
     }
 
-    const ext = extensionFromFileName(f.title);
-
     if (
       f.apiPath &&
       onOpenDocsFile &&
@@ -162,19 +156,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     ) {
       onOpenDocsFile(f.apiPath);
       return;
-    }
-
-    if (f.apiPath) {
-      const plugin = findDrivePluginForExtension(data.plugins, ext);
-      if (plugin?.drive?.openFileRoute && plugin.drive.openFileQueryParam) {
-        const rel = f.apiPath.replace(/^\/+/, "");
-        const qp = new URLSearchParams({ [plugin.drive.openFileQueryParam]: rel });
-        const target = `${plugin.drive.openFileRoute}?${qp.toString()}`;
-        ensurePluginSessionBeforeNavigate(plugin.integration?.sessionApiPath, () => {
-          window.open(target, "_blank", "noopener,noreferrer");
-        });
-        return;
-      }
     }
 
     setActiveId(f.id);

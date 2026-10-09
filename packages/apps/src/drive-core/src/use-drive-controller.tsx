@@ -21,7 +21,6 @@ export type UseDriveControllerArgs = {
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
   onOpenDocsFile?: (apiPath: string) => void;
-  onNavigate?: (href: string) => void;
 };
 
 /**
@@ -37,7 +36,6 @@ export function useDriveController({
   view,
   onViewChange,
   onOpenDocsFile,
-  onNavigate,
 }: UseDriveControllerArgs) {
   const shell = useDriveShell({
     data,
@@ -47,7 +45,6 @@ export function useDriveController({
     listLoading,
     view,
     onViewChange,
-    onNavigate,
   });
   const list = useDriveList({ shell, onOpenDocsFile });
   const mutations = useDriveMutations({ shell, list, onOpenDocsFile });
@@ -143,7 +140,6 @@ export function useDriveController({
 
   return {
     labels: shell.labels,
-    launchPluginEditor: shell.launchPluginEditor,
     currentUsername: shell.currentUsername,
     files: shell.files,
     setFiles: shell.setFiles,
@@ -234,9 +230,6 @@ export function useDriveController({
     createFolder: mutations.createFolder,
     submitCreateFolder: mutations.submitCreateFolder,
     createMarkdown: mutations.createMarkdown,
-    createBlank: mutations.createBlank,
-    createFromTemplate: mutations.createFromTemplate,
-    newFileTemplates: shell.newFileTemplates,
     selectView: shell.selectView,
     listLoading: shell.listLoading,
     operations: shell.operations,

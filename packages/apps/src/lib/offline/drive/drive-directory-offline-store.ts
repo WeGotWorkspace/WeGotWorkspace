@@ -188,7 +188,6 @@ export function buildOfflineDriveUIData(
     user: bootstrap.data.user,
     cwd: normalizedCwd,
     directory: { location: normalizedCwd, files },
-    plugins: bootstrap.data.plugins,
   };
 }
 

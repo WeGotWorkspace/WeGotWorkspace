@@ -43,7 +43,6 @@ describe("useShowAdminApp", () => {
       showTasks: true,
       userDisplayName: "User",
       showUserMenu: true,
-      pluginAppTiles: [],
     });
 
     const { result } = renderHook(() => useShowAdminApp());
@@ -62,7 +61,6 @@ describe("useShowAdminApp", () => {
       showTasks: true,
       userDisplayName: "Admin",
       showUserMenu: true,
-      pluginAppTiles: [],
     });
 
     const { result } = renderHook(() => useShowAdminApp());

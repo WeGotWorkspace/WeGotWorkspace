@@ -45,7 +45,6 @@ const EMPTY_DRIVE_UI: DriveUIData = {
   user: { username: USER, name: USER, role: "user", roots: ["/users"] },
   cwd: `/users/${USER}`,
   directory: { location: `/users/${USER}`, files: [] },
-  plugins: [],
 };
 
 function driveFile(overrides?: Partial<DriveFile>): DriveFile {

@@ -95,7 +95,6 @@ async function offlineQueuedDriveData(username: string, cwd: string): Promise<Dr
     user: { username: "", name: "", role: "user", roots: [] },
     cwd,
     directory: { location: cwd, files: [] },
-    plugins: [],
   };
 }
 
@@ -132,7 +131,7 @@ export function createHybridDriveOperations(
   username: string,
   bootstrap?: DriveAppBootstrap | null,
 ): DriveAPIOperations {
-  const live = createWgwDriveOperations(bootstrap?.data.cwd ?? "/", bootstrap?.data.plugins ?? []);
+  const live = createWgwDriveOperations(bootstrap?.data.cwd ?? "/");
   let cachedBootstrap = bootstrap ?? null;
 
   const ensureBootstrap = async (): Promise<DriveAppBootstrap | null> => {

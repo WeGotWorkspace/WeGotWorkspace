@@ -1,9 +1,7 @@
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-export type { WgwPluginDescriptor } from "@/lib/api/wgw/types";
 import type {
   WgwDriveDirectoryData,
   WgwDriveDirectoryEntry,
-  WgwPluginDescriptor,
   WgwDriveUserData,
 } from "@/lib/api/wgw/types";
 import type {
@@ -23,7 +21,6 @@ export type DriveUIData = {
   user: WgwDriveUserData;
   cwd: string;
   directory: WgwDriveDirectoryData;
-  plugins: WgwPluginDescriptor[];
 };
 
 export type DriveAppBootstrap = {
@@ -156,5 +153,4 @@ export type DriveAPIOperations = {
     input: DriveUnifiedSearchDownloadInput,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
-  ensurePluginSession?: (sessionApiPath: string, opts?: { signal?: AbortSignal }) => Promise<void>;
 };

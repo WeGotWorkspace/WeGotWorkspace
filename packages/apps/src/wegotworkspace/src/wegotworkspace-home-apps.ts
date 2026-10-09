@@ -61,7 +61,7 @@ function tileFromMenuApp(
 
 /**
  * Home/dashboard tiles in the same order as {@link orderedAppSwitchApps}:
- * product apps A–Z, optional extras (e.g. plugins), then Admin / Settings.
+ * product apps A–Z, then Admin / Settings.
  */
 export function orderedWorkspaceHomeApps(
   onSelect: (app: AppSwitchMenuApp) => void,
