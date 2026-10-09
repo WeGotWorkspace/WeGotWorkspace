@@ -44,7 +44,7 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 ## Also
 
 - [Getting started](docs/getting-started.md) — path picker
-- [Plugins](docs/plugins.md) — separate from core deploy
+- [Plugins](docs/plugins.md) — separate from core deploy — not available in the beta
 - [License](LICENSE) / [Commercial](COMMERCIAL-LICENSE.md)
 
 ### Contributing
