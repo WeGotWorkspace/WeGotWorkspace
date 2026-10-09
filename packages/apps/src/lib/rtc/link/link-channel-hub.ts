@@ -6,6 +6,7 @@ import {
   LINK_HUB_TICK_MS,
   LINK_OPEN_TIMEOUT_MS,
   LINK_RETRY_AFTER_CLOSE_MS,
+  LINK_RETRY_AFTER_REJECT_MS,
   LINK_ROSTER_WAIT_MS,
   outboundKey,
   parseLinkFrame,
@@ -157,6 +158,22 @@ export class LinkChannelHub {
       } else if (record.state === "verifying") {
         void this.verify(record);
       }
+    }
+    for (const record of this.outbound.values()) {
+      if (record.roomKey !== state.roomKey || record.state !== "ready" || !record.acceptedPeer) {
+        continue;
+      }
+      if (this.acceptMatchesLink(record.roomKey, record.linkPeer, record.acceptedPeer)) continue;
+      this.closeChannel(record.channel);
+      record.state = "rejected";
+      record.retryAt = this.ports.now() + LINK_RETRY_AFTER_REJECT_MS;
+      record.acceptedPeer = null;
+      record.channel = null;
+      record.sender = null;
+      this.ports.log("chan-accept-mismatch", {
+        roomKey: record.roomKey,
+        linkPeer: record.linkPeer,
+      });
     }
     this.reconcile();
   }
@@ -372,6 +389,15 @@ export class LinkChannelHub {
       const frame = parseLinkFrame(text);
       if (!frame) return;
       if (frame.t === "accept" && current.state === "await-accept") {
+        if (!this.acceptMatchesLink(roomKey, linkPeer, frame.peer)) {
+          current.state = "rejected";
+          current.retryAt = this.ports.now() + LINK_RETRY_AFTER_REJECT_MS;
+          current.acceptedPeer = null;
+          this.ports.log("chan-accept-mismatch", { roomKey, linkPeer, peer: frame.peer });
+          this.closeChannel(channel);
+          this.publish(roomKey);
+          return;
+        }
         current.state = "ready";
         current.acceptedPeer = frame.peer;
         this.ports.log("chan-ready", { roomKey, linkPeer, peer: frame.peer });
@@ -573,6 +599,14 @@ export class LinkChannelHub {
       kid: jwk.kid,
       resolve: createCollabTicketKeyCache(async (kid) => (kid === jwk.kid ? jwk : null)),
     });
+  }
+
+  /** An accepted peer must belong to the link's user when the roster knows it. */
+  private acceptMatchesLink(roomKey: string, linkPeer: string, peer: string): boolean {
+    const linkUser = this.host?.livePeers().find((link) => link.linkPeer === linkPeer)?.user;
+    if (!linkUser) return false;
+    const row = this.rooms.get(roomKey)?.state.roster.find((candidate) => candidate.id === peer);
+    return !row || row.user === linkUser;
   }
 
   private closeChannel(channel: ChannelLike | null): void {

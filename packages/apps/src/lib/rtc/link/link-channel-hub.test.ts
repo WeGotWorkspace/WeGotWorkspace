@@ -565,4 +565,91 @@ describe("LinkChannelHub", () => {
     await settle();
     expect(sinkB.messages.at(-1)).toEqual({ from: "peer-a", msg: { ping: 1 }, access: "read" });
   });
+
+  it("an accept naming another user's peer is rejected", async () => {
+    const net = new FakeLinkNet();
+    const hostA = net.add("A", "alice");
+    const hostB = net.add("B", "bob");
+    net.add("C", "carol");
+    const { hub: hubA, log } = makeHub();
+    hubA.setLocalOwner("tab-a");
+    hubA.setSink("tab-a", sinkRecorder().sink);
+    hubA.attachHost(hostA);
+    hubA.setRoom(
+      "tab-a",
+      room("peer-a", [
+        { id: "peer-a", user: "alice", access: "write" },
+        { id: "peer-b", user: "bob", access: "write" },
+        { id: "peer-c", user: "carol", access: "write" },
+      ]),
+    );
+    // Answer A's hello from B's channel end with C's peer id (B's hub never answers).
+    hostB.onIncomingChannel((_peer, channel) => {
+      channel.onmessage = (event) => {
+        const text = typeof event.data === "string" ? event.data : "";
+        let frame: { t?: string };
+        try {
+          frame = JSON.parse(text) as { t?: string };
+        } catch {
+          return;
+        }
+        if (frame.t === "hello") {
+          channel.send(JSON.stringify({ t: "accept", peer: "peer-c" }));
+        }
+      };
+    });
+    net.link("A", "B", true);
+    await settle();
+
+    expect(hubA.peerStates(ROOM).get("peer-c")?.out).toBeFalsy();
+    expect(hubA.peerStates(ROOM).get("peer-b")?.out).toBe(false);
+    expect(log.mock.calls.some((call) => call[0] === "chan-accept-mismatch")).toBe(true);
+  });
+
+  it("a ready channel is closed when the roster later shows another owner", async () => {
+    const net = new FakeLinkNet();
+    const hostA = net.add("A", "alice");
+    const hostB = net.add("B", "bob");
+    const { hub: hubA, log } = makeHub();
+    hubA.setLocalOwner("tab-a");
+    hubA.setSink("tab-a", sinkRecorder().sink);
+    hubA.attachHost(hostA);
+    hubA.setRoom(
+      "tab-a",
+      room("peer-a", [
+        { id: "peer-a", user: "alice", access: "write" },
+        { id: "peer-b", user: "bob", access: "write" },
+      ]),
+    );
+    hostB.onIncomingChannel((_peer, channel) => {
+      channel.onmessage = (event) => {
+        const text = typeof event.data === "string" ? event.data : "";
+        let frame: { t?: string };
+        try {
+          frame = JSON.parse(text) as { t?: string };
+        } catch {
+          return;
+        }
+        if (frame.t === "hello") {
+          // Unknown id on A's roster yet — accepted, then revalidated later.
+          channel.send(JSON.stringify({ t: "accept", peer: "peer-x" }));
+        }
+      };
+    });
+    net.link("A", "B", true);
+    await settle();
+    expect(hubA.peerStates(ROOM).get("peer-x")).toEqual({ out: true, in: false });
+
+    hubA.setRoom(
+      "tab-a",
+      room("peer-a", [
+        { id: "peer-a", user: "alice", access: "write" },
+        { id: "peer-b", user: "bob", access: "write" },
+        { id: "peer-x", user: "carol", access: "write" },
+      ]),
+    );
+    await settle();
+    expect(hubA.peerStates(ROOM).get("peer-x")?.out).toBe(false);
+    expect(log.mock.calls.some((call) => call[0] === "chan-accept-mismatch")).toBe(true);
+  });
 });
