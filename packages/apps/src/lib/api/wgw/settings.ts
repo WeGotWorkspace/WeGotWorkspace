@@ -5,6 +5,7 @@ import type {
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
 import {
   wgwCurrentRefreshToken,
+  wgwEnsureFreshAccessToken,
   wgwFetch,
   wgwFetchPrincipal,
   wgwIsGuestSession,
@@ -116,6 +117,7 @@ export async function saveSettingsProfile(
   input: SettingsProfileRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<SettingsUIData> {
+  await wgwEnsureFreshAccessToken();
   const state = await requestSettings("/settings/profile", profileSaveBody(input), opts);
   return mapWgwSettingsStateToUI(state);
 }
