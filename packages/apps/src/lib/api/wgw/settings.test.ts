@@ -29,6 +29,16 @@ function installSession(refreshToken: string): void {
   window.localStorage.setItem(REFRESH_EXPIRES_AT_KEY, String(expiresAt));
 }
 
+/** Access token still valid, but inside the 180s client refresh margin. */
+function installSessionInsideRefreshMargin(refreshToken: string): void {
+  const accessTtlMs = 60_000;
+  const expiresAt = Date.now() + accessTtlMs;
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, makeJwt(Math.floor(Date.now() / 1_000) + 60));
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(expiresAt));
+  window.localStorage.setItem(REFRESH_EXPIRES_AT_KEY, String(Date.now() + 14 * 24 * 60 * 60_000));
+}
+
 function settingsStateResponse(): Response {
   return new Response(
     JSON.stringify({
@@ -122,5 +132,41 @@ describe("saveSettingsProfile", () => {
     });
 
     expect(profileRequestBody(fetchMock)).not.toHaveProperty("refreshToken");
+  });
+
+  it("sends the refresh token rotated inside the access-token margin", async () => {
+    installSessionInsideRefreshMargin("refresh-current");
+    const rotatedAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3600);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/auth/refresh")) {
+        return new Response(
+          JSON.stringify({
+            access_token: rotatedAccess,
+            refresh_token: "refresh-rotated",
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+            token_type: "Bearer",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("/settings/profile")) return settingsStateResponse();
+      return new Response("unexpected", { status: 500 });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await saveSettingsProfile({
+      displayName: "Alice Example",
+      password: "newpassword12",
+      currentPassword: "secret",
+    });
+
+    expect(profileRequestBody(fetchMock)).toMatchObject({
+      displayName: "Alice Example",
+      password: "newpassword12",
+      currentPassword: "secret",
+      refreshToken: "refresh-rotated",
+    });
   });
 });
