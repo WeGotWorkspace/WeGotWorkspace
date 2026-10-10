@@ -567,7 +567,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SettingsProfileRequest"];
+                };
+            };
             responses: {
                 /** @description Updated settings state */
                 200: {
@@ -8619,6 +8623,10 @@ export interface components {
             displayName?: string;
             email?: string;
             password?: string;
+            /** @description Current password. Required when password or email is changed. */
+            currentPassword?: string;
+            /** @description Current device refresh token. Sent with a password change so this session stays signed in. */
+            refreshToken?: string;
         };
         /**
          * @example {

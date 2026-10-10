@@ -70,7 +70,7 @@ final class SettingsMailTest extends WgwDatabaseTestCase
             ->assertJsonPath('mail.imapHasPassword', true);
     }
 
-    public function test_mail_save_syncs_profile_email_when_username_is_email_shaped(): void
+    public function test_mail_save_does_not_change_the_profile_email(): void
     {
         $token = $this->userBearerToken();
 
@@ -79,7 +79,8 @@ final class SettingsMailTest extends WgwDatabaseTestCase
             'imapPassword' => 'mail-secret',
         ])
             ->assertOk()
-            ->assertJsonPath('user.email', 'bob.sync@example.test');
+            ->assertJsonPath('user.email', 'bob@example.test')
+            ->assertJsonPath('mail.imapUsername', 'bob.sync@example.test');
     }
 
     public function test_mail_save_requires_username_when_no_profile_email_fallback(): void

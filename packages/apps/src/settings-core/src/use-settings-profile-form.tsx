@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
 import {
-  settingsProfileFormSchema,
+  settingsProfileFormSchemaFor,
   settingsProfileFormToRequest,
   type SettingsProfileFormValues,
 } from "@/settings-core/src/settings-profile-form-schema";
@@ -19,12 +19,13 @@ export function useSettingsProfileForm({
 }) {
   const runWithAppToast = useRunWithAppToast();
   const profileForm = useForm<SettingsProfileFormValues>({
-    resolver: zodResolver(settingsProfileFormSchema),
+    resolver: zodResolver(settingsProfileFormSchemaFor(user.email)),
     defaultValues: {
       displayName: user.displayName,
       email: user.email,
       newPassword: "",
       confirmPassword: "",
+      currentPassword: "",
     },
     mode: "onSubmit",
   });
@@ -37,11 +38,12 @@ export function useSettingsProfileForm({
       email: user.email,
       newPassword: "",
       confirmPassword: "",
+      currentPassword: "",
     });
   }, [user.displayName, user.email, reset]);
 
   const saveProfile = profileForm.handleSubmit(async (values) => {
-    const requestBody = settingsProfileFormToRequest(values);
+    const requestBody = settingsProfileFormToRequest(values, user.email);
     await runWithAppToast(
       async () => {
         await operations?.saveProfile(requestBody);
@@ -49,6 +51,7 @@ export function useSettingsProfileForm({
           ...values,
           newPassword: "",
           confirmPassword: "",
+          currentPassword: "",
         });
       },
       {
