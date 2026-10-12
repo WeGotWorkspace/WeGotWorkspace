@@ -11,7 +11,13 @@
 .chat-message:focus-within {
   /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
+  background-color: var(
+    --collection-sidebar-row-hover-bg,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+    )
+  );
 }
 
 .chat-message--continuation {
@@ -31,7 +37,7 @@
 }
 
 .chat-message__main {
-  @apply min-w-0 flex-1;
+  @apply relative min-w-0 flex-1;
 }
 
 .chat-message__header {
@@ -122,7 +128,8 @@
 }
 
 .chat-message__actions {
-  @apply absolute top-1 right-3 hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
+  @apply absolute start-0 z-[1] hidden -translate-y-1/2 items-center gap-0 rounded-md border px-0.5 shadow-sm;
+  top: 0;
   border-color: var(
     --chat-border,
     color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
@@ -140,7 +147,13 @@
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
+  background-color: var(
+    --collection-sidebar-row-hover-bg,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+    )
+  );
 }
 
 .chat-message:has([data-state="open"]) .chat-message__actions {

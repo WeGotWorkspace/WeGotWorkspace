@@ -125,6 +125,52 @@ export function ChatMessage({
         <div className="chat-message__avatar-spacer" aria-hidden />
       )}
       <div className="chat-message__main">
+        {resolvedActions && resolvedActions.length > 0 && !deleted && !editing ? (
+          <div className="chat-message__actions">
+            {resolvedActions.map((action) => {
+              const Icon = ACTION_ICONS[action.id];
+              const label = action.label ?? ACTION_LABELS[action.id];
+              if (action.id === "react" && onToggleReaction) {
+                return (
+                  <Popover key={action.id}>
+                    <PopoverTrigger asChild>
+                      <IconButton label={label} icon={<Icon />} size="md" variant="ghost" />
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      side="top"
+                      sideOffset={0}
+                      className="chat-reaction-bar__picker"
+                    >
+                      <div className="chat-reaction-bar__picker-grid">
+                        {CHAT_REACTION_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            className="chat-reaction-bar__picker-item"
+                            onClick={() => onToggleReaction(emoji)}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                );
+              }
+              return (
+                <IconButton
+                  key={action.id}
+                  label={label}
+                  icon={<Icon />}
+                  size="md"
+                  variant="ghost"
+                  onClick={action.onClick}
+                />
+              );
+            })}
+          </div>
+        ) : null}
         {showHeader ? (
           <header className="chat-message__header">
             <span className="chat-message__author">{message.authorName}</span>
@@ -177,52 +223,6 @@ export function ChatMessage({
           />
         ) : null}
       </div>
-      {resolvedActions && resolvedActions.length > 0 && !deleted && !editing ? (
-        <div className="chat-message__actions">
-          {resolvedActions.map((action) => {
-            const Icon = ACTION_ICONS[action.id];
-            const label = action.label ?? ACTION_LABELS[action.id];
-            if (action.id === "react" && onToggleReaction) {
-              return (
-                <Popover key={action.id}>
-                  <PopoverTrigger asChild>
-                    <IconButton label={label} icon={<Icon />} size="md" variant="ghost" />
-                  </PopoverTrigger>
-                  <PopoverContent
-                    align="end"
-                    side="top"
-                    sideOffset={0}
-                    className="chat-reaction-bar__picker"
-                  >
-                    <div className="chat-reaction-bar__picker-grid">
-                      {CHAT_REACTION_EMOJIS.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          className="chat-reaction-bar__picker-item"
-                          onClick={() => onToggleReaction(emoji)}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              );
-            }
-            return (
-              <IconButton
-                key={action.id}
-                label={label}
-                icon={<Icon />}
-                size="md"
-                variant="ghost"
-                onClick={action.onClick}
-              />
-            );
-          })}
-        </div>
-      ) : null}
     </article>
   );
 }
