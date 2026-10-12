@@ -12,6 +12,7 @@ use App\Services\Auth\PasswordRecoveryService;
 use App\Services\Auth\PasswordResetMailFactory;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryService;
+use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -28,6 +29,45 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         config(['app.url' => 'https://wgw.example.test']);
         Mail::fake();
+        $this->withoutDefer();
+    }
+
+    public function test_known_and_unknown_identifiers_return_identical_json(): void
+    {
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $known = $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice']);
+        $unknown = $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'nobody']);
+
+        $known->assertOk();
+        $unknown->assertOk();
+        $this->assertSame($known->status(), $unknown->status());
+        $this->assertSame($known->json(), $unknown->json());
+        $this->assertSame(['ok' => true], $known->json());
+        $this->assertSame(1, $this->tokenCountFor('alice'));
+        $this->assertSame(0, $this->tokenCountFor('nobody'));
+        Mail::assertSent(OutboundMessageMail::class, 1);
+    }
+
+    public function test_reset_delivery_is_not_visible_until_deferred_callbacks_run(): void
+    {
+        $this->withDefer();
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $service = $this->app->make(PasswordRecoveryService::class);
+        $service->requestReset('alice', '127.0.0.1');
+        $service->requestReset('nobody', '127.0.0.1');
+
+        $this->assertSame(0, $this->tokenCount());
+        Mail::assertNothingSent();
+
+        \Illuminate\Support\defer()->invoke();
+
+        $this->assertSame(1, $this->tokenCountFor('alice'));
+        $this->assertSame(0, $this->tokenCountFor('nobody'));
+        Mail::assertSent(OutboundMessageMail::class, 1);
     }
 
     public function test_unknown_identifier_returns_generic_ok_without_token(): void
