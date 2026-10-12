@@ -4,6 +4,7 @@ import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -618,8 +619,8 @@ async function assertOkResponse(res: Response): Promise<void> {
 
 export async function wgwLogout(): Promise<void> {
   readTokensFromStorage();
-  setLoggedOutMarker(true);
-  try {
+  await offlineWipe.runLogoutStep(() => offlineWipe.releasePushOnLogout(wgwFetch));
+  await offlineWipe.runLogoutStep(async () => {
     if (refreshToken || accessToken) {
       await postJson(
         "/auth/revoke",
@@ -627,11 +628,10 @@ export async function wgwLogout(): Promise<void> {
         accessToken ?? undefined,
       );
     }
-  } catch {
-    // Best effort: local token cleanup always runs.
-  } finally {
-    clearWgwSession("user_initiated");
-  }
+  });
+  setLoggedOutMarker(true);
+  await offlineWipe.runLogoutStep(offlineWipe.wipeOfflineAccountData);
+  clearWgwSession("user_initiated");
 }
 
 /** Obtain tokens using `VITE_WGW_DEV_USERNAME` / `VITE_WGW_DEV_PASSWORD` (local `.env.local` only). */
