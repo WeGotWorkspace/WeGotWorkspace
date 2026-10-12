@@ -87,5 +87,8 @@ final class CimdResolverGuardTest extends TestCase
             'metadata.example.test:443:203.0.113.10',
             CimdResolver::curlResolveEntry('metadata.example.test', 443, '203.0.113.10'),
         );
+        $this->assertSame('', $options['proxy']);
+        $this->assertSame('', $options['curl'][CURLOPT_PROXY]);
+        $this->assertSame('*', $options['curl'][CURLOPT_NOPROXY]);
     }
 }

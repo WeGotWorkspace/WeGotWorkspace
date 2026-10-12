@@ -168,12 +168,20 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
     public function test_rejects_ipv4_mapped_loopback_from_the_resolver(): void
     {
         $this->dns->map('mapped.example.test', ['::ffff:127.0.0.1']);
+        Http::fake([
+            'https://mapped.example.test/*' => Http::response($this->sampleIcs('Secret', 'mapped-secret@example.test'), 200, [
+                'Content-Type' => 'text/calendar',
+            ]),
+        ]);
 
         $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
             'url' => 'https://mapped.example.test/secret.ics',
-        ])->assertStatus(400);
+        ])->assertStatus(400)
+            ->assertJsonPath('error', 'This URL is not allowed.')
+            ->assertJsonPath('code', 'bad_request');
 
         $this->assertSame(0, CalendarSubscription::query()->count());
+        Http::assertNothingSent();
     }
 
     public function test_refresh_upserts_and_deletes_by_uid(): void

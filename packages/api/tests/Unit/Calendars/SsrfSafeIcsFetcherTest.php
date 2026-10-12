@@ -71,9 +71,15 @@ final class SsrfSafeIcsFetcherTest extends TestCase
         $options = $this->fetcher()->requestOptions('feeds.example.test', 443, self::PUBLIC_IP);
 
         $this->assertArrayNotHasKey('stream', $options);
+        $this->assertSame('', $options['proxy']);
         $this->assertInstanceOf(CappedSinkStream::class, $options['sink']);
-        $this->assertSame([CURLOPT_RESOLVE], array_keys($options['curl']));
+        $this->assertSame(
+            [CURLOPT_RESOLVE, CURLOPT_PROXY, CURLOPT_NOPROXY],
+            array_keys($options['curl']),
+        );
         $this->assertSame(['feeds.example.test:443:'.self::PUBLIC_IP], $options['curl'][CURLOPT_RESOLVE]);
+        $this->assertSame('', $options['curl'][CURLOPT_PROXY]);
+        $this->assertSame('*', $options['curl'][CURLOPT_NOPROXY]);
     }
 
     public function test_pins_http_client_to_first_validated_ip_and_does_not_resolve_again(): void
