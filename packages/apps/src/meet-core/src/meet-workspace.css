@@ -1047,6 +1047,9 @@
   @apply shrink-0 border-b;
   container: meet-call-bar / inline-size;
   border-color: var(--meet-call-border);
+  /* Same fill and ink as the app sidebar, not the light call-stage wash. */
+  background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
+  color: var(--app-sidebar-color, var(--workspace-sidebar-foreground));
 }
 
 .meet-call-bar__row {
@@ -1068,12 +1071,12 @@
 
 .meet-call-bar__title {
   @apply truncate text-sm font-semibold;
-  color: var(--workspace-foreground);
+  color: inherit;
 }
 
 .meet-call-bar__meta {
   @apply truncate text-xs tabular-nums;
-  color: var(--meet-call-ink-muted);
+  color: color-mix(in oklch, currentColor 72%, transparent);
 }
 
 .meet-call-bar__avatars {

@@ -131,8 +131,7 @@ export function MeetCallBar({
               label={meetLabels.join}
               icon={<LiveIcon />}
               size="md"
-              variant="outline"
-              severity="success"
+              variant="primary"
               onClick={onInvite}
             />
           </div>

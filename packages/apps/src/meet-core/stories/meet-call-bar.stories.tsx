@@ -118,7 +118,8 @@ export const InviteToJoin: Story = {
     const canvas = within(canvasElement);
     const join = canvas.getByRole("button", { name: meetLabels.join });
     await expect(join).toBeInTheDocument();
-    await expect(join.className).toContain("button--severity-success");
+    await expect(join.className).toContain("button--variant-primary");
+    await expect(join.className).not.toContain("button--severity-success");
     await expect(join.querySelector(".lucide-video")).toBeTruthy();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
