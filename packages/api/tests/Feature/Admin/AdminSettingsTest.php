@@ -101,6 +101,35 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ->assertJsonPath('apps.contacts', true);
     }
 
+    public function test_imip_caps_persist_in_admin_state(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipExternalEnabled', true)
+            ->assertJsonPath('apps.imipHourlyLimit', 100);
+
+        $saved = $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_EXTERNAL_ENABLED => false,
+                    SettingKeys::IMIP_HOURLY_LIMIT => 25,
+                ],
+            ])
+            ->assertOk()
+            ->json('saved');
+        $this->assertContains(SettingKeys::IMIP_EXTERNAL_ENABLED, $saved);
+        $this->assertContains(SettingKeys::IMIP_HOURLY_LIMIT, $saved);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipExternalEnabled', false)
+            ->assertJsonPath('apps.imipHourlyLimit', 25);
+    }
+
     public function test_mcp_kill_switch_persists_in_admin_state(): void
     {
         $token = $this->adminBearerToken();

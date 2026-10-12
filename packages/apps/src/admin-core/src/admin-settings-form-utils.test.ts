@@ -79,4 +79,23 @@ describe("adminSettingsFormToMap", () => {
     expect(values.rtc_debug_logging).toBe(true);
     expect(values.rtc_force_relay).toBe(true);
   });
+
+  it("round-trips external invitation caps", () => {
+    const { data } = createAdminAppBootstrap({
+      data: {
+        ...createAdminAppBootstrap().data,
+        apps: {
+          ...createAdminAppBootstrap().data.apps,
+          imipExternalEnabled: false,
+          imipHourlyLimit: 25,
+        },
+      },
+    });
+    const form = buildAdminSettingsFormState(data);
+    expect(form.imipExternalEnabled).toBe(false);
+    expect(form.imipHourlyLimit).toBe(25);
+    const values = adminSettingsFormToMap(form);
+    expect(values.imip_external_enabled).toBe(false);
+    expect(values.imip_hourly_limit).toBe(25);
+  });
 });

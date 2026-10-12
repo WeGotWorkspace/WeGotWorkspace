@@ -29,4 +29,11 @@ describe("AdminWebdavPane", () => {
     fireEvent.change(baseUri, { target: { value: "/typed-dav/" } });
     expect(screen.getByDisplayValue("/typed-dav/")).toBeTruthy();
   });
+
+  it("shows the external invitation switch and hourly limit", () => {
+    render(<WebdavPaneHarness />);
+
+    expect(screen.getByLabelText("External invitations enabled")).toBeTruthy();
+    expect(screen.getByLabelText("Hourly invitation limit")).toBeTruthy();
+  });
 });

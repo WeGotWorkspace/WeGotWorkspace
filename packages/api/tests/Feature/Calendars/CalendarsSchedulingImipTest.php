@@ -13,10 +13,15 @@ use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Cache\RateLimiter;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use Sabre\VObject\ITip\Message;
+use Sabre\VObject\Reader;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -212,6 +217,172 @@ final class CalendarsSchedulingImipTest extends WgwDatabaseTestCase
         $this->assertSame(2, $this->eventSequence('ext-org-1', 'carol'));
     }
 
+    public function test_101st_invite_in_an_hour_is_not_sent(): void
+    {
+        $sent = [];
+        $throttled = [];
+        Log::listen(function (MessageLogged $event) use (&$sent, &$throttled): void {
+            if ($event->message === 'imip.sent') {
+                $sent[] = $event->context;
+            }
+            if ($event->message === 'imip.throttled') {
+                $throttled[] = $event->context;
+            }
+        });
+
+        $imip = $this->app->make(CalendarImipService::class);
+        for ($i = 1; $i <= 100; $i++) {
+            $imip->deliver('bob', $this->externalRequest('guest'.$i.'@elsewhere.test', 'hour-'.$i));
+        }
+
+        Mail::assertSent(OutboundMessageMail::class, 100);
+        $this->assertCount(100, $sent);
+        $this->assertSame('bob', $sent[0]['organizer'] ?? null);
+        $this->assertSame('elsewhere.test', $sent[0]['to_domain'] ?? null);
+        $encoded = json_encode($sent[0]);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('BEGIN:VCALENDAR', $encoded);
+        $this->assertStringNotContainsString('guest1@elsewhere.test', $encoded);
+        $this->assertStringNotContainsString('You are invited', $encoded);
+
+        $imip->deliver('bob', $this->externalRequest('overflow@elsewhere.test', 'hour-101'));
+
+        Mail::assertSent(OutboundMessageMail::class, 100);
+        $this->assertCount(1, $throttled);
+        $this->assertSame('bob', $throttled[0]['organizer'] ?? null);
+        $this->assertSame(100, CalendarRsvpToken::query()->count());
+    }
+
+    public function test_daily_cap_skips_the_send_before_a_token_is_issued(): void
+    {
+        $limiter = $this->app->make(RateLimiter::class);
+        for ($i = 0; $i < 300; $i++) {
+            $limiter->hit('imip:user-day:bob', 86400);
+        }
+
+        $this->app->make(CalendarImipService::class)->deliver(
+            'bob',
+            $this->externalRequest('guest@elsewhere.test', 'day-cap'),
+        );
+
+        Mail::assertNothingSent();
+        $this->assertSame(0, CalendarRsvpToken::query()->count());
+    }
+
+    public function test_hourly_limit_setting_blocks_the_next_invite(): void
+    {
+        $this->setAppSetting(SettingKeys::IMIP_HOURLY_LIMIT, 1);
+        $imip = $this->app->make(CalendarImipService::class);
+
+        $imip->deliver('bob', $this->externalRequest('one@elsewhere.test', 'limit-1'));
+        $imip->deliver('bob', $this->externalRequest('two@elsewhere.test', 'limit-2'));
+
+        Mail::assertSent(OutboundMessageMail::class, 1);
+        $this->assertSame(1, CalendarRsvpToken::query()->count());
+    }
+
+    public function test_external_invites_disabled_skips_mail_and_keeps_local_scheduling(): void
+    {
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+
+        $this->jmapAs('bob', [[
+            'CalendarEvent/set',
+            ['accountId' => 'bob', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Mixed Sync',
+                'start' => '2030-02-01T10:00:00Z',
+                'end' => '2030-02-01T10:30:00Z',
+                'participants' => [
+                    'org' => [
+                        '@type' => 'Participant',
+                        'email' => 'bob@example.test',
+                        'roles' => ['owner'],
+                    ],
+                    'local' => [
+                        '@type' => 'Participant',
+                        'email' => 'carol@example.test',
+                        'roles' => ['attendee'],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                    'ext' => [
+                        '@type' => 'Participant',
+                        'email' => 'guest@elsewhere.test',
+                        'roles' => ['attendee'],
+                        'expectReply' => true,
+                        'participationStatus' => 'needs-action',
+                    ],
+                ],
+            ]]],
+            'c0',
+        ]])->assertOk();
+
+        Mail::assertNothingSent();
+        $this->assertGreaterThan(
+            0,
+            (int) DB::connection('wgw')->table('schedulingobjects')->where('principaluri', 'principals/carol')->count(),
+        );
+        $this->assertSame(0, CalendarRsvpToken::query()->count());
+    }
+
+    public function test_event_stops_external_mail_after_50_distinct_recipients(): void
+    {
+        $loggedCaps = [];
+        Log::listen(function (MessageLogged $event) use (&$loggedCaps): void {
+            if ($event->message === 'imip.attendee_cap') {
+                $loggedCaps[] = $event->context;
+            }
+        });
+
+        $participants = [
+            'org' => [
+                '@type' => 'Participant',
+                'email' => 'bob@example.test',
+                'roles' => ['owner'],
+            ],
+            'local' => [
+                '@type' => 'Participant',
+                'email' => 'carol@example.test',
+                'roles' => ['attendee'],
+                'expectReply' => true,
+                'participationStatus' => 'needs-action',
+            ],
+        ];
+        for ($i = 1; $i <= 51; $i++) {
+            $participants['ext'.$i] = [
+                '@type' => 'Participant',
+                'email' => 'guest'.$i.'@elsewhere.test',
+                'roles' => ['attendee'],
+                'expectReply' => true,
+                'participationStatus' => 'needs-action',
+            ];
+        }
+
+        $this->jmapAs('bob', [[
+            'CalendarEvent/set',
+            ['accountId' => 'bob', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Wide Sync',
+                'start' => '2030-03-01T10:00:00Z',
+                'end' => '2030-03-01T10:30:00Z',
+                'participants' => $participants,
+            ]]],
+            'c0',
+        ]])->assertOk();
+
+        Mail::assertSent(OutboundMessageMail::class, 50);
+        $this->assertGreaterThan(
+            0,
+            (int) DB::connection('wgw')->table('schedulingobjects')->where('principaluri', 'principals/carol')->count(),
+        );
+        $this->assertNotSame([], $loggedCaps);
+        $this->assertSame(50, $loggedCaps[0]['cap'] ?? null);
+        $encoded = json_encode($loggedCaps[0]);
+        $this->assertIsString($encoded);
+        $this->assertStringNotContainsString('BEGIN:VCALENDAR', $encoded);
+        $this->assertStringNotContainsString('@elsewhere.test', $encoded);
+    }
+
     public function test_external_attendee_is_stored_without_token_when_mail_cannot_submit(): void
     {
         $this->app->instance(
@@ -316,6 +487,20 @@ final class CalendarsSchedulingImipTest extends WgwDatabaseTestCase
         $this->assertSame(1, preg_match('#/calendar/rsvp/([A-Za-z0-9]+)#', $mail->outbound->textBody, $match));
 
         return $match[1];
+    }
+
+    private function externalRequest(string $email, string $uid): Message
+    {
+        $message = new Message;
+        $message->uid = $uid;
+        $message->method = 'REQUEST';
+        $message->recipient = 'mailto:'.$email;
+        $message->sender = 'mailto:bob@example.test';
+        $message->message = Reader::read(
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:External Sync\r\nDTSTART:20300201T100000Z\r\nDTEND:20300201T103000Z\r\nORGANIZER:mailto:bob@example.test\r\nATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:{$email}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+        );
+
+        return $message;
     }
 
     private function enableMailSubmit(): void
