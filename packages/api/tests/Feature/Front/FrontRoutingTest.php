@@ -299,8 +299,7 @@ final class FrontRoutingTest extends TestCase
     {
         $this->installedShell();
 
-        $https = $this->call('GET', '/', [], [], [], [
-            'HTTPS' => 'on',
+        $https = $this->call('GET', 'https://localhost/', [], [], [], [
             'HTTP_ACCEPT' => 'text/html',
         ]);
         $https->assertOk();
@@ -309,11 +308,11 @@ final class FrontRoutingTest extends TestCase
         $this->assertStringNotContainsString('includeSubDomains', $hsts);
         $this->assertStringNotContainsString('preload', $hsts);
 
-        $this->call('GET', '/', [], [], [], ['HTTP_ACCEPT' => 'text/html'])
+        $this->call('GET', 'http://localhost/', [], [], [], ['HTTP_ACCEPT' => 'text/html'])
             ->assertOk()
             ->assertHeaderMissing('Strict-Transport-Security');
 
-        $this->call('GET', '/', [], [], [], [
+        $this->call('GET', 'http://localhost/', [], [], [], [
             'HTTP_ACCEPT' => 'text/html',
             'REMOTE_ADDR' => '203.0.113.10',
             'HTTP_X_FORWARDED_PROTO' => 'https',
@@ -386,18 +385,17 @@ final class FrontRoutingTest extends TestCase
 
     public function test_csp_api_json_gets_nosniff_and_conditional_hsts(): void
     {
-        $https = $this->call('GET', '/api/v1/health', [], [], [], [
-            'HTTPS' => 'on',
+        $this->getJson('http://localhost/api/v1/health')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeaderMissing('Strict-Transport-Security');
+
+        $https = $this->call('GET', 'https://localhost/api/v1/health', [], [], [], [
             'HTTP_ACCEPT' => 'application/json',
         ]);
         $https->assertOk();
         $https->assertHeader('X-Content-Type-Options', 'nosniff');
         $https->assertHeader('Strict-Transport-Security', 'max-age=15552000');
-
-        $this->getJson('/api/v1/health')
-            ->assertOk()
-            ->assertHeader('X-Content-Type-Options', 'nosniff')
-            ->assertHeaderMissing('Strict-Transport-Security');
     }
 
     public function test_csp_htaccess_sets_report_only_header(): void

@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Rtc\MetricsController as RtcMetricsController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
+use App\Http\Controllers\Api\V1\Security\CspReportController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
@@ -65,6 +66,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
+use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -79,6 +81,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class);
 Route::get('capabilities', CapabilitiesController::class);
+Route::post('csp-reports', CspReportController::class)
+    ->middleware(['throttle:60,1', CspReportBodyLimit::class]);
 
 Route::get('.well-known/jwks.json', JwksController::class);
 

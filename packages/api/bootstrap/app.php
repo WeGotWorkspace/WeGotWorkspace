@@ -72,6 +72,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ProtectMcpConsent::class,
             FilterMcpConsentScopes::class,
         ]);
+        $middleware->appendToGroup('api', [
+            WgwSecurityHeaders::class,
+        ]);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         $middleware->append(BindMcpPublicOrigin::class);

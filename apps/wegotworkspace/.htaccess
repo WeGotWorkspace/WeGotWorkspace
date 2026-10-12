@@ -30,6 +30,15 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
     AddType application/wasm .wasm
 </IfModule>
 
+# Direct /index.html is served by Apache and never reaches Laravel. Report-only
+# until enforcement. The hash is the dev-source inline PWA script; the SPA shell
+# that goes through Laravel prefers dist/csp-hashes.json.
+<IfModule mod_headers.c>
+    <Files "index.html">
+        Header set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'sha256-koYKTa6HwF82TTLzdGOJpStHMXx2oeIvhoodNHKGkOg='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
+    </Files>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
