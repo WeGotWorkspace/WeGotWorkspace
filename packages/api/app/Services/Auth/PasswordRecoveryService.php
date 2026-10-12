@@ -15,6 +15,8 @@ use App\Services\Settings\UserProfileService;
 use App\Support\PublicAppUrl;
 use Illuminate\Support\Facades\Log;
 
+use function Illuminate\Support\defer;
+
 final class PasswordRecoveryService
 {
     public const int TOKEN_TTL_SECONDS = 15 * 60;
@@ -33,6 +35,11 @@ final class PasswordRecoveryService
             throw new ApiHttpException(429, 'Too many password reset requests. Please try again later.', 'throttled');
         }
 
+        defer(fn () => $this->deliverReset($identifier));
+    }
+
+    private function deliverReset(string $identifier): void
+    {
         $user = $this->resolveUser($identifier);
         if ($user === null) {
             return;
