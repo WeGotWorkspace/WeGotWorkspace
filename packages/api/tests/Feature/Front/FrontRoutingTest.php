@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Front;
 
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\UiDistFixture;
 use Tests\Support\WgwInstallFixture;
@@ -11,6 +14,8 @@ use Tests\TestCase;
 
 final class FrontRoutingTest extends TestCase
 {
+    private const FALLBACK_SCRIPT_HASH = 'sha256-koYKTa6HwF82TTLzdGOJpStHMXx2oeIvhoodNHKGkOg=';
+
     private ?string $repoRoot = null;
 
     protected function tearDown(): void
@@ -263,5 +268,210 @@ final class FrontRoutingTest extends TestCase
         $this->get('/index.html')
             ->assertOk()
             ->assertHeader('Content-Type', 'text/html; charset=utf-8');
+    }
+
+    public function test_csp_shell_sends_report_only_policy(): void
+    {
+        $this->installedShell();
+        $policy = $this->shellPolicy();
+
+        $this->assertStringContainsString("default-src 'self'", $policy);
+        $this->assertStringContainsString(
+            "script-src 'self' '".self::FALLBACK_SCRIPT_HASH."'",
+            $policy,
+        );
+        $this->assertStringContainsString("style-src 'self' 'unsafe-inline'", $policy);
+        $this->assertStringContainsString("img-src 'self' blob: data:", $policy);
+        $this->assertStringNotContainsString('https:', $policy);
+        $this->assertStringContainsString("font-src 'self'", $policy);
+        $this->assertStringContainsString("connect-src 'self'", $policy);
+        $this->assertStringContainsString("media-src 'self' blob:", $policy);
+        $this->assertStringContainsString("worker-src 'self'", $policy);
+        $this->assertStringContainsString("manifest-src 'self'", $policy);
+        $this->assertStringContainsString("object-src 'none'", $policy);
+        $this->assertStringContainsString("base-uri 'self'", $policy);
+        $this->assertStringContainsString("form-action 'self'", $policy);
+        $this->assertStringContainsString("frame-ancestors 'self'", $policy);
+        $this->assertStringContainsString('report-uri /api/v1/csp-reports', $policy);
+    }
+
+    public function test_csp_hsts_only_on_https(): void
+    {
+        $this->installedShell();
+
+        $https = $this->call('GET', '/', [], [], [], [
+            'HTTPS' => 'on',
+            'HTTP_ACCEPT' => 'text/html',
+        ]);
+        $https->assertOk();
+        $https->assertHeader('Strict-Transport-Security', 'max-age=15552000');
+        $hsts = (string) $https->headers->get('Strict-Transport-Security');
+        $this->assertStringNotContainsString('includeSubDomains', $hsts);
+        $this->assertStringNotContainsString('preload', $hsts);
+
+        $this->call('GET', '/', [], [], [], ['HTTP_ACCEPT' => 'text/html'])
+            ->assertOk()
+            ->assertHeaderMissing('Strict-Transport-Security');
+
+        $this->call('GET', '/', [], [], [], [
+            'HTTP_ACCEPT' => 'text/html',
+            'REMOTE_ADDR' => '203.0.113.10',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+        ])->assertOk()->assertHeaderMissing('Strict-Transport-Security');
+    }
+
+    public function test_csp_hash_file_overrides_fallback(): void
+    {
+        $this->installedShell();
+        $custom = 'sha256-YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=';
+        $this->writeCspHashes(['hashes' => [$custom]]);
+
+        $policy = $this->shellPolicy();
+        $this->assertStringContainsString("'".$custom."'", $policy);
+        $this->assertStringNotContainsString(self::FALLBACK_SCRIPT_HASH, $policy);
+    }
+
+    public function test_csp_hash_file_drops_injected_tokens(): void
+    {
+        $this->installedShell();
+        $this->writeCspHashes(['hashes' => ["'unsafe-inline' https:"]]);
+
+        $policy = $this->shellPolicy();
+        $this->assertStringContainsString("'".self::FALLBACK_SCRIPT_HASH."'", $policy);
+        $this->assertStringNotContainsString('https:', $policy);
+    }
+
+    public function test_csp_empty_hash_file_does_not_keep_fallback(): void
+    {
+        $this->installedShell();
+        $this->writeCspHashes(['hashes' => []]);
+
+        $policy = $this->shellPolicy();
+        $this->assertStringContainsString("script-src 'self';", $policy);
+        $this->assertStringNotContainsString(self::FALLBACK_SCRIPT_HASH, $policy);
+    }
+
+    public function test_csp_report_accepts_and_rejects_oversize_bypass(): void
+    {
+        $reports = [];
+        $this->listenForCspReports($reports);
+
+        $this->postCspReport('{"csp-report":{"violated-directive":"script-src"}}')
+            ->assertNoContent();
+        $this->postCspReport(str_repeat('a', 8192))->assertNoContent();
+        $this->assertCount(2, $reports);
+        $this->assertSame('warning', $reports[0]->level);
+        $this->assertSame('script-src', $reports[0]->context['violated-directive'] ?? null);
+
+        $beforeRejects = count($reports);
+        $this->postCspReport(str_repeat('b', 8193))->assertStatus(413);
+        $this->postCspReport(str_repeat('c', 8193), ['CONTENT_LENGTH' => '4'])->assertStatus(413);
+        $this->postCspReport('{}', ['CONTENT_LENGTH' => '9000'])->assertStatus(413);
+        $this->assertCount($beforeRejects, $reports);
+    }
+
+    public function test_csp_report_limit_ignores_spoofed_forwarded_for(): void
+    {
+        $server = ['REMOTE_ADDR' => '203.0.113.44'];
+        for ($attempt = 0; $attempt < 60; $attempt++) {
+            $this->postCspReport('{}', $server)->assertNoContent();
+        }
+
+        $this->postCspReport('{}', $server)->assertStatus(429);
+        $this->postCspReport('{}', array_replace($server, [
+            'HTTP_X_FORWARDED_FOR' => '198.51.100.8',
+            'HTTP_ORIGIN' => 'https://attacker.example',
+        ]))->assertStatus(429);
+    }
+
+    public function test_csp_api_json_gets_nosniff_and_conditional_hsts(): void
+    {
+        $https = $this->call('GET', '/api/v1/health', [], [], [], [
+            'HTTPS' => 'on',
+            'HTTP_ACCEPT' => 'application/json',
+        ]);
+        $https->assertOk();
+        $https->assertHeader('X-Content-Type-Options', 'nosniff');
+        $https->assertHeader('Strict-Transport-Security', 'max-age=15552000');
+
+        $this->getJson('/api/v1/health')
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeaderMissing('Strict-Transport-Security');
+    }
+
+    public function test_csp_htaccess_sets_report_only_header(): void
+    {
+        $htaccess = (string) file_get_contents(dirname(__DIR__, 5).'/apps/wegotworkspace/.htaccess');
+
+        $this->assertStringContainsString('Content-Security-Policy-Report-Only', $htaccess);
+        $this->assertStringContainsString(self::FALLBACK_SCRIPT_HASH, $htaccess);
+        $this->assertStringContainsString("img-src 'self' blob: data:", $htaccess);
+        $this->assertStringContainsString('report-uri /api/v1/csp-reports', $htaccess);
+        $this->assertStringNotContainsString('https:', $htaccess);
+        $this->assertStringNotContainsString('Header set Content-Security-Policy "', $htaccess);
+    }
+
+    private function installedShell(): void
+    {
+        if ($this->repoRoot !== null) {
+            return;
+        }
+
+        $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
+        $installRoot = $this->repoRoot.'/apps/wegotworkspace';
+        $data = $installRoot.'/wgw-content';
+        WgwInstallFixture::markInstalled($installRoot, $data);
+        WgwInstallFixture::syncDatabaseConnection();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function writeCspHashes(array $payload): void
+    {
+        $this->assertNotNull($this->repoRoot);
+        $path = $this->repoRoot.'/packages/apps/shell/dist/csp-hashes.json';
+        file_put_contents($path, json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param  array<string, string>  $server
+     */
+    private function shellPolicy(array $server = []): string
+    {
+        $response = $this->call('GET', '/', [], [], [], array_replace([
+            'HTTP_ACCEPT' => 'text/html',
+        ], $server));
+        $response->assertOk();
+        $response->assertHeaderMissing('Content-Security-Policy');
+        $policy = $response->headers->get('Content-Security-Policy-Report-Only');
+        $this->assertIsString($policy, 'SPA shell is missing Content-Security-Policy-Report-Only');
+
+        return $policy;
+    }
+
+    /**
+     * @param  array<string, string>  $server
+     */
+    private function postCspReport(string $body, array $server = []): TestResponse
+    {
+        return $this->call('POST', '/api/v1/csp-reports', [], [], [], array_replace([
+            'CONTENT_TYPE' => 'application/csp-report',
+            'HTTP_ACCEPT' => 'application/json',
+            'REMOTE_ADDR' => '203.0.113.50',
+        ], $server), $body);
+    }
+
+    /**
+     * @param  list<MessageLogged>  $reports
+     */
+    private function listenForCspReports(array &$reports): void
+    {
+        Log::listen(function (MessageLogged $event) use (&$reports): void {
+            if ($event->message === 'csp.report') {
+                $reports[] = $event;
+            }
+        });
     }
 }
