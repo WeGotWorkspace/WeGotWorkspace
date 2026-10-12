@@ -172,7 +172,7 @@ export function MeetWorkspace({
    * key expand/leave. Local chrome only — hosts with a meeting channel keep
    * the channel-keyed layout below.
    */
-  const [visitCallLayout, setVisitCallLayout] = useState<MeetCallStageLayout>("compact");
+  const [visitCallLayout, setVisitCallLayout] = useState<MeetCallStageLayout>("side-by-side");
 
   // Live bootstrap patches (inbound sync) replace the seeded rows; the mock
   // path passes a stable bootstrap, so this effect is a mount-time no-op there.
@@ -319,7 +319,7 @@ export function MeetWorkspace({
   /** Visit chrome without a selected channel — layout is local, not channel-keyed. */
   const visitOwnsLayout = Boolean(unmatchedAdHocRoom && !selectedId && visitEngaged);
   useEffect(() => {
-    if (!visitOwnsLayout) setVisitCallLayout("compact");
+    if (!visitOwnsLayout) setVisitCallLayout("side-by-side");
   }, [visitOwnsLayout]);
   const sidebarCloseFrame = useRef<number | null>(null);
   const openExpandedChrome = useCallback(() => {
@@ -333,7 +333,7 @@ export function MeetWorkspace({
     });
   }, []);
   const leaveVisitCall = useCallback(() => {
-    setVisitCallLayout("compact");
+    setVisitCallLayout("collapsed");
     void operations?.leaveCall?.("");
   }, [operations]);
   const handleCallLayoutChange = useCallback(
@@ -506,8 +506,10 @@ export function MeetWorkspace({
   const showCallChrome =
     meetCallChromeVisible(resolvedCallActive) ||
     Boolean(visitEngaged && callStageRoom?.controller.inCall);
+  const localInCall =
+    resolvedCallActive || Boolean(visitEngaged && callStageRoom?.controller.inCall);
   const showCallBar =
-    (conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive)) || visitEngaged;
+    conversationOpen && meetCallBarVisible(resolvedStageLayout, meetingLive, localInCall);
   const keepCallChrome = Boolean(resolvedStage && showCallChrome);
   const showKnockOrCallBar = showCallBar || keepCallChrome;
   useMeetSuiteCallParking({

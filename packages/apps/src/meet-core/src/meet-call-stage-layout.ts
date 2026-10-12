@@ -108,8 +108,12 @@ export function meetCallStageShowsBar(layout: MeetCallStageLayout): boolean {
  * Sticky bar / tile strip when this channel has a live meeting and the stage is not expanded.
  * Idle channels show no chrome.
  */
-export function meetCallBarVisible(layout: MeetCallStageLayout, meetingLive = true): boolean {
-  return meetingLive && !meetCallStageShowsStage(layout);
+export function meetCallBarVisible(
+  layout: MeetCallStageLayout,
+  meetingLive = true,
+  localJoined = false,
+): boolean {
+  return meetingLive && !localJoined && !meetCallStageShowsStage(layout);
 }
 
 /** Mic / camera / settings / expand / leave — only after this user joins. */

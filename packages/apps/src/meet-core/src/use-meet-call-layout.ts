@@ -37,15 +37,21 @@ export function meetInitialCallLayoutForChannel(
   return initialLayout;
 }
 
+function joinedStageLayout(layout: MeetCallStageLayout): MeetCallStageLayout {
+  return layout === "compact" ? "side-by-side" : layout;
+}
+
 function seedLayouts(
   channelId: string | null,
   initialLayout: MeetCallStageLayout,
   liveCallChannelId?: string | null,
 ): Record<string, MeetCallStageLayout> {
   if (initialLayout === "collapsed") return {};
-  const openLayout = meetInitialCallLayoutForChannel(channelId, initialLayout, liveCallChannelId);
+  const openLayout = joinedStageLayout(
+    meetInitialCallLayoutForChannel(channelId, initialLayout, liveCallChannelId),
+  );
   if (openLayout === "collapsed") {
-    return liveCallChannelId ? { [liveCallChannelId]: initialLayout } : {};
+    return liveCallChannelId ? { [liveCallChannelId]: joinedStageLayout(initialLayout) } : {};
   }
   if (!channelId) return {};
   return { [channelId]: openLayout };
@@ -81,8 +87,9 @@ export function useMeetCallLayout({
         delete next[id];
         return next;
       }
-      if (current[id] === layout) return current;
-      return { ...current, [id]: layout };
+      const stored = joinedStageLayout(layout);
+      if (current[id] === stored) return current;
+      return { ...current, [id]: stored };
     });
   }, []);
 
@@ -107,7 +114,7 @@ export function useMeetCallLayout({
 
   const startCall = useCallback(
     (options?: { video?: boolean }) => {
-      writeLayout(channelId, "compact");
+      writeLayout(channelId, "side-by-side");
       if (!channelId) return;
       const started =
         options === undefined

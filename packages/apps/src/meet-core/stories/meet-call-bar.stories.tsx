@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, within } from "storybook/test";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
@@ -132,13 +132,13 @@ export const Joined: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    const muteControls = canvas.getAllByRole("button", { name: meetLabels.disableAudio });
-    await userEvent.click(muteControls[0]!);
     await expect(
-      canvas.getAllByRole("button", { name: meetLabels.enableAudio }).length,
-    ).toBeGreaterThan(0);
+      canvas.queryByRole("button", { name: meetLabels.expandCall }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.disableAudio }),
+    ).not.toBeInTheDocument();
   },
 };
 
@@ -206,16 +206,11 @@ export const WaitingToJoin: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) });
-    await expect(trigger).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
-    await userEvent.click(trigger);
-    const body = within(canvasElement.ownerDocument.body);
     await expect(
-      body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
-    ).toBeInTheDocument();
-    const popover = canvasElement.ownerDocument.body.querySelector(".meet-knock-badge__popover");
-    await expect(popover).toBeTruthy();
-    await expect(popover?.className).not.toMatch(/meet-popover-surface/);
+      canvas.queryByRole("button", { name: meetLabels.expandCall }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(2) }),
+    ).not.toBeInTheDocument();
   },
 };

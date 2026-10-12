@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
 
 describe("useMeetCallLayout", () => {
-  it("joins into the compact bar, not the split stage", () => {
+  it("joins into the expanded stage, not the compact bar", () => {
     const startCall = vi.fn(async () => undefined);
     const { result } = renderHook(() =>
       useMeetCallLayout({
@@ -18,11 +18,11 @@ describe("useMeetCallLayout", () => {
     });
 
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
     expect(startCall).toHaveBeenCalledWith("channel-general");
   });
 
-  it("returns to the compact bar when the expanded stage is dismissed", () => {
+  it("stays on the expanded stage when compact is requested", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
         initialLayout: "side-by-side",
@@ -35,7 +35,7 @@ describe("useMeetCallLayout", () => {
     });
 
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("leaves the call when layout collapses", () => {
@@ -72,7 +72,7 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.toggleCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ channelId: "channel-random" });
     expect(result.current.callActive).toBe(false);
@@ -83,7 +83,7 @@ describe("useMeetCallLayout", () => {
 
     rerender({ channelId: "channel-general" });
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("collapses the chrome when the start operation rejects", async () => {
@@ -105,7 +105,7 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.startCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     await act(async () => {
       rejectStart(new Error("calls unavailable"));
@@ -115,7 +115,7 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("collapsed");
   });
 
-  it("restores compact chrome for an already-running live session (route remount)", () => {
+  it("restores the expanded stage for an already-running live session", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
         initialLayout: "collapsed",
@@ -125,7 +125,7 @@ describe("useMeetCallLayout", () => {
     );
 
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("restores the expanded stage when that was the last chrome", () => {
@@ -156,11 +156,11 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.startCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ live: "channel-general" });
     // The user's chosen layout is respected while the session is live.
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ live: null });
     expect(result.current.callActive).toBe(false);
@@ -205,7 +205,7 @@ describe("useMeetCallLayout", () => {
     });
 
     expect(startCall).toHaveBeenCalledWith("channel-general", { video: false });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("keeps a restored live call's chrome off a different open channel", () => {
@@ -226,7 +226,7 @@ describe("useMeetCallLayout", () => {
 
     rerender({ channelId: "channel-design" });
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("seeds initialLayout for the starting channel only", () => {

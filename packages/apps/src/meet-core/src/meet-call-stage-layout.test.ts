@@ -48,7 +48,8 @@ describe("meetCallStage layout", () => {
   it("shows the sticky bar only when a meeting is live and the stage is not expanded", () => {
     expect(meetCallBarVisible("collapsed", false)).toBe(false);
     expect(meetCallBarVisible("collapsed", true)).toBe(true);
-    expect(meetCallBarVisible("compact", true)).toBe(true);
+    expect(meetCallBarVisible("compact", true, true)).toBe(false);
+    expect(meetCallBarVisible("collapsed", true, true)).toBe(false);
     expect(meetCallBarVisible("side-by-side", true)).toBe(false);
     expect(meetCallBarVisible("fullscreen", true)).toBe(false);
   });
