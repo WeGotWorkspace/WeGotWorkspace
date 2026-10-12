@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Pin } from "lucide-react";
+import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { shouldMirrorMeetStream } from "@/meet-core/src/meet-stream-mirror";
@@ -34,6 +35,12 @@ type MeetPeerTileProps = {
    */
   onMuteParticipant?: (muted: boolean) => void;
   /**
+   * Local pin. Omitted state is kept on the tile — Meet has no pin signal.
+   * Pass `pinned` to control it from the parent.
+   */
+  pinned?: boolean;
+  onTogglePin?: (pinned: boolean) => void;
+  /**
    * Low-data receive cap. The stream stays mounted so audio continues; the
    * picture is replaced by the avatar.
    */
@@ -53,10 +60,14 @@ export function MeetPeerTile({
   micOn,
   onToggleMic,
   onMuteParticipant,
+  pinned: pinnedProp,
+  onTogglePin,
   muted,
   hideVideo = false,
 }: MeetPeerTileProps) {
   const toast = useAppToast();
+  const [uncontrolledPinned, setUncontrolledPinned] = useState(false);
+  const pinned = pinnedProp ?? uncontrolledPinned;
   const { cameraRendering, micLive } = usePeerStreamPresence(stream);
   const [remoteVideoOk, setRemoteVideoOk] = useState(true);
 
@@ -89,17 +100,11 @@ export function MeetPeerTile({
   const showAvatarFill = !showRemoteVideo || !remoteVideoOk;
   const mirrored = shouldMirrorMeetStream(stream, disclosedMedia?.screen);
   const playbackStream = stream && stream.getTracks().length > 0 ? stream : null;
-  const avatarSize = spotlight ? "2xl" : compact ? "md" : "lg";
+  const avatarSize = spotlight ? "lg" : compact ? "sm" : "md";
   const playbackMuted = muted ?? isSelfMute;
   const canForceMute = !isSelfMute && typeof onMuteParticipant === "function";
   const canToggleMute = isSelfMute || canForceMute;
-  const muteLabel = isSelfMute
-    ? micLiveUi
-      ? meetLabels.mute
-      : meetLabels.unmute
-    : micLiveUi
-      ? meetLabels.muteParticipant
-      : meetLabels.unmuteParticipant;
+  const muteLabel = micLiveUi ? meetLabels.mutePeer(name) : meetLabels.unmutePeer(name);
   const onMuteClick = () => {
     if (isSelfMute) {
       onToggleMic();
@@ -109,6 +114,11 @@ export function MeetPeerTile({
       return;
     }
     onMuteParticipant?.(micLiveUi);
+  };
+  const onPinClick = () => {
+    const next = !pinned;
+    if (pinnedProp === undefined) setUncontrolledPinned(next);
+    onTogglePin?.(next);
   };
   const avatar = (
     <UserAvatar
@@ -122,22 +132,9 @@ export function MeetPeerTile({
     spotlight || caption ? (
       <div className="meet-peer-tile__identity">
         {spotlight ? <p className="meet-peer-tile__display-name">{name}</p> : null}
-        {speaking ? (
-          <p className="meet-peer-tile__speaking">
-            <span className="meet-peer-tile__speaking-dot" aria-hidden />
-            {meetLabels.speaking}
-          </p>
-        ) : null}
         {caption ? <p className="meet-peer-tile__caption">{caption}</p> : null}
       </div>
     ) : null;
-  const nameBadge = (
-    <>
-      {micLiveUi ? <Mic className="size-3" /> : <MicOff className="size-3 text-red-400" />}
-      <span>{name}</span>
-    </>
-  );
-  const nameClassName = cn("meet-peer-tile__name", !micLiveUi && "meet-peer-tile__name--mic-muted");
 
   return (
     <div
@@ -169,20 +166,40 @@ export function MeetPeerTile({
           {identity}
         </div>
       ) : null}
+      {speaking ? (
+        <p className="meet-peer-tile__speaking">
+          <span className="meet-peer-tile__speaking-dot" aria-hidden />
+          {meetLabels.speaking}
+        </p>
+      ) : null}
+      <p className="meet-peer-tile__name">{name}</p>
       {canToggleMute ? (
-        <button
-          type="button"
-          className={nameClassName}
-          aria-label={muteLabel}
-          aria-pressed={!micLiveUi}
-          title={muteLabel}
+        <IconButton
+          className={cn(
+            "meet-peer-tile__control meet-peer-tile__mute",
+            !micLiveUi && "meet-peer-tile__control--persistent",
+          )}
+          size="xs"
+          variant="outline"
+          icon={micLiveUi ? <Mic /> : <MicOff />}
+          label={muteLabel}
+          aria-pressed={micLiveUi}
           onClick={onMuteClick}
-        >
-          {nameBadge}
-        </button>
-      ) : (
-        <div className={nameClassName}>{nameBadge}</div>
-      )}
+        />
+      ) : null}
+      <IconButton
+        className={cn(
+          "meet-peer-tile__control meet-peer-tile__pin",
+          pinned && "meet-peer-tile__control--persistent",
+        )}
+        size="xs"
+        variant="outline"
+        active={pinned}
+        icon={<Pin />}
+        label={pinned ? meetLabels.unpinParticipant(name) : meetLabels.pinParticipant(name)}
+        aria-pressed={pinned}
+        onClick={onPinClick}
+      />
     </div>
   );
 }
