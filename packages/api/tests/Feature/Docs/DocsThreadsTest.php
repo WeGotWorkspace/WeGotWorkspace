@@ -274,6 +274,115 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         $this->assertSame($orphan, $byChangeId['gone']['id']);
     }
 
+    public function test_commenter_resolves_own_thread(): void
+    {
+        $this->shareCommentAndEdit();
+        $rootId = $this->ulid('AN');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'mine',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $this->asAlice()->patchJson($this->threadUrl($rootId), [
+            'resolved' => true,
+        ])->assertOk()->assertJsonPath('resolved', true);
+    }
+
+    public function test_commenter_cannot_resolve_someone_elses_thread(): void
+    {
+        $this->shareCommentAndEdit();
+        $rootId = $this->ulid('AP');
+        $this->asBob()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'suggestion',
+            'changeId' => 'bob-change',
+            'body' => 'bob wrote this',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $this->asAlice()->patchJson($this->threadUrl($rootId), [
+            'resolved' => true,
+        ])->assertForbidden()->assertJsonPath('code', 'forbidden');
+        $this->asAlice()->patchJson($this->threadUrl($rootId), [
+            'archived' => true,
+        ])->assertForbidden()->assertJsonPath('code', 'forbidden');
+        $this->asAlice()->patchJson($this->threadUrl($rootId), [
+            'anchorText' => 'hijacked',
+            'anchorFrom' => 1,
+            'anchorTo' => 2,
+        ])->assertForbidden()->assertJsonPath('code', 'forbidden');
+
+        $thread = $this->asBob()->getJson($this->threadsPath())->assertOk()->json('list.0');
+        $this->assertFalse($thread['resolved']);
+        $this->assertFalse($thread['archived']);
+        $this->assertSame('Plan', $thread['anchorText']);
+    }
+
+    public function test_editor_resolves_someone_elses_thread(): void
+    {
+        $this->shareCommentAndEdit();
+        $rootId = $this->ulid('AQ');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'from alice',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $this->asCarol()->patchJson($this->threadUrl($rootId), [
+            'resolved' => true,
+        ])->assertOk()->assertJsonPath('resolved', true);
+    }
+
+    public function test_editor_archive_orphan_suggestions_keeps_working(): void
+    {
+        $this->shareCommentAndEdit();
+        $keep = $this->ulid('AR');
+        $orphan = $this->ulid('AS');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $keep,
+            'kind' => 'suggestion',
+            'changeId' => 'keep',
+            'body' => 'keep this',
+        ])->assertCreated();
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $orphan,
+            'kind' => 'suggestion',
+            'changeId' => 'gone',
+            'body' => 'orphan',
+        ])->assertCreated();
+
+        $repo = $this->app->make(DocsThreadRepository::class);
+        $repo->archiveOrphanSuggestions(
+            ['username' => 'carol', 'role' => 'user'],
+            self::PATH,
+            ['keep'],
+        );
+
+        $list = $this->asBob()->getJson($this->threadsPath())->assertOk()->json('list');
+        $byChangeId = [];
+        foreach ($list as $thread) {
+            $byChangeId[$thread['changeId']] = $thread;
+        }
+        $this->assertFalse($byChangeId['keep']['archived']);
+        $this->assertTrue($byChangeId['gone']['archived']);
+    }
+
+    private function shareCommentAndEdit(): void
+    {
+        $this->asBob()->postJson('/api/v1/files/shares', [
+            'path' => self::PATH,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => [
+                'alice' => ['access' => 'comment'],
+                'carol' => ['access' => 'edit'],
+            ],
+        ])->assertOk();
+    }
+
     private function threadsPath(): string
     {
         return $this->threadUrl(null);
