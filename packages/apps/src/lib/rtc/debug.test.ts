@@ -1,37 +1,26 @@
-import { describe, expect, it } from "vitest";
-import { isRtcDebugEnabledFromQuery, parseRtcDebugFlag } from "@/lib/rtc/debug";
+/** @vitest-environment jsdom */
+import { afterEach, describe, expect, it } from "vitest";
+import { isRtcDebugEnabled, setRtcDebugEnabled } from "@/lib/rtc/debug";
 
-describe("isRtcDebugEnabledFromQuery", () => {
-  it("enables on rtcDebug=1 or true, with or without a leading ?", () => {
-    expect(isRtcDebugEnabledFromQuery("?rtcDebug=1")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("rtcDebug=1")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("?file=groups%2Fteam-notes.md&rtcDebug=1")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("?rtcDebug=true")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("?rtcDebug")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery('?rtcDebug="1"')).toBe(true);
+describe("isRtcDebugEnabled", () => {
+  afterEach(() => {
+    setRtcDebugEnabled(false);
+    delete (window as Window & { __WGW_RTC_TEST_OVERRIDES__?: unknown }).__WGW_RTC_TEST_OVERRIDES__;
   });
 
-  it("stays off when the param is absent or not truthy", () => {
-    expect(isRtcDebugEnabledFromQuery("?file=groups%2Fteam-notes.md")).toBe(false);
-    expect(isRtcDebugEnabledFromQuery("?rtcDebug=0")).toBe(false);
-    expect(isRtcDebugEnabledFromQuery("")).toBe(false);
+  it("is off by default", () => {
+    expect(isRtcDebugEnabled()).toBe(false);
   });
 
-  it("accepts legacy aliases", () => {
-    expect(isRtcDebugEnabledFromQuery("?collabRtcDebug=1")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("?meetRtcDebug=1")).toBe(true);
-    expect(isRtcDebugEnabledFromQuery("?debugRtc=1")).toBe(true);
+  it("turns on from the server flag", () => {
+    setRtcDebugEnabled(true);
+    expect(isRtcDebugEnabled()).toBe(true);
   });
-});
 
-describe("parseRtcDebugFlag", () => {
-  it("keeps the declared search value as '1'", () => {
-    expect(parseRtcDebugFlag("1")).toBe(1);
-    expect(parseRtcDebugFlag(1)).toBe(1);
-    expect(parseRtcDebugFlag(true)).toBe(1);
-    expect(parseRtcDebugFlag("true")).toBe(1);
-    expect(parseRtcDebugFlag('"1"')).toBe(1);
-    expect(parseRtcDebugFlag("0")).toBeUndefined();
-    expect(parseRtcDebugFlag(undefined)).toBeUndefined();
+  it("turns on from a test override", () => {
+    (
+      window as Window & { __WGW_RTC_TEST_OVERRIDES__?: { debug: boolean; forceRelay: boolean } }
+    ).__WGW_RTC_TEST_OVERRIDES__ = { debug: true, forceRelay: false };
+    expect(isRtcDebugEnabled()).toBe(true);
   });
 });

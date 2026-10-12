@@ -93,7 +93,7 @@ final class AdminStateService
      * set. Leftover static credentials from an older install no longer relay
      * anything, so they are reported as a warning instead.
      *
-     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool, maxVideoProfile: string, maxVideoProfileRelay: string}
+     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool, maxVideoProfile: string, maxVideoProfileRelay: string, debugLogging: bool, forceRelay: bool}
      */
     private function rtcSettings(): array
     {
@@ -124,6 +124,9 @@ final class AdminStateService
                 AppSetting::getValue(SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY, ''),
                 RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY
             ),
+            'debugLogging' => $this->rtcSettings->storedFlag(SettingKeys::RTC_DEBUG_LOGGING),
+            // The stored switch, not the served one: admin edits what it set.
+            'forceRelay' => $this->rtcSettings->storedFlag(SettingKeys::RTC_FORCE_RELAY),
         ];
     }
 }

@@ -24,38 +24,15 @@ describe("docs-route-search helpers", () => {
     });
   });
 
-  it("keeps rtcDebug on the docs search object so TanStack does not strip it", () => {
+  it("ignores former rtc debug search keys", () => {
     expect(
       parseDocsRouteSearch({
         file: "groups/administrators/team-notes.md",
         rtcDebug: 1,
+        rtcForceRelay: 1,
       }),
     ).toEqual({
       file: "groups/administrators/team-notes.md",
-      rtcDebug: 1,
-    });
-  });
-
-  it("preserves rtcDebug when building a file href from current search", () => {
-    expect(docsHrefFromApiPath("/groups/administrators/team-notes.md", { rtcDebug: 1 })).toBe(
-      "/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcDebug=1",
-    );
-  });
-
-  it("keeps rtcForceRelay on the docs search object", () => {
-    expect(parseDocsRouteSearch({ file: "notes.md", rtcForceRelay: true })).toEqual({
-      file: "notes.md",
-      rtcForceRelay: 1,
-    });
-    expect(docsHrefFromApiPath("/groups/administrators/team-notes.md", { rtcForceRelay: 1 })).toBe(
-      "/docs?file=groups%2Fadministrators%2Fteam-notes.md&rtcForceRelay=1",
-    );
-  });
-
-  it("parses a quoted leftover as the number 1 so the next serialize is unquoted", () => {
-    expect(parseDocsRouteSearch({ file: "x.md", rtcDebug: '"1"' })).toEqual({
-      file: "x.md",
-      rtcDebug: 1,
     });
   });
 });

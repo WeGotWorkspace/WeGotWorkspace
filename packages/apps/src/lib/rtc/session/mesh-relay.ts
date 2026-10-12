@@ -17,7 +17,7 @@ export type MeshRelayPorts = {
   enabled: boolean;
   roomId: string;
   settings: RtcSettings;
-  /** Debug `rtcForceRelay`. Join mints TURN even when the net class is open. */
+  /** Admin/test forced relay. Join mints TURN even when the net class is open. */
   forceRelay: boolean;
   iceCandidatePoolSize?: number;
   localPeerId: () => string | null;

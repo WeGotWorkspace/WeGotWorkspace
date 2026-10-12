@@ -25,7 +25,7 @@ Source plan: [plan.md](./plan.md)
 
 ## Phase 3b live + test verification (all passed)
 
-`?rtcDebug=1` stays a number. Isolated cookies: cursor-ide-browser vs Chrome DevTools. Doc: `/docs?file=groups%2Fadministrators%2Fteam-notes.md` on `http://127.0.0.1:5173`.
+RTC logs: Admin → Real-time collaboration → Diagnostics → Detailed connection logs (reload after changing). Isolated cookies: cursor-ide-browser vs Chrome DevTools. Doc: `/docs?file=groups%2Fadministrators%2Fteam-notes.md` on `http://127.0.0.1:5173`.
 
 1. [x] **Reuse-hit.** (superseded by link channels) Both users idle until principal mesh is up; one opens the doc, the other follows. Expect `chan-ready` / `dc-open` `{ via: "link" }`. (live ✓ historically)
 2. [x] **Bidirectional Yjs over reuse.** (superseded) A→B and B→A updates on the document link channel; sender must not apply their own echo. (live ✓ historically)
