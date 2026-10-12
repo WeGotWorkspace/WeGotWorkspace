@@ -17,7 +17,7 @@ final class UiSessionService
 {
     private const COOKIE = 'sabre_ui_auth';
 
-    private const COOKIE_VERSION = 2;
+    private const COOKIE_VERSION = 3;
 
     public function __construct(
         private WgwInstallConfig $install,
@@ -53,14 +53,18 @@ final class UiSessionService
 
         $ttl = $this->refreshTokens->refreshTtl();
         $exp = time() + $ttl;
-        $epoch = (int) (User::query()->where('username', strtolower(trim($username)))->value('ui_session_epoch') ?? 0);
+        $user = User::query()->where('username', strtolower(trim($username)))->first(['id', 'ui_session_epoch']);
+        if ($user === null) {
+            throw new \RuntimeException('User does not exist.');
+        }
         $payload = json_encode([
             'v' => self::COOKIE_VERSION,
             'u' => $username,
             'r' => $realm,
             'e' => $exp,
             'exp' => $exp,
-            'ep' => $epoch,
+            'ep' => (int) $user->ui_session_epoch,
+            'uid' => (int) $user->id,
         ], JSON_THROW_ON_ERROR);
 
         $b64Payload = $this->base64UrlEncode($payload);
