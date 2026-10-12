@@ -18,9 +18,10 @@ import type {
   WgwMeetSendRequest,
   WgwMeetSendResponse,
 } from "@/lib/api/wgw/types";
+import type { RtcSettingsSource } from "@/lib/api/wgw/rtc";
 import type { RtcSettings } from "@/lib/rtc/types";
 
-export type MeetRtcSettings = RtcSettings;
+export type MeetRtcSettings = RtcSettings & { source?: RtcSettingsSource };
 
 export type MeetChannelKind = "channel" | "meeting";
 

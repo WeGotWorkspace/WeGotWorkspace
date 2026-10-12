@@ -1,7 +1,12 @@
 /**
  * Meet app HTTP client (`/api/v1/meetings/rooms`, `/api/v1/rooms/{roomId}/*`).
  */
-import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
+import {
+  wgwApiBaseUrl,
+  wgwEnsureFreshAccessToken,
+  wgwFetch,
+  wgwFetchPrincipal,
+} from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
@@ -69,7 +74,11 @@ export function createWgwMeetGuestSignalingFetch(): HttpSignalingFetch {
 }
 
 export async function fetchMeetLiveBootstrap(): Promise<MeetAppBootstrap> {
-  const [session, rtc] = await Promise.all([wgwFetchPrincipal(), fetchRtcSettings()]);
+  const bearerToken = (await wgwEnsureFreshAccessToken()) ?? undefined;
+  const [session, rtc] = await Promise.all([
+    wgwFetchPrincipal(),
+    fetchRtcSettings({ bearerToken, channel: "meet", room: "bootstrap" }),
+  ]);
   return {
     session,
     data: {

@@ -22,8 +22,12 @@ type RtcRoomConfiguration = components["schemas"]["RtcRoomConfiguration"];
 /** Public half of the C2 signing key, as `RtcRoomConfiguration.collabTicket`. */
 export type PublishedCollabTicket = NonNullable<RtcRoomConfiguration["collabTicket"]>;
 
+/** `"server"` when the configuration endpoint answered, `"fallback"` when defaults were used. */
+export type RtcSettingsSource = "server" | "fallback";
+
 export type FetchedRtcSettings = RtcSettings & {
   collabTicket?: PublishedCollabTicket;
+  source?: RtcSettingsSource;
 };
 
 type RtcSettingsCarrier = {
@@ -63,6 +67,8 @@ export function resolveRtcSettings(publicSettings: RtcPublicSettings): RtcSettin
 export async function fetchRtcSettings(options?: {
   url?: string;
   bearerToken?: string;
+  /** Guest auth for the meeting room configuration. Sent as a query parameter. */
+  sessionKey?: string;
   channel?: "meet" | "collab";
   room?: string;
 }): Promise<FetchedRtcSettings> {
@@ -74,14 +80,22 @@ export async function fetchRtcSettings(options?: {
     (room
       ? `${base}/rooms/${encodeURIComponent(resolveRoomId(channel, room))}/configuration`
       : `${base}/rooms/bootstrap/configuration`);
+  const finalUrl = options?.sessionKey
+    ? `${requestUrl}${requestUrl.includes("?") ? "&" : "?"}sessionKey=${encodeURIComponent(options.sessionKey)}`
+    : requestUrl;
   rtcLog({ channel }, "rtc-settings-request", { requestUrl });
   const headers: Record<string, string> = {};
   if (options?.bearerToken) headers.Authorization = `Bearer ${options.bearerToken}`;
 
-  const res = await fetch(requestUrl, { cache: "no-store", headers });
+  const res = await fetch(finalUrl, { cache: "no-store", headers });
   if (!res.ok) {
-    rtcLog({ channel }, "rtc-settings-response", { requestUrl, ok: false, status: res.status });
-    return resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false });
+    rtcLog({ channel }, "rtc-settings-response", {
+      requestUrl,
+      ok: false,
+      status: res.status,
+      credentialsSent: Boolean(options?.bearerToken) || Boolean(options?.sessionKey),
+    });
+    return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
   }
   try {
     const payload = (await wgwReadJson(res)) as RtcRoomConfiguration;
@@ -95,7 +109,8 @@ export async function fetchRtcSettings(options?: {
       forceRelay: settings.forceRelay,
       turnAvailable: settings.turnAvailable,
     });
-    return payload.collabTicket ? { ...settings, collabTicket: payload.collabTicket } : settings;
+    const result: FetchedRtcSettings = { ...settings, source: "server" };
+    return payload.collabTicket ? { ...result, collabTicket: payload.collabTicket } : result;
   } catch {
     rtcLog({ channel }, "rtc-settings-response", {
       requestUrl,
@@ -103,7 +118,7 @@ export async function fetchRtcSettings(options?: {
       status: res.status,
       parseError: true,
     });
-    return resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false });
+    return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
   }
 }
 

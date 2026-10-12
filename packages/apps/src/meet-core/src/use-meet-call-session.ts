@@ -182,6 +182,7 @@ export function useMeetCallSession({
       stunCount: parseUrlList(rtc.stunUrls, "stun").length,
       forceRelay: rtc.forceRelay,
       turnAvailable: rtc.turnAvailable,
+      rtcSource: rtc.source ?? "unknown",
     });
   }, [debugRtc, rtc]);
 
