@@ -13,6 +13,10 @@ import type { RtcSettings, TurnCredentials } from "@/lib/rtc/types";
 /** Re-mint this long before the server-supplied `ttl` elapses. */
 const REFRESH_LEAD_MS = 60_000;
 
+function refreshLeadMs(ttlMs: number): number {
+  return Math.min(REFRESH_LEAD_MS, Math.floor(ttlMs / 2));
+}
+
 export type MeshRelayPorts = {
   enabled: boolean;
   roomId: string;
@@ -41,8 +45,8 @@ export type MeshRelayPorts = {
  * Meet relay requests for one mesh. The Docs fallback reuses `requestRelay`;
  * this class is the Meet timing around that call.
  *
- * Credentials die with the `ttl` the server returned. This re-mints at
- * `ttl - 60s` and again on ICE restart, then puts them on the existing
+ * Credentials die with the `ttl` the server returned. This re-mints one lead
+ * before expiry, and again on ICE restart, then puts them on the existing
  * connection. Refresh posts `reason: "refresh"` and only for a pair whose
  * selected candidate is still a relay.
  */
@@ -167,13 +171,13 @@ export class MeshRelay {
     if (!this.turn) return false;
     const ttlMs = this.turn.ttl * 1000;
     if (!Number.isFinite(ttlMs) || ttlMs <= 0) return true;
-    return now >= this.issuedAtMs + Math.max(0, ttlMs - REFRESH_LEAD_MS);
+    return now >= this.issuedAtMs + Math.max(0, ttlMs - refreshLeadMs(ttlMs));
   }
 
   private armRefresh(ttlSeconds: number): void {
     this.clearRefresh();
     if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) return;
-    const delay = Math.max(0, (ttlSeconds - 60) * 1000);
+    const delay = Math.max(0, ttlSeconds * 1000 - refreshLeadMs(ttlSeconds * 1000));
     const schedule = this.ports.schedule ?? ((fn, ms) => setTimeout(fn, ms));
     const timer = schedule(() => {
       this.refreshTimer = null;

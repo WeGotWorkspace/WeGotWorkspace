@@ -82,15 +82,15 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
             SettingKeys::RTC_TURN_SECRET => 'north',
         ]);
         $previous = config('wgw.rtc.turn_ttl_seconds');
-        config(['wgw.rtc.turn_ttl_seconds' => 90]);
+        config(['wgw.rtc.turn_ttl_seconds' => 900]);
 
         try {
             $now = 1_700_000_000;
             $turn = (new RtcTurnCredentialService(new RtcSettingsService))->mint('u:alice', $now);
 
             $this->assertNotNull($turn);
-            $this->assertSame(90, $turn['ttl']);
-            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 90), $turn['username']);
+            $this->assertSame(900, $turn['ttl']);
+            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 900), $turn['username']);
         } finally {
             config(['wgw.rtc.turn_ttl_seconds' => $previous]);
         }
@@ -110,8 +110,8 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
             config(['wgw.rtc.turn_ttl_seconds' => 30]);
             $low = $service->mint('u:alice', $now);
             $this->assertNotNull($low);
-            $this->assertSame(60, $low['ttl']);
-            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 60), $low['username']);
+            $this->assertSame(300, $low['ttl']);
+            $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 300), $low['username']);
 
             config(['wgw.rtc.turn_ttl_seconds' => 100_000]);
             $high = $service->mint('u:alice', $now);
