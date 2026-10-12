@@ -141,6 +141,7 @@ Tracked on [#1204](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1204)
 | N3 Meet | Two peers; Admin **Always use the TURN relay** on; no test override | Meet | Forced relay (Admin) | `HGUL36HUVB` ↔ `QD5JUGSCLG`: `controller-init` `forceRelay: true`, `stunCount: 4`; Meet `pc-created` `mode` / `iceTransportPolicy: relay` → `connected`. Principal also `relay` (`wouter-07cdcc`) — Admin path works after #1220 |
 | N3 Docs | Two signed-in tabs; Admin force-relay on | Docs collab | Forced relay (Admin) | Collab `202a03062a3301b4` ↔ `e83f5ba71eeada72`: `pc-created` relay → `connected`; carets both ways (fast) |
 | N14 | Installed PWA, standalone | Meet | — | Camera permission succeeds; local video shows |
+| N15 | iOS Safari + installed PWA; background ~1 min then return (no refresh) | Meet | — | Both surfaces: still connected / usable after resume; desktop still saw iOS peer during short background |
 
 ### Prior local pass still standing (M5)
 
@@ -155,7 +156,6 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | UDP-blocked TCP TURN | Operator could not configure TCP/TLS TURN + blocked UDP |
 | N3 Docs + iPhone 4G | Optional #1204 row; same-machine Docs N3 already green |
 | N13 | Skipped as N/A: Join is already a user gesture, so “silent until tap” is not a realistic product path |
-| N15 | Not run (background resume on iOS Safari + installed PWA) |
 | `pnpm test:rtc-relay` | Not run against this host |
 
 ### Combined scorecard (M5 + M6)
@@ -173,5 +173,5 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | Network switch | pass (M6) |
 | N13 | skip / N/A |
 | N14 | pass (M6) |
-| N15 | not run |
+| N15 | pass (M6) — iOS Safari + PWA |
 | Long TTL / TCP TURN | not run |
