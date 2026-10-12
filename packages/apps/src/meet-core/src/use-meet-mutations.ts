@@ -235,6 +235,7 @@ export function useMeetMutations({
         text: buildMeetControlMessage({ kind: "admit", peerId }),
         sessionKey: meetRtc.getSessionKey() ?? undefined,
       });
+      meetRtc.sendPollPoke(peerId);
       room.setKnockers((prev) => prev.filter((entry) => entry.id !== peerId));
     },
     [canModerateKnocks, meetRtc, operationsRef, room],
@@ -250,6 +251,7 @@ export function useMeetMutations({
         text: buildMeetControlMessage({ kind: "deny", peerId }),
         sessionKey: meetRtc.getSessionKey() ?? undefined,
       });
+      meetRtc.sendPollPoke(peerId);
       room.setKnockers((prev) => prev.filter((entry) => entry.id !== peerId));
     },
     [canModerateKnocks, meetRtc, operationsRef, room],
@@ -268,6 +270,7 @@ export function useMeetMutations({
           text: buildMeetControlMessage({ kind, peerId }),
           sessionKey: meetRtc.getSessionKey() ?? undefined,
         });
+        meetRtc.sendPollPoke(peerId);
         const name = room.peerNamesRef.current.get(peerId)?.trim() || "participant";
         toast.show(
           muted ? meetLabels.mutedParticipant(name) : meetLabels.unmutedParticipant(name),
@@ -301,6 +304,7 @@ export function useMeetMutations({
         }),
         sessionKey: meetRtc.getSessionKey() ?? undefined,
       });
+      meetRtc.broadcastPollPoke();
     } catch {
       // Continue with local leave even if broadcast fails.
     }

@@ -3,6 +3,8 @@ import {
   MEET_DATA_CHANNEL_ID,
   MEET_DATA_CHANNEL_INIT,
   MEET_UNRELIABLE_DATA_CHANNEL_ID,
+  isMeetDcPoke,
+  meetDcPokeFrame,
   openMeetDataChannel,
   parseMeetDcMessage,
 } from "@/lib/rtc/session/meet-data-channel";
@@ -31,6 +33,26 @@ describe("parseMeetDcMessage", () => {
     }
     expect(parseMeetDcMessage("not-json")).toBeNull();
     expect(parseMeetDcMessage(JSON.stringify({ t: "chat", id: "", text: "x", ts: 1 }))).toBeNull();
+  });
+
+  it("does not treat a poke frame as chat", () => {
+    expect(parseMeetDcMessage(JSON.stringify(meetDcPokeFrame()))).toBeNull();
+  });
+});
+
+describe("isMeetDcPoke", () => {
+  it("accepts only t=poke with v=1", () => {
+    expect(isMeetDcPoke(JSON.stringify({ t: "poke", v: 1 }))).toBe(true);
+    expect(isMeetDcPoke(JSON.stringify(meetDcPokeFrame()))).toBe(true);
+  });
+
+  it("rejects chat frames, poke without v, non-JSON, and arrays", () => {
+    expect(isMeetDcPoke(JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hello", ts: 10 }))).toBe(
+      false,
+    );
+    expect(isMeetDcPoke(JSON.stringify({ t: "poke" }))).toBe(false);
+    expect(isMeetDcPoke("not-json")).toBe(false);
+    expect(isMeetDcPoke(JSON.stringify(["poke"]))).toBe(false);
   });
 });
 

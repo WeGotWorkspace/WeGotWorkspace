@@ -38,6 +38,8 @@ export class MeshPollLoop {
 
   private pollInFlight = false;
 
+  private pendingKick = false;
+
   private lastLoggedPollDelayMs: number | null = null;
 
   constructor(private readonly context: MeshPollLoopContext) {}
@@ -63,8 +65,23 @@ export class MeshPollLoop {
     this.pollTimer = this.context.scheduleTimeout(() => {
       void this.pollOnce()
         .catch((error: unknown) => this.handlePollError(error))
-        .finally(() => this.schedule(true));
+        .finally(() => this.schedule(!this.takeKick()));
     }, delay);
+  }
+
+  /** Poll as soon as possible. Deferred when a poll is already in flight, never dropped. */
+  kick(): void {
+    if (this.pollInFlight) {
+      this.pendingKick = true;
+      return;
+    }
+    this.schedule(false);
+  }
+
+  private takeKick(): boolean {
+    const kicked = this.pendingKick;
+    this.pendingKick = false;
+    return kicked;
   }
 
   stop(): void {
@@ -76,6 +93,7 @@ export class MeshPollLoop {
   /** Drop the in-flight guard and the logged delay so the next join polls cleanly. */
   release(): void {
     this.pollInFlight = false;
+    this.pendingKick = false;
     this.lastLoggedPollDelayMs = null;
   }
 

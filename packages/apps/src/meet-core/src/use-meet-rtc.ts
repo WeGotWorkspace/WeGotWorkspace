@@ -143,6 +143,17 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
     getSessionRef().current?.kickPoll();
   }, [getSessionRef]);
 
+  const sendPollPoke = useCallback(
+    (remoteId: string) => {
+      getSessionRef().current?.sendPollPoke(remoteId);
+    },
+    [getSessionRef],
+  );
+
+  const broadcastPollPoke = useCallback(() => {
+    getSessionRef().current?.broadcastPollPoke();
+  }, [getSessionRef]);
+
   const sendRoomChat = useCallback(
     (message: MeetRoomChatMessage) => {
       getSessionRef().current?.sendRoomChat(message);
@@ -176,11 +187,14 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
       getMyId,
       getSessionKey,
       kickPoll,
+      sendPollPoke,
+      broadcastPollPoke,
       sendRoomChat,
       setEncodingPrefs,
       isCameraSendingDisabled,
     }),
     [
+      broadcastPollPoke,
       getMyId,
       getPeerConnection,
       getPeerIds,
@@ -190,6 +204,7 @@ export function useMeetRtc(options: UseMeetRtcOptions) {
       join,
       kickPoll,
       leave,
+      sendPollPoke,
       sendRoomChat,
       replaceAudioTrack,
       replaceVideoTrack,

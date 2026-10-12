@@ -1,5 +1,6 @@
 import { createMediaBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
+import { meetDcPokeFrame } from "@/lib/rtc/session/meet-data-channel";
 import { createMeshMeetRoomChat, type MeetRoomChatMessage } from "@/lib/rtc/session/meet-room-chat";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
@@ -215,6 +216,16 @@ export class MeetRtcSession {
 
   kickPoll(): void {
     this.mesh?.kickPoll();
+  }
+
+  /** Ask one peer to poll now. No command travels here — authority stays on HTTP. */
+  sendPollPoke(remoteId: string): void {
+    this.mesh?.sendJsonTo(remoteId, meetDcPokeFrame());
+  }
+
+  /** Same poke to every connected peer. */
+  broadcastPollPoke(): void {
+    this.mesh?.broadcastJson(meetDcPokeFrame());
   }
 
   /** Chat on every open Meet data channel. HTTP stays with the caller. */

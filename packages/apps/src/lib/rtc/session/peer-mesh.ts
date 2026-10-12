@@ -308,7 +308,7 @@ export class RtcPeerMesh {
   }
 
   kickPoll(): void {
-    this.schedulePoll(false);
+    this.pollLoop.kick();
   }
 
   /** Collab mailbox send (`yjs` / `yjs-sv`). Piggybacked rows still hit the poll. */
