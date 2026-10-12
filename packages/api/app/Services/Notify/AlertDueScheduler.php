@@ -7,6 +7,7 @@ namespace App\Services\Notify;
 use App\Events\EventDispatch;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
+use App\Services\Calendars\CalendarEventExpansionService;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use DateInterval;
 use DateTimeImmutable;
@@ -24,7 +25,10 @@ use Sabre\VObject\Recur\EventIterator;
 
 final class AlertDueScheduler
 {
-    public function __construct(private readonly EventDispatch $events) {}
+    public function __construct(
+        private readonly EventDispatch $events,
+        private readonly CalendarEventExpansionService $expansion,
+    ) {}
 
     public function scan(?DateTimeImmutable $now = null): int
     {
@@ -248,8 +252,10 @@ final class AlertDueScheduler
             return $start !== null ? [$start] : [];
         }
         try {
-            $iterator = new EventIterator($component, null, $now->getTimezone());
-            $iterator->fastForward($now->sub(new DateInterval('P1D')));
+            $windowStart = $now->sub(new DateInterval('P1D'));
+            $anchored = $this->expansion->anchorNearWindow([clone $component], $windowStart)[0];
+            $iterator = new EventIterator($anchored, null, $now->getTimezone());
+            $iterator->fastForward($windowStart);
             $out = [];
             $guard = 0;
             while ($iterator->valid() && $guard < 32) {

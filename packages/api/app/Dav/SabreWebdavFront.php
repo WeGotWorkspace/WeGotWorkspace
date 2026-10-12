@@ -85,6 +85,10 @@ final class SabreWebdavFront
     {
         try {
             $server->emit('exception', [$e]);
+        } catch (DAV\Exception $mapped) {
+            // exception listeners cannot replace $e by return value. A DAV
+            // exception thrown here (recurrence cap → 507) is the response.
+            $e = $mapped;
         } catch (\Exception) {
         }
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 /**
  * CalDAV PDO backend for the DAV server only: collections whose URI carries a
@@ -57,6 +59,21 @@ final class ChatHiddenCalendarBackend extends CalPDO
         }
 
         return parent::createCalendar($principalUri, $calendarUri, $properties);
+    }
+
+    /**
+     * @param  array<mixed>  $object
+     * @param  array<mixed>  $filters
+     */
+    protected function validateFilterForObject(array $object, array $filters)
+    {
+        try {
+            return parent::validateFilterForObject($object, $filters);
+        } catch (MaxInstancesExceededException) {
+            Log::warning('caldav.recurrence_cap', ['uri' => $object['uri'] ?? null]);
+
+            return false;
+        }
     }
 
     private function isHiddenUri(string $uri): bool

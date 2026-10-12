@@ -12,6 +12,7 @@ use DateTimeZone;
 use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
+use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property;
 use Sabre\VObject\Property\ICalendar\DateTime as IcsDateTime;
 use Sabre\VObject\Reader;
@@ -61,7 +62,7 @@ final class CalendarEventExpansionService
         $timeZone = $this->resolveTimeZone($masterEvent);
         $start = new DateTimeImmutable($after, $timeZone);
         $end = new DateTimeImmutable($before, $timeZone);
-        $vevents = $this->shiftLongSeriesNearWindow($vevents, $start);
+        $vevents = $this->anchorNearWindow($vevents, $start);
 
         try {
             $iterator = new EventIterator($vevents, null, $timeZone);
@@ -212,10 +213,12 @@ final class CalendarEventExpansionService
      * starts before the window can still overlap it.
      * EXDATE and RECURRENCE-ID values stay absolute.
      *
-     * @param  list<VEvent>  $vevents
-     * @return list<VEvent>
+     * Weekly rules count each BYDAY value as one instance of the step.
+     *
+     * @param  list<VEvent|VTodo>  $vevents
+     * @return list<VEvent|VTodo>
      */
-    private function shiftLongSeriesNearWindow(array $vevents, DateTimeImmutable $windowStart): array
+    public function anchorNearWindow(array $vevents, DateTimeImmutable $windowStart): array
     {
         $masterIndex = null;
         foreach ($vevents as $index => $vevent) {
@@ -229,6 +232,9 @@ final class CalendarEventExpansionService
         }
 
         $master = $vevents[$masterIndex];
+        if (! $master instanceof VEvent) {
+            return $vevents;
+        }
         $rule = $this->shiftableRule($master);
         $startProp = $master->DTSTART ?? null;
         if ($rule === null || ! $startProp instanceof IcsDateTime) {
@@ -240,7 +246,8 @@ final class CalendarEventExpansionService
         $stepSeconds = $rule['interval'] * ($rule['frequency'] === 'WEEKLY' ? 604800 : 86400);
         $durationSteps = (int) ceil($this->masterDurationSeconds($master) / $stepSeconds);
         $anchorSteps = max(0, $firstInWindow - 1 - $durationSteps);
-        if ($anchorSteps <= 1000) {
+        $perStep = $this->instancesPerStep($rule['parts']);
+        if ($anchorSteps * $perStep <= 1000) {
             return $vevents;
         }
 
@@ -255,7 +262,7 @@ final class CalendarEventExpansionService
     }
 
     /**
-     * @return array{frequency: string, interval: int}|null
+     * @return array{frequency: string, interval: int, parts: array<mixed>}|null
      */
     private function shiftableRule(VEvent $master): ?array
     {
@@ -288,7 +295,37 @@ final class CalendarEventExpansionService
             return null;
         }
 
-        return ['frequency' => $frequency, 'interval' => $interval];
+        return ['frequency' => $frequency, 'interval' => $interval, 'parts' => $parts];
+    }
+
+    /**
+     * Instances produced by one frequency step. Weekly BYDAY lists one
+     * instance per day; every other rule counts as a single instance.
+     *
+     * @param  array<mixed>  $parts
+     */
+    private function instancesPerStep(array $parts): int
+    {
+        if (strtoupper((string) ($parts['FREQ'] ?? '')) !== 'WEEKLY' || ! isset($parts['BYDAY'])) {
+            return 1;
+        }
+
+        $byDay = $parts['BYDAY'];
+        if (is_string($byDay)) {
+            $byDay = explode(',', $byDay);
+        }
+        if (! is_array($byDay)) {
+            return 1;
+        }
+
+        $count = 0;
+        foreach ($byDay as $day) {
+            if (is_string($day) && $day !== '') {
+                $count++;
+            }
+        }
+
+        return $count > 0 ? $count : 1;
     }
 
     /**
