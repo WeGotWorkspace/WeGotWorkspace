@@ -62,4 +62,18 @@ final class AlertDueSchedulerTest extends WgwDatabaseTestCase
         $this->assertSame('Pay rent', $row->title);
         $this->assertSame('Due Sat 12 Sep · 12:10', $row->body);
     }
+
+    public function test_daily_series_starting_in_2010_fires_a_reminder(): void
+    {
+        $now = new DateTimeImmutable('2026-10-12T12:00:00Z', new DateTimeZone('UTC'));
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:daily-since-2010\r\nSUMMARY:Long daily reminder\r\nDTSTART:20100101T121500Z\r\nDTEND:20100101T131500Z\r\nRRULE:FREQ=DAILY\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT15M\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $this->seedEventViaPdo('bob', 'daily-since-2010.ics', $ics);
+
+        $fired = app(AlertDueScheduler::class)->scan($now);
+
+        $this->assertGreaterThanOrEqual(1, $fired);
+        $row = Notification::query()->where('principal', 'bob')->where('action', 'alert_due')->first();
+        $this->assertNotNull($row);
+        $this->assertSame('Long daily reminder', $row->title);
+    }
 }

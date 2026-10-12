@@ -19,6 +19,7 @@ use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
+use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
@@ -133,6 +134,7 @@ final class SabreServerFactory
         if ($cal) {
             $server->addPlugin(new CalendarPropfindReadPlugin);
             $server->addPlugin(new CalDAV\Plugin);
+            $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(new CalDAV\Schedule\Plugin);
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
