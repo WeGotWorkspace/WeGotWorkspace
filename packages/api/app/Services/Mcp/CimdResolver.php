@@ -281,8 +281,11 @@ final class CimdResolver
             'progress' => static function (int $downloadTotal, int $downloaded, int $uploadTotal, int $uploaded) use ($maxBytes): void {
                 self::abortIfOversized($downloadTotal, $downloaded, $maxBytes);
             },
+            'proxy' => '',
             'curl' => [
                 CURLOPT_RESOLVE => [self::curlResolveEntry($host, $port, $pinned)],
+                CURLOPT_PROXY => '',
+                CURLOPT_NOPROXY => '*',
             ],
         ];
     }
