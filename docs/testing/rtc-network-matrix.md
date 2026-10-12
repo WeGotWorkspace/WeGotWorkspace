@@ -28,7 +28,7 @@ Enable browser logging with **Admin → Real-time collaboration → Detailed con
 | N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N13 | iOS Safari remote audio | **Human-only.** Join a Meet call in iOS Safari | Remote audio stays silent until a user gesture, then plays | Skipped as N/A 2026-10-12 ([M6](#manual-runs-2026-10-12-online)): Join is already a user gesture |
 | N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows | Passed 2026-10-12 online ([M6](#manual-runs-2026-10-12-online)) |
-| N15 | Resume from background | **Human-only.** On iOS Safari and on the installed PWA, background a Meet call or Docs session, then return | The client polls immediately and restarts ICE; the call or document stays connected | |
+| N15 | Resume from background | **Human-only.** On iOS Safari and on the installed PWA, background a Meet call or Docs session, then return | The client polls immediately and restarts ICE; the call or document stays connected | Passed 2026-10-12 online ([M6](#manual-runs-2026-10-12-online)) |
 
 N13–N15 are human-only. A person runs them before the v0.9 release. Do not assign that run to an agent.
 
