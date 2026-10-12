@@ -1599,16 +1599,16 @@
         },
         {
             "name": "laravel/passport",
-            "version": "v13.8.0",
+            "version": "v13.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/passport.git",
-                "reference": "63118b38b508d5605a0e3b5468d447bf540ea7d2"
+                "reference": "fe069acef0e1be32fbd80d33304f7affaa85f0f1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/passport/zipball/63118b38b508d5605a0e3b5468d447bf540ea7d2",
-                "reference": "63118b38b508d5605a0e3b5468d447bf540ea7d2",
+                "url": "https://api.github.com/repos/laravel/passport/zipball/fe069acef0e1be32fbd80d33304f7affaa85f0f1",
+                "reference": "fe069acef0e1be32fbd80d33304f7affaa85f0f1",
                 "shasum": ""
             },
             "require": {
@@ -1633,6 +1633,7 @@
                 "symfony/psr-http-message-bridge": "^7.1|^8.0"
             },
             "require-dev": {
+                "jasonmccreary/double": "^1.0",
                 "orchestra/testbench": "^9.15|^10.8|^11.0",
                 "phpstan/phpstan": "^2.0"
             },
@@ -1670,7 +1671,7 @@
                 "issues": "https://github.com/laravel/passport/issues",
                 "source": "https://github.com/laravel/passport"
             },
-            "time": "2026-08-28T14:24:54+00:00"
+            "time": "2026-09-28T14:57:46+00:00"
         },
         {
             "name": "laravel/prompts",
@@ -5171,16 +5172,16 @@
         },
         {
             "name": "swagger-api/swagger-ui",
-            "version": "v5.33.0",
+            "version": "v5.33.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/swagger-api/swagger-ui.git",
-                "reference": "cfd4a6c3cbaeeb7c13a8bada7c754de42d78cd5b"
+                "reference": "cac3d136b5e37bfbe3288c8591f6f4fcf9870599"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/swagger-api/swagger-ui/zipball/cfd4a6c3cbaeeb7c13a8bada7c754de42d78cd5b",
-                "reference": "cfd4a6c3cbaeeb7c13a8bada7c754de42d78cd5b",
+                "url": "https://api.github.com/repos/swagger-api/swagger-ui/zipball/cac3d136b5e37bfbe3288c8591f6f4fcf9870599",
+                "reference": "cac3d136b5e37bfbe3288c8591f6f4fcf9870599",
                 "shasum": ""
             },
             "type": "library",
@@ -5226,9 +5227,9 @@
             ],
             "support": {
                 "issues": "https://github.com/swagger-api/swagger-ui/issues",
-                "source": "https://github.com/swagger-api/swagger-ui/tree/v5.33.0"
+                "source": "https://github.com/swagger-api/swagger-ui/tree/v5.33.1"
             },
-            "time": "2026-09-16T09:18:16+00:00"
+            "time": "2026-10-01T09:20:52+00:00"
         },
         {
             "name": "symfony/clock",
@@ -8296,16 +8297,16 @@
         },
         {
             "name": "zbateson/mail-mime-parser",
-            "version": "4.0.5",
+            "version": "4.0.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/zbateson/mail-mime-parser.git",
-                "reference": "223996193c9af10b78542eb298ca2c268675d1d5"
+                "reference": "f7d3c271536a8b3d50dc3a942de8f56282629bb8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/zbateson/mail-mime-parser/zipball/223996193c9af10b78542eb298ca2c268675d1d5",
-                "reference": "223996193c9af10b78542eb298ca2c268675d1d5",
+                "url": "https://api.github.com/repos/zbateson/mail-mime-parser/zipball/f7d3c271536a8b3d50dc3a942de8f56282629bb8",
+                "reference": "f7d3c271536a8b3d50dc3a942de8f56282629bb8",
                 "shasum": ""
             },
             "require": {
@@ -8368,7 +8369,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-09-15T18:09:00+00:00"
+            "time": "2026-09-28T20:32:29+00:00"
         },
         {
             "name": "zbateson/mb-wrapper",
@@ -10003,16 +10004,16 @@
         },
         {
             "name": "larastan/larastan",
-            "version": "v3.12.2",
+            "version": "v3.12.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/larastan/larastan.git",
-                "reference": "c328727e6103c1147d1c64cc96b3aedfda26bc20"
+                "reference": "792628d803d92fb154d6909d7e8d5862d81741f1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/larastan/larastan/zipball/c328727e6103c1147d1c64cc96b3aedfda26bc20",
-                "reference": "c328727e6103c1147d1c64cc96b3aedfda26bc20",
+                "url": "https://api.github.com/repos/larastan/larastan/zipball/792628d803d92fb154d6909d7e8d5862d81741f1",
+                "reference": "792628d803d92fb154d6909d7e8d5862d81741f1",
                 "shasum": ""
             },
             "require": {
@@ -10080,7 +10081,7 @@
             ],
             "support": {
                 "issues": "https://github.com/larastan/larastan/issues",
-                "source": "https://github.com/larastan/larastan/tree/v3.12.2"
+                "source": "https://github.com/larastan/larastan/tree/v3.12.3"
             },
             "funding": [
                 {
@@ -10088,7 +10089,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-09-19T10:46:58+00:00"
+            "time": "2026-10-04T20:01:26+00:00"
         },
         {
             "name": "laravel/pint",
@@ -12738,16 +12739,16 @@
         },
         {
             "name": "vimeo/psalm",
-            "version": "6.18.1",
+            "version": "6.19.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/vimeo/psalm.git",
-                "reference": "79465b8dc674127f442ae31ea114c11bc4dd7ed6"
+                "reference": "e2ca44251c1f1aa2e35452d426895746b47de64e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/vimeo/psalm/zipball/79465b8dc674127f442ae31ea114c11bc4dd7ed6",
-                "reference": "79465b8dc674127f442ae31ea114c11bc4dd7ed6",
+                "url": "https://api.github.com/repos/vimeo/psalm/zipball/e2ca44251c1f1aa2e35452d426895746b47de64e",
+                "reference": "e2ca44251c1f1aa2e35452d426895746b47de64e",
                 "shasum": ""
             },
             "require": {
@@ -12852,7 +12853,7 @@
                 "issues": "https://github.com/vimeo/psalm/issues",
                 "source": "https://github.com/vimeo/psalm"
             },
-            "time": "2026-09-23T10:02:42+00:00"
+            "time": "2026-09-29T09:38:04+00:00"
         },
         {
             "name": "webmozart/assert",
