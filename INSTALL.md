@@ -75,6 +75,12 @@ After setup, sign in with your new account and connect clients using the same si
 
 If your install is in a subfolder, set `RewriteBase` in `.htaccess` to that subfolder path.
 
+### Calendar and contacts client discovery
+
+CalDAV and CardDAV clients discover this server with `GET /.well-known/caldav` and `GET /.well-known/carddav` (RFC 6764). Both redirect to the DAV root. Check a running install with `php artisan wgw:check-dav-discovery --working-dir packages/api`.
+
+For automatic client discovery, install WeGotWorkspace on its own (sub)domain. In a subdirectory installation, users must enter the full DAV URL manually when setting up a calendar or contacts client.
+
 ### Cron (reminders and Web Push)
 
 Due Calendar/Task reminders and Web Push fallback need Laravel’s scheduler **every minute**. Add a host crontab entry (adjust the path to this install):

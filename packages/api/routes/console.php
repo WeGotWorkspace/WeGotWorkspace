@@ -27,9 +27,11 @@ use App\Services\Notify\VapidPushService;
 use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
+use App\Support\PublicAppUrl;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Http;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -441,3 +443,58 @@ Artisan::command('wgw:vapid-keys', function (InstallerVapidKeyGenerator $vapid):
 
     return Command::SUCCESS;
 })->purpose('Create VAPID keys for Web Push when missing (idempotent)');
+
+Artisan::command('wgw:check-dav-discovery', function (): int {
+    if (! PublicAppUrl::isConfigured()) {
+        $this->error('APP_URL is not a public origin, so this check cannot verify /.well-known discovery.');
+        $this->warn('Set APP_URL to the hostname clients use, then run this command again.');
+
+        return Command::FAILURE;
+    }
+
+    $davRoot = PublicAppUrl::to('/');
+    $unreachable = false;
+    $rejected = false;
+
+    foreach (['caldav', 'carddav'] as $service) {
+        $url = PublicAppUrl::to('/.well-known/'.$service);
+
+        try {
+            $response = Http::withoutRedirecting()->timeout(10)->get($url);
+        } catch (Throwable $e) {
+            $this->error("{$service}: request failed - ".$e->getMessage());
+            $unreachable = true;
+
+            continue;
+        }
+
+        $status = $response->status();
+        $location = $response->header('Location');
+
+        if (in_array($status, [301, 302, 307, 308], true) && $location !== '') {
+            $this->info("{$service}: OK ({$status} -> {$location})");
+
+            continue;
+        }
+
+        $this->error("{$service}: FAILED (HTTP {$status})");
+        $rejected = true;
+    }
+
+    if (! $unreachable && ! $rejected) {
+        return Command::SUCCESS;
+    }
+
+    $this->newLine();
+    if ($unreachable && ! $rejected) {
+        $this->warn('This server could not reach itself. Discovery may still work for clients.');
+    } else {
+        $this->warn('Automatic client discovery is not working on this installation.');
+    }
+    $this->warn('Users must enter the full DAV URL manually: '.$davRoot);
+    $this->warn('If this server runs nginx, add:');
+    $this->line('  location = /.well-known/caldav  { return 301 '.$davRoot.'; }');
+    $this->line('  location = /.well-known/carddav { return 301 '.$davRoot.'; }');
+
+    return Command::FAILURE;
+})->purpose('Verify that /.well-known/caldav and /.well-known/carddav redirect to the DAV root (RFC 6764)');

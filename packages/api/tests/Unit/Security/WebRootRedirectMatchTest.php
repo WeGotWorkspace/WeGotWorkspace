@@ -29,6 +29,28 @@ final class WebRootRedirectMatchTest extends TestCase
         }
     }
 
+    #[DataProvider('htaccessFiles')]
+    public function test_dav_discovery_rewrite_runs_before_the_front_controller(string $filename): void
+    {
+        $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
+        $htaccess = (string) file_get_contents($path);
+        $base = strpos($htaccess, 'RewriteBase /');
+        $front = strpos($htaccess, 'RewriteRule . index.php [L]');
+        $matched = preg_match(
+            '/RewriteRule\s+\^\\\\\.well-known\/\(caldav\|carddav\)\$\s+index\.php\s+\[L\]/',
+            $htaccess,
+            $rule,
+            PREG_OFFSET_CAPTURE,
+        );
+
+        $this->assertSame(1, $matched, $filename.' is missing the discovery rewrite to index.php');
+        $this->assertNotFalse($base, $filename.' is missing RewriteBase');
+        $this->assertNotFalse($front, $filename.' is missing the index.php fallback');
+        $offset = $rule[0][1];
+        $this->assertGreaterThan($base, $offset, 'discovery rewrite must follow RewriteBase');
+        $this->assertLessThan($front, $offset, 'discovery rewrite must run before the front controller');
+    }
+
     /**
      * @return list<array{0: string}>
      */
@@ -51,6 +73,8 @@ final class WebRootRedirectMatchTest extends TestCase
             '/files/users/alice/.Trash/x.txt',
             '/files/users/alice/._photo.jpg',
             '/.well-known/oauth-authorization-server/mcp',
+            '/.well-known/caldav',
+            '/.well-known/carddav',
         ];
     }
 
