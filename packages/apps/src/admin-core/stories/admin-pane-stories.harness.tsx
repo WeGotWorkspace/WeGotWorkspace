@@ -21,7 +21,6 @@ export type AdminStoryDataOverride = {
   apps?: Partial<AdminUIData["apps"]>;
   webdav?: Partial<AdminUIData["webdav"]>;
   mcp?: Partial<AdminUIData["mcp"]>;
-  plugins?: AdminUIData["plugins"];
   updates?: Partial<AdminUIData["updates"]>;
   searchReindex?: Partial<AdminUIData["searchReindex"]>;
   currentUser?: string;

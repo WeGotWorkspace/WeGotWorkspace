@@ -14,7 +14,6 @@ import type {
   WgwDriveDirectoryEntry,
   WgwDriveUserData,
   WgwDriveUserResponse,
-  WgwPluginDescriptor,
 } from "@/lib/api/wgw/types";
 import type {
   DriveMutationOpts,
@@ -268,7 +267,6 @@ export async function fetchDriveUser(opts?: { signal?: AbortSignal }): Promise<W
 export async function fetchSignedInDriveState(
   dir: string,
   opts?: { signal?: AbortSignal },
-  plugins: WgwPluginDescriptor[] = [],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -293,14 +291,13 @@ export async function fetchSignedInDriveState(
         user,
         cwd: directory.location,
         directory: { ...directory, files: [...directory.files, ...extra] },
-        plugins,
       };
     } catch {
       // Group merge is additive only.
     }
   }
 
-  return { user, cwd: directory.location, directory, plugins };
+  return { user, cwd: directory.location, directory };
 }
 
 async function setIgnoringAlreadyExists(
@@ -360,12 +357,11 @@ export async function downloadFileNodeBlob(
   return res.blob();
 }
 
-function emptyState(cwd: string, plugins: WgwPluginDescriptor[]): DriveUIData {
+function emptyState(cwd: string): DriveUIData {
   return {
     user: { username: "", name: "", role: "user", roots: [] },
     cwd,
     directory: { location: cwd, files: [] },
-    plugins,
   };
 }
 
@@ -374,7 +370,6 @@ export async function createFileNodeFolder(
   name: string,
   opts: DriveMutationOpts | undefined,
   cwd: string,
-  plugins: WgwPluginDescriptor[],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -403,8 +398,8 @@ export async function createFileNodeFolder(
       type: node.type ?? null,
     });
   }
-  if (opts?.refreshState === false) return emptyState(cwd, plugins);
-  return fetchSignedInDriveState(cwd, opts, plugins);
+  if (opts?.refreshState === false) return emptyState(cwd);
+  return fetchSignedInDriveState(cwd, opts);
 }
 
 export async function createFileNodeFile(
@@ -412,7 +407,6 @@ export async function createFileNodeFile(
   name: string,
   opts: DriveMutationOpts | undefined,
   cwd: string,
-  plugins: WgwPluginDescriptor[],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -428,8 +422,8 @@ export async function createFileNodeFile(
     { accountId: session.accountId, create: { f0: { parentId, name, blobId } } },
     opts?.signal,
   );
-  if (opts?.refreshState === false) return emptyState(cwd, plugins);
-  return fetchSignedInDriveState(cwd, opts, plugins);
+  if (opts?.refreshState === false) return emptyState(cwd);
+  return fetchSignedInDriveState(cwd, opts);
 }
 
 export async function renameFileNode(
@@ -438,7 +432,6 @@ export async function renameFileNode(
   toName: string,
   opts: DriveMutationOpts | undefined,
   cwd: string,
-  plugins: WgwPluginDescriptor[],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -458,15 +451,14 @@ export async function renameFileNode(
   }
   const nextPath = destParent === "/" ? `/${toName}` : `${destParent}/${toName}`;
   session.cache.movePath(fromPath, nextPath);
-  if (opts?.refreshState === false) return emptyState(cwd, plugins);
-  return fetchSignedInDriveState(cwd, opts, plugins);
+  if (opts?.refreshState === false) return emptyState(cwd);
+  return fetchSignedInDriveState(cwd, opts);
 }
 
 export async function destroyFileNodes(
   paths: string[],
   opts: DriveMutationOpts | undefined,
   cwd: string,
-  plugins: WgwPluginDescriptor[],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -479,15 +471,14 @@ export async function destroyFileNodes(
     { signal: opts?.signal },
   );
   for (const path of paths) session.cache.forgetSubtree(path);
-  if (opts?.refreshState === false) return emptyState(cwd, plugins);
-  return fetchSignedInDriveState(cwd, opts, plugins);
+  if (opts?.refreshState === false) return emptyState(cwd);
+  return fetchSignedInDriveState(cwd, opts);
 }
 
 export async function uploadFileNodes(
   targetCwd: string,
   files: File[],
   opts: (DriveMutationOpts & { onProgress?: (progress: DriveUploadProgress) => void }) | undefined,
-  plugins: WgwPluginDescriptor[],
 ): Promise<DriveUIData> {
   const session = await driveJmapSession();
   const user = await fetchDriveUser(opts);
@@ -543,7 +534,7 @@ export async function uploadFileNodes(
     publish(file.name);
   }
 
-  return fetchSignedInDriveState(targetCwd, opts, plugins);
+  return fetchSignedInDriveState(targetCwd, opts);
 }
 
 export async function listFileNodeEntriesByPaths(

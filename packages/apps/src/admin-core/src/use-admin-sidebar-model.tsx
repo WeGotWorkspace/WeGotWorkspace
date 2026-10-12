@@ -6,7 +6,6 @@ import {
   Mail,
   Send,
   MessagesSquare,
-  Puzzle,
   ShieldCheck,
   Sparkles,
   Users,
@@ -57,12 +56,6 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
       label: "WebDAV",
       description: "Core platform and app toggles",
       icon: <ShieldCheck className="size-3.5" />,
-    },
-    {
-      id: "plugins",
-      label: "Plugins",
-      description: "Optional app integrations",
-      icon: <Puzzle className="size-3.5" />,
     },
     {
       id: "backups",

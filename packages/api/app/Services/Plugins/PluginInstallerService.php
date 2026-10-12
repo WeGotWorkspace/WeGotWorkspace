@@ -29,6 +29,10 @@ final class PluginInstallerService
      */
     public function installFromZip(UploadedFile $archive): array
     {
+        if (! config('wgw.plugins.enabled')) {
+            throw new \RuntimeException('Plugins are disabled on this server.');
+        }
+
         if (strtolower((string) $archive->getClientOriginalExtension()) !== 'zip') {
             throw new \InvalidArgumentException('Plugin archive must be a .zip file.');
         }

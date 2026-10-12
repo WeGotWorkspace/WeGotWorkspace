@@ -97,7 +97,6 @@ const DEFAULT_DATA: AdminUIData = {
     enabled: false,
     endpointUrl: STORY_MCP_ENDPOINT_URL,
   },
-  plugins: [],
   updates: {
     installChannel: null,
     installedVersion: "0.0.0",

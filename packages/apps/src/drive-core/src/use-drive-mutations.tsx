@@ -42,9 +42,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     reloadStarredFromServer,
     inTrashView,
     isUnderTrash,
-    templatePlugin,
-    newFileTemplates,
-    launchPluginEditor,
   } = shell;
 
   const {
@@ -391,25 +388,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     }
   };
 
-  const createFromTemplate = useCallback(
-    (templateId: string) => {
-      if (!templatePlugin?.drive?.openFileRoute) return;
-      const template = newFileTemplates.find((item) => item.id === templateId);
-      if (!template) return;
-      const qp = new URLSearchParams({ new: template.queryValue });
-      launchPluginEditor(templatePlugin, templatePlugin.drive.openFileRoute, qp);
-    },
-    [launchPluginEditor, newFileTemplates, templatePlugin],
-  );
-
-  const createBlank = (kind: "doc" | "sheet" | "slides") => {
-    if (!templatePlugin?.drive?.openFileRoute) return;
-    const template = newFileTemplates.find((item) => item.kind === kind);
-    if (!template) return;
-    const qp = new URLSearchParams({ new: template.queryValue });
-    launchPluginEditor(templatePlugin, templatePlugin.drive.openFileRoute, qp);
-  };
-
   const createMarkdown = useCallback(() => {
     if (!onOpenDocsFile) return;
     setMarkdownDialogError(null);
@@ -574,8 +552,6 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     createFolder,
     submitCreateFolder,
     createMarkdown,
-    createBlank,
-    createFromTemplate,
     resetRenameDialog,
   };
 }

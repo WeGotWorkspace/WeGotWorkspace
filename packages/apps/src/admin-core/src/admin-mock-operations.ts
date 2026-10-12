@@ -428,23 +428,5 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       }));
       return snapshot();
     },
-    activatePlugin: async (pluginId, opts) => {
-      await sleep(120, opts?.signal);
-      current.plugins = current.plugins.map((plugin) =>
-        plugin.id === pluginId ? { ...plugin, active: true } : plugin,
-      );
-      return snapshot();
-    },
-    deactivatePlugin: async (pluginId, opts) => {
-      await sleep(120, opts?.signal);
-      current.plugins = current.plugins.map((plugin) =>
-        plugin.id === pluginId ? { ...plugin, active: false } : plugin,
-      );
-      return snapshot();
-    },
-    installPluginZip: async (_file, opts) => {
-      await sleep(200, opts?.signal);
-      throw new Error("Plugin install from ZIP requires a live server connection.");
-    },
   };
 }

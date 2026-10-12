@@ -20,8 +20,6 @@ export type DriveWorkspaceProps = {
   onViewChange?: (view: ViewKey) => void;
   /** Opens a Markdown file in the Docs app (host implements routing). */
   onOpenDocsFile?: (apiPath: string) => void;
-  /** Same-tab navigation for plugin editor routes (host implements routing). */
-  onNavigate?: (href: string) => void;
   /** Opens ShareDialog for a virtual API path (Phase 3 wiring). */
   onOpenShare?: (apiPath: string) => void;
   onLogout?: () => void;

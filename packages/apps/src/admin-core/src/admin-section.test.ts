@@ -24,9 +24,9 @@ describe("admin-section", () => {
   });
 
   it("falls back unknown or missing sections to users", () => {
-    expect(isAdminSection("plugins")).toBe(true);
+    expect(isAdminSection("plugins")).toBe(false);
     expect(isAdminSection("nope")).toBe(false);
-    expect(resolveAdminSection("plugins")).toBe("plugins");
+    expect(resolveAdminSection("plugins")).toBe("users");
     expect(resolveAdminSection("nope")).toBe("users");
     expect(resolveAdminSection(undefined)).toBe("users");
     expect(isAdminPathname("/admin")).toBe(true);
@@ -34,6 +34,7 @@ describe("admin-section", () => {
     expect(isAdminPathname("/settings")).toBe(false);
     expect(adminSectionFromPathname("/admin")).toBeUndefined();
     expect(adminSectionFromPathname("/admin/plugins")).toBe("plugins");
+    expect(resolveAdminSection(adminSectionFromPathname("/admin/plugins"))).toBe("users");
     expect(adminSectionFromPathname("/admin/email-delivery")).toBe("email-delivery");
     expect(adminSectionFromPathname("/admin/not-a-pane")).toBe("not-a-pane");
   });

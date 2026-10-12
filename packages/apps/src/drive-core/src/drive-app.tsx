@@ -46,10 +46,6 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
 
   const handleOpenDocsFile = useOpenDocsFile();
 
-  const handleNavigate = useCallback((href: string) => {
-    window.location.assign(href);
-  }, []);
-
   return (
     <WorkspaceLiveAppShell
       phase={phase}
@@ -69,7 +65,6 @@ export function DriveApp({ apiSource }: DriveAppProps = {}) {
           view={routeView}
           onViewChange={handleViewChange}
           onOpenDocsFile={handleOpenDocsFile}
-          onNavigate={handleNavigate}
           onLogout={() => {
             if (wgwIsGuestSession()) {
               void wgwCompleteLogoutNavigation();

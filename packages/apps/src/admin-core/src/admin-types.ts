@@ -5,7 +5,6 @@ export type AdminSection =
   | "collaboration"
   | "realtime-health"
   | "webdav"
-  | "plugins"
   | "backups"
   | "updates"
   | "search"
@@ -218,12 +217,6 @@ export type AdminUIData = {
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
   mcp: AdminMcpSettings;
-  plugins: {
-    id: string;
-    name: string;
-    active: boolean;
-    source?: string;
-  }[];
   updates: AdminUpdateState;
   searchReindex: AdminSearchReindexState;
   currentUser: string;
@@ -283,7 +276,4 @@ export type AdminAPIOperations = {
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteGroup: (groupSlug: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  activatePlugin: (pluginId: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  deactivatePlugin: (pluginId: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  installPluginZip: (file: File, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
 };

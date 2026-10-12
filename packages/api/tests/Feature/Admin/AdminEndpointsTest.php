@@ -7,9 +7,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Storage\WgwStorage;
-use App\Support\AppPaths;
 use App\Support\WgwSettings;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
@@ -198,43 +196,6 @@ final class AdminEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/admin/state')
             ->assertForbidden();
-    }
-
-    public function test_admin_can_install_plugin_zip(): void
-    {
-        $token = $this->adminToken();
-        $zipPath = $this->dataDir.'/demo-plugin.zip';
-        $sourceRoot = $this->dataDir.'/plugin-source/demo-plugin';
-        File::ensureDirectoryExists($sourceRoot.'/assets');
-        File::put($sourceRoot.'/assets/index.html', '<!doctype html><title>Plugin</title>');
-        File::put($sourceRoot.'/plugin.json', json_encode([
-            'id' => 'demo-plugin',
-            'name' => 'Demo plugin',
-            'active' => true,
-            'drive' => [
-                'openFileExtensions' => ['docx'],
-            ],
-        ], JSON_THROW_ON_ERROR));
-
-        $zip = new \ZipArchive;
-        $opened = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-        $this->assertSame(true, $opened);
-        $zip->addFile($sourceRoot.'/plugin.json', 'demo-plugin/plugin.json');
-        $zip->addFile($sourceRoot.'/assets/index.html', 'demo-plugin/assets/index.html');
-        $zip->close();
-
-        $upload = new UploadedFile($zipPath, 'demo-plugin.zip', 'application/zip', null, true);
-
-        $this->withBearer($token)
-            ->post('/api/v1/admin/plugins', ['plugin' => $upload])
-            ->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('plugin.id', 'demo-plugin')
-            ->assertJsonPath('plugin.active', true);
-
-        $pluginsRoot = app(AppPaths::class)->pluginsRoot();
-        $this->assertFileExists($pluginsRoot.'/demo-plugin/plugin.json');
-        $this->assertFileExists($pluginsRoot.'/demo-plugin/assets/index.html');
     }
 
     private function adminToken(): string

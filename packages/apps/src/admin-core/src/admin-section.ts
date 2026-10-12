@@ -9,7 +9,6 @@ export const ADMIN_SECTIONS = [
   "collaboration",
   "realtime-health",
   "webdav",
-  "plugins",
   "backups",
   "updates",
   "search",

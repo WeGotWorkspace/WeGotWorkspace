@@ -34,8 +34,8 @@ describe("useAdminShell section routing", () => {
 
   it("honors initialSection when uncontrolled", () => {
     const { data } = createAdminAppBootstrap();
-    const { result } = renderHook(() => useAdminShell({ data, initialSection: "plugins" }));
-    expect(result.current.section).toBe("plugins");
+    const { result } = renderHook(() => useAdminShell({ data, initialSection: "webdav" }));
+    expect(result.current.section).toBe("webdav");
   });
 
   it("follows a controlled section and reports sidebar picks", () => {

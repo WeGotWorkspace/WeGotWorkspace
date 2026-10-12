@@ -47,7 +47,6 @@ function bootstrap(): DriveAppBootstrap {
       user: { username, name: username, role: "user", roots: [] },
       cwd: destination,
       directory: { location: destination, files: [] },
-      plugins: [],
     },
   };
 }

@@ -319,7 +319,6 @@ function offlineQueuedDriveData(cwd: string): DriveUIData {
     user: { username: "", name: "", role: "user", roots: [] },
     cwd,
     directory: { location: cwd, files: [] },
-    plugins: [],
   };
 }
 

@@ -111,9 +111,6 @@ function createShell(viewResetKey = "folder:My Drive"): DriveShellState {
     operations: undefined,
     viewResetKey,
     selectView,
-    data: { plugins: [] },
-    ensurePluginSessionBeforeNavigate: (_sessionPath: string | undefined, navigate: () => void) =>
-      navigate(),
   } as unknown as DriveShellState;
 }
 

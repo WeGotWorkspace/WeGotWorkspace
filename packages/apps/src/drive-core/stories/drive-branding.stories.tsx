@@ -29,6 +29,5 @@ export const Default: Story = {
     shareOperations: createMockDriveShareOperations(),
     onLogout: () => {},
     onOpenDocsFile: STORY_NOOP,
-    onNavigate: STORY_NOOP,
   },
 };
