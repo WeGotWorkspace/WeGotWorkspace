@@ -49,6 +49,8 @@ final class OAuthSessionController
 
         $user = $this->users->retrieveByCredentials(['username' => $username]);
         if (! $user instanceof User || ! $this->users->validateCredentials($user, ['password' => $password])) {
+            $this->limiter->hit($username, $ip);
+
             return $this->failed($request, 'Those credentials were not recognized.', 401);
         }
 

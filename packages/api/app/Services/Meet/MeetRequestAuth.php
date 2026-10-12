@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Meet;
 
 use App\Dav\Auth\SabreUiAuthGate;
+use App\Exceptions\ApiHttpException;
 use App\Services\Auth\BearerAuthenticationService;
+use App\Services\Auth\LoginRateLimiter;
 use App\Services\Auth\SabreCredentialValidator;
 use Illuminate\Http\Request;
 
@@ -18,6 +20,7 @@ final class MeetRequestAuth
     public function __construct(
         private BearerAuthenticationService $bearer,
         private SabreCredentialValidator $credentials,
+        private LoginRateLimiter $limiter,
     ) {}
 
     /**
@@ -54,7 +57,18 @@ final class MeetRequestAuth
 
         [$user, $password] = explode(':', $decoded, 2);
         $username = strtolower(trim($user));
-        if ($username === '' || ! $this->credentials->validate($username, $password, $realm)) {
+        if ($username === '') {
+            return null;
+        }
+
+        $ip = $request->ip();
+        $clientIp = is_string($ip) ? $ip : '';
+        if (! $this->limiter->allowProtocol($username, $clientIp)) {
+            throw new ApiHttpException(429, 'Too many login attempts. Please try again later.', 'throttled');
+        }
+        if (! $this->credentials->validate($username, $password, $realm)) {
+            $this->limiter->hitProtocol($username, $clientIp);
+
             return null;
         }
 

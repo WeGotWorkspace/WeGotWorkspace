@@ -51,6 +51,7 @@ final class AuthTokenService
 
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {
+            $this->rateLimiter->hit($username, $ip);
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 

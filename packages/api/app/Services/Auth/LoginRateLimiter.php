@@ -12,8 +12,17 @@ final class LoginRateLimiter
 
     public const int USER_IP_LIMIT = 8;
 
+    public const int USER_LIMIT = 30;
+
+    public const int PROTOCOL_IP_LIMIT = 60;
+
+    public const int PROTOCOL_USER_IP_LIMIT = 10;
+
     /** @var int Sliding window equivalent: 10 minutes */
     public const int DECAY_SECONDS = 600;
+
+    /** @var int Per-user ceiling across source IPs: 15 minutes */
+    public const int USER_DECAY_SECONDS = 900;
 
     public function __construct(private RateLimiter $rateLimiter) {}
 
@@ -23,22 +32,68 @@ final class LoginRateLimiter
             return true;
         }
 
-        $ipNorm = $this->normalizeIp($ip);
-        $user = $this->normalizeUser($username);
-        $ipKey = $this->ipKey($ipNorm);
-        $userIpKey = $this->userIpKey($user, $ipNorm);
+        [$user, $ipNorm] = $this->normalized($username, $ip);
 
-        if ($this->rateLimiter->tooManyAttempts($ipKey, self::IP_LIMIT)) {
-            return false;
+        return ! $this->tooMany($this->ipKey($ipNorm), self::IP_LIMIT)
+            && ! $this->tooMany($this->userIpKey($user, $ipNorm), self::USER_IP_LIMIT)
+            && ! $this->tooMany($this->userKey($user), self::USER_LIMIT);
+    }
+
+    public function hit(string $username, string $ip): void
+    {
+        if ($this->isDisabled()) {
+            return;
         }
-        if ($this->rateLimiter->tooManyAttempts($userIpKey, self::USER_IP_LIMIT)) {
-            return false;
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+        $this->rateLimiter->hit($this->ipKey($ipNorm), self::DECAY_SECONDS);
+        $this->rateLimiter->hit($this->userIpKey($user, $ipNorm), self::DECAY_SECONDS);
+        $this->rateLimiter->hit($this->userKey($user), self::USER_DECAY_SECONDS);
+    }
+
+    /**
+     * DAV and Meet Basic auth. Separate per-IP and per-user+IP keys so a
+     * polling client does not lock the web login. The per-user ceiling is shared.
+     */
+    public function allowProtocol(string $username, string $ip): bool
+    {
+        if ($this->isDisabled()) {
+            return true;
         }
 
-        $this->rateLimiter->hit($ipKey, self::DECAY_SECONDS);
-        $this->rateLimiter->hit($userIpKey, self::DECAY_SECONDS);
+        [$user, $ipNorm] = $this->normalized($username, $ip);
 
-        return true;
+        return ! $this->tooMany($this->protocolIpKey($ipNorm), self::PROTOCOL_IP_LIMIT)
+            && ! $this->tooMany($this->protocolUserIpKey($user, $ipNorm), self::PROTOCOL_USER_IP_LIMIT)
+            && ! $this->tooMany($this->userKey($user), self::USER_LIMIT);
+    }
+
+    public function hitProtocol(string $username, string $ip): void
+    {
+        if ($this->isDisabled()) {
+            return;
+        }
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+        $this->rateLimiter->hit($this->protocolIpKey($ipNorm), self::DECAY_SECONDS);
+        $this->rateLimiter->hit($this->protocolUserIpKey($user, $ipNorm), self::DECAY_SECONDS);
+        $this->rateLimiter->hit($this->userKey($user), self::USER_DECAY_SECONDS);
+    }
+
+    public function protocolRetryAfter(string $username, string $ip): int
+    {
+        if ($this->isDisabled()) {
+            return 1;
+        }
+
+        [$user, $ipNorm] = $this->normalized($username, $ip);
+
+        return max(
+            1,
+            $this->rateLimiter->availableIn($this->protocolIpKey($ipNorm)),
+            $this->rateLimiter->availableIn($this->protocolUserIpKey($user, $ipNorm)),
+            $this->rateLimiter->availableIn($this->userKey($user)),
+        );
     }
 
     public function reset(string $username, string $ip): void
@@ -50,6 +105,11 @@ final class LoginRateLimiter
         $this->rateLimiter->clear(
             $this->userIpKey($this->normalizeUser($username), $this->normalizeIp($ip))
         );
+    }
+
+    private function tooMany(string $key, int $limit): bool
+    {
+        return $this->rateLimiter->tooManyAttempts($key, $limit);
     }
 
     private function isDisabled(): bool
@@ -67,6 +127,29 @@ final class LoginRateLimiter
     private function userIpKey(string $user, string $ipNorm): string
     {
         return 'api-login-user:'.$user.':ip:'.$ipNorm;
+    }
+
+    private function userKey(string $user): string
+    {
+        return 'api-login-user:'.$user;
+    }
+
+    private function protocolIpKey(string $ipNorm): string
+    {
+        return 'dav-login-ip:'.$ipNorm;
+    }
+
+    private function protocolUserIpKey(string $user, string $ipNorm): string
+    {
+        return 'dav-login-user:'.$user.':ip:'.$ipNorm;
+    }
+
+    /**
+     * @return array{string, string}
+     */
+    private function normalized(string $username, string $ip): array
+    {
+        return [$this->normalizeUser($username), $this->normalizeIp($ip)];
     }
 
     private function normalizeIp(string $ip): string
