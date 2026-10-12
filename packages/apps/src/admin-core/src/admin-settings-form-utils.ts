@@ -19,6 +19,8 @@ export type AdminSettingsFormState = {
   rtcForceRelay: boolean;
   calendars: boolean;
   contacts: boolean;
+  imipExternalEnabled: boolean;
+  imipHourlyLimit: number;
   sabreUi: boolean;
   timezone: string;
   baseUri: string;
@@ -78,6 +80,8 @@ export function buildAdminSettingsFormState(
     rtcForceRelay: data.rtc.forceRelay,
     calendars: data.apps.calendars,
     contacts: data.apps.contacts,
+    imipExternalEnabled: data.apps.imipExternalEnabled,
+    imipHourlyLimit: data.apps.imipHourlyLimit,
     sabreUi: data.webdav.sabreUi,
     timezone: data.webdav.timezone,
     baseUri: data.webdav.baseUri,
@@ -117,6 +121,8 @@ export function adminSettingsFormToMap(
     rtc_force_relay: state.rtcForceRelay,
     calendar_enabled: state.calendars,
     contacts_enabled: state.contacts,
+    imip_external_enabled: state.imipExternalEnabled,
+    imip_hourly_limit: state.imipHourlyLimit,
     browser_plugin: state.sabreUi,
     timezone: state.timezone,
     base_uri: state.baseUri,

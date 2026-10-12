@@ -159,6 +159,8 @@ export function mapWgwAdminStateToUI(
     apps: {
       calendars: state.apps.calendars,
       contacts: state.apps.contacts,
+      imipExternalEnabled: state.apps.imipExternalEnabled,
+      imipHourlyLimit: state.apps.imipHourlyLimit,
     },
     webdav: {
       sabreUi: state.webdav.sabreUi,

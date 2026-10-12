@@ -1,0 +1,22 @@
+{
+  "AdminAppsSettings": {
+    "type": "object",
+    "properties": {
+      "calendars": {
+        "type": "boolean"
+      },
+      "contacts": {
+        "type": "boolean"
+      },
+      "imipExternalEnabled": {
+        "type": "boolean",
+        "description": "When false, Calendar must not send iMIP to external attendees."
+      },
+      "imipHourlyLimit": {
+        "type": "integer",
+        "description": "Maximum outbound iMIP messages per user per hour."
+      }
+    },
+    "required": ["calendars", "contacts", "imipExternalEnabled", "imipHourlyLimit"]
+  }
+}

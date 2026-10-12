@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Models\AppSetting;
 use App\Models\CalendarRsvpToken;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use App\Services\MailDelivery\OutboundMessage;
+use App\Services\Settings\SettingKeys;
 use App\Support\PublicAppUrl;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Sabre\VObject\ITip\Message;
 
@@ -17,6 +21,12 @@ use Sabre\VObject\ITip\Message;
  */
 final class CalendarImipService
 {
+    private const int DAILY_LIMIT = 300;
+
+    private const int HOURLY_DECAY_SECONDS = 3600;
+
+    private const int DAILY_DECAY_SECONDS = 86400;
+
     public function __construct(
         private readonly MailDeliveryService $mail,
         private readonly MailDeliveryTransportResolver $resolver,
@@ -25,11 +35,28 @@ final class CalendarImipService
 
     public function deliver(string $organizerUsername, Message $message): void
     {
+        if (! $this->externalInvitesEnabled()) {
+            return;
+        }
+        if ($this->sendCapped($organizerUsername)) {
+            Log::warning('imip.throttled', [
+                'organizer' => $organizerUsername,
+            ]);
+
+            return;
+        }
+
         $outbound = $this->compose($organizerUsername, $message);
         if ($outbound === null) {
             return;
         }
 
+        $this->recordSend($organizerUsername);
+        $to = $outbound->to[0] ?? '';
+        Log::info('imip.sent', [
+            'organizer' => $organizerUsername,
+            'to_domain' => $this->recipientDomain($to),
+        ]);
         $this->mail->send($outbound);
     }
 
@@ -165,6 +192,56 @@ final class CalendarImipService
         }
 
         return 'NEEDS-ACTION';
+    }
+
+    private function externalInvitesEnabled(): bool
+    {
+        return filter_var(
+            AppSetting::getValue(SettingKeys::IMIP_EXTERNAL_ENABLED, true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+    }
+
+    private function hourlyLimit(): int
+    {
+        $raw = AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, 100);
+        if (is_int($raw) && $raw > 0) {
+            return $raw;
+        }
+
+        return 100;
+    }
+
+    private function sendCapped(string $organizerUsername): bool
+    {
+        return RateLimiter::tooManyAttempts($this->hourlyKey($organizerUsername), $this->hourlyLimit())
+            || RateLimiter::tooManyAttempts($this->dailyKey($organizerUsername), self::DAILY_LIMIT);
+    }
+
+    private function recordSend(string $organizerUsername): void
+    {
+        RateLimiter::hit($this->hourlyKey($organizerUsername), self::HOURLY_DECAY_SECONDS);
+        RateLimiter::hit($this->dailyKey($organizerUsername), self::DAILY_DECAY_SECONDS);
+    }
+
+    private function hourlyKey(string $organizerUsername): string
+    {
+        return 'imip:user:'.$organizerUsername;
+    }
+
+    private function dailyKey(string $organizerUsername): string
+    {
+        return 'imip:user-day:'.$organizerUsername;
+    }
+
+    private function recipientDomain(string $email): string
+    {
+        $at = strrpos($email, '@');
+        if ($at === false) {
+            return '';
+        }
+
+        return strtolower(substr($email, $at + 1));
     }
 
     private function summary(string $ics): ?string

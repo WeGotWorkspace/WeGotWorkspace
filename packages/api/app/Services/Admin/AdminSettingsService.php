@@ -51,8 +51,15 @@ final class AdminSettingsService
             if ($key === SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY) {
                 $value = MeetVideoProfile::normalize($value, RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY);
             }
-            if ($key === SettingKeys::RTC_DEBUG_LOGGING || $key === SettingKeys::RTC_FORCE_RELAY) {
+            if (
+                $key === SettingKeys::RTC_DEBUG_LOGGING
+                || $key === SettingKeys::RTC_FORCE_RELAY
+                || $key === SettingKeys::IMIP_EXTERNAL_ENABLED
+            ) {
                 $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
+            }
+            if ($key === SettingKeys::IMIP_HOURLY_LIMIT) {
+                $value = $this->hourlyInviteLimit($value);
             }
             AppSetting::setValue($key, $value);
             $saved[] = $key;
@@ -102,6 +109,21 @@ final class AdminSettingsService
         $this->rtcSettings->forgetLegacyStaticCredentials();
 
         return $values;
+    }
+
+    private function hourlyInviteLimit(mixed $value): int
+    {
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $parsed = filter_var($value, FILTER_VALIDATE_INT);
+            if (is_int($parsed) && $parsed > 0) {
+                return $parsed;
+            }
+        }
+
+        return 100;
     }
 
     private function normalizeRtcUrls(mixed $value): string

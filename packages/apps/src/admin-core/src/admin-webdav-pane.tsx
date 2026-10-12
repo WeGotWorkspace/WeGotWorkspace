@@ -132,6 +132,32 @@ export function AdminWebdavPane({ controller }: AdminWebdavPaneProps) {
           onChange={(next) => requestDavToggle("calendars", next)}
         />
       </Card>
+
+      <Card title="Invitations">
+        <FeatureRow
+          label="External invitations"
+          desc="Email calendar invitations to people outside this instance."
+          value={controller.settingsForm.imipExternalEnabled}
+          onChange={(next) =>
+            controller.setSettingsForm((prev) => ({ ...prev, imipExternalEnabled: next }))
+          }
+        />
+        <FormField htmlFor="admin-webdav-imip-hourly-limit" label="Hourly invitation limit">
+          <Input
+            id="admin-webdav-imip-hourly-limit"
+            type="number"
+            min={1}
+            value={String(controller.settingsForm.imipHourlyLimit)}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+              controller.setSettingsForm((prev) => ({
+                ...prev,
+                imipHourlyLimit: Number.isFinite(value) && value > 0 ? Math.floor(value) : 100,
+              }));
+            }}
+          />
+        </FormField>
+      </Card>
       <div className="flex justify-end">
         <Button
           label="Save changes"

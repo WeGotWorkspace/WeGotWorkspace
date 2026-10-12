@@ -18,6 +18,12 @@ final class SettingKeys
 
     public const CALENDAR_ENABLED = 'calendar_enabled';
 
+    /** When false, Calendar must not send iMIP to external attendees. Default true. */
+    public const IMIP_EXTERNAL_ENABLED = 'imip_external_enabled';
+
+    /** Maximum outbound iMIP messages per user per hour. Default 100. */
+    public const IMIP_HOURLY_LIMIT = 'imip_hourly_limit';
+
     public const CONTACTS_ENABLED = 'contacts_enabled';
 
     public const TASKS_ENABLED = 'tasks_enabled';
@@ -90,6 +96,8 @@ final class SettingKeys
             self::BROWSER_PLUGIN,
             self::FILES_ENABLED,
             self::CALENDAR_ENABLED,
+            self::IMIP_EXTERNAL_ENABLED,
+            self::IMIP_HOURLY_LIMIT,
             self::CONTACTS_ENABLED,
             self::TASKS_ENABLED,
             self::MAIL_ENABLED,

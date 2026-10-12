@@ -51,6 +51,8 @@ final class AdminStateService
                 'calendars' => (bool) ($cfg[SettingKeys::CALENDAR_ENABLED] ?? true),
                 'contacts' => (bool) ($cfg[SettingKeys::CONTACTS_ENABLED] ?? true),
                 'tasks' => (bool) ($cfg[SettingKeys::TASKS_ENABLED] ?? true),
+                'imipExternalEnabled' => $this->imipExternalEnabled(),
+                'imipHourlyLimit' => $this->imipHourlyLimit(),
             ],
             'webdav' => [
                 'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? false),
@@ -86,6 +88,24 @@ final class AdminStateService
         }
 
         return $warnings;
+    }
+
+    private function imipExternalEnabled(): bool
+    {
+        return filter_var(
+            AppSetting::getValue(SettingKeys::IMIP_EXTERNAL_ENABLED, true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+    }
+
+    private function imipHourlyLimit(): int
+    {
+        $raw = AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, 100);
+        if (is_int($raw) && $raw > 0) {
+            return $raw;
+        }
+
+        return 100;
     }
 
     /**

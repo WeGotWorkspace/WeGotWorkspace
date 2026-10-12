@@ -78,6 +78,10 @@ function applySettingsMap(
   if (calendars !== undefined) data.apps.calendars = calendars;
   const contacts = readBool("contacts_enabled");
   if (contacts !== undefined) data.apps.contacts = contacts;
+  const imipExternalEnabled = readBool("imip_external_enabled");
+  if (imipExternalEnabled !== undefined) data.apps.imipExternalEnabled = imipExternalEnabled;
+  const imipHourlyLimit = readNumber("imip_hourly_limit");
+  if (imipHourlyLimit !== undefined) data.apps.imipHourlyLimit = imipHourlyLimit;
 
   const sabreUi = readBool("browser_plugin");
   if (sabreUi !== undefined) data.webdav.sabreUi = sabreUi;

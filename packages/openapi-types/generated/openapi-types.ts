@@ -8192,6 +8192,10 @@ export interface components {
         AdminAppsSettings: {
             calendars: boolean;
             contacts: boolean;
+            /** @description When false, Calendar must not send iMIP to external attendees. */
+            imipExternalEnabled: boolean;
+            /** @description Maximum outbound iMIP messages per user per hour. */
+            imipHourlyLimit: number;
         };
         AdminWebdavSettings: {
             sabreUi: boolean;
