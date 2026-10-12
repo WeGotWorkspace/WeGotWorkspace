@@ -144,7 +144,12 @@ export function useInstallerController({
         await runAction(() => operations.siteNext(buildInstallerSitePayload(installerState)));
         await runAction(() =>
           operations.install(
-            buildInstallerInstallPayload(values.username, values.password, values.email),
+            buildInstallerInstallPayload(
+              values.username,
+              values.password,
+              values.email,
+              values.appUrl,
+            ),
           ),
         );
         setScreen("ready");

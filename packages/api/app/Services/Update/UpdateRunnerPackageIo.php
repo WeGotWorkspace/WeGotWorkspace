@@ -401,15 +401,12 @@ final class UpdateRunnerPackageIo
                 } else {
                     $preservation->cleanupSnapshot($preserved);
                 }
-                $envResult = $this->apiEnv->ensure($targetRoot, ApiRuntimeEnvService::guessRequestAppUrl());
+                $envResult = $this->apiEnv->ensure($targetRoot, null);
                 if ($envResult['createdEnv']) {
                     $this->store->appendLog('Created packages/api/.env from .env.example.');
                 }
                 if ($envResult['generatedKey']) {
                     $this->store->appendLog('Generated APP_KEY in packages/api/.env.');
-                }
-                if ($envResult['patchedUrl']) {
-                    $this->store->appendLog('Set APP_URL in packages/api/.env from the update request.');
                 }
             }
         }

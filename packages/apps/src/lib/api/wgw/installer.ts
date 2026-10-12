@@ -48,6 +48,7 @@ export type InstallerInstallPayload = {
   rtc_stun_url: string;
   rtc_turn_url: string;
   rtc_turn_secret: string;
+  app_url?: string;
 };
 
 function installerApiBaseUrl(): string {
