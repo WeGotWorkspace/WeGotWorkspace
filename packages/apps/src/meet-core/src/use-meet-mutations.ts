@@ -235,7 +235,6 @@ export function useMeetMutations({
         text: buildMeetControlMessage({ kind: "admit", peerId }),
         sessionKey: meetRtc.getSessionKey() ?? undefined,
       });
-      meetRtc.sendPollPoke(peerId);
       room.setKnockers((prev) => prev.filter((entry) => entry.id !== peerId));
     },
     [canModerateKnocks, meetRtc, operationsRef, room],
@@ -251,7 +250,6 @@ export function useMeetMutations({
         text: buildMeetControlMessage({ kind: "deny", peerId }),
         sessionKey: meetRtc.getSessionKey() ?? undefined,
       });
-      meetRtc.sendPollPoke(peerId);
       room.setKnockers((prev) => prev.filter((entry) => entry.id !== peerId));
     },
     [canModerateKnocks, meetRtc, operationsRef, room],
