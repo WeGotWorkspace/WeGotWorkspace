@@ -11,14 +11,14 @@ const meta = {
   component: MeetKnockBadge,
   render: (args) => (
     <MeetStoryScope variant="root">
-      <div className="meet-call-bar p-4">
+      <div className="max-w-3xl p-4">
         <MeetKnockBadge {...args} />
       </div>
     </MeetStoryScope>
   ),
   parameters: meetStoryParameters({
     componentDescription:
-      "Host admit control used by MeetCallKnockQueue. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
+      "Visible lobby banner for people waiting to join. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
   }),
 } satisfies Meta<typeof MeetKnockBadge>;
 
@@ -38,9 +38,12 @@ export const OneGuest: Story = {
     await expect(
       canvas.getByText(meetLabels.knockerWantsToJoin("Alex Morgan")),
     ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
-    ).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.admitAll })).toBeInTheDocument();
+    const deny = canvas.getByRole("button", { name: meetLabels.denyName("Alex Morgan") });
+    const admit = canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") });
+    expect(deny.compareDocumentPosition(admit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await expect(deny.className).toContain("button--variant-outline");
+    await expect(admit.className).toContain("button--variant-primary");
     await expect(
       canvas.queryByRole("button", { name: meetLabels.waitingToJoin(1) }),
     ).not.toBeInTheDocument();

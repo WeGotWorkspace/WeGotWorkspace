@@ -4,7 +4,6 @@ import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import {
   STORY_MEET_DEVICES,
-  STORY_MEET_KNOCKERS,
   STORY_MEET_MICROPHONES,
   STORY_MEET_PEERS,
   STORY_MEET_SPEAKERS,
@@ -23,17 +22,9 @@ type MeetCallBarStoryArgs = {
   videoOn: boolean;
   invite: "join" | null;
   audioOnly: boolean;
-  showKnockers: boolean;
 };
 
-function MeetCallBarStory({
-  joined,
-  micOn,
-  videoOn,
-  invite,
-  audioOnly,
-  showKnockers,
-}: MeetCallBarStoryArgs) {
+function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCallBarStoryArgs) {
   const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
   const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
   const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
@@ -76,9 +67,6 @@ function MeetCallBarStory({
         invite={invite}
         audioOnly={audioOnly}
         onInvite={invite ? STORY_NOOP : undefined}
-        knockers={showKnockers ? STORY_MEET_KNOCKERS : []}
-        onAdmitKnocker={showKnockers ? STORY_NOOP : undefined}
-        onDenyKnocker={showKnockers ? STORY_NOOP : undefined}
       />
     </MeetStoryScope>
   );
@@ -92,18 +80,15 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Compact in-channel call chrome: meeting meta, avatar roster, mic/video/devices, expand, and leave.",
+        "Pre-join call bar: meeting meta, who is already in the call, and a Join button. In-call controls live on the expanded stage.",
       snippet: `<MeetCallBar
   elapsedLabel="02:14"
   selfId="self"
   selfName="Demo User"
   peers={peers}
-  participantCount={3}
-  micOn
-  videoOn
-  joined
-  onExpand={expand}
-  onLeave={leave}
+  participantCount={2}
+  invite="join"
+  onInvite={join}
 />`,
     }),
   },
@@ -113,34 +98,11 @@ const meta = {
     videoOn: storyBooleanControl,
     invite: { control: "select", options: [null, "join"] as const },
     audioOnly: storyBooleanControl,
-    showKnockers: storyBooleanControl,
   },
 } satisfies Meta<MeetCallBarStoryArgs>;
 
 export default meta;
 type Story = StoryObj<MeetCallBarStoryArgs>;
-
-export const Joined: Story = {
-  tags: ["vitest-ci"],
-  args: {
-    joined: true,
-    micOn: true,
-    videoOn: true,
-    invite: null,
-    audioOnly: false,
-    showKnockers: false,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.disableAudio }),
-    ).not.toBeInTheDocument();
-  },
-};
 
 export const InviteToJoin: Story = {
   name: "Invite to join",
@@ -151,12 +113,12 @@ export const InviteToJoin: Story = {
     videoOn: false,
     invite: "join",
     audioOnly: false,
-    showKnockers: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const join = canvas.getByRole("button", { name: meetLabels.join });
     await expect(join).toBeInTheDocument();
+    await expect(join.className).toContain("button--severity-success");
     await expect(join.querySelector(".lucide-video")).toBeTruthy();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
@@ -180,7 +142,6 @@ export const InviteToJoinAudioOnly: Story = {
     videoOn: false,
     invite: "join",
     audioOnly: true,
-    showKnockers: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -190,27 +151,6 @@ export const InviteToJoinAudioOnly: Story = {
     await expect(join.querySelector(".lucide-video")).toBeNull();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-  },
-};
-
-export const WaitingToJoin: Story = {
-  name: "Waiting to join",
-  args: {
-    joined: true,
-    micOn: true,
-    videoOn: true,
-    invite: null,
-    audioOnly: false,
-    showKnockers: true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(2) }),
     ).not.toBeInTheDocument();
   },
 };

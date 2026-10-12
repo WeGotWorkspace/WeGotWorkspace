@@ -24,7 +24,7 @@ const meta = {
     layout: "fullscreen",
     ...meetStoryParameters({
       componentDescription:
-        "Expanded call chrome: light stage + peer strip + Calendar-style chat panel (overlay below 1160px / container, flex when wide). Collapse returns to the compact bar.",
+        "Expanded call chrome: light stage, peer grid or filmstrip, and a chat panel. Starting a call opens the stage. There is no collapse toggle.",
       snippet: `<MeetCallStage
   layout="fullscreen"
   channelTitle="#design"
@@ -238,7 +238,8 @@ export const Collapsed: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Start call" })).toBeInTheDocument();
     await userEvent.click(canvas.getByRole("button", { name: "Start call" }));
-    await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Stop preview call" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },
 };

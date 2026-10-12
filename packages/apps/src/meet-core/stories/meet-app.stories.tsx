@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Slack-like Meet workspace (live `/meet` is MeetChatApp → MeetWorkspace; invite gates are MeetInviteGate / MeetChannelDeepLinkGate): channel sidebar, chat main, compact in-call bar under ViewHeader, expanded light stage + peer strip, and one right rail that swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
+          "Slack-like Meet workspace (live `/meet` is MeetChatApp → MeetWorkspace; invite gates are MeetInviteGate / MeetChannelDeepLinkGate): channel sidebar, chat main, a pre-join bar with Join, and an expanded stage after join. One right rail swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
       },
     },
   },
@@ -191,6 +191,7 @@ export const NewMeetingInstant: Story = {
     expect(
       body.queryAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }),
     ).toHaveLength(0);
+    await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
     await userEvent.click(body.getByRole("switch", { name: meetLabels.scheduleMeeting }));
     await expect(
       body.getAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }).length,
@@ -208,17 +209,23 @@ export const DirectMessage: Story = {
 };
 
 export const CallBar: Story = {
-  name: "Call bar",
+  name: "Joined call",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialVideoOn: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.expandCall }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
+    ).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
     const leave = canvas.getByRole("button", { name: meetLabels.leave });
@@ -240,7 +247,7 @@ export const CallChromeStaysOnChannel: Story = {
   name: "Call chrome stays on its channel",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     liveCallChannelId: "channel-design",
     routeChannelId: "channel-design",
   },
@@ -270,7 +277,7 @@ export const ParkedCallChrome: Story = {
   name: "Parked call hides in-channel chrome",
   args: {
     initialChannelId: "channel-random",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     liveCallChannelId: "channel-design",
     routeChannelId: "channel-random",
   },
@@ -290,10 +297,10 @@ export const ParkedCallChrome: Story = {
 };
 
 export const CallBarVideo: Story = {
-  name: "Call bar video",
+  name: "Joined call with video",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialVideoOn: true,
   },
   play: async ({ canvasElement }) => {
@@ -345,14 +352,14 @@ export const KnockWaiting: Story = {
   name: "Knock waiting",
   args: {
     initialChannelId: "channel-random",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialWaitingForAdmission: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Knocker side (chunk-H knock path): the compact call chrome swaps to a
-    // polite wait banner — channel name, waiting copy, cancel. Text queries use
-    // getAllByText because the parked stage surface renders an aria-hidden copy.
+    // Knocker side: the expanded stage shows a wait banner — channel name,
+    // waiting copy, and cancel. Text queries use getAllByText because the
+    // parked stage surface renders an aria-hidden copy.
     await expect(canvas.getAllByText(meetLabels.knockWaitTitle("#random")).length).toBeGreaterThan(
       0,
     );
@@ -395,7 +402,7 @@ export const KnockQueue: Story = {
 };
 
 export const KnockQueueCompact: Story = {
-  name: "Knock queue (compact)",
+  name: "Knock queue (saved compact layout)",
   args: {
     initialChannelId: "channel-general",
     initialCallLayout: "compact",

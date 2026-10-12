@@ -62,7 +62,6 @@ export const Speaking: Story = {
     name: "Alex Morgan",
     stream: null,
     speaking: true,
-    spotlight: true,
     disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },
