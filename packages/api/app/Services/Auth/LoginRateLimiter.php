@@ -52,8 +52,8 @@ final class LoginRateLimiter
     }
 
     /**
-     * DAV and Meet Basic auth. Separate per-IP and per-user+IP keys so a
-     * polling client does not lock the web login. The per-user ceiling is shared.
+     * DAV and Meet Basic auth. Separate per-IP, per-user+IP, and per-user
+     * keys so a polling client does not lock the web login.
      */
     public function allowProtocol(string $username, string $ip): bool
     {
@@ -65,7 +65,7 @@ final class LoginRateLimiter
 
         return ! $this->tooMany($this->protocolIpKey($ipNorm), self::PROTOCOL_IP_LIMIT)
             && ! $this->tooMany($this->protocolUserIpKey($user, $ipNorm), self::PROTOCOL_USER_IP_LIMIT)
-            && ! $this->tooMany($this->userKey($user), self::USER_LIMIT);
+            && ! $this->tooMany($this->protocolUserKey($user), self::USER_LIMIT);
     }
 
     public function hitProtocol(string $username, string $ip): void
@@ -77,7 +77,7 @@ final class LoginRateLimiter
         [$user, $ipNorm] = $this->normalized($username, $ip);
         $this->rateLimiter->hit($this->protocolIpKey($ipNorm), self::DECAY_SECONDS);
         $this->rateLimiter->hit($this->protocolUserIpKey($user, $ipNorm), self::DECAY_SECONDS);
-        $this->rateLimiter->hit($this->userKey($user), self::USER_DECAY_SECONDS);
+        $this->rateLimiter->hit($this->protocolUserKey($user), self::USER_DECAY_SECONDS);
     }
 
     public function protocolRetryAfter(string $username, string $ip): int
@@ -92,7 +92,7 @@ final class LoginRateLimiter
             1,
             $this->rateLimiter->availableIn($this->protocolIpKey($ipNorm)),
             $this->rateLimiter->availableIn($this->protocolUserIpKey($user, $ipNorm)),
-            $this->rateLimiter->availableIn($this->userKey($user)),
+            $this->rateLimiter->availableIn($this->protocolUserKey($user)),
         );
     }
 
@@ -142,6 +142,11 @@ final class LoginRateLimiter
     private function protocolUserIpKey(string $user, string $ipNorm): string
     {
         return 'dav-login-user:'.$user.':ip:'.$ipNorm;
+    }
+
+    private function protocolUserKey(string $user): string
+    {
+        return 'dav-login-user:'.$user;
     }
 
     /**

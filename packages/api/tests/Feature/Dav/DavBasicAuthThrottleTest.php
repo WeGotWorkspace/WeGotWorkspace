@@ -53,7 +53,7 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
         }
     }
 
-    public function test_dav_failures_count_toward_the_shared_per_user_ceiling(): void
+    public function test_dav_user_ceiling_does_not_lock_web_login(): void
     {
         foreach ([10, 11, 12] as $host) {
             for ($attempt = 0; $attempt < 10; $attempt++) {
@@ -66,8 +66,12 @@ final class DavBasicAuthThrottleTest extends WgwDatabaseTestCase
                 'username' => 'alice',
                 'password' => 'wrong',
             ])
-            ->assertStatus(429)
-            ->assertJsonPath('code', 'throttled');
+            ->assertStatus(401)
+            ->assertJsonPath('code', 'unauthorized');
+
+        $locked = $this->dav('alice', 'wrong', ['REMOTE_ADDR' => '203.0.113.15']);
+        $locked->assertStatus(429);
+        $this->assertNotSame('', (string) $locked->headers->get('Retry-After'));
 
         $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.14'])
             ->postJson('/api/v1/auth/token', [
