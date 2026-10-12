@@ -93,7 +93,7 @@ export async function fetchRtcSettings(options?: {
       requestUrl,
       ok: false,
       status: res.status,
-      authorized: Boolean(options?.bearerToken) || Boolean(options?.sessionKey),
+      credentialsSent: Boolean(options?.bearerToken) || Boolean(options?.sessionKey),
     });
     return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
   }
