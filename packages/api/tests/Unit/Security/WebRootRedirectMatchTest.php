@@ -30,27 +30,25 @@ final class WebRootRedirectMatchTest extends TestCase
     }
 
     #[DataProvider('htaccessFiles')]
-    public function test_dav_discovery_redirects_run_before_the_front_controller(string $filename): void
+    public function test_dav_discovery_rewrite_runs_before_the_front_controller(string $filename): void
     {
         $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
         $htaccess = (string) file_get_contents($path);
         $base = strpos($htaccess, 'RewriteBase /');
         $front = strpos($htaccess, 'RewriteRule . index.php [L]');
-        preg_match_all(
-            '/RewriteRule\s+\^\\\\\.well-known\/(caldav|carddav)\$\s+""\s+\[R=301,L\]/',
+        $matched = preg_match(
+            '/RewriteRule\s+\^\\\\\.well-known\/\(caldav\|carddav\)\$\s+index\.php\s+\[L\]/',
             $htaccess,
-            $rules,
+            $rule,
             PREG_OFFSET_CAPTURE,
         );
 
+        $this->assertSame(1, $matched, $filename.' is missing the discovery rewrite to index.php');
         $this->assertNotFalse($base, $filename.' is missing RewriteBase');
         $this->assertNotFalse($front, $filename.' is missing the index.php fallback');
-        $services = array_column($rules[1], 0);
-        $this->assertEqualsCanonicalizing(['caldav', 'carddav'], $services);
-        foreach ($rules[0] as [$rule, $offset]) {
-            $this->assertGreaterThan($base, $offset, $rule.' must follow RewriteBase');
-            $this->assertLessThan($front, $offset, $rule.' must run before the front controller');
-        }
+        $offset = $rule[0][1];
+        $this->assertGreaterThan($base, $offset, 'discovery rewrite must follow RewriteBase');
+        $this->assertLessThan($front, $offset, 'discovery rewrite must run before the front controller');
     }
 
     /**
