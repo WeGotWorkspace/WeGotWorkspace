@@ -125,18 +125,40 @@ final class LoginRateLimiterTest extends TestCase
         $this->assertTrue($limiter->allowProtocol('bob', '203.0.113.1'));
     }
 
-    public function test_protocol_failures_share_the_per_user_ceiling(): void
+    public function test_protocol_user_ceiling_does_not_lock_web_login(): void
+    {
+        $this->assertSame(
+            LoginRateLimiter::USER_LIMIT,
+            3 * LoginRateLimiter::PROTOCOL_USER_IP_LIMIT,
+        );
+
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($host = 1; $host <= 3; $host++) {
+            $ip = '198.51.100.'.$host;
+            for ($attempt = 0; $attempt < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT; $attempt++) {
+                $this->assertTrue(
+                    $limiter->allowProtocol('alice', $ip),
+                    "device {$host} attempt {$attempt} should be allowed",
+                );
+                $limiter->hitProtocol('alice', $ip);
+            }
+        }
+
+        $this->assertTrue($limiter->allow('alice', '203.0.113.50'));
+        $this->assertFalse($limiter->allowProtocol('alice', '198.51.100.4'));
+    }
+
+    public function test_web_user_ceiling_does_not_lock_protocol_login(): void
     {
         $limiter = $this->app->make(LoginRateLimiter::class);
 
         for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
-            $ip = '198.51.100.'.$host;
-            $this->assertTrue($limiter->allowProtocol('alice', $ip), "protocol {$host} should be allowed");
-            $limiter->hitProtocol('alice', $ip);
+            $ip = '203.0.113.'.$host;
+            $this->assertTrue($limiter->allow('alice', $ip), "attempt {$host} should be allowed");
+            $limiter->hit('alice', $ip);
         }
 
-        $this->assertFalse($limiter->allow('alice', '198.51.100.40'));
-        $this->assertFalse($limiter->allowProtocol('alice', '198.51.100.40'));
-        $this->assertTrue($limiter->allow('bob', '198.51.100.40'));
+        $this->assertTrue($limiter->allowProtocol('alice', '198.51.100.9'));
     }
 }
