@@ -3,7 +3,7 @@
  * first request is still open; collab's join then deletes the newer peer for
  * the same browser, and the live precheck comes back `unknown_peer`.
  */
-const meshJoinTails = new Map<string, Promise<unknown>>();
+export const meshJoinTails = new Map<string, Promise<unknown>>();
 
 export function enqueueMeshJoin<T>(key: string, run: () => Promise<T>): Promise<T> {
   const previous = meshJoinTails.get(key) ?? Promise.resolve();
