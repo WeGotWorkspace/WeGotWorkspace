@@ -13,6 +13,7 @@ import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import { acceptMeetDataChat } from "@/meet-core/src/meet-data-chat";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { createMeetPokeGate, handleMeetDataFrame } from "@/meet-core/src/meet-poll-poke";
 import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
@@ -51,6 +52,7 @@ export function useMeetCallSession({
   operationsRef.current = operations;
 
   const meetRtcRef = useRef<ReturnType<typeof useMeetRtc> | null>(null);
+  const pokeGateRef = useRef(createMeetPokeGate());
   const muteMicRef = useRef<null | (() => boolean)>(null);
   const getLocalStreamRef = useRef<() => MediaStream | null>(() => null);
   const announceMediaPresenceRef = useRef<
@@ -133,12 +135,18 @@ export function useMeetCallSession({
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
     onMeetData: (remoteId, raw) => {
-      acceptMeetDataChat({
-        remoteId,
+      handleMeetDataFrame({
         raw,
-        selfPeerId: room.selfIdRef.current,
-        peerNames: room.peerNamesRef.current,
-        setChatMessages: room.setChatMessages,
+        gate: pokeGateRef.current,
+        onKick: () => meetRtcRef.current?.kickPoll(),
+        onChat: (chatRaw) =>
+          acceptMeetDataChat({
+            remoteId,
+            raw: chatRaw,
+            selfPeerId: room.selfIdRef.current,
+            peerNames: room.peerNamesRef.current,
+            setChatMessages: room.setChatMessages,
+          }),
       });
     },
     onRelayOutcome: (remoteId, name, outcome) => {

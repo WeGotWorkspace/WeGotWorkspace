@@ -81,6 +81,8 @@ function createSessionStub(operations?: {
     join: vi.fn().mockResolvedValue(undefined),
     getSessionKey: vi.fn(() => null),
     sendRoomChat: vi.fn(),
+    sendPollPoke: vi.fn(),
+    broadcastPollPoke: vi.fn(),
   };
   return {
     meetRtc,
@@ -293,6 +295,8 @@ describe("useMeetMutations mutePeer", () => {
     expect(sent.from).toBe("peer-1");
     expect(sent.text).toContain('"kind":"mute"');
     expect(sent.text).toContain('"peerId":"peer-2"');
+    expect(session.meetRtc.sendPollPoke).toHaveBeenCalledTimes(1);
+    expect(session.meetRtc.sendPollPoke).toHaveBeenCalledWith("peer-2");
     expect(toastApi.show).toHaveBeenCalledWith(meetLabels.mutedParticipant("Alex"), {
       severity: "info",
     });
@@ -340,6 +344,27 @@ describe("useMeetMutations mutePeer", () => {
     await result.current.mutePeer("peer-2");
 
     expect(chat).not.toHaveBeenCalled();
+    expect(toastApi.show).not.toHaveBeenCalled();
+  });
+
+  it("does not poke when the mute chat POST fails", async () => {
+    const chat = vi.fn().mockRejectedValue(new Error("chat failed"));
+    const session = createSessionStub({ chat });
+    const leaveRef = { current: null as null | (() => Promise<void>) };
+
+    const { result } = renderHook(() =>
+      useMeetMutations({
+        room: createRoomStub(),
+        session,
+        canModerateKnocks: true,
+        leaveRef,
+      }),
+    );
+
+    await result.current.mutePeer("peer-2");
+
+    expect(session.meetRtc.sendPollPoke).not.toHaveBeenCalled();
+    expect(toastApi.showError).toHaveBeenCalledWith("chat failed");
     expect(toastApi.show).not.toHaveBeenCalled();
   });
 });
