@@ -127,6 +127,39 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
             ]);
     }
 
+    public function test_one_username_is_capped_across_source_ips(): void
+    {
+        for ($host = 1; $host <= 30; $host++) {
+            $this->fromIp($this->documentationIp($host))
+                ->postCredentials(self::USERNAME, 'wrong')
+                ->assertUnauthorized();
+        }
+
+        $locked = $this->fromIp($this->documentationIp(31))
+            ->postCredentials(self::USERNAME, 'wrong');
+        $locked->assertStatus(429)
+            ->assertJson([
+                'error' => 'Too many login attempts. Please try again later.',
+                'code' => 'throttled',
+            ]);
+        $this->assertStringNotContainsString(self::USERNAME, (string) $locked->getContent());
+
+        $this->fromIp($this->documentationIp(31))
+            ->withServerVariables([
+                'REMOTE_ADDR' => $this->documentationIp(31),
+                'HTTP_X_FORWARDED_FOR' => '198.51.100.50',
+            ])
+            ->postCredentials(self::USERNAME, 'wrong')
+            ->assertStatus(429)
+            ->assertJsonPath('code', 'throttled');
+
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        $this->fromIp($this->documentationIp(32))
+            ->postCredentials('bob', self::PASSWORD)
+            ->assertOk()
+            ->assertJsonPath('username', 'bob');
+    }
+
     private function postCredentials(string $username, string $password): TestResponse
     {
         return $this->postJson('/api/v1/auth/token', [
@@ -139,5 +172,15 @@ final class LoginBehaviorTest extends WgwDatabaseTestCase
     {
         putenv('WGW_DISABLE_LOGIN_THROTTLE');
         unset($_ENV['WGW_DISABLE_LOGIN_THROTTLE'], $_SERVER['WGW_DISABLE_LOGIN_THROTTLE']);
+    }
+
+    private function fromIp(string $ip): self
+    {
+        return $this->withServerVariables(['REMOTE_ADDR' => $ip]);
+    }
+
+    private function documentationIp(int $host): string
+    {
+        return '203.0.113.'.$host;
     }
 }
