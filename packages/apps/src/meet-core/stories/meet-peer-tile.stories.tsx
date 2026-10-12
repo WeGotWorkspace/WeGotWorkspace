@@ -40,6 +40,7 @@ export const NoVideo: Story = {
     name: "Alex Morgan",
     stream: null,
     compact: false,
+    spotlight: true,
     disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },

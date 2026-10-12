@@ -156,5 +156,6 @@ describe("MeetPeerTile mute", () => {
     expect(mark.textContent).toBe("A");
     expect(mark.closest(".meet-peer-tile__fill")).not.toBeNull();
     expect(mark.closest(".sr-only")).toBeNull();
+    expect(document.querySelector(".meet-peer-tile__display-name")).toBeNull();
   });
 });

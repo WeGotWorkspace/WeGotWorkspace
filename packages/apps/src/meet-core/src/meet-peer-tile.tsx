@@ -128,13 +128,11 @@ export function MeetPeerTile({
       color={userId ? avatarColorForUserId(userId) : undefined}
     />
   );
-  const identity =
-    spotlight || caption ? (
-      <div className="meet-peer-tile__identity">
-        {spotlight ? <p className="meet-peer-tile__display-name">{name}</p> : null}
-        {caption ? <p className="meet-peer-tile__caption">{caption}</p> : null}
-      </div>
-    ) : null;
+  const identity = caption ? (
+    <div className="meet-peer-tile__identity">
+      <p className="meet-peer-tile__caption">{caption}</p>
+    </div>
+  ) : null;
 
   return (
     <div
