@@ -39,8 +39,16 @@ final class BearerAuthenticationService
         }
         // Guest subjects (share links, Meet peers) have no users row. The guard
         // treats that as disabled; role checks still reject them on user routes.
-        if ($claims['role'] !== 'guest' && ! $this->enabled->isEnabled($claims['sub'])) {
-            return null;
+        if ($claims['role'] !== 'guest') {
+            $session = $this->enabled->enabledSession($claims['sub']);
+            if ($session === null) {
+                return null;
+            }
+            // Tokens minted before uid existed stay valid until they expire.
+            // A present uid that does not match the current users.id is a reused name.
+            if (array_key_exists('uid', $claims) && (int) $claims['uid'] !== $session['id']) {
+                return null;
+            }
         }
 
         $role = $claims['role'];

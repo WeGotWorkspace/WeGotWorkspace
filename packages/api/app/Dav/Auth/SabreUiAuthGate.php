@@ -13,7 +13,7 @@ final class SabreUiAuthGate
 {
     private const COOKIE = 'sabre_ui_auth';
 
-    private const COOKIE_VERSION = 2;
+    private const COOKIE_VERSION = 3;
 
     /**
      * @return non-empty-string|null
@@ -99,6 +99,11 @@ final class SabreUiAuthGate
             $cookieEpoch = (int) $cookieEpoch;
         }
         if ($cookieEpoch < $session['epoch']) {
+            return null;
+        }
+        // share: guests have no users row. Every other subject must match users.id
+        // so a recreated username cannot inherit the previous account's cookie.
+        if (! str_starts_with($username, 'share:') && (int) ($payload['uid'] ?? -1) !== $session['id']) {
             return null;
         }
 
