@@ -11,6 +11,7 @@ use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
+use App\Services\Update\ShippedInstallEnvHardening;
 use App\Services\Update\UpdateStateService;
 use App\Support\ApiUrlBuilder;
 use App\Support\PublicAppUrl;
@@ -75,6 +76,17 @@ final class AdminStateService
     private function securityWarnings(): array
     {
         $warnings = [];
+        if (config('app.env') !== 'production' || config('app.debug') === true) {
+            try {
+                $applied = app(ShippedInstallEnvHardening::class)->apply();
+            } catch (\Throwable) {
+                // An unwritable .env raises ErrorException instead of returning false.
+                $applied = false;
+            }
+            if ($applied) {
+                $warnings[] = 'Production settings were applied; reload the page';
+            }
+        }
         if (config('app.debug') === true) {
             $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
         }
