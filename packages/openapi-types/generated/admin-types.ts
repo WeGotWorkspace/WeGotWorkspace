@@ -8,6 +8,7 @@ export type AdminPaths = {
 };
 
 export type AdminAppsSettings = components["schemas"]["AdminAppsSettings"];
+export type AdminAppUrlSaveRequest = components["schemas"]["AdminAppUrlSaveRequest"];
 export type AdminGroupCreateRequest = components["schemas"]["AdminGroupCreateRequest"];
 export type AdminGroupSummary = components["schemas"]["AdminGroupSummary"];
 export type AdminGroupUpdateRequest = components["schemas"]["AdminGroupUpdateRequest"];

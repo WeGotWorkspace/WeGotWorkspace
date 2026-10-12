@@ -20,6 +20,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const ACTION_NAMES = [
   "saveSettings",
+  "useThisAddress",
   "clearMailDeliverySmtpPassword",
   "clearTurnSecret",
   "sendMailDeliveryTest",

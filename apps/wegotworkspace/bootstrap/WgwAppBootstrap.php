@@ -162,7 +162,7 @@ final class WgwAppBootstrap
 
         (new \App\Services\Installer\ApiRuntimeEnvService)->ensureAtApiRoot(
             $apiPackageRoot,
-            \App\Services\Installer\ApiRuntimeEnvService::guessRequestAppUrl(),
+            null,
         );
     }
 

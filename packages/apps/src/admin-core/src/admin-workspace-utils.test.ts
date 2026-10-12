@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { AlertTriangle, CheckCircle2, CircleX } from "lucide-react";
 import {
+  appUrlFromBrowserLocation,
   formatByteCount,
   formatHumanDateTime,
   getServerCheckVisual,
   isProtectedGroup,
   parseUpdateLogLine,
 } from "@/admin-core/src/admin-workspace-utils";
+
+describe("appUrlFromBrowserLocation", () => {
+  it("uses the origin at the site root and appends a base path", () => {
+    expect(appUrlFromBrowserLocation("https://wgw.example", "/")).toBe("https://wgw.example");
+    expect(appUrlFromBrowserLocation("https://wgw.example/", "/office/")).toBe(
+      "https://wgw.example/office",
+    );
+  });
+});
 
 describe("getServerCheckVisual", () => {
   it("maps error statuses to failure visuals", () => {

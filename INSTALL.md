@@ -42,6 +42,10 @@ On the first HTTP request, the install bootstrap automatically:
 - creates `packages/api/.env` from `.env.example` and generates `APP_KEY` when missing
 - creates `.htaccess` from `example.htaccess` when missing (common when SFTP drops dotfiles)
 
+`APP_URL` is not taken from the request `Host` header. The installer asks for the public site address (`app_url`), prefilled from the browser origin, and writes it only after that address is confirmed. On an existing install where `APP_URL` is unset or still a loopback address, Administration shows "APP_URL is not set…" with a **Use this address** button that saves the address open in the browser, including the install base path.
+
+`WGW_TRUSTED_HOSTS` is a comma-separated list of extra hosts trusted in addition to the `APP_URL` host: a LAN IP, both www and apex, or a reverse proxy that rewrites the `Host` header.
+
 Existing installs are not overwritten: a present `.env` or `.htaccess` is left as-is (including custom `RewriteBase` rules).
 
 The shipped `.env.example` already sets `APP_ENV=production` and `APP_DEBUG=false`. Existing ZIP and Docker installs are rewritten to those values on the next schema migration.  
