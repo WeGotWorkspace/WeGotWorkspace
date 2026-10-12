@@ -158,6 +158,32 @@ describe("SettingsAssistantsPane", () => {
     expect(screen.queryByText("Connection")).toBeNull();
   });
 
+  it("lists share-creating tool calls under the grant", () => {
+    renderAssistantsPane({
+      grants: [
+        {
+          clientId: "abc",
+          clientName: "Claude",
+          clientOrigin: "https://claude.ai",
+          connectedAt: "2026-09-08T10:00:00Z",
+          scopes: ["drive.write"],
+          lastUsedAt: null,
+          shareCalls: [
+            {
+              tool: "drive_share",
+              outcome: "error",
+              createdAt: "2026-10-02T12:00:00Z",
+              target: "/users/bob/shared.txt",
+            },
+          ],
+        },
+      ],
+    });
+    expect(screen.getByRole("heading", { name: "Share activity" })).toBeTruthy();
+    expect(screen.getByText("drive_share")).toBeTruthy();
+    expect(screen.getByText("/users/bob/shared.txt")).toBeTruthy();
+  });
+
   it("uses a generic revoke label when the grant has no client name", () => {
     renderAssistantsPane({
       grants: [

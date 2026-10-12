@@ -36,6 +36,24 @@ describe("groupMcpScopeIds", () => {
     ).not.toContain(MCP_MAIL_GRANT_GROUP_LABEL);
   });
 
+  it("groups drive.share with Drive and labels it Share", () => {
+    const groups = groupMcpScopeIds(["drive.read", "drive.write", "drive.share"]);
+    expect(groups).toEqual([
+      {
+        label: "Drive",
+        scopes: [
+          { id: "drive.read", actionLabel: "Read" },
+          { id: "drive.write", actionLabel: "Write" },
+          { id: "drive.share", actionLabel: "Share" },
+        ],
+      },
+    ]);
+    expect(MCP_SCOPE_CATALOG["drive.share"]).toBe(
+      "Share Drive files and Docs with workspace members",
+    );
+    expect(mcpConsentCatalogScopeIds()).toContain("drive.share");
+  });
+
   it("hides offline_access from grant and consent groups", () => {
     const groups = groupMcpScopeIds(["drive.read", "offline_access", "settings"]);
     expect(groups.map((group) => group.label)).toEqual(["Drive", "Profile"]);

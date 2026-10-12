@@ -58,6 +58,13 @@ export type SettingsMailServer = {
   smtpSecurity: string;
 };
 
+export type SettingsMcpShareCall = {
+  tool: string;
+  outcome: string;
+  createdAt: string;
+  target: string | null;
+};
+
 export type SettingsMcpGrant = {
   clientId: string;
   clientName: string;
@@ -65,6 +72,8 @@ export type SettingsMcpGrant = {
   connectedAt: string;
   scopes: string[];
   lastUsedAt: string | null;
+  /** Last share-creating MCP tool calls for this assistant. */
+  shareCalls?: SettingsMcpShareCall[];
 };
 
 export type SettingsUIData = {
