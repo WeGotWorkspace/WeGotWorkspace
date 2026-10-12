@@ -8,12 +8,13 @@ export const meshJoinTails = new Map<string, Promise<unknown>>();
 export function enqueueMeshJoin<T>(key: string, run: () => Promise<T>): Promise<T> {
   const previous = meshJoinTails.get(key) ?? Promise.resolve();
   const current = previous.then(run, run);
-  meshJoinTails.set(
-    key,
-    current.then(
-      () => undefined,
-      () => undefined,
-    ),
+  const tail = current.then(
+    () => undefined,
+    () => undefined,
   );
+  meshJoinTails.set(key, tail);
+  void tail.then(() => {
+    if (meshJoinTails.get(key) === tail) meshJoinTails.delete(key);
+  });
   return current;
 }

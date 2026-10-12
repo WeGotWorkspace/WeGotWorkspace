@@ -145,6 +145,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   async join(name: string): Promise<{ peerId: string }> {
     const joined = await this.mesh.join({ name });
+    if (joined.superseded) return { peerId: "" };
     return { peerId: joined.peerId };
   }
 
