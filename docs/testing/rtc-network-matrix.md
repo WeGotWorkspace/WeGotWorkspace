@@ -27,7 +27,7 @@ Enable browser logging with **Admin → Real-time collaboration → Detailed con
 | N11 | Meet mesh smoke | Two tabs, same room, detailed connection logs on | `[rtc][meet][…][pc-connection-state]` has `connectionState` `connected`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N13 | iOS Safari remote audio | **Human-only.** Join a Meet call in iOS Safari | Remote audio stays silent until a user gesture, then plays | Skipped as N/A 2026-10-12 ([M6](#manual-runs-2026-10-12-online)): Join is already a user gesture |
-| N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows | |
+| N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows | Passed 2026-10-12 online ([M6](#manual-runs-2026-10-12-online)) |
 | N15 | Resume from background | **Human-only.** On iOS Safari and on the installed PWA, background a Meet call or Docs session, then return | The client polls immediately and restarts ICE; the call or document stays connected | |
 
 N13–N15 are human-only. A person runs them before the v0.9 release. Do not assign that run to an agent.
@@ -140,6 +140,7 @@ Tracked on [#1204](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1204)
 | Network switch | Mid-call network change (no refresh) | Meet (+ principal) | Force-relay **off** | Meet `695XZ65MYL` ↔ `XHA7DJYYAN`: brief `disconnected` → `connected`; pair `host`/`prflx`; media recovered. Principal briefly `failed` then `relay-fallback` (`wouter-c09373` ↔ `wouter2-b04e8d`) |
 | N3 Meet | Two peers; Admin **Always use the TURN relay** on; no test override | Meet | Forced relay (Admin) | `HGUL36HUVB` ↔ `QD5JUGSCLG`: `controller-init` `forceRelay: true`, `stunCount: 4`; Meet `pc-created` `mode` / `iceTransportPolicy: relay` → `connected`. Principal also `relay` (`wouter-07cdcc`) — Admin path works after #1220 |
 | N3 Docs | Two signed-in tabs; Admin force-relay on | Docs collab | Forced relay (Admin) | Collab `202a03062a3301b4` ↔ `e83f5ba71eeada72`: `pc-created` relay → `connected`; carets both ways (fast) |
+| N14 | Installed PWA, standalone | Meet | — | Camera permission succeeds; local video shows |
 
 ### Prior local pass still standing (M5)
 
@@ -154,7 +155,7 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | UDP-blocked TCP TURN | Operator could not configure TCP/TLS TURN + blocked UDP |
 | N3 Docs + iPhone 4G | Optional #1204 row; same-machine Docs N3 already green |
 | N13 | Skipped as N/A: Join is already a user gesture, so “silent until tap” is not a realistic product path |
-| N14–N15 | Not run (installed PWA camera / background resume) |
+| N15 | Not run (background resume on iOS Safari + installed PWA) |
 | `pnpm test:rtc-relay` | Not run against this host |
 
 ### Combined scorecard (M5 + M6)
@@ -171,5 +172,6 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | N6–N12 | pass (M5) |
 | Network switch | pass (M6) |
 | N13 | skip / N/A |
-| N14–N15 | not run |
+| N14 | pass (M6) |
+| N15 | not run |
 | Long TTL / TCP TURN | not run |
