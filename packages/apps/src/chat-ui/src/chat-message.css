@@ -37,7 +37,7 @@
 }
 
 .chat-message__main {
-  @apply relative min-w-0 flex-1;
+  @apply min-w-0 flex-1;
 }
 
 .chat-message__header {
@@ -70,7 +70,7 @@
 }
 
 .chat-message__body {
-  @apply mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
+  @apply relative mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
   overflow-wrap: anywhere;
   color: var(--chat-body, color-mix(in oklab, var(--workspace-foreground) 88%, transparent));
 }
@@ -128,8 +128,8 @@
 }
 
 .chat-message__actions {
-  @apply absolute start-0 z-[1] hidden -translate-y-1/2 items-center gap-0 rounded-md border px-0.5 shadow-sm;
-  top: 0;
+  /* Anchored to the body box, so a short message and a wrapped one both sit under the last line. */
+  @apply absolute start-0 top-full z-[1] hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
   border-color: var(
     --chat-border,
     color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
