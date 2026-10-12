@@ -135,7 +135,7 @@ final class McpDriveWriteToolsTest extends WgwDatabaseTestCase
         Storage::disk('wgw_files')->put('users/bob/shared.txt', 'share me');
         Storage::disk('wgw_files')->put('users/carol/private.txt', 'carol only');
         $client = $this->mcpClient();
-        Passport::actingAs($bob, [McpScopes::DRIVE_WRITE], 'api', $client);
+        Passport::actingAs($bob, [McpScopes::DRIVE_SHARE], 'api', $client);
 
         WorkspaceServer::actingAs($bob, 'api')
             ->tool(DriveShareTool::class, [

@@ -46,12 +46,27 @@ final class FilterMcpConsentScopes
             $submitted = is_string($submitted) ? preg_split('/\s+/', $submitted) ?: [] : [];
         }
         $allowed = array_values(array_filter($submitted, is_string(...)));
+        $optInOnly = array_flip(McpScopes::consentUncheckedByDefault());
         $filtered = [];
         foreach ($authRequest->getScopes() as $scope) {
             $id = $scope->getIdentifier();
             // Keep offline_access if the client requested it (do not 400). Users
             // never see or uncheck it; inject it when the client omitted it.
-            if ($id === McpScopes::OFFLINE_ACCESS || in_array($id, $allowed, true)) {
+            if ($id === McpScopes::OFFLINE_ACCESS) {
+                $filtered[] = $scope;
+
+                continue;
+            }
+            // drive.share is unchecked on the consent form. Keep it only when
+            // the user opted in; never inject it the way offline_access is.
+            if (isset($optInOnly[$id])) {
+                if (in_array($id, $allowed, true)) {
+                    $filtered[] = $scope;
+                }
+
+                continue;
+            }
+            if (in_array($id, $allowed, true)) {
                 $filtered[] = $scope;
             }
         }

@@ -41,7 +41,7 @@ final class McpDocsToolsTest extends WgwDatabaseTestCase
         $bob = $this->mcpUser('bob');
         $this->mcpUser('alice');
         $client = $this->mcpClient();
-        Passport::actingAs($bob, [McpScopes::DOCS_READ, McpScopes::DOCS_WRITE], 'api', $client);
+        Passport::actingAs($bob, [McpScopes::DOCS_READ, McpScopes::DOCS_WRITE, McpScopes::DRIVE_SHARE], 'api', $client);
 
         WorkspaceServer::actingAs($bob, 'api')
             ->tool(DocsWriteTool::class, [
@@ -147,7 +147,7 @@ final class McpDocsToolsTest extends WgwDatabaseTestCase
         $this->mcpUser('carol');
         Storage::disk('wgw_files')->put('users/carol/private.md', 'carol only');
         $client = $this->mcpClient();
-        Passport::actingAs($bob, [McpScopes::DOCS_WRITE], 'api', $client);
+        Passport::actingAs($bob, [McpScopes::DRIVE_SHARE], 'api', $client);
 
         WorkspaceServer::actingAs($bob, 'api')
             ->tool(DocsShareTool::class, [

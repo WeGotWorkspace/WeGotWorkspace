@@ -18,7 +18,7 @@ import { displayOriginHost } from "@/settings-core/src/display-origin-host";
 import { McpConsentPermissionsCard } from "@/settings-core/src/mcp-consent-permissions-card";
 import { buildMcpEndpointUrl } from "@/settings-core/src/mcp-endpoint";
 import { McpEndpointUrlRow } from "@/settings-core/src/mcp-endpoint-url-row";
-import type { SettingsMcpGrant } from "@/settings-core/src/settings-types";
+import type { SettingsMcpGrant, SettingsMcpShareCall } from "@/settings-core/src/settings-types";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import {
   mcpConsentCatalogScopeIds,
@@ -119,6 +119,25 @@ export function SettingsAssistantsPane({
   );
 }
 
+function ShareActivity({ calls }: { calls: SettingsMcpShareCall[] }) {
+  if (calls.length === 0) return null;
+  return (
+    <section className="settings-assistants-pane__share-calls">
+      <h3 className="settings-assistants-pane__share-calls-title">Share activity</h3>
+      <ul className="settings-assistants-pane__share-calls-list">
+        {calls.map((call) => (
+          <li key={`${call.tool}-${call.createdAt}-${call.target ?? ""}`}>
+            <span className="settings-assistants-pane__share-call-tool">{call.tool}</span>
+            {call.target ? (
+              <span className="settings-assistants-pane__share-call-target">{call.target}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function grantDisplayName(grant: SettingsMcpGrant): string | null {
   const name = grant.clientName?.trim() ?? "";
   const origin = grant.clientOrigin?.trim() ?? "";
@@ -174,6 +193,7 @@ function GrantCard({
         grantedScopeIds={grant.scopes}
         idPrefix={`mcp-grant-${grant.clientId}`}
       />
+      <ShareActivity calls={grant.shareCalls ?? []} />
     </article>
   );
 }

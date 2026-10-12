@@ -11227,7 +11227,8 @@
                     "clientName",
                     "clientOrigin",
                     "connectedAt",
-                    "scopes"
+                    "scopes",
+                    "shareCalls"
                 ],
                 "properties": {
                     "clientId": {
@@ -11253,6 +11254,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "shareCalls": {
+                        "type": "array",
+                        "description": "Last 20 MCP audit rows for this client whose tool name ends in _share, newest first.",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsMcpShareCall"
+                        }
                     }
                 }
             },
@@ -12382,6 +12390,31 @@
                     "url": {
                         "type": "string",
                         "description": "Public http or https address. The path may be empty or the install base. No user info or query."
+                    }
+                }
+            },
+            "SettingsMcpShareCall": {
+                "type": "object",
+                "required": [
+                    "tool",
+                    "outcome",
+                    "createdAt"
+                ],
+                "properties": {
+                    "tool": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 }
             }

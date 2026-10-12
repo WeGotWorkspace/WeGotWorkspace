@@ -16,7 +16,7 @@ final class DriveShareTool extends WgwMcpTool
 {
     protected string $name = 'drive_share';
 
-    protected string $description = 'Get or set Drive shares (public / member / guest + shareWith). Null grant revokes a principal.';
+    protected string $description = 'Get or set member Drive shares (shareWith). Public links and guest email invites are refused.';
 
     public function __construct(
         McpAuditLogger $audit,
@@ -31,7 +31,7 @@ final class DriveShareTool extends WgwMcpTool
         return [
             'action' => $schema->string()->enum(['get', 'set'])->required()->description('get or set'),
             'path' => $schema->string()->required()->description('Drive path to share'),
-            'kind' => $schema->string()->enum(['public', 'member', 'guest'])->description('Share kind for create'),
+            'kind' => $schema->string()->enum(['public', 'member', 'guest'])->description('Share kind. Only member is allowed; public and guest are refused.'),
             'defaultAccess' => $schema->string()->description('Default access (view, comment, edit, full)'),
             'shareWith' => $schema->object()->nullable()
                 ->description('Principal map {user: {access}, …}. Null grant revokes. Null map revokes the share.'),
@@ -40,7 +40,7 @@ final class DriveShareTool extends WgwMcpTool
 
     protected function requiredScope(): string
     {
-        return McpScopes::DRIVE_WRITE;
+        return McpScopes::DRIVE_SHARE;
     }
 
     protected function accessMode(): string
@@ -58,6 +58,11 @@ final class DriveShareTool extends WgwMcpTool
 
     protected function run(Request $request): Response
     {
+        McpScopes::assertLaunchMemberShare(
+            $request->get('kind'),
+            $request->has('shareWith') ? $request->get('shareWith') : null,
+        );
+
         $action = $this->shareAction($request);
         $path = trim((string) $request->get('path', ''));
         if ($path === '') {

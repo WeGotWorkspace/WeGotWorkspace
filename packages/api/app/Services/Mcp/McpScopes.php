@@ -32,6 +32,10 @@ final class McpScopes
 
     public const DRIVE_WRITE = 'drive.write';
 
+    public const DRIVE_SHARE = 'drive.share';
+
+    public const EXTERNAL_SHARE_REFUSED = 'Create public links in WeGotWorkspace itself.';
+
     public const MEET_READ = 'meet.read';
 
     public const MEET_WRITE = 'meet.write';
@@ -76,9 +80,10 @@ final class McpScopes
             self::TASKS_READ => 'Read tasks and task lists',
             self::TASKS_WRITE => 'Create, update, delete, and share tasks and task lists',
             self::DOCS_READ => 'Read and search Docs files',
-            self::DOCS_WRITE => 'Create, update, delete, and share Docs files',
+            self::DOCS_WRITE => 'Create, update, and delete Docs files',
             self::DRIVE_READ => 'Read and search Drive files and folders',
-            self::DRIVE_WRITE => 'Create, update, move, delete, and share Drive files and folders',
+            self::DRIVE_WRITE => 'Create, update, move, and delete Drive files and folders',
+            self::DRIVE_SHARE => 'Share Drive files and Docs with workspace members',
             self::MEET_READ => 'Read Meet channels and messages',
             self::MEET_WRITE => 'Create, update, and delete Meet channels and messages',
             self::MAIL_READ => 'Read mailboxes and messages',
@@ -165,7 +170,7 @@ final class McpScopes
             ['label' => 'Contacts', 'scopes' => [self::CONTACTS_READ, self::CONTACTS_WRITE]],
             ['label' => 'Tasks', 'scopes' => [self::TASKS_READ, self::TASKS_WRITE]],
             ['label' => 'Docs', 'scopes' => [self::DOCS_READ, self::DOCS_WRITE]],
-            ['label' => 'Drive', 'scopes' => [self::DRIVE_READ, self::DRIVE_WRITE]],
+            ['label' => 'Drive', 'scopes' => [self::DRIVE_READ, self::DRIVE_WRITE, self::DRIVE_SHARE]],
             ['label' => 'Meet', 'scopes' => [self::MEET_READ, self::MEET_WRITE]],
             ['label' => 'Profile', 'scopes' => [self::SETTINGS]],
         ];
@@ -236,6 +241,37 @@ final class McpScopes
     }
 
     /**
+     * Shown on consent, off until the user checks them. Not injected like offline_access.
+     *
+     * @return list<string>
+     */
+    public static function consentUncheckedByDefault(): array
+    {
+        return [self::DRIVE_SHARE];
+    }
+
+    /**
+     * Launch MCP may create member shares only. Public links and guest emails
+     * stay in the WeGotWorkspace UI.
+     */
+    public static function assertLaunchMemberShare(mixed $kind, mixed $shareWith): void
+    {
+        $normalized = strtolower(trim(is_string($kind) ? $kind : ''));
+        if ($normalized === 'public' || $normalized === 'guest') {
+            throw new \InvalidArgumentException(self::EXTERNAL_SHARE_REFUSED);
+        }
+        if (! is_array($shareWith)) {
+            return;
+        }
+        foreach (array_keys($shareWith) as $principalId) {
+            $id = trim((string) $principalId);
+            if ($id !== '' && str_contains($id, '@')) {
+                throw new \InvalidArgumentException(self::EXTERNAL_SHARE_REFUSED);
+            }
+        }
+    }
+
+    /**
      * Scopes shown on Settings grant cards.
      * `offline_access` stays in {@see advertisedDescriptions()} / `scopes_supported`.
      * Mail scopes stay here; consent hides them in {@see groupConsentScopes()}.
@@ -285,6 +321,7 @@ final class McpScopes
         }
 
         return match ($id) {
+            self::DRIVE_SHARE => 'Share',
             self::MAIL_SEND => 'Send',
             self::SETTINGS => 'Read',
             self::OFFLINE_ACCESS => 'Stay connected', // fallback; not shown on consent

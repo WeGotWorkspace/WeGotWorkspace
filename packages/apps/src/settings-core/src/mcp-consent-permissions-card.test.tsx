@@ -57,7 +57,7 @@ describe("McpConsentPermissionsCard", () => {
     expect(screen.getByText("Drive")).toBeTruthy();
     expect(screen.queryByText("Calendar")).toBeNull();
     expect(
-      screen.queryByText("Create, update, move, delete, and share Drive files and folders"),
+      screen.queryByText("Create, update, move, and delete Drive files and folders"),
     ).toBeNull();
 
     const toggle = screen.getByRole("switch", {
@@ -108,7 +108,7 @@ describe("McpConsentPermissionsCard", () => {
     expect(
       screen
         .getByRole("switch", {
-          name: "Create, update, move, delete, and share Drive files and folders",
+          name: "Create, update, move, and delete Drive files and folders",
         })
         .getAttribute("aria-checked"),
     ).toBe("false");

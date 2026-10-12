@@ -29,7 +29,7 @@ export function McpConsentPageMock({
     [groups],
   );
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(allIds.map((id) => [id, true])),
+    Object.fromEntries(allIds.map((id) => [id, id !== "drive.share"])),
   );
   const [outcome, setOutcome] = useState<string | null>(null);
 

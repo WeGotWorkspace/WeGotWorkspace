@@ -5,6 +5,7 @@ import {
   groupMcpScopeIds,
   MCP_CONSENT_GROUP_APP_ID,
   MCP_MAIL_GRANT_GROUP_LABEL,
+  MCP_SCOPE_CATALOG,
   mcpConsentCatalogScopeIds,
   mcpConsentGroupsFor,
   mcpScopeActionLabel,
