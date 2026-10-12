@@ -1192,12 +1192,6 @@
 
 .meet-workspace
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
-  .meet-peer-tile__display-name {
-  color: var(--meet-mark);
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
   .meet-peer-tile__speaking {
   background-color: var(--meet-live);
   color: var(--color-we-got-dark, #111);
@@ -1351,9 +1345,8 @@
 
 .meet-call-stage--expanded,
 .meet-call-expanded {
-  @apply relative flex-row overflow-hidden;
+  @apply relative h-full min-h-0 flex-col overflow-hidden;
   container: meet-call-expanded / inline-size;
-  --meet-call-dock-safe: 5.75rem;
 }
 
 .meet-call-stage__chrome {
@@ -1401,14 +1394,28 @@
 }
 
 .meet-call-stage__body {
-  /* Inline inset matches `.meet-call-stage__header` (`p-4 md:p-6`). */
-  @apply flex min-h-0 min-w-0 flex-1 gap-3 px-4 md:px-6;
-  padding-bottom: var(--meet-call-dock-safe, 5.75rem);
+  /* Inline inset matches `.meet-call-stage__header` (`p-4 md:p-6`).
+     Bottom padding clears the fixed control dock so the tile and name stay visible. */
+  @apply flex min-h-0 min-w-0 flex-1 overflow-hidden gap-3 px-4 md:px-6;
+  padding-bottom: 5.75rem;
 }
 
 .meet-call-stage__grid {
-  @apply m-0 flex h-full min-h-0 min-w-0 flex-1 list-none flex-wrap content-center justify-center p-0;
+  @apply m-0 flex h-full min-h-0 min-w-0 flex-1 list-none flex-wrap content-center justify-center overflow-y-auto p-0;
   gap: 0.75rem;
+}
+
+/* One local participant: a meeting tile, centered, not a full-bleed stage.
+   Screen share and pin use `.meet-call-stage__share`, not this grid. */
+.meet-call-stage__grid[data-count="1"] {
+  @apply items-center content-center;
+}
+
+.meet-call-stage__grid[data-count="1"] > .meet-call-stage__grid-item {
+  width: min(100%, 40rem);
+  max-height: min(60vh, 25rem);
+  height: auto;
+  aspect-ratio: 16 / 10;
 }
 
 /* Column count comes from peer count (`data-columns`). A short last row stays centered. */
@@ -1496,8 +1503,9 @@
 
   .meet-call-expanded .meet-call-stage__grid {
     width: 100%;
-    height: auto;
-    align-self: center;
+    height: 100%;
+    max-height: 100%;
+    align-self: stretch;
     overflow-y: auto;
   }
 
@@ -1523,8 +1531,9 @@
 
     .meet-call-expanded .meet-call-stage__grid {
       width: 100%;
-      height: auto;
-      align-self: center;
+      height: 100%;
+      max-height: 100%;
+      align-self: stretch;
       overflow-y: auto;
     }
 
@@ -1558,7 +1567,9 @@
 }
 
 .meet-call-stage__dock {
-  @apply pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center;
+  /* Fixed to the viewport bottom so a tall tile cannot scroll the controls away. */
+  @apply pointer-events-none fixed inset-x-0 z-30 flex justify-center;
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
 }
 
 .meet-call-stage__dock .meet-workspace__toolbar.floating-action-bar {
