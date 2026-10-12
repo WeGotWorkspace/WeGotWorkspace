@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AppSetting;
 use App\Services\Admin\AdminStateService;
 use App\Services\Update\ShippedInstallEnvHardening;
 use App\Support\WgwApiEnvFile;
@@ -51,6 +52,27 @@ final class AdminStateEnvHardeningTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_admin_state_keeps_app_debug_after_a_successful_hardening_rewrite(): void
+    {
+        $path = $this->prepareInstall("APP_ENV=local\nAPP_DEBUG=true\n");
+        $this->adminState();
+
+        $rewritten = (string) file_get_contents($path);
+        $this->assertSame('production', WgwApiEnvFile::readValue($rewritten, 'APP_ENV'));
+        $this->assertSame('false', WgwApiEnvFile::readValue($rewritten, 'APP_DEBUG'));
+
+        file_put_contents($path, WgwApiEnvFile::setLine($rewritten, 'APP_DEBUG', 'true', quote: false));
+        config(['app.debug' => true]);
+
+        $again = $this->adminState();
+
+        $this->assertSame('true', WgwApiEnvFile::readValue((string) file_get_contents($path), 'APP_DEBUG'));
+        $this->assertContains(
+            'APP_DEBUG is on. Error responses can include exception details.',
+            $again['securityWarnings'],
+        );
+    }
+
     private function prepareInstall(string $env): string
     {
         if ($this->root !== '' && is_dir($this->root)) {
@@ -74,6 +96,7 @@ final class AdminStateEnvHardeningTest extends WgwDatabaseTestCase
         $this->app->forgetInstance(WgwInstallConfig::class);
         $this->app->forgetInstance(ShippedInstallEnvHardening::class);
         $this->app->forgetInstance(AdminStateService::class);
+        AppSetting::query()->whereKey('shipped_env_hardened')->delete();
 
         return $path;
     }

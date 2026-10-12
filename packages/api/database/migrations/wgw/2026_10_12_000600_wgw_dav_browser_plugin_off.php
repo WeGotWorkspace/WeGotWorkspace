@@ -9,6 +9,10 @@ return new class extends WgwMigration
 {
     public function up(): void
     {
+        if (config('app.env') === 'production' && config('app.debug') !== true) {
+            AppSetting::setValue('shipped_env_hardened', true);
+        }
+
         if (AppSetting::getValue('browser_plugin') !== true) {
             return;
         }

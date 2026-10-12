@@ -76,14 +76,15 @@ final class AdminStateService
     private function securityWarnings(): array
     {
         $warnings = [];
-        if (config('app.env') !== 'production' || config('app.debug') === true) {
+        if (AppSetting::getValue('shipped_env_hardened') !== true
+            && (config('app.env') !== 'production' || config('app.debug') === true)) {
             try {
                 $applied = app(ShippedInstallEnvHardening::class)->apply();
             } catch (\Throwable) {
-                // An unwritable .env raises ErrorException instead of returning false.
                 $applied = false;
             }
             if ($applied) {
+                AppSetting::setValue('shipped_env_hardened', true);
                 $warnings[] = 'Production settings were applied; reload the page';
             }
         }
