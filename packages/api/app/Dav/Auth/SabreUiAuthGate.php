@@ -13,7 +13,7 @@ final class SabreUiAuthGate
 {
     private const COOKIE = 'sabre_ui_auth';
 
-    private const COOKIE_VERSION = 1;
+    private const COOKIE_VERSION = 2;
 
     /**
      * @return non-empty-string|null
@@ -85,9 +85,20 @@ final class SabreUiAuthGate
         if ($username === '') {
             return null;
         }
-        // Extra keyed users.enabled lookup per DAV request: HMAC/expiry alone
-        // is not enough after disable — do not cache "logged in" across requests.
-        if (! app(UserEnabledGuard::class)->isEnabled($username)) {
+        // One users lookup covers enabled and the UI-cookie epoch. HMAC/expiry
+        // alone is not enough after logout or a password change.
+        $session = app(UserEnabledGuard::class)->enabledSession($username);
+        if ($session === null) {
+            return null;
+        }
+        $cookieEpoch = $payload['ep'] ?? null;
+        if (! is_int($cookieEpoch)) {
+            if (! is_numeric($cookieEpoch)) {
+                return null;
+            }
+            $cookieEpoch = (int) $cookieEpoch;
+        }
+        if ($cookieEpoch < $session['epoch']) {
             return null;
         }
 

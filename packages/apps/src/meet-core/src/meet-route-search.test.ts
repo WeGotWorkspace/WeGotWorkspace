@@ -15,10 +15,16 @@ import {
 } from "@/meet-core/src/meet-route-search";
 
 describe("meet route search", () => {
-  it("keeps rtcDebug so TanStack does not strip the handshake logger flag", () => {
-    expect(parseMeetRouteSearch({ room: "h8y8-ewp6-al8n", rtcDebug: 1 })).toEqual({
+  it("ignores former rtc debug search keys", () => {
+    expect(
+      parseMeetRouteSearch({
+        room: "h8y8-ewp6-al8n",
+        rtcDebug: 1,
+        rtcForceRelay: "1",
+        iceTransportPolicy: "relay",
+      }),
+    ).toEqual({
       room: "h8y8-ewp6-al8n",
-      rtcDebug: 1,
     });
   });
 

@@ -113,13 +113,21 @@ trait MeetTestFixtures
     }
 
     /**
+     * @param  list<string>|null  $caps  Advertised wire capabilities; null joins like an old client.
      * @return array{sessionKey: string, peerId: string}
      */
-    protected function guestJoin(string $peerId, string $name = 'Guest', ?string $sessionKey = null): array
-    {
+    protected function guestJoin(
+        string $peerId,
+        string $name = 'Guest',
+        ?string $sessionKey = null,
+        ?array $caps = null,
+    ): array {
         $body = ['peerId' => $peerId, 'name' => $name];
         if ($sessionKey !== null) {
             $body['sessionKey'] = $sessionKey;
+        }
+        if ($caps !== null) {
+            $body['caps'] = $caps;
         }
 
         $response = $this->postJson($this->meetRoomPath('/participants'), $body);

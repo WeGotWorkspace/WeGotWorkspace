@@ -59,7 +59,7 @@ pnpm test:meet-api
 | Topic | Rule |
 |-------|------|
 | A/V | WebRTC media binding only |
-| Chat + control | HTTP messages + poll — **not** data channels |
+| Chat + control | Chat over the Meet data channel with HTTP as fallback and dedupe; admit and server-recorded control stay on HTTP |
 | Signaling | HTTP on `/api/v1/rooms/{roomId}/*` |
 | Meet SDP | Sanitize **inbound remote** SDP only — never rewrite local before `setLocalDescription` |
 | Initiator | Meet uses `higherId` (lexicographic peer id) |
@@ -67,7 +67,7 @@ pnpm test:meet-api
 
 **Poll cadence:** connecting 400 ms; active steady 1200 ms (chat, knock/admit, roster). When all media peers are connected and no knockers are waiting, meet idles at **4 s** — lighter than collab's 15 s idle backoff but still responsive for control messages.
 
-Debug: `?rtcDebug=1` on URL. Relay-only dev: `?rtcForceRelay=1` or `VITE_WGW_RTC_FORCE_RELAY=1`.
+Debug: Admin → Real-time collaboration → Detailed connection logs (or Playwright `setRtcTestOverrides`). Relay-only: admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1` for local Vite/Storybook.
 
 ## Storybook (mock-tier required)
 

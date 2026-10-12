@@ -5,6 +5,7 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/http")>();
   return {
     ...actual,
+    wgwEnsureFreshAccessToken: vi.fn(),
     wgwFetchPrincipal: vi.fn(),
     wgwFetch: vi.fn(),
   };
@@ -14,7 +15,7 @@ vi.mock("@/lib/api/wgw/rtc", () => ({
   fetchRtcSettings: vi.fn(),
 }));
 
-import { wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
+import { wgwEnsureFreshAccessToken, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import {
   createWgwMeetApiSource,
@@ -22,6 +23,7 @@ import {
   meetGuestLinkAllowsHostUpgrade,
 } from "@/meet-core/src/meet-api-source";
 
+const ensureToken = vi.mocked(wgwEnsureFreshAccessToken);
 const fetchPrincipal = vi.mocked(wgwFetchPrincipal);
 const fetchJson = vi.mocked(wgwFetch);
 const rtcSettings = vi.mocked(fetchRtcSettings);
@@ -38,9 +40,7 @@ const HOST_SESSION: WorkspaceSession = {
 };
 const RTC = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
 };
 
@@ -54,6 +54,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("createWgwMeetApiSource", () => {
   beforeEach(() => {
+    ensureToken.mockReset().mockResolvedValue("live-token");
     fetchPrincipal.mockReset();
     fetchJson.mockReset();
     rtcSettings.mockReset().mockResolvedValue(RTC);
@@ -67,11 +68,17 @@ describe("createWgwMeetApiSource", () => {
 
     expect(bootstrap.session.user.username).toBe("bob");
     expect(operations?.guestSignalingFetch).toBeUndefined();
+    expect(rtcSettings).toHaveBeenCalledWith({
+      bearerToken: "live-token",
+      channel: "meet",
+      room: "bootstrap",
+    });
   });
 });
 
 describe("meetGuestLinkAllowsHostUpgrade", () => {
   beforeEach(() => {
+    ensureToken.mockReset().mockResolvedValue("live-token");
     fetchPrincipal.mockReset();
     fetchJson.mockReset();
     rtcSettings.mockReset().mockResolvedValue(RTC);
@@ -122,6 +129,7 @@ describe("meetGuestLinkAllowsHostUpgrade", () => {
 
 describe("createWgwMeetGuestOrHostApiSource", () => {
   beforeEach(() => {
+    ensureToken.mockReset().mockResolvedValue("live-token");
     fetchPrincipal.mockReset();
     fetchJson.mockReset();
     rtcSettings.mockReset().mockResolvedValue(RTC);
@@ -143,6 +151,11 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
 
     expect(bootstrap.session.user.username).toBe("bob");
     expect(operations?.guestSignalingFetch).toBeUndefined();
+    expect(rtcSettings).toHaveBeenCalledWith({
+      bearerToken: "live-token",
+      channel: "meet",
+      room: "bootstrap",
+    });
   });
 
   it("keeps an anonymous visitor on guest bootstrap and signaling", async () => {

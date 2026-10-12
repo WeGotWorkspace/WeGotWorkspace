@@ -34,6 +34,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     actions: {
       saveSettings: settings.saveSettings,
       clearMailDeliverySmtpPassword: settings.clearMailDeliverySmtpPassword,
+      clearTurnSecret: settings.clearTurnSecret,
       sendMailDeliveryTest: settings.sendMailDeliveryTest,
       refresh,
       checkUpdates: updates.checkUpdates,

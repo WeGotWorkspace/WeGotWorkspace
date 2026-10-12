@@ -19,6 +19,7 @@ use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
+use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Events\EventDispatch;
@@ -136,6 +137,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
+            $server->addPlugin(new RecurrenceGuardPlugin);
         }
 
         if ($card) {

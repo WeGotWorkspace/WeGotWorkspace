@@ -7,11 +7,13 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Drive\DriveShareGrantResolver;
+use App\Storage\StoragePaths;
 
 /**
  * Per-account context for the FileNode envelope methods: the drive principal
- * shape, the visible roots (own tree + member groups — design decision 5),
- * and visibility checks against them.
+ * shape, the visible roots (own tree + member groups + live member-grant
+ * share roots — #990), and visibility checks against them.
  */
 final class FileNodeAccountSupport
 {
@@ -19,6 +21,8 @@ final class FileNodeAccountSupport
         private readonly FileNodeIndexService $index,
         private readonly DriveGroupResolver $groups,
         private readonly AdminRoleResolver $adminRoles,
+        private readonly DriveShareGrantResolver $grants,
+        private readonly StoragePaths $paths,
     ) {}
 
     /**
@@ -33,16 +37,58 @@ final class FileNodeAccountSupport
     }
 
     /**
+     * Own tree + member groups. Share roots are not included (#990 D2).
+     *
+     * @return list<string>
+     */
+    public function accountRootsFor(string $username): array
+    {
+        return $this->index->visibleRoots($username, $this->groups->allowedGroupSlugs($username));
+    }
+
+    /**
+     * Own tree + member groups + live member-grant share roots (#990).
+     *
      * @return list<string>
      */
     public function rootsFor(string $username): array
     {
-        return $this->index->visibleRoots($username, $this->groups->allowedGroupSlugs($username));
+        return array_values(array_unique([
+            ...$this->accountRootsFor($username),
+            ...$this->shareRootKeysFor($username),
+        ]));
     }
 
     public function ensureAccountIndexed(string $username): void
     {
         $this->index->ensureRootsIndexed($username, $this->groups->allowedGroupSlugs($username));
+        foreach ($this->shareRootKeysFor($username) as $key) {
+            if ($this->index->liveByKey($key) === null) {
+                // recordCreate keeps the owner's parent; do not mint a root here.
+                $this->index->recordCreate($key);
+            }
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function shareRootKeysFor(string $username): array
+    {
+        $accountRoots = $this->accountRootsFor($username);
+        $keys = [];
+        foreach ($this->grants->memberShareRootPaths($username, $this->groups->allowedGroupSlugs($username)) as $path) {
+            if ($this->paths->isNotePath($path)) {
+                continue;
+            }
+            $key = $this->paths->virtualToStorageKey($path);
+            if ($this->index->isVisibleKey($key, $accountRoots)) {
+                continue;
+            }
+            $keys[$key] = $key;
+        }
+
+        return array_values($keys);
     }
 
     /**

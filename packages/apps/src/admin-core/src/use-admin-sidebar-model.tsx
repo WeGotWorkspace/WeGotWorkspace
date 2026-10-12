@@ -1,4 +1,5 @@
 import {
+  Activity,
   DatabaseBackup,
   Database,
   Search,
@@ -44,6 +45,12 @@ export function useAdminSidebarModel(): AdminSectionDescriptor[] {
       label: "Real-time collaboration",
       description: "WebRTC STUN/TURN and relay routing",
       icon: <MessagesSquare className="size-3.5" />,
+    },
+    {
+      id: "realtime-health",
+      label: "Real-time health",
+      description: "Join time, relay need, and fallback",
+      icon: <Activity className="size-3.5" />,
     },
     {
       id: "webdav",

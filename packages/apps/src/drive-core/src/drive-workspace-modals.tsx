@@ -19,7 +19,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
+import { resolveDriveFileApiPath } from "@/drive-core/src/drive-batch-utils";
 import { DriveMoveToDialog } from "@/drive-core/src/drive-move-to-dialog";
+import { isForeignDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { DriveCreateMarkdownDialog } from "@/drive-core/src/drive-create-markdown-dialog";
 import { ShareDialog } from "@/share-ui/share-dialog";
 import type { DriveShareOperations } from "@/drive-core/src/drive-types";
@@ -78,6 +80,18 @@ export function DriveWorkspaceModals({
   const renameTarget = renameDialog ? fileById(renameDialog.id) : null;
   const renameExtension = renameDialog?.extension || undefined;
   const canSubmitRename = renameName.trim().length > 0;
+  const trashIncludesForeign =
+    confirmDelete != null &&
+    !confirmDelete.permanent &&
+    confirmDelete.ids.some((id) => {
+      const file = fileById(id);
+      if (!file) return false;
+      return isForeignDriveApiPath(
+        resolveDriveFileApiPath(file, currentUsername, groupRootNames),
+        currentUsername,
+        groupRootNames,
+      );
+    });
 
   return (
     <>
@@ -167,7 +181,11 @@ export function DriveWorkspaceModals({
                   }. This cannot be undone.`
                 : `This will move ${confirmDelete?.ids.length} file${
                     confirmDelete && confirmDelete.ids.length === 1 ? "" : "s"
-                  } to Trash.`}
+                  } to Trash.${
+                    trashIncludesForeign
+                      ? " Items shared with you go to the owner's Trash; only the owner can restore them."
+                      : ""
+                  }`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

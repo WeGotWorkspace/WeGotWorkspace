@@ -1,4 +1,5 @@
 import { wgwApiBaseUrl, wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
+import { fetchDriveSharedWithMe } from "@/lib/api/wgw/drive-shares";
 import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
@@ -31,6 +32,7 @@ export type DriveJmapSession = {
   maxSizeUpload: number;
   uploadUrl: string;
   downloadUrl: string;
+  sharedRootPaths: Set<string>;
 };
 
 let cachedSession: DriveJmapSession | null = null;
@@ -88,6 +90,7 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
       typeof core?.maxSizeUpload === "number" ? core.maxSizeUpload : JMAP_MAX_SIZE_UPLOAD_DEFAULT,
     uploadUrl: session.uploadUrl,
     downloadUrl: session.downloadUrl,
+    sharedRootPaths: new Set(),
   };
   return cachedSession;
 }
@@ -128,6 +131,38 @@ async function ensureTopLevel(
   session.cache.rememberTopLevel(username, got.list);
 }
 
+async function loadSharedRoots(session: DriveJmapSession, signal?: AbortSignal): Promise<void> {
+  const rows = await fetchDriveSharedWithMe({ signal });
+  session.sharedRootPaths.clear();
+  const pathById = new Map<string, string>();
+  for (const row of rows) {
+    if (row.fileNodeId) pathById.set(row.fileNodeId, normalizePath(row.share.path));
+  }
+  if (pathById.size === 0) return;
+  const got = await session.fileNodes.getFileNodes(session.accountId, [...pathById.keys()], {
+    signal,
+  });
+  for (const node of got.list) {
+    const path = pathById.get(node.id);
+    if (!path) continue;
+    session.cache.remember(path, node);
+    session.sharedRootPaths.add(path);
+  }
+}
+
+function longestSharedRoot(session: DriveJmapSession, target: string): string | null {
+  let best: string | null = null;
+  for (const root of session.sharedRootPaths) {
+    if (
+      (target === root || target.startsWith(`${root}/`)) &&
+      (!best || root.length > best.length)
+    ) {
+      best = root;
+    }
+  }
+  return best;
+}
+
 export async function resolveFileNodeId(
   session: DriveJmapSession,
   path: string,
@@ -150,11 +185,24 @@ export async function resolveFileNodeId(
   if (parts[0] === "users" && parts[1] === username) {
     prefix = home;
     rest = parts.slice(2);
-  } else if (parts[0] === "groups" && parts[1]) {
+  } else if (
+    parts[0] === "groups" &&
+    parts[1] &&
+    session.cache.nodeIdForPath(`/groups/${parts[1]}`)
+  ) {
     prefix = `/groups/${parts[1]}`;
     rest = parts.slice(2);
   } else {
-    throw new Error(`Unsupported drive path: ${normalized}`);
+    let root = longestSharedRoot(session, target);
+    if (!root || !session.cache.nodeIdForPath(root)) {
+      await loadSharedRoots(session, signal);
+      root = longestSharedRoot(session, target);
+    }
+    if (!root || !session.cache.nodeIdForPath(root)) {
+      throw new Error(`Unsupported drive path: ${normalized}`);
+    }
+    prefix = root;
+    rest = target.slice(root.length).split("/").filter(Boolean);
   }
 
   let parentId = session.cache.nodeIdForPath(prefix);
@@ -431,6 +479,7 @@ export async function destroyFileNodes(
     { signal: opts?.signal },
   );
   for (const path of paths) session.cache.forgetSubtree(path);
+  if (opts?.refreshState === false) return emptyState(cwd, plugins);
   return fetchSignedInDriveState(cwd, opts, plugins);
 }
 

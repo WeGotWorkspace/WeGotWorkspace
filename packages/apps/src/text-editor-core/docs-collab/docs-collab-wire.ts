@@ -1,5 +1,6 @@
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
-import { DEFAULT_RTC_SETTINGS, type RtcSettings } from "@/lib/rtc/types";
+import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import type { FetchedRtcSettings } from "@/lib/api/wgw/rtc";
 
 export type DocsCollabAuthTokenInput = {
   authToken?: string;
@@ -14,7 +15,7 @@ export type DocsCollabWireOperations = {
     url?: string;
     bearerToken?: string;
     channel: string;
-  }) => Promise<RtcSettings>;
+  }) => Promise<FetchedRtcSettings>;
 };
 
 /** Offline / local-mesh default — no Laravel auth or RTC config fetch. */

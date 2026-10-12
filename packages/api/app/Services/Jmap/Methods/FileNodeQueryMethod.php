@@ -124,7 +124,7 @@ final class FileNodeQueryMethod implements JmapMethodInterface
 
         if (($filter['isTopLevel'] ?? null) === true) {
             $nodes = [];
-            foreach ($roots as $root) {
+            foreach ($this->accounts->accountRootsFor($username) as $root) {
                 $node = $this->index->liveByKey($root);
                 if ($node !== null) {
                     $nodes[] = $node;

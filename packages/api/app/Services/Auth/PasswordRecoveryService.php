@@ -24,7 +24,7 @@ final class PasswordRecoveryService
         private PasswordResetMailFactory $resetMail,
         private PasswordRecoveryRateLimiter $rateLimiter,
         private UserProfileService $profiles,
-        private RefreshTokenRepository $refreshTokens,
+        private UserSessionRevoker $sessions,
     ) {}
 
     public function requestReset(string $identifier, string $ip): void
@@ -82,7 +82,7 @@ final class PasswordRecoveryService
 
         $username = (string) $row->username;
         $this->profiles->updatePassword($username, $password);
-        $this->refreshTokens->revokeAllForUsername($username);
+        $this->sessions->revokeAll($username);
         $row->delete();
     }
 

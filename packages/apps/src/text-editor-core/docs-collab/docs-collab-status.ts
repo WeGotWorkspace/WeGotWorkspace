@@ -3,6 +3,8 @@ export const TRANSIENT_DOC_STATUS_DISMISS_MS = 4000;
 export const DOC_STATUS_LOADED_SHARED_DOCUMENT = "Loaded shared document";
 export const DOC_STATUS_RESTORED_WORKING_VERSION = "Restored working version";
 export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";
+/** The snapshot state is unknown, so the document is deliberately left unseeded. */
+export const DOC_STATUS_SNAPSHOT_UNAVAILABLE = "Could not load the shared copy. Retrying…";
 
 const TRANSIENT_DOC_STATUS_MESSAGES = new Set<string>([
   DOC_STATUS_LOADED_SHARED_DOCUMENT,

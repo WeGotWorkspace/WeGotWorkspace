@@ -74,8 +74,10 @@ final class FileNodeIndexService
     // Visibility
 
     /**
-     * Storage-key prefixes visible to an account: the personal tree plus
-     * member group trees (design decision 5 — shared-with-me deferred).
+     * Storage-key prefixes of the account's own tree: the personal home plus
+     * member group trees. Live member-grant share roots are visible to the
+     * grantee (#990) but are not minted here — FileNodeAccountSupport indexes
+     * them with their real parent.
      *
      * @param  list<string>  $groupSlugs
      * @return list<string>

@@ -2,27 +2,46 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/browser-online";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
-import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
+import {
+  clearDocsCollabPendingServerSave,
+  docsCollabIndexedDbKey,
+  migrateDocsCollabPendingSaveFromLegacy,
+} from "./docs-collab-persistence";
 import { createTeardownResetState, isJoinGenerationCurrent } from "./docs-collab-join-lifecycle";
 import { lingerDocsCollabMeshSession } from "./docs-collab-mesh-linger";
 import { encodeAwarenessBroadcast, encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { mayPublishDocumentBearingMeshSync } from "./docs-collab-mesh-hydration";
 import {
   markRoomServerFailure,
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import { loadMarkdown, loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import {
+  fetchYjsSnapshot,
+  loadMarkdown,
+  loadYjsSnapshot,
+  saveDocument,
+} from "./docs-collab-server-io";
+import {
+  adoptServerSnapshot,
+  decideServerStateAdoption,
+  loadBootstrapInParallel,
+} from "./docs-collab-bootstrap";
+import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import {
   canSeedFromFile,
+  markSeedDoneAfterSnapshot,
   resolveBootstrapSeed,
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
 import {
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
+  DOC_STATUS_SNAPSHOT_UNAVAILABLE,
 } from "./docs-collab-status";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import {
@@ -41,7 +60,12 @@ import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
-  "joinMesh" | "refreshMeshUi" | "resetMeshUi" | "setStatus" | "setConnectingPeers"
+  | "joinMesh"
+  | "refreshMeshUi"
+  | "resetMeshUi"
+  | "setStatus"
+  | "setConnectingPeers"
+  | "flushMeshSyncIfHydrated"
 >;
 
 type SaveApi = Pick<
@@ -74,17 +98,29 @@ export function useDocsCollabJoin({
   setPendingSync,
   setFailedSync,
 }: UseDocsCollabJoinOptions) {
-  const { joinMesh, refreshMeshUi, resetMeshUi, setStatus, setConnectingPeers } = mesh;
+  const {
+    joinMesh,
+    refreshMeshUi,
+    resetMeshUi,
+    setStatus,
+    setConnectingPeers,
+    flushMeshSyncIfHydrated,
+  } = mesh;
   const { updatePendingState, flushPendingSaveIfReady } = save;
   const documentFormat = collabDocumentFormat(room);
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
-  const meshJoinInFlightRef = useRef(false);
+  /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */
+  const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
+  const meshJoinInFlightRef = useRef<object | null>(null);
   const serverJoinStartedRef = useRef(false);
-
   const markDocReady = useCallback(() => {
+    // A peer can fill the doc after a failed sidecar already showed the preview.
+    setSnapshotPreview(null);
+    if (refs.seedDoneRef.current) return;
     refs.seedDoneRef.current = true;
-  }, [refs]);
+    flushMeshSyncIfHydrated();
+  }, [flushMeshSyncIfHydrated, refs]);
 
   const trySeedFromFile = useCallback(() => {
     const ydoc = refs.ydocRef.current;
@@ -112,11 +148,15 @@ export function useDocsCollabJoin({
   }, [documentFormat, markDocReady, refs, setDocStatus]);
 
   const teardown = useCallback(() => {
+    const awareness = refs.awarenessRef.current;
+    if (awareness) {
+      awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+    }
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     if (refs.seedTimerRef.current) clearTimeout(refs.seedTimerRef.current);
     const meshSession = refs.meshRef.current;
     refs.meshRef.current = null;
-    meshJoinInFlightRef.current = false;
+    meshJoinInFlightRef.current = null;
     serverJoinStartedRef.current = false;
     // Park the mesh instead of leaving: returning to this room within the
     // grace resumes the live session (joinMesh); expiry performs the leave.
@@ -140,8 +180,12 @@ export function useDocsCollabJoin({
     refs.joinedRoomRef.current = reset.joinedRoom;
     refs.authTokenRef.current = reset.authToken;
     clearDocsCollabSyncState(room);
+    // The sidecar may move on while the room is parked; re-learn it on rejoin.
+    forgetSidecarEtag(room);
+    refs.sessionRef.current = null;
     setSession(null);
     setJoined(false);
+    setSnapshotPreview(null);
     resetMeshUi();
     setDocStatus("");
     setLastSavedAt(null);
@@ -149,13 +193,47 @@ export function useDocsCollabJoin({
     setFailedSync(false);
   }, [refs, room, setDocStatus, setFailedSync, setLastSavedAt, setPendingSync, resetMeshUi]);
 
+  useEffect(() => {
+    // pagehide also runs when the page enters the back/forward cache. Keep the
+    // cursor we clear so a persisted pageshow can put it back. A real teardown
+    // nulls the awareness ref and drops this listener, so that path stays gone.
+    let parked: {
+      awareness: awarenessProtocol.Awareness;
+      state: NonNullable<ReturnType<awarenessProtocol.Awareness["getLocalState"]>>;
+    } | null = null;
+    const onPageHide = () => {
+      const awareness = refs.awarenessRef.current;
+      if (!awareness) return;
+      const state = awareness.getLocalState();
+      if (state !== null) parked = { awareness, state };
+      awarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], "teardown");
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted || !parked) return;
+      const saved = parked;
+      parked = null;
+      if (refs.awarenessRef.current !== saved.awareness) return;
+      saved.awareness.setLocalState(saved.state);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      parked = null;
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [refs]);
+
   const mergeServerState = useCallback(
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
-      return loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+      const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+      rememberSidecarEtag(room, snapshot.etag);
+      if (snapshot.applied) setSnapshotPreview(null);
+      return snapshot.applied;
     },
-    [refs, urls.yjsUrl],
+    [refs, room, urls.yjsUrl],
   );
 
   const applyServerBootstrap = useCallback(
@@ -163,31 +241,63 @@ export function useDocsCollabJoin({
       const ydoc = refs.ydocRef.current;
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
-      let markdown = "";
-      let hadSnapshot = false;
-      try {
-        markdown = urls.loadDocumentMarkdown
-          ? await urls.loadDocumentMarkdown(authToken)
-          : await loadMarkdown(urls.documentUrl, authToken);
-      } catch (error) {
-        markRoomServerFailure(room);
-        if (isCollabPreconditionFailed(error)) {
+      const load = await loadBootstrapInParallel({
+        loadMarkdown: () =>
+          urls.loadDocumentMarkdown
+            ? urls.loadDocumentMarkdown(authToken)
+            : loadMarkdown(urls.documentUrl, authToken),
+        fetchSnapshot: urls.skipYjsSnapshot ? null : () => fetchYjsSnapshot(urls.yjsUrl, authToken),
+        // Teardown drops the doc it is loading into; stop retrying then.
+        isCurrent: () =>
+          isJoinGenerationCurrent(generation, refs.joinGenerationRef) &&
+          refs.ydocRef.current === ydoc,
+        onAttemptFailed: () => markRoomServerFailure(room),
+      });
+      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+
+      if (load.markdownError) {
+        if (isCollabPreconditionFailed(load.markdownError)) {
           urls.onReconnectConflict?.();
           return;
         }
-        console.warn("[docs-collab] markdown load failed", error);
+        console.warn("[docs-collab] markdown load failed", load.markdownError);
       }
-      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      if (!urls.skipYjsSnapshot) {
-        try {
-          hadSnapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
-        } catch (error) {
-          markRoomServerFailure(room);
-          console.warn("[docs-collab] yjs load failed", error);
+
+      const snapshot = load.snapshot;
+      // C7: the snapshot state is unknown, so seeding would risk a second copy.
+      // The room is already in backoff via onAttemptFailed; the reconnect path
+      // retries the sidecar once that backoff allows it. Markdown stays a
+      // read-only preview and is not written into the Y.Doc.
+      if (snapshot.kind === "failed") {
+        console.warn("[docs-collab] yjs load failed", snapshot.error);
+        const markdown = load.markdown;
+        refs.lastKnownMarkdownRef.current = markdown;
+        refs.pendingMarkdownRef.current = "";
+        setSnapshotPreview(markdown.trim() ? markdown : null);
+        setDocStatus(DOC_STATUS_SNAPSHOT_UNAVAILABLE);
+        return;
+      }
+
+      if (snapshot.kind === "snapshot") {
+        const adoption = decideServerStateAdoption({
+          hasServerSnapshot: true,
+          pendingServerSave: refs.pendingServerSaveRef.current,
+        });
+        if (adoption === "adopt-server") {
+          adoptServerSnapshot(ydoc, snapshot.update, SERVER_ORIGIN);
+        } else {
+          Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
         }
+        rememberSidecarEtag(room, snapshot.etag);
+        if (markSeedDoneAfterSnapshot(ydoc)) {
+          refs.seedDoneRef.current = true;
+        }
+      } else if (snapshot.kind === "absent") {
+        rememberSidecarEtag(room, null);
       }
-      if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
-      if (hadSnapshot) refs.seedDoneRef.current = true;
+
+      const hadSnapshot = snapshot.kind === "snapshot";
+      const markdown = load.markdown;
       if (hadSnapshot || markdown) {
         markRoomServerSuccess(room);
       }
@@ -212,42 +322,43 @@ export function useDocsCollabJoin({
       } else if (hadSnapshot) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
       }
+
+      flushMeshSyncIfHydrated();
     },
     [
       documentFormat,
+      flushMeshSyncIfHydrated,
       markDocReady,
       refs,
       room,
       setDocStatus,
       trySeedFromFile,
-      urls.documentUrl,
-      urls.loadDocumentMarkdown,
-      urls.onReconnectConflict,
-      urls.skipYjsSnapshot,
-      urls.yjsUrl,
+      urls,
     ],
   );
 
   const connectMeshInBackground = useCallback(
     async (generation: number, name: string, authToken: string) => {
       if (refs.meshRef.current || meshJoinInFlightRef.current) return;
-      meshJoinInFlightRef.current = true;
+      const token = {};
+      meshJoinInFlightRef.current = token;
+      const isCurrent = () => isJoinGenerationCurrent(generation, refs.joinGenerationRef);
       setDocStatus((prev) => prev || "Connecting to collaborators…");
-      setStatus("Connecting to mesh…");
+      setStatus(docsLabels.statusConnecting);
       try {
-        const meshPeers = await joinMesh(name, authToken);
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        const meshPeers = await joinMesh(name, authToken, isCurrent);
+        if (meshPeers === null || !isCurrent()) return;
         setConnectingPeers(meshPeers);
         refreshMeshUi();
         setDocStatus((prev) => (prev === "Connecting to collaborators…" ? "" : prev));
         trySeedFromFile();
       } catch (error) {
-        if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
+        if (!isCurrent()) return;
         markRoomServerFailure(room);
         console.warn("[docs-collab] mesh join failed", error);
         setDocStatus(error instanceof Error ? error.message : String(error));
       } finally {
-        meshJoinInFlightRef.current = false;
+        if (meshJoinInFlightRef.current === token) meshJoinInFlightRef.current = null;
       }
     },
     [
@@ -294,7 +405,7 @@ export function useDocsCollabJoin({
 
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
-    const persistence = new IndexeddbPersistence(room, ydoc);
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
     refs.persistenceRef.current = persistence;
 
     const authTokenPromise = allowServerRequests
@@ -316,6 +427,8 @@ export function useDocsCollabJoin({
     await persistence.whenSynced;
     if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
+    await migrateDocsCollabPendingSaveFromLegacy(room, persistence);
+
     const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
     if (pendingSave) {
       await updatePendingState(true, false);
@@ -326,15 +439,27 @@ export function useDocsCollabJoin({
     const user = { name, color: colorForName(name), id: trackChangesAuthorIdFromName(name) };
     awareness.setLocalStateField("user", user);
 
+    setSession({
+      ydoc,
+      awareness,
+      user,
+    });
+
     ydoc.on("update", (update, origin) => {
       if (isRemoteUpdateOrigin(origin, refs.persistenceRef.current)) return;
       refs.localDirtySinceLastSaveRef.current = true;
       const encoded = encodeUpdateBroadcast(update);
       const tabSync = refs.tabSyncRef.current;
+      const mayMeshPublish = mayPublishDocumentBearingMeshSync(ydoc, refs.seedDoneRef.current);
       if (tabSync) {
         tabSync.onLocalSync(encoded);
+        if (tabSync.isMeshLeader() && mayMeshPublish) {
+          refs.meshRef.current?.noteLocalUpdate(update);
+        }
         return;
       }
+      if (!mayMeshPublish) return;
+      refs.meshRef.current?.noteLocalUpdate(update);
       refs.meshRef.current?.broadcast({ type: "sync", u: encoded });
     });
 
@@ -356,9 +481,8 @@ export function useDocsCollabJoin({
       },
     );
 
-    setSession({ ydoc, awareness, user });
-    setJoined(true);
     refs.joinedRoomRef.current = room;
+    setJoined(true);
 
     if (!online || !allowServerRequests) {
       if (!refs.seedDoneRef.current && isYDocEmpty(ydoc) && refs.seedContentRef.current) {
@@ -373,6 +497,8 @@ export function useDocsCollabJoin({
       });
       return;
     }
+
+    setDocStatus("Loading document…");
 
     void (async () => {
       let authToken: string | undefined;
@@ -395,7 +521,6 @@ export function useDocsCollabJoin({
   }, [
     documentFormat,
     finishAuthenticatedJoin,
-    joinMesh,
     markDocReady,
     refs,
     room,
@@ -431,14 +556,16 @@ export function useDocsCollabJoin({
     let saved = false;
     if (getMd && ydoc) {
       try {
-        await saveDocument(
+        const etag = await saveDocument(
           urls.documentUrl,
           getMd(),
           ydoc,
           urls.room,
           refs.authTokenRef.current,
           urls.documentSaveMethod ?? "POST",
+          sidecarPrecondition(room),
         );
+        rememberSidecarEtag(room, etag);
         saved = true;
       } catch {
         // ignore
@@ -453,6 +580,7 @@ export function useDocsCollabJoin({
   return {
     session,
     joined,
+    snapshotPreview,
     join,
     leave,
     teardown,

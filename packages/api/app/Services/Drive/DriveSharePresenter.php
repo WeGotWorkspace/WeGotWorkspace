@@ -115,6 +115,9 @@ final class DriveSharePresenter
 
         $isCollabDoc = $this->collabDocFormats->isCollabDocPath($path);
         $isNotePath = $this->paths->isNotePath($path);
+        // Shared-with-me rows are the share root. Grantees cannot rename or delete that node (#990 D3).
+        $rights = DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath);
+        $rights['mayManageStructure'] = false;
 
         return [
             'type' => $isDir ? 'dir' : 'file',
@@ -123,7 +126,7 @@ final class DriveSharePresenter
             'size' => $isDir ? 0 : max(0, $disk->size($key)),
             'time' => max(0, $disk->lastModified($key)),
             'permissions' => 0,
-            'myRights' => DriveShareAccess::rightsFor($grantAccess, $isCollabDoc, false, $isNotePath),
+            'myRights' => $rights,
         ];
     }
 

@@ -1,25 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  MEET_ROOM_CHAT_TEXT_LIMIT,
   buildMeetChannelChatEcho,
-  meetPollChatLine,
-  meetRoomChatOutbound,
+  meetRoomChatEchoBody,
+  meetRoomChatEchoId,
+  meetRoomChatEchoText,
   parseMeetChannelChatEcho,
 } from "@/meet-core/src/meet-channel-chat-echo";
-import type { ChatMessage } from "@/meet-core/src/meet-types";
+import { meetPollChatLine } from "@/meet-core/src/meet-chat-line";
 
-function saved(id: string, body: string): ChatMessage {
-  return {
-    id,
-    channelId: "chan-1",
-    authorId: "user-1",
-    authorName: "Ada",
-    body,
-    createdAt: 1,
-    reactions: [],
-    mentions: [],
-    previews: [],
-  };
-}
+const SAVED_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 
 describe("meet channel chat echo", () => {
   it("round-trips a saved message id and body", () => {
@@ -81,29 +71,38 @@ describe("meet channel chat echo", () => {
     expect(malformed.id).not.toBe("../secret");
   });
 
-  it("echoes a saved channel message and keeps plain text otherwise", async () => {
-    await expect(meetRoomChatOutbound("hello")).resolves.toEqual({ text: "hello", saved: false });
-    await expect(meetRoomChatOutbound("hello", Promise.resolve(null))).resolves.toEqual({
-      text: "hello",
-      saved: false,
-    });
-    await expect(meetRoomChatOutbound("hello", Promise.reject(new Error("nope")))).resolves.toEqual(
-      {
-        text: "hello",
-        saved: false,
-      },
+  it("accepts a saved message id as an echo id", () => {
+    expect(meetRoomChatEchoId(SAVED_ID)).toBe(SAVED_ID);
+    expect(meetRoomChatEchoId("saved-1")).toBe("saved-1");
+    expect(meetRoomChatEchoId(` ${SAVED_ID} `)).toBe(SAVED_ID);
+  });
+
+  it("never echoes a local placeholder id", () => {
+    expect(meetRoomChatEchoId("local-1710000000000")).toBeNull();
+    expect(meetRoomChatEchoId("local-reply-1710000000000")).toBeNull();
+  });
+
+  it("rejects an echo id that is not a message id", () => {
+    expect(meetRoomChatEchoId(null)).toBeNull();
+    expect(meetRoomChatEchoId(undefined)).toBeNull();
+    expect(meetRoomChatEchoId("   ")).toBeNull();
+    expect(meetRoomChatEchoId("../secret")).toBeNull();
+    expect(meetRoomChatEchoId("has space")).toBeNull();
+    expect(meetRoomChatEchoId("a".repeat(65))).toBeNull();
+  });
+
+  it("caps room echo text at the room text limit", () => {
+    const text = meetRoomChatEchoText(SAVED_ID, "x".repeat(2_500));
+
+    expect([...text]).toHaveLength(MEET_ROOM_CHAT_TEXT_LIMIT);
+    expect(parseMeetChannelChatEcho(text)?.id).toBe(SAVED_ID);
+  });
+
+  it("reports the echo body a peer reads back for a saved row", () => {
+    expect(meetRoomChatEchoBody(SAVED_ID, " hello ")).toBe("hello");
+    expect(meetRoomChatEchoBody(SAVED_ID, "x".repeat(2_500))).toBe(
+      parseMeetChannelChatEcho(meetRoomChatEchoText(SAVED_ID, "x".repeat(2_500)))?.body,
     );
-    await expect(
-      meetRoomChatOutbound("hello", Promise.resolve(saved("saved-1", " hello "))),
-    ).resolves.toEqual({
-      text: "__wgw_meet_channel_chat__:saved-1\nhello",
-      saved: true,
-    });
-    await expect(
-      meetRoomChatOutbound("hello", Promise.resolve(saved("../secret", "hello"))),
-    ).resolves.toEqual({
-      text: "hello",
-      saved: true,
-    });
+    expect(meetRoomChatEchoBody(SAVED_ID, "")).toBe("");
   });
 });

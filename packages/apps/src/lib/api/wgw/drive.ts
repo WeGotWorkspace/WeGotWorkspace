@@ -383,6 +383,7 @@ function createGuestWgwDriveOperations(
       } else {
         await deleteJson("/files", { paths: normalized }, opts);
       }
+      if (opts?.refreshState === false) return emptyState(cwd, plugins);
       return fetchGuestState(cwd, opts, plugins);
     },
     async downloadFile(path, opts) {

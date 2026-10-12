@@ -9,9 +9,13 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
 
 vi.mock("@/lib/offline/notes/notes-collab-rooms", () => ({
   hasNoteCollabPendingServerSave: vi.fn(),
+  listExistingNoteCollabDatabaseNames: vi.fn(async () => null),
 }));
 
-import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
+import {
+  hasNoteCollabPendingServerSave,
+  listExistingNoteCollabDatabaseNames,
+} from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
 
@@ -56,5 +60,20 @@ describe("useNotesPendingSync", () => {
     await waitFor(() => expect(result.current.has("body-1")).toBe(true));
     expect(result.current.has("meta-1")).toBe(true);
     expect(result.current.size).toBe(2);
+  });
+
+  it("lists IndexedDB databases once per refresh", async () => {
+    vi.mocked(listPendingNoteIds).mockResolvedValue([]);
+    vi.mocked(readNotesBootstrapFromCache).mockResolvedValue({
+      data: { notes: [{ id: "a" }, { id: "b" }, { id: "c" }] },
+    } as never);
+
+    renderHook(() => useNotesPendingSync("bob"));
+
+    await waitFor(() => expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(3));
+    expect(listExistingNoteCollabDatabaseNames).toHaveBeenCalledTimes(1);
+    expect(hasNoteCollabPendingServerSave).toHaveBeenNthCalledWith(1, "a", null);
+    expect(hasNoteCollabPendingServerSave).toHaveBeenNthCalledWith(2, "b", null);
+    expect(hasNoteCollabPendingServerSave).toHaveBeenNthCalledWith(3, "c", null);
   });
 });

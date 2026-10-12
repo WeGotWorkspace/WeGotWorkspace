@@ -63,7 +63,7 @@ export function createMeetChatOperations(seed: {
   const buildMessage = (
     channelId: string,
     body: string,
-    opts?: { parentId?: string | null },
+    opts?: { parentId?: string | null; messageId?: string },
   ): ChatMessage => {
     const parentId = opts?.parentId ?? null;
     const parent = parentId ? state.messages.find((row) => row.id === parentId) : undefined;
@@ -71,7 +71,8 @@ export function createMeetChatOperations(seed: {
       upsertMessage({ ...parent, replyCount: (parent.replyCount ?? 0) + 1 });
     }
     return {
-      id: nextId("msg"),
+      // The caller may have echoed this id into the room already.
+      id: opts?.messageId ?? nextId("msg"),
       channelId,
       authorId: seed.author.id,
       authorName: seed.author.displayName,
@@ -88,6 +89,7 @@ export function createMeetChatOperations(seed: {
 
   return {
     getState: () => cloneState(state),
+    newMessageId: () => nextId("msg"),
     sendMessage: async (channelId, body, opts) =>
       upsertMessage(buildMessage(channelId, body, opts)),
     editMessage: async (messageId, body) => {

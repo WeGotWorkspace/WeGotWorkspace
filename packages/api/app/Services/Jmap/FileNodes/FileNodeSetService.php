@@ -8,6 +8,7 @@ use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Notes\NoteMarkdownCodec;
@@ -74,6 +75,8 @@ final class FileNodeSetService
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly DocAttachmentsService $docAttachments,
         private readonly DriveStarService $stars,
+        private readonly DriveShareAuthorizer $authorizer,
+        private readonly FileNodeRelocator $relocator,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -193,6 +196,10 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'nodeHasChildren', 'description' => 'The directory has children; pass onDestroyRemoveChildren to remove them.']);
         }
 
+        if ($this->relocator->trashIfGrantee($node, $principal)) {
+            return;
+        }
+
         $disk = $this->storage->files();
         $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
         if ($node->is_dir) {
@@ -204,6 +211,7 @@ final class FileNodeSetService
         $this->syncSearchDelete($key);
         $this->stars->deletePathPrefix($key);
         $this->docAttachments->destroyDocsBestEffort($docIds);
+        $this->relocator->afterHardDelete($key);
     }
 
     /**
@@ -361,6 +369,16 @@ final class FileNodeSetService
                 throw new FileNodeSetError($this->invalidProperties('Cannot move a node into itself.', ['parentId']));
             }
 
+            try {
+                $fromScope = $this->authorizer->scopeRootFor('/'.$node->storage_key, $principal);
+                $toScope = $this->authorizer->scopeRootFor('/'.$newParent->storage_key, $principal);
+            } catch (\InvalidArgumentException) {
+                throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to move this node.']);
+            }
+            if ($fromScope !== $toScope) {
+                throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'Nodes cannot be moved across a share boundary.']);
+            }
+
             $newName = array_key_exists('name', $patch)
                 ? $this->validName($patch['name'])
                 : (string) $node->name;
@@ -369,13 +387,7 @@ final class FileNodeSetService
             $fromKey = (string) $node->storage_key;
             $toKey = $newParent->storage_key.'/'.$newName;
             if ($toKey !== $fromKey) {
-                if (! $this->storage->files()->move($fromKey, $toKey)) {
-                    throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
-                }
-                $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
-                $this->syncSearchMove($fromKey, $toKey);
-                $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
-                $this->stars->rewritePathPrefix($fromKey, $toKey);
+                $node = $this->relocator->move($node, $toKey);
             }
         }
 
@@ -465,28 +477,6 @@ final class FileNodeSetService
             'filenode',
             fn () => $this->search->deleteDavPath('files/'.$storageKey),
             'files/'.$storageKey,
-        );
-    }
-
-    private function syncSearchMove(string $fromKey, string $toKey): void
-    {
-        $this->searchSync->sync(
-            'filenode',
-            function () use ($fromKey, $toKey): void {
-                $this->search->deleteDavPath('files/'.$fromKey);
-                $this->search->indexFileStorageKey($toKey);
-                $disk = $this->storage->files();
-                if (! $disk->directoryExists($toKey)) {
-                    return;
-                }
-                foreach ($disk->allDirectories($toKey) as $dirKey) {
-                    $this->search->indexFileStorageKey($dirKey);
-                }
-                foreach ($disk->allFiles($toKey) as $fileKey) {
-                    $this->search->indexFileStorageKey($fileKey);
-                }
-            },
-            'files/'.$toKey,
         );
     }
 

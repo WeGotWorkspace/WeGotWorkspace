@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Dav\Auth\UiAuthSecret;
+use App\Models\User;
 use App\Services\Installer\InstallerWebBase;
 use App\Support\WgwInstallConfig;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -16,11 +17,12 @@ final class UiSessionService
 {
     private const COOKIE = 'sabre_ui_auth';
 
-    private const COOKIE_VERSION = 1;
+    private const COOKIE_VERSION = 2;
 
-    private const TTL_SEC = 2592000;
-
-    public function __construct(private WgwInstallConfig $install) {}
+    public function __construct(
+        private WgwInstallConfig $install,
+        private RefreshTokenRepository $refreshTokens,
+    ) {}
 
     public function establish(string $username, string $realm, string $webBase): Cookie
     {
@@ -49,13 +51,16 @@ final class UiSessionService
             throw new \RuntimeException('UI auth secret is not available.');
         }
 
-        $exp = time() + self::TTL_SEC;
+        $ttl = $this->refreshTokens->refreshTtl();
+        $exp = time() + $ttl;
+        $epoch = (int) (User::query()->where('username', strtolower(trim($username)))->value('ui_session_epoch') ?? 0);
         $payload = json_encode([
             'v' => self::COOKIE_VERSION,
             'u' => $username,
             'r' => $realm,
             'e' => $exp,
             'exp' => $exp,
+            'ep' => $epoch,
         ], JSON_THROW_ON_ERROR);
 
         $b64Payload = $this->base64UrlEncode($payload);
@@ -68,7 +73,7 @@ final class UiSessionService
         return Cookie::create(
             self::COOKIE,
             $value,
-            time() + self::TTL_SEC,
+            time() + $ttl,
             $path === '' ? '/' : $path,
             null,
             $secure,
@@ -76,6 +81,11 @@ final class UiSessionService
             false,
             Cookie::SAMESITE_LAX,
         );
+    }
+
+    public function issuedCookiePath(string $webBase): string
+    {
+        return $this->cookiePath($webBase);
     }
 
     private function cookiePath(string $webBase): string

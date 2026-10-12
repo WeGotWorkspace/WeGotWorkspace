@@ -123,6 +123,36 @@ function mimeForFile(file: string): { uploadMime: string; fileMime: string } {
   return { uploadMime: "text/markdown;charset=utf-8", fileMime: "text/markdown" };
 }
 
+export async function saveCollabDocument(
+  page: Page,
+  apiPath: string,
+  markdown: string,
+  yjs: number[],
+): Promise<void> {
+  const path = apiPath.replace(/^\/+/, "");
+  await page.evaluate(
+    async ({ collabPath, body, sidecar }) => {
+      const accessToken = localStorage.getItem("wgw.api.access_token");
+      const response = await fetch(
+        `/api/v1/files/collaboration?path=${encodeURIComponent(collabPath)}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ markdown: body, yjs: sidecar, room: collabPath }),
+        },
+      );
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`saveCollabDocument failed (${response.status}): ${text}`);
+      }
+    },
+    { collabPath: path, body: markdown, sidecar: yjs },
+  );
+}
+
 export async function seedDocAtPath(page: Page, apiPath: string, content: string): Promise<void> {
   const destination = parentPath(apiPath);
   const name = fileName(apiPath);

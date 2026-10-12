@@ -17,6 +17,7 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
+import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 const username = "bob";
 
@@ -39,6 +40,18 @@ const bootstrap = {
     tags: ["essay"],
   },
 };
+
+async function collabRoomHasBody(indexedDbName: string): Promise<boolean> {
+  const ydoc = new Y.Doc();
+  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
+  try {
+    await persistence.whenSynced;
+    return ydoc.getXmlFragment("default").length > 0;
+  } finally {
+    await persistence.destroy();
+    ydoc.destroy();
+  }
+}
 
 const { updateNoteItem, createNoteItem, deleteNoteItem, archiveNoteItem } = vi.hoisted(() => ({
   updateNoteItem: vi.fn(),
@@ -158,12 +171,15 @@ describe("flushNotesOutbox", () => {
     const savedId = "server-body-id";
     const notebook = "Drafts";
     const tempRoom = noteCollabRoomKey(tempId);
-    const ydoc = new Y.Doc();
-    ydoc.getXmlFragment("default").insert(0, [new Y.XmlElement("paragraph")]);
-    const persistence = new IndexeddbPersistence(tempRoom, ydoc);
-    await persistence.whenSynced;
-    await persistence.destroy();
-    ydoc.destroy();
+    const savedRoom = noteCollabRoomKey(savedId);
+    for (const indexedDbName of [tempRoom, docsCollabIndexedDbKey(tempRoom)]) {
+      const ydoc = new Y.Doc();
+      ydoc.getXmlFragment("default").insert(0, [new Y.XmlElement("paragraph")]);
+      const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
+      await persistence.whenSynced;
+      await persistence.destroy();
+      ydoc.destroy();
+    }
 
     const offlineNote: Note = {
       ...note,
@@ -178,7 +194,11 @@ describe("flushNotesOutbox", () => {
     await flushNotesOutbox(username);
 
     await expect(hasNoteCollabOfflinePersistence(tempId)).resolves.toBe(false);
+    await expect(collabRoomHasBody(tempRoom)).resolves.toBe(false);
+    await expect(collabRoomHasBody(docsCollabIndexedDbKey(tempRoom))).resolves.toBe(false);
     await expect(hasNoteCollabOfflinePersistence(savedId)).resolves.toBe(true);
+    await expect(collabRoomHasBody(savedRoom)).resolves.toBe(true);
+    await expect(collabRoomHasBody(docsCollabIndexedDbKey(savedRoom))).resolves.toBe(true);
   });
 
   it("clears pendingSync after a successful flush", async () => {

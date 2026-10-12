@@ -1,3 +1,5 @@
+import type { NetClass } from "@/lib/rtc/net-probe";
+
 export type SignalingChannel = "meet" | "collab" | "principal" | "chat" | "sheet" | "slides";
 
 /** REST collection segment for room session signaling (`/rooms/{roomId}/*`). */
@@ -7,20 +9,35 @@ export function signalingApiSegment(_channel: SignalingChannel): string {
 
 export type IceMode = "direct" | "relay";
 
+/**
+ * Wire capabilities a peer advertises at join (contract C8); must stay a subset
+ * of `RtcPeerCaps::KNOWN` on the server, which drops anything it does not know.
+ */
+export type RtcPeerCap =
+  "bin" | "ice-batch" | "ticket" | "meet-dc" | "yjs-http" | "relay-jit" | "since-ack";
+
 export type RtcSettings = {
   stunUrls: string;
-  turnUrls: string;
-  turnUsername: string;
-  turnPassword: string;
+  /** Whether a relay is configured. The server never ships its credentials. */
+  turnAvailable: boolean;
   forceRelay: boolean;
 };
 
 export const DEFAULT_RTC_SETTINGS: RtcSettings = {
   stunUrls: "",
-  turnUrls: "",
-  turnUsername: "",
-  turnPassword: "",
+  turnAvailable: false,
   forceRelay: false,
+};
+
+/**
+ * Short-lived relay credentials, minted per actor by `POST /rooms/{id}/relay`.
+ * They expire after `ttl` seconds, so they are never cached beyond a session.
+ */
+export type TurnCredentials = {
+  urls: string[];
+  username: string;
+  credential: string;
+  ttl: number;
 };
 
 export type RtcSignalType = "offer" | "answer" | "ice" | "bye" | "chat" | string;
@@ -38,6 +55,12 @@ export type RtcPeerDescriptor = {
   name: string;
   /** Sabre username of the peer's owner — collab and principal rooms (server-derived). */
   user?: string;
+  /** Collaboration right the server wrote on the roster. Absent reads as `read`. */
+  access?: "read" | "comment" | "write";
+  /** Capabilities the peer advertised at join. `bin` selects binary data-channel frames. Mirrored on the roster. */
+  caps?: RtcPeerCap[];
+  /** Network class the peer measured. Never an address. */
+  net?: NetClass;
 };
 
 export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected" | "closed";
@@ -45,6 +68,8 @@ export type RtcLinkState = "connected" | "connecting" | "failed" | "disconnected
 export type RtcPollIntervals = {
   connectingMs: number;
   steadyMs: number;
+  /** Hard ceiling. HTTP fallback uses this so idle and hidden backoff stay at or under 1s. */
+  maxDelayMs?: number;
 };
 
 export const DEFAULT_RTC_POLL_INTERVALS: RtcPollIntervals = {

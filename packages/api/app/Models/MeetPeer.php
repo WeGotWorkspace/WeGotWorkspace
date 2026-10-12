@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $seen_at
  * @property int $admitted
  * @property string $browser_id
+ * @property string $caps
+ * @property string $net
  */
 final class MeetPeer extends Model
 {
@@ -35,6 +37,8 @@ final class MeetPeer extends Model
         'name',
         'owner_user',
         'browser_id',
+        'caps',
+        'net',
         'seen_at',
     ];
 }

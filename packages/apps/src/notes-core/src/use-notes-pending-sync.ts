@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
+import {
+  hasNoteCollabPendingServerSave,
+  listExistingNoteCollabDatabaseNames,
+} from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 
 const POLL_INTERVAL_MS = 4000;
@@ -23,9 +26,10 @@ export function useNotesPendingSync(
     try {
       const ids = new Set(await listPendingNoteIds(username));
       const cached = await readNotesBootstrapFromCache(username);
+      const existingDatabaseNames = await listExistingNoteCollabDatabaseNames();
       for (const note of cached?.data.notes ?? []) {
         if (ids.has(note.id)) continue;
-        if (await hasNoteCollabPendingServerSave(note.id)) ids.add(note.id);
+        if (await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames)) ids.add(note.id);
       }
       setPendingIds(ids);
     } catch {

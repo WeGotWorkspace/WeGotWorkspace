@@ -17,6 +17,7 @@ import {
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { hasDocsCollabOfflinePersistence } from "@/lib/offline/docs/docs-collab-offline-availability";
+import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { docsAvailabilityTable, docsListingRowsTable } from "@/lib/offline/docs/docs-schema";
 import {
   readDocsListingFromCache,
@@ -54,7 +55,7 @@ const username = "alice";
 async function seedCollabRoom(room: string): Promise<void> {
   const ydoc = new Y.Doc();
   ydoc.getXmlFragment("default").insert(0, [new Y.XmlElement("paragraph")]);
-  const persistence = new IndexeddbPersistence(room, ydoc);
+  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
   await persistence.whenSynced;
   await persistence.destroy();
   ydoc.destroy();

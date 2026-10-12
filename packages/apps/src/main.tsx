@@ -1,8 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";
+import { installNetProbe } from "@/lib/rtc/net-probe-session";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import "@/styles.css";
+
+installNetProbe();
 
 const SW_REFRESHING_KEY = "wgw-sw-refreshing";
 

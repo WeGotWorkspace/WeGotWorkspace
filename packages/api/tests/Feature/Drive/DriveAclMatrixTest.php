@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
-use App\Models\User;
 use App\Storage\WgwStorage;
-use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
+use Tests\Feature\Drive\Concerns\SharedWorkspaceFixture;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\WgwDatabaseTestCase;
@@ -22,66 +21,18 @@ use Tests\Support\WgwDatabaseTestCase;
  *
  * Reads and content writes use /api/v1/files. Folder create, move, trash,
  * restore, and delete use FileNode/set on POST /api/v1/jmap. Product trash
- * is /users/{actor}/.Trash, not a folder inside the share. Share grant,
- * change, revoke, and email invite use /api/v1/files/shares. Editor folder
- * create, rename, and delete stay incomplete until #990. Grantee trash,
- * restore, and move-out are omitted until the shared-account vs
- * grantee-account decision lands with #990 — trashing for a grantee is a
- * move out of the share.
+ * for an owner is /users/{actor}/.Trash. An editor destroying a node inside
+ * the share moves it into the owner's trash (/users/alice/.Trash) instead of
+ * hard-deleting it; the owner can restore it. Moving a shared node into the
+ * grantee's own trash is a cross-scope move and stays forbidden. Share grant,
+ * change, revoke, and email invite use /api/v1/files/shares.
  */
 #[Group('MySQLParity')]
 final class DriveAclMatrixTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
     use InteractsWithFileNodeJmap;
-
-    private const WORKSPACE = '/users/alice/workspace';
-
-    private const PLAN = '/users/alice/workspace/plan.md';
-
-    private const PRIVATE_FILE = '/users/alice/private.md';
-
-    private const PLAN_BODY = "# Plan\n";
-
-    private const PRIVATE_BODY = 'alice-only';
-
-    private const OWNER_TRASH = '/users/alice/.Trash';
-
-    private const EDITOR_ACCESS = 'full';
-
-    private const VIEWER_ACCESS = 'view';
-
-    private string $shareId = '';
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->setUpDriveFixtures();
-        $this->createDriveDirectory('/users/alice', 'workspace');
-        app(WgwStorage::class)->files()->put('users/alice/workspace/plan.md', self::PLAN_BODY);
-        app(WgwStorage::class)->files()->put('users/alice/private.md', self::PRIVATE_BODY);
-
-        $created = $this->withBearer($this->token('owner'))->postJson('/api/v1/files/shares', [
-            'path' => self::WORKSPACE,
-            'kind' => 'member',
-            'defaultAccess' => self::VIEWER_ACCESS,
-            'shareWith' => [
-                'bob' => ['access' => self::EDITOR_ACCESS],
-                'carol' => ['access' => self::VIEWER_ACCESS],
-            ],
-        ]);
-        $created->assertOk()
-            ->assertJsonPath('data.shareWith.bob.access', self::EDITOR_ACCESS)
-            ->assertJsonPath('data.shareWith.carol.access', self::VIEWER_ACCESS);
-        $this->shareId = (string) $created->json('data.id');
-        $this->assertNotSame('', $this->shareId);
-    }
-
-    protected function tearDown(): void
-    {
-        $this->tearDownDriveFixtures();
-        parent::tearDown();
-    }
+    use SharedWorkspaceFixture;
 
     /**
      * @return iterable<string, array{0: string}>
@@ -277,19 +228,19 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
                 'd0' => ['parentId' => $workspaceId, 'name' => 'viewer-dir', 'nodeType' => 'directory'],
             ]], 'c0'],
         ], $this->token('viewer'))->assertOk();
-        $create->assertJsonPath('methodResponses.0.1.notCreated.d0.type', 'invalidProperties');
+        $create->assertJsonPath('methodResponses.0.1.notCreated.d0.type', 'forbidden');
 
         $rename = $this->fileNodeJmap([
             ['FileNode/set', ['accountId' => 'carol', 'update' => [
                 $planId => ['name' => 'viewer-renamed.md'],
             ]], 'c1'],
         ], $this->token('viewer'))->assertOk();
-        $rename->assertJsonPath('methodResponses.0.1.notUpdated.'.$planId.'.type', 'notFound');
+        $rename->assertJsonPath('methodResponses.0.1.notUpdated.'.$planId.'.type', 'forbidden');
 
         $delete = $this->fileNodeJmap([
             ['FileNode/set', ['accountId' => 'carol', 'destroy' => [$planId]], 'c2'],
         ], $this->token('viewer'))->assertOk();
-        $delete->assertJsonPath('methodResponses.0.1.notDestroyed.'.$planId.'.type', 'notFound');
+        $delete->assertJsonPath('methodResponses.0.1.notDestroyed.'.$planId.'.type', 'forbidden');
 
         $this->listWorkspace('owner')
             ->assertOk()
@@ -300,8 +251,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
 
     public function test_editor_can_create_folder_rename_and_delete_in_the_shared_folder(): void
     {
-        $this->markTestIncomplete('Editor structure rights not honored by FileNode/set — see #990');
-
         $workspaceId = $this->workspaceNodeId();
         $planId = $this->planNodeId();
 
@@ -338,6 +287,16 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonMissing(['name' => 'editor-dir'])
             ->assertJsonMissing(['name' => 'plan-renamed.md']);
+
+        $this->withBearer($this->token('owner'))
+            ->getJson('/api/v1/files/children?path='.urlencode(self::OWNER_TRASH))
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'plan-renamed.md', 'type' => 'file'])
+            ->assertJsonFragment(['name' => 'editor-dir', 'type' => 'dir']);
+
+        $this->download(self::OWNER_TRASH.'/plan-renamed.md', 'editor')
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Access denied for this path.');
     }
 
     public function test_admin_cannot_read_another_users_private_files(): void
@@ -640,17 +599,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'Access denied for this path.');
     }
 
-    private function token(string $role): string
-    {
-        return match ($role) {
-            'owner' => $this->adminBearerToken(),
-            'editor' => $this->userBearerToken(),
-            'viewer' => $this->carolBearerToken(),
-            'dave' => $this->issueBearerTokenFor('dave'),
-            default => $this->fail('Unknown role '.$role),
-        };
-    }
-
     public function test_editor_cannot_write_attachment_under_another_principal_prefix(): void
     {
         $nodes = $this->fileNodeGetAll('alice', $this->token('owner'));
@@ -664,122 +612,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $docId = $created['id'];
 
         $this->writeCollab('/users/bob/.attachments/'.$docId.'/x.md', 'owner', 'nope')
-            ->assertForbidden();
-    }
-
-    private function accountId(string $role): string
-    {
-        return match ($role) {
-            'owner' => 'alice',
-            'editor' => 'bob',
-            'viewer' => 'carol',
-            'dave' => 'dave',
-            default => $this->fail('Unknown role '.$role),
-        };
-    }
-
-    private function listWorkspace(string $role): TestResponse
-    {
-        return $this->withBearer($this->token($role))
-            ->getJson('/api/v1/files/children?path='.urlencode(self::WORKSPACE));
-    }
-
-    private function download(string $path, string $role): TestResponse
-    {
-        return $this->withBearer($this->token($role))
-            ->get('/api/v1/files/content?path='.urlencode($path));
-    }
-
-    private function readCollab(string $path, string $role): TestResponse
-    {
-        return $this->withBearer($this->token($role))
-            ->get('/api/v1/files/collaboration?path='.urlencode($path));
-    }
-
-    private function writeCollab(string $path, string $role, string $markdown): TestResponse
-    {
-        return $this->withBearer($this->token($role))
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => $markdown,
-            ]);
-    }
-
-    private function shareUpdatedAt(): string
-    {
-        return (string) $this->withBearer($this->token('owner'))
-            ->getJson('/api/v1/files/shares/'.$this->shareId)
-            ->assertOk()
-            ->json('data.updatedAt');
-    }
-
-    /**
-     * @param  array{access: string}|null  $grant
-     */
-    private function patchGrant(string $username, ?array $grant): void
-    {
-        $this->withBearer($this->token('owner'))->patchJson('/api/v1/files/shares/'.$this->shareId, [
-            'updatedAt' => $this->shareUpdatedAt(),
-            'shareWith' => [$username => $grant],
-        ])->assertOk();
-    }
-
-    private function workspaceNodeId(): string
-    {
-        return $this->fileNodeIdByName(
-            $this->fileNodeGetAll('alice', $this->token('owner')),
-            'workspace',
-        );
-    }
-
-    private function planNodeId(): string
-    {
-        return $this->fileNodeIdByName(
-            $this->fileNodeGetAll('alice', $this->token('owner')),
-            'plan.md',
-        );
-    }
-
-    private function seedDave(): void
-    {
-        if (User::query()->where('username', 'dave')->exists()) {
-            return;
-        }
-
-        $this->seedWgwUser('dave', displayName: 'Dave', email: 'dave@example.com');
-    }
-
-    private function ensureActorTrashNodeId(string $role): string
-    {
-        $username = $this->accountId($role);
-        $this->ensureTrashDirectory($this->token($role), $username);
-
-        return $this->fileNodeIdByName(
-            $this->fileNodeGetAll($username, $this->token($role)),
-            '.Trash',
-        );
-    }
-
-    private function moveNode(string $role, string $nodeId, string $parentId): TestResponse
-    {
-        return $this->fileNodeJmap([
-            ['FileNode/set', ['accountId' => $this->accountId($role), 'update' => [
-                $nodeId => ['parentId' => $parentId],
-            ]], 'm0'],
-        ], $this->token($role));
-    }
-
-    private function assertRevoked(string $role): void
-    {
-        $this->listWorkspace($role)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
-        $this->download(self::PLAN, $role)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
-        $this->readCollab(self::PLAN, $role)
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
-        $this->writeCollab(self::PLAN, $role, "after revoke\n")
             ->assertForbidden();
     }
 }

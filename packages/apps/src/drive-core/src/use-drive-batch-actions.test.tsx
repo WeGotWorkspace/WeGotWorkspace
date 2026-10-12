@@ -161,6 +161,39 @@ describe("useDriveBatchActions", () => {
     cleanup();
   });
 
+  it("deletes a foreign shared file instead of renaming it and skips undo", async () => {
+    const operations = createOperations();
+    const foreign = driveFile({
+      id: "shared",
+      title: "plan.md",
+      parent: "Users/bob/workspace",
+      apiPath: "/users/bob/workspace/plan.md",
+    });
+    const { result } = renderActions({
+      operations,
+      files: [foreign],
+      selectedIds: ["shared"],
+    });
+
+    act(() => result.current.moveToTrash(["shared"]));
+    await act(async () => {
+      await queued().execute(new AbortController().signal);
+    });
+
+    expect(operations.deleteItems).toHaveBeenCalledWith(["/users/bob/workspace/plan.md"], {
+      refreshState: false,
+      signal: expect.any(AbortSignal),
+    });
+    expect(operations.renameItem).not.toHaveBeenCalled();
+
+    await act(async () => {
+      queued().undo();
+    });
+
+    expect(operations.renameItem).not.toHaveBeenCalled();
+    expect(operations.deleteItems).toHaveBeenCalledTimes(1);
+  });
+
   it("moves the selection to Trash and restores it on undo before the server call", () => {
     const operations = createOperations();
     const { result } = renderActions({ operations });

@@ -502,7 +502,7 @@ export function MeetGuestChannelStoryHarness({
       principals={bootstrap.data.directory ?? []}
       authorPresence={bootstrap.data.authorPresence}
       onSend={(payload) => {
-        void chatSession.sendChannel(payload);
+        void chatSession.sendChannel(payload).saved;
       }}
       onReact={(messageId, emoji) => {
         void chatSession.react(messageId, emoji);

@@ -8,6 +8,7 @@ import {
   StickyNote,
   User,
   Users,
+  Video,
 } from "lucide-react";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
@@ -17,6 +18,7 @@ import {
   SettingsTasksPane,
 } from "@/settings-core/src/settings-default-collection-pane";
 import { SettingsMailPane } from "@/settings-core/src/settings-mail-pane";
+import { SettingsMeetPane } from "@/settings-core/src/settings-meet-pane";
 import { SettingsMembershipsPane } from "@/settings-core/src/settings-memberships-pane";
 import { SettingsOfflinePane } from "@/settings-core/src/settings-offline-pane";
 import { SettingsProfilePane } from "@/settings-core/src/settings-profile-pane";
@@ -104,6 +106,14 @@ export function registerBuiltinSettings(): void {
     group: "apps",
     appId: "notes",
   });
+  registerPanel({
+    id: "meet",
+    label: "Meet",
+    description: "Low data mode on this device",
+    icon: <Video className="size-3.5" />,
+    group: "apps",
+    appId: "meet",
+  });
 
   registerSlice({
     id: "profile",
@@ -149,5 +159,10 @@ export function registerBuiltinSettings(): void {
     id: "notes-default-collection",
     panelIds: ["notes"],
     render: () => <SettingsNotesPane />,
+  });
+  registerSlice({
+    id: "meet-device",
+    panelIds: ["meet"],
+    render: () => <SettingsMeetPane />,
   });
 }

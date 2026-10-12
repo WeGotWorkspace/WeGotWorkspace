@@ -17,6 +17,7 @@ import { AdminMailPane } from "@/admin-core/src/admin-mail-pane";
 import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
+import { AdminRealtimeHealthPane } from "@/admin-core/src/admin-realtime-health-pane";
 import { AdminPluginsPane } from "@/admin-core/src/admin-plugins-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
@@ -141,6 +142,11 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
             ) : null}
             {controller.section === "collaboration" ? (
               <AdminRealtimeCollaborationPane controller={controller} />
+            ) : null}
+            {controller.section === "realtime-health" ? (
+              <AdminRealtimeHealthPane
+                onOpenTurnSettings={() => controller.selectSection("collaboration")}
+              />
             ) : null}
             {controller.section === "webdav" ? <AdminWebdavPane controller={controller} /> : null}
             {controller.section === "plugins" ? <AdminPluginsPane controller={controller} /> : null}

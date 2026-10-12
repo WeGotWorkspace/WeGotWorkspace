@@ -60,6 +60,20 @@ export function normalizeApiVirtualPath(path: string): string {
   return withLeading.replace(/\/+$/, "");
 }
 
+/** True when the API path is outside the user's own drive and member group drives (i.e. reached via a share). */
+export function isForeignDriveApiPath(
+  apiPath: string,
+  username: string,
+  groupRoots: Set<string>,
+): boolean {
+  const p = normalizeApiVirtualPath(apiPath);
+  const home = `/users/${username}`;
+  if (p === home || p.startsWith(`${home}/`)) return false;
+  const group = p.match(/^\/groups\/([^/]+)/);
+  if (group) return !groupRoots.has(group[1] ?? "");
+  return p.startsWith("/users/");
+}
+
 /** Personal or group drive roots (`/users/{username}`, `/groups/{slug}`) — not share targets. */
 export function isTopLevelDriveApiPath(path: string | undefined): boolean {
   if (!path?.trim()) return false;

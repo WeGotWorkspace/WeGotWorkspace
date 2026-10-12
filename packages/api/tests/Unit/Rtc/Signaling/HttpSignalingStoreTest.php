@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Rtc\Signaling;
 
+use App\Models\CollabPeer;
+use App\Models\MeetMessage;
+use App\Models\MeetPeer;
 use App\Services\Rtc\Signaling\HttpSignalingStore;
 use App\Services\Rtc\Signaling\RtcSignalingException;
 use App\Services\Rtc\Signaling\RtcSignalingPolicy;
@@ -27,6 +30,8 @@ final class HttpSignalingStoreTest extends TestCase
             $table->string('name');
             $table->string('owner_user')->default('');
             $table->string('browser_id')->default('');
+            $table->string('caps')->default('');
+            $table->string('net')->default('');
             $table->integer('seen_at');
             $table->unique(['room', 'peer_id']);
         });
@@ -44,6 +49,10 @@ final class HttpSignalingStoreTest extends TestCase
             $table->string('peer_id');
             $table->string('name');
             $table->string('owner_user')->default('');
+            $table->string('browser_id')->default('');
+            $table->string('caps')->default('');
+            $table->string('net')->default('');
+            $table->string('access', 8)->default('read');
             $table->integer('seen_at');
             $table->unique(['room', 'peer_id']);
         });
@@ -74,6 +83,83 @@ final class HttpSignalingStoreTest extends TestCase
         $this->assertSame([], $second['messages']);
     }
 
+    public function test_meet_poll_acks_the_cursor_for_a_since_ack_peer(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'peer-host', 'Host', 'u:alice', $now, null, ['caps' => 'since-ack']);
+        $store->upsertPeer('room-a', 'peer-guest', 'Guest', 'u:bob', $now, null, ['caps' => 'since-ack']);
+
+        $store->send('room-a', 'peer-host', 'peer-guest', 'offer', ['sdp' => 'v=0']);
+
+        // Response lost: the guest never learns the id, so it polls the same cursor again.
+        $dropped = $store->poll('room-a', 'peer-guest', 0);
+        $this->assertCount(1, $dropped['messages']);
+        $redelivered = $store->poll('room-a', 'peer-guest', 0);
+        $this->assertCount(1, $redelivered['messages']);
+        $this->assertSame('offer', $redelivered['messages'][0]['type']);
+
+        // Acking the id consumes it exactly once.
+        $acked = $store->poll('room-a', 'peer-guest', $redelivered['messages'][0]['id']);
+        $this->assertSame([], $acked['messages']);
+        $this->assertSame(0, MeetMessage::query()->where('to_peer', 'peer-guest')->count());
+    }
+
+    public function test_meet_poll_keeps_delete_on_read_without_the_since_ack_cap(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'peer-host', 'Host', 'u:alice', $now, null, ['caps' => 'since-ack']);
+        $store->upsertPeer('room-a', 'peer-old', 'Old client', 'u:bob', $now);
+
+        $store->send('room-a', 'peer-host', 'peer-old', 'offer', ['sdp' => 'v=0']);
+
+        $first = $store->poll('room-a', 'peer-old', 0);
+        $this->assertCount(1, $first['messages']);
+        $this->assertArrayNotHasKey('id', $first['messages'][0]);
+        $this->assertSame([], $store->poll('room-a', 'peer-old', 0)['messages']);
+    }
+
+    /** A cached old client must not be handed its whole mailbox because a new peer acks. */
+    public function test_meet_mixed_room_serves_both_poll_modes(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'peer-host', 'Host', 'u:alice', $now, null, ['caps' => 'since-ack']);
+        $store->upsertPeer('room-a', 'peer-new', 'New client', 'u:bob', $now, null, ['caps' => 'since-ack']);
+        $store->upsertPeer('room-a', 'peer-old', 'Old client', 'u:carol', $now);
+
+        $store->send('room-a', 'peer-host', 'peer-new', 'offer', ['sdp' => 'new']);
+        $store->send('room-a', 'peer-host', 'peer-old', 'offer', ['sdp' => 'old']);
+
+        $new = $store->poll('room-a', 'peer-new', 0)['messages'];
+        $old = $store->poll('room-a', 'peer-old', 0)['messages'];
+        $this->assertSame(['sdp' => 'new'], $new[0]['payload']);
+        $this->assertSame(['sdp' => 'old'], $old[0]['payload']);
+
+        // The new peer acks and is drained; the old peer was drained on read.
+        $this->assertSame([], $store->poll('room-a', 'peer-new', $new[0]['id'])['messages']);
+        $this->assertSame([], $store->poll('room-a', 'peer-old', 0)['messages']);
+        $this->assertSame(0, MeetMessage::query()->count());
+    }
+
+    /** The 204 fast path must not strand acked rows in the mailbox. */
+    public function test_meet_ack_applies_on_the_unchanged_fast_path(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'peer-host', 'Host', 'u:alice', $now, null, ['caps' => 'since-ack']);
+        $store->upsertPeer('room-a', 'peer-guest', 'Guest', 'u:bob', $now, null, ['caps' => 'since-ack']);
+
+        $store->send('room-a', 'peer-host', 'peer-guest', 'offer', ['sdp' => 'v=0']);
+        $delivered = $store->poll('room-a', 'peer-guest', 0);
+        $sig = $delivered['rosterSig'];
+
+        $unchanged = $store->poll('room-a', 'peer-guest', $delivered['messages'][0]['id'], $sig);
+        $this->assertTrue($unchanged['unchanged']);
+        $this->assertSame(0, MeetMessage::query()->where('to_peer', 'peer-guest')->count());
+    }
+
     public function test_delete_owned_peers_except_leaves_the_replacement(): void
     {
         $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
@@ -85,8 +171,8 @@ final class HttpSignalingStoreTest extends TestCase
         $this->assertSame([], $deleted);
         $this->assertSame(
             [
-                ['id' => 'aaaaaaaaaaaaaaaa', 'name' => 'Alice', 'user' => 'alice'],
-                ['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob'],
+                ['id' => 'aaaaaaaaaaaaaaaa', 'name' => 'Alice', 'user' => 'alice', 'access' => 'read'],
+                ['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob', 'access' => 'read'],
             ],
             $store->peerList('room-a', 'cccccccccccccccc'),
         );
@@ -102,7 +188,7 @@ final class HttpSignalingStoreTest extends TestCase
         $deleted = $store->deleteOwnedPeersExcept('room-a', 'u:alice');
         $this->assertSame(['aaaaaaaaaaaaaaaa'], $deleted);
         $this->assertSame(
-            [['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob']],
+            [['id' => 'bbbbbbbbbbbbbbbb', 'name' => 'Bob', 'user' => 'bob', 'access' => 'read']],
             $store->peerList('room-a', 'cccccccccccccccc'),
         );
     }
@@ -124,6 +210,164 @@ final class HttpSignalingStoreTest extends TestCase
             ],
             $store->peerList('room-a', 'alice-new'),
         );
+    }
+
+    public function test_roster_carries_caps_access_and_net(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        $store->upsertPeer('room-a', 'aaaaaaaaaaaaaaaa', 'Alice', 'u:alice', time(), null, [
+            'caps' => 'bin,yjs-http',
+            'net' => 'symmetric',
+            'access' => 'write',
+        ]);
+
+        $this->assertSame(
+            [[
+                'id' => 'aaaaaaaaaaaaaaaa',
+                'name' => 'Alice',
+                'user' => 'alice',
+                'access' => 'write',
+                'caps' => ['bin', 'yjs-http'],
+                'net' => 'symmetric',
+            ]],
+            $store->peerList('room-a', 'bbbbbbbbbbbbbbbb'),
+        );
+    }
+
+    public function test_roster_omits_owner_when_the_caller_is_not_authenticated(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'alice-peer', 'Alice', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'guest-peer', 'Guest', 'g:'.str_repeat('a', 32), $now);
+
+        $this->assertSame(
+            [
+                ['id' => 'alice-peer', 'name' => 'Alice', 'user' => 'alice'],
+                ['id' => 'guest-peer', 'name' => 'Guest'],
+            ],
+            $store->peerList('room-a', 'self-peer', true),
+        );
+        $this->assertSame(
+            [
+                ['id' => 'alice-peer', 'name' => 'Alice'],
+                ['id' => 'guest-peer', 'name' => 'Guest'],
+            ],
+            $store->peerList('room-a', 'self-peer', false),
+        );
+    }
+
+    public function test_access_falls_back_to_read_for_a_row_join_never_wrote(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::collab());
+        CollabPeer::query()->insert([
+            'room' => 'room-a',
+            'peer_id' => 'aaaaaaaaaaaaaaaa',
+            'name' => 'Alice',
+            'owner_user' => 'u:alice',
+            'seen_at' => time(),
+        ]);
+
+        $this->assertSame('read', $store->peerList('room-a', 'other')[0]['access']);
+    }
+
+    public function test_peer_id_of_another_actor_is_refused(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $store->upsertPeer('room-a', 'peer-1234', 'Alice', 'u:alice', time());
+
+        // Same owner may re-join its own peer id (second tab, reload).
+        $store->assertPeerIdFree('room-a', 'peer-1234', 'u:alice');
+        $store->assertPeerIdFree('room-a', 'peer-free', 'u:bob');
+
+        $this->expectException(RtcSignalingException::class);
+        $this->expectExceptionMessage('peer_id_taken');
+
+        $store->assertPeerIdFree('room-a', 'peer-1234', 'u:bob');
+    }
+
+    public function test_server_inserted_message_bypasses_the_client_type_allowlist(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = time();
+        $store->upsertPeer('room-a', 'peer-from', 'Alice', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'peer-to', 'Bob', 'u:bob', $now);
+
+        $store->insertServerMessage('room-a', 'peer-from', 'peer-to', 'relay-hint', ['reason' => 'failed']);
+
+        $messages = $store->poll('room-a', 'peer-to')['messages'];
+        $this->assertSame('relay-hint', $messages[0]['type']);
+        $this->assertSame('peer-from', $messages[0]['from']);
+
+        $this->expectException(RtcSignalingException::class);
+        $this->expectExceptionMessage('bad_type');
+        $store->send('room-a', 'peer-from', 'peer-to', 'relay-hint', ['reason' => 'failed']);
+    }
+
+    public function test_sampled_prune_runs_every_request_only_when_configured_to(): void
+    {
+        config(['wgw.rtc.prune_one_in' => 1]);
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $store->upsertPeer('room-a', 'ghost-peer', 'Ghost', 'u:alice', time() - 120);
+
+        $this->assertSame(1, $store->countStalePeers());
+
+        $store->pruneOldRowsSampled();
+
+        $this->assertSame(0, $store->countPeers('room-a'));
+    }
+
+    public function test_sampled_prune_leaves_most_requests_alone(): void
+    {
+        config(['wgw.rtc.prune_one_in' => 1_000_000]);
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $store->upsertPeer('room-a', 'ghost-peer', 'Ghost', 'u:alice', time() - 120);
+
+        for ($request = 0; $request < 20; $request++) {
+            $store->pruneOldRowsSampled();
+        }
+
+        $this->assertSame(1, $store->countPeers('room-a'));
+    }
+
+    public function test_prune_keeps_a_live_peer_mailbox_and_drops_the_stale_one(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = 1_700_000_000;
+        $store->upsertPeer('room-a', 'peer-live', 'Live', 'u:alice', $now);
+        $store->upsertPeer('room-a', 'peer-stale', 'Stale', 'u:bob', $now - 120);
+        $store->insertServerMessage('room-a', 'host', 'peer-live', 'chat', ['text' => 'admit']);
+        $store->insertServerMessage('room-a', 'host', 'peer-stale', 'chat', ['text' => 'admit']);
+
+        $store->pruneOldRows($now);
+
+        $this->assertNotNull(MeetPeer::query()->where('peer_id', 'peer-live')->first());
+        $this->assertNull(MeetPeer::query()->where('peer_id', 'peer-stale')->first());
+        $this->assertSame(1, MeetMessage::query()->where('to_peer', 'peer-live')->count());
+        $this->assertSame(0, MeetMessage::query()->where('to_peer', 'peer-stale')->count());
+    }
+
+    public function test_prune_removes_only_the_stale_room_when_a_peer_id_is_reused(): void
+    {
+        $store = new HttpSignalingStore(RtcSignalingPolicy::meet());
+        $now = 1_700_000_000;
+        $store->upsertPeer('room-live', 'peer-shared', 'Live', 'u:alice', $now);
+        $store->upsertPeer('room-stale', 'peer-shared', 'Stale', 'u:alice', $now - 120);
+        $store->insertServerMessage('room-live', 'peer-other', 'peer-shared', 'chat', ['text' => 'keep']);
+        $store->insertServerMessage('room-stale', 'peer-shared', 'peer-other', 'chat', ['text' => 'drop']);
+
+        $store->pruneOldRows($now);
+
+        $this->assertNotNull(MeetPeer::query()->where('room', 'room-live')->where('peer_id', 'peer-shared')->first());
+        $this->assertNull(MeetPeer::query()->where('room', 'room-stale')->where('peer_id', 'peer-shared')->first());
+        $this->assertSame(1, MeetMessage::query()->where('room', 'room-live')->count());
+        $this->assertSame(0, MeetMessage::query()->where('room', 'room-stale')->count());
+    }
+
+    public function test_peer_timeouts_match_the_signaling_contract(): void
+    {
+        $this->assertSame(60, RtcSignalingPolicy::meet()->peerTimeoutSeconds);
+        $this->assertSame(90, RtcSignalingPolicy::collab()->peerTimeoutSeconds);
     }
 
     public function test_missing_peer_returns_unknown_peer_for_recovery(): void

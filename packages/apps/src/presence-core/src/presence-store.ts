@@ -1,15 +1,23 @@
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
+import { encodePrincipalRoomId } from "@/lib/rtc/room-id";
 import { getPrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
 import { FollowerPresenceSession } from "@/presence-core/src/follower-presence-session";
+import { sendPresenceLeaveBeacon } from "@/presence-core/src/presence-leave-beacon";
+import {
+  toPresenceMeetFanoutEvent,
+  toPresenceNotifyHintEvent,
+} from "@/presence-core/src/presence-fanout-events";
 import type { PresenceJoinMode } from "@/presence-core/src/presence-join-timing";
-import type {
-  PresenceChatMessage,
-  PresenceCoworker,
-  PresenceEnvelope,
-  PresenceMeetFanoutEvent,
-  PresenceMeshSession,
-  PresenceNotifyHintEvent,
-  PresenceSnapshot,
-  PresenceUserStatus,
+import {
+  PRESENCE_WORKSPACE_ROOM,
+  type PresenceChatMessage,
+  type PresenceCoworker,
+  type PresenceEnvelope,
+  type PresenceMeetFanoutEvent,
+  type PresenceMeshSession,
+  type PresenceNotifyHintEvent,
+  type PresenceSnapshot,
+  type PresenceUserStatus,
 } from "@/presence-core/src/presence-types";
 import {
   PrincipalTabCoordinator,
@@ -90,6 +98,8 @@ export class PresenceStore {
 
   private readonly notifyHintListeners = new Set<(event: PresenceNotifyHintEvent) => void>();
 
+  private readonly meetJoinHintListeners = new Set<(room: string) => void>();
+
   private session: PresenceMeshSession | null = null;
 
   private followerSession: FollowerPresenceSession | null = null;
@@ -119,6 +129,9 @@ export class PresenceStore {
   ) => PrincipalTabCoordinator;
 
   private selfUsername = "";
+
+  /** Signaling peer id of the session this tab joined. Null on followers. */
+  private selfPeerId: string | null = null;
 
   private selfDisplayName = "";
 
@@ -183,6 +196,14 @@ export class PresenceStore {
     };
   };
 
+  /** Meet join hints. The call polls only when the room matches. */
+  subscribeMeetJoinHint = (listener: (room: string) => void): (() => void) => {
+    this.meetJoinHintListeners.add(listener);
+    return () => {
+      this.meetJoinHintListeners.delete(listener);
+    };
+  };
+
   getSnapshot = (): PresenceSnapshot => this.snapshot;
 
   /** Whether this window currently owns the principal mesh dial (cross-window mode). */
@@ -222,6 +243,7 @@ export class PresenceStore {
             this.update({ status: "online" });
           }
         },
+        onOwnerPageHide: () => this.sendOwnerLeaveBeacon(),
       });
       this.coordinator.start();
       // Cold followers never see onResignLeader — attach the proxy while waiting / after loss.
@@ -399,6 +421,7 @@ export class PresenceStore {
     this.followerSession = null;
     this.joined = false;
     this.joinInFlight = false;
+    this.selfPeerId = null;
     if (session) await session.leave();
   }
 
@@ -426,14 +449,26 @@ export class PresenceStore {
     return (this.visibility?.getState() ?? "visible") === "visible";
   }
 
+  /** Keepalive leave from the tab that owns the principal session. */
+  private sendOwnerLeaveBeacon(): void {
+    const peerId = this.selfPeerId;
+    if (!peerId) return;
+    sendPresenceLeaveBeacon({
+      roomId: encodePrincipalRoomId(PRESENCE_WORKSPACE_ROOM),
+      peerId,
+      bearerToken: wgwCurrentAccessToken(),
+    });
+  }
+
   private async joinNow(): Promise<void> {
     if (!this.session || this.joined || this.joinInFlight) return;
     if (this.crossWindowLeader && !this.isMeshLeader) return;
     this.joinInFlight = true;
     this.update({ status: "joining" });
     try {
-      await this.session.join(this.selfDisplayName);
+      const joined = await this.session.join(this.selfDisplayName);
       if (this.stopped) return;
+      this.selfPeerId = joined.peerId;
       this.joined = true;
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       this.update({ status: "online" });
@@ -441,6 +476,9 @@ export class PresenceStore {
       this.relayRosterToFollowers();
     } catch {
       if (this.stopped) return;
+      // Collab waits PRINCIPAL_JOIN_WAIT_MS on this flag before dialing its own
+      // mesh. A failed join is still an attempt, or every document stalls 8s.
+      getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       // Lazy mode retries on the next visibility resume; eager sessions surface the error.
       this.update({ status: this.options.joinMode === "lazy" ? "waiting" : "error" });
     } finally {
@@ -471,6 +509,13 @@ export class PresenceStore {
       return;
     }
 
+    if (envelope.kind === "meet-join-hint") {
+      if (senderUsername && senderUsername !== this.selfUsername) {
+        for (const listener of this.meetJoinHintListeners) listener(envelope.room);
+      }
+      return;
+    }
+
     if (envelope.kind === "typing" && senderUsername && senderUsername !== this.selfUsername) {
       if (envelope.channel) {
         this.handleChannelTyping(envelope.channel, senderUsername, envelope.stop === true);
@@ -484,77 +529,14 @@ export class PresenceStore {
 
     if (!senderUsername || senderUsername === this.selfUsername) return;
 
-    if (envelope.kind === "channel-message") {
-      if (envelope.message.authorId !== senderUsername) return;
-      this.emitMeetFanout({
-        kind: "channel-message",
-        senderUsername,
-        message: envelope.message,
-      });
+    const fanout = toPresenceMeetFanoutEvent(envelope, senderUsername);
+    if (fanout) {
+      this.emitMeetFanout(fanout);
       return;
     }
 
-    if (envelope.kind === "channel-message-patch") {
-      this.emitMeetFanout({
-        kind: "channel-message-patch",
-        senderUsername,
-        id: envelope.id,
-        channel: envelope.channel,
-        body: envelope.body,
-        editedAt: envelope.editedAt,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-message-destroy") {
-      this.emitMeetFanout({
-        kind: "channel-message-destroy",
-        senderUsername,
-        id: envelope.id,
-        channel: envelope.channel,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-reaction") {
-      this.emitMeetFanout({
-        kind: "channel-reaction",
-        senderUsername,
-        messageId: envelope.messageId,
-        channel: envelope.channel,
-        emoji: envelope.emoji,
-        on: envelope.on,
-      });
-      return;
-    }
-
-    if (envelope.kind === "channel-changed") {
-      this.emitMeetFanout({
-        kind: "channel-changed",
-        senderUsername,
-        channel: envelope.channel,
-      });
-      return;
-    }
-
-    if (envelope.kind === "call-active") {
-      this.emitMeetFanout({
-        kind: "call-active",
-        senderUsername,
-        channel: envelope.channel,
-        active: envelope.active,
-        ...(envelope.audioOnly === true ? { audioOnly: true as const } : {}),
-      });
-      return;
-    }
-
-    if (envelope.kind === "notify-hint") {
-      this.emitNotifyHint({
-        kind: "notify-hint",
-        senderUsername,
-        ...(envelope.tag ? { tag: envelope.tag } : {}),
-      });
-    }
+    const hint = toPresenceNotifyHintEvent(envelope, senderUsername);
+    if (hint) this.emitNotifyHint(hint);
   }
 
   private emitMeetFanout(event: PresenceMeetFanoutEvent): void {

@@ -31,6 +31,11 @@ fi
 echo "[install] Installing JS workspace dependencies (pnpm)..."
 pnpm install --frozen-lockfile
 
+# The Husky pre-push hook runs the Playwright suite for changes under
+# packages/apps, so the browser has to be present before the first push.
+echo "[install] Installing Playwright Chromium..."
+pnpm --filter @wgw/apps exec playwright install chromium --with-deps
+
 echo "[install] Installing PHP API dependencies (composer)..."
 composer install --working-dir packages/api --no-interaction --prefer-dist
 

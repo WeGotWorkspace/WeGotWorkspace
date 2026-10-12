@@ -28,6 +28,14 @@ final class DriveSharePathScope
             && $segments[1] !== '';
     }
 
+    /**
+     * True for paths inside a personal/group product trash (`/{users|groups}/{name}/.Trash/...`, legacy `/Trash`).
+     */
+    public function isInProductTrash(string $path): bool
+    {
+        return preg_match('#^/(users|groups)/[^/]+/\.?Trash(/|$)#', $this->normalize($path)) === 1;
+    }
+
     public function isWithin(string $rootPath, string $requestedPath): bool
     {
         $root = $this->normalize($rootPath);

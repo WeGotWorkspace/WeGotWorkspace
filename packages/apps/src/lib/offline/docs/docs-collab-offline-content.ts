@@ -1,7 +1,11 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  docsCollabIndexedDbKey,
+  docsCollabLegacyIndexedDbKeys,
+  docsCollabRoomKey,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
   collabDocumentFormat,
@@ -32,12 +36,12 @@ export async function readCollabOfflineContent(apiPath: string): Promise<string 
   const room = docsCollabRoomKey(apiPath);
   if (!room || !isDocsCollabEditablePath(room)) return null;
 
-  const content = await readCollabRoomContent(room, apiPath);
+  const content = await readCollabRoomContent(docsCollabIndexedDbKey(room), apiPath);
   if (content != null) return content;
 
-  const legacy = apiPath.trim().startsWith("/") ? room : `/${room}`;
-  if (legacy !== room) {
-    return readCollabRoomContent(legacy, apiPath);
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(room)) {
+    const legacyContent = await readCollabRoomContent(legacyKey, apiPath);
+    if (legacyContent != null) return legacyContent;
   }
   return null;
 }

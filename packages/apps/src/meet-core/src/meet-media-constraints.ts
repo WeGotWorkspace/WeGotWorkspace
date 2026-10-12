@@ -2,6 +2,7 @@ export function buildMeetAudioConstraints(deviceId?: string): MediaTrackConstrai
   return {
     echoCancellation: true,
     noiseSuppression: true,
+    autoGainControl: true,
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
   };
 }

@@ -18,6 +18,8 @@ use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\VObject\Component\VCalendar;
+use Sabre\VObject\Reader;
 
 final class CalendarEventMutationSupport
 {
@@ -46,6 +48,7 @@ final class CalendarEventMutationSupport
             $eventPayload = $this->scheduling->withOrganizer($username, $this->normalizeEventPayload($payload));
             $eventUri = $this->allocateEventUri((int) $instance->calendarid, $eventPayload);
             $ics = $this->mapper->toIcs($eventPayload);
+            $this->assertRecurrenceAllowed($ics);
 
             $this->calBackend()->createCalendarObject($this->calBackendCalendarId($instance), $eventUri, $ics);
             $this->meetLinkHook->afterPersist(
@@ -162,6 +165,8 @@ final class CalendarEventMutationSupport
 
     private function assertImportableGroupIcs(string $ics): void
     {
+        $this->assertRecurrenceAllowed($ics);
+
         $events = (new ICalendarJmapEventConverter)->eventsFromIcs($ics);
         $knownFrequencies = ['secondly', 'minutely', 'hourly', 'daily', 'weekly', 'monthly', 'yearly'];
         foreach ($events as $event) {
@@ -397,6 +402,7 @@ final class CalendarEventMutationSupport
                 $raw,
                 $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']),
             );
+            $this->assertRecurrenceAllowed($ics);
             $sourceBackendId = $this->calBackendCalendarId($instance);
             $targetBackendId = $this->calBackendCalendarId($targetInstance);
             if ($sourceBackendId !== $targetBackendId) {
@@ -472,6 +478,14 @@ final class CalendarEventMutationSupport
         $this->assertAcceptsEventWrites($username, $target);
 
         return $target;
+    }
+
+    private function assertRecurrenceAllowed(string $ics): void
+    {
+        $document = Reader::read($ics);
+        if ($document instanceof VCalendar) {
+            RecurrenceRuleGuard::assertAllowed($document);
+        }
     }
 
     private function assertAcceptsEventWrites(string $username, CalendarInstance $instance): void

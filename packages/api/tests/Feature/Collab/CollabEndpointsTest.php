@@ -34,13 +34,12 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
         ])->assertUnauthorized();
     }
 
-    public function test_rtc_settings_returns_meet_ice_values_for_authenticated_user(): void
+    public function test_rtc_settings_returns_stun_urls_and_relay_flag_for_authenticated_user(): void
     {
         $this->setAppSettings([
             SettingKeys::RTC_STUN_URL => 'stun.example.test:3478,stuns:stun2.example.test:5349',
             SettingKeys::RTC_TURN_URL => 'turn.example.test:3478?transport=udp',
-            SettingKeys::RTC_TURN_USERNAME => 'rtc-user',
-            SettingKeys::RTC_TURN_CREDENTIAL => 'rtc-secret',
+            SettingKeys::RTC_TURN_SECRET => 'rtc-secret',
         ]);
 
         $token = $this->issueBearerTokenFor('alice');
@@ -48,10 +47,15 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/rooms/'.$this->roomId().'/configuration')
             ->assertOk()
             ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478, stuns:stun2.example.test:5349')
-            ->assertJsonPath('rtc.turnUrls', 'turn:turn.example.test:3478?transport=udp')
-            ->assertJsonPath('rtc.turnUsername', 'rtc-user')
-            ->assertJsonPath('rtc.turnPassword', 'rtc-secret')
-            ->assertJsonMissingPath('meet.forceRelay');
+            ->assertJsonPath('rtc.turnAvailable', true)
+            ->assertJsonMissingPath('rtc.turnUrls');
+    }
+
+    public function test_rtc_settings_require_authentication(): void
+    {
+        $this->getJson('/api/v1/rooms/'.$this->roomId().'/configuration')
+            ->assertUnauthorized()
+            ->assertJson(['error' => 'auth_required']);
     }
 
     public function test_two_users_exchange_signaling_messages(): void
@@ -140,35 +144,59 @@ final class CollabEndpointsTest extends WgwDatabaseTestCase
             ->assertJsonPath('peers.0.id', $secondPeerId);
     }
 
-    public function test_same_user_rejoin_after_grace_evicts_previous_peer(): void
+    public function test_same_browser_rejoin_evicts_the_leftover_peer(): void
     {
         $token = $this->issueBearerTokenFor('alice');
         $roomId = $this->roomId();
+        $browser = str_repeat('ab', 16);
 
         $first = $this->withBearer($token)
             ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
                 'name' => 'Alice',
+                'browserId' => $browser,
             ]);
         $first->assertOk();
         $firstPeerId = (string) $first->json('peerId');
 
-        CollabPeer::query()
-            ->where('peer_id', $firstPeerId)
-            ->update(['seen_at' => time() - 20]);
-
         $second = $this->withBearer($token)
             ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
                 'name' => 'Alice',
+                'browserId' => $browser,
             ]);
         $second->assertOk();
-        $secondPeerId = (string) $second->json('peerId');
-        $this->assertNotSame($firstPeerId, $secondPeerId);
-        $this->assertSame([], $second->json('peers'));
+        $this->assertNotContains($firstPeerId, array_column($second->json('peers'), 'id'));
 
         $this->withBearer($token)
             ->getJson('/api/v1/rooms/'.$roomId.'/events?peerId='.$firstPeerId.'&since=0')
             ->assertNotFound()
             ->assertJsonPath('error', 'unknown_peer');
+    }
+
+    public function test_same_user_on_two_browsers_keeps_both_peers(): void
+    {
+        $token = $this->issueBearerTokenFor('alice');
+        $roomId = $this->roomId();
+
+        $laptop = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
+                'name' => 'Alice',
+                'browserId' => str_repeat('11', 16),
+            ]);
+        $laptop->assertOk();
+        $laptopPeerId = (string) $laptop->json('peerId');
+
+        CollabPeer::query()
+            ->where('peer_id', $laptopPeerId)
+            ->update(['seen_at' => time() - 20]);
+
+        $tablet = $this->withBearer($token)
+            ->postJson('/api/v1/rooms/'.$roomId.'/participants', [
+                'name' => 'Alice',
+                'browserId' => str_repeat('22', 16),
+            ]);
+        $tablet->assertOk();
+
+        $this->assertContains($laptopPeerId, array_column($tablet->json('peers'), 'id'));
     }
 
     public function test_two_users_simultaneous_join_both_peers_remain_pollable(): void

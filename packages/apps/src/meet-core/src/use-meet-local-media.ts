@@ -1,10 +1,16 @@
-import { useCallback, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import {
   isDisplayCaptureSupported,
   isDisplayCaptureUnsupportedError,
   isDisplayCaptureUserCancel,
 } from "@/meet-core/src/meet-display-capture";
+import { readMeetLowData, subscribeMeetLowData } from "@/meet-core/src/meet-low-data";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import {
+  applyScreenOptimize,
+  screenCaptureConstraints,
+} from "@/meet-core/src/meet-screen-optimize";
+import { screenContentHint, type ScreenOptimize } from "@/meet-core/src/meet-video-sender";
 import { syncMeetLocalTrackEnabled } from "@/meet-core/src/meet-local-track-enabled";
 import {
   buildMeetAudioConstraints,
@@ -39,6 +45,8 @@ type UseMeetLocalMediaArgs = {
   setScreenOn: (value: boolean | ((prev: boolean) => boolean)) => void;
   setError: (value: string | null) => void;
   announceMediaPresence: (mic: boolean, camera: boolean, screen?: boolean) => Promise<void>;
+  /** Instance ceiling `audio`: the camera must stay off. */
+  cameraBlockedRef?: MutableRefObject<boolean>;
   micOnRef: MutableRefObject<boolean>;
   videoOnRef: MutableRefObject<boolean>;
   screenOnRef: MutableRefObject<boolean>;
@@ -55,6 +63,7 @@ export function useMeetLocalMedia({
   setScreenOn,
   setError,
   announceMediaPresence,
+  cameraBlockedRef,
   micOnRef,
   videoOnRef,
   screenOnRef: _screenOnRef,
@@ -70,6 +79,8 @@ export function useMeetLocalMedia({
   const [screenPreviewStream, setScreenPreviewStream] = useState<MediaStream | null>(
     () => screenStreamRef.current,
   );
+  const [screenMode, setScreenModeState] = useState<ScreenOptimize>("text");
+  const screenModeRef = useRef<ScreenOptimize>("text");
   const { audioInputs, audioOutputs, videoInputs, refreshDeviceList } = useMeetMediaDevices();
   const [selectedMicId, setSelectedMicIdState] = useState<string | null>(
     () => mediaHolders?.selectedMicId.current ?? null,
@@ -105,9 +116,11 @@ export function useMeetLocalMedia({
     [meetRtc],
   );
 
+  const cameraAllowed = useCallback(() => cameraBlockedRef?.current !== true, [cameraBlockedRef]);
+
   const ensureLocalMedia = useCallback(async () => {
     const mic = micOnRef.current;
-    const video = videoOnRef.current;
+    const video = videoOnRef.current && cameraAllowed();
     if (localStreamRef.current) {
       if (video && localStreamRef.current.getVideoTracks().length === 0) {
         const updated = await navigator.mediaDevices.getUserMedia({
@@ -140,6 +153,7 @@ export function useMeetLocalMedia({
     await refreshDeviceList();
     return stream;
   }, [
+    cameraAllowed,
     cameraTrackRef,
     localStreamRef,
     micOnRef,
@@ -182,19 +196,16 @@ export function useMeetLocalMedia({
     return true;
   }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
 
-  /** Host remote-unmute: restore the local mic. No-op when already live. */
-  const unmuteMic = useCallback((): boolean => {
-    if (micOnRef.current) return false;
-    localStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = true;
-    });
-    setMicOn(true);
-    void announceMediaPresence(true, videoOnRef.current);
-    return true;
-  }, [announceMediaPresence, localStreamRef, micOnRef, setMicOn, videoOnRef]);
+  /**
+   * Remote unmute is not applied. Forcing `track.enabled = true` would open
+   * the mic without consent. Local unmute stays on `toggleMic` until a
+   * consent UI exists.
+   */
+  const unmuteMic = useCallback((): boolean => false, []);
 
   const toggleVideo = useCallback(() => {
     setVideoOn((prev) => {
+      if (!prev && !cameraAllowed()) return prev;
       const next = !prev;
       if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
         void ensureLocalMedia().then((stream) => {
@@ -209,65 +220,115 @@ export function useMeetLocalMedia({
       void announceMediaPresence(micOnRef.current, next);
       return next;
     });
-  }, [announceMediaPresence, ensureLocalMedia, localStreamRef, micOnRef, setVideoOn]);
+  }, [
+    announceMediaPresence,
+    cameraAllowed,
+    ensureLocalMedia,
+    localStreamRef,
+    micOnRef,
+    setVideoOn,
+  ]);
 
-  const toggleScreenShare = useCallback(async () => {
-    if (screenOn) {
-      screenStreamRef.current?.getTracks().forEach((track) => track.stop());
-      screenStreamRef.current = null;
-      setScreenPreviewStream(null);
-      const cameraTrack = cameraTrackRef.current;
-      if (cameraTrack) await replaceVideoTrackOnAllPeers(cameraTrack);
-      setScreenOn(false);
-      void announceMediaPresence(micOnRef.current, videoOnRef.current, false);
-      return;
-    }
+  const publishScreen = useCallback(
+    (mode: ScreenOptimize, trackId: string | null) => {
+      screenModeRef.current = mode;
+      setScreenModeState(mode);
+      meetRtc.setEncodingPrefs({ screenMode: mode, screenTrackId: trackId });
+    },
+    [meetRtc],
+  );
 
-    if (!isDisplayCaptureSupported()) {
-      setError(meetLabels.shareScreenUnsupported);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      screenStreamRef.current = stream;
-      setScreenPreviewStream(stream);
-      const track = stream.getVideoTracks()[0];
-      if (!track) return;
-      await replaceVideoTrackOnAllPeers(track);
-      track.onended = () => {
-        void (async () => {
-          if (!screenStreamRef.current) return;
-          screenStreamRef.current.getTracks().forEach((t) => t.stop());
-          screenStreamRef.current = null;
-          setScreenPreviewStream(null);
-          const cameraTrack = cameraTrackRef.current;
-          if (cameraTrack) await replaceVideoTrackOnAllPeers(cameraTrack);
-          setScreenOn(false);
-          void announceMediaPresence(micOnRef.current, videoOnRef.current, false);
-        })();
-      };
-      setScreenOn(true);
-      void announceMediaPresence(micOnRef.current, videoOnRef.current, true);
-    } catch (e) {
-      if (isDisplayCaptureUserCancel(e)) return;
-      if (isDisplayCaptureUnsupportedError(e)) {
-        setError(meetLabels.shareScreenUnsupported);
-        return;
-      }
-      setError(e instanceof Error ? e.message : meetLabels.shareScreenFailed);
-    }
+  const stopScreenShare = useCallback(async () => {
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
+    setScreenPreviewStream(null);
+    const cameraTrack = cameraTrackRef.current;
+    if (cameraTrack) await replaceVideoTrackOnAllPeers(cameraTrack);
+    setScreenOn(false);
+    publishScreen("text", null);
+    void announceMediaPresence(micOnRef.current, videoOnRef.current, false);
   }, [
     announceMediaPresence,
     cameraTrackRef,
     micOnRef,
+    publishScreen,
     replaceVideoTrackOnAllPeers,
-    screenOn,
     screenStreamRef,
-    setError,
     setScreenOn,
     videoOnRef,
   ]);
+
+  const setScreenOptimize = useCallback(
+    async (mode: ScreenOptimize) => {
+      const track = screenStreamRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      await applyScreenOptimize(track, mode, readMeetLowData());
+      publishScreen(mode, track.id);
+    },
+    [publishScreen, screenStreamRef],
+  );
+
+  const startScreenShare = useCallback(
+    async (mode: ScreenOptimize) => {
+      if (screenStreamRef.current) {
+        await setScreenOptimize(mode);
+        return;
+      }
+      if (!isDisplayCaptureSupported()) {
+        setError(meetLabels.shareScreenUnsupported);
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          video: screenCaptureConstraints(mode, readMeetLowData()),
+        });
+        screenStreamRef.current = stream;
+        setScreenPreviewStream(stream);
+        const track = stream.getVideoTracks()[0];
+        if (!track) return;
+        track.contentHint = screenContentHint(mode);
+        publishScreen(mode, track.id);
+        await replaceVideoTrackOnAllPeers(track);
+        track.onended = () => {
+          void stopScreenShare();
+        };
+        setScreenOn(true);
+        void announceMediaPresence(micOnRef.current, videoOnRef.current, true);
+      } catch (e) {
+        if (isDisplayCaptureUserCancel(e)) return;
+        if (isDisplayCaptureUnsupportedError(e)) {
+          setError(meetLabels.shareScreenUnsupported);
+          return;
+        }
+        setError(e instanceof Error ? e.message : meetLabels.shareScreenFailed);
+      }
+    },
+    [
+      announceMediaPresence,
+      micOnRef,
+      publishScreen,
+      replaceVideoTrackOnAllPeers,
+      screenStreamRef,
+      setError,
+      setScreenOn,
+      setScreenOptimize,
+      stopScreenShare,
+      videoOnRef,
+    ],
+  );
+
+  const toggleScreenShare = useCallback(async () => {
+    if (screenOn || screenStreamRef.current) await stopScreenShare();
+    else await startScreenShare("text");
+  }, [screenOn, screenStreamRef, startScreenShare, stopScreenShare]);
+
+  useEffect(() => {
+    return subscribeMeetLowData(() => {
+      const track = screenStreamRef.current?.getVideoTracks()[0];
+      if (!track) return;
+      void applyScreenOptimize(track, screenModeRef.current, readMeetLowData());
+    });
+  }, [screenStreamRef]);
 
   const switchMic = useCallback(
     async (deviceId: string) => {
@@ -363,6 +424,10 @@ export function useMeetLocalMedia({
     unmuteMic,
     toggleVideo,
     toggleScreenShare,
+    screenMode,
+    startScreenShare,
+    setScreenOptimize,
+    stopScreenShare,
     switchMic,
     switchCamera,
   };

@@ -10,29 +10,45 @@ export type SelectedPairSummary = {
   remoteProtocol?: string;
 };
 
+/**
+ * Chrome omits `pair.selected` and can nominate more than one pair.
+ * `transport.selectedCandidatePairId` is the pair actually in use.
+ * Same rule as `selectedPairIsRelay`.
+ */
+function selectedCandidatePairId(report: RTCStatsReport): string | null {
+  for (const row of report.values()) {
+    if (row.type !== "transport") continue;
+    const id = (row as RTCStats & { selectedCandidatePairId?: string }).selectedCandidatePairId;
+    if (typeof id === "string" && id.length > 0) return id;
+  }
+  return null;
+}
+
 export async function readSelectedPairSummary(
   pc: RTCPeerConnection,
 ): Promise<SelectedPairSummary | null> {
   const report = await pc.getStats();
-  const rows = Array.from(report.values());
   const candidateById = new Map<string, RTCStats>();
-  let selectedPair: RTCStats | null = null;
+  let fallback: RTCStats | null = null;
 
-  for (const row of rows) {
+  for (const row of report.values()) {
     if (row.type === "local-candidate" || row.type === "remote-candidate") {
       candidateById.set(row.id, row);
     }
-    if (row.type === "candidate-pair") {
-      const pair = row as RTCStats & {
-        selected?: boolean;
-        nominated?: boolean;
-        state?: string;
-      };
-      const maybeSelected =
-        pair.selected === true || (pair.nominated === true && pair.state === "succeeded");
-      if (maybeSelected) selectedPair = row;
-    }
+    if (row.type !== "candidate-pair") continue;
+    const pair = row as RTCStats & {
+      selected?: boolean;
+      nominated?: boolean;
+      state?: string;
+    };
+    const maybeSelected =
+      pair.selected === true || (pair.nominated === true && pair.state === "succeeded");
+    if (maybeSelected) fallback = row;
   }
+
+  const selectedId = selectedCandidatePairId(report);
+  const chosen = selectedId ? (report.get(selectedId) ?? null) : fallback;
+  const selectedPair = chosen?.type === "candidate-pair" ? chosen : null;
 
   const pair = selectedPair as
     | (RTCStats & {

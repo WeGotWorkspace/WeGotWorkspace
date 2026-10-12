@@ -41,6 +41,9 @@ final class FileNodeChangesMethod implements JmapMethodInterface
         return true;
     }
 
+    /**
+     * Grant add/revoke does not appear here: no consumer reads FileNode/changes for shares (#990).
+     */
     public function handle(string $username, array $args): array
     {
         $sinceState = $this->sinceState($args);

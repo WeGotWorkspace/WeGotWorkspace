@@ -31,7 +31,7 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
-import { createChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
+import { createChatMessageUlid, isChatMessageUlid } from "@/lib/offline/meet-chat/chat-ulid";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   findCachedChannelForUiId,
@@ -188,8 +188,11 @@ export function createHybridMeetChatOperations(
     channelId: string,
     body: string,
     parentId: string | null,
+    messageId?: string,
   ): Promise<ChatMessage> => {
-    const id = createChatMessageUlid();
+    // A caller that already echoed its id keeps it; anything that is not a
+    // ULID would be rejected by the create call, so mint a fresh one.
+    const id = messageId && isChatMessageUlid(messageId) ? messageId : createChatMessageUlid();
     // The optimistic message keeps the UI channel id (virtual `dm:{peer}` for
     // DM sends) so the workspace applies it to the open conversation.
     const optimistic = buildOptimisticMessage(author, channelId, body, parentId, id);
@@ -230,8 +233,9 @@ export function createHybridMeetChatOperations(
   };
 
   return {
+    newMessageId: () => createChatMessageUlid(),
     sendMessage: async (channelId, body, opts) =>
-      sendMessageHybrid(channelId, body, opts?.parentId ?? null),
+      sendMessageHybrid(channelId, body, opts?.parentId ?? null, opts?.messageId),
     reply: async (parentId, body) => {
       const parent = await getCachedChatMessage(username, parentId);
       if (!parent) throw new Error(`Unknown message ${parentId}`);

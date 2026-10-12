@@ -35,6 +35,8 @@ export type TagProps = {
    */
   collectionTint?: string;
   className?: string;
+  /** Trailing mark inside the chip (for example a presence pip beside the label). */
+  end?: ReactNode;
 };
 
 /** Identity + optional per-chip chrome for {@link TagGroup}. Strings stay valid. */
@@ -62,6 +64,7 @@ export function Tag({
   colors,
   collectionTint,
   className,
+  end,
 }: TagProps) {
   const tagStyle: CSSProperties | undefined =
     colors || collectionTint
@@ -90,6 +93,7 @@ export function Tag({
     >
       {icon ? <span className="tag__icon">{icon}</span> : null}
       <span className="truncate">{label}</span>
+      {end}
       {removable && onRemove ? (
         <Tooltip>
           <TooltipTrigger asChild>

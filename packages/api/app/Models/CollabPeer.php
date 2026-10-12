@@ -15,6 +15,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property string $owner_user
  * @property int $seen_at
+ * @property string $caps
+ * @property string $net
+ * @property string $access
+ * @property string $browser_id
  */
 final class CollabPeer extends Model
 {
@@ -32,6 +36,10 @@ final class CollabPeer extends Model
         'peer_id',
         'name',
         'owner_user',
+        'caps',
+        'net',
+        'access',
+        'browser_id',
         'seen_at',
     ];
 }

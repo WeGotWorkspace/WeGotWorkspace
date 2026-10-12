@@ -319,6 +319,10 @@ Maintainers: pre-release checklist (smoke job, GHCR visibility, multi-arch manif
 | Web won't start after upgrade | Check migrator logs: `docker compose logs migrator` — migration may have failed |
 | Config lost after recreate | Ensure `wgw-install-config` volume exists; do not use `docker compose down -v` unless intentional |
 
+## Real-time capacity
+
+A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md). After install, **Admin → Real-time health** shows join time, relay use, and who could not connect directly.
+
 ## TLS (HTTPS)
 
 Automatic TLS termination is not included in the default stack. Terminate HTTPS on a reverse proxy (Caddy, Traefik, nginx) in front of `WGW_HTTP_PORT`, or use your platform’s load balancer. A dedicated Compose TLS profile may be added later.

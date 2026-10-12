@@ -12,40 +12,120 @@ final class HttpSignalingStore
     /** Same-owner rejoins within this window keep the previous peer pollable (simultaneous tab open). */
     private const JOIN_GRACE_SECONDS = 15;
 
+    /** Fallback sampling rate for {@see pruneOldRowsSampled()}. */
+    private const PRUNE_ONE_IN = 20;
+
     public function __construct(
         private readonly RtcSignalingPolicy $policy,
     ) {}
+
+    private ?HttpSignalingMailbox $mailbox = null;
+
+    private function mailbox(): HttpSignalingMailbox
+    {
+        return $this->mailbox ??= new HttpSignalingMailbox($this);
+    }
 
     public function policy(): RtcSignalingPolicy
     {
         return $this->policy;
     }
 
-    public function pruneOldRows(): void
+    /**
+     * Pruning is a room-wide sweep, so it does not belong on the hot poll path:
+     * one request in twenty carries it, and the scheduler sweeps what the
+     * sampling misses. Both legs ride the `seen_at` / `created_at` indexes.
+     */
+    public function pruneOldRowsSampled(?int $now = null): void
     {
-        $cutoff = time() - $this->policy->peerTimeoutSeconds;
-        $stalePeerIds = $this->peerQuery()
-            ->where('seen_at', '<', $cutoff)
-            ->pluck('peer_id')
-            ->all();
-
-        if ($stalePeerIds !== []) {
-            $this->peerQuery()->whereIn('peer_id', $stalePeerIds)->delete();
-            $this->messageQuery()
-                ->where(function ($query) use ($stalePeerIds): void {
-                    $query->whereIn('from_peer', $stalePeerIds)->orWhereIn('to_peer', $stalePeerIds);
-                })
-                ->delete();
+        $oneIn = max(1, (int) config('wgw.rtc.prune_one_in', self::PRUNE_ONE_IN));
+        if ($oneIn > 1 && random_int(1, $oneIn) !== 1) {
+            return;
         }
 
-        $messageCutoff = time() - $this->policy->messageRetentionSeconds;
+        $this->pruneOldRows($now);
+    }
+
+    public function countStalePeers(?int $now = null): int
+    {
+        return $this->peerQuery()
+            ->where('seen_at', '<', ($now ?? time()) - $this->policy->peerTimeoutSeconds)
+            ->count();
+    }
+
+    public function pruneOldRows(?int $now = null): void
+    {
+        $now = $now ?? time();
+        $cutoff = $now - $this->policy->peerTimeoutSeconds;
+        // Peer ids are only unique inside a room. Delete the stale rows
+        // themselves, then the mailbox for each (room, peer), never every
+        // room that happens to reuse the id.
+        $stalePeers = $this->peerQuery()
+            ->where('seen_at', '<', $cutoff)
+            ->get(['room', 'peer_id']);
+
+        if ($stalePeers->isNotEmpty()) {
+            // A poll between the snapshot and the delete refreshes `seen_at`.
+            // Delete those exact pairs only while they are still stale, and
+            // leave the mailbox (including `admit`) when the peer row survived.
+            foreach ($stalePeers->chunk(50) as $chunk) {
+                $this->peerQuery()
+                    ->where('seen_at', '<', $cutoff)
+                    ->where(function ($query) use ($chunk): void {
+                        foreach ($chunk as $row) {
+                            $room = (string) $row->getAttribute('room');
+                            $peerId = (string) $row->getAttribute('peer_id');
+                            $query->orWhere(function ($inner) use ($room, $peerId): void {
+                                $inner->where('room', $room)->where('peer_id', $peerId);
+                            });
+                        }
+                    })
+                    ->delete();
+
+                $this->messageQuery()
+                    ->where(function ($query) use ($chunk, $cutoff): void {
+                        foreach ($chunk as $row) {
+                            $room = (string) $row->getAttribute('room');
+                            $peerId = (string) $row->getAttribute('peer_id');
+                            $query->orWhere(function ($inner) use ($room, $peerId, $cutoff): void {
+                                $inner->where('room', $room)
+                                    ->where(function ($peers) use ($peerId): void {
+                                        $peers->where('from_peer', $peerId)->orWhere('to_peer', $peerId);
+                                    })
+                                    ->whereNotExists(function ($live) use ($room, $peerId, $cutoff): void {
+                                        $live->selectRaw('1')
+                                            ->from($this->policy->peersTable)
+                                            ->where('room', $room)
+                                            ->where('peer_id', $peerId)
+                                            ->where('seen_at', '>=', $cutoff);
+                                    });
+                            });
+                        }
+                    })
+                    ->delete();
+            }
+        }
+
         $this->messageQuery()
-            ->where('created_at', '<', $messageCutoff)
+            ->where('created_at', '<', $now - $this->policy->messageRetentionSeconds)
             ->delete();
     }
 
-    public function upsertPeer(string $room, string $peerId, string $name, string $ownerMarker, int $now, ?string $browserId = null): void
-    {
+    /**
+     * @param  array{caps?: string, net?: string, access?: string}  $facts
+     *                                                                      Join-time facts: advertised capabilities, measured network class, and
+     *                                                                      (collab only) the computed access right. The access column defaults to
+     *                                                                      `read`, and only this write can widen it.
+     */
+    public function upsertPeer(
+        string $room,
+        string $peerId,
+        string $name,
+        string $ownerMarker,
+        int $now,
+        ?string $browserId = null,
+        array $facts = [],
+    ): void {
         $row = [
             'room' => $room,
             'peer_id' => $peerId,
@@ -58,8 +138,46 @@ final class HttpSignalingStore
             $row['browser_id'] = $browserId ?? '';
             $update[] = 'browser_id';
         }
+        foreach (['caps', 'net'] as $column) {
+            $row[$column] = $facts[$column] ?? '';
+            $update[] = $column;
+        }
+        if ($this->policy->rosterIncludesAccess) {
+            $row['access'] = $facts['access'] ?? RtcPeerAccess::READ;
+            $update[] = 'access';
+        }
 
         $this->policy->peerModelClass::upsert([$row], ['room', 'peer_id'], $update);
+    }
+
+    /**
+     * Re-resolved access right for a live peer (contract C2 refresh). The value
+     * always comes from the share grant, so a downgrade reaches the roster the
+     * other peers read without waiting for a rejoin.
+     */
+    public function rewriteAccess(string $room, string $peerId, string $access): void
+    {
+        if (! $this->policy->rosterIncludesAccess) {
+            return;
+        }
+
+        $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->update(['access' => RtcPeerAccess::normalize($access)]);
+    }
+
+    /** Measured network class, refreshed when a peer asks for a relay. */
+    public function rememberNetClass(string $room, string $peerId, ?string $net): void
+    {
+        if ($net === null || $net === '') {
+            return;
+        }
+
+        $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->update(['net' => $net]);
     }
 
     public function countPeers(string $room): int
@@ -133,31 +251,74 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return list<array{id: string, name: string, user?: string}>
+     * Roster for one peer (contract C1). `user` is only ever an account name:
+     * a guest owner marker is dropped, and meeting rosters ask for owners only
+     * when the polling actor is authenticated, so guests never see member
+     * usernames.
+     *
+     * @return list<array{id: string, name: string, user?: string, access?: string, caps?: list<string>, net?: string}>
      */
-    public function peerList(string $room, string $selfId): array
+    public function peerList(string $room, string $selfId, ?bool $withOwner = null): array
     {
-        $columns = ['peer_id as id', 'name'];
-        if ($this->policy->rosterIncludesOwner) {
-            $columns[] = 'owner_user';
+        $withOwner ??= $this->policy->rosterIncludesOwner;
+        $columns = ['peer_id as id', 'name', 'caps', 'net', 'owner_user'];
+        if ($this->policy->rosterIncludesAccess) {
+            $columns[] = 'access';
         }
 
         return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $selfId)
             ->get($columns)
-            ->map(function ($row): array {
+            ->map(function ($row) use ($withOwner): array {
                 $peer = [
                     'id' => (string) $row->getAttribute('id'),
                     'name' => (string) $row->getAttribute('name'),
                 ];
-                if ($this->policy->rosterIncludesOwner) {
-                    $peer['user'] = $this->ownerUsername((string) ($row->owner_user ?? ''));
+                $owner = (string) ($row->owner_user ?? '');
+                if ($withOwner && str_starts_with($owner, 'u:')) {
+                    $peer['user'] = $this->ownerUsername($owner);
+                }
+                if ($this->policy->rosterIncludesAccess) {
+                    $peer['access'] = RtcPeerAccess::normalize($row->getAttribute('access'));
+                }
+                $caps = RtcPeerCaps::decode($row->getAttribute('caps'));
+                if ($caps !== []) {
+                    $peer['caps'] = $caps;
+                }
+                $net = trim((string) ($row->getAttribute('net') ?? ''));
+                if ($net !== '') {
+                    $peer['net'] = $net;
                 }
 
                 return $peer;
             })
             ->all());
+    }
+
+    /**
+     * A peer id is a client-chosen handle, so joining one that another actor
+     * already owns must not silently take it over: the mailbox and the slot in
+     * the room belong to whoever claimed it first.
+     */
+    public function assertPeerIdFree(string $room, string $peerId, string $ownerMarker): void
+    {
+        $owner = $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->value('owner_user');
+
+        if ($owner === null || (string) $owner === '') {
+            return;
+        }
+
+        if (! hash_equals((string) $owner, $ownerMarker)) {
+            throw new RtcSignalingException(409, [
+                'error' => 'peer_id_taken',
+                'code' => 'peer_id_taken',
+                'message' => 'That peer id is in use — join again with a new one.',
+            ]);
+        }
     }
 
     /** Strip the `u:` owner marker so rosters carry the plain Sabre username. */
@@ -249,107 +410,30 @@ final class HttpSignalingStore
      * Poll roster + pending messages. When the caller echoes the roster signature of a
      * previous poll (`$knownRosterSig`) and neither the roster nor the peer's mailbox
      * changed, a minimal `{unchanged: true}` marker is returned and payload building
-     * (message fetch/delete, roster serialization) is skipped.
+     * (message fetch/delete, roster serialization) is skipped. The ack runs before that
+     * fast path, so a 204 still shrinks the mailbox.
      *
      * @return array{peers: list<array{id: string, name: string, user?: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
      */
-    public function poll(string $room, string $peerId, int $since = 0, ?string $knownRosterSig = null): array
-    {
-        $this->touchPeer($room, $peerId);
-
-        $peers = $this->peerList($room, $peerId);
-        $rosterSig = $this->rosterSignature($peers);
-
-        if (
-            $knownRosterSig !== null
-            && $knownRosterSig !== ''
-            && hash_equals($rosterSig, $knownRosterSig)
-            && ! $this->hasPendingMessages($room, $peerId, $since)
-        ) {
-            return ['unchanged' => true, 'rosterSig' => $rosterSig];
-        }
-
-        if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
-            $query = $this->messageQuery()
-                ->where('room', $room)
-                ->where('to_peer', $peerId)
-                ->where('id', '>', max(0, $since))
-                ->orderBy('id');
-
-            $messages = [];
-            foreach ($query->get(['id', 'from_peer as from', 'to_peer as to', 'type', 'payload']) as $row) {
-                $decoded = json_decode((string) $row->getAttribute('payload'), true);
-                $messages[] = [
-                    'id' => (int) $row->getAttribute('id'),
-                    'from' => (string) $row->getAttribute('from'),
-                    'to' => (string) $row->getAttribute('to'),
-                    'type' => (string) $row->getAttribute('type'),
-                    'payload' => $decoded,
-                ];
-            }
-
-            return [
-                'peers' => $peers,
-                'messages' => $messages,
-                'rosterSig' => $rosterSig,
-            ];
-        }
-
-        $rows = $this->messageQuery()
-            ->where('room', $room)
-            ->where('to_peer', $peerId)
-            ->orderBy('id')
-            ->get(['id', 'from_peer as from', 'type', 'payload']);
-
-        $messages = [];
-        if ($rows->isNotEmpty()) {
-            $ids = $rows->pluck('id')->all();
-            $this->messageQuery()->whereIn('id', $ids)->delete();
-            foreach ($rows as $row) {
-                $decoded = json_decode((string) $row->getAttribute('payload'), true);
-                $messages[] = [
-                    'from' => (string) $row->getAttribute('from'),
-                    'type' => (string) $row->getAttribute('type'),
-                    'payload' => $decoded,
-                ];
-            }
-        }
-
-        return [
-            'peers' => $peers,
-            'messages' => $messages,
-            'rosterSig' => $rosterSig,
-        ];
+    /**
+     * @return array{peers: list<array{id: string, name: string, user?: string}>, messages: list<array<string, mixed>>, rosterSig: string}|array{unchanged: true, rosterSig: string}
+     */
+    public function poll(
+        string $room,
+        string $peerId,
+        int $since = 0,
+        ?string $knownRosterSig = null,
+        ?bool $withOwner = null,
+    ): array {
+        return $this->mailbox()->poll($room, $peerId, $since, $knownRosterSig, $withOwner);
     }
 
     /**
-     * Signature over the visible roster (ids + names + optional owner, order-independent).
-     * `seen_at` is deliberately excluded — it changes on every poll touch.
-     *
-     * @param  list<array{id: string, name: string, user?: string}>  $peers
+     * @return array{peers: list<array{id: string, name: string, user?: string, access?: string, caps?: list<string>, net?: string}>, messages: list<array{id: int, from: string, to: string, type: string, payload: mixed}>, rosterSig: string}
      */
-    private function rosterSignature(array $peers): string
+    public function pendingMailbox(string $room, string $peerId, ?bool $withOwner = null): array
     {
-        $parts = array_map(
-            static fn (array $peer): string => $peer['id']."\x1f".$peer['name']."\x1f".($peer['user'] ?? ''),
-            $peers,
-        );
-        sort($parts, SORT_STRING);
-
-        return sha1(implode("\x1e", $parts));
-    }
-
-    private function hasPendingMessages(string $room, string $peerId, int $since): bool
-    {
-        $query = $this->messageQuery()
-            ->where('room', $room)
-            ->where('to_peer', $peerId);
-
-        if ($this->policy->pollMode === RtcSignalingPollMode::SinceCursor) {
-            $query->where('id', '>', max(0, $since));
-        }
-
-        return $query->exists();
+        return $this->mailbox()->pendingMailbox($room, $peerId, $withOwner);
     }
 
     public function send(string $room, string $from, string $to, string $type, mixed $payload): void
@@ -383,6 +467,25 @@ final class HttpSignalingStore
         }
 
         $this->touchPeer($room, $from);
+    }
+
+    /**
+     * Server-authored mailbox row. The allowed-type list guards client sends
+     * only: `relay-hint` is a server decision, so a client that sends it is
+     * answered with `bad_type`.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function insertServerMessage(string $room, string $from, string $to, string $type, array $payload): void
+    {
+        $this->policy->messageModelClass::query()->create([
+            'room' => $room,
+            'from_peer' => $from,
+            'to_peer' => $to,
+            'type' => $type,
+            'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
+            'created_at' => time(),
+        ]);
     }
 
     public function leave(string $room, string $peerId): void
@@ -434,16 +537,33 @@ final class HttpSignalingStore
     }
 
     /**
-     * @return list<string>
+     * Peer rows in the room apart from one, with the display name: Meet reads
+     * the name to tell a waiting (knocking) row from a participant.
+     *
+     * @return list<array{id: string, name: string}>
      */
-    public function peerIdsInRoomExcept(string $room, string $exceptPeerId): array
+    public function peersInRoomExcept(string $room, string $exceptPeerId): array
     {
         return array_values($this->peerQuery()
             ->where('room', $room)
             ->where('peer_id', '!=', $exceptPeerId)
-            ->pluck('peer_id')
-            ->map(static fn ($id) => (string) $id)
+            ->get(['peer_id', 'name'])
+            ->map(static fn ($row): array => [
+                'id' => (string) $row->getAttribute('peer_id'),
+                'name' => (string) $row->getAttribute('name'),
+            ])
             ->all());
+    }
+
+    /** Display name on a peer row; null when there is no such row. */
+    public function peerName(string $room, string $peerId): ?string
+    {
+        $row = $this->peerQuery()
+            ->where('room', $room)
+            ->where('peer_id', $peerId)
+            ->first(['name']);
+
+        return $row === null ? null : (string) $row->getAttribute('name');
     }
 
     /**

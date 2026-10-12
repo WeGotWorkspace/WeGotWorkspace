@@ -22,9 +22,15 @@ const DC_LABEL = "presence";
 const ACTIVE_STEADY_POLL_MS = 1200;
 
 /**
- * Slow steady state once every rostered peer has an open data channel (or the room
- * is empty): presence/chat/typing flow over the DC, the poll only discovers
- * newcomers, so 20 s keeps every logged-in session cheap.
+ * Alone in the principal room. An empty roster must not take the linked-mesh
+ * interval: `[].every()` is true, and that used to park the poll at 20 s.
+ */
+const ALONE_STEADY_POLL_MS = 4_000;
+
+/**
+ * Slow steady state once every rostered peer has an open data channel.
+ * Presence, chat, and typing flow over the data channel; the poll only
+ * discovers newcomers.
  */
 const IDLE_STEADY_POLL_MS = 20000;
 
@@ -94,6 +100,7 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.updatePollCadence();
         this.emit({ type: "roster" });
       },
+      onSendFailed: (principalPeerId) => this.registry.markSendFailed(principalPeerId),
       onPollData: () => {
         this.syncPrincipalLinks();
         this.updatePollCadence();
@@ -109,6 +116,10 @@ export class PresenceRtcSession implements PresenceMeshSession {
 
   private updatePollCadence(): void {
     const peers = this.mesh.getRoomPeers();
+    if (peers.length === 0) {
+      this.pollIntervals.steadyMs = ALONE_STEADY_POLL_MS;
+      return;
+    }
     const allLinked = peers.every(
       (peer) => this.mesh.getDataChannel(peer.id)?.readyState === "open",
     );

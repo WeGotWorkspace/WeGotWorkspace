@@ -7,11 +7,19 @@ type MeetCircleToggleProps = {
   OnIcon: ComponentType<{ className?: string }>;
   OffIcon: ComponentType<{ className?: string }>;
   label: string;
+  disabled?: boolean;
   /** @deprecated Same `sm` IconButton as ViewHeader — size no longer changes. */
   large?: boolean;
 };
 
-export function MeetCircleToggle({ on, onClick, OnIcon, OffIcon, label }: MeetCircleToggleProps) {
+export function MeetCircleToggle({
+  on,
+  onClick,
+  OnIcon,
+  OffIcon,
+  label,
+  disabled,
+}: MeetCircleToggleProps) {
   const Icon = on ? OnIcon : OffIcon;
 
   return (
@@ -23,6 +31,7 @@ export function MeetCircleToggle({ on, onClick, OnIcon, OffIcon, label }: MeetCi
       variant="outline"
       severity={on ? undefined : "danger"}
       aria-pressed={on}
+      disabled={disabled}
     />
   );
 }

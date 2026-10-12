@@ -41,7 +41,10 @@ export type CreateRtcSessionOptions = {
   onConnectionFailed?: RtcPeerMeshOptions["onConnectionFailed"];
   onPollError?: RtcPeerMeshOptions["onPollError"];
   onPeerConnected?: RtcPeerMeshOptions["onPeerConnected"];
+  onRelayOutcome?: RtcPeerMeshOptions["onRelayOutcome"];
   onUnknownPeer?: RtcPeerMeshOptions["onUnknownPeer"];
+  onSendFailed?: RtcPeerMeshOptions["onSendFailed"];
+  onMeetData?: RtcPeerMeshOptions["onMeetData"];
 };
 
 const CHANNEL_INITIATOR: Partial<Record<SignalingChannel, InitiatorRule>> = {
@@ -84,6 +87,9 @@ export function createRtcSession(options: CreateRtcSessionOptions): RtcPeerMesh 
     onConnectionFailed: options.onConnectionFailed,
     onPollError: options.onPollError,
     onPeerConnected: options.onPeerConnected,
+    onRelayOutcome: options.onRelayOutcome,
     onUnknownPeer: options.onUnknownPeer,
+    onSendFailed: options.onSendFailed,
+    onMeetData: options.onMeetData,
   });
 }

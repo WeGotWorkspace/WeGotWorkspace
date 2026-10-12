@@ -81,6 +81,7 @@ function handlers() {
     onEnvelopeFromFollower: vi.fn(),
     onEnvelopeFromLeader: vi.fn(),
     onRosterFromLeader: vi.fn(),
+    onOwnerPageHide: undefined as (() => void) | undefined,
   };
 }
 
@@ -218,6 +219,30 @@ describe("PrincipalTabCoordinator", () => {
     expect(leaderA.meshLeader).toBe(true);
     expect(a.onResignLeader).not.toHaveBeenCalled();
     expect(b.onBecomeLeader).not.toHaveBeenCalled();
+  });
+
+  it("leaves on pagehide only after this tab owns the principal session", () => {
+    const hide = () =>
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
+
+    const waiting = handlers();
+    waiting.onOwnerPageHide = vi.fn();
+    const pending = new PrincipalTabCoordinator(waiting, "tab-pagehide-waiting");
+    pending.start();
+    expect(pending.meshLeader).toBe(false);
+    hide();
+    expect(waiting.onOwnerPageHide).not.toHaveBeenCalled();
+    pending.stop();
+
+    const owner = handlers();
+    owner.onOwnerPageHide = vi.fn();
+    const leader = new PrincipalTabCoordinator(owner, "tab-pagehide-owner");
+    leader.start();
+    advanceElectionGrace();
+    expect(leader.meshLeader).toBe(true);
+    hide();
+    expect(owner.onOwnerPageHide).toHaveBeenCalledTimes(1);
+    leader.stop();
   });
 
   it("hands off when the leader closes (pagehide/stop path)", () => {

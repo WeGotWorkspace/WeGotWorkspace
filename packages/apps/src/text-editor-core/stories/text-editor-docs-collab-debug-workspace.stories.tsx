@@ -11,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "RTC debug shell for local mesh collaboration. Uses the docs-collab signaling service on port 8081 (no Laravel API). Open two Storybook windows with different user names to test sync.",
+          "Debug shell for local document collaboration. Uses the room service on port 8081 (no Laravel API). Open two Storybook windows with different user names to test sync.",
       },
     },
   },
@@ -28,7 +28,7 @@ export const Default: Story = {
 };
 
 export const AutoJoin: Story = {
-  name: "Auto join mesh",
+  name: "Auto join",
   args: {
     userName: "Sam",
     autoJoin: true,

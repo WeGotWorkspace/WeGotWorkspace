@@ -152,9 +152,7 @@ describe("DocsCollabMeshLingerCache", () => {
 describe("mesh polling during the linger grace", () => {
   const RTC_SETTINGS: RtcSettings = {
     stunUrls: "",
-    turnUrls: "",
-    turnUsername: "",
-    turnPassword: "",
+    turnAvailable: false,
     forceRelay: false,
   };
 

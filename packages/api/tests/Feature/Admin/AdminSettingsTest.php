@@ -64,8 +64,7 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
                 'values' => [
                     SettingKeys::RTC_STUN_URL => 'stun:stun.example.test:3478,stuns:stun-backup.example.test:5349',
                     SettingKeys::RTC_TURN_URL => 'turn:turn.example.test:3478?transport=udp',
-                    SettingKeys::RTC_TURN_USERNAME => 'rtc-user',
-                    SettingKeys::RTC_TURN_CREDENTIAL => 'rtc-secret',
+                    SettingKeys::RTC_TURN_SECRET => 'rtc-secret',
                 ],
             ])
             ->assertOk();
@@ -73,8 +72,7 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->getJson('/api/v1/admin/state')
             ->assertOk()
-            ->assertJsonPath('rtc.turnUsername', 'rtc-user')
-            ->assertJsonPath('rtc.turnPassword', 'rtc-secret')
+            ->assertJsonPath('rtc.turnSecretSet', true)
             ->assertJsonPath('rtc.stunUrls', 'stun:stun.example.test:3478, stuns:stun-backup.example.test:5349')
             ->assertJsonPath('rtc.turnUrls', 'turn:turn.example.test:3478?transport=udp');
     }

@@ -1,7 +1,11 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import { docsCollabRoomKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  docsCollabIndexedDbKey,
+  docsCollabLegacyIndexedDbKeys,
+  docsCollabRoomKey,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 async function roomHasCollabPersistence(roomKey: string): Promise<boolean> {
@@ -25,12 +29,10 @@ export async function hasDocsCollabOfflinePersistence(
   const room = docsCollabRoomKey(apiPath ?? "");
   if (!room || !isDocsCollabEditablePath(room)) return false;
 
-  if (await roomHasCollabPersistence(room)) return true;
+  if (await roomHasCollabPersistence(docsCollabIndexedDbKey(room))) return true;
 
-  // Legacy room keys written before collab room normalization (leading slash).
-  const legacy = apiPath?.trim().startsWith("/") ? room : `/${room}`;
-  if (legacy !== room) {
-    return roomHasCollabPersistence(legacy);
+  for (const legacyKey of docsCollabLegacyIndexedDbKeys(room)) {
+    if (await roomHasCollabPersistence(legacyKey)) return true;
   }
   return false;
 }

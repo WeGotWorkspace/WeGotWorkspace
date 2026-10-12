@@ -1,5 +1,15 @@
-import { buildMeetChatLineFromPoll, type MeetChatLine } from "@/meet-core/src/meet-chat-line";
 import type { ChatMessage } from "@/meet-core/src/meet-types";
+
+/**
+ * A channel write in flight plus the echo id its room copy has to carry. The
+ * id is known before the write settles, which is what lets the live call post
+ * the room copy immediately.
+ */
+export type MeetChannelChatSend = {
+  /** Client ULID of the channel row, or null when none was minted. */
+  echoId: string | null;
+  saved: Promise<ChatMessage | null>;
+};
 
 /**
  * Room signaling echoes a saved channel message so guests, who only have
@@ -13,8 +23,14 @@ import type { ChatMessage } from "@/meet-core/src/meet-types";
  */
 const CHANNEL_CHAT_ECHO_PREFIX = "__wgw_meet_channel_chat__:";
 
-/** Saved channel ids are ULIDs or local placeholders (`local-<time>`). */
+/** Saved channel ids are ULIDs; mock and story operations mint their own slugs. */
 const CHANNEL_CHAT_ECHO_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** `MeetSignalingService::chat` cuts room text at 2000 characters. */
+export const MEET_ROOM_CHAT_TEXT_LIMIT = 2000;
+
+/** Optimistic ids for a message the server has never seen (`local-<time>`). */
+const LOCAL_MESSAGE_ID_PREFIX = "local-";
 
 export function buildMeetChannelChatEcho(messageId: string, body: string): string {
   return `${CHANNEL_CHAT_ECHO_PREFIX}${messageId}\n${body}`;
@@ -35,31 +51,31 @@ export function parseMeetChannelChatEcho(text: string): { id: string; body: stri
   return { id, body };
 }
 
-export function meetPollChatLine(
-  fromPeerId: string,
-  fromName: string,
-  text: string,
-  selfPeerId: string,
-  now = Date.now(),
-): MeetChatLine {
-  const echo = parseMeetChannelChatEcho(text.trim());
-  const line = buildMeetChatLineFromPoll(fromPeerId, fromName, echo?.body ?? text, selfPeerId, now);
-  if (!echo) return line;
-  return { ...line, channelMessageId: echo.id };
+/**
+ * The echo id names a saved channel row, so a peer can look it up. A
+ * `local-…` placeholder names a row that exists in one browser only: it would
+ * hide the line from every other member without them ever getting the save.
+ */
+export function meetRoomChatEchoId(messageId: string | null | undefined): string | null {
+  const id = messageId?.trim() ?? "";
+  if (id === "" || id.startsWith(LOCAL_MESSAGE_ID_PREFIX)) return null;
+  return CHANNEL_CHAT_ECHO_ID.test(id) ? id : null;
 }
 
-export async function meetRoomChatOutbound(
-  text: string,
-  persisted?: Promise<ChatMessage | null>,
-): Promise<{ text: string; saved: boolean }> {
-  if (!persisted) return { text, saved: false };
-  try {
-    const saved = await persisted;
-    if (!saved) return { text, saved: false };
-    const body = saved.body.trim();
-    if (body === "" || !CHANNEL_CHAT_ECHO_ID.test(saved.id)) return { text, saved: true };
-    return { text: buildMeetChannelChatEcho(saved.id, body), saved: true };
-  } catch {
-    return { text, saved: false };
-  }
+/** Room text for a saved channel message, cut the way the signaling send cuts it. */
+export function meetRoomChatEchoText(messageId: string, body: string): string {
+  const text = buildMeetChannelChatEcho(messageId, body.trim());
+  const chars = [...text];
+  return chars.length <= MEET_ROOM_CHAT_TEXT_LIMIT
+    ? text
+    : chars.slice(0, MEET_ROOM_CHAT_TEXT_LIMIT).join("");
+}
+
+/**
+ * The body a peer reads back from the echo of this channel row. A long row
+ * loses its tail to the room limit, so the member column compares a room line
+ * against this and not against the stored channel body.
+ */
+export function meetRoomChatEchoBody(messageId: string, body: string): string {
+  return parseMeetChannelChatEcho(meetRoomChatEchoText(messageId, body))?.body ?? body.trim();
 }

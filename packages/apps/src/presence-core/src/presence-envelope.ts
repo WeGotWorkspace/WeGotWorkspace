@@ -150,5 +150,10 @@ export function parsePresenceEnvelope(raw: string): PresenceEnvelope | null {
     return presenceNotifyHintEnvelope(envelope.tag);
   }
 
+  if (envelope.kind === "meet-join-hint") {
+    if (typeof envelope.room !== "string" || envelope.room === "") return null;
+    return { v: 1, kind: "meet-join-hint", room: envelope.room };
+  }
+
   return null;
 }

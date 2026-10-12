@@ -1,17 +1,11 @@
-import { isRtcDebugEnabledFromQuery, parseRtcDebugFlag } from "@/lib/rtc/debug";
-
 export type DocsRouteSearch = {
   file?: string;
-  /** Number `1` so the serializer emits `rtcDebug=1`, not `rtcDebug="1"`. */
-  rtcDebug?: 1;
 };
 
 export function parseDocsRouteSearch(search: Record<string, unknown>): DocsRouteSearch {
   const file = typeof search.file === "string" ? search.file : undefined;
-  const rtcDebug = parseRtcDebugFlag(search.rtcDebug);
   return {
     ...(file !== undefined ? { file } : {}),
-    ...(rtcDebug !== undefined ? { rtcDebug } : {}),
   };
 }
 
@@ -26,30 +20,16 @@ export function docsApiPathFromSearch(file: string | undefined): string | null {
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }
 
-function rtcDebugFromLocation(): 1 | undefined {
-  if (typeof window === "undefined") return undefined;
-  return isRtcDebugEnabledFromQuery(window.location.search) ? 1 : undefined;
-}
-
-export function docsSearchFromApiPath(
-  apiPath: string,
-  current?: Pick<DocsRouteSearch, "rtcDebug">,
-): DocsRouteSearch {
-  const rtcDebug = current?.rtcDebug ?? rtcDebugFromLocation();
+export function docsSearchFromApiPath(apiPath: string): DocsRouteSearch {
   return {
     file: apiPath.replace(/^\/+/, ""),
-    ...(rtcDebug ? { rtcDebug } : {}),
   };
 }
 
 /** Docs editor URL for a drive API path (`/docs?file=…`). */
-export function docsHrefFromApiPath(
-  apiPath: string,
-  current?: Pick<DocsRouteSearch, "rtcDebug">,
-): string {
-  const search = docsSearchFromApiPath(apiPath, current);
+export function docsHrefFromApiPath(apiPath: string): string {
+  const search = docsSearchFromApiPath(apiPath);
   const query = new URLSearchParams();
   if (search.file) query.set("file", search.file);
-  if (search.rtcDebug) query.set("rtcDebug", "1");
   return `/docs${query.toString() ? `?${query.toString()}` : ""}`;
 }

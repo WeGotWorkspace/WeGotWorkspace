@@ -12,6 +12,7 @@ import {
   meetCallBarShownCount,
 } from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { remoteVideoSuppressed } from "@/meet-core/src/meet-video-sender";
 import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
@@ -46,6 +47,8 @@ export type MeetCallBarProps = {
   onCameraChange: (optionId: string) => void;
   onMicrophoneChange: (optionId: string) => void;
   onSpeakerChange: (optionId: string) => void;
+  lowData?: boolean;
+  onLowDataChange?: (enabled: boolean) => void;
   onExpand: () => void;
   onLeave: () => void;
   /** Host/moderator: mute (`true`) or unmute (`false`) a remote peer. Omitted for guests. */
@@ -91,6 +94,8 @@ export function MeetCallBar({
   onCameraChange,
   onMicrophoneChange,
   onSpeakerChange,
+  lowData = false,
+  onLowDataChange,
   onExpand,
   onLeave,
   onMuteParticipant,
@@ -184,6 +189,8 @@ export function MeetCallBar({
               onCamera={onCameraChange}
               onMicrophone={onMicrophoneChange}
               onSpeaker={onSpeakerChange}
+              lowData={lowData}
+              onLowDataChange={onLowDataChange}
             />
             {onAdmitKnocker && onDenyKnocker ? (
               <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
@@ -225,6 +232,11 @@ export function MeetCallBar({
               compact
               remoteMedia={peer.remoteMedia}
               disclosedMedia={peer.disclosedMedia}
+              hideVideo={remoteVideoSuppressed(
+                peer.id,
+                peers.map((item) => item.id),
+                lowData,
+              )}
               onMuteParticipant={
                 onMuteParticipant ? (muted) => onMuteParticipant(peer.id, muted) : undefined
               }

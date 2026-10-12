@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   wgwApiBaseUrl,
+  wgwCurrentAccessToken,
   wgwFetchPrincipal,
   wgwHasAuthenticatedSession,
   wgwIsGuestSession,
@@ -68,6 +69,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       const roomId = resolveRoomId("principal", PRESENCE_WORKSPACE_ROOM);
       const rtcSettings = await fetchRtcSettings({
         url: `${wgwApiBaseUrl()}/rooms/${encodeURIComponent(roomId)}/configuration`,
+        bearerToken: wgwCurrentAccessToken() ?? undefined,
       });
       if (cancelled) return;
       const presenceStore = createPresenceStore({

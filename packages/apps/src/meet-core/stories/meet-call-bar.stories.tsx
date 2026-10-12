@@ -144,6 +144,7 @@ export const Joined: Story = {
 
 export const InviteToJoin: Story = {
   name: "Invite to join",
+  tags: ["vitest-ci"],
   args: {
     joined: false,
     micOn: true,
@@ -161,19 +162,18 @@ export const InviteToJoin: Story = {
       canvas.queryByRole("button", { name: meetLabels.expandCall }),
     ).not.toBeInTheDocument();
     await expect(
-      canvas.queryByRole("img", { name: "Demo User avatar", hidden: true }),
+      canvas.queryByRole("img", { name: "Demo User", hidden: true }),
     ).not.toBeInTheDocument();
     await expect(
-      canvas.getByRole("img", { name: "Alex Morgan avatar", hidden: true }),
+      canvas.getByRole("img", { name: "Alex Morgan", hidden: true }),
     ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole("img", { name: "Jamie Lee avatar", hidden: true }),
-    ).toBeInTheDocument();
+    await expect(canvas.getByRole("img", { name: "Jamie Lee", hidden: true })).toBeInTheDocument();
   },
 };
 
 export const InviteToJoinAudioOnly: Story = {
   name: "Invite to join (audio only)",
+  tags: ["vitest-ci"],
   args: {
     joined: false,
     micOn: true,

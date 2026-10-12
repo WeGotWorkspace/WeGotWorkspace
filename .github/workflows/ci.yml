@@ -158,7 +158,11 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          git fetch --depth=1 origin "$BASE_SHA"
+          # No --depth: a shallow fetch grafts history onto this depth-0 checkout,
+          # and when the base sha is not on main (a pull request onto an
+          # integration branch) the later plan-structure lint can no longer reach
+          # origin/main and refuses to run.
+          git fetch origin "$BASE_SHA"
           # Call node directly: `pnpm run … -- <sha>` forwards a literal `--` as argv.
           node tools/file-size-ratchet.mjs check-growth "$BASE_SHA"
 

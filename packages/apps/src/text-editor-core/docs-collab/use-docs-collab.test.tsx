@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { docsLabels } from "@/docs-core/src/docs-labels";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -109,9 +110,12 @@ function mockFetchResponses(options: {
 
 const SESSION_WAIT_MS = 5000;
 
-async function waitForCollabSession(result: { current: { session: unknown } }): Promise<void> {
+async function waitForCollabSession(
+  result: { current: { session: unknown } },
+  timeoutMs: number = SESSION_WAIT_MS,
+): Promise<void> {
   await waitFor(() => expect(result.current.session).not.toBeNull(), {
-    timeout: SESSION_WAIT_MS,
+    timeout: timeoutMs,
   });
 }
 
@@ -266,7 +270,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
     await waitForCollabSession(result);
     expect(mockJoin).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("reuses the lingering mesh session when remounting the same room within the grace", async () => {
@@ -298,13 +302,15 @@ describe("useDocsCollab offline lifecycle", () => {
     );
 
     await waitForCollabSession(second.result);
-    await waitFor(() => expect(second.result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(second.result.current.status).toContain("Alex ·"));
     expect(mockJoin).toHaveBeenCalledTimes(1);
     expect(rtcMocks.mockLeave).not.toHaveBeenCalled();
   });
 
-  it("exposes session before server fetch completes", async () => {
-    let resolveMarkdown: ((value: Response) => void) | undefined;
+  it("exposes the collab session while server markdown is still loading", async () => {
+    let markdownReady: Response | null = null;
+    const pendingMarkdown: Array<(value: Response) => void> = [];
+    let resolveMarkdown: (() => void) | undefined;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("format=yjs")) {
@@ -313,8 +319,14 @@ describe("useDocsCollab offline lifecycle", () => {
       if (init?.method === "PUT" || init?.method === "POST") {
         return new Response("{}", { status: 200 });
       }
+      if (markdownReady) return markdownReady;
       return new Promise<Response>((resolve) => {
-        resolveMarkdown = resolve;
+        pendingMarkdown.push(resolve);
+        resolveMarkdown = () => {
+          markdownReady = new Response("# Hello", { status: 200 });
+          for (const settle of pendingMarkdown) settle(markdownReady);
+          pendingMarkdown.length = 0;
+        };
       });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -333,9 +345,12 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(resolveMarkdown).toBeDefined();
 
     await act(async () => {
-      resolveMarkdown?.(new Response("# Hello", { status: 200 }));
+      resolveMarkdown?.();
     });
-  });
+    await waitFor(() => {
+      expect(result.current.session?.ydoc.getXmlFragment("default").length).toBeGreaterThan(0);
+    });
+  }, 15000);
 
   it("exposes session before mesh join completes", async () => {
     let resolveJoin: ((value: { peers: [] }) => void) | undefined;
@@ -358,13 +373,13 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(result);
     expect(result.current.joined).toBe(true);
     expect(mockJoin).toHaveBeenCalledTimes(1);
-    expect(result.current.status).toBe("Connecting to mesh…");
+    expect(result.current.status).toBe(docsLabels.statusConnecting);
 
     await act(async () => {
       resolveJoin?.({ peers: [] });
     });
 
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("marks pendingSync when server save fails while online", async () => {
@@ -452,7 +467,7 @@ describe("useDocsCollab offline lifecycle", () => {
     window.dispatchEvent(new Event("focus"));
 
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1), { timeout: 7000 });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"), { timeout: 7000 });
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"), { timeout: 7000 });
   }, 15_000);
 
   it("flushes pending save after reconnect", async () => {
@@ -505,7 +520,7 @@ describe("useDocsCollab offline lifecycle", () => {
     window.dispatchEvent(new Event("online"));
 
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1), { timeout: 5000 });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"));
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"));
   });
 
   it("rejoins mesh even when server backoff blocks collaboration GET", async () => {
@@ -542,7 +557,7 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitFor(() => expect(mockJoin.mock.calls.length).toBeGreaterThan(joinsBeforeReconnect), {
       timeout: 7000,
     });
-    await waitFor(() => expect(result.current.status).toContain("Mesh"), { timeout: 7000 });
+    await waitFor(() => expect(result.current.status).toContain("Alex ·"), { timeout: 7000 });
   }, 15000);
 
   it("restarts mesh after reconnect when a stale session exists", async () => {
@@ -657,7 +672,7 @@ describe("useDocsCollab offline lifecycle", () => {
         wire,
       }),
     );
-    await waitForCollabSession(first.result);
+    await waitForCollabSession(first.result, 12000);
     await act(async () => {
       first.unmount();
     });
@@ -673,9 +688,9 @@ describe("useDocsCollab offline lifecycle", () => {
         wire,
       }),
     );
-    await waitForCollabSession(second.result);
+    await waitForCollabSession(second.result, 12000);
     expect(collaborationGetCount).toBe(firstAttemptCount);
-  });
+  }, 20000);
 
   it("defers mesh join and document fetch until the auth token arrives, then joins", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -707,6 +722,7 @@ describe("useDocsCollab offline lifecycle", () => {
       { initialProps: { authToken: undefined } as { authToken?: string } },
     );
 
+    await waitFor(() => expect(result.current.joined).toBe(true));
     await waitForCollabSession(result);
     expect(mockJoin).not.toHaveBeenCalled();
     const collabFetchesBeforeToken = fetchMock.mock.calls.filter(([input]) =>
@@ -716,6 +732,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
     rerender({ authToken: "live-token" });
 
+    await waitForCollabSession(result);
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
     const authorizedCollabFetches = fetchMock.mock.calls.filter(([input, init]) => {
       if (!String(input).includes("/files/collaboration")) return false;

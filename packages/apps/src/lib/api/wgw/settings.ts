@@ -3,7 +3,14 @@ import type {
   SettingsProfileRequest,
 } from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwCurrentRefreshToken,
+  wgwEnsureFreshAccessToken,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwIsGuestSession,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
   WgwSettingsStateResponse,
@@ -95,11 +102,23 @@ async function requestSettings(
   return (await wgwReadJson(res)) as WgwSettingsStateResponse;
 }
 
+function profileSaveBody(input: SettingsProfileRequest): SettingsProfileRequest {
+  if (!input.password || wgwIsGuestSession()) {
+    return input;
+  }
+  const refreshToken = wgwCurrentRefreshToken();
+  if (refreshToken === null) {
+    return input;
+  }
+  return { ...input, refreshToken };
+}
+
 export async function saveSettingsProfile(
   input: SettingsProfileRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<SettingsUIData> {
-  const state = await requestSettings("/settings/profile", input, opts);
+  await wgwEnsureFreshAccessToken();
+  const state = await requestSettings("/settings/profile", profileSaveBody(input), opts);
   return mapWgwSettingsStateToUI(state);
 }
 

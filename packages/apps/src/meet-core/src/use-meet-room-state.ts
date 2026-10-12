@@ -154,6 +154,7 @@ export function useMeetRoomState({
     displayNameRef: store.displayNameRef,
     waitingForAdmissionRef: store.waitingForAdmissionRef,
     rosterRef: store.rosterRef,
+    signalingRosterRef: store.signalingRosterRef,
     peerInboundSampleRef: store.peerInboundSampleRef,
     peerMediaHintRef: store.peerMediaHintRef,
     peerDisclosedMediaRef: store.peerDisclosedMediaRef,

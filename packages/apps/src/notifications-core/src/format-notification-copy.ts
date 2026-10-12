@@ -56,6 +56,8 @@ export function formatNotificationCopy(
       return formatChatMentioned(data);
     case "meet.started":
       return formatMeetStarted(data);
+    case "rtc.direct_connect":
+      return formatRtcDirectConnect(data);
     default:
       return { title: item.title, body: item.body };
   }
@@ -204,6 +206,23 @@ function formatTaskStatusChanged(data: NotificationFacts): NotificationCopy {
   const titleRest = to === "completed" ? ` completed ${summary}` : ` updated ${summary}`;
   const body = from && to ? `${from} → ${to}` : to || null;
   return withActorTitle(actor, titleRest, body);
+}
+
+function formatRtcDirectConnect(data: NotificationFacts): NotificationCopy {
+  const count = typeof data.count === "number" ? data.count : Number(data.count ?? 0);
+  const title = `${Number.isFinite(count) ? count : 0} people couldn't connect directly to a call or document today.`;
+  const people = Array.isArray(data.people) ? data.people : [];
+  const parts: string[] = [];
+  for (const person of people) {
+    if (person == null || typeof person !== "object") continue;
+    const row = person as { name?: unknown; where?: unknown };
+    const rawName = typeof row.name === "string" ? row.name.trim() : "";
+    const where = typeof row.where === "string" ? row.where.trim() : "";
+    if (!rawName || !where) continue;
+    const name = rawName.startsWith("guest:") ? "a guest" : rawName;
+    parts.push(`${name} (${where})`);
+  }
+  return { title, body: parts.length > 0 ? parts.join(", ") : null };
 }
 
 function formatMeetStarted(data: NotificationFacts): NotificationCopy {

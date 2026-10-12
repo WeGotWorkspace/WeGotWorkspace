@@ -18,7 +18,7 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 | Action | Route |
 |--------|-------|
 | Join | `POST /rooms/{roomId}/participants` |
-| Poll | `GET /rooms/{roomId}/events?peerId=&since=` |
+| Poll | `GET /rooms/{roomId}/events?peerId=&since=&sig=` |
 | Send | `POST /rooms/{roomId}/events` |
 | Leave | `DELETE /rooms/{roomId}/participants/{participantId}` |
 | Chat | `POST /rooms/{roomId}/messages` |
@@ -28,6 +28,17 @@ Meet **UI** is in `packages/apps` (`meet-core`); client RTC channel is `meet`.
 | Patch expiry | `PATCH /meetings/rooms/{roomId}` (`expiresAt`; `createdBy` or owner-principal member) |
 
 For meet rooms, `roomId` equals the room code (e.g. `abcd-efgh-jklm`). The code uses the mint alphabet only: `[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}-[a-hj-np-z2-9]{4}` (no `i`, `o`, `0`, or `1`).
+
+## Acked mailboxes (`since-ack`)
+
+Meet used to delete a message when it was *read*, so a lost poll response dropped the offer, the answer, ICE candidates, chat, or an `admit` for good — a guest in the lobby waited forever (#1086). `since` is now an **acknowledgement**, per peer:
+
+- A peer that advertises the `caps: ["since-ack"]` capability on join polls with `RtcSignalingPollMode::SinceCursor`. On every poll, rows with `id <= since` for that peer are deleted and rows above it are returned with their `id`. A response that never arrives leaves the cursor where it was, so the next poll redelivers the same rows — exactly once each, because the client acks every row it receives, chat and control included, and whether or not it is handling RTC signals.
+- A peer **without** the capability keeps `RtcSignalingPollMode::DeleteOnRead` and gets no row ids. That is what stops a cached old client from being handed its whole mailbox on every poll, and it is why a mixed room (one old client, one new) works for both.
+- The ack runs before the conditional 204 fast path, so a `{unchanged: true}` poll still shrinks the mailbox.
+- Message retention (600 s) and the peer-timeout sweep still prune whatever no cursor ever reaches.
+
+Client side: `createRtcSignalingClient()` advertises `since-ack` for the `meet` channel, and `MeshSignalInbox` owns the cursor. The poll `fetch` carries `AbortSignal.timeout(10_000)` so a hung request cannot wedge the poll loop.
 
 ## Channel-linked rooms (chat ACL join policy)
 
@@ -40,6 +51,12 @@ A call in a chat channel uses the deterministic room id = the channel collection
 - Authenticated callers still join a room with no channel directly. Guests do not, except an unreserved ad-hoc code.
 
 `MAX_PEERS_PER_ROOM` (4) is unchanged and counts knocking peers too — a channel call fills up host slots and pending knockers alike.
+
+**The lobby is not the call** (#1099). As long as a peer row carries the knock name prefix (`__wgw_knock__:`), the server treats it as waiting, on every room kind:
+
+- `POST /rooms/{roomId}/events` with type `offer`, `answer`, or `ice` from that row is `forbidden` (403). Media negotiation is impossible until the knocker re-joins without the prefix, so a waiting peer can no longer be seen or heard before admission. `bye` still passes.
+- `POST /rooms/{roomId}/messages` skips knock rows in its fan-out, so room chat is unreadable while someone waits, channel echoes included. The one exception is the decision that ends the wait: an `admit` or `deny` control message is delivered to the knocker it names. Other control kinds (`end`, `mute`, `media`) stay inside the call.
+- A knocker may still *send* chat — that is how the `knock` control message reaches the hosts.
 
 **Same-browser leftovers.** Join accepts an optional `browserId` (32 hex, minted in `localStorage` as `wgw.rtc.browserId`). When present, other peers in the room with that id are evicted immediately — a reload or second tab on the same device replaces the ghost instead of showing two avatars. A second device has its own token and both peers stay. Omitting `browserId` (old clients, tests) keeps the previous behavior.
 

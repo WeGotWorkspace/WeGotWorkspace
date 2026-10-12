@@ -10,14 +10,13 @@ import {
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
-  wgwApiBaseUrl,
   wgwCompleteLogoutNavigation,
   wgwCurrentAccessToken,
   wgwEnsureFreshAccessToken,
   wgwIsGuestSession,
   wgwLiveApiEnabled,
 } from "@/lib/api/wgw/http";
-import { encodeFileRoomId } from "@/lib/rtc/room-id";
+import { buildDocsCollabUrls } from "@/docs-core/src/docs-collab-urls";
 import type { DocsAppProps } from "@/docs-core/src/docs-app-props";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { docsLabels } from "@/docs-core/src/docs-labels";
@@ -173,17 +172,15 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
 
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
-    const baseUrl = wgwApiBaseUrl();
-    const room = filePath.replace(/^\/+/, "");
-    const roomId = encodeFileRoomId(room);
-    const pathQuery = encodeURIComponent(room);
+    const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
+      buildDocsCollabUrls(filePath);
     return {
-      signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,
-      collabApiBaseUrl: `${baseUrl}/rooms`,
-      collabRtcUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/configuration`,
+      signalUrl,
+      collabApiBaseUrl,
+      collabRtcUrl,
       authToken: collabAuthToken,
-      documentUrl: `${baseUrl}/files/collaboration?path=${pathQuery}`,
-      yjsUrl: `${baseUrl}/files/collaboration?path=${pathQuery}&format=yjs`,
+      documentUrl,
+      yjsUrl,
       documentSaveMethod: "PUT" as const,
       room,
     };

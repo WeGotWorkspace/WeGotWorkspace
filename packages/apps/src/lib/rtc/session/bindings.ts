@@ -1,3 +1,4 @@
+import { FrameReassembler, ingestDataChannelData } from "@/lib/rtc/session/data-channel-frames";
 import type { RtcLinkState } from "@/lib/rtc/types";
 
 export type MediaBindingOptions = {
@@ -41,10 +42,18 @@ export type DataBindingOptions = {
 };
 
 export function createDataBinding(options: DataBindingOptions) {
+  const reassembler = new FrameReassembler();
   const attachChannel = (remoteId: string, channel: RTCDataChannel) => {
+    channel.binaryType = "arraybuffer";
     channel.onopen = () => options.onOpen?.(remoteId, channel);
-    channel.onclose = () => options.onClose?.(remoteId);
-    channel.onmessage = (event) => options.onMessage?.(remoteId, String(event.data));
+    channel.onclose = () => {
+      reassembler.dropRemote(remoteId);
+      options.onClose?.(remoteId);
+    };
+    channel.onmessage = (event) => {
+      const text = ingestDataChannelData(reassembler, remoteId, event.data);
+      if (text !== null) options.onMessage?.(remoteId, text);
+    };
     return channel;
   };
 

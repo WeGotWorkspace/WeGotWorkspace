@@ -11,9 +11,7 @@ export function useMeetAPI(source?: MeetApiSource) {
       defaultDisplayName: "Guest",
       rtc: {
         stunUrls: "",
-        turnUrls: "",
-        turnUsername: "",
-        turnPassword: "",
+        turnAvailable: false,
         forceRelay: false,
       },
     }),

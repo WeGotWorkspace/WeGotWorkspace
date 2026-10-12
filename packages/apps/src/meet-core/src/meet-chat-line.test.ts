@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildMeetChannelChatEcho,
+  meetRoomChatEchoText,
+} from "@/meet-core/src/meet-channel-chat-echo";
+import {
   buildLocalMeetChatLine,
   buildMeetChatLineFromPoll,
   meetChatLineToChannelMessage,
+  meetPollChatLine,
   mergeMeetRoomChatIntoChannel,
   type MeetChatLine,
 } from "@/meet-core/src/meet-chat-line";
@@ -168,5 +173,64 @@ describe("meet chat line", () => {
     };
 
     expect(mergeMeetRoomChatIntoChannel([saved], [echo], "chat-test")).toEqual([saved]);
+  });
+});
+
+describe("mergeMeetRoomChatIntoChannel echo matching", () => {
+  const saved: ChatMessage = {
+    id: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    channelId: "chat-test",
+    authorId: "member",
+    authorName: "Member",
+    body: "ok",
+    createdAt: 1,
+    reactions: [],
+    mentions: [],
+    previews: [],
+  };
+
+  /** A peer's room line as the poll delivers it, echo marker and all. */
+  function roomLine(text: string): MeetChatLine {
+    return meetPollChatLine("PEERID", "Mallory", text, "self-1", 2);
+  }
+
+  it("shows a forged echo whose id is not in the channel", () => {
+    const line = roomLine(buildMeetChannelChatEcho("01ARZ3NDEKTSV4RRFFQ69G5FB0", "guests only"));
+
+    const merged = mergeMeetRoomChatIntoChannel([saved], [line], "chat-test");
+
+    expect(merged.map((row) => row.body)).toEqual(["ok", "guests only"]);
+  });
+
+  it("shows a forged echo that claims a real id with different text", () => {
+    const line = roomLine(buildMeetChannelChatEcho(saved.id, "guests only"));
+
+    const merged = mergeMeetRoomChatIntoChannel([saved], [line], "chat-test");
+
+    expect(merged.map((row) => row.body)).toEqual(["ok", "guests only"]);
+  });
+
+  it("shows a real echo once before the channel row lands and once after", () => {
+    const line = roomLine(buildMeetChannelChatEcho(saved.id, "ok"));
+
+    expect(mergeMeetRoomChatIntoChannel([], [line], "chat-test").map((row) => row.body)).toEqual([
+      "ok",
+    ]);
+    expect(mergeMeetRoomChatIntoChannel([saved], [line], "chat-test")).toEqual([saved]);
+  });
+
+  it("matches a real echo that the room text limit truncated", () => {
+    const row = { ...saved, body: "x".repeat(2_500) };
+    const line = roomLine(meetRoomChatEchoText(row.id, row.body));
+
+    expect(line.body).not.toBe(row.body);
+    expect(mergeMeetRoomChatIntoChannel([row], [line], "chat-test")).toEqual([row]);
+  });
+
+  it("matches a real echo that differs only in surrounding whitespace", () => {
+    const row = { ...saved, body: "  ok  " };
+    const line = roomLine(buildMeetChannelChatEcho(row.id, "ok"));
+
+    expect(mergeMeetRoomChatIntoChannel([row], [line], "chat-test")).toEqual([row]);
   });
 });

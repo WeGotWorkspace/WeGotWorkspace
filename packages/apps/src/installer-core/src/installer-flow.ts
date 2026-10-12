@@ -82,8 +82,7 @@ export function buildInstallerInstallPayload(
     meet_enabled: true,
     rtc_stun_url: DEFAULT_PUBLIC_STUN_URLS_CSV,
     rtc_turn_url: "",
-    rtc_turn_username: "",
-    rtc_turn_credential: "",
+    rtc_turn_secret: "",
   };
 }
 

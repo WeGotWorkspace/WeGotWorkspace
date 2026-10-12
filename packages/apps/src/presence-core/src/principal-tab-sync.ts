@@ -72,6 +72,8 @@ export type PrincipalTabSyncHandlers = {
   }) => void;
   onEnvelopeFromLeader: (msg: { peerId: string; envelope: PresenceEnvelope }) => void;
   onRosterFromLeader: (snapshot: PrincipalRosterSnapshot) => void;
+  /** Pagehide on the tab that owns the principal session. Followers must not leave. */
+  onOwnerPageHide?: () => void;
 };
 
 export function createPrincipalTabId(): string {
@@ -106,8 +108,8 @@ export function pruneStalePrincipalTabs(
  * background tabs often stop timers under Chrome throttling while still open.
  *
  * Only when there is no known leader (cold start or after explicit handoff),
- * pick the lexicographically smallest non-stale tab id. Unlike docs-collab,
- * visibility must not bounce leadership.
+ * pick the lexicographically smallest non-stale tab id. Visibility must not
+ * bounce leadership.
  */
 export function electStickyLeaderTabId(
   tabs: ReadonlyMap<string, PrincipalTabPresence>,
@@ -123,7 +125,7 @@ export function electStickyLeaderTabId(
   return candidates[0]?.tabId ?? null;
 }
 
-/** Principal mesh keeps leadership across hide; docs-collab resigns — this is always false. */
+/** Principal mesh keeps leadership across hide. */
 export function shouldResignPrincipalOnHide(_isLeader: boolean, _visible: boolean): boolean {
   return false;
 }
@@ -231,6 +233,7 @@ export class PrincipalTabCoordinator {
       this.runElection();
     };
     this.onPageHide = () => {
+      if (this.isLeader) this.handlers.onOwnerPageHide?.();
       this.resignLeadership();
       this.post({ type: "tab-leave", tabId: this.tabId, at: Date.now() });
     };

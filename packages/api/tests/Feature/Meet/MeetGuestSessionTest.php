@@ -26,7 +26,7 @@ final class MeetGuestSessionTest extends WgwDatabaseTestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['peers', 'sessionKey']);
-        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', (string) $response->json('sessionKey'));
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', (string) $response->json('sessionKey'));
     }
 
     public function test_poll_requires_session_or_auth(): void

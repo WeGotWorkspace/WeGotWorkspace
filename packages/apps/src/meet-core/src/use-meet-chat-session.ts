@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChatMentionPrincipal, ChatSendPayload } from "@/chat-ui/src/chat-types";
 import {
+  meetRoomChatEchoId,
+  type MeetChannelChatSend,
+} from "@/meet-core/src/meet-channel-chat-echo";
+import {
   meetChannelMessages,
   meetThreadParent,
   meetThreadReplies,
@@ -61,24 +65,32 @@ export function useMeetChatSession({
     setMessages((current) => upsertMeetChatMessage(current, message));
   }, []);
 
+  /**
+   * The id is handed back before the save settles: the live call posts its room
+   * copy with it straight away, so a guest never waits on the channel write.
+   */
   const sendChannel = useCallback(
-    async (payload: ChatSendPayload): Promise<ChatMessage | null> => {
-      if (!selectedChannelId) return null;
-      const saved = operations?.sendMessage
-        ? await operations.sendMessage(selectedChannelId, payload.body)
-        : {
-            id: `local-${Date.now()}`,
-            channelId: selectedChannelId,
-            authorId: author.id,
-            authorName: author.displayName,
-            body: payload.body,
-            createdAt: Date.now(),
-            reactions: [],
-            mentions: payload.mentions,
-            previews: [],
-          };
-      applyMessage(saved);
-      return saved;
+    (payload: ChatSendPayload): MeetChannelChatSend => {
+      if (!selectedChannelId) return { echoId: null, saved: Promise.resolve(null) };
+      const messageId = operations?.newMessageId?.() ?? `local-${Date.now()}`;
+      const saved = (async (): Promise<ChatMessage> => {
+        const row = operations?.sendMessage
+          ? await operations.sendMessage(selectedChannelId, payload.body, { messageId })
+          : {
+              id: messageId,
+              channelId: selectedChannelId,
+              authorId: author.id,
+              authorName: author.displayName,
+              body: payload.body,
+              createdAt: Date.now(),
+              reactions: [],
+              mentions: payload.mentions,
+              previews: [],
+            };
+        applyMessage(row);
+        return row;
+      })();
+      return { echoId: meetRoomChatEchoId(messageId), saved };
     },
     [applyMessage, author, operations, selectedChannelId],
   );
