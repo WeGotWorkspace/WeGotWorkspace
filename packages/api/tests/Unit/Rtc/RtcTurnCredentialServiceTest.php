@@ -7,6 +7,7 @@ namespace Tests\Unit\Rtc;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Rtc\RtcTurnCredentialService;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Support\Env;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
@@ -119,6 +120,46 @@ final class RtcTurnCredentialServiceTest extends WgwDatabaseTestCase
             $this->assertSame(RtcTurnCredentialService::username('u:alice', $now + 86_400), $high['username']);
         } finally {
             config(['wgw.rtc.turn_ttl_seconds' => $previous]);
+        }
+    }
+
+    public function test_ttl_seconds_uses_env_fallback_and_clamp(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => 'north',
+        ]);
+        $repository = Env::getRepository();
+        $hadEnv = $repository->has('WGW_RTC_TURN_TTL_SECONDS');
+        $previousEnv = $hadEnv ? $repository->get('WGW_RTC_TURN_TTL_SECONDS') : null;
+        $previousConfig = config('wgw.rtc.turn_ttl_seconds');
+        $cases = [
+            '' => 3600,
+            'abc' => 3600,
+            '0' => 300,
+            '100' => 300,
+            '999999' => 86400,
+        ];
+
+        try {
+            foreach ($cases as $raw => $expected) {
+                $repository->set('WGW_RTC_TURN_TTL_SECONDS', (string) $raw);
+                /** @var array{rtc: array{turn_ttl_seconds: mixed}} $loaded */
+                $loaded = require config_path('wgw.php');
+                config(['wgw.rtc.turn_ttl_seconds' => $loaded['rtc']['turn_ttl_seconds']]);
+
+                $turn = (new RtcTurnCredentialService(new RtcSettingsService))->mint('u:alice', 1_700_000_000);
+
+                $this->assertNotNull($turn);
+                $this->assertSame($expected, $turn['ttl'], 'env '.var_export($raw, true));
+            }
+        } finally {
+            if ($hadEnv && is_string($previousEnv)) {
+                $repository->set('WGW_RTC_TURN_TTL_SECONDS', $previousEnv);
+            } elseif ($repository->has('WGW_RTC_TURN_TTL_SECONDS')) {
+                $repository->clear('WGW_RTC_TURN_TTL_SECONDS');
+            }
+            config(['wgw.rtc.turn_ttl_seconds' => $previousConfig]);
         }
     }
 
