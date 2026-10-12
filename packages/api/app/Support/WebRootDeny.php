@@ -21,6 +21,11 @@ final class WebRootDeny
 
 HTACCESS;
 
+    private const LEGACY_LINES = [
+        'RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)',
+        'RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)',
+    ];
+
     public static function ensure(string $dataDir): void
     {
         $dir = rtrim($dataDir, '/');
@@ -109,6 +114,13 @@ HTACCESS;
 
     private static function insertManagedDenyBlock(string $htaccess, string $block): string
     {
+        foreach (self::LEGACY_LINES as $line) {
+            $stripped = preg_replace('/^'.preg_quote($line, '/').'\R?/m', '', $htaccess);
+            if (is_string($stripped)) {
+                $htaccess = $stripped;
+            }
+        }
+
         if (preg_match('/^Options\b[^\r\n]*/m', $htaccess, $match, PREG_OFFSET_CAPTURE) === 1) {
             $start = $match[0][1];
             $line = $match[0][0];

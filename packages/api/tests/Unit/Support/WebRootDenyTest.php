@@ -106,6 +106,30 @@ final class WebRootDenyTest extends TestCase
         $this->assertStringContainsString("# admin-custom\nphp_value memory_limit 256M\n", $replaced);
     }
 
+    public function test_ensure_root_rules_drops_legacy_unanchored_lines_and_keeps_admin_edits(): void
+    {
+        $root = $this->tempRoot();
+        $path = $root.'/.htaccess';
+        $legacyTree = 'RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)';
+        $legacyDot = 'RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)';
+        $custom = '# admin-custom-keep';
+        file_put_contents(
+            $path,
+            "Options -Indexes -MultiViews\n".$legacyTree."\n".$legacyDot."\n".$custom."\n",
+        );
+
+        $this->assertTrue(WebRootDeny::ensureRootRules($root));
+        $contents = (string) file_get_contents($path);
+
+        $this->assertStringNotContainsString($legacyTree, $contents);
+        $this->assertStringNotContainsString($legacyDot, $contents);
+        $this->assertSame(1, substr_count($contents, '# BEGIN wgw-deny'));
+        $this->assertSame(1, substr_count($contents, '# END wgw-deny'));
+        $this->assertStringContainsString($this->managedDenyBlock(), $contents);
+        $this->assertSame(1, substr_count($contents, $custom));
+        $this->assertStringContainsString($custom."\n", $contents);
+    }
+
     public function test_ensure_root_rules_inserts_at_the_top_when_options_is_missing(): void
     {
         $root = $this->tempRoot();
