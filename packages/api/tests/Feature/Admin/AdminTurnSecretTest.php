@@ -49,6 +49,8 @@ final class AdminTurnSecretTest extends WgwDatabaseTestCase
                 'turnStaticCredentialsPresent',
                 'maxVideoProfile',
                 'maxVideoProfileRelay',
+                'debugLogging',
+                'forceRelay',
             ],
             array_keys((array) $response->json('rtc')),
         );

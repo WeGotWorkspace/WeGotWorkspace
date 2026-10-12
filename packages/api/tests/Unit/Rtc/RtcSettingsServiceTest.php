@@ -20,9 +20,11 @@ final class RtcSettingsServiceTest extends WgwDatabaseTestCase
 
         $settings = (new RtcSettingsService)->publicSettings();
 
-        $this->assertSame(['stunUrls', 'turnAvailable'], array_keys($settings));
+        $this->assertSame(['stunUrls', 'turnAvailable', 'forceRelay', 'debug'], array_keys($settings));
         $this->assertSame('stun:stun.example.com:3478', $settings['stunUrls']);
         $this->assertTrue($settings['turnAvailable']);
+        $this->assertFalse($settings['forceRelay']);
+        $this->assertFalse($settings['debug']);
     }
 
     public function test_turn_urls_normalize_bare_hosts(): void

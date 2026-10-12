@@ -47,7 +47,6 @@ export function useMeetCallSession({
   const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
   const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
   const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
-  const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
 
@@ -179,7 +178,7 @@ export function useMeetCallSession({
 
   useEffect(() => {
     debugRtc("controller-init", {
-      rtcDebugEnabled: rtcDebugEnabledRef.current,
+      rtcDebugEnabled: isRtcDebugEnabled(),
       stunCount: parseUrlList(rtc.stunUrls, "stun").length,
       forceRelay: rtc.forceRelay,
       turnAvailable: rtc.turnAvailable,

@@ -109,7 +109,7 @@ export class RtcPeerMesh {
   private readonly options: RtcPeerMeshOptions;
 
   constructor(options: RtcPeerMeshOptions) {
-    // Meet, collab, and principal all honor `?rtcForceRelay=1`. Principal used
+    // Meet, collab, and principal all honor admin/test forced relay. Principal used
     // to clear the flag, so its peer connection stayed on `iceTransportPolicy: all`.
     const rtcSettings =
       options.channel === "meet" || options.channel === "collab" || options.channel === "principal"

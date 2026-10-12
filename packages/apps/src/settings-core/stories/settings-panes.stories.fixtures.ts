@@ -12,6 +12,7 @@ export function getProfileFormDefaults(
     email: data.user.email,
     newPassword: "",
     confirmPassword: "",
+    currentPassword: "",
     ...overrides,
   };
 }

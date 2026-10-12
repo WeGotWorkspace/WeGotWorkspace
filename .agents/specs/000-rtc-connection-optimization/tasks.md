@@ -25,7 +25,7 @@ Source plan: [plan.md](./plan.md)
 
 ## Phase 3b live + test verification (all passed)
 
-`?rtcDebug=1` stays a number. Isolated cookies: cursor-ide-browser vs Chrome DevTools. Doc: `/docs?file=groups%2Fadministrators%2Fteam-notes.md` on `http://127.0.0.1:5173`.
+RTC logs: Admin → Real-time collaboration → Diagnostics → Detailed connection logs (reload after changing). Isolated cookies: cursor-ide-browser vs Chrome DevTools. Doc: `/docs?file=groups%2Fadministrators%2Fteam-notes.md` on `http://127.0.0.1:5173`.
 
 1. [x] **Reuse-hit.** Both users idle until principal mesh is up; one opens the doc, the other follows. Console: `reuse-hit` then `dc-open` `{ reused: true }` — not a fresh ICE round. (live ✓)
 2. [x] **Bidirectional Yjs over reuse.** A→B and B→A updates appear in the other doc on the reused DC; sender must not apply their own echo. (live ✓)

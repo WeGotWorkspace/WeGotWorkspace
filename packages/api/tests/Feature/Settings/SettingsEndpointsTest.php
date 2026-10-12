@@ -52,6 +52,7 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
         $profile = $this->withBearer($token)->putJson('/api/v1/settings/profile', [
             'displayName' => 'Alice Updated',
             'email' => 'alice.updated@example.test',
+            'currentPassword' => 'secret',
         ]);
         $profile->assertOk();
         $profile->assertJsonPath('user.displayName', 'Alice Updated');
@@ -82,7 +83,7 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
             ->assertJsonPath('mail.imapHasPassword', true);
     }
 
-    public function test_settings_mail_save_persists_password_and_syncs_profile_email(): void
+    public function test_settings_mail_save_persists_password_without_changing_profile_email(): void
     {
         $token = $this->issueBearerToken();
 
@@ -91,7 +92,7 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
             'imapPassword' => 'mail-secret',
         ])
             ->assertOk()
-            ->assertJsonPath('user.email', 'alice@imap.example.test')
+            ->assertJsonPath('user.email', 'old@example.test')
             ->assertJsonPath('mail.imapUsername', 'alice@imap.example.test')
             ->assertJsonPath('mail.imapHasPassword', true);
 

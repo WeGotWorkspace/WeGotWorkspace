@@ -33,6 +33,30 @@
           }
         }
       },
+      "SettingsProfileRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 4096,
+            "description": "Current password. Required when password or email is changed."
+          },
+          "refreshToken": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "Current device refresh token. Sent with a password change so this session stays signed in."
+          }
+        }
+      },
       "AuthTokenResponse": {
         "type": "object",
         "required": [
@@ -5860,6 +5884,16 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsProfileRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Updated settings state",

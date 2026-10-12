@@ -23,6 +23,7 @@ import {
   waitForRemoteVideo,
   type ChaosSession,
 } from "./helpers/rtc-chaos";
+import { setRtcTestOverrides } from "./helpers/rtc-test-overrides";
 
 /**
  * Real-time chaos suite (#1091). Every scenario in this file runs; none are
@@ -197,7 +198,12 @@ test("forced HTTP fallback syncs two editors (#1095)", async ({ browser }) => {
   const [left, right] = sessions;
   try {
     await uploadMarkdown(apiPath, "# HTTP fallback\n");
-    const url = `${docsUrlForFile(apiPath)}&rtcForceRelay=1`;
+    await Promise.all(
+      sessions.map((session) =>
+        setRtcTestOverrides(session.context, { debug: true, forceRelay: true }),
+      ),
+    );
+    const url = docsUrlForFile(apiPath);
     await Promise.all([left.page.goto(url), right.page.goto(url)]);
     await expect(left.page.locator(".ProseMirror")).toBeVisible();
     await expect(right.page.locator(".ProseMirror")).toBeVisible();
@@ -228,7 +234,7 @@ test("two browsers of one user keep edits moving without reuse fallback", async 
     await uploadMarkdown(apiPath, `# Notes\n\n${seed}\n`);
     await adminA.page.goto("/docs");
     await shareWithViewer(adminA.page, apiPath, member.username, "edit");
-    const url = `${docsUrlForFile(apiPath)}&rtcDebug=1`;
+    const url = docsUrlForFile(apiPath);
     await Promise.all(sessions.map((session) => session.page.goto(url)));
     for (const session of sessions) await waitForLiveDoc(session.page, seed);
 
