@@ -13,19 +13,19 @@ Enable browser logging with **Admin → Real-time collaboration → Detailed con
 
 | ID | Scenario | Steps | Pass criteria | Manual |
 | -- | -------- | ----- | ------------- | ------ |
-| N0 | Direct LAN | Two browsers, same network, meet room | `[rtc][meet][…][selected-pair]` shows `host` or `srflx`; A/V connected | |
-| N1 | Guest meet TURN | Guest join URL (no auth) | Configuration returns `turnAvailable` only. Credentials come from `POST /rooms/{id}/relay`. A knocking peer receives 403 | |
-| N2 | Docs collab | Two users, same doc | Data channel open; Yjs sync; `[rtc][collab][…][dc-open]` | Passed 2026-10-07/08 ([M1](#manual-runs-2026-10-07-08), [M3](#manual-runs-2026-10-07-08)) |
-| N3 | Force relay (debug) | Admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1`, or a Playwright `forceRelay` override | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | |
+| N0 | Direct LAN | Two browsers, same network, meet room | `[rtc][meet][…][selected-pair]` shows `host` or `srflx`; A/V connected | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N1 | Guest meet TURN | Guest join URL (no auth) | Configuration returns `turnAvailable` only. Credentials come from `POST /rooms/{id}/relay`. A knocking peer receives 403 | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N2 | Docs collab | Two users, same doc | Data channel open; Yjs sync; `[rtc][collab][…][dc-open]` | Passed 2026-10-07/08 ([M1](#manual-runs-2026-10-07-08), [M3](#manual-runs-2026-10-07-08)); reconfirmed 2026-10-12 |
+| N3 | Force relay (debug) | Admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1`, or a Playwright `forceRelay` override | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | Meet passed 2026-10-12 via test override ([M5](#manual-runs-2026-10-12)); Docs+iPhone 4G row still open |
 | N4 | Relay fallback | Symmetric NAT or firewall block direct | `[relay-fallback-start]` then `[relay-fallback-offer-sent]` or connected | |
 | N5 | Hotspot | Phone hotspot client | Session connects (often via `relay`); no endless `failed` | |
-| N6 | Unknown peer recovery | Docs: stale tab after server prune | `[peer-recover-start]` / `[peer-recover-success]` | |
-| N7 | Poll steady | In-call 5+ minutes | Poll continues; no HTML error responses | |
-| N8 | Leave cleanup | Leave meet/docs | Peers removed; `/leave` succeeds | |
-| N9 | Collab signaling API | `pnpm test:collab-api` | join/poll/send/leave return JSON | |
-| N10 | Meet signaling API | `pnpm test:meet-api` | Guest join/poll/leave on `/api/v1/rooms/*` return JSON | |
-| N11 | Meet mesh smoke | Two tabs, same room, detailed connection logs on | `[rtc][meet][…][pc-connection-state]` has `connectionState` `connected`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console | |
-| N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate | |
+| N6 | Unknown peer recovery | Docs: stale tab after server prune | `[peer-recover-start]` / `[peer-recover-success]` | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N7 | Poll steady | In-call 5+ minutes | Poll continues; no HTML error responses | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N8 | Leave cleanup | Leave meet/docs | Peers removed; `/leave` succeeds | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N9 | Collab signaling API | `pnpm test:collab-api` | join/poll/send/leave return JSON | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N10 | Meet signaling API | `pnpm test:meet-api` | Guest join/poll/leave on `/api/v1/rooms/*` return JSON | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N11 | Meet mesh smoke | Two tabs, same room, detailed connection logs on | `[rtc][meet][…][pc-connection-state]` has `connectionState` `connected`; inbound RTP bytes increase; remote tile shows A/V; outbound offer SDP includes `m=audio` and `m=video`; no `Illegal invocation` in console | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
+| N12 | Guest meet control | Guest knock URL (no auth) → host admits | Guest reaches `in-call`; knock/admit chat control works; guest `sessionKey` on poll/chat; media presence toggles propagate | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N13 | iOS Safari remote audio | **Human-only.** Join a Meet call in iOS Safari | Remote audio stays silent until a user gesture, then plays | |
 | N14 | Installed PWA camera | **Human-only.** Open the installed PWA in standalone mode and join a Meet call | Camera permission succeeds in standalone mode and local video shows | |
 | N15 | Resume from background | **Human-only.** On iOS Safari and on the installed PWA, background a Meet call or Docs session, then return | The client polls immediately and restarts ICE; the call or document stays connected | |
@@ -90,4 +90,44 @@ Build under test was `integration/rtc-hardening` after #1192 (merge `9deca552`) 
 - Symmetric NAT on both sides.
 - The chaos "two browsers" scenario with `WGW_CHAOS_ALLOW_MDNS=1`.
 
-N4, N5, and N13–N15 were not re-executed. N4 and N5 need a second network (symmetric NAT or a phone hotspot). N13–N15 need a person on iOS Safari and the installed PWA. This note is not a pass of those scenarios. The 2026-10-07/08 manual runs passed N2 only. Still open, with no passing manual run: N0, N1, N3, N4, N5, N6, N7, N8, N9, N10, N11, N12, N13, N14, and N15. N3 stays open because M2 covered only a short collab relay window and F1 was not reproduced as a stable failure. The Still to run (B8) items were not run.
+N4, N5, and N13–N15 were not re-executed in 2026-10-07/08. See [M5](#manual-runs-2026-10-12) for the 2026-10-12 local pass of N0–N3 (Meet), N6–N12.
+
+<a id="manual-runs-2026-10-12"></a>
+
+## Manual runs — 2026-10-12
+
+Tracked on [#1204](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1204). Build under test: local Vite + API on `main` after [#1214](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1214) (RTC admin diagnostics). Debug via Admin **Detailed connection logs** (URL `rtcDebug` / `rtcForceRelay` params removed). Console filter: `rtc`.
+
+### Passed (M5)
+
+| ID | Setup | Channel | Path | Result |
+|---|---|---|---|---|
+| N0 | Two browsers, same LAN | Meet | Direct | `selected-pair` host/srflx; `pc-connection-state` connected; A/V OK |
+| N1 | Guest knock room `xn4f-396b-4yau` | Meet | TURN credentials | Knocker `POST …/relay` **403**; post-admit **200** `issued`. After clearing a leftover guest `forceRelay` override: both peers `iceTransportPolicy: all`, connected, A/V OK |
+| N2 | Two users, same doc | Docs | Direct | Reconfirmed `dc-open` + Yjs sync (already green from M1/M3) |
+| N3 | Meet `HC5CTEFTGW` ↔ `SN2ZGW6KNP` | Meet | Forced relay via `__WGW_RTC_TEST_OVERRIDES__.forceRelay` | Both `iceTransportPolicy: relay`, relay candidates, connected, A/V OK. Admin force-relay did not reach Meet until [#1220](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1220) (signed-in bearer). Principal under the same override is out of scope for N3 |
+| N6 | Docs; debugger-pause prune | Docs | Direct | Poll 404 → `[peer-recover-start]` / `[peer-recover-success]`; `dc-open reused` + sync. Relay POST 503 expected without coturn |
+| N7 | Docs soak ~7+ min on `groups/administrators/Shared.md` | Docs | Direct | Steady `poll` / `204` / `poll-unchanged`; tab-hide → 60s then `visibility-poll-restore`; `leave` 200. No HTML / no `poll-failed` |
+| N8 | Leave Meet/Docs | Meet / Docs | — | Leave cleanup 2xx |
+| N9 | `pnpm test:collab-api` | Collab API | — | Pass |
+| N10 | `pnpm test:meet-api` | Meet API | — | Pass |
+| N11 | Two tabs, same room | Meet | Direct | Mesh smoke: connected + A/V |
+| N12 | Ad-hoc `j6hb-2hq2-ssqf` | Meet guest | Direct | Knock → `sessionKey` on poll → admit re-join → connected. Transient knocker `POST …/messages` 403 before admit is expected |
+
+### Still open after M5
+
+| ID | Why |
+|---|---|
+| N3 (Docs + iPhone 4G) / Long TTL / UDP-blocked TCP TURN | Need coturn + second network as written on #1204 |
+| N4 | Real symmetric NAT / dual-network |
+| N5 | Phone hotspot |
+| N13–N15 | Human-only iOS Safari / installed PWA |
+| `pnpm test:rtc-relay` | Optional when local coturn is up |
+
+### Bugs found in M5
+
+| Issue | Status |
+|---|---|
+| [#1218](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1218) signed-in Meet bootstrap without bearer | Fixed in [#1220](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1220) (`55c506e`) |
+| [#1217](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1217) host mute waited on ~4s idle poll | Fixed in [#1221](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1221) (`b704ee8`) |
+| [#1219](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1219) guest bootstrap still has no STUN/TURN | Open — needs post-join `sessionKey` refetch + mid-session ICE replace |
