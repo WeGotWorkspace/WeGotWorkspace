@@ -18,7 +18,7 @@ const meta = {
   ),
   parameters: meetStoryParameters({
     componentDescription:
-      "Visible lobby banner for people waiting to join. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
+      "Visible lobby banner (MeetCallKnockQueue) for people waiting to join. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
   }),
 } satisfies Meta<typeof MeetKnockBadge>;
 

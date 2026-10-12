@@ -16,7 +16,7 @@ import {
 } from "@/meet-core/stories/meet-pane-stories.fixtures";
 
 function stage(screenOn: boolean) {
-  const controller = createMeetStoryController(createRef(null), {
+  const controller = createMeetStoryController(createRef<HTMLVideoElement>(), {
     screenOn,
     peers: STORY_MEET_PEERS,
     videoOn: false,
