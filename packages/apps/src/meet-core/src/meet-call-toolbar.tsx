@@ -20,7 +20,6 @@ import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import { isDisplayCaptureSupported } from "@/meet-core/src/meet-display-capture";
 import { MeetScreenShareControl } from "@/meet-core/src/meet-screen-share-control";
 import type { ScreenOptimize } from "@/meet-core/src/meet-video-sender";
-import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
 type MeetCallToolbarProps = {
@@ -98,9 +97,9 @@ export function MeetCallToolbar({
   onConfirmExit,
   confirmExit = true,
   extraActions,
-  knockers = [],
-  onAdmitKnocker,
-  onDenyKnocker,
+  knockers: _knockers = [],
+  onAdmitKnocker: _onAdmitKnocker,
+  onDenyKnocker: _onDenyKnocker,
 }: MeetCallToolbarProps) {
   const shareAvailable = canShareScreen ?? isDisplayCaptureSupported();
   const videoLabel = videoLocked
@@ -160,9 +159,6 @@ export function MeetCallToolbar({
         onLowDataChange={onLowDataChange}
       />
       {extraActions}
-      {onAdmitKnocker && onDenyKnocker ? (
-        <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
-      ) : null}
       <span className="floating-action-bar__spacer" aria-hidden />
       {confirmExit ? (
         <AlertDialog>

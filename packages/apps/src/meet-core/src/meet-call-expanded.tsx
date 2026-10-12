@@ -1,19 +1,23 @@
 import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
-import { MessageSquare, Minimize2, Video } from "lucide-react";
+import { MessageSquare, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
 import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGridColumns,
+  meetCallPeerMicOn,
   meetCallPeerScreenSharing,
   type MeetCallSpotlightPeer,
 } from "@/meet-core/src/meet-call-spotlight";
+import { MEET_MINI_PLAYER_SPEECH_ON } from "@/meet-core/src/meet-mini-player-subject";
+import { useMeetSpeechLevels } from "@/meet-core/src/use-meet-speech-levels";
 import type { MeetCallStageRoomProps } from "@/meet-core/src/meet-call-stage";
 import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { remoteVideoSuppressed } from "@/meet-core/src/meet-video-sender";
+import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
 import { cn } from "@/lib/utils";
@@ -29,6 +33,8 @@ export type MeetCallExpandedProps = MeetCallStageRoomProps & {
   chatOpen?: boolean;
   defaultChatOpen?: boolean;
   onToggleChat?: () => void;
+  /** Sample speech for the speaking tag. Off while the stage is parked. */
+  monitorSpeech?: boolean;
   className?: string;
 };
 
@@ -65,19 +71,21 @@ function MeetCallChatToggle({ open, onToggle }: { open: boolean; onToggle: () =>
 export function MeetCallExpanded({
   chat: _chat,
   channelTitle,
-  onCollapse,
+  onCollapse: _onCollapse,
   onLeave,
   sidebarOpen = false,
   onToggleSidebar,
   chatOpen: chatOpenProp,
   defaultChatOpen,
   onToggleChat,
+  monitorSpeech = true,
   className,
   ...room
 }: MeetCallExpandedProps) {
   const [uncontrolledChatOpen, setUncontrolledChatOpen] = useState(
     () => defaultChatOpen ?? defaultMeetCallChatOpen(),
   );
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
   const chatOpen = chatOpenProp ?? uncontrolledChatOpen;
   const toggleChat = useCallback(() => {
     onToggleChat?.();
@@ -86,9 +94,24 @@ export function MeetCallExpanded({
   const self = selfPeer(room);
   const remotes = room.controller.peers;
   const sharing = room.controller.screenOn;
+  const waitingForAdmission = room.controller.waitingForAdmission;
+  const levels = useMeetSpeechLevels(
+    [
+      {
+        id: self.id,
+        stream: self.stream,
+        enabled: room.controller.micOn,
+      },
+      ...remotes.map((peer) => ({
+        id: peer.id,
+        stream: peer.stream ?? null,
+        enabled: meetCallPeerMicOn(peer),
+      })),
+    ],
+    monitorSpeech && !waitingForAdmission,
+  );
   // Chunk-I knock chrome: knocker-side wait state on the stage; member-side
   // admit/deny lives on the action-row icon (guests never moderate knocks).
-  const waitingForAdmission = room.controller.waitingForAdmission;
   const knockers = room.hasSignedInIdentity && !waitingForAdmission ? room.controller.knockers : [];
   const cancelKnock = useCallback(() => {
     onLeave?.();
@@ -97,18 +120,47 @@ export function MeetCallExpanded({
   }, [onLeave, room.controller]);
   const remoteIds = remotes.map((peer) => peer.id);
   const peers = [self, ...remotes];
-  const gridCount = peers.length + (sharing ? 1 : 0);
-  const gridColumns = meetCallGridColumns(gridCount);
+  const pinnedPeer = pinnedId ? (peers.find((peer) => peer.id === pinnedId) ?? null) : null;
+  // Screen share owns the featured area. A pin stays selected and takes that
+  // area once the share stops.
+  const showFilmstrip = sharing || pinnedPeer != null;
+  const gridColumns = meetCallGridColumns(peers.length);
+  const renderPeerTile = (peer: (typeof peers)[number]) => {
+    const isSelf = peer.id === self.id;
+    return (
+      <MeetPeerTile
+        name={peer.name}
+        stream={peer.stream ?? null}
+        userId={peer.id}
+        muted={isSelf}
+        spotlight={!showFilmstrip && peers.length === 1}
+        speaking={(levels[peer.id] ?? 0) >= MEET_MINI_PLAYER_SPEECH_ON}
+        pinned={peer.id === pinnedPeer?.id}
+        onTogglePin={(next) => setPinnedId(next ? peer.id : null)}
+        caption={room.controller.relayTiles[peer.id] ?? tileCaption(peer, isSelf)}
+        remoteMedia={peer.remoteMedia}
+        disclosedMedia={
+          isSelf
+            ? { camera: room.controller.videoOn, mic: room.controller.micOn }
+            : peer.disclosedMedia
+        }
+        micOn={isSelf ? room.controller.micOn : undefined}
+        onToggleMic={isSelf ? room.controller.toggleMic : undefined}
+        onMuteParticipant={
+          isSelf || !room.hasSignedInIdentity
+            ? undefined
+            : (muted) => void room.controller.mutePeer(peer.id, muted)
+        }
+        hideVideo={!isSelf && remoteVideoSuppressed(peer.id, remoteIds, room.controller.lowData)}
+      />
+    );
+  };
+  const peerTiles = peers.map((peer) => (
+    <li key={peer.id} className="meet-call-stage__grid-item">
+      {renderPeerTile(peer)}
+    </li>
+  ));
   const title = channelTitle ? meetLabels.meetInChannel(channelTitle) : meetLabels.productName;
-  const collapseButton = onCollapse ? (
-    <IconButton
-      onClick={onCollapse}
-      icon={<Minimize2 />}
-      label={meetLabels.collapseCall}
-      size="md"
-      variant="outline"
-    />
-  ) : null;
 
   return (
     <div className={cn("meet-call-stage meet-call-stage--expanded meet-call-expanded", className)}>
@@ -133,10 +185,17 @@ export function MeetCallExpanded({
             </div>
           </div>
           <div className="meet-call-stage__header-actions">
-            {collapseButton}
             <MeetCallChatToggle open={chatOpen} onToggle={toggleChat} />
           </div>
         </header>
+
+        {knockers.length > 0 ? (
+          <MeetKnockBadge
+            knockers={knockers}
+            onAdmit={(peerId) => void room.controller.admitKnocker(peerId)}
+            onDeny={(peerId) => void room.controller.denyKnocker(peerId)}
+          />
+        ) : null}
 
         {room.controller.relayBanner ? (
           <div className="meet-call-stage__relay" role="status">
@@ -178,60 +237,37 @@ export function MeetCallExpanded({
           </div>
         ) : (
           <div className="meet-call-stage__body">
-            <ul
-              className="meet-call-stage__grid"
-              data-count={gridCount}
-              data-columns={gridColumns}
-              style={{ "--meet-call-grid-columns": gridColumns } as CSSProperties}
-            >
-              {sharing ? (
-                <li className="meet-call-stage__grid-item meet-call-stage__grid-item--screen">
-                  {room.controller.screenPreviewStream ? (
-                    <MeetStreamVideo
-                      stream={room.controller.screenPreviewStream}
-                      muted
-                      className="meet-call-stage__screen"
-                    />
-                  ) : (
-                    <div className="meet-call-stage__screen-fallback">
-                      {meetLabels.sharingScreen}
-                    </div>
-                  )}
-                </li>
-              ) : null}
-              {peers.map((peer) => {
-                const isSelf = peer.id === self.id;
-                return (
-                  <li key={peer.id} className="meet-call-stage__grid-item">
-                    <MeetPeerTile
-                      name={peer.name}
-                      stream={peer.stream ?? null}
-                      userId={peer.id}
-                      muted={isSelf}
-                      spotlight={gridCount === 1}
-                      caption={room.controller.relayTiles[peer.id] ?? tileCaption(peer, isSelf)}
-                      remoteMedia={peer.remoteMedia}
-                      disclosedMedia={
-                        isSelf
-                          ? { camera: room.controller.videoOn, mic: room.controller.micOn }
-                          : peer.disclosedMedia
-                      }
-                      micOn={isSelf ? room.controller.micOn : undefined}
-                      onToggleMic={isSelf ? room.controller.toggleMic : undefined}
-                      onMuteParticipant={
-                        isSelf || !room.hasSignedInIdentity
-                          ? undefined
-                          : (muted) => void room.controller.mutePeer(peer.id, muted)
-                      }
-                      hideVideo={
-                        !isSelf &&
-                        remoteVideoSuppressed(peer.id, remoteIds, room.controller.lowData)
-                      }
-                    />
-                  </li>
-                );
-              })}
-            </ul>
+            {showFilmstrip ? (
+              <div className="meet-call-stage__share" data-featured={sharing ? "share" : "pin"}>
+                <div className="meet-call-stage__share-main">
+                  {sharing ? (
+                    room.controller.screenPreviewStream ? (
+                      <MeetStreamVideo
+                        stream={room.controller.screenPreviewStream}
+                        muted
+                        className="meet-call-stage__screen"
+                      />
+                    ) : (
+                      <div className="meet-call-stage__screen-fallback">
+                        {meetLabels.sharingScreen}
+                      </div>
+                    )
+                  ) : pinnedPeer ? (
+                    renderPeerTile(pinnedPeer)
+                  ) : null}
+                </div>
+                <ul className="meet-call-stage__share-peers">{peerTiles}</ul>
+              </div>
+            ) : (
+              <ul
+                className="meet-call-stage__grid"
+                data-count={peers.length}
+                data-columns={gridColumns}
+                style={{ "--meet-call-grid-columns": gridColumns } as CSSProperties}
+              >
+                {peerTiles}
+              </ul>
+            )}
           </div>
         )}
 

@@ -44,6 +44,7 @@ const meta = {
     },
     callActive: storyBooleanControl,
     peerCount: storyNumberControl(0, 2),
+    screenShare: storyBooleanControl,
   },
 } satisfies Meta<MeetCallStageStoryArgs>;
 
@@ -61,15 +62,13 @@ export const SideBySide: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByText("Chat will appear here.").length).toBeGreaterThan(0);
-    await expect(canvas.getByRole("button", { name: "Collapse call" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Show sidebar" })).toBeInTheDocument();
     await expect(canvas.getAllByRole("button", { name: "Hide chat" }).length).toBeGreaterThan(0);
     await expect(canvas.queryByLabelText("Resize call stage")).not.toBeInTheDocument();
     await userEvent.click(canvas.getAllByRole("button", { name: "Hide chat" })[0]!);
     await expect(canvas.getAllByRole("button", { name: "Show chat" }).length).toBeGreaterThan(0);
-    await userEvent.click(canvas.getAllByRole("button", { name: "Collapse call" })[0]!);
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getAllByText("Chat will appear here.").length).toBeGreaterThan(0);
   },
 };
@@ -150,6 +149,72 @@ export const WideFlex: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByRole("button", { name: "Hide chat" }).length).toBeGreaterThan(0);
+  },
+};
+
+export const ScreenShare: Story = {
+  name: "Screen share",
+  args: {
+    layout: "fullscreen",
+    callActive: true,
+    peerCount: 2,
+    defaultChatOpen: false,
+    screenShare: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const filmstrip = canvasElement.querySelector(".meet-call-stage__share-peers");
+    await expect(filmstrip).toBeTruthy();
+    await expect(canvasElement.querySelector(".meet-call-stage__share-main")).toBeTruthy();
+    const peers = within(filmstrip as HTMLElement);
+    await expect(peers.getByText("Demo User")).toBeInTheDocument();
+    await expect(peers.getByText("Alex Morgan")).toBeInTheDocument();
+    await expect(peers.getByText("Jamie Lee")).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.sharingScreen)).toBeInTheDocument();
+  },
+};
+
+export const PinnedPeer: Story = {
+  name: "Pinned peer",
+  args: {
+    layout: "fullscreen",
+    callActive: true,
+    peerCount: 2,
+    defaultChatOpen: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") }),
+    );
+    await expect(canvasElement.querySelector("[data-featured='pin']")).toBeTruthy();
+    const main = canvasElement.querySelector(".meet-call-stage__share-main");
+    await expect(main?.querySelector(".meet-peer-tile__display-name")).toBeNull();
+    await expect(main?.querySelector(".meet-peer-tile__name")?.textContent).toBe("Alex Morgan");
+    const filmstrip = canvasElement.querySelector(".meet-call-stage__share-peers");
+    await expect(filmstrip?.textContent).toContain("Alex Morgan");
+    await expect(filmstrip?.textContent).toContain("Demo User");
+    await expect(filmstrip?.querySelector(".meet-peer-tile__display-name")).toBeNull();
+    await expect(filmstrip?.textContent).toContain("Demo User");
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.unpinParticipant("Jamie Lee") }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      canvas.getAllByRole("button", { name: meetLabels.pinParticipant("Jamie Lee") })[0]!,
+    );
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.unpinParticipant("Alex Morgan") }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvasElement.querySelector(".meet-call-stage__share-main")?.textContent,
+    ).toContain("Jamie Lee");
+
+    await userEvent.click(
+      canvas.getAllByRole("button", { name: meetLabels.unpinParticipant("Jamie Lee") })[0]!,
+    );
+    await expect(canvasElement.querySelector(".meet-call-stage__share")).toBeNull();
+    await expect(canvasElement.querySelector(".meet-call-stage__grid")).toBeTruthy();
   },
 };
 

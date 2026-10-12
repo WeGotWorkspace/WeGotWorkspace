@@ -76,6 +76,7 @@ export function MeetCallStage({
           onToggleChat={onToggleChat}
           onCollapse={onLayoutChange ? () => onLayoutChange("compact") : undefined}
           onLeave={onLayoutChange ? () => onLayoutChange("collapsed") : undefined}
+          monitorSpeech={showStage}
           {...room}
         />
       </div>
