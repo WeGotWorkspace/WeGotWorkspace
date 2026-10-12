@@ -19,8 +19,9 @@ describe("MeetCallKnockQueue", () => {
 
   it("renders one admit/deny row per knocker", () => {
     renderKnock(<MeetCallKnockQueue knockers={knockers} onAdmit={() => {}} onDeny={() => {}} />);
-    expect(screen.getByText("Alex Morgan")).toBeTruthy();
-    expect(screen.getByText("Jamie Lee")).toBeTruthy();
+    expect(screen.getByText(meetLabels.knockerWantsToJoin("Alex Morgan"))).toBeTruthy();
+    expect(screen.getByText(meetLabels.knockerWantsToJoin("Jamie Lee"))).toBeTruthy();
+    expect(screen.getByRole("button", { name: meetLabels.admitAll })).toBeTruthy();
     expect(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") })).toBeTruthy();
     expect(screen.getByRole("button", { name: meetLabels.denyName("Jamie Lee") })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -40,7 +41,7 @@ describe("MeetCallKnockQueue", () => {
     const { container } = renderKnock(
       <MeetCallKnockQueue knockers={[]} onAdmit={() => {}} onDeny={() => {}} />,
     );
-    expect(container.querySelector(".meet-knock-list")).toBeNull();
+    expect(container.querySelector(".meet-lobby-banner")).toBeNull();
   });
 });
 
@@ -50,22 +51,19 @@ describe("MeetKnockBadge", () => {
     { id: "peer-2", name: "Jamie Lee" },
   ];
 
-  it("renders an action-row icon with a waiting count", () => {
+  it("shows the lobby banner without a menu", () => {
     renderKnock(<MeetKnockBadge knockers={knockers} onAdmit={() => {}} onDeny={() => {}} />);
-    const trigger = screen.getByRole("button", { name: meetLabels.waitingToJoin(2) });
-    expect(trigger.getAttribute("data-count")).toBe("2");
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText(meetLabels.lobbyWaiting(2))).toBeTruthy();
+    expect(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: meetLabels.waitingToJoin(2) })).toBeNull();
   });
 
-  it("opens admit/deny rows from the icon", () => {
+  it("admits from the visible row", () => {
     const onAdmit = vi.fn();
     renderKnock(<MeetKnockBadge knockers={knockers} onAdmit={onAdmit} onDeny={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.waitingToJoin(2) }));
     fireEvent.click(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }));
     expect(onAdmit).toHaveBeenCalledWith("peer-1");
-    const popover = document.querySelector(".meet-knock-badge__popover");
-    expect(popover).toBeTruthy();
-    expect(popover?.className).not.toMatch(/meet-popover-surface/);
+    expect(document.querySelector(".meet-knock-badge__popover")).toBeNull();
   });
 
   it("renders nothing without knockers", () => {

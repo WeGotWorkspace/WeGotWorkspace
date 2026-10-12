@@ -213,10 +213,8 @@ export const WaitingToJoin: Story = {
   args: { ...baseArgs, showKnockers: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) }));
-    const body = within(canvasElement.ownerDocument.body);
     await expect(
-      body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
-    ).toBeInTheDocument();
+      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(2) }),
+    ).not.toBeInTheDocument();
   },
 };

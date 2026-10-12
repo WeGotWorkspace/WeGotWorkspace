@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, within } from "storybook/test";
 import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { STORY_MEET_KNOCKERS } from "@/meet-core/stories/meet-pane-stories.fixtures";
@@ -34,15 +34,16 @@ export const OneGuest: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.waitingToJoin(1) }));
-    const body = within(canvasElement.ownerDocument.body);
-    await expect(body.getByText(meetLabels.wantsToJoin)).toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.lobbyWaiting(1))).toBeInTheDocument();
     await expect(
-      body.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+      canvas.getByText(meetLabels.knockerWantsToJoin("Alex Morgan")),
     ).toBeInTheDocument();
-    const popover = canvasElement.ownerDocument.body.querySelector(".meet-knock-badge__popover");
-    await expect(popover).toBeTruthy();
-    await expect(popover?.className).not.toMatch(/meet-popover-surface/);
+    await expect(
+      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(1) }),
+    ).not.toBeInTheDocument();
   },
 };
 
