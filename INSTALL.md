@@ -108,3 +108,9 @@ For local smoke tests with PHP’s built-in server (no Apache rewrites):
 ```bash
 php -S localhost:8080 -t . index.php
 ```
+
+### TURN relay credentials
+
+`WGW_RTC_TURN_TTL_SECONDS` in `packages/api/.env` is how long a minted TURN credential stays valid. The default is 3600 seconds. Values below 300 are raised to 300, and values above 86400 are lowered to 86400. An empty or non-numeric value uses the default.
+
+`WGW_RTC_RELAY_REQUESTS_PER_MINUTE` caps relay credential requests for one signed-in actor. The default is 6.

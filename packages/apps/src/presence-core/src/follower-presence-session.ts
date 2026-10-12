@@ -20,7 +20,7 @@ export class FollowerPresenceSession implements PresenceMeshSession {
 
   constructor(private readonly publishOut: (envelope: PresenceEnvelope, peerId?: string) => void) {}
 
-  async join(): Promise<{ peerId: string }> {
+  async join(): Promise<{ peerId: string; superseded?: true }> {
     return { peerId: this.selfPeerId ?? "follower-proxy" };
   }
 

@@ -243,6 +243,7 @@ export class MeetRtcSession {
     if (this.mesh) await this.leave();
     this.mesh = this.createMesh(input.room);
     const joined = await this.mesh.join({ name: input.name, peerId: input.peerId });
+    if (joined.superseded) return { peerId: "", peers: [] };
     this.limits = videoLimitsFromJoin(joined.limits);
     this.disableLocalCameraIfRequired();
     this.options.onVideoLimits?.(this.limits);
