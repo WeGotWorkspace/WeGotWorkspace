@@ -56,7 +56,6 @@ describe("useSettingsProfileForm", () => {
     await waitFor(() => {
       expect(saveProfile).toHaveBeenCalledWith({
         displayName: "Alice Updated",
-        email: "alice@example.com",
       });
     });
   });
@@ -75,6 +74,7 @@ describe("useSettingsProfileForm", () => {
     act(() => {
       result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
       result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
+      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
     });
 
     await act(async () => {
@@ -85,8 +85,8 @@ describe("useSettingsProfileForm", () => {
       expect(saveProfile).toHaveBeenCalledWith(
         expect.objectContaining({
           displayName: "Alice Example",
-          email: "alice@example.com",
           password: "hunter2hunter",
+          currentPassword: "secret",
         }),
       );
     });

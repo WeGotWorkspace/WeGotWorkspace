@@ -23,10 +23,7 @@ function parseEnvBoolean(value: string | undefined): boolean | null {
   return null;
 }
 
-/**
- * API root including `/api/v1`. In dev, keep the default so requests hit the Vite proxy
- * (see `vite.config.ts`) and avoid CORS against `wegotworkspace.localhost`.
- */
+/** API root including `/api/v1`. Dev uses the Vite proxy default to avoid CORS. */
 export function wgwApiBaseUrl(): string {
   const runtime = activeWgwApiRuntime();
   if (runtime?.baseUrl) return runtime.baseUrl;
@@ -298,8 +295,7 @@ function applyTokens(tokens: TokenResponse): void {
 
 /** True when the stored refresh token marks a public share guest session. */
 export function wgwIsGuestSession(): boolean {
-  readTokensFromStorage();
-  return refreshToken === WGW_GUEST_REFRESH_TOKEN;
+  return wgwCurrentRefreshToken() === WGW_GUEST_REFRESH_TOKEN;
 }
 
 /** True when access + refresh tokens are present (localStorage or memory). */
@@ -454,6 +450,10 @@ export async function wgwCompleteLogoutNavigation(): Promise<WgwLogoutNavigation
 export function wgwCurrentAccessToken(): string | null {
   readTokensFromStorage();
   return accessToken;
+}
+export function wgwCurrentRefreshToken(): string | null {
+  readTokensFromStorage();
+  return refreshToken;
 }
 
 export function isAccessTokenExpired(marginSec = 180): boolean {

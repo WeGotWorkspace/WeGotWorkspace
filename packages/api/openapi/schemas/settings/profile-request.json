@@ -1,0 +1,30 @@
+{
+  "SettingsProfileRequest": {
+    "type": "object",
+    "properties": {
+      "displayName": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "password": {
+        "type": "string"
+      },
+      "currentPassword": {
+        "type": "string",
+        "maxLength": 4096,
+        "description": "Current password. Required when password or email is changed."
+      },
+      "refreshToken": {
+        "type": "string",
+        "maxLength": 512,
+        "description": "Current device refresh token. Sent with a password change so this session stays signed in."
+      }
+    },
+    "example": {
+      "displayName": "Alice Example",
+      "email": "alice@example.test"
+    }
+  }
+}
