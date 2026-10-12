@@ -271,6 +271,8 @@ final class CimdResolver
     }
 
     /**
+     * `proxy` and CURLOPT_NOPROXY ignore HTTP_PROXY/HTTPS_PROXY so CURLOPT_RESOLVE is honored.
+     *
      * @return array<string, mixed>
      */
     public static function httpOptions(string $host, int $port, string $pinned, int $maxBytes): array

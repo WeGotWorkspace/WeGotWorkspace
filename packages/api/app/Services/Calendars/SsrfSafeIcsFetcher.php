@@ -163,6 +163,7 @@ final class SsrfSafeIcsFetcher
      * cURL options for one hop. No `stream` key: that selects Guzzle's
      * StreamHandler, which drops CURLOPT_RESOLVE and resolves DNS again.
      * The sink aborts the transfer with a short write once the body crosses the cap.
+     * `proxy` and CURLOPT_NOPROXY ignore HTTP_PROXY/HTTPS_PROXY so the DNS pin is not skipped.
      *
      * @return array<string, mixed>
      */
