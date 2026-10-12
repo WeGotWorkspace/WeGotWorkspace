@@ -85,8 +85,9 @@ describe("fetchRtcSettings", () => {
         text: async () => body,
       }),
     );
-    await fetchRtcSettings({ room: "bootstrap" });
+    const result = await fetchRtcSettings({ room: "bootstrap" });
     expect(isRtcDebugEnabled()).toBe(true);
+    expect(result.source).toBe("server");
   });
 
   it("a failed configuration fetch keeps the debug flag", async () => {
@@ -98,7 +99,58 @@ describe("fetchRtcSettings", () => {
         status: 401,
       }),
     );
-    await fetchRtcSettings({ room: "bootstrap" });
+    const result = await fetchRtcSettings({ room: "bootstrap" });
     expect(isRtcDebugEnabled()).toBe(true);
+    expect(result.source).toBe("fallback");
+    expect(result).toMatchObject({
+      stunUrls: "",
+      turnAvailable: false,
+      forceRelay: false,
+    });
+  });
+
+  it("sends Authorization when bearerToken is set", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRtcSettings({ room: "bootstrap", bearerToken: "t" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/rooms/bootstrap/configuration"),
+      expect.objectContaining({
+        headers: { Authorization: "Bearer t" },
+      }),
+    );
+  });
+
+  it("sends no Authorization header without a token", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRtcSettings({ room: "bootstrap" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/rooms/bootstrap/configuration"),
+      expect.objectContaining({
+        headers: {},
+      }),
+    );
+  });
+
+  it("appends sessionKey to the URL without an Authorization header", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRtcSettings({ room: "bootstrap", sessionKey: "k" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/rooms\/bootstrap\/configuration\?sessionKey=k$/),
+      expect.objectContaining({
+        headers: {},
+      }),
+    );
   });
 });
