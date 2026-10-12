@@ -38,7 +38,6 @@ wgw-config.php.bak*
 /apps/wegotworkspace/packages/apps/notes/dist/
 /apps/wegotworkspace/packages/apps/shell/dist/
 /apps/wegotworkspace/packages/apps/runtime-modules/
-/apps/wegotworkspace/wgw-modules/
 /apps/wegotworkspace/build/
 /apps/wegotworkspace/dist/
 # PWA docroot artifacts copied by packages/apps/scripts/sync-runtime-app-builds.mjs

@@ -53,7 +53,8 @@ final class AppPaths
 
     public function ensureDataDirWebDeny(): void
     {
-        WebRootDeny::ensure($this->dataDir());
+        WebRootDeny::ensureAll($this->installRoot(), $this->dataDir());
+        WebRootDeny::ensureRootRules($this->installRoot());
     }
 
     public function ensureInstallLock(): void

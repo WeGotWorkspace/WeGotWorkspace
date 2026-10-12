@@ -31,8 +31,8 @@ Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. O
 Nginx does not read `.htaccess`. Deny the private trees and the same sensitive dotfiles. Leave other `/.` segments alone so WebDAV can serve `.attachments`, `.notes`, `.Trash`, and AppleDouble files:
 
 ```nginx
-location ~ ^/(wgw-content|wgw-private|wgw-modules|packages)(/|$) { deny all; }
-location ~ /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
+location ~ ^/(wgw-content|wgw-plugins|packages)(/|$) { deny all; }
+location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
 ```
 
 ## 2) First request bootstrap
