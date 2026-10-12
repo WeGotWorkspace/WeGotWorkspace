@@ -21,6 +21,14 @@
         "type": "string",
         "enum": ["p720", "p360", "p270", "p180", "audio"],
         "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
+      },
+      "debugLogging": {
+        "type": "boolean",
+        "description": "Browsers write detailed RTC logs to their console after a reload."
+      },
+      "forceRelay": {
+        "type": "boolean",
+        "description": "Stored switch. Served to clients only while a TURN relay is configured."
       }
     },
     "required": [
@@ -29,7 +37,9 @@
       "turnSecretSet",
       "turnStaticCredentialsPresent",
       "maxVideoProfile",
-      "maxVideoProfileRelay"
+      "maxVideoProfileRelay",
+      "debugLogging",
+      "forceRelay"
     ]
   }
 }

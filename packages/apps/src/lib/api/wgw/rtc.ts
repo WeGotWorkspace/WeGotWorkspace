@@ -1,5 +1,5 @@
 import { wgwApiBaseUrl, wgwReadJson } from "@/lib/api/wgw/http";
-import { isRtcDebugEnabled } from "@/lib/rtc/debug";
+import { isRtcDebugEnabled, setRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
 import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
 import { resolveRoomId } from "@/lib/rtc/room-id";
@@ -7,6 +7,13 @@ import { DEFAULT_RTC_SETTINGS, type RtcSettings } from "@/lib/rtc/types";
 import type { components } from "@wgw/openapi-types/openapi-types";
 
 export type { RtcSettings };
+
+export type RtcPublicSettings = {
+  stunUrls: string;
+  turnAvailable: boolean;
+  forceRelay: boolean;
+  debug: boolean;
+};
 
 export type RtcIceSettings = Omit<RtcSettings, "forceRelay">;
 
@@ -20,23 +27,37 @@ export type FetchedRtcSettings = RtcSettings & {
 };
 
 type RtcSettingsCarrier = {
-  rtc?: { stunUrls?: unknown; turnAvailable?: unknown };
+  rtc?: {
+    stunUrls?: unknown;
+    turnAvailable?: unknown;
+    forceRelay?: unknown;
+    debug?: unknown;
+  };
   stunUrls?: unknown;
   turnAvailable?: unknown;
+  forceRelay?: unknown;
+  debug?: unknown;
 };
 
-export function parseRtcSettingsPayload(payload: RtcSettingsCarrier): RtcIceSettings {
+export function parseRtcSettingsPayload(payload: RtcSettingsCarrier): RtcPublicSettings {
   // Shared platform ICE settings (`GET /rooms/{roomId}/configuration`). Relay
   // credentials are never part of this payload; they come from a relay request.
   const rtc = payload.rtc ?? payload;
   return {
     stunUrls: typeof rtc.stunUrls === "string" ? rtc.stunUrls : "",
     turnAvailable: rtc.turnAvailable === true,
+    forceRelay: rtc.forceRelay === true,
+    debug: rtc.debug === true,
   };
 }
 
-export function resolveRtcSettings(ice: RtcIceSettings): RtcSettings {
-  return applyRtcDebugOverrides({ ...DEFAULT_RTC_SETTINGS, ...ice, forceRelay: false });
+export function resolveRtcSettings(publicSettings: RtcPublicSettings): RtcSettings {
+  return applyRtcDebugOverrides({
+    ...DEFAULT_RTC_SETTINGS,
+    stunUrls: publicSettings.stunUrls,
+    turnAvailable: publicSettings.turnAvailable,
+    forceRelay: publicSettings.forceRelay,
+  });
 }
 
 export async function fetchRtcSettings(options?: {
@@ -60,11 +81,13 @@ export async function fetchRtcSettings(options?: {
   const res = await fetch(requestUrl, { cache: "no-store", headers });
   if (!res.ok) {
     rtcLog({ channel }, "rtc-settings-response", { requestUrl, ok: false, status: res.status });
-    return resolveRtcSettings(DEFAULT_RTC_SETTINGS);
+    return resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false });
   }
   try {
     const payload = (await wgwReadJson(res)) as RtcRoomConfiguration;
-    const settings = resolveRtcSettings(parseRtcSettingsPayload(payload));
+    const parsed = parseRtcSettingsPayload(payload);
+    setRtcDebugEnabled(parsed.debug);
+    const settings = resolveRtcSettings(parsed);
     rtcLog({ channel }, "rtc-settings-response", {
       requestUrl,
       ok: true,
@@ -80,7 +103,7 @@ export async function fetchRtcSettings(options?: {
       status: res.status,
       parseError: true,
     });
-    return resolveRtcSettings(DEFAULT_RTC_SETTINGS);
+    return resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false });
   }
 }
 

@@ -90,6 +90,10 @@ export type AdminRtcSettings = {
   maxVideoProfile: string;
   /** Highest video profile a sender may use while its pair is relayed. */
   maxVideoProfileRelay: string;
+  /** Browsers write detailed RTC logs after a reload. */
+  debugLogging: boolean;
+  /** Stored switch; served only while a TURN relay is configured. */
+  forceRelay: boolean;
 };
 
 export type AdminAppsSettings = {

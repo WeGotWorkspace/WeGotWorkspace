@@ -51,6 +51,9 @@ final class AdminSettingsService
             if ($key === SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY) {
                 $value = MeetVideoProfile::normalize($value, RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY);
             }
+            if ($key === SettingKeys::RTC_DEBUG_LOGGING || $key === SettingKeys::RTC_FORCE_RELAY) {
+                $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
+            }
             AppSetting::setValue($key, $value);
             $saved[] = $key;
         }

@@ -44,6 +44,12 @@ final class SettingKeys
     /** Highest video profile a sender may use while its pair is relayed. */
     public const MEET_MAX_VIDEO_PROFILE_RELAY = 'meet_max_video_profile_relay';
 
+    /** Admin switch: browsers write detailed RTC logs to their console. */
+    public const RTC_DEBUG_LOGGING = 'rtc_debug_logging';
+
+    /** Admin switch: every peer connection uses the TURN relay only. */
+    public const RTC_FORCE_RELAY = 'rtc_force_relay';
+
     public const MAIL_IMAP_HOST = 'mail_imap_host';
 
     public const MAIL_IMAP_PORT = 'mail_imap_port';
@@ -94,6 +100,8 @@ final class SettingKeys
             self::MEET_MAX_PEERS,
             self::MEET_MAX_VIDEO_PROFILE,
             self::MEET_MAX_VIDEO_PROFILE_RELAY,
+            self::RTC_DEBUG_LOGGING,
+            self::RTC_FORCE_RELAY,
             self::MAIL_IMAP_HOST,
             self::MAIL_IMAP_PORT,
             self::MAIL_IMAP_SECURITY,

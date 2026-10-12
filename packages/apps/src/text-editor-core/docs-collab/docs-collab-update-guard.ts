@@ -55,7 +55,7 @@ export type DocsCollabGuardedUpdate = {
   senderUser: string;
   /** Transaction origin, so local listeners still see this as remote. */
   origin: unknown;
-  /** Peer id, for the `?rtcDebug=1` line on a drop. */
+  /** Peer id, for the RTC debug line on a drop. */
   from?: string;
 };
 
