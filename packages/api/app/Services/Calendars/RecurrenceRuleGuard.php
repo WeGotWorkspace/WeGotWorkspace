@@ -11,8 +11,9 @@ use Sabre\VObject\Component\VTodo;
 use Sabre\VObject\Property;
 
 /**
- * Rejects sub-hourly recurrence on calendar writes. Hourly rules are allowed
- * unless INTERVAL is below 1.
+ * Rejects sub-hourly recurrence and unbounded hourly recurrence on calendar
+ * writes. Hourly rules stay allowed when they set COUNT or UNTIL, unless
+ * INTERVAL is below 1.
  */
 final class RecurrenceRuleGuard
 {
@@ -40,6 +41,9 @@ final class RecurrenceRuleGuard
     {
         $frequency = strtoupper((string) ($parts['FREQ'] ?? ''));
         if ($frequency === 'SECONDLY' || $frequency === 'MINUTELY') {
+            throw new ApiHttpException(400, self::MESSAGE, 'invalid_recurrence');
+        }
+        if ($frequency === 'HOURLY' && ! isset($parts['COUNT']) && ! isset($parts['UNTIL'])) {
             throw new ApiHttpException(400, self::MESSAGE, 'invalid_recurrence');
         }
         if ($frequency === 'HOURLY' && self::interval($parts) < 1) {

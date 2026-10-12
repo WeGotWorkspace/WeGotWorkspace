@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Notify;
 
 use App\Events\EventDispatch;
+use App\Services\Calendars\CalendarEventExpansionService;
 use App\Services\Notify\AlertDueScheduler;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -115,7 +116,7 @@ ICS;
             ->setTimezone(new DateTimeZone('UTC'));
 
         $method = new ReflectionMethod(AlertDueScheduler::class, 'endDate');
-        $resolved = $method->invoke(new AlertDueScheduler(new EventDispatch), $component, $start);
+        $resolved = $method->invoke(new AlertDueScheduler(new EventDispatch, new CalendarEventExpansionService), $component, $start);
         $this->assertInstanceOf(DateTimeImmutable::class, $resolved);
 
         return $resolved;

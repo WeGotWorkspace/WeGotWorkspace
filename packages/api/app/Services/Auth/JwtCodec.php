@@ -17,7 +17,7 @@ use Psr\Clock\ClockInterface;
 final class JwtCodec
 {
     /**
-     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int}  $claims
+     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp: int, iat?: int, uid?: int}  $claims
      * @param array{
      *   privateKey: string,
      *   publicKey: string,
@@ -37,7 +37,7 @@ final class JwtCodec
         $expiresAt = (new \DateTimeImmutable)->setTimestamp($exp);
 
         $config = self::configuration($cfg);
-        $token = $config->builder()
+        $builder = $config->builder()
             ->withHeader('kid', $cfg['kid'])
             ->issuedBy(self::nonEmpty($cfg['issuer']))
             ->permittedFor(self::nonEmpty($cfg['audience']))
@@ -46,8 +46,11 @@ final class JwtCodec
             ->expiresAt($expiresAt)
             ->relatedTo(self::nonEmpty($sub))
             ->identifiedBy(bin2hex(random_bytes(16)))
-            ->withClaim('role', $role)
-            ->getToken($config->signer(), $config->signingKey());
+            ->withClaim('role', $role);
+        if (array_key_exists('uid', $claims)) {
+            $builder = $builder->withClaim('uid', (int) $claims['uid']);
+        }
+        $token = $builder->getToken($config->signer(), $config->signingKey());
 
         return $token->toString();
     }
@@ -60,7 +63,7 @@ final class JwtCodec
      *   audience: string,
      *   kid: string
      * } $cfg
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int}|null
      */
     public static function validate(string $token, array $cfg): ?array
     {
@@ -115,7 +118,7 @@ final class JwtCodec
             return null;
         }
 
-        return [
+        $claims = [
             'sub' => $sub,
             'role' => $role,
             'iat' => $iat,
@@ -124,6 +127,14 @@ final class JwtCodec
             'aud' => $aud,
             'jti' => $jti,
         ];
+        if ($parsed->claims()->has('uid')) {
+            $uid = $parsed->claims()->get('uid');
+            if (is_int($uid)) {
+                $claims['uid'] = $uid;
+            }
+        }
+
+        return $claims;
     }
 
     /**

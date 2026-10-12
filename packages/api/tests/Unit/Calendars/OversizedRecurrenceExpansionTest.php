@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Unit\Calendars;
 
 use App\Services\Calendars\CalendarEventExpansionService;
+use DateTimeImmutable;
+use DateTimeZone;
 use Tests\TestCase;
 
 /**
@@ -139,6 +141,41 @@ final class OversizedRecurrenceExpansionTest extends TestCase
 
         $this->assertSame($expected, array_column($recent, 'start'));
         $this->assertSame($expected, array_column($shifted, 'start'));
+    }
+
+    public function test_weekday_series_starting_sixteen_years_ago_appears_this_week(): void
+    {
+        $zone = new DateTimeZone('UTC');
+        $weekStart = (new DateTimeImmutable('monday this week', $zone))->setTime(0, 0);
+        $weekEnd = $weekStart->modify('+7 days');
+        $origin = $weekStart->setTime(9, 0)->modify('-16 years');
+        $byDay = [
+            ['@type' => 'NDay', 'day' => 'mo'],
+            ['@type' => 'NDay', 'day' => 'tu'],
+            ['@type' => 'NDay', 'day' => 'we'],
+            ['@type' => 'NDay', 'day' => 'th'],
+            ['@type' => 'NDay', 'day' => 'fr'],
+        ];
+
+        $instances = $this->expand(
+            'weekday-16y',
+            'weekly',
+            $byDay,
+            [
+                'DTSTART:'.$origin->format('Ymd\THis\Z'),
+                'DTEND:'.$origin->modify('+1 hour')->format('Ymd\THis\Z'),
+                'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
+            ],
+            $weekStart->format('Y-m-d\TH:i:s\Z'),
+            $weekEnd->format('Y-m-d\TH:i:s\Z'),
+        );
+
+        $this->assertNotEmpty($instances);
+        foreach (array_column($instances, 'start') as $start) {
+            $at = new DateTimeImmutable((string) $start);
+            $this->assertGreaterThanOrEqual($weekStart, $at);
+            $this->assertLessThan($weekEnd, $at);
+        }
     }
 
     public function test_counted_daily_series_over_the_cap_is_skipped(): void

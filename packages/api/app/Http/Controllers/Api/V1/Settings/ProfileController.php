@@ -108,6 +108,7 @@ final class ProfileController
         $currentPassword = is_string($submitted) ? $submitted : '';
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if ($currentPassword === '' || ! $this->credentials->validate($username, $currentPassword, $realm)) {
+            $this->loginLimiter->hit($username, $ip);
             throw new ApiHttpException(403, 'Current password is incorrect.', 'current_password_invalid');
         }
 
