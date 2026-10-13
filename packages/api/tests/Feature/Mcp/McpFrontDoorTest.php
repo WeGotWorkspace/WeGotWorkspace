@@ -96,12 +96,10 @@ final class McpFrontDoorTest extends WgwDatabaseTestCase
         $real = 'https://wgw.example.test';
         $server = $spoofed + [
             'REMOTE_ADDR' => '203.0.113.9',
-            'HTTP_HOST' => 'wgw.example.test',
-            'HTTPS' => 'on',
             'HTTP_ACCEPT' => 'application/json',
         ];
 
-        $www = (string) $this->call('GET', '/mcp', [], [], [], $server)
+        $www = (string) $this->call('GET', $real.'/mcp', [], [], [], $server)
             ->assertUnauthorized()
             ->headers->get('WWW-Authenticate');
         $this->assertStringContainsString(
@@ -110,14 +108,14 @@ final class McpFrontDoorTest extends WgwDatabaseTestCase
         );
         $this->assertStringNotContainsString('evil.example', $www);
 
-        $authorization = $this->call('GET', '/.well-known/oauth-authorization-server', [], [], [], $server)
+        $authorization = $this->call('GET', $real.'/.well-known/oauth-authorization-server', [], [], [], $server)
             ->assertOk()
             ->assertJsonPath('issuer', $real)
             ->assertJsonPath('authorization_endpoint', $real.'/oauth/authorize')
             ->assertJsonPath('token_endpoint', $real.'/oauth/token');
         $this->assertStringNotContainsString('evil.example', (string) $authorization->getContent());
 
-        $protected = $this->call('GET', '/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+        $protected = $this->call('GET', $real.'/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
             ->assertOk()
             ->assertJsonPath('resource', $real.'/mcp')
             ->assertJsonPath('authorization_servers.0', $real);
@@ -130,15 +128,13 @@ final class McpFrontDoorTest extends WgwDatabaseTestCase
         $origin = 'https://mcp-tunnel.example.com';
         $server = [
             'REMOTE_ADDR' => '127.0.0.1',
-            'HTTP_HOST' => 'wgw.example.test',
-            'HTTPS' => 'on',
             'HTTP_X_FORWARDED_HOST' => 'mcp-tunnel.example.com',
             'HTTP_X_FORWARDED_PROTO' => 'https',
             'HTTP_X_ORIGINAL_HOST' => 'evil.example',
             'HTTP_ACCEPT' => 'application/json',
         ];
 
-        $www = (string) $this->call('GET', '/mcp', [], [], [], $server)
+        $www = (string) $this->call('GET', 'https://wgw.example.test/mcp', [], [], [], $server)
             ->assertUnauthorized()
             ->headers->get('WWW-Authenticate');
         $this->assertStringContainsString(
@@ -147,12 +143,12 @@ final class McpFrontDoorTest extends WgwDatabaseTestCase
         );
         $this->assertStringNotContainsString('evil.example', $www);
 
-        $this->call('GET', '/.well-known/oauth-authorization-server', [], [], [], $server)
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-authorization-server', [], [], [], $server)
             ->assertOk()
             ->assertJsonPath('issuer', $origin)
             ->assertJsonPath('token_endpoint', $origin.'/oauth/token');
 
-        $this->call('GET', '/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
             ->assertOk()
             ->assertJsonPath('resource', $origin.'/mcp')
             ->assertJsonPath('authorization_servers.0', $origin);
@@ -164,18 +160,16 @@ final class McpFrontDoorTest extends WgwDatabaseTestCase
         $origin = 'https://original.example.com';
         $server = [
             'REMOTE_ADDR' => '127.0.0.1',
-            'HTTP_HOST' => 'wgw.example.test',
-            'HTTPS' => 'on',
             'HTTP_X_ORIGINAL_HOST' => 'original.example.com',
             'HTTP_ACCEPT' => 'application/json',
         ];
 
-        $this->call('GET', '/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
             ->assertOk()
             ->assertJsonPath('resource', $origin.'/mcp')
             ->assertJsonPath('authorization_servers.0', $origin);
 
-        $www = (string) $this->call('GET', '/mcp', [], [], [], $server)
+        $www = (string) $this->call('GET', 'https://wgw.example.test/mcp', [], [], [], $server)
             ->assertUnauthorized()
             ->headers->get('WWW-Authenticate');
         $this->assertStringContainsString(

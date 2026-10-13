@@ -97,17 +97,25 @@ final class McpPublicOrigin
             || (string) config('app.env') === 'production';
     }
 
+    /**
+     * X-Forwarded-Host and Forwarded are applied by {@code getSchemeAndHttpHost()}
+     * only when the direct client is a trusted proxy. X-Original-Host is not one
+     * of those headers, so a trusted proxy may still set it when the others are absent.
+     */
     private static function forwardedPublicOrigin(Request $request): ?string
     {
-        $host = self::firstForwardedHost($request);
+        if (! $request->isFromTrustedProxy()) {
+            return null;
+        }
+        if (self::firstHeaderHost($request, 'X-Forwarded-Host') !== null) {
+            return null;
+        }
+
+        $host = self::firstHeaderHost($request, 'X-Original-Host');
         if ($host === null) {
             return null;
         }
-        $proto = strtolower(trim((string) $request->headers->get('X-Forwarded-Proto', '')));
-        if ($proto === '') {
-            $proto = self::forwardedProto($request) ?? '';
-        }
-        $scheme = $proto === 'http' ? 'http' : 'https';
+        $scheme = $request->getScheme() === 'http' ? 'http' : 'https';
         $host = self::stripStandardPort($host, $scheme);
         if (! self::isPublicHostname($host)) {
             return null;
@@ -116,43 +124,15 @@ final class McpPublicOrigin
         return $scheme.'://'.$host;
     }
 
-    private static function firstForwardedHost(Request $request): ?string
+    private static function firstHeaderHost(Request $request, string $header): ?string
     {
-        foreach (['X-Forwarded-Host', 'X-Original-Host'] as $header) {
-            $raw = $request->headers->get($header);
-            if (! is_string($raw) || trim($raw) === '') {
-                continue;
-            }
-            $host = strtolower(trim(explode(',', $raw)[0]));
-            if ($host !== '') {
-                return $host;
-            }
-        }
-
-        $forwarded = $request->headers->get('Forwarded');
-        if (! is_string($forwarded) || trim($forwarded) === '') {
+        $raw = $request->headers->get($header);
+        if (! is_string($raw) || trim($raw) === '') {
             return null;
         }
-        foreach (explode(',', $forwarded) as $hop) {
-            if (preg_match('/host\s*=\s*"?([^;";]+)"?/i', $hop, $match) === 1) {
-                $host = strtolower(trim($match[1]));
-                if ($host !== '') {
-                    return $host;
-                }
-            }
-        }
+        $host = strtolower(trim(explode(',', $raw)[0]));
 
-        return null;
-    }
-
-    private static function forwardedProto(Request $request): ?string
-    {
-        $forwarded = $request->headers->get('Forwarded');
-        if (! is_string($forwarded) || preg_match('/proto\s*=\s*"?([a-z]+)"?/i', $forwarded, $match) !== 1) {
-            return null;
-        }
-
-        return strtolower($match[1]);
+        return $host !== '' ? $host : null;
     }
 
     private static function stripStandardPort(string $host, string $scheme): string
