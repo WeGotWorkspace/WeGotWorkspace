@@ -23,7 +23,11 @@ export const MAX_PENDING_MESSAGES_PER_REMOTE = 4;
  * 4096 frames is about 64 MiB on the wire, above real Yjs JSON traffic.
  */
 export const MAX_MESSAGE_FRAMES = 4_096;
-/** Retained incomplete payload bytes per remote. Past this, the oldest message goes. */
+/**
+ * Cap on incomplete payload from the other messages of one remote.
+ * The message that owns the frame just received is spared, so one
+ * legitimate message can always be finished.
+ */
 export const MAX_PENDING_BYTES_PER_REMOTE = 16 * 1024 * 1024;
 
 const PAYLOAD_BYTES = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
@@ -105,7 +109,7 @@ export class FrameReassembler {
       this.forgetIfEmpty(remoteId);
       return merged ? new TextDecoder().decode(merged) : null;
     }
-    this.enforceByteBudget(remoteId);
+    this.enforceByteBudget(remoteId, frame.messageId);
     return null;
   }
 
@@ -181,27 +185,31 @@ export class FrameReassembler {
     if (oldest !== undefined) messages.delete(oldest);
   }
 
-  private enforceByteBudget(remoteId: string): void {
+  private enforceByteBudget(remoteId: string, keepMessageId: number): void {
     const messages = this.pending.get(remoteId);
     if (!messages) return;
-    while (this.totalBytes(messages) > MAX_PENDING_BYTES_PER_REMOTE) {
-      const oldest = this.oldestId(messages);
+    while (this.totalBytes(messages, keepMessageId) > MAX_PENDING_BYTES_PER_REMOTE) {
+      const oldest = this.oldestId(messages, keepMessageId);
       if (oldest === undefined) break;
       messages.delete(oldest);
     }
     this.forgetIfEmpty(remoteId);
   }
 
-  private totalBytes(messages: Map<number, PendingMessage>): number {
+  private totalBytes(messages: Map<number, PendingMessage>, exceptId?: number): number {
     let total = 0;
-    for (const entry of messages.values()) total += entry.bytes;
+    for (const [messageId, entry] of messages) {
+      if (messageId === exceptId) continue;
+      total += entry.bytes;
+    }
     return total;
   }
 
-  private oldestId(messages: Map<number, PendingMessage>): number | undefined {
+  private oldestId(messages: Map<number, PendingMessage>, exceptId?: number): number | undefined {
     let oldestId: number | undefined;
     let oldestAt = Number.POSITIVE_INFINITY;
     for (const [messageId, entry] of messages) {
+      if (messageId === exceptId) continue;
       if (entry.createdAtMs < oldestAt) {
         oldestAt = entry.createdAtMs;
         oldestId = messageId;
