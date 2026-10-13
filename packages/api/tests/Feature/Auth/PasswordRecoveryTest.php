@@ -12,8 +12,11 @@ use App\Services\Auth\PasswordRecoveryService;
 use App\Services\Auth\PasswordResetMailFactory;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryService;
+use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -28,6 +31,43 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         config(['app.url' => 'https://wgw.example.test']);
         Mail::fake();
+    }
+
+    public function test_known_and_unknown_identifiers_return_identical_json(): void
+    {
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $known = $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice']);
+        $unknown = $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'nobody']);
+
+        $known->assertOk();
+        $unknown->assertOk();
+        $this->assertSame($known->status(), $unknown->status());
+        $this->assertSame($known->json(), $unknown->json());
+        $this->assertSame(['ok' => true], $known->json());
+        $this->assertSame(1, $this->tokenCountFor('alice'));
+        $this->assertSame(0, $this->tokenCountFor('nobody'));
+        Mail::assertSent(OutboundMessageMail::class, 1);
+    }
+
+    public function test_reset_delivery_is_not_visible_until_deferred_callbacks_run(): void
+    {
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $service = $this->app->make(PasswordRecoveryService::class);
+        $service->requestReset('alice', '127.0.0.1');
+        $service->requestReset('nobody', '127.0.0.1');
+
+        $this->assertSame(0, $this->tokenCount());
+        Mail::assertNothingSent();
+
+        \Illuminate\Support\defer()->invoke();
+
+        $this->assertSame(1, $this->tokenCountFor('alice'));
+        $this->assertSame(0, $this->tokenCountFor('nobody'));
+        Mail::assertSent(OutboundMessageMail::class, 1);
     }
 
     public function test_unknown_identifier_returns_generic_ok_without_token(): void
@@ -216,6 +256,54 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
             ->assertJson(['ok' => true]);
 
         $this->assertSame(0, $this->tokenCount());
+    }
+
+    public function test_skipped_delivery_logs_a_reason_without_the_identifier(): void
+    {
+        $logged = [];
+        Log::listen(function (MessageLogged $event) use (&$logged): void {
+            if ($event->message !== 'password-recovery.skipped') {
+                return;
+            }
+
+            $logged[] = ['level' => $event->level, 'context' => $event->context];
+        });
+
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'nobody'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        Principal::query()->where('uri', 'principals/alice')->update(['email' => null]);
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        Principal::query()->where('uri', 'principals/alice')->update(['email' => 'alice@example.test']);
+        $this->setAppSettings([
+            SettingKeys::MAIL_DELIVERY_TRANSPORT => MailDeliveryConfig::TRANSPORT_SMTP,
+            SettingKeys::MAIL_DELIVERY_SMTP_HOST => '',
+        ]);
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->enableMailDelivery();
+        config(['app.url' => 'http://localhost']);
+        $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertSame([
+            ['level' => 'warning', 'context' => ['reason' => 'unknown_identifier']],
+            ['level' => 'warning', 'context' => ['reason' => 'no_email']],
+            ['level' => 'warning', 'context' => ['reason' => 'cannot_submit']],
+            ['level' => 'warning', 'context' => ['reason' => 'no_public_url']],
+        ], $logged);
+        $this->assertSame(0, $this->tokenCount());
+        Mail::assertNothingSent();
     }
 
     public function test_loopback_app_url_hides_password_recovery(): void
