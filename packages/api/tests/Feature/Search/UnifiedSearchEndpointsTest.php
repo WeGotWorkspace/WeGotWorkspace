@@ -557,22 +557,48 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
                 'q' => str_repeat('a', 200),
             ]))
             ->assertOk();
+    }
 
-        $this->withBearer($token)
-            ->getJson('/api/v1/search/results?'.http_build_query([
-                'q' => 'hello',
-                'offset' => 1001,
-            ]))
-            ->assertStatus(400)
-            ->assertJsonPath('code', 'bad_request');
+    public function test_unified_search_clamps_offset_and_stops_the_page_at_the_ceiling(): void
+    {
+        $now = date('c');
+        $rows = [];
+        for ($i = 0; $i < 1001; $i++) {
+            $rows[] = [
+                'source_type' => 'file',
+                'source_key' => 'users/alice/hello-'.$i.'.md',
+                'owner_username' => 'alice',
+                'title' => 'hello',
+                'extension' => 'md',
+                'body_text' => 'hello',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::connection('wgw')->table('search_documents')->insert($chunk);
+        }
 
-        $this->withBearer($token)
-            ->getJson('/api/v1/search/results?'.http_build_query([
-                'q' => 'hello',
-                'offset' => 1000,
-            ]))
-            ->assertOk()
-            ->assertJsonPath('data.offset', 1000);
+        $token = $this->issueBearerToken();
+        $atCeiling = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'hello',
+            'limit' => 1,
+            'offset' => 1000,
+        ]));
+        $atCeiling->assertOk()
+            ->assertJsonPath('data.offset', 1000)
+            ->assertJsonPath('data.hasMore', false);
+        $this->assertCount(1, (array) $atCeiling->json('data.results'));
+
+        $pastCeiling = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'hello',
+            'limit' => 1,
+            'offset' => 1001,
+        ]));
+        $pastCeiling->assertOk()
+            ->assertJsonPath('data.offset', 1000)
+            ->assertJsonPath('data.hasMore', false);
+        $this->assertCount(1, (array) $pastCeiling->json('data.results'));
     }
 
     public function test_unified_search_service_still_caps_length_and_offset(): void
@@ -589,5 +615,6 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
 
         $clamped = $search->search('alice', 'hello', 20, ['file'], [], 5000);
         $this->assertSame(UnifiedSearchService::MAX_OFFSET, $clamped['offset']);
+        $this->assertFalse($clamped['hasMore']);
     }
 }

@@ -24,7 +24,7 @@ final class UnifiedSearchRequest extends FormRequest
         return [
             'q' => ['sometimes', 'string', 'min:2', 'max:'.UnifiedSearchService::MAX_QUERY_LENGTH],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'offset' => ['sometimes', 'integer', 'min:0', 'max:'.UnifiedSearchService::MAX_OFFSET],
+            'offset' => ['sometimes', 'integer', 'min:0'],
             'sources' => ['sometimes', 'array'],
             'sources.*' => ['string', Rule::in(['file', 'note', 'caldav', 'carddav'])],
             'categories' => ['sometimes', 'array'],

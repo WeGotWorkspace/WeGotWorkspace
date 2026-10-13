@@ -113,7 +113,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $payload['code'] = $e->errorCode();
             }
 
-            return response()->json($payload, $e->getStatusCode());
+            return response()->json($payload, $e->getStatusCode(), $e->getHeaders());
         });
         $exceptions->render(function (ValidationException $e) {
             $message = $e->validator->errors()->first();

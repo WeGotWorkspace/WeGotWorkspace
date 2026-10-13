@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Search;
 
 use App\Exceptions\ApiHttpException;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Services\Drive\DriveGroupResolver;
@@ -68,6 +69,12 @@ final class UnifiedSearchService
             ];
         }
 
+        // Browse mode has no tokens and no LIKE scans, so it stays on the
+        // account bucket. A token query is the scan the search bucket exists for.
+        if ($tokens !== []) {
+            WgwApiRateLimiters::consumeSearch($username);
+        }
+
         $rows = $this->store->search(
             $username,
             $this->groups->allowedGroupSlugs($username),
@@ -111,7 +118,7 @@ final class UnifiedSearchService
             'query' => $query,
             'limit' => $limit,
             'offset' => $offset,
-            'hasMore' => count($results) >= $limit,
+            'hasMore' => $offset >= self::MAX_OFFSET ? false : count($results) >= $limit,
             'sources' => $allowedSources === [] ? ['file', 'note', 'caldav', 'carddav'] : $allowedSources,
             'filters' => $normalizedFilters,
             'results' => $this->annotateHasShares($username, $results),

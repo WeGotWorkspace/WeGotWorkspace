@@ -233,7 +233,7 @@ final class McpContactsToolsTest extends WgwDatabaseTestCase
             ->tool(ContactsSearchTool::class, [
                 'query' => str_repeat('a', UnifiedSearchService::MAX_QUERY_LENGTH + 1),
             ])
-            ->assertSee('200')
+            ->assertSee('must not be greater than 200 characters')
             ->assertDontSee('Search query is too long.');
     }
 }

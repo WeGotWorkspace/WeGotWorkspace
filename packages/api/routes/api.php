@@ -66,7 +66,6 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
-use App\Http\RateLimiting\WgwApiRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -204,10 +203,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         Route::post('files/rooms', [FilesController::class, 'resolveRoom']);
     });
 
-    Route::get('search/results', UnifiedSearchController::class)
-        ->middleware('throttle:'.WgwApiRateLimiters::SEARCH);
+    Route::get('search/results', UnifiedSearchController::class);
     Route::get('search/results/{resultId}/content', [UnifiedSearchDownloadController::class, 'contentByResultId'])
-        ->middleware('throttle:'.WgwApiRateLimiters::SEARCH)
         ->where('resultId', '.+');
 
     // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.

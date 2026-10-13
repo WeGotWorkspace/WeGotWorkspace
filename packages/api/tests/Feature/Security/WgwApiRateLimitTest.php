@@ -8,6 +8,7 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Models\User;
+use Illuminate\Auth\GenericUser;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Http\Kernel;
@@ -64,7 +65,7 @@ final class WgwApiRateLimitTest extends WgwDatabaseTestCase
         ])->assertOk();
     }
 
-    public function test_the_61st_search_is_limited_without_spending_the_api_bucket(): void
+    public function test_the_61st_search_is_limited_while_the_account_bucket_still_allows_other_routes(): void
     {
         $alice = $this->issueBearerToken('alice');
         $this->withBearer($alice);
@@ -76,9 +77,26 @@ final class WgwApiRateLimitTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/search/results?q=hello')
             ->assertStatus(429)
             ->assertJsonPath('code', 'rate_limited')
+            ->assertJsonPath('error', 'Too many requests.')
             ->assertHeader('Retry-After');
 
         $this->getJson('/api/v1/me')->assertOk();
+    }
+
+    public function test_browse_mode_does_not_spend_the_search_bucket(): void
+    {
+        $alice = $this->issueBearerToken('alice');
+        $this->withBearer($alice);
+        $browse = '/api/v1/search/results?'.http_build_query([
+            'sources' => ['file'],
+            'extensions' => ['md'],
+        ]);
+
+        for ($request = 0; $request < 60; $request++) {
+            $this->getJson($browse)->assertOk();
+        }
+
+        $this->getJson('/api/v1/search/results?q=hello')->assertOk();
     }
 
     public function test_auth_rooms_and_dav_routes_stay_outside_the_account_limiter(): void
@@ -113,11 +131,13 @@ final class WgwApiRateLimitTest extends WgwDatabaseTestCase
             $this->positionOf($files, StartSession::class),
         );
 
+        // The scan budget is consumed inside unified search, not as route middleware,
+        // so HTTP and MCP share one counter and a content download does not.
         $search = $this->resolvedMiddleware('GET', '/api/v1/search/results');
         $this->assertContains(ThrottleRequests::class.':'.WgwApiRateLimiters::API, $search);
-        $this->assertContains(ThrottleRequests::class.':'.WgwApiRateLimiters::SEARCH, $search);
+        $this->assertNotContains(ThrottleRequests::class.':'.WgwApiRateLimiters::SEARCH, $search);
         $content = $this->resolvedMiddleware('GET', '/api/v1/search/results/result-1/content');
-        $this->assertContains(ThrottleRequests::class.':'.WgwApiRateLimiters::SEARCH, $content);
+        $this->assertNotContains(ThrottleRequests::class.':'.WgwApiRateLimiters::SEARCH, $content);
 
         $mcp = $this->resolvedMiddleware('POST', '/mcp');
         $this->assertLessThan(
@@ -135,11 +155,21 @@ final class WgwApiRateLimitTest extends WgwDatabaseTestCase
         $request->setUserResolver(static fn (): User => $alice);
 
         $api = $this->limiter(WgwApiRateLimiters::API, $request);
-        $search = $this->limiter(WgwApiRateLimiters::SEARCH, $request);
         $this->assertSame('user:alice', $api->key);
         $this->assertSame(600, $api->maxAttempts);
-        $this->assertSame('user:alice', $search->key);
-        $this->assertSame(60, $search->maxAttempts);
+
+        $named = Request::create('/mcp', 'POST');
+        $named->setUserResolver(static fn (): GenericUser => new GenericUser([
+            'id' => 9,
+            'username' => 'carol',
+        ]));
+        $this->assertSame('user:carol', $this->limiter(WgwApiRateLimiters::API, $named)->key);
+
+        $customModel = Request::create('/mcp', 'POST');
+        $customModel->setUserResolver(static fn (): GenericUser => new GenericUser([
+            'id' => 'office-9',
+        ]));
+        $this->assertSame('user:office-9', $this->limiter(WgwApiRateLimiters::API, $customModel)->key);
 
         $anonymous = Request::create('/mcp', 'POST', server: ['REMOTE_ADDR' => '203.0.113.50']);
         $this->assertSame('ip:203.0.113.50', $this->limiter(WgwApiRateLimiters::API, $anonymous)->key);
