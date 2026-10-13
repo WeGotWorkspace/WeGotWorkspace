@@ -1,22 +1,124 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { wgwCompleteLogoutNavigation } from "@/lib/api/wgw/http";
+import {
+  wgwCompleteLogoutNavigation,
+  wgwIsGuestSession,
+  type WgwLogoutNavigation,
+} from "@/lib/api/wgw/http";
+import { countDiscardedUnsyncedChanges } from "@/lib/offline/core/offline-wipe";
+import { buttonVariants } from "@/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 
-export function WeGotWorkspaceLogout() {
+type WeGotWorkspaceLogoutProps = {
+  countUnsyncedChanges?: () => Promise<number>;
+  isGuestSession?: () => boolean;
+  completeLogout?: () => Promise<WgwLogoutNavigation>;
+};
+
+function unsyncedLogoutWarning(count: number | null): string {
+  if (count === null) return "Unsynced changes on this device will be discarded.";
+  if (count === 1) return "This device has 1 unsynced change. It will be discarded.";
+  return `This device has ${count} unsynced changes. They will be discarded.`;
+}
+
+export function WeGotWorkspaceLogout({
+  countUnsyncedChanges = countDiscardedUnsyncedChanges,
+  isGuestSession = wgwIsGuestSession,
+  completeLogout = wgwCompleteLogoutNavigation,
+}: WeGotWorkspaceLogoutProps = {}) {
   const navigate = useNavigate();
+  const leaving = useRef(false);
+  const [phase, setPhase] = useState<"pending" | "confirm" | "signing-out">("pending");
+  const [unsyncedCount, setUnsyncedCount] = useState<number | null>(0);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function signOut() {
+      const navigation = await completeLogout();
+      if (cancelled || navigation !== "member_login") return;
+      await navigate({ to: "/login" });
+    }
+
     void (async () => {
-      const navigation = await wgwCompleteLogoutNavigation();
-      if (navigation === "member_login") {
-        await navigate({ to: "/login" });
+      if (!isGuestSession()) {
+        let count: number | null = 0;
+        try {
+          count = await countUnsyncedChanges();
+        } catch {
+          count = null;
+        }
+        if (cancelled) return;
+        if (count === null || count > 0) {
+          setUnsyncedCount(count);
+          setPhase("confirm");
+          return;
+        }
       }
+      if (cancelled) return;
+      setPhase("signing-out");
+      await signOut();
     })();
-  }, [navigate]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [completeLogout, countUnsyncedChanges, isGuestSession, navigate]);
+
+  async function confirmSignOut() {
+    if (leaving.current) return;
+    leaving.current = true;
+    setPhase("signing-out");
+    const navigation = await completeLogout();
+    if (navigation === "member_login") {
+      await navigate({ to: "/login" });
+    }
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <p className="text-sm text-muted-foreground">Signing out...</p>
+      <p className="text-sm text-muted-foreground">
+        {phase === "confirm" ? "Sign-out needs confirmation." : "Signing out..."}
+      </p>
+      <AlertDialog
+        open={phase === "confirm"}
+        onOpenChange={(open) => {
+          if (open || leaving.current) return;
+          if (window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+          void navigate({ to: "/" });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsynced changes?</AlertDialogTitle>
+            <AlertDialogDescription>{unsyncedLogoutWarning(unsyncedCount)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmSignOut();
+              }}
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

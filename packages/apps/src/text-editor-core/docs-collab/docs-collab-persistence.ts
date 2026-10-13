@@ -1,8 +1,8 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
 import { isYDocEmpty } from "./docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 /** Stable y-indexeddb room key for a drive virtual path (no leading slash). */
 export function docsCollabRoomKey(path: string): string {

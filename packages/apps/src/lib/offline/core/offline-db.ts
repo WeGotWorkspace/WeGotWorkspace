@@ -99,6 +99,14 @@ export class WgwOfflineDatabase extends Dexie {
 
 const dbCache = new Map<string, WgwOfflineDatabase>();
 
+/** Close cached account databases and drop them so the next open is fresh. */
+export function resetOfflineDatabaseCache(): void {
+  for (const db of dbCache.values()) {
+    db.close();
+  }
+  dbCache.clear();
+}
+
 export function offlineDbForAccount(accountKey: string): WgwOfflineDatabase {
   const cached = dbCache.get(accountKey);
   if (cached) return cached;
@@ -114,5 +122,5 @@ export function offlineAccountKeyFromUsername(username: string): string {
 /** Clears domain registrations and cached databases. For unit tests only. */
 export function resetOfflineDomainRegistrationsForTests(): void {
   domainRegistrations.clear();
-  dbCache.clear();
+  resetOfflineDatabaseCache();
 }

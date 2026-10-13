@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
 
 describe("useMeetCallLayout", () => {
-  it("joins into the compact bar, not the split stage", () => {
+  it("joins into the expanded stage", () => {
     const startCall = vi.fn(async () => undefined);
     const { result } = renderHook(() =>
       useMeetCallLayout({
@@ -18,31 +18,15 @@ describe("useMeetCallLayout", () => {
     });
 
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
     expect(startCall).toHaveBeenCalledWith("channel-general");
-  });
-
-  it("returns to the compact bar when the expanded stage is dismissed", () => {
-    const { result } = renderHook(() =>
-      useMeetCallLayout({
-        initialLayout: "side-by-side",
-        channelId: "channel-general",
-      }),
-    );
-
-    act(() => {
-      result.current.onLayoutChange("compact");
-    });
-
-    expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
   });
 
   it("leaves the call when layout collapses", () => {
     const leaveCall = vi.fn(async () => undefined);
     const { result } = renderHook(() =>
       useMeetCallLayout({
-        initialLayout: "compact",
+        initialLayout: "side-by-side",
         channelId: "channel-general",
         operations: { startCall: vi.fn(async () => undefined), leaveCall },
       }),
@@ -72,7 +56,7 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.toggleCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ channelId: "channel-random" });
     expect(result.current.callActive).toBe(false);
@@ -83,7 +67,7 @@ describe("useMeetCallLayout", () => {
 
     rerender({ channelId: "channel-general" });
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("collapses the chrome when the start operation rejects", async () => {
@@ -105,7 +89,7 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.startCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     await act(async () => {
       rejectStart(new Error("calls unavailable"));
@@ -115,7 +99,7 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("collapsed");
   });
 
-  it("restores compact chrome for an already-running live session (route remount)", () => {
+  it("restores the expanded stage for an already-running live session", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
         initialLayout: "collapsed",
@@ -125,7 +109,21 @@ describe("useMeetCallLayout", () => {
     );
 
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
+  });
+
+  it("restores a collapsed stage after remount", () => {
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        liveCallChannelId: "channel-general",
+        resumeLayout: "collapsed",
+      }),
+    );
+
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
   });
 
   it("restores the expanded stage when that was the last chrome", () => {
@@ -156,11 +154,11 @@ describe("useMeetCallLayout", () => {
     act(() => {
       result.current.startCall();
     });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ live: "channel-general" });
     // The user's chosen layout is respected while the session is live.
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
 
     rerender({ live: null });
     expect(result.current.callActive).toBe(false);
@@ -171,7 +169,7 @@ describe("useMeetCallLayout", () => {
     const { result, rerender } = renderHook(
       ({ live }: { live: string | null }) =>
         useMeetCallLayout({
-          initialLayout: "compact",
+          initialLayout: "side-by-side",
           channelId: "channel-general",
           liveCallChannelId: live,
         }),
@@ -205,14 +203,14 @@ describe("useMeetCallLayout", () => {
     });
 
     expect(startCall).toHaveBeenCalledWith("channel-general", { video: false });
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("keeps a restored live call's chrome off a different open channel", () => {
     const { result, rerender } = renderHook(
       ({ channelId }: { channelId: string }) =>
         useMeetCallLayout({
-          initialLayout: "compact",
+          initialLayout: "side-by-side",
           channelId,
           liveCallChannelId: "channel-design",
         }),
@@ -226,7 +224,7 @@ describe("useMeetCallLayout", () => {
 
     rerender({ channelId: "channel-design" });
     expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("compact");
+    expect(result.current.callLayout).toBe("side-by-side");
   });
 
   it("seeds initialLayout for the starting channel only", () => {

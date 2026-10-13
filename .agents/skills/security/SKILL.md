@@ -20,6 +20,7 @@ Read the [SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheats
 Answer each item in the handoff. A happy-path test does not answer them.
 
 - What is the rate-limit or cache key, and can the caller mint new keys (wildcard DNS, a spoofed header, a new origin)?
+- Does a cap live only on a service instance? PHP-FPM builds a new process per request, so that cap resets. Count from the durable record or from shared cache, and test a second request. If the record or the address cannot be read, refuse the send.
 - Does the limit run before the expensive work?
 - Is the body streamed with a cap, or buffered fully and then rejected?
 - Which hosts does `filter_var` or the allowlist still accept?
@@ -29,5 +30,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - A permission update must not rotate a live invite. Only the resend path rotates a token that still accepts. An already-expired token may be replaced; the caller does not receive that replacement unless the route is a resend.
 - Do not allowlist a secret-shaped string this change introduces. Rewrite the commit while it is still off the default branch. A global allowlist regex hides that string in every future file.
 - Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
+- Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.
+- When the same mutation is allowed on REST and judged by a live-update guard, is the allow predicate the same for each field, including how user ids are compared?
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).
