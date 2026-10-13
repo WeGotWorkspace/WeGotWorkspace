@@ -44,7 +44,7 @@ On the first HTTP request, the install bootstrap automatically:
 
 `APP_URL` is not taken from the request `Host` header. The installer asks for the public site address (`app_url`), prefilled from the browser origin, and writes it only after that address is confirmed. On an existing install where `APP_URL` is unset or still a loopback address, Administration shows "APP_URL is not set…" with a **Use this address** button that saves the address open in the browser, including the install base path.
 
-`WGW_TRUSTED_HOSTS` is a comma-separated list of extra hosts trusted in addition to the `APP_URL` host: a LAN IP, both www and apex, or a reverse proxy that rewrites the `Host` header.
+`WGW_TRUSTED_HOSTS` is a comma-separated list of extra hosts trusted in addition to the `APP_URL` host: a LAN IP, both www and apex, or a reverse proxy that rewrites the `Host` header or sends `X-Original-Host`. MCP metadata uses that name only when it is the `APP_URL` host or listed here. A different name falls back to the request `Host` until it is added.
 
 Existing installs are not overwritten: a present `.env` or `.htaccess` is left as-is (including custom `RewriteBase` rules).
 
