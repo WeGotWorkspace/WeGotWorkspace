@@ -228,7 +228,10 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         $this->assertCount(20, $calls);
         $this->assertSame('calendar_share', $calls[0]['tool']);
         $this->assertSame('ok', $calls[0]['outcome']);
-        $this->assertArrayHasKey('createdAt', $calls[0]);
+        $this->assertMatchesRegularExpression(
+            '/^2026-10-04T12:19:00\+00:00$/',
+            (string) $calls[0]['createdAt'],
+        );
         $this->assertSame('cal-19', $calls[0]['target']);
         $tools = array_column($calls, 'tool');
         $this->assertNotContains('drive_write', $tools);

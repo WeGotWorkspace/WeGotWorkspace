@@ -309,6 +309,15 @@ final class McpToolsTest extends WgwDatabaseTestCase
         sort($expectedNames);
         sort($catalogNames);
         $this->assertSame($expectedNames, $catalogNames);
+
+        $catalogShareTools = array_values(array_filter(
+            $catalogNames,
+            static fn (string $name): bool => str_ends_with($name, '_share'),
+        ));
+        $pinnedShareTools = McpScopes::shareToolNames();
+        sort($catalogShareTools);
+        sort($pinnedShareTools);
+        $this->assertSame($catalogShareTools, $pinnedShareTools);
     }
 
     public function test_capabilities_lists_mcp_tool_names_not_php_classes(): void

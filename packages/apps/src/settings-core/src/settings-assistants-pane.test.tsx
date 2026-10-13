@@ -35,6 +35,12 @@ function assistantsState(overrides: Partial<SettingsMcpGrantsState> = {}): Setti
   };
 }
 
+function localShareCallTime(createdAt: string): string {
+  const date = new Date(createdAt);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function renderAssistantsPane(overrides: Partial<SettingsMcpGrantsState> = {}) {
   return renderPane(
     <SettingsAssistantsPane
@@ -175,20 +181,26 @@ describe("SettingsAssistantsPane", () => {
             {
               tool: "drive_share",
               outcome: "denied",
-              createdAt: "2026-10-02T12:00:00Z",
+              createdAt: "2026-10-02T12:00:00+00:00",
               target: '{"action":"set","path":"/users/bob/shared.txt"}',
             },
             {
               tool: "drive_share",
               outcome: "denied",
-              createdAt: "2026-10-02T12:00:00Z",
+              createdAt: "2026-10-02T12:00:00+00:00",
               target: '{"action":"set","path":"/users/bob/shared.txt"}',
             },
             {
               tool: "calendar_share",
               outcome: "ok",
-              createdAt: "2026-10-04T12:19:00Z",
+              createdAt: "2026-10-04T12:19:00+00:00",
               target: "cal-19",
+            },
+            {
+              tool: "docs_share",
+              outcome: "error",
+              createdAt: "2026-10-04T13:00:00+00:00",
+              target: "/users/bob/notes.md",
             },
           ],
         },
@@ -199,10 +211,14 @@ describe("SettingsAssistantsPane", () => {
     expect(screen.getAllByText("/users/bob/shared.txt")).toHaveLength(2);
     expect(screen.queryByText('{"action":"set","path":"/users/bob/shared.txt"}')).toBeNull();
     expect(screen.getAllByText("Denied — external share")).toHaveLength(2);
-    expect(screen.getAllByText("2026-10-02 12:00")).toHaveLength(2);
+    expect(screen.getAllByText(localShareCallTime("2026-10-02T12:00:00+00:00"))).toHaveLength(2);
     expect(screen.getByText("cal-19")).toBeTruthy();
-    expect(screen.getByText("ok")).toBeTruthy();
-    expect(screen.getByText("2026-10-04 12:19")).toBeTruthy();
+    expect(screen.queryByText("ok")).toBeNull();
+    expect(screen.getByText(localShareCallTime("2026-10-04T12:19:00+00:00"))).toBeTruthy();
+    expect(screen.getByText("Failed")).toBeTruthy();
+    const times = document.querySelectorAll("time");
+    expect(times[0]?.getAttribute("dateTime")).toBe("2026-10-02T12:00:00+00:00");
+    expect(times[0]?.textContent).toBe(localShareCallTime("2026-10-02T12:00:00+00:00"));
   });
 
   it("uses a generic revoke label when the grant has no client name", () => {
