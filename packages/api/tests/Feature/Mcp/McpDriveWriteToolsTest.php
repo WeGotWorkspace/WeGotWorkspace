@@ -292,7 +292,7 @@ final class McpDriveWriteToolsTest extends WgwDatabaseTestCase
         $this->assertNotNull($publicRow);
         $this->assertSame('public', $publicRow->kind);
         $this->assertSame('view', $publicRow->default_access);
-        $this->assertSame($public['publicToken'], $publicRow->public_token);
+        $this->assertPublicTokenUnchanged($publicRow, (string) $public['publicToken']);
         $this->assertNull($publicRow->revoked_at);
         $this->assertSame(0, $publicRow->grants()->where('grantee_user', 'alice')->count());
 
@@ -465,7 +465,7 @@ final class McpDriveWriteToolsTest extends WgwDatabaseTestCase
         $publicRow = DriveShare::query()->find($public['id']);
         $this->assertNotNull($publicRow);
         $this->assertNull($publicRow->revoked_at);
-        $this->assertSame($public['publicToken'], $publicRow->public_token);
+        $this->assertPublicTokenUnchanged($publicRow, (string) $public['publicToken']);
     }
 
     public function test_catalog_hides_drive_write_when_files_disabled(): void
@@ -483,5 +483,12 @@ final class McpDriveWriteToolsTest extends WgwDatabaseTestCase
     private function ownerShare(string $username, array $input): array
     {
         return app(DriveShareService::class)->createShare($username, $input);
+    }
+
+    private function assertPublicTokenUnchanged(DriveShare $row, string $token): void
+    {
+        $this->assertNull($row->getRawOriginal('public_token'));
+        $this->assertSame(DriveShare::hashPublicToken($token), (string) $row->public_token_hash);
+        $this->assertSame($token, $row->public_token_cipher);
     }
 }
