@@ -1,6 +1,9 @@
+const previousTimeZone = process.env.TZ;
+process.env.TZ = "Europe/Amsterdam";
+
 import type { ReactElement } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
   SETTINGS_GRANTED_PERMISSIONS_HINT,
@@ -19,6 +22,14 @@ import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import { shareLabels } from "@/share-ui/share-labels";
 
+afterAll(() => {
+  if (previousTimeZone === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = previousTimeZone;
+  }
+});
+
 function renderPane(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
 }
@@ -33,12 +44,6 @@ function assistantsState(overrides: Partial<SettingsMcpGrantsState> = {}): Setti
     revoke: async () => {},
     ...overrides,
   };
-}
-
-function localShareCallTime(createdAt: string): string {
-  const date = new Date(createdAt);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function renderAssistantsPane(overrides: Partial<SettingsMcpGrantsState> = {}) {
@@ -211,14 +216,14 @@ describe("SettingsAssistantsPane", () => {
     expect(screen.getAllByText("/users/bob/shared.txt")).toHaveLength(2);
     expect(screen.queryByText('{"action":"set","path":"/users/bob/shared.txt"}')).toBeNull();
     expect(screen.getAllByText("Denied — external share")).toHaveLength(2);
-    expect(screen.getAllByText(localShareCallTime("2026-10-02T12:00:00+00:00"))).toHaveLength(2);
+    expect(screen.getAllByText("2026-10-02 14:00")).toHaveLength(2);
     expect(screen.getByText("cal-19")).toBeTruthy();
     expect(screen.queryByText("ok")).toBeNull();
-    expect(screen.getByText(localShareCallTime("2026-10-04T12:19:00+00:00"))).toBeTruthy();
+    expect(screen.getByText("2026-10-04 14:19")).toBeTruthy();
     expect(screen.getByText("Failed")).toBeTruthy();
     const times = document.querySelectorAll("time");
     expect(times[0]?.getAttribute("dateTime")).toBe("2026-10-02T12:00:00+00:00");
-    expect(times[0]?.textContent).toBe(localShareCallTime("2026-10-02T12:00:00+00:00"));
+    expect(times[0]?.textContent).toBe("2026-10-02 14:00");
   });
 
   it("uses a generic revoke label when the grant has no client name", () => {
