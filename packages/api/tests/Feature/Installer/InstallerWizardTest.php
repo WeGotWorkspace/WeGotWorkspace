@@ -332,6 +332,7 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('state.step', 'installed');
 
         $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
+        $this->assertFileDoesNotExist($this->installWindowPath());
 
         $db = $this->installedPdo($sqlite);
         $this->assertSame('1', $this->scalar($db, 'SELECT COUNT(*) FROM users'));
@@ -735,6 +736,8 @@ final class InstallerWizardTest extends TestCase
             'email' => 'admin@example.test',
         ]))->assertOk()->assertJsonPath('ok', true);
 
+        $this->assertFileDoesNotExist($this->installWindowPath());
+
         $this->writeInstallWindow(time() - (31 * 60));
 
         $this->postAction('welcome_next')
@@ -991,6 +994,7 @@ final class InstallerWizardTest extends TestCase
         ]))->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('state.step', 'installed');
+        $this->assertFileDoesNotExist($this->installWindowPath());
     }
 
     private function assertAdminCanSignIn(string $username, string $password): void
@@ -1095,6 +1099,7 @@ final class InstallerWizardTest extends TestCase
     {
         $paths = [
             $this->installRoot.'/wgw-content/.installed',
+            $this->installRoot.'/wgw-content/.install-window',
             $this->installRoot.'/packages/api/.env',
         ];
         if ($removeKeys) {
