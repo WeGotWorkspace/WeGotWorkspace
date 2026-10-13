@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Crypt;
  * @property string $default_access
  * @property string|null $public_token
  * @property string|null $public_token_hash
- * @property string|null $public_token_cipher Read via displayedPublicToken(), not this property. The encrypted cast throws when APP_KEY cannot decrypt; the helper returns null.
+ * @property string|null $public_token_cipher App code reads this via displayedPublicToken(). The encrypted cast throws when APP_KEY cannot decrypt; the helper returns null.
  * @property string|null $password_hash
  * @property Carbon|null $expires_at
  * @property Carbon|null $revoked_at

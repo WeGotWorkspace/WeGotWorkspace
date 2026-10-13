@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Crypt;
  * @property string $status
  * @property string|null $invite_token
  * @property string|null $invite_token_hash
- * @property string|null $invite_token_cipher Read via displayedInviteToken(), not this property. The encrypted cast throws when APP_KEY cannot decrypt; the helper returns null.
+ * @property string|null $invite_token_cipher App code reads this via displayedInviteToken(). The encrypted cast throws when APP_KEY cannot decrypt; the helper returns null.
  * @property Carbon|null $invite_expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
