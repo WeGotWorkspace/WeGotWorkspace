@@ -25,5 +25,6 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Which hosts does `filter_var` or the allowlist still accept?
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

@@ -29,7 +29,6 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $this->configureWgwJwtKeys();
         config(['app.url' => 'https://wgw.example.test']);
         Mail::fake();
-        $this->withoutDefer();
     }
 
     public function test_known_and_unknown_identifiers_return_identical_json(): void
@@ -52,7 +51,6 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
 
     public function test_reset_delivery_is_not_visible_until_deferred_callbacks_run(): void
     {
-        $this->withDefer();
         $this->enableMailDelivery();
         $this->seedWgwUser('alice', email: 'alice@example.test');
 
