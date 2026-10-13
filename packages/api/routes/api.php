@@ -98,11 +98,11 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware('wgw.auth');
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware('wgw.auth')
+    ->middleware(['wgw.auth', 'throttle:wgw-api'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 // Signaling is unauthenticated by design (guests join meetings with a session
@@ -147,7 +147,7 @@ $filesSession = [
     StartSession::class,
 ];
 
-Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(function () use ($filesSession): void {
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
@@ -360,7 +360,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
-Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
@@ -371,7 +371,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
 
 Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
-Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
     Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);

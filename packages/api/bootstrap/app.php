@@ -24,12 +24,16 @@ use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
 use App\Support\PublicAppUrl;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -81,6 +85,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             '*',
         ]);
+        // ThrottleRequests is sorted ahead of route middleware. Keep wgw.auth
+        // in front of it so the limiter sees the principal, not the client address.
+        $middleware->prependToPriorityList(
+            before: [
+                ThrottleRequests::class,
+                ThrottleRequestsWithRedis::class,
+            ],
+            prepend: AuthenticateWgwApi::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (MailResponseException $e) {
@@ -167,6 +180,27 @@ return Application::configure(basePath: dirname(__DIR__))
                 'error' => $message,
                 'code' => $code,
             ], $status);
+        });
+    })
+    ->booted(function (): void {
+        RateLimiter::for('wgw-api', static function (Request $request): Limit {
+            $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+            $username = null;
+            if (is_array($principal)) {
+                $candidate = $principal['username'] ?? null;
+                if (is_string($candidate) && $candidate !== '') {
+                    $username = $candidate;
+                }
+            }
+            if ($username !== null) {
+                return Limit::perMinute(600)->by('user:'.$username);
+            }
+
+            $ip = $request->ip();
+
+            return Limit::perMinute(600)->by(
+                'ip:'.(is_string($ip) && $ip !== '' ? $ip : 'unknown'),
+            );
         });
     })
     ->create();
