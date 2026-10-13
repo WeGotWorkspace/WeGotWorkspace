@@ -75,6 +75,18 @@ final class InstallerWindow
     }
 
     /**
+     * Drop the stamp after a finished install. A later reinstall deletes
+     * .installed; a months-old stamp would otherwise lock that wizard.
+     */
+    public function clear(): void
+    {
+        $path = $this->stampPath();
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+
+    /**
      * The data directory must accept the stamp. The requirements screen uses this.
      */
     public function canRecord(): bool

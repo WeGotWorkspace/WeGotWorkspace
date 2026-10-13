@@ -411,6 +411,8 @@ final class InstallerWizardService
             'enable_contacts' => $enableContacts,
         ]);
 
+        $this->window->clear();
+
         $adminPath = InstallerWebBase::url($webBase, '/admin/');
 
         return InstallerWebBase::url($webBase, '/login?return='.rawurlencode($adminPath));
