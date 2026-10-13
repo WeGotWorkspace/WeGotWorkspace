@@ -31,6 +31,7 @@ const sampleGrants: SettingsMcpGrant[] = [
       "offline_access",
     ],
     lastUsedAt: "2026-09-08T11:00:00Z",
+    shareCalls: [],
   },
   {
     clientId: "22222222-2222-2222-2222-222222222222",
@@ -39,6 +40,7 @@ const sampleGrants: SettingsMcpGrant[] = [
     connectedAt: "2026-09-07T09:00:00Z",
     scopes: ["notes.read", "tasks.read", "tasks.write", "meet.read"],
     lastUsedAt: null,
+    shareCalls: [],
   },
 ];
 

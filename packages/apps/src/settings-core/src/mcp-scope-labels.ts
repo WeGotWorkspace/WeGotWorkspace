@@ -46,9 +46,10 @@ export const MCP_SCOPE_CATALOG: Record<string, string> = {
   "tasks.read": "Read tasks and task lists",
   "tasks.write": "Create, update, delete, and share tasks and task lists",
   "docs.read": "Read and search Docs files",
-  "docs.write": "Create, update, delete, and share Docs files",
+  "docs.write": "Create, update, and delete Docs files",
   "drive.read": "Read and search Drive files and folders",
-  "drive.write": "Create, update, move, delete, and share Drive files and folders",
+  "drive.write": "Create, update, move, and delete Drive files and folders",
+  "drive.share": "Share Drive files and Docs with workspace members",
   "meet.read": "Read Meet channels and messages",
   "meet.write": "Create, update, and delete Meet channels and messages",
   "mail.read": "Read mailboxes and messages",
@@ -69,7 +70,7 @@ const GROUP_IDS: { label: string; ids: string[]; legacyId?: string }[] = [
   { label: "Contacts", ids: ["contacts.read", "contacts.write"], legacyId: "contacts" },
   { label: "Tasks", ids: ["tasks.read", "tasks.write"], legacyId: "tasks" },
   { label: "Docs", ids: ["docs.read", "docs.write"], legacyId: "docs" },
-  { label: "Drive", ids: ["drive.read", "drive.write"], legacyId: "drive" },
+  { label: "Drive", ids: ["drive.read", "drive.write", "drive.share"], legacyId: "drive" },
   { label: "Meet", ids: ["meet.read", "meet.write"] },
   { label: MCP_MAIL_GRANT_GROUP_LABEL, ids: ["mail.read", "mail.send"] },
   { label: "Profile", ids: ["settings"] },
@@ -82,6 +83,8 @@ export function mcpScopeActionLabel(id: string): string {
   if (id.endsWith(".read")) return "Read";
   if (id.endsWith(".write")) return "Write";
   switch (id) {
+    case "drive.share":
+      return "Share";
     case "mail.send":
       return "Send";
     case "settings":

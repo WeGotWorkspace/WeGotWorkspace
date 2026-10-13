@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
+use App\Services\Calendars\CollectionKind;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -120,5 +121,22 @@ final class Calendar extends Model
         $query->where('components', 'like', '%VJOURNAL%')
             ->where('components', 'not like', '%VEVENT%')
             ->where('components', 'not like', '%VTODO%');
+    }
+
+    /**
+     * Collections owned by one app, per `calendar_collection_meta`. This is the
+     * only correct way to scope a surface to its own collections — component
+     * scopes above cannot tell a notebook from a chat channel or a docs thread
+     * pool, since all three are VJOURNAL-only.
+     *
+     * @param  Builder<Calendar>  $query
+     */
+    public function scopeOfKind(Builder $query, CollectionKind $kind): void
+    {
+        $query->whereExists(
+            fn ($sub) => $sub->from('calendar_collection_meta')
+                ->whereColumn('calendar_collection_meta.calendarid', 'calendars.id')
+                ->where('calendar_collection_meta.kind', $kind->value)
+        );
     }
 }

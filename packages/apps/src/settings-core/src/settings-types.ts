@@ -58,6 +58,13 @@ export type SettingsMailServer = {
   smtpSecurity: string;
 };
 
+export type SettingsMcpShareCall = {
+  tool: string;
+  outcome: string;
+  createdAt: string;
+  target: string | null;
+};
+
 export type SettingsMcpGrant = {
   clientId: string;
   clientName: string;
@@ -65,6 +72,8 @@ export type SettingsMcpGrant = {
   connectedAt: string;
   scopes: string[];
   lastUsedAt: string | null;
+  /** Last share-tool MCP calls for this assistant. Required by the OpenAPI grant schema. */
+  shareCalls: SettingsMcpShareCall[];
 };
 
 export type SettingsUIData = {

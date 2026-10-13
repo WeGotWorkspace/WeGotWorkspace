@@ -11239,7 +11239,8 @@
                     "clientName",
                     "clientOrigin",
                     "connectedAt",
-                    "scopes"
+                    "scopes",
+                    "shareCalls"
                 ],
                 "properties": {
                     "clientId": {
@@ -11265,6 +11266,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "shareCalls": {
+                        "type": "array",
+                        "description": "Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first.",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsMcpShareCall"
+                        }
                     }
                 }
             },
@@ -12409,6 +12417,31 @@
                             "busy"
                         ],
                         "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
+                    }
+                }
+            },
+            "SettingsMcpShareCall": {
+                "type": "object",
+                "required": [
+                    "tool",
+                    "outcome",
+                    "createdAt"
+                ],
+                "properties": {
+                    "tool": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 }
             }

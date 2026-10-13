@@ -18,7 +18,7 @@ use Sabre\VObject\Reader;
  * Chat message <-> VJOURNAL mapping (Epic #701; mirrors NoteJournalConverter).
  *
  * VJOURNAL is a serialization format here, not a semantic fit — these objects
- * are never DAV-visible (ChatHiddenCalendarBackend):
+ * are never DAV-visible (WgwCalendarBackend):
  * - UID           = message id, client-generated ULID (idempotent retries,
  *                   lexicographically time-sortable read-marker tiebreak)
  * - DTSTAMP       = server-assigned created timestamp, never touched again —

@@ -17,8 +17,6 @@ final class DocsThreadCollectionUris
 {
     public const POOL_URI = 'docs-threads';
 
-    public const HIDDEN_PREFIX = 'docs-threads';
-
     public static function ownerPrincipalUri(string $normalizedPath): string
     {
         $segments = explode('/', ltrim($normalizedPath, '/'));

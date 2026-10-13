@@ -26,6 +26,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Which hosts does `filter_var` or the allowlist still accept? Parse IP literals with `inet_pton`, including expanded IPv4-mapped IPv6. A regex of one or two spellings leaves the others for `filter_var` to treat as "already an IP, so allowed."
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- When a caller may create only one kind of row, do updates and revokes select that same kind? Checking the request and then writing the newest row lets a guest or public share be changed through a member-only tool.
 - Does a hash or allowlist in a response header come from the bytes the client receives? A build artifact a later step replaces is a different document.
 - Do security headers that only PHP sets also exist for files the web server serves itself? `Header set` misses 304 responses; use `Header always set`. When TLS ends at a proxy, do not copy `X-Forwarded-Proto` into the `HTTPS` variable: `Request::isSecure()` reads that name and skips `trustProxies`.
 - Does an unauthenticated report endpoint log at warning on the default channel? Browser noise hides real failures. Use a separate channel, and rotate it.

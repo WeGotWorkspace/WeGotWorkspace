@@ -12,7 +12,6 @@ use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
-use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Dav\Server\DriveShareMovePlugin;
 use App\Dav\Server\DriveStarPathPlugin;
 use App\Dav\Server\EventDispatchPlugin;
@@ -23,9 +22,9 @@ use App\Dav\Server\RecurrenceCapExceptionPlugin;
 use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
+use App\Dav\Server\WgwCalendarBackend;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
-use App\Services\Chat\ChatCollectionUris;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Drive\DocAttachmentsService;
@@ -84,9 +83,9 @@ final class SabreServerFactory
             $nodes[] = new AppCalDAVPrincipalCollection($principalBackend, $authPlugin);
         }
         if ($cal) {
-            // Chat/DM collections are API-only: hidden from home-set enumeration
-            // and direct DAV access on this server-side backend instance only.
-            $caldavBackend = new ChatHiddenCalendarBackend($pdo, ChatCollectionUris::hiddenDavPrefixes());
+            // Collections whose kind is davHidden() are API-only: hidden from
+            // home-set enumeration and from direct DAV access.
+            $caldavBackend = new WgwCalendarBackend($pdo);
             $nodes[] = new AppCalendarRoot($principalBackend, $caldavBackend, $authPlugin);
         }
         if ($card) {

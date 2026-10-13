@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Docs;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use PDOException;
-use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 
 /**
@@ -22,6 +22,7 @@ final class DocsThreadPoolProvisioner
 {
     public function __construct(
         private readonly UserCalendarCollectionsProvisioner $calendarCollections,
+        private readonly WgwCalendarBackendFactory $backends,
     ) {}
 
     public function ensureForOwner(string $principalUri): CalendarInstance
@@ -43,7 +44,7 @@ final class DocsThreadPoolProvisioner
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, DocsThreadCollectionUris::POOL_URI, [
+            $this->backends->make()->createCollection(CollectionKind::DocsThreadPool, $principalUri, DocsThreadCollectionUris::POOL_URI, [
                 '{DAV:}displayname' => 'Docs threads',
                 '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
             ]);
@@ -68,11 +69,7 @@ final class DocsThreadPoolProvisioner
         return CalendarInstance::query()
             ->where('principaluri', $principalUri)
             ->where('uri', DocsThreadCollectionUris::POOL_URI)
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::DocsThreadPool))
             ->first();
-    }
-
-    private function calBackend(): CalPDO
-    {
-        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 }

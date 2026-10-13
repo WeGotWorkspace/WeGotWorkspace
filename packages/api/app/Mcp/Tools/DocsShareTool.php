@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\McpMemberShareCommand;
 use App\Services\Auth\AdminRoleResolver;
-use App\Services\Drive\DriveShareService;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpScopes;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -16,12 +16,12 @@ final class DocsShareTool extends WgwMcpTool
 {
     protected string $name = 'docs_share';
 
-    protected string $description = 'Get or set Drive shares for a Doc (.md). Same share model as drive_share (public / member / guest + shareWith).';
+    protected string $description = 'Get or set member Drive shares for a Doc (.md). Public links and guest email invites are refused.';
 
     public function __construct(
         McpAuditLogger $audit,
         AdminRoleResolver $adminRoles,
-        private DriveShareService $shares,
+        private McpMemberShareCommand $shares,
     ) {
         parent::__construct($audit, $adminRoles);
     }
@@ -31,7 +31,7 @@ final class DocsShareTool extends WgwMcpTool
         return [
             'action' => $schema->string()->enum(['get', 'set'])->required()->description('get or set'),
             'path' => $schema->string()->required()->description('Docs file path (must end in .md)'),
-            'kind' => $schema->string()->enum(['public', 'member', 'guest'])->description('Share kind for create'),
+            'kind' => $schema->string()->enum(['member'])->description('Share kind. Only member is accepted.'),
             'defaultAccess' => $schema->string()->description('Default access (view, comment, edit, full)'),
             'shareWith' => $schema->object()->nullable()
                 ->description('Principal map {user: {access}, …}. Null grant revokes. Null map revokes the share.'),
@@ -40,7 +40,7 @@ final class DocsShareTool extends WgwMcpTool
 
     protected function requiredScope(): string
     {
-        return McpScopes::DOCS_WRITE;
+        return McpScopes::DRIVE_SHARE;
     }
 
     protected function accessMode(): string
@@ -58,6 +58,11 @@ final class DocsShareTool extends WgwMcpTool
 
     protected function run(Request $request): Response
     {
+        McpScopes::assertLaunchMemberShare(
+            $request->get('kind'),
+            $request->has('shareWith') ? $request->get('shareWith') : null,
+        );
+
         $action = $this->shareAction($request);
         $path = trim((string) $request->get('path', ''));
         if ($path === '') {
@@ -70,40 +75,11 @@ final class DocsShareTool extends WgwMcpTool
             return $this->json(['list' => $this->shares->listForOwner($username, $path)]);
         }
 
-        $existing = $this->shares->listForOwner($username, $path);
-        $shareWithPresent = $request->has('shareWith');
-        $shareWith = $request->get('shareWith');
-
-        if ($shareWithPresent && $shareWith === null && $existing !== []) {
-            foreach ($existing as $share) {
-                $this->shares->revokeShare($username, (string) $share['id']);
-            }
-
-            return $this->json(['ok' => true, 'revoked' => true]);
-        }
-
-        $input = ['path' => $path];
-        if ($request->has('kind')) {
-            $input['kind'] = (string) $request->get('kind');
-        }
-        if ($request->has('defaultAccess')) {
-            $input['defaultAccess'] = (string) $request->get('defaultAccess');
-        }
-        if ($shareWithPresent && is_array($shareWith)) {
-            $input['shareWith'] = $shareWith;
-        }
-
-        if ($existing === []) {
-            if (! $shareWithPresent && ! $request->has('kind')) {
-                throw new \InvalidArgumentException('shareWith or kind is required to create a share.');
-            }
-
-            return $this->json($this->shares->createShare($username, $input));
-        }
-
-        $share = $existing[0];
-        $input['updatedAt'] = $share['updatedAt'] ?? null;
-
-        return $this->json($this->shares->updateShare($username, (string) $share['id'], $input));
+        return $this->json($this->shares->set($username, $path, [
+            'hasKind' => $request->has('kind'),
+            'shareWithPresent' => $request->has('shareWith'),
+            'shareWith' => $request->get('shareWith'),
+            'defaultAccess' => $request->has('defaultAccess') ? (string) $request->get('defaultAccess') : null,
+        ]));
     }
 }
