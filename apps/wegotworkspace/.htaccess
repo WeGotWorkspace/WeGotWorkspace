@@ -42,7 +42,7 @@ RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 # that proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
 # trustProxies. Browsers ignore HSTS on plain HTTP, so a spoofed proto does not stick.
 # The served shell has no inline script, so the policy needs no hash and no nonce.
-# Between the markers: managed by WebRootDeny::managedHeadersBlock(), rewritten on upgrade.
+# Managed by WebRootDeny::managedHeadersBlock(); edits inside this block are overwritten on upgrade.
 <IfModule mod_headers.c>
     <IfModule mod_setenvif.c>
         SetEnvIf X-Forwarded-Proto "^https$" WGW_HTTPS=on

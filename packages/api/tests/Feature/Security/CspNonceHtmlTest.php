@@ -100,10 +100,13 @@ final class CspNonceHtmlTest extends WgwDatabaseTestCase
         }
     }
 
+    /**
+     * Login redirect is the HTML response that returns before the nonce is issued.
+     * Deleting index.html is a different case: the registry skips that plugin and
+     * Sabre answers 404 XML with no CSP header, so it never reaches the responder.
+     */
     public function test_plugin_login_redirect_stays_nonce_free(): void
     {
-        // A missing index.html never reaches PluginHtmlResponder: the registry
-        // skips that plugin and Sabre answers 404 XML with no CSP header.
         unset($_COOKIE['sabre_ui_auth']);
 
         $response = $this->get('/apps/demo-editor/');
