@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Mcp;
 
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Mcp\Servers\WorkspaceServer;
 use App\Mcp\Tools\NotebookListTool;
 use App\Mcp\Tools\NotebookShareTool;
@@ -16,6 +17,7 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Mcp\McpScopes;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notes\NoteRepository;
+use App\Services\Search\UnifiedSearchService;
 use Laravel\Passport\Passport;
 use Tests\Support\ConfiguresMcp;
 use Tests\Support\SeedsWgwIdentity;
@@ -47,6 +49,36 @@ final class McpNotesToolsTest extends WgwDatabaseTestCase
         WorkspaceServer::actingAs($user, 'api')
             ->tool(NotesSearchTool::class, ['query' => 'hello'])
             ->assertOk();
+    }
+
+    public function test_notes_search_rejects_a_query_longer_than_200_characters(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::NOTES_READ], 'api', $client);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NotesSearchTool::class, [
+                'query' => str_repeat('a', UnifiedSearchService::MAX_QUERY_LENGTH + 1),
+            ])
+            ->assertSee('must not be greater than 200 characters')
+            ->assertDontSee('Search query is too long.');
+    }
+
+    public function test_notes_search_shares_the_scan_budget(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::NOTES_READ], 'api', $client);
+
+        for ($attempt = 0; $attempt < 60; $attempt++) {
+            WgwApiRateLimiters::consumeSearch('bob');
+        }
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(NotesSearchTool::class, ['query' => 'hello'])
+            ->assertSee('Too many requests.')
+            ->assertDontSee('Search query is too long.');
     }
 
     public function test_notebook_list_and_note_write_happy_path(): void

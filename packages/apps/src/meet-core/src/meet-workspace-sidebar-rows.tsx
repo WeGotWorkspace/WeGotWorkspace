@@ -61,6 +61,7 @@ export function MeetDirectMessageRows({
       {people.map((person) => (
         <CollectionSidebarRow
           key={person.id}
+          className="meet-direct-message-row"
           name={person.displayName}
           color={DEFAULT_MEET_CHANNEL_COLOR}
           selected={selectedId === person.channelId}

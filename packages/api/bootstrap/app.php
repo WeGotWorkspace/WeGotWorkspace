@@ -16,6 +16,7 @@ use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
@@ -30,6 +31,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -81,6 +84,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             '*',
         ]);
+        // ThrottleRequests is sorted ahead of route middleware. Keep wgw.auth
+        // in front of it so the limiter sees the principal, not the client address.
+        $middleware->prependToPriorityList(
+            before: [
+                ThrottleRequests::class,
+                ThrottleRequestsWithRedis::class,
+            ],
+            prepend: AuthenticateWgwApi::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (MailResponseException $e) {
@@ -101,7 +113,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $payload['code'] = $e->errorCode();
             }
 
-            return response()->json($payload, $e->getStatusCode());
+            return response()->json($payload, $e->getStatusCode(), $e->getHeaders());
         });
         $exceptions->render(function (ValidationException $e) {
             $message = $e->validator->errors()->first();
@@ -148,6 +160,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 404 => 'not_found',
                 405 => 'method_not_allowed',
                 413 => 'post_too_large',
+                429 => 'rate_limited',
                 default => 'server_error',
             };
 
@@ -160,13 +173,17 @@ return Application::configure(basePath: dirname(__DIR__))
                     'not_found' => 'Not found.',
                     'method_not_allowed' => 'Method not allowed.',
                     'post_too_large' => 'Upload too large.',
+                    'rate_limited' => 'Too many requests.',
                     default => 'Internal server error.',
                 };
 
             return response()->json([
                 'error' => $message,
                 'code' => $code,
-            ], $status);
+            ], $status, $e instanceof HttpExceptionInterface ? $e->getHeaders() : []);
         });
+    })
+    ->booted(function (): void {
+        WgwApiRateLimiters::register();
     })
     ->create();

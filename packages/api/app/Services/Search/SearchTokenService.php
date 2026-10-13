@@ -6,10 +6,15 @@ namespace App\Services\Search;
 
 final class SearchTokenService
 {
+    public const MAX_QUERY_TOKENS = 10;
+
     /**
+     * Indexing passes no cap. Search passes {@see self::MAX_QUERY_TOKENS} so one
+     * query cannot fan out into an unbounded set of LIKE scans.
+     *
      * @return list<string>
      */
-    public function tokenize(string $text): array
+    public function tokenize(string $text, ?int $maxTokens = null): array
     {
         $normalized = $this->normalizeToken(mb_strtolower(trim($text)));
         if ($normalized === '') {
@@ -30,6 +35,9 @@ final class SearchTokenService
             }
             $seen[$token] = true;
             $tokens[] = $token;
+            if ($maxTokens !== null && count($tokens) >= $maxTokens) {
+                break;
+            }
         }
 
         return $tokens;

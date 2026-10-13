@@ -39,7 +39,6 @@ use App\Http\Controllers\Api\V1\Files\FilesController;
 use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
-use App\Http\Controllers\Api\V1\Installer\StateController as InstallerStateController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
@@ -98,11 +97,14 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware('wgw.auth');
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+// Guests read room status before they join, so this stays unauthenticated.
+// It is not on the account bucket, and not on the room limiter: that limiter
+// resolves the actor with the same Basic check, which would consume a login attempt.
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware('wgw.auth')
+    ->middleware(['wgw.auth', 'throttle:wgw-api'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 // Signaling is unauthenticated by design (guests join meetings with a session
@@ -136,7 +138,6 @@ Route::middleware([
     AddQueuedCookiesToResponse::class,
     StartSession::class,
 ])->group(function (): void {
-    Route::get('installer/state', InstallerStateController::class);
     Route::get('installer/bootstrap', InstallerBootstrapController::class);
     Route::post('installer/action', InstallerActionController::class);
 });
@@ -147,7 +148,7 @@ $filesSession = [
     StartSession::class,
 ];
 
-Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(function () use ($filesSession): void {
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
@@ -360,7 +361,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
-Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
@@ -371,7 +372,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
 
 Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
-Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
     Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);

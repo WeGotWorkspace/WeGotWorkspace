@@ -318,9 +318,9 @@ final class ChatChannelRepository
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
 
-        // Deleting a channel deletes its messages — chat_channel_meta cascades
-        // away with the calendars row.
+        // Channel delete removes messages; chat_channel_meta cascades with it.
         $this->calBackend()->deleteCalendar([(int) $instance->calendarid, (int) $instance->id]);
 
         return ['ok' => true];
@@ -457,9 +457,9 @@ final class ChatChannelRepository
         $kind = $meta->kind ?? ChatChannelMeta::KIND_CHANNEL;
         $isDefault = $meta?->default_for_group !== null;
         if ($isDefault) {
-            // Immutable like DMs (assertNotGroupDefault): surface that in the
-            // rights so clients hide the share/delete affordances.
             $rights['mayShare'] = false;
+            $rights['mayDelete'] = false;
+        } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance)) {
             $rights['mayDelete'] = false;
         }
         $roster = $this->rosterUsernames($instance, $groupSlug);

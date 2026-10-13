@@ -35,6 +35,8 @@ export type MeetWorkspaceStoryArgs = {
   initialKnockers?: { id: string; name: string }[];
   /** Start with this user knocking — waiting to be let in (chunk I). */
   initialWaitingForAdmission?: boolean;
+  /** Room link with no matching channel. Selection stays empty. */
+  unmatchedAdHocRoom?: string | null;
   upcomingMeetings?: MeetUpcomingMeeting[];
   onJoinUpcomingMeeting?: (href: string) => void;
 };
@@ -174,6 +176,7 @@ export function MeetWorkspaceStoryHarness({
   typingByChannel,
   initialKnockers,
   initialWaitingForAdmission = false,
+  unmatchedAdHocRoom = null,
   upcomingMeetings = STORY_UPCOMING_MEETINGS,
   onJoinUpcomingMeeting,
 }: MeetWorkspaceStoryArgs) {
@@ -220,6 +223,7 @@ export function MeetWorkspaceStoryHarness({
       liveCallChannelId={liveCallChannelId}
       routeChannelId={routeChannelId}
       initialThreadId={initialThreadId}
+      unmatchedAdHocRoom={unmatchedAdHocRoom}
       callStageRoom={callStageRoom}
       typingByChannel={typingByChannel}
       callParticipantsByChannel={{

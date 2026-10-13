@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Slack-like Meet workspace (live `/meet` is MeetChatApp → MeetWorkspace; invite gates are MeetInviteGate / MeetChannelDeepLinkGate): channel sidebar, chat main, compact in-call bar under ViewHeader, expanded light stage + peer strip, and one right rail that swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
+          "Slack-like Meet workspace (live `/meet` is MeetChatApp → MeetWorkspace; invite gates are MeetInviteGate / MeetChannelDeepLinkGate): channel sidebar, chat main, a pre-join bar with Join, and an expanded stage after join. One right rail swaps thread vs in-call chat. Call chrome is keyed to the channel that owns the session.",
       },
     },
   },
@@ -46,9 +46,6 @@ export const Default: Story = {
     await expect(canvas.getByRole("img", { name: meetLabels.liveCall })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
     ).not.toBeInTheDocument();
     await expect(
@@ -66,9 +63,8 @@ export const Default: Story = {
       within(bar as HTMLElement).queryByRole("img", { name: "Demo User avatar" }),
     ).not.toBeInTheDocument();
     await userEvent.click(join);
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
@@ -186,6 +182,7 @@ export const NewMeetingInstant: Story = {
     expect(
       body.queryAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }),
     ).toHaveLength(0);
+    await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
     await userEvent.click(body.getByRole("switch", { name: meetLabels.scheduleMeeting }));
     await expect(
       body.getAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }).length,
@@ -203,16 +200,16 @@ export const DirectMessage: Story = {
 };
 
 export const CallBar: Story = {
-  name: "Call bar",
+  name: "Joined call",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialVideoOn: false,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
@@ -235,7 +232,7 @@ export const CallChromeStaysOnChannel: Story = {
   name: "Call chrome stays on its channel",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     liveCallChannelId: "channel-design",
     routeChannelId: "channel-design",
   },
@@ -265,7 +262,7 @@ export const ParkedCallChrome: Story = {
   name: "Parked call hides in-channel chrome",
   args: {
     initialChannelId: "channel-random",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     liveCallChannelId: "channel-design",
     routeChannelId: "channel-random",
   },
@@ -285,30 +282,16 @@ export const ParkedCallChrome: Story = {
 };
 
 export const CallBarVideo: Story = {
-  name: "Call bar video",
+  name: "Joined call with video",
   args: {
     initialChannelId: "channel-design",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialVideoOn: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
-    await expect(canvas.queryByText("video on", { exact: false })).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.shareScreen }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.getAllByText(meetLabels.youLabel).length).toBeGreaterThan(0);
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.expandCall }));
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
-    await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
-    await expect(canvas.queryByLabelText(meetLabels.resizeCall)).not.toBeInTheDocument();
-    await expect(canvas.getAllByRole("button", { name: "Show sidebar" }).length).toBeGreaterThan(0);
-    await userEvent.click(canvas.getByRole("button", { name: meetLabels.collapseCall }));
-    await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },
 };
@@ -334,7 +317,6 @@ export const CallFullscreen: Story = {
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.collapseCall })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getAllByRole("button", { name: "Show sidebar" }).length).toBeGreaterThan(0);
     await expect(canvas.getByRole("button", { name: /Show chat|Hide chat/ })).toBeInTheDocument();
@@ -346,14 +328,14 @@ export const KnockWaiting: Story = {
   name: "Knock waiting",
   args: {
     initialChannelId: "channel-random",
-    initialCallLayout: "compact",
+    initialCallLayout: "side-by-side",
     initialWaitingForAdmission: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Knocker side (chunk-H knock path): the compact call chrome swaps to a
-    // polite wait banner — channel name, waiting copy, cancel. Text queries use
-    // getAllByText because the parked stage surface renders an aria-hidden copy.
+    // Knocker side: the expanded stage shows a wait banner — channel name,
+    // waiting copy, and cancel. Text queries use getAllByText because the
+    // parked stage surface renders an aria-hidden copy.
     await expect(canvas.getAllByText(meetLabels.knockWaitTitle("#random")).length).toBeGreaterThan(
       0,
     );
@@ -382,48 +364,38 @@ export const KnockQueue: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Member side: knockers surface as an action-row icon (production
-    // MeetKnockBadge). Role queries skip the parked aria-hidden copy.
-    const admitTrigger = canvas.getByRole("button", {
-      name: meetLabels.waitingToJoin(2),
-    });
-    await expect(admitTrigger).toBeInTheDocument();
-    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
-    await userEvent.click(admitTrigger);
-    const body = within(canvasElement.ownerDocument.body);
-    await userEvent.click(
-      await body.findByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
-    );
+    await expect(canvas.getByText(meetLabels.lobbyWaiting(2))).toBeInTheDocument();
     await expect(
-      canvas.getByRole("button", { name: meetLabels.waitingToJoin(1) }),
+      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
     ).toBeInTheDocument();
-    // The popover stays open after admit; a second trigger click would close it.
     await userEvent.click(
-      await body.findByRole("button", { name: meetLabels.denyName("Jamie Lee") }),
+      canvas.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }),
     );
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(1) }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.getByText(meetLabels.lobbyWaiting(1))).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: meetLabels.denyName("Jamie Lee") }));
+    await expect(canvas.queryByText(meetLabels.lobbyWaiting(1))).not.toBeInTheDocument();
   },
 };
 
-export const KnockQueueCompact: Story = {
-  name: "Knock queue (compact)",
+export const AdHocKnockWaiting: Story = {
+  name: "Ad-hoc knock waiting",
   args: {
-    initialChannelId: "channel-general",
-    initialCallLayout: "compact",
-    initialKnockers: [
-      { id: "guest-1", name: "Alex Morgan" },
-      { id: "guest-2", name: "Jamie Lee" },
-    ],
+    unmatchedAdHocRoom: "aaaa-bbbb-cccc",
+    initialWaitingForAdmission: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // No selected channel: the visit still shows the stage knock-wait card.
+    await expect(canvas.getAllByText(meetLabels.knockWaitHint).length).toBeGreaterThan(0);
     await expect(
-      canvas.getByRole("button", { name: meetLabels.waitingToJoin(2) }),
+      canvas.getByRole("button", { name: meetLabels.cancelRequest }),
     ).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.expandCall })).toBeInTheDocument();
-    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.emptyChannelMain)).not.toBeInTheDocument();
+    await expect(canvasElement.querySelector(".meet-call-stage__dock")).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.devices }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
   },
 };
 
@@ -468,7 +440,6 @@ export const ThreadOpenDuringCall: Story = {
     initialThreadId: "msg-1",
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("button", { name: meetLabels.threadBack })).toBeInTheDocument();
     await expect(body.getAllByText(meetLabels.threadTitle).length).toBeGreaterThan(0);
@@ -478,6 +449,5 @@ export const ThreadOpenDuringCall: Story = {
     ).not.toBeInTheDocument();
     await expect(body.getByText(meetLabels.chatInChannel("#general"))).toBeInTheDocument();
     await expect(body.getByRole("button", { name: meetLabels.chatClose })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: meetLabels.collapseCall })).toBeInTheDocument();
   },
 };

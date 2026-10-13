@@ -19,7 +19,7 @@ import {
   migrateDocsCollabPendingSaveFromLegacy,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const getNote = vi.hoisted(() => vi.fn());
 

@@ -32,7 +32,7 @@ describe("MeetPeerTile mute", () => {
     toastApi.show.mockClear();
   });
 
-  it("toggles the local mic from the name badge instead of a corner button", () => {
+  it("toggles the local mic from the mute button", () => {
     const onToggleMic = vi.fn();
     const onMuteParticipant = vi.fn();
     renderTile({
@@ -42,14 +42,18 @@ describe("MeetPeerTile mute", () => {
       onMuteParticipant,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.mute }));
+    const mute = screen.getByRole("button", { name: meetLabels.mutePeer("You") });
+    expect(mute.className).toContain("button--variant-outline");
+    expect(mute.className).not.toContain("button--severity-danger");
+    expect(mute.hasAttribute("aria-pressed")).toBe(false);
+    fireEvent.click(mute);
     expect(onToggleMic).toHaveBeenCalledTimes(1);
     expect(onMuteParticipant).not.toHaveBeenCalled();
     expect(toastApi.show).toHaveBeenCalledWith(meetLabels.microphoneMuted, { severity: "info" });
-    expect(screen.queryByRole("button", { name: meetLabels.muteParticipant })).toBeNull();
+    expect(screen.getByText("You").closest("button")).toBeNull();
   });
 
-  it("unmutes the local mic from the name badge", () => {
+  it("unmutes the local mic from the mute button", () => {
     const onToggleMic = vi.fn();
     renderTile({
       name: "You",
@@ -57,12 +61,12 @@ describe("MeetPeerTile mute", () => {
       onToggleMic,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.unmute }));
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.unmutePeer("You") }));
     expect(onToggleMic).toHaveBeenCalledTimes(1);
     expect(toastApi.show).toHaveBeenCalledWith(meetLabels.microphoneUnmuted, { severity: "info" });
   });
 
-  it("asks the host to mute a live participant from the name badge", () => {
+  it("asks the host to mute a live participant from the mute button", () => {
     const onMuteParticipant = vi.fn();
     renderTile({
       name: "Admin",
@@ -70,12 +74,12 @@ describe("MeetPeerTile mute", () => {
       onMuteParticipant,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.muteParticipant }));
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.mutePeer("Admin") }));
     expect(onMuteParticipant).toHaveBeenCalledWith(true);
     expect(toastApi.show).not.toHaveBeenCalled();
   });
 
-  it("asks the host to unmute a muted participant from the name badge", () => {
+  it("asks the host to unmute a muted participant from the mute button", () => {
     const onMuteParticipant = vi.fn();
     renderTile({
       name: "Admin",
@@ -83,15 +87,54 @@ describe("MeetPeerTile mute", () => {
       onMuteParticipant,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.unmuteParticipant }));
+    const mute = screen.getByRole("button", { name: meetLabels.unmutePeer("Admin") });
+    expect(mute.className).toContain("button--variant-outline");
+    expect(mute.className).not.toContain("button--severity-danger");
+    expect(mute.className).toContain("meet-peer-tile__control--persistent");
+    fireEvent.click(mute);
     expect(onMuteParticipant).toHaveBeenCalledWith(false);
   });
 
-  it("hides peer mute when the viewer cannot moderate", () => {
+  it("shows a read-only mic indicator when the viewer cannot moderate", () => {
     renderTile({ name: "Admin", disclosedMedia: { camera: true, mic: true } });
-    expect(screen.queryByRole("button", { name: meetLabels.muteParticipant })).toBeNull();
-    expect(screen.queryByRole("button", { name: meetLabels.unmuteParticipant })).toBeNull();
-    expect(screen.queryByRole("button", { name: meetLabels.mute })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.mutePeer("Admin") })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.unmutePeer("Admin") })).toBeNull();
+    const live = screen.getByRole("img", { name: meetLabels.micLive("Admin") });
+    expect(live.className).toContain("meet-peer-tile__mic-state");
+    expect(screen.getByText("Admin").closest("button")).toBeNull();
+  });
+
+  it("keeps a muted peer's indicator visible when the viewer cannot moderate", () => {
+    renderTile({ name: "Admin", disclosedMedia: { camera: true, mic: false } });
+    const muted = screen.getByRole("img", { name: meetLabels.micMuted("Admin") });
+    expect(muted.className).toContain("meet-peer-tile__control--persistent");
+    expect(screen.queryByRole("button", { name: meetLabels.unmutePeer("Admin") })).toBeNull();
+  });
+
+  it("pins and unpins the tile locally", () => {
+    const onToggleMic = vi.fn();
+    renderTile({ name: "Alex Morgan", micOn: true, onToggleMic });
+
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") }));
+    const pinned = screen.getByRole("button", {
+      name: meetLabels.unpinParticipant("Alex Morgan"),
+    });
+    expect(pinned.getAttribute("aria-pressed")).toBe("true");
+    expect(onToggleMic).not.toHaveBeenCalled();
+
+    fireEvent.click(pinned);
+    expect(
+      screen
+        .getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("shows a speaking tag and speaking class for the active speaker", () => {
+    const { container } = renderTile({ name: "Alex Morgan", speaking: true });
+    expect(screen.getByText(meetLabels.speaking)).toBeTruthy();
+    expect(container.querySelector(".meet-peer-tile--speaking")).toBeTruthy();
+    expect(screen.getByText(meetLabels.speaking).className).toContain("meet-peer-tile__speaking");
   });
 
   it("keeps the camera-off initial visible when an audio stream is still attached", () => {
@@ -122,5 +165,6 @@ describe("MeetPeerTile mute", () => {
     expect(mark.textContent).toBe("A");
     expect(mark.closest(".meet-peer-tile__fill")).not.toBeNull();
     expect(mark.closest(".sr-only")).toBeNull();
+    expect(document.querySelector(".meet-peer-tile__display-name")).toBeNull();
   });
 });

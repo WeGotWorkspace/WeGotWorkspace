@@ -30,7 +30,7 @@ final class JmapSetErrors
         $type = match ($e->errorCode()) {
             'not_found' => 'notFound',
             'bad_request', 'invalidProperties' => 'invalidProperties',
-            'forbidden' => 'forbidden',
+            'forbidden', 'group_delete_admin_only' => 'forbidden',
             'stateMismatch', 'precondition_failed' => 'stateMismatch',
             // draft-ietf-jmap-calendars Calendar/set destroy without onDestroyRemoveEvents.
             'calendarHasContents' => 'calendarHasEvent',

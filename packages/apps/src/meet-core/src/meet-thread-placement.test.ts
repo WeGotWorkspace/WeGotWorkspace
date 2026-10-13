@@ -18,7 +18,6 @@ describe("meetThreadPlacement", () => {
 
   it("maps call-stage layout onto thread placement layout", () => {
     expect(meetCallLayoutToThreadLayout("collapsed")).toBe("none");
-    expect(meetCallLayoutToThreadLayout("compact")).toBe("none");
     expect(meetCallLayoutToThreadLayout("side-by-side")).toBe("split");
     expect(meetCallLayoutToThreadLayout("fullscreen")).toBe("fullscreen");
   });

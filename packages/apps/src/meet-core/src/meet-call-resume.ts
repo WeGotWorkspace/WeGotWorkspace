@@ -1,5 +1,5 @@
 import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
-import { meetCallIsActive, type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
+import { type MeetCallStageLayout } from "@/meet-core/src/meet-call-stage-layout";
 import type { MeetCallStatus } from "@/meet-core/src/meet-call-types";
 import {
   MEET_MEETINGS_ROUTE,
@@ -63,13 +63,14 @@ export function meetCallUiParkedOnWorkspaceUnmount(callEngaged: boolean): boolea
 }
 
 /**
- * Chrome to restore after Meet remounts mid-call. Compact is the join default;
- * expanded/fullscreen only come back if the user left them that way.
+ * Chrome to restore after Meet remounts mid-call. Fullscreen and a deliberate
+ * collapse come back as stored. Anything else opens the expanded stage.
  */
 export function meetResumeCallLayout(
   persisted: MeetCallStageLayout | null | undefined,
 ): MeetCallStageLayout {
-  return persisted && meetCallIsActive(persisted) ? persisted : "compact";
+  if (persisted === "fullscreen" || persisted === "collapsed") return persisted;
+  return "side-by-side";
 }
 
 /**
