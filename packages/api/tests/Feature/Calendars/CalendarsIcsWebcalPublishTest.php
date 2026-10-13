@@ -188,7 +188,8 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertSame('Public standup', $event->SUMMARY->getValue());
         $this->assertSame('Agenda lives on the external site', $event->DESCRIPTION->getValue());
         $this->assertSame('Library', $event->LOCATION->getValue());
-        $this->assertSame('https://notes.example.test/agenda', $event->URL->getValue());
+        $this->assertNull($event->URL);
+        $this->assertStringNotContainsString('notes.example.test/agenda', $ics);
         $this->assertStringNotContainsString('attendee-hidden@example.test', $ics);
         $this->assertStringNotContainsString('folded-attendee@example.test', $ics);
         $this->assertStringNotContainsString('organizer-hidden@example.test', $ics);
