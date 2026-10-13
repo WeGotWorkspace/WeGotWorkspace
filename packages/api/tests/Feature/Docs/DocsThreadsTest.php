@@ -352,6 +352,34 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         ])->assertOk()->assertJsonPath('resolved', true);
     }
 
+    /**
+     * Yes: a legacy review grant is an editor here. DriveShareAccess gives review
+     * the same mayEditContent as edit, so a reviewer may resolve someone else's thread.
+     */
+    public function test_review_grant_resolves_someone_elses_thread(): void
+    {
+        $this->asBob()->postJson('/api/v1/files/shares', [
+            'path' => self::PATH,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => [
+                'alice' => ['access' => 'comment'],
+                'carol' => ['access' => 'review'],
+            ],
+        ])->assertOk();
+        $rootId = $this->ulid('AW');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'from alice',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $this->asCarol()->patchJson($this->threadUrl($rootId), [
+            'resolved' => true,
+        ])->assertOk()->assertJsonPath('resolved', true);
+    }
+
     public function test_author_match_ignores_username_case_and_space(): void
     {
         $this->shareCommentAndEdit();
