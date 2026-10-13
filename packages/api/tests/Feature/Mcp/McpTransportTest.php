@@ -257,6 +257,25 @@ final class McpTransportTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_original_host_explicit_http_proto_stays_http(): void
+    {
+        config([
+            'app.url' => 'http://127.0.0.1:9080',
+            'wgw.mcp.public_origin' => null,
+        ]);
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_ORIGINAL_HOST' => 'original.example.com',
+            'HTTP_X_FORWARDED_PROTO' => 'http',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', 'http://original.example.com/mcp')
+            ->assertJsonPath('authorization_servers.0', 'http://original.example.com');
+    }
+
     public function test_ngrok_host_wins_over_app_url_localhost(): void
     {
         config(['app.url' => 'https://wegotworkspace.localhost']);
