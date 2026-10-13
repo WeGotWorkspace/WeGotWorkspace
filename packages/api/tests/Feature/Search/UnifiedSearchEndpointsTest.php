@@ -506,4 +506,54 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $this->assertSame('note', $updatedRows[0]['sourceType'] ?? null);
         $this->assertSame('Untitled', $updatedRows[0]['title'] ?? null);
     }
+
+    public function test_unified_search_uses_only_the_first_ten_tokens(): void
+    {
+        $storage = app(WgwStorage::class)->files();
+        $storage->put('users/alice/early-token.md', 'aa01 appears here');
+        $storage->put('users/alice/eleventh-token.md', 'zz99 appears here');
+        app(SearchIndexerService::class)->reindexAll();
+
+        $tokens = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $tokens[] = sprintf('aa%02d', $i);
+        }
+        $tokens[] = 'zz99';
+
+        $token = $this->issueBearerToken();
+        $capped = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => implode(' ', $tokens),
+            'limit' => 20,
+        ]));
+        $capped->assertOk();
+        $keys = array_column((array) $capped->json('data.results'), 'sourceKey');
+        $this->assertContains('users/alice/early-token.md', $keys);
+        $this->assertNotContains('users/alice/eleventh-token.md', $keys);
+
+        $eleventh = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'zz99',
+            'limit' => 20,
+        ]));
+        $eleventh->assertOk();
+        $eleventhKeys = array_column((array) $eleventh->json('data.results'), 'sourceKey');
+        $this->assertContains('users/alice/eleventh-token.md', $eleventhKeys);
+    }
+
+    public function test_unified_search_rejects_queries_longer_than_200_characters(): void
+    {
+        $token = $this->issueBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => str_repeat('a', 201),
+            ]))
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'query_too_long');
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => str_repeat('a', 200),
+            ]))
+            ->assertOk();
+    }
 }
