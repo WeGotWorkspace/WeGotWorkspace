@@ -303,12 +303,16 @@ final class DriveShareService
             $this->rules->assertCommentReviewApplicable($share->path, $access);
 
             $grant = $this->grantWriter->upsertEmailInviteGrant($share, $email, $access);
+            $inviteToken = $grant->displayedInviteToken();
+            if (! is_string($inviteToken) || $inviteToken === '') {
+                throw new ApiHttpException(500, 'Invite token could not be issued.', 'server_error');
+            }
 
             return [
                 'id' => (string) $grant->id,
                 'email' => $email,
                 'access' => $access,
-                'inviteToken' => $grant->displayedInviteToken(),
+                'inviteToken' => $inviteToken,
             ];
         });
     }
@@ -489,6 +493,8 @@ final class DriveShareService
             ->where('public_token_hash', $expectedHash)
             ->first();
 
+        // Same shape as CalendarFeedToken::findByRawToken(). The index lookup already
+        // compared the hash; hash_equals is that form, not a timing defense.
         $storedHash = $share?->public_token_hash;
         if ($share === null || ! is_string($storedHash) || ! hash_equals($storedHash, $expectedHash)) {
             throw new ApiHttpException(404, 'This share link is invalid or has expired.', 'share_unavailable');
@@ -570,6 +576,8 @@ final class DriveShareService
                 ->lockForUpdate()
                 ->first();
 
+            // Same shape as CalendarFeedToken::findByRawToken(). The index lookup already
+            // compared the hash; hash_equals is that form, not a timing defense.
             $storedHash = $grant?->invite_token_hash;
             if (
                 $grant === null

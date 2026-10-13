@@ -8,6 +8,7 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
@@ -64,7 +65,8 @@ final class DriveShareGrant extends Model
 
     public static function hashInviteToken(string $token): string
     {
-        return hash('sha256', trim($token));
+        // Same normalization as DriveShare::hashPublicToken and CalendarFeedToken::hashRaw.
+        return hash('sha256', strtolower(trim($token)));
     }
 
     public function issueInviteToken(): void
@@ -76,14 +78,21 @@ final class DriveShareGrant extends Model
         $this->invite_expires_at = Carbon::now()->addDays(self::INVITE_TTL_DAYS);
     }
 
-    public function displayedInviteToken(): string
+    public function displayedInviteToken(): ?string
     {
-        $token = $this->invite_token_cipher;
-        if (! is_string($token)) {
-            return '';
+        $cipher = $this->attributes['invite_token_cipher'] ?? null;
+        if (! is_string($cipher) || $cipher === '') {
+            return null;
         }
 
-        return $token;
+        try {
+            $token = Crypt::decryptString($cipher);
+        } catch (\Throwable) {
+            // A rotated APP_KEY cannot decrypt this row. The caller must not treat that as a token.
+            return null;
+        }
+
+        return $token === '' ? null : $token;
     }
 
     /** @return BelongsTo<DriveShare, $this> */

@@ -20,9 +20,20 @@ return new class extends WgwMigration
         $this->backfillGrants();
     }
 
+    /**
+     * Writes the decrypted cipher back into the plaintext column, then drops
+     * the hash and cipher columns. Decrypt uses APP_KEY. A failure aborts
+     * before the drop, so a bad key does not destroy the only remaining copy.
+     */
     public function down(): void
     {
+        $this->restoreGrantPlaintext();
+        $this->restoreSharePlaintext();
+
         if ($this->wgwHasTable('drive_share_grants') && $this->wgwHasColumn('drive_share_grants', 'invite_token_hash')) {
+            $this->wgw()->table('drive_share_grants', function (Blueprint $table): void {
+                $table->dropUnique('uniq_drive_share_grants_invite_token_hash');
+            });
             $this->wgw()->table('drive_share_grants', function (Blueprint $table): void {
                 $table->dropColumn(['invite_token_hash', 'invite_token_cipher', 'invite_expires_at']);
             });
@@ -30,8 +41,57 @@ return new class extends WgwMigration
 
         if ($this->wgwHasTable('drive_shares') && $this->wgwHasColumn('drive_shares', 'public_token_hash')) {
             $this->wgw()->table('drive_shares', function (Blueprint $table): void {
+                $table->dropUnique('uniq_drive_shares_public_token_hash');
+            });
+            $this->wgw()->table('drive_shares', function (Blueprint $table): void {
                 $table->dropColumn(['public_token_hash', 'public_token_cipher']);
             });
+        }
+    }
+
+    private function restoreSharePlaintext(): void
+    {
+        if (! $this->wgwHasTable('drive_shares') || ! $this->wgwHasColumn('drive_shares', 'public_token_cipher')) {
+            return;
+        }
+
+        $rows = DB::connection('wgw')->table('drive_shares')
+            ->whereNotNull('public_token_cipher')
+            ->get(['id', 'public_token_cipher']);
+
+        foreach ($rows as $row) {
+            $id = $row->id ?? null;
+            $cipher = $row->public_token_cipher ?? null;
+            if ((! is_string($id) && ! is_int($id)) || ! is_string($cipher) || $cipher === '') {
+                continue;
+            }
+
+            DB::connection('wgw')->table('drive_shares')->where('id', $id)->update([
+                'public_token' => Crypt::decryptString($cipher),
+            ]);
+        }
+    }
+
+    private function restoreGrantPlaintext(): void
+    {
+        if (! $this->wgwHasTable('drive_share_grants') || ! $this->wgwHasColumn('drive_share_grants', 'invite_token_cipher')) {
+            return;
+        }
+
+        $rows = DB::connection('wgw')->table('drive_share_grants')
+            ->whereNotNull('invite_token_cipher')
+            ->get(['id', 'invite_token_cipher']);
+
+        foreach ($rows as $row) {
+            $id = $row->id ?? null;
+            $cipher = $row->invite_token_cipher ?? null;
+            if ((! is_string($id) && ! is_int($id)) || ! is_string($cipher) || $cipher === '') {
+                continue;
+            }
+
+            DB::connection('wgw')->table('drive_share_grants')->where('id', $id)->update([
+                'invite_token' => Crypt::decryptString($cipher),
+            ]);
         }
     }
 

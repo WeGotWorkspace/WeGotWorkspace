@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Installer;
 
+use App\Models\DriveShare;
+use App\Models\DriveShareGrant;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\WgwConnectionConfigurator;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\WgwTestDatabase;
 use Tests\TestCase;
@@ -27,6 +33,57 @@ final class WgwSchemaMigratorTest extends TestCase
 
         $this->assertSame(WgwSchemaMigrator::CURRENT_SCHEMA_VERSION, $migrator->currentVersion());
         $this->assertExpectedSchemaAtCurrentVersion();
+    }
+
+    public function test_hash_token_down_restores_plaintext_before_dropping_columns(): void
+    {
+        app(WgwSchemaMigrator::class)->migrate();
+
+        $shareId = (string) Str::uuid();
+        $grantId = (string) Str::uuid();
+        $now = Carbon::now();
+        $publicToken = 'legacy-public-token-0123456789abcd';
+        $inviteToken = 'example-invite-token';
+
+        DB::connection('wgw')->table('drive_shares')->insert([
+            'id' => $shareId,
+            'path' => '/users/bob/shared.md',
+            'owner_username' => 'bob',
+            'kind' => 'public',
+            'default_access' => 'view',
+            'public_token' => null,
+            'public_token_hash' => DriveShare::hashPublicToken($publicToken),
+            'public_token_cipher' => Crypt::encryptString($publicToken),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::connection('wgw')->table('drive_share_grants')->insert([
+            'id' => $grantId,
+            'share_id' => $shareId,
+            'grantee_type' => 'email',
+            'grantee_email' => 'legacy@example.com',
+            'access' => 'view',
+            'status' => 'pending',
+            'invite_token' => null,
+            'invite_token_hash' => DriveShareGrant::hashInviteToken($inviteToken),
+            'invite_token_cipher' => Crypt::encryptString($inviteToken),
+            'invite_expires_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $migration = require database_path('migrations/wgw/2026_10_13_000460_wgw_hash_drive_share_tokens.php');
+        $migration->down();
+
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('drive_shares', 'public_token_cipher'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('drive_share_grants', 'invite_token_cipher'));
+
+        $share = DB::connection('wgw')->table('drive_shares')->where('id', $shareId)->first();
+        $grant = DB::connection('wgw')->table('drive_share_grants')->where('id', $grantId)->first();
+        $this->assertNotNull($share);
+        $this->assertNotNull($grant);
+        $this->assertSame($publicToken, $share->public_token);
+        $this->assertSame($inviteToken, $grant->invite_token);
     }
 
     public function test_rtc_hardening_down_drops_collab_browser_id_only_when_present(): void

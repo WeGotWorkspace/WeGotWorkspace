@@ -136,6 +136,9 @@ final class DriveShareGrantWriter
             $grant->grantee_user = null;
             $grant->status = 'pending';
             $grant->issueInviteToken();
+        } else {
+            // Pending resend rotates the secret and extends invite_expires_at.
+            $grant->issueInviteToken();
         }
 
         $grant->access = $access;

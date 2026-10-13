@@ -8,6 +8,7 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
@@ -83,12 +84,19 @@ final class DriveShare extends Model
 
     public function displayedPublicToken(): ?string
     {
-        $token = $this->public_token_cipher;
-        if (! is_string($token) || $token === '') {
+        $cipher = $this->attributes['public_token_cipher'] ?? null;
+        if (! is_string($cipher) || $cipher === '') {
             return null;
         }
 
-        return $token;
+        try {
+            $token = Crypt::decryptString($cipher);
+        } catch (\Throwable) {
+            // A rotated APP_KEY cannot decrypt this row. Omit the link instead of failing the share list.
+            return null;
+        }
+
+        return $token === '' ? null : $token;
     }
 
     /** @return HasMany<DriveShareGrant, $this> */
