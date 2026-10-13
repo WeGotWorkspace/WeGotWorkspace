@@ -47,7 +47,7 @@ WeGotWorkspace **runtime** data uses `WGW_*` keys in `packages/api/.env` (loaded
 `.env.example` defaults to `SESSION_DRIVER=file`, `CACHE_STORE=file`, and `QUEUE_CONNECTION=sync` so a host does not need `packages/api/database/database.sqlite`.  
 In-place updates **preserve** an existing `packages/api/.env`, session files, and logs. Each update backup also includes `packages-api.env` when present. Keep a host-level backup anyway.
 
-Password reset delivery runs after the HTTP response via Laravel `defer()`. That stays off the client clock only when the SAPI finishes the request (`fastcgi_finish_request` or `litespeed_finish_request`). These Apache mod_php images have neither, so the body is flushed while the worker keeps running, and output compression on that path can make the timing difference visible again.
+Password reset delivery runs after the HTTP response via Laravel `defer()`. That stays off the client clock only when the SAPI finishes the request (`fastcgi_finish_request` or `litespeed_finish_request`). A mod_php host has neither, including the shipped Docker images; LiteSpeed and PHP-FPM finish the request. Output compression on that path can make the timing difference visible again.
 
 ### Database-backed Laravel drivers (optional)
 
