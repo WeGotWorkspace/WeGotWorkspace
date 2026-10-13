@@ -361,6 +361,39 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_group_subscription_save_failure_reports_the_original_error(): void
+    {
+        $this->seedTeamWithBob();
+        Http::fake([
+            self::FEED_URL => Http::response($this->sampleIcs('Holiday', 'save-fail@example.test'), 200, [
+                'Content-Type' => 'text/calendar',
+            ]),
+        ]);
+        CalendarSubscription::creating(static function (): void {
+            throw new \RuntimeException('name too long');
+        });
+
+        try {
+            $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+                'url' => self::FEED_URL,
+                'name' => 'Too Long Feed',
+                'groupSlug' => 'team',
+            ])->assertStatus(400)
+                ->assertJsonPath('code', 'bad_request')
+                ->assertJsonPath('error', 'The calendar feed could not be imported.');
+        } finally {
+            CalendarSubscription::flushEventListeners();
+        }
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
+        $this->assertNotNull(
+            CalendarInstance::query()
+                ->where('principaluri', 'principals/groups/team')
+                ->where('displayname', 'Too Long Feed')
+                ->first(),
+        );
+    }
+
     public function test_subscription_id_is_scoped_to_the_calendar_owner(): void
     {
         $this->seedNamedCalendarFor('bob', 'work', 'Work');
