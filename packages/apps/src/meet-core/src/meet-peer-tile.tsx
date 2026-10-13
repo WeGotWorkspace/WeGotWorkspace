@@ -94,6 +94,7 @@ export function MeetPeerTile({
   // camera toggle is announced as off.
   const showRemoteVideo =
     !hideVideo &&
+    !omitPlayback &&
     !!(
       stream && (disclosedMedia ? disclosedMedia.camera || disclosedMedia.screen : cameraFromTracks)
     );

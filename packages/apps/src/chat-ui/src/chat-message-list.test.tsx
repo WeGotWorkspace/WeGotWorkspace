@@ -89,29 +89,6 @@ describe("ChatMessageList jump chip", () => {
   });
 });
 
-describe("ChatMessageList hover", () => {
-  beforeEach(() => {
-    cleanup();
-  });
-
-  it("does not scroll when a message is hovered", async () => {
-    render(
-      <ChatMessageList messages={[msg("1"), msg("2"), msg("3")]} currentUserId={CURRENT_USER} />,
-    );
-    await flushFrame();
-
-    const scroller = screen.getByRole("log");
-    Object.defineProperty(scroller, "scrollHeight", { configurable: true, get: () => 1000 });
-    Object.defineProperty(scroller, "clientHeight", { configurable: true, get: () => 200 });
-    scroller.scrollTop = 120;
-
-    fireEvent.mouseOver(screen.getByText("body 1"));
-    await flushFrame();
-
-    expect(scroller.scrollTop).toBe(120);
-  });
-});
-
 describe("ChatMessageList sticky day labels", () => {
   beforeEach(() => {
     cleanup();

@@ -262,6 +262,58 @@ describe("Meet call screen-share layout", () => {
       tile.textContent?.includes("Sam Rivera"),
     );
     expect(sam?.querySelector("video")).toBeNull();
+    expect(sam?.querySelector(".meet-peer-tile__fill")).not.toBeNull();
+  });
+
+  it("shows an avatar on the filmstrip copy when the pinned camera is on", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    const alex = mediaStream();
+    const disclosed = { camera: true, mic: true, screen: false };
+    const controller = createMeetStoryController(createRef<HTMLVideoElement>(), {
+      screenOn: false,
+      lowData: false,
+      peers: [
+        { ...STORY_MEET_PEERS[0]!, stream: alex, disclosedMedia: disclosed },
+        { ...STORY_MEET_PEERS[1]!, disclosedMedia: disclosed },
+      ],
+      videoOn: false,
+      displayName: "Demo User",
+    });
+    const { container } = render(
+      <TooltipProvider>
+        <MeetCallExpanded
+          monitorSpeech={false}
+          controller={controller}
+          displayName="Demo User"
+          hasSignedInIdentity
+          participantCount={3}
+          callExitLabel={meetLabels.leave}
+          callExitTitle={meetLabels.leave}
+          callExitDescription={meetLabels.leave}
+          cameras={STORY_MEET_DEVICES}
+          microphones={STORY_MEET_MICROPHONES}
+          speakers={STORY_MEET_SPEAKERS}
+          activeCamera={STORY_MEET_DEVICES[0]!.id}
+          activeMic={STORY_MEET_MICROPHONES[0]!.id}
+          activeSpeaker={STORY_MEET_SPEAKERS[0]!.id}
+          onSpeakerChange={() => undefined}
+          onCopyLink={() => undefined}
+          onToastInfo={() => undefined}
+          onToastError={() => undefined}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") }));
+
+    const main = container.querySelector(".meet-call-stage__share-main");
+    expect(main?.querySelector("video")?.srcObject).toBe(alex);
+    const filmstrip = container.querySelector(".meet-call-stage__share-peers");
+    const thumbnail = [...(filmstrip?.querySelectorAll(".meet-peer-tile") ?? [])].find((tile) =>
+      tile.textContent?.includes("Alex Morgan"),
+    );
+    expect(thumbnail?.querySelector("video")).toBeNull();
+    expect(thumbnail?.querySelector(".meet-peer-tile__fill")).not.toBeNull();
   });
 
   it("hides the control dock while waiting for admission", () => {

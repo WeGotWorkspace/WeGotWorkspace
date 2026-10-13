@@ -39,9 +39,8 @@ export function MeetCallKnockQueue({
       try {
         for (const knocker of knockers) await onAdmit(knocker.id);
       } catch (error) {
-        onAdmitError?.(
-          error instanceof Error ? error.message : meetLabels.couldNotAdmitParticipant,
-        );
+        console.error(error);
+        onAdmitError?.(meetLabels.couldNotAdmitParticipant);
       } finally {
         admittingAll.current = false;
         setAdmitAllBusy(false);

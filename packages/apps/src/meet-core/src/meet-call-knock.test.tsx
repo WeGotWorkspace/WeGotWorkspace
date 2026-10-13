@@ -96,6 +96,7 @@ describe("MeetCallKnockQueue", () => {
 
   it("reports a failed admit and leaves the button ready to retry", async () => {
     const onAdmitError = vi.fn();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const onAdmit = vi
       .fn()
       .mockImplementationOnce(() => Promise.resolve())
@@ -114,7 +115,9 @@ describe("MeetCallKnockQueue", () => {
       await Promise.resolve();
     });
     expect(onAdmit).toHaveBeenCalledTimes(2);
-    expect(onAdmitError).toHaveBeenCalledWith("offline");
+    expect(onAdmitError).toHaveBeenCalledWith(meetLabels.couldNotAdmitParticipant);
+    expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ message: "offline" }));
+    errorSpy.mockRestore();
     expect(
       (screen.getByRole("button", { name: meetLabels.admitAll }) as HTMLButtonElement).disabled,
     ).toBe(false);
