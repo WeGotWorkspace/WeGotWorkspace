@@ -10153,7 +10153,8 @@
                 "type": "object",
                 "required": [
                     "httpsUrl",
-                    "webcalUrl"
+                    "webcalUrl",
+                    "mode"
                 ],
                 "additionalProperties": false,
                 "description": "Owner-visible published ICS/webcal feed URLs for an owned personal calendar.",
@@ -10166,6 +10167,14 @@
                     "webcalUrl": {
                         "type": "string",
                         "description": "Same feed advertised as webcal:// for calendar clients."
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "full",
+                            "busy"
+                        ],
+                        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
                     }
                 }
             },
@@ -12393,6 +12402,21 @@
                     "url": {
                         "type": "string",
                         "description": "Public http or https address. The path may be empty or the install base. No user info or query."
+                    }
+                }
+            },
+            "CalendarFeedPublishRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Optional publish mode. Omitted mode leaves an existing feed unchanged and creates a new feed as full.",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "full",
+                            "busy"
+                        ],
+                        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
                     }
                 }
             },
@@ -18123,7 +18147,7 @@
                     "Calendars"
                 ],
                 "summary": "Publish a calendar as an ICS / webcal feed",
-                "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.",
+                "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18139,6 +18163,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarFeedPublishRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Existing published feed URLs",

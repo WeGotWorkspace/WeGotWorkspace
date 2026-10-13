@@ -49,6 +49,7 @@ describe("useCalendarController publish feed", () => {
     const publishCalendarFeed = vi.fn().mockResolvedValue({
       httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
       webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+      mode: "full",
     });
     const unpublishCalendarFeed = vi.fn().mockResolvedValue(undefined);
     const getCalendarFeed = vi.fn().mockResolvedValue(null);
@@ -75,7 +76,7 @@ describe("useCalendarController publish feed", () => {
     await act(async () => {
       result.current.toggleCalendarPublish(true);
     });
-    expect(publishCalendarFeed).toHaveBeenCalledWith("default");
+    expect(publishCalendarFeed).toHaveBeenCalledWith("default", undefined);
     expect(result.current.publishFeed?.httpsUrl).toContain("/calendars/feeds/");
 
     await act(async () => {

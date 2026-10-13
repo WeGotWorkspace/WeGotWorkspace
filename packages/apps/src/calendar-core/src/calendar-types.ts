@@ -158,9 +158,12 @@ export type CalendarSubscriptionInfo = {
   lastFetchedAt?: string | null;
 };
 
+export type CalendarFeedMode = "full" | "busy";
+
 export type CalendarFeedInfo = {
   httpsUrl: string;
   webcalUrl: string;
+  mode: CalendarFeedMode;
 };
 
 export type CalendarAPIOperations = {
@@ -179,7 +182,7 @@ export type CalendarAPIOperations = {
   unsubscribeCalendar?: (subscriptionId: string) => Promise<void>;
   refreshStaleCalendarSubscriptions?: () => Promise<boolean>;
   getCalendarFeed?: (calendarId: string) => Promise<CalendarFeedInfo | null>;
-  publishCalendarFeed?: (calendarId: string) => Promise<CalendarFeedInfo>;
+  publishCalendarFeed?: (calendarId: string, mode?: CalendarFeedMode) => Promise<CalendarFeedInfo>;
   unpublishCalendarFeed?: (calendarId: string) => Promise<void>;
   listSchedulingNotifications?: () => Promise<CalendarSchedulingNotification[]>;
   respondSchedulingNotification?: (

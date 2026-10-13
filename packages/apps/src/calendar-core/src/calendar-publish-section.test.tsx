@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 const feed = {
   httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
   webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+  mode: "full" as const,
 };
 
 function renderSection(overrides: Partial<ComponentProps<typeof CalendarPublishSection>> = {}) {
@@ -64,5 +65,24 @@ describe("CalendarPublishSection", () => {
       screen.getByRole("button", { name: defaultCalendarLabels.unpublishCalendarConfirm }),
     );
     expect(onToggle).toHaveBeenCalledWith(false);
+  });
+
+  it("switches a published feed to busy only and back", () => {
+    const onToggle = vi.fn();
+    renderSection({ feed, onToggle });
+
+    const busyOnly = screen.getByRole("switch", {
+      name: defaultCalendarLabels.publishCalendarBusyLabel,
+    });
+    expect(busyOnly.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(busyOnly);
+    expect(onToggle).toHaveBeenCalledWith(true, "busy");
+
+    cleanup();
+    renderSection({ feed: { ...feed, mode: "busy" }, onToggle });
+    fireEvent.click(
+      screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarBusyLabel }),
+    );
+    expect(onToggle).toHaveBeenCalledWith(true, "full");
   });
 });

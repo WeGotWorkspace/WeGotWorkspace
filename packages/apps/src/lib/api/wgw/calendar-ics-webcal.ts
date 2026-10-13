@@ -64,9 +64,17 @@ export async function getCalendarFeedLive(calendarId: string): Promise<CalendarF
   return readOkJson<CalendarFeed>(res, "GET", path);
 }
 
-export async function publishCalendarFeedLive(calendarId: string): Promise<CalendarFeed> {
+export async function publishCalendarFeedLive(
+  calendarId: string,
+  mode?: "full" | "busy",
+): Promise<CalendarFeed> {
   const path = `/calendars/${encodeURIComponent(calendarId)}/feed`;
-  const res = await wgwFetch(path, { method: "POST" });
+  const res = await wgwFetch(path, {
+    method: "POST",
+    ...(mode
+      ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) }
+      : {}),
+  });
   return readOkJson<CalendarFeed>(res, "POST", path);
 }
 
