@@ -64,6 +64,11 @@ export function resolveRtcSettings(publicSettings: RtcPublicSettings): RtcSettin
   });
 }
 
+/** Settings a caller that could not read the configuration endpoint runs on. */
+export function fallbackRtcSettings(): FetchedRtcSettings {
+  return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
+}
+
 export async function fetchRtcSettings(options?: {
   url?: string;
   bearerToken?: string;
@@ -95,7 +100,7 @@ export async function fetchRtcSettings(options?: {
       status: res.status,
       credentialsSent: Boolean(options?.bearerToken) || Boolean(options?.sessionKey),
     });
-    return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
+    return fallbackRtcSettings();
   }
   try {
     const payload = (await wgwReadJson(res)) as RtcRoomConfiguration;
@@ -118,7 +123,7 @@ export async function fetchRtcSettings(options?: {
       status: res.status,
       parseError: true,
     });
-    return { ...resolveRtcSettings({ ...DEFAULT_RTC_SETTINGS, debug: false }), source: "fallback" };
+    return fallbackRtcSettings();
   }
 }
 

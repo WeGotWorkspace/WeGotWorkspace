@@ -57,6 +57,9 @@ export type MeetRtcSessionOptions = {
   onVideoLimits?: (limits: VideoLimits) => void;
   /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
   onMeetData?: (remoteId: string, data: string) => void;
+  /** Guest path: read room ICE settings once the join returns a session key. */
+  refreshRtcSettings?: (input: { sessionKey: string }) => Promise<RtcSettings | null>;
+  onRtcSettings?: (settings: RtcSettings) => void;
 };
 
 export class MeetRtcSession {
@@ -82,6 +85,8 @@ export class MeetRtcSession {
       channel: "meet",
       room,
       rtcSettings: this.options.rtcSettings,
+      refreshRtcSettings: this.options.refreshRtcSettings,
+      onRtcSettings: this.options.onRtcSettings,
       binding,
       signaling: {
         apiBase: this.options.apiBase,

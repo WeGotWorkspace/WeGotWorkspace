@@ -11,9 +11,13 @@ vi.mock("@/lib/api/wgw/http", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/api/wgw/rtc", () => ({
-  fetchRtcSettings: vi.fn(),
-}));
+vi.mock("@/lib/api/wgw/rtc", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/wgw/rtc")>();
+  return {
+    ...actual,
+    fetchRtcSettings: vi.fn(),
+  };
+});
 
 import { wgwEnsureFreshAccessToken, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
 import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
@@ -166,6 +170,8 @@ describe("createWgwMeetGuestOrHostApiSource", () => {
 
     expect(bootstrap.session.user.username).toBeUndefined();
     expect(bootstrap.session.user.displayName).toBe("Guest");
+    expect(bootstrap.data.rtc.source).toBe("fallback");
+    expect(rtcSettings).not.toHaveBeenCalled();
     expect(operations?.guestSignalingFetch).toEqual(expect.any(Function));
   });
 

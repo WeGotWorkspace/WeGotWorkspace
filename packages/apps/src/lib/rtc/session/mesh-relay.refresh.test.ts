@@ -32,10 +32,9 @@ describe("MeshRelay credential lifetime", () => {
       },
     };
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: false,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => settings,
       localPeerId: () => "self",
       localNet: () => "symmetric",
       peerName: () => "Ada",
@@ -86,10 +85,9 @@ describe("MeshRelay credential lifetime", () => {
       },
     };
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: false,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => settings,
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -124,10 +122,9 @@ describe("MeshRelay credential lifetime", () => {
       },
     };
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: false,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => settings,
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -157,10 +154,9 @@ describe("MeshRelay credential lifetime", () => {
       .mockRejectedValueOnce(new Error("relay_denied"))
       .mockResolvedValueOnce({ turn: turn(120, "cred-1") });
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: true,
+      enabled: () => true,
       roomId: "room-1",
-      settings: { ...settings, forceRelay: true },
+      settings: () => ({ ...settings, forceRelay: true }),
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -207,10 +203,9 @@ describe("MeshRelay credential lifetime", () => {
       },
     };
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: true,
+      enabled: () => true,
       roomId: "room-1",
-      settings: { ...settings, forceRelay: true },
+      settings: () => ({ ...settings, forceRelay: true }),
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -243,10 +238,9 @@ describe("MeshRelay credential lifetime", () => {
   it("posts one precheck when forceRelay is true on an open path", async () => {
     const bodies: Array<{ reason: string; target: string; net?: string }> = [];
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: true,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => ({ ...settings, forceRelay: true }),
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -265,13 +259,35 @@ describe("MeshRelay credential lifetime", () => {
     ]);
   });
 
+  it("mints on the next beforeDial when forceRelay flips on after construction", async () => {
+    let forceRelay = false;
+    const postRelay = vi.fn().mockResolvedValue({ turn: turn(120, "cred-1") });
+    const relay = new MeshRelay({
+      enabled: () => true,
+      roomId: "room-1",
+      settings: () => ({ ...settings, forceRelay }),
+      localPeerId: () => "self",
+      localNet: () => "open",
+      peerName: () => "Ada",
+      postRelay: async () => postRelay(),
+      getPeerConnection: () => null,
+      onOutcome: () => undefined,
+      log: () => undefined,
+    });
+
+    await relay.beforeDial();
+    expect(postRelay).not.toHaveBeenCalled();
+    forceRelay = true;
+    await relay.beforeDial();
+    expect(postRelay).toHaveBeenCalledTimes(1);
+  });
+
   it("does not precheck an open path without force relay", async () => {
     const postRelay = vi.fn();
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: false,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => settings,
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -288,10 +304,9 @@ describe("MeshRelay credential lifetime", () => {
     const cancel = vi.fn();
     const pc = { setConfiguration: vi.fn(), restartIce: vi.fn() };
     const relay = new MeshRelay({
-      enabled: true,
-      forceRelay: false,
+      enabled: () => true,
       roomId: "room-1",
-      settings,
+      settings: () => settings,
       localPeerId: () => "self",
       localNet: () => "open",
       peerName: () => "Ada",
@@ -324,10 +339,9 @@ async function issuedRelay(ttl: number): Promise<{
 }> {
   const scheduled: number[] = [];
   const relay = new MeshRelay({
-    enabled: true,
-    forceRelay: false,
+    enabled: () => true,
     roomId: "room-1",
-    settings,
+    settings: () => settings,
     localPeerId: () => "self",
     localNet: () => "symmetric",
     peerName: () => "Ada",

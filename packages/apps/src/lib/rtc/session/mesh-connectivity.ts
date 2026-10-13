@@ -16,7 +16,7 @@ import type { RelayRequestClient, RelayRequestOutcome } from "@/lib/rtc/session/
 export type MeshConnectivityHost = {
   room: string;
   channel: string;
-  settings: RtcSettings;
+  settings: () => RtcSettings;
   iceCandidatePoolSize?: number;
   schedule: typeof setTimeout;
   cancel: typeof clearTimeout;
@@ -68,6 +68,7 @@ export type MeshSurface = {
   kickPoll: () => void;
   log: (event: string, details?: unknown) => void;
   sessionKey: () => string | null;
+  rtcSettings: () => RtcSettings;
   onIceRestart?: () => void;
 };
 
@@ -76,7 +77,7 @@ export function hostFromSurface(surface: MeshSurface): MeshConnectivityHost {
   return {
     room: surface.options.room,
     channel: surface.options.channel,
-    settings: surface.options.rtcSettings,
+    settings: () => surface.rtcSettings(),
     iceCandidatePoolSize: surface.options.iceCandidatePoolSize,
     schedule: surface.scheduleTimeout,
     cancel: surface.cancelTimeout,
@@ -155,12 +156,12 @@ export function buildMeshConnectivity(host: MeshConnectivityHost): MeshConnectiv
     schedule: host.schedule,
     cancel: host.cancel,
   });
-  const forceRelay = host.settings.forceRelay;
   const relay = new MeshRelay({
-    enabled: typeof host.postRelay === "function" && (host.channel === "meet" || forceRelay),
+    enabled: () =>
+      typeof host.postRelay === "function" &&
+      (host.channel === "meet" || host.settings().forceRelay),
     roomId: host.room,
     settings: host.settings,
-    forceRelay,
     iceCandidatePoolSize: host.iceCandidatePoolSize,
     localPeerId: () => host.localPeerId(),
     localNet: () => host.localNet(),
@@ -209,7 +210,7 @@ export function bindNetworkRecovery(host: MeshConnectivityHost, recovery: IceRec
   const onChange = () => {
     resetNetClass();
     host.setLocalNet(undefined);
-    void netClassForJoin(host.settings).then((net) => host.setLocalNet(net));
+    void netClassForJoin(host.settings()).then((net) => host.setLocalNet(net));
     recovery.restartAll(host.peerIds());
     host.kickPoll();
   };
