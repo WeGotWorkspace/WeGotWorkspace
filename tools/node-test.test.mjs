@@ -10,7 +10,10 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const wrapper = path.join(repoRoot, "tools/node-test.sh");
 
 function run(args, cwd = repoRoot) {
-  return spawnSync(wrapper, args, { cwd, encoding: "utf8" });
+  const env = { ...process.env };
+  // A parent `node --test` sets this. The child would then skip the files.
+  delete env.NODE_TEST_CONTEXT;
+  return spawnSync(wrapper, args, { cwd, encoding: "utf8", env });
 }
 
 function writePassingTest(file) {
