@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Mcp;
 
+use App\Support\PublicAppUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -98,9 +99,15 @@ final class McpPublicOrigin
     }
 
     /**
-     * X-Forwarded-Host and Forwarded are applied by {@code getSchemeAndHttpHost()}
-     * only when the direct client is a trusted proxy. X-Original-Host is not one
-     * of those headers, so a trusted proxy may still set it when the others are absent.
+     * X-Forwarded-Host is applied by {@code getSchemeAndHttpHost()} only when
+     * the direct client is a trusted proxy, and TrustHosts then limits the
+     * name. {@code Forwarded} is not trusted; the {@code trustProxies} header
+     * mask omits {@code HEADER_FORWARDED}. X-Original-Host is not one of those
+     * headers, so a trusted proxy may still set it when X-Forwarded-Host is
+     * absent. The name must be a public hostname on
+     * {@see PublicAppUrl::trustedHostPatterns()} when that list is non-empty.
+     * An empty list means no Host restriction, the same regime as the
+     * X-Forwarded-Host path when APP_URL is unset or loopback.
      */
     private static function forwardedPublicOrigin(Request $request): ?string
     {
@@ -115,9 +122,10 @@ final class McpPublicOrigin
         if ($host === null) {
             return null;
         }
-        $scheme = $request->getScheme() === 'http' ? 'http' : 'https';
+        $proto = strtolower(trim((string) $request->headers->get('X-Forwarded-Proto', '')));
+        $scheme = $proto === 'http' ? 'http' : 'https';
         $host = self::stripStandardPort($host, $scheme);
-        if (! self::isPublicHostname($host)) {
+        if (! self::isPublicHostname($host) || ! self::isTrustedHost($host)) {
             return null;
         }
 
@@ -152,18 +160,44 @@ final class McpPublicOrigin
         return $host;
     }
 
-    private static function isPublicHostname(string $host): bool
+    /**
+     * An empty pattern list means no Host restriction is configured.
+     */
+    private static function isTrustedHost(string $host): bool
     {
-        $hostname = $host;
-        $bracket = strrpos($host, ']');
-        if (str_starts_with($host, '[') && $bracket !== false) {
-            $hostname = substr($host, 1, $bracket - 1);
-        } elseif (! str_starts_with($host, '[')) {
-            $colon = strrpos($host, ':');
-            if ($colon !== false && ctype_digit(substr($host, $colon + 1))) {
-                $hostname = substr($host, 0, $colon);
+        $patterns = PublicAppUrl::trustedHostPatterns();
+        if ($patterns === []) {
+            return true;
+        }
+        $hostname = self::hostnameWithoutPort($host);
+        foreach ($patterns as $pattern) {
+            if (preg_match('{'.$pattern.'}i', $hostname) === 1) {
+                return true;
             }
         }
+
+        return false;
+    }
+
+    private static function hostnameWithoutPort(string $host): string
+    {
+        $bracket = strrpos($host, ']');
+        if (str_starts_with($host, '[') && $bracket !== false) {
+            return substr($host, 1, $bracket - 1);
+        }
+        if (! str_starts_with($host, '[')) {
+            $colon = strrpos($host, ':');
+            if ($colon !== false && ctype_digit(substr($host, $colon + 1))) {
+                return substr($host, 0, $colon);
+            }
+        }
+
+        return $host;
+    }
+
+    private static function isPublicHostname(string $host): bool
+    {
+        $hostname = self::hostnameWithoutPort($host);
         if ($hostname === '' || $hostname === 'localhost' || str_ends_with($hostname, '.localhost')) {
             return false;
         }
