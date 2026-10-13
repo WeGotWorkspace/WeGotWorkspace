@@ -428,6 +428,85 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         ])->assertOk();
     }
 
+    public function test_patching_pending_invite_access_keeps_the_token(): void
+    {
+        $token = $this->userBearerToken();
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+        $shareId = (string) $created->json('data.id');
+
+        $invite = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+        $inviteToken = (string) $invite->json('data.inviteToken');
+
+        $this->withBearer($token)->patchJson('/api/v1/files/shares/'.$shareId, [
+            'updatedAt' => (string) $created->json('data.updatedAt'),
+            'shareWith' => [
+                'guest@example.com' => ['access' => 'edit'],
+            ],
+        ])->assertOk();
+
+        $grant = DriveShareGrant::query()->where('id', (string) $invite->json('data.id'))->first();
+        $this->assertNotNull($grant);
+        $this->assertSame('pending', (string) $grant->status);
+        $this->assertSame('edit', (string) $grant->access);
+        $this->assertSame($inviteToken, (string) $grant->invite_token_cipher);
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $inviteToken,
+        ])->assertOk();
+    }
+
+    public function test_patching_expired_pending_invite_rotates_the_dead_token(): void
+    {
+        $token = $this->userBearerToken();
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+        $shareId = (string) $created->json('data.id');
+
+        $invite = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+        $expiredToken = (string) $invite->json('data.inviteToken');
+
+        $grant = DriveShareGrant::query()->where('id', (string) $invite->json('data.id'))->first();
+        $this->assertNotNull($grant);
+        $grant->invite_expires_at = Carbon::now()->subDays(15);
+        $grant->save();
+
+        $this->withBearer($token)->patchJson('/api/v1/files/shares/'.$shareId, [
+            'updatedAt' => (string) $created->json('data.updatedAt'),
+            'shareWith' => [
+                'guest@example.com' => ['access' => 'edit'],
+            ],
+        ])->assertOk();
+
+        $grant->refresh();
+        $this->assertSame('edit', (string) $grant->access);
+        $freshToken = (string) $grant->invite_token_cipher;
+        $this->assertNotSame('', $freshToken);
+        $this->assertNotSame($expiredToken, $freshToken);
+        $this->assertNotNull($grant->invite_expires_at);
+        $this->assertTrue($grant->invite_expires_at->greaterThan(Carbon::now()->addDays(13)));
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $expiredToken,
+        ])->assertNotFound();
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $freshToken,
+        ])->assertOk();
+    }
+
     public function test_undecryptable_public_token_omits_the_link(): void
     {
         $token = $this->userBearerToken();
