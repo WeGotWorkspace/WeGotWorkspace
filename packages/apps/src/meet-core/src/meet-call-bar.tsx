@@ -1,20 +1,12 @@
-import { Maximize2, Mic, MicOff, PhoneOff, Video, VideoOff } from "lucide-react";
-import { Button, IconButton } from "@/button/src/button";
+import { Button } from "@/button/src/button";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
-import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
-import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
-import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
-import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import {
   meetCallBarMeta,
   meetCallBarRoster,
   meetCallBarShownCount,
 } from "@/meet-core/src/meet-call-bar-roster";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import { remoteVideoSuppressed } from "@/meet-core/src/meet-video-sender";
-import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
-import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
@@ -34,36 +26,13 @@ export type MeetCallBarProps = {
   selfStream?: MediaStream | null;
   peers: MeetCallBarPeer[];
   participantCount: number;
-  micOn: boolean;
-  videoOn: boolean;
-  cameras: MeetDeviceOption[];
-  microphones: MeetDeviceOption[];
-  speakers: MeetDeviceOption[];
-  activeCamera: string;
-  activeMic: string;
-  activeSpeaker: string;
-  onToggleMic: () => void;
-  onToggleVideo: () => void;
-  onCameraChange: (optionId: string) => void;
-  onMicrophoneChange: (optionId: string) => void;
-  onSpeakerChange: (optionId: string) => void;
-  lowData?: boolean;
-  onLowDataChange?: (enabled: boolean) => void;
-  onExpand: () => void;
-  onLeave: () => void;
-  /** Host/moderator: mute (`true`) or unmute (`false`) a remote peer. Omitted for guests. */
-  onMuteParticipant?: (peerId: string, muted?: boolean) => void;
-  /** IconButton cluster + camera tiles — only after this user joins. */
+  /** Include this user in the roster and show elapsed time. Device controls live on the stage. */
   joined?: boolean;
   /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
   invite?: MeetCallInvite | null;
   onInvite?: () => void;
   /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
   audioOnly?: boolean;
-  /** Host: waiting knockers. Shown as an action-row icon (production MeetKnockBadge). */
-  knockers?: readonly MeetCallKnocker[];
-  onAdmitKnocker?: (peerId: string) => void;
-  onDenyKnocker?: (peerId: string) => void;
   className?: string;
 };
 
@@ -81,31 +50,10 @@ export function MeetCallBar({
   selfStream = null,
   peers,
   participantCount,
-  micOn,
-  videoOn,
-  cameras,
-  microphones,
-  speakers,
-  activeCamera,
-  activeMic,
-  activeSpeaker,
-  onToggleMic,
-  onToggleVideo,
-  onCameraChange,
-  onMicrophoneChange,
-  onSpeakerChange,
-  lowData = false,
-  onLowDataChange,
-  onExpand,
-  onLeave,
-  onMuteParticipant,
   joined = false,
   invite = null,
   onInvite,
   audioOnly = false,
-  knockers = [],
-  onAdmitKnocker,
-  onDenyKnocker,
   className,
 }: MeetCallBarProps) {
   const LiveIcon = meetCallLiveIcon(audioOnly);
@@ -158,92 +106,12 @@ export function MeetCallBar({
               label={meetLabels.join}
               icon={<LiveIcon />}
               size="md"
-              variant="outline"
+              variant="primary"
               onClick={onInvite}
             />
           </div>
         ) : null}
-        {joined ? (
-          <div className="meet-call-bar__actions">
-            <MeetCircleToggle
-              on={micOn}
-              onClick={onToggleMic}
-              OnIcon={Mic}
-              OffIcon={MicOff}
-              label={micOn ? meetLabels.disableAudio : meetLabels.enableAudio}
-            />
-            <MeetCircleToggle
-              on={videoOn}
-              onClick={onToggleVideo}
-              OnIcon={Video}
-              OffIcon={VideoOff}
-              label={videoOn ? meetLabels.disableVideo : meetLabels.enableVideo}
-            />
-            <MeetDevicePopover
-              cameras={cameras}
-              microphones={microphones}
-              speakers={speakers}
-              camera={activeCamera}
-              microphone={activeMic}
-              speaker={activeSpeaker}
-              onCamera={onCameraChange}
-              onMicrophone={onMicrophoneChange}
-              onSpeaker={onSpeakerChange}
-              lowData={lowData}
-              onLowDataChange={onLowDataChange}
-            />
-            {onAdmitKnocker && onDenyKnocker ? (
-              <MeetKnockBadge knockers={knockers} onAdmit={onAdmitKnocker} onDeny={onDenyKnocker} />
-            ) : null}
-            <IconButton
-              label={meetLabels.expandCall}
-              icon={<Maximize2 />}
-              size="md"
-              variant="outline"
-              onClick={onExpand}
-            />
-            <div className="meet-call-bar__divider" aria-hidden />
-            <IconButton
-              label={meetLabels.leave}
-              icon={<PhoneOff />}
-              size="md"
-              variant="destructive"
-              onClick={onLeave}
-            />
-          </div>
-        ) : null}
       </div>
-      {joined && videoOn ? (
-        <div className="meet-call-bar__tiles">
-          <MeetPeerTile
-            name={meetLabels.youLabel}
-            stream={selfStream}
-            compact
-            muted
-            disclosedMedia={{ camera: videoOn, mic: micOn }}
-            micOn={micOn}
-            onToggleMic={onToggleMic}
-          />
-          {peers.map((peer) => (
-            <MeetPeerTile
-              key={peer.id}
-              name={peer.name}
-              stream={peer.stream ?? null}
-              compact
-              remoteMedia={peer.remoteMedia}
-              disclosedMedia={peer.disclosedMedia}
-              hideVideo={remoteVideoSuppressed(
-                peer.id,
-                peers.map((item) => item.id),
-                lowData,
-              )}
-              onMuteParticipant={
-                onMuteParticipant ? (muted) => onMuteParticipant(peer.id, muted) : undefined
-              }
-            />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }

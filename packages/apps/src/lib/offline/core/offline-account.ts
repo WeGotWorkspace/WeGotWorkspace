@@ -1,3 +1,5 @@
+import { readLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
+
 function offlineUsernameKey(domain: string): string {
   return `wgw.offline.${domain}.username`;
 }
@@ -21,12 +23,17 @@ export function readOfflineUsername(domain: string): string | null {
   }
 }
 
-/** Session username first, then the last cached account for the domain from localStorage. */
+/**
+ * Session username first. The remembered account is used only when this device
+ * has not been explicitly logged out, so a shared computer cannot reopen the
+ * previous user's cache after sign-out.
+ */
 export function resolveOfflineUsername(
   domain: string,
   sessionUsername: string | undefined,
 ): string | null {
   const fromSession = sessionUsername?.trim();
   if (fromSession) return fromSession;
+  if (readLoggedOutMarker()) return null;
   return readOfflineUsername(domain)?.trim() ?? null;
 }

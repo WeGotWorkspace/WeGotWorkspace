@@ -13,12 +13,12 @@ export type UseMeetCallLayoutArgs = {
    * follows session *transitions*: a session that ends (remote end, join
    * failure) collapses its channel's chrome, and an already-running session
    * (e.g. restored from the suite call store after a route remount) restores
-   * the last compact/expanded chrome instead of forcing the split stage.
+   * that session's stage chrome instead of forcing side-by-side.
    */
   liveCallChannelId?: string | null;
   /**
-   * Compact vs expanded chrome to restore when an already-running session is
-   * remounted. Defaults to the compact bar (join chrome), not the split stage.
+   * Stage chrome to restore when an already-running session is remounted.
+   * Omitted values open the expanded stage.
    */
   resumeLayout?: MeetCallStageLayout;
 };
@@ -107,7 +107,7 @@ export function useMeetCallLayout({
 
   const startCall = useCallback(
     (options?: { video?: boolean }) => {
-      writeLayout(channelId, "compact");
+      writeLayout(channelId, "side-by-side");
       if (!channelId) return;
       const started =
         options === undefined

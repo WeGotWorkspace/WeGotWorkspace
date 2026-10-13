@@ -246,16 +246,16 @@ final class DocsThreadRepository
         $changeId = isset($payload['changeId']) && $payload['changeId'] !== ''
             ? $payload['changeId']
             : null;
-        if ($changeId !== null) {
-            $rootUid = $this->rootUidForChangeId($instance, $path, $changeId);
-        } else {
-            $rootUid = DocsThreadJournalConverter::normalizeUlid($threadId);
-        }
+        $rootUid = $changeId !== null
+            ? $this->rootUidForChangeId($instance, $path, $changeId)
+            : DocsThreadJournalConverter::normalizeUlid($threadId);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
-        $object = $this->findObjectByUid((int) $instance->calendarid, $rootUid);
-        if ($object === null) {
-            throw new ApiHttpException(404, 'Thread not found.', 'not_found');
+        if (strtolower(trim((string) ($root['authorId'] ?? ''))) !== strtolower(trim($principal['username']))
+            && ! $this->authorizer->effectiveRights($path, $principal)['mayEditContent']) {
+            throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
         }
+        $object = $this->findObjectByUid((int) $instance->calendarid, $rootUid)
+            ?? throw new ApiHttpException(404, 'Thread not found.', 'not_found');
 
         $ics = $this->rawIcs($object);
         if (array_key_exists('resolved', $payload)) {

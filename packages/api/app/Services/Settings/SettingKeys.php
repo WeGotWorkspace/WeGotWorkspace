@@ -18,6 +18,15 @@ final class SettingKeys
 
     public const CALENDAR_ENABLED = 'calendar_enabled';
 
+    /** When false, Calendar does not email new external invitations. Updates to people already invited, cancellations, and RSVP replies still send. Default true. */
+    public const IMIP_EXTERNAL_ENABLED = 'imip_external_enabled';
+
+    /** Maximum outbound invitation emails per user per hour, clamped to {@see IMIP_DAILY_LIMIT}. Default 100. */
+    public const IMIP_HOURLY_LIMIT = 'imip_hourly_limit';
+
+    /** Maximum outbound invitation emails per user per day. Default 300. */
+    public const IMIP_DAILY_LIMIT = 'imip_daily_limit';
+
     public const CONTACTS_ENABLED = 'contacts_enabled';
 
     public const TASKS_ENABLED = 'tasks_enabled';
@@ -90,6 +99,9 @@ final class SettingKeys
             self::BROWSER_PLUGIN,
             self::FILES_ENABLED,
             self::CALENDAR_ENABLED,
+            self::IMIP_EXTERNAL_ENABLED,
+            self::IMIP_HOURLY_LIMIT,
+            self::IMIP_DAILY_LIMIT,
             self::CONTACTS_ENABLED,
             self::TASKS_ENABLED,
             self::MAIL_ENABLED,

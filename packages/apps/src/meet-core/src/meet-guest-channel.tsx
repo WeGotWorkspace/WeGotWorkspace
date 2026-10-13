@@ -57,8 +57,8 @@ export function meetGuestChannelPhase(input: {
 }
 
 /**
- * Guests have no signed-in chat column behind the stage. Compact/collapsed
- * would park the call and leave only the navy chat strip.
+ * Guests have no signed-in chat column behind the stage. Collapsed would
+ * park the call and leave only the navy chat strip.
  */
 export function meetGuestChannelStageLayout(layout: MeetCallStageLayout): MeetCallStageLayout {
   return meetCallStageShowsStage(layout) ? layout : "side-by-side";

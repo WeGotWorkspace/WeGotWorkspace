@@ -8,11 +8,10 @@ import {
   meetCallInviteStartOptions,
   type MeetCallInvite,
 } from "@/meet-core/src/meet-call-stage-layout";
-import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 
 export type MeetWorkspaceCallBarProps = {
   visible: boolean;
-  /** This user is in the call: live roster, device controls and the leave button. */
+  /** This user is in the call: the roster includes them and shows elapsed time. */
   joined: boolean;
   room?: MeetCallStageRoomProps | null;
   channelTitle: string;
@@ -22,15 +21,14 @@ export type MeetWorkspaceCallBarProps = {
   directory?: readonly CollectionSharePrincipal[];
   invite?: MeetCallInvite | null;
   audioOnly: boolean;
-  onExpand: () => void;
   onLeave: () => void;
   onInvite: (options?: { video?: boolean }) => void;
 };
 
 /**
- * Compact call chrome above the channel chat. Chunk-I knock chrome (chunk-H
- * join policy): the bar swaps to a knock-wait banner while this user waits to
- * be let in; joined members admit waiting guests from the action row.
+ * Pre-join bar above the channel chat. While this user is waiting to be let
+ * in, the bar is the knock-wait banner. Device controls and host admit live
+ * on the expanded stage.
  */
 export function MeetWorkspaceCallBar({
   visible,
@@ -42,7 +40,6 @@ export function MeetWorkspaceCallBar({
   directory,
   invite,
   audioOnly,
-  onExpand,
   onLeave,
   onInvite,
 }: MeetWorkspaceCallBarProps) {
@@ -68,47 +65,10 @@ export function MeetWorkspaceCallBar({
         participantCount: joined ? (room?.participantCount ?? 0) : 0,
         peerCount: previewPeerIds.length,
       })}
-      micOn={room?.controller.micOn ?? true}
-      videoOn={room?.controller.videoOn ?? false}
-      cameras={room?.cameras ?? []}
-      microphones={room?.microphones ?? []}
-      speakers={room?.speakers ?? []}
-      activeCamera={room?.activeCamera ?? ""}
-      activeMic={room?.activeMic ?? ""}
-      activeSpeaker={room?.activeSpeaker ?? ""}
-      onToggleMic={room?.controller.toggleMic ?? (() => {})}
-      onToggleVideo={room?.controller.toggleVideo ?? (() => {})}
-      onCameraChange={(id) => {
-        const deviceId = meetDeviceIdForOption(room?.cameras ?? [], id);
-        if (!deviceId) return;
-        void room?.controller.switchCamera(deviceId);
-      }}
-      onMicrophoneChange={(id) => {
-        const deviceId = meetDeviceIdForOption(room?.microphones ?? [], id);
-        if (!deviceId) return;
-        void room?.controller.switchMic(deviceId);
-      }}
-      onSpeakerChange={room?.onSpeakerChange ?? (() => {})}
-      lowData={room?.controller.lowData ?? false}
-      onLowDataChange={room?.controller.setLowData}
-      onExpand={onExpand}
-      onLeave={onLeave}
-      onMuteParticipant={
-        room?.hasSignedInIdentity
-          ? (peerId, muted) => void room.controller.mutePeer(peerId, muted)
-          : undefined
-      }
       joined={joined}
       invite={invite}
       audioOnly={audioOnly}
       onInvite={() => onInvite(meetCallInviteStartOptions(audioOnly))}
-      knockers={joined && room?.hasSignedInIdentity ? room.controller.knockers : []}
-      onAdmitKnocker={
-        joined && room ? (peerId) => void room.controller.admitKnocker(peerId) : undefined
-      }
-      onDenyKnocker={
-        joined && room ? (peerId) => void room.controller.denyKnocker(peerId) : undefined
-      }
     />
   );
 }

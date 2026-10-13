@@ -9,6 +9,10 @@
 
 .chat-message-list__scroll {
   @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
+  /* The hover bar overlays the row. A constant inset keeps the last message's
+     bar inside the scroller. Growing a row on hover would stick the list to
+     the bottom. */
+  padding-bottom: calc(var(--control-height-md, 2.25rem) + 0.5rem);
 }
 
 .chat-message-list__jump {

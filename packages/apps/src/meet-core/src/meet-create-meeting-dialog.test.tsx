@@ -213,7 +213,7 @@ describe("MeetCreateMeetingDialog", () => {
     expect(whenGroup?.contains(allDayField)).toBe(true);
   });
 
-  it("hides When until Schedule is on and shows the calendar picker", () => {
+  it("keeps participants visible and hides When until Schedule is on", () => {
     renderDialog();
 
     expect(screen.getByRole("heading", { name: meetLabels.newMeeting })).toBeTruthy();
@@ -221,8 +221,9 @@ describe("MeetCreateMeetingDialog", () => {
     expect(screen.queryByRole("button", { name: defaultCalendarLabels.eventMeetAdd })).toBeNull();
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeNull();
     expect(
-      screen.queryByText(defaultCalendarLabels.eventAttendeesLabel, { selector: ".sr-only" }),
-    ).toBeNull();
+      screen.getByText(defaultCalendarLabels.eventAttendeesLabel, { selector: ".sr-only" }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText(defaultCalendarLabels.eventNotesLabel)).toBeNull();
 
     fireEvent.click(screen.getByRole("switch", { name: meetLabels.scheduleMeeting }));
     expect(document.querySelector(".calendar-event-dialog__field-group--when")).toBeTruthy();

@@ -15,6 +15,8 @@ use App\Services\Settings\UserProfileService;
 use App\Support\PublicAppUrl;
 use Illuminate\Support\Facades\Log;
 
+use function Illuminate\Support\defer;
+
 final class PasswordRecoveryService
 {
     public const int TOKEN_TTL_SECONDS = 15 * 60;
@@ -33,19 +35,36 @@ final class PasswordRecoveryService
             throw new ApiHttpException(429, 'Too many password reset requests. Please try again later.', 'throttled');
         }
 
+        defer(fn () => $this->deliverReset($identifier));
+    }
+
+    private function deliverReset(string $identifier): void
+    {
         $user = $this->resolveUser($identifier);
         if ($user === null) {
+            $this->logSkipped('unknown_identifier');
+
             return;
         }
 
         $email = $this->principalEmail((string) $user->username);
         if ($email === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            $this->logSkipped('no_email');
+
             return;
         }
 
         $config = $this->mailDelivery->loadConfig();
         $canSubmit = (bool) ($this->mailDelivery->adminState()['capability']['canSubmit'] ?? false);
-        if (! $canSubmit || ! PublicAppUrl::isConfigured()) {
+        if (! $canSubmit) {
+            $this->logSkipped('cannot_submit');
+
+            return;
+        }
+
+        if (! PublicAppUrl::isConfigured()) {
+            $this->logSkipped('no_public_url');
+
             return;
         }
 
@@ -57,6 +76,7 @@ final class PasswordRecoveryService
             $result = $this->mailDelivery->send($message, $config);
         } catch (InvalidOutboundMessageException) {
             ApiPasswordResetToken::query()->where('token_hash', hash('sha256', $token))->delete();
+            $this->logSkipped('invalid_recipient');
 
             return;
         }
@@ -141,5 +161,10 @@ final class PasswordRecoveryService
     private function logDelivery(DeliveryResult $result): void
     {
         Log::info('password-recovery.delivery', $result->toArray());
+    }
+
+    private function logSkipped(string $reason): void
+    {
+        Log::warning('password-recovery.skipped', ['reason' => $reason]);
     }
 }

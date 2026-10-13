@@ -225,7 +225,7 @@ describe("MeetCallStore", () => {
     store.setLiveCallChannelKind("dm");
     store.setCallLabel("Alice");
     store.setCallUiParked(true);
-    store.setCallUiLayout("compact");
+    store.setCallUiLayout("collapsed");
     store.setMiniPlayerPosition({ x: 48, y: 96 });
 
     store.setStatus("idle");
@@ -241,11 +241,11 @@ describe("MeetCallStore", () => {
     });
   });
 
-  it("keeps compact vs expanded chrome until hang-up", () => {
+  it("keeps collapsed vs expanded chrome until hang-up", () => {
     const store = createMeetCallStore();
     store.setStatus("in-call");
-    store.setCallUiLayout("compact");
-    expect(store.getSnapshot().callUiLayout).toBe("compact");
+    store.setCallUiLayout("collapsed");
+    expect(store.getSnapshot().callUiLayout).toBe("collapsed");
     store.setCallUiLayout("side-by-side");
     expect(store.getSnapshot().callUiLayout).toBe("side-by-side");
   });
