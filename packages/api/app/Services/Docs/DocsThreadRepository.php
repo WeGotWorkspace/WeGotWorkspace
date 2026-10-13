@@ -250,7 +250,7 @@ final class DocsThreadRepository
             ? $this->rootUidForChangeId($instance, $path, $changeId)
             : DocsThreadJournalConverter::normalizeUlid($threadId);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
-        if (($root['authorId'] ?? '') !== $principal['username']
+        if (strtolower(trim((string) ($root['authorId'] ?? ''))) !== strtolower(trim($principal['username']))
             && ! $this->authorizer->effectiveRights($path, $principal)['mayEditContent']) {
             throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
         }

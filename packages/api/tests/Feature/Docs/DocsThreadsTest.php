@@ -336,6 +336,44 @@ final class DocsThreadsTest extends WgwDatabaseTestCase
         ])->assertOk()->assertJsonPath('resolved', true);
     }
 
+    public function test_owner_resolves_someone_elses_thread(): void
+    {
+        $this->shareCommentAndEdit();
+        $rootId = $this->ulid('AT');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'from alice',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $this->asBob()->patchJson($this->threadUrl($rootId), [
+            'resolved' => true,
+        ])->assertOk()->assertJsonPath('resolved', true);
+    }
+
+    public function test_author_match_ignores_username_case_and_space(): void
+    {
+        $this->shareCommentAndEdit();
+        $rootId = $this->ulid('AV');
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $rootId,
+            'kind' => 'comment',
+            'body' => 'from alice',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $repo = $this->app->make(DocsThreadRepository::class);
+        $patched = $repo->patch(
+            ['username' => ' Alice ', 'role' => 'user'],
+            self::PATH,
+            $rootId,
+            ['resolved' => true],
+        );
+
+        $this->assertTrue($patched['resolved']);
+    }
+
     public function test_editor_archive_orphan_suggestions_keeps_working(): void
     {
         $this->shareCommentAndEdit();
