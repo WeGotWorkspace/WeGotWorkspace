@@ -25,6 +25,8 @@ final class InstallerWizardService
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallEnv $installEnv,
         private WgwInstallConfig $installConfig,
+        private InstallerWindow $window,
+        private InstallerDatabaseHostGuard $hosts,
     ) {}
 
     /**
@@ -47,6 +49,9 @@ final class InstallerWizardService
     public function bootstrap(string $webBase): array
     {
         $this->paths->clearStaleInstallLock();
+        if (! $this->paths->isInstalled()) {
+            $this->window->assertOpen();
+        }
 
         return [
             'state' => $this->runtimeState($webBase),
@@ -67,6 +72,8 @@ final class InstallerWizardService
                 'state' => $this->runtimeState($webBase, true),
             ];
         }
+
+        $this->window->assertOpen();
 
         return match ($action) {
             'welcome_next' => $this->actionWelcomeNext($webBase),
@@ -150,6 +157,11 @@ final class InstallerWizardService
     private function actionDatabaseTest(string $webBase, array $payload): array
     {
         $db = $this->readDbFromPayload($payload);
+        $blocked = $this->blockedDatabaseHost($webBase, $db);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
         try {
             $this->database->testConnection($db);
         } catch (\Throwable $e) {
@@ -180,6 +192,11 @@ final class InstallerWizardService
     private function actionDatabaseNext(string $webBase, array $payload): array
     {
         $db = $this->readDbFromPayload($payload);
+        $blocked = $this->blockedDatabaseHost($webBase, $db);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
         try {
             $this->database->testConnection($db);
         } catch (\Throwable $e) {
@@ -540,6 +557,24 @@ final class InstallerWizardService
     private function saveWizardState(array $state): void
     {
         session([self::SESSION_KEY => $state]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $db
+     * @return array<string, mixed>|null
+     */
+    private function blockedDatabaseHost(string $webBase, array $db): ?array
+    {
+        $message = $this->hosts->blockMessage($db);
+        if ($message === null) {
+            return null;
+        }
+
+        return [
+            'ok' => false,
+            'error' => $message,
+            'state' => $this->runtimeState($webBase),
+        ];
     }
 
     /**

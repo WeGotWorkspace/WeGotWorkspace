@@ -6,6 +6,8 @@ namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
 use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Installer\DnsInstallerIpv4Resolver;
+use App\Services\Installer\InstallerIpv4Resolver;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
@@ -25,6 +27,7 @@ final class WgwServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(WgwInstallConfig::class);
+        $this->app->singleton(InstallerIpv4Resolver::class, DnsInstallerIpv4Resolver::class);
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(NoteStoragePaths::class);
