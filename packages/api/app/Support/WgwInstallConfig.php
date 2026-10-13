@@ -157,7 +157,7 @@ final class WgwInstallConfig
      */
     public function hasConfiguredRuntimeEnv(): bool
     {
-        if ($this->hasRuntimeDatabaseConfig()) {
+        if ($this->hasRuntimeDatabaseConfig() && config('wgw.installer_db_applied') !== true) {
             return true;
         }
 

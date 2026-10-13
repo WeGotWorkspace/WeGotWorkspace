@@ -6,7 +6,9 @@ namespace Tests\Unit\Support;
 
 use App\Support\AppPaths;
 use App\Support\WgwApiEnvFile;
+use App\Support\WgwConnectionConfigurator;
 use App\Support\WgwInstallConfig;
+use App\Support\WgwRuntimeEnvBridge;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
 
@@ -88,6 +90,35 @@ final class AppPathsDatabaseReadyTest extends TestCase
 
         $this->assertTrue($paths->runtimeInstallReady());
         $this->assertTrue($paths->isInstalled());
+        $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
+    }
+
+    public function test_installer_probe_connection_is_not_a_configured_install(): void
+    {
+        WgwInstallFixture::markInstalled($this->installRoot, $this->installRoot.'/wgw-content');
+        @unlink($this->installRoot.'/packages/api/.env');
+        // The fixture writes the lock. Remove it so the assertion measures
+        // whether the probe plants one.
+        @unlink($this->installRoot.'/wgw-content/.installed');
+
+        WgwConnectionConfigurator::applyFromInstallerDb([
+            'driver' => 'sqlite',
+            'sqlite_path' => $this->installRoot.'/wgw-content/db.sqlite',
+        ]);
+
+        $paths = app(AppPaths::class);
+        $this->assertFalse($paths->isInstalled());
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
+
+        file_put_contents($this->installRoot.'/wgw-content/.installed', "keep\n");
+        $paths->clearStaleInstallLock();
+        $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
+        @unlink($this->installRoot.'/wgw-content/.installed');
+
+        WgwRuntimeEnvBridge::apply(app(WgwInstallConfig::class));
+
+        $this->assertFalse(config('wgw.installer_db_applied'));
+        $this->assertTrue(app(AppPaths::class)->isInstalled());
         $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
     }
 
