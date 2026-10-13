@@ -8,6 +8,7 @@ export type EvalCtx = {
   cell: (col: string, row: string) => Value;
   def: (path: string) => Value | undefined;
   rowOrder: string[];
+  rowIndex: ReadonlyMap<string, number>;
 };
 
 const ERRORS = new Set<string>(["#SYNTAX", "#REF", "#NAME", "#CYCLE", "#VALUE", "#DIV/0"]);
@@ -18,10 +19,15 @@ export function isCellError(value: unknown): value is CellError {
 
 type Result = Value | Value[];
 
-function rowsBetween(rowOrder: string[], from: string, to: string): string[] | null {
-  const start = rowOrder.indexOf(from);
-  const end = rowOrder.indexOf(to);
-  if (start < 0 || end < 0) return null;
+function rowsBetween(
+  rowOrder: string[],
+  rowIndex: ReadonlyMap<string, number>,
+  from: string,
+  to: string,
+): string[] | null {
+  const start = rowIndex.get(from);
+  const end = rowIndex.get(to);
+  if (start === undefined || end === undefined) return null;
   const lo = Math.min(start, end);
   const hi = Math.max(start, end);
   return rowOrder.slice(lo, hi + 1);
@@ -113,7 +119,7 @@ function evalAny(node: Node, ctx: EvalCtx): Result {
       if (node.path === "#REF!") return "#REF";
       return ctx.def(node.path) ?? "#NAME";
     case "range": {
-      const rows = rowsBetween(ctx.rowOrder, node.from, node.to);
+      const rows = rowsBetween(ctx.rowOrder, ctx.rowIndex, node.from, node.to);
       if (!rows) return "#REF";
       const values: Value[] = [];
       for (const rowId of rows) {

@@ -7,7 +7,7 @@ import { Grid } from "../ycsv-grid/Grid";
 import { fileToDoc } from "../ycsv-model";
 import { SEED } from "./fixtures";
 import largeText from "./fixtures/large.ycsv?raw";
-import { measureCached, measureEdits, type HeapMarks } from "./measure";
+import { measureEdits, measureIndexed, type HeapMarks } from "./measure";
 
 type Dataset = "klein" | "groot";
 
@@ -53,7 +53,7 @@ function PerformanceStory({ dataset }: { dataset: Dataset }) {
           onClick={() => {
             setRunning(true);
             setReport(null);
-            void measureCached(doc)
+            void measureIndexed(doc)
               .then((textOut) => setReport(textOut))
               .catch((error: unknown) => {
                 setReport(error instanceof Error ? error.message : String(error));

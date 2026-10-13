@@ -41,7 +41,13 @@ function rewrite(src: string, mapIdent: (ident: string, call: boolean) => string
   return out;
 }
 
-export function toIdForm(src: string, cols: ColInfo[], rowIds: string[]): string {
+export function toIdForm(
+  src: string,
+  cols: ColInfo[],
+  rowIds: string[],
+  rowIndex?: ReadonlyMap<string, number>,
+): string {
+  void rowIndex;
   return rewrite(src, (ident, call) => {
     if (call || ident.includes("@")) return ident;
     if (ident.includes(".")) return ident;
@@ -49,15 +55,20 @@ export function toIdForm(src: string, cols: ColInfo[], rowIds: string[]): string
   });
 }
 
-export function toFileForm(src: string, cols: ColInfo[], rowIds: string[]): string {
+export function toFileForm(
+  src: string,
+  cols: ColInfo[],
+  rowIds: string[],
+  rowIndex?: ReadonlyMap<string, number>,
+): string {
   void cols;
   return rewrite(src, (ident, call) => {
     if (call || !ident.includes("@")) return ident;
     const at = ident.indexOf("@");
     const ref = ident.slice(0, at);
     const rowId = ident.slice(at + 1);
-    const idx = rowIds.indexOf(rowId);
-    if (idx === -1) return "#REF!";
+    const idx = rowIndex ? rowIndex.get(rowId) : rowIds.indexOf(rowId);
+    if (idx === undefined || idx < 0) return "#REF!";
     return `${ref}${idx + 1}`;
   });
 }

@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import { parse } from "../ycsv-core/parse";
 import { serialize } from "../ycsv-core/serialize";
+import { buildLargeFile } from "./large-sheet";
 import { evaluateAll, type RawCells } from "../ycsv-formula";
 import { astCacheStats } from "../ycsv-formula/graph";
 import { formatCacheStats } from "../ycsv-grid/format";
@@ -357,6 +358,149 @@ export async function measureCached(doc: Y.Doc): Promise<string> {
     ["M7 deleteRow", ms(deleteMedian), "100 ms", over(deleteMedian, 100)],
     ["M9 formatter-cache", `${formatAfter.entries} entries, ${formatAfter.misses - formatBefore.misses} missers tijdens M3`, "—", "—"],
     ["M9 AST-cache", `${astAfter.entries} entries, ${astAfter.misses - astBefore.misses} missers tijdens M3`, "—", "—"],
+  ];
+  console.table(
+    table.slice(1).map((row) => ({
+      Meting: row[0],
+      Nu: row[1],
+      Drempel: row[2],
+      "Boven drempel?": row[3],
+    })),
+  );
+  note("");
+  note(table.map((row) => row.join(" | ")).join("\n"));
+  note("klaar");
+  return lines.join("\n");
+}
+
+function evalMedian(rowCount: number): number {
+  const doc = new Y.Doc();
+  fileToDoc(parse(serialize(buildLargeFile(rowCount))), doc);
+  const model = readModel(doc);
+  const samples: number[] = [];
+  for (let i = 0; i < 23; i += 1) {
+    const started = performance.now();
+    evaluateAll(model.raw, model.rowOrder, model.defs);
+    const elapsed = performance.now() - started;
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      throw new Error(`M10 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${rowCount} rijen`);
+    }
+    samples.push(elapsed);
+  }
+  return summarize(samples.slice(3)).median;
+}
+
+export async function measureIndexed(doc: Y.Doc): Promise<string> {
+  const lines: string[] = [];
+  const note = (line: string) => {
+    lines.push(line);
+  };
+  const model = readModel(doc);
+
+  const evalSamples: number[] = [];
+  for (let i = 0; i < 23; i += 1) {
+    const started = performance.now();
+    evaluateAll(model.raw, model.rowOrder, model.defs);
+    const elapsed = performance.now() - started;
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M2 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
+      return lines.join("\n");
+    }
+    evalSamples.push(elapsed);
+  }
+  const evalStats = summarize(evalSamples.slice(3));
+  note(`M2 evaluateAll mediaan ${ms(evalStats.median)}`);
+  note(`M2 evaluateAll p95 ${ms(evalStats.p95)}`);
+  note(`M2 evaluateAll max ${ms(evalStats.max)}`);
+
+  const paintSamples: number[] = [];
+  for (let i = 0; i < 50; i += 1) {
+    const index = (i * 24) % model.rowIds.length;
+    const rowId = model.rowIds[index];
+    if (!rowId) break;
+    const elapsed = await waitVisible(() => setCell(doc, rowId, model.aantalColId, String(100 + i)));
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M3 afgebroken bij wijziging ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
+      return lines.join("\n");
+    }
+    paintSamples.push(elapsed);
+  }
+  const paintStats = summarize(paintSamples);
+  note(`M3 commit→paint mediaan ${ms(paintStats.median)}`);
+  note(`M3 commit→paint p95 ${ms(paintStats.p95)}`);
+  note(`M3 commit→paint max ${ms(paintStats.max)}`);
+
+  const serialSamples: number[] = [];
+  let serialBytes = 0;
+  for (let i = 0; i < 10; i += 1) {
+    const started = performance.now();
+    const textOut = serialize(docToFile(doc));
+    const elapsed = performance.now() - started;
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M8 afgebroken bij run ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
+      return lines.join("\n");
+    }
+    serialSamples.push(elapsed);
+    serialBytes = new TextEncoder().encode(textOut).length;
+  }
+  const serialStats = summarize(serialSamples);
+  note(`M8 serialize mediaan ${ms(serialStats.median)}`);
+  note(`M8 uitvoer ${kb(serialBytes)}`);
+
+  const insertSamples: number[] = [];
+  const deleteSamples: number[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    const before = readModel(doc);
+    const at = Math.min(599, before.rowIds.length - 1);
+    const elapsed = await waitVisible(() => insertRowAfter(doc, at));
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M7 insert afgebroken bij run ${i + 1}: ${ms(elapsed)} bij ${before.rowIds.length} rijen`);
+      return lines.join("\n");
+    }
+    insertSamples.push(elapsed);
+    const inserted = readModel(doc).rowIds[Math.min(at + 1, readModel(doc).rowIds.length - 1)];
+    if (inserted) await waitVisible(() => deleteRow(doc, inserted));
+  }
+  for (let i = 0; i < 10; i += 1) {
+    const before = readModel(doc);
+    const at = Math.min(599, before.rowIds.length - 1);
+    const rowId = before.rowIds[at];
+    if (!rowId) break;
+    const elapsed = await waitVisible(() => deleteRow(doc, rowId));
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M7 delete afgebroken bij run ${i + 1}: ${ms(elapsed)} bij ${before.rowIds.length} rijen`);
+      return lines.join("\n");
+    }
+    deleteSamples.push(elapsed);
+    await waitVisible(() => insertRowAfter(doc, Math.max(0, at - 1)));
+  }
+  const insertMedian = summarize(insertSamples).median;
+  const deleteMedian = summarize(deleteSamples).median;
+  note(`M7 insertRow mediaan ${ms(insertMedian)}`);
+  note(`M7 deleteRow mediaan ${ms(deleteMedian)}`);
+
+  const scaleCounts = [300, 600, 1200, 2400];
+  const scale: number[] = [];
+  for (const count of scaleCounts) {
+    const median = evalMedian(count);
+    scale.push(median);
+    const previous = scale.length > 1 ? scale[scale.length - 2] : undefined;
+    const factor = previous && previous > 0 ? (median / previous).toFixed(2) : "—";
+    note(`M10 ${count} rijen mediaan ${ms(median)} factor ${factor}`);
+  }
+
+  const table = [
+    ["Meting", "Nu", "Drempel", "Boven drempel?"],
+    ["M2 evaluateAll mediaan", ms(evalStats.median), "50 ms", over(evalStats.median, 50)],
+    ["M2 evaluateAll p95", ms(evalStats.p95), "50 ms", over(evalStats.p95, 50)],
+    ["M2 evaluateAll max", ms(evalStats.max), "—", "—"],
+    ["M3 commit→paint mediaan", ms(paintStats.median), "100 ms", over(paintStats.median, 100)],
+    ["M3 commit→paint p95", ms(paintStats.p95), "100 ms", over(paintStats.p95, 100)],
+    ["M3 commit→paint max", ms(paintStats.max), "—", "—"],
+    ["M7 insertRow", ms(insertMedian), "100 ms", over(insertMedian, 100)],
+    ["M7 deleteRow", ms(deleteMedian), "100 ms", over(deleteMedian, 100)],
+    ["M8 serialize", ms(serialStats.median), "—", "—"],
+    ...scaleCounts.map((count, index) => ["M10", String(count), ms(scale[index] ?? 0), ""]),
   ];
   console.table(
     table.slice(1).map((row) => ({

@@ -98,3 +98,69 @@ The AST cache did not reach 10,000 entries, so it was not cleared.
 - A parse error whose message is already a cell error (`#REF` as well as `#SYNTAX`) is cached as that error. The sketch cached every throw as `#SYNTAX`.
 - Both caches count misses so M9 can be read. The counters are not part of the sketches.
 - Meet runs M2, M3, M9, then M7 on the sheet the story already loaded. It does not call `fileToDoc` again, so the entry counts are the first render's caches. M1, M4, M5, M6, and M8 are unchanged from the first section.
+
+## 1c — Na rij-index
+
+Same machine, same static Storybook build, StrictMode off, same `large.ycsv`. M1, M4, M5, M6, and M9 were not repeated.
+
+| Meting | 1b | Nu | Drempel | Boven drempel? |
+|---|---|---|---|---|
+| M2 evaluateAll mediaan | 18.5 ms | 6.3 ms | 50 ms | nee |
+| M2 evaluateAll p95 | 20.9 ms | 7.8 ms | 50 ms | nee |
+| M3 commit→paint mediaan | 50.3 ms | 39.4 ms | 100 ms | nee |
+| M3 commit→paint p95 | 67.2 ms | 50.2 ms | 100 ms | nee |
+| M7 insertRow | 66.4 ms | 56.8 ms | 100 ms | nee |
+| M7 deleteRow | 66.3 ms | 58.0 ms | 100 ms | nee |
+| M8 serialize | 15.6 ms | 3.8 ms | — | — |
+
+M2 max over the 20 kept runs was 10.1 ms. M3 max over the 50 edits was 57.3 ms. M8 output size was 108.1 KB.
+
+### M10 — schaalgedrag van evaluateAll
+
+M2 procedure on each size: 23 runs, drop the first 3, median of the remaining 20. Same generator and seed as `large.ycsv`. The 1,200-row generator output matches that fixture byte for byte.
+
+| Rijen | M2 mediaan | Factor t.o.v. vorige |
+|---|---|---|
+| 300 | 1.3 ms | — |
+| 600 | 2.8 ms | 2.19 |
+| 1.200 | 6.0 ms | 2.09 |
+| 2.400 | 14.2 ms | 2.39 |
+
+### Nieuw profiel
+
+One Chrome CPU profile of the same 50 `aantal` edits (sampling interval 100 µs, about 2.0 s of samples). Self time:
+
+1. `evaluateAll` — 0.24 s. Inside that function: building the per-cell items 0.12 s, the visit that evaluates the graph 0.09 s, the `cell` map read 0.03 s.
+2. `Grid` render — 0.19 s, of which 0.17 s sits in the `<tbody>` element creation.
+3. `formatValue` — 0.15 s.
+
+The `cell` closure was 2.31 s in section 1b. It is now a `Map` read.
+
+### Gevonden en vervangen lineaire lookups
+
+Replaced with one index built for that call:
+
+- `eval.ts` `rowsBetween`: `rowOrder.indexOf` for the range start and end.
+- `graph.ts` `rangeRows`: the same `rowOrder.indexOf` pair. `rowOrder.slice` still returns the rows between those indexes.
+- `graph.ts` `cell`: `rowOrder.includes(row)`.
+- `refs.ts` `toFileForm`: `rowIds.indexOf(rowId)`. `docToFile` builds the index once and passes it in. Callers that omit it still use `indexOf`.
+- `doc.ts` `fileToDoc`: `colInfos.indexOf(col)` while writing each cell. The loop index is used instead.
+
+`toIdForm` does not scan `rowIds`. It takes the optional index and does not read it. Row numbers there are already `rowIds[n - 1]`.
+
+Left in place, because they scan a string rather than a row or column array: `key.indexOf("@")`, `ident.includes("@")`, `ident.indexOf("@")`, `ident.includes(".")`, and the operator checks `"+-*/^%".includes` and `"+-*/^%=<>:,()".includes`.
+
+### Waarnemingen
+
+Every doubled row count multiplies `evaluateAll` by 2.19, then 2.09, then 2.39. A quadratic step would be about 4. The scaling is linear.
+
+M2, M3, and M7 are under their thresholds. M8 has no threshold and dropped from 15.6 ms to 3.8 ms.
+
+With linear scaling and the thresholds met, spike 1 is complete. These numbers do not call for virtualization or incremental evaluation.
+
+### Afwijkingen
+
+- Same environment as section 1b: Headless Chrome 153 on this Linux VM, static files from `python3 -m http.server`.
+- M8 ran after the 50 edits and before M7, so serialize still sees 1,200 rows.
+- M10 builds each size in its own `Y.Doc` through `buildLargeFile`. The mounted sheet stays the 1,200-row fixture.
+- `toIdForm` accepts the row index and ignores it. Only `toFileForm` consults that map.

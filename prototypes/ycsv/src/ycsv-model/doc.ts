@@ -62,8 +62,9 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
 
     file.rows.forEach((data, index) => {
       const cells = new Y.Map<string>();
-      for (const col of colInfos) {
-        const colIndex = colInfos.indexOf(col);
+      for (let colIndex = 0; colIndex < colInfos.length; colIndex += 1) {
+        const col = colInfos[colIndex];
+        if (!col) continue;
         cells.set(col.colId, toIdForm(data[colIndex] ?? "", colInfos, rowIds));
       }
       const map = new Y.Map<unknown>();
@@ -108,9 +109,12 @@ export function docToFile(doc: Y.Doc): YcsvFile {
     rowIds.push(String(map.get("rowId") ?? ""));
   }
 
+  const rowIndex = new Map<string, number>();
+  rowIds.forEach((id, index) => rowIndex.set(id, index));
+
   const dataRows = rowMaps.map((map) => {
     const cells = map.get("cells") as Y.Map<string>;
-    return colInfos.map((col) => toFileForm(cells.get(col.colId) ?? "", colInfos, rowIds));
+    return colInfos.map((col) => toFileForm(cells.get(col.colId) ?? "", colInfos, rowIds, rowIndex));
   });
 
   const bag: Record<string, unknown> = {};

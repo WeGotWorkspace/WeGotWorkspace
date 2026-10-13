@@ -65,32 +65,32 @@ function orderedKeys(raw: RawCells, rowOrder: string[]): string[] {
   return keys;
 }
 
-function rangeRows(rowOrder: string[], from: string, to: string): string[] {
-  const start = rowOrder.indexOf(from);
-  const end = rowOrder.indexOf(to);
-  if (start < 0 || end < 0) return [];
+function rangeRows(rowOrder: string[], rowIndex: ReadonlyMap<string, number>, from: string, to: string): string[] {
+  const start = rowIndex.get(from);
+  const end = rowIndex.get(to);
+  if (start === undefined || end === undefined) return [];
   const lo = Math.min(start, end);
   const hi = Math.max(start, end);
   return rowOrder.slice(lo, hi + 1);
 }
 
-function dependencies(node: Node, rowOrder: string[], out: string[]) {
+function dependencies(node: Node, rowOrder: string[], rowIndex: ReadonlyMap<string, number>, out: string[]) {
   switch (node.k) {
     case "ref":
       out.push(`${node.col}@${node.row}`);
       break;
     case "range":
-      for (const row of rangeRows(rowOrder, node.from, node.to)) out.push(`${node.col}@${row}`);
+      for (const row of rangeRows(rowOrder, rowIndex, node.from, node.to)) out.push(`${node.col}@${row}`);
       break;
     case "call":
-      for (const arg of node.args) dependencies(arg, rowOrder, out);
+      for (const arg of node.args) dependencies(arg, rowOrder, rowIndex, out);
       break;
     case "unary":
-      dependencies(node.arg, rowOrder, out);
+      dependencies(node.arg, rowOrder, rowIndex, out);
       break;
     case "bin":
-      dependencies(node.l, rowOrder, out);
-      dependencies(node.r, rowOrder, out);
+      dependencies(node.l, rowOrder, rowIndex, out);
+      dependencies(node.r, rowOrder, rowIndex, out);
       break;
     default:
       break;
@@ -111,6 +111,9 @@ function lookupDef(defs: Record<string, unknown>, path: string): Value | undefin
 }
 
 export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<string, unknown>): Values {
+  const rowIndex = new Map<string, number>();
+  rowOrder.forEach((id, i) => rowIndex.set(id, i));
+
   const items = new Map<string, Item>();
   for (const key of orderedKeys(raw, rowOrder)) {
     const text = raw.get(key) ?? "";
@@ -128,12 +131,13 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
   const cycle = new Set<string>();
   const ctx: EvalCtx = {
     cell: (col, row) => {
-      if (!rowOrder.includes(row)) return "#REF";
+      if (!rowIndex.has(row)) return "#REF";
       const key = `${col}@${row}`;
       return values.has(key) ? (values.get(key) as Value) : "";
     },
     def: (path) => lookupDef(defs, path),
     rowOrder,
+    rowIndex,
   };
 
   const visit = (key: string, stack: string[]) => {
@@ -143,7 +147,7 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
     stack.push(key);
     if (item.ast) {
       const deps: string[] = [];
-      dependencies(item.ast, rowOrder, deps);
+      dependencies(item.ast, rowOrder, rowIndex, deps);
       for (const dep of deps) {
         const state = color.get(dep) ?? "white";
         if (state === "grey") {
