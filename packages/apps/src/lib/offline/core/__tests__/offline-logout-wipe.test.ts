@@ -2,6 +2,8 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { IndexeddbPersistence } from "y-indexeddb";
+import * as Y from "yjs";
 import {
   resetWgwSessionStateForTests,
   WGW_GUEST_REFRESH_TOKEN,
@@ -16,6 +18,7 @@ import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/co
 import { countDiscardedUnsyncedChanges, runLogoutStep } from "@/lib/offline/core/offline-wipe";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
 const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
@@ -69,30 +72,14 @@ async function createNamedDatabase(name: string): Promise<void> {
   db.close();
 }
 
-/** y-indexeddb `custom` store, the place an unsaved body records `pendingServerSave`. */
+/** Writes the flag the way the editor does, so the store layout comes from y-indexeddb. */
 async function seedPendingServerSave(name: string): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.open(name);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains("custom")) {
-        request.result.createObjectStore("custom");
-      }
-    };
-    request.onerror = () => reject(request.error ?? new Error("open failed"));
-    request.onsuccess = () => {
-      const db = request.result;
-      const tx = db.transaction("custom", "readwrite");
-      tx.objectStore("custom").put(1, "pendingServerSave");
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error ?? new Error("write aborted"));
-      };
-    };
-  });
+  const ydoc = new Y.Doc();
+  const persistence = new IndexeddbPersistence(name, ydoc);
+  await persistence.whenSynced;
+  await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+  await persistence.destroy();
+  ydoc.destroy();
 }
 
 function installPushSubscription(endpoint: string): {
@@ -364,9 +351,62 @@ describe("user-initiated logout", () => {
   it("counts an unsaved document body when the outbox is empty", async () => {
     await seedPendingServerSave("Docs/private.md:v2");
     await seedPendingServerSave("Docs/private.md");
+    const open = vi.spyOn(indexedDB, "open");
+    try {
+      await expect(countDiscardedUnsyncedChanges()).resolves.toBe(1);
+      const opened = open.mock.calls.map((call) => call[0]);
+      expect(opened).toContain("Docs/private.md:v2");
+      expect(opened).toContain("Docs/private.md");
+      expect(opened).not.toContain("/Docs/private.md");
+    } finally {
+      open.mockRestore();
+    }
+  });
 
-    await expect(countDiscardedUnsyncedChanges()).resolves.toBe(1);
-    expect(await indexedDbNames()).not.toContain("/Docs/private.md");
+  it("does not open collab names that indexedDB.databases does not list", async () => {
+    await seedOfflineAccount("alice", "notes");
+    const db = offlineDbForAccount("alice");
+    await notesNotesTable(db).put({
+      id: "cached-note",
+      notebookId: "nb",
+      data: "{}",
+      pendingSync: true,
+      updatedAt: 1,
+    });
+    await seedPendingServerSave("Docs/private.md:v2");
+    const open = vi.spyOn(indexedDB, "open");
+    try {
+      await expect(countDiscardedUnsyncedChanges()).resolves.toBe(1);
+      const opened = open.mock.calls.map((call) => call[0]);
+      expect(opened).not.toContain("cached-note");
+      expect(opened).not.toContain("/cached-note");
+      expect(opened).not.toContain("cached-note:v2");
+      expect(opened).not.toContain("Docs/private.md");
+      expect(opened).not.toContain("/Docs/private.md");
+    } finally {
+      open.mockRestore();
+    }
+  });
+
+  it("counts a pending body from the notes table when indexedDB.databases is missing", async () => {
+    rememberOfflineUsername("notes", "alice");
+    const db = offlineDbForAccount("alice");
+    await db.open();
+    await notesNotesTable(db).put({
+      id: "note-uid",
+      notebookId: "nb",
+      data: "{}",
+      pendingSync: true,
+      updatedAt: 1,
+    });
+    await seedPendingServerSave("note-uid:v2");
+    const databases = indexedDB.databases.bind(indexedDB);
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    try {
+      await expect(countDiscardedUnsyncedChanges()).resolves.toBe(1);
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
   });
 
   it("does not create a database while counting a remembered username that has none", async () => {

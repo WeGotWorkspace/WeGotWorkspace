@@ -1,4 +1,5 @@
 import { appendLogoutStepFailure } from "@/lib/api/wgw/session-debug";
+import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
 const OFFLINE_STORAGE_PREFIX = "wgw.offline.";
@@ -8,9 +9,12 @@ const COLLAB_DB_SUFFIX = ":v2";
 const NOTES_STORE = "notes_notes";
 const DOCS_STORE = "docs_availability";
 const OUTBOX_STORE = "outbox";
-/** y-indexeddb store that holds `PENDING_SERVER_SAVE_KEY` (`use-docs-collab-save.ts`). */
+/**
+ * y-indexeddb object store for custom values. The logout test writes
+ * `PENDING_SERVER_SAVE_KEY` through `IndexeddbPersistence.set`, so a rename
+ * of this store fails that test instead of returning a silent zero.
+ */
 const COLLAB_CUSTOM_STORE = "custom";
-const PENDING_SERVER_SAVE_KEY = "pendingServerSave";
 const INDEXED_DB_STEP_TIMEOUT_MS = 2_000;
 
 type AuthorizedFetch = (path: string, init?: RequestInit) => Promise<Response>;
@@ -79,8 +83,20 @@ export async function countDiscardedUnsyncedChanges(): Promise<number> {
   for (const name of targets.accountNames) {
     total += await countObjectStore(name, OUTBOX_STORE);
   }
-  total += await countPendingCollabRooms(targets.collabNames);
+  total += await countPendingCollabRooms(collabNamesToCount(targets));
   return total;
+}
+
+/**
+ * `addCollabNames` adds `room`, `/room`, and `room:v2` for every cached note.
+ * Opening a missing name creates a database, so when `indexedDB.databases()`
+ * returned a listing the count only opens names that are actually there.
+ * Without a listing, the derived names are still opened.
+ */
+function collabNamesToCount(targets: WipeTargets): string[] {
+  if (!targets.listedNames) return targets.collabNames;
+  const present = new Set(targets.listedNames);
+  return targets.collabNames.filter((name) => present.has(name));
 }
 
 async function currentPushSubscription(): Promise<PushSubscription | null> {
@@ -112,6 +128,8 @@ async function deleteServerPushSubscription(
 type WipeTargets = {
   accountNames: string[];
   collabNames: string[];
+  /** Null when `indexedDB.databases()` is missing or rejects. */
+  listedNames: string[] | null;
 };
 
 async function databasesToWipe(): Promise<string[]> {
@@ -132,7 +150,7 @@ async function collectWipeTargets(): Promise<WipeTargets> {
       if (roomKey) addCollabNames(collabNames, roomKey);
     }
   }
-  return { accountNames, collabNames: [...collabNames] };
+  return { accountNames, collabNames: [...collabNames], listedNames: listed };
 }
 
 /**

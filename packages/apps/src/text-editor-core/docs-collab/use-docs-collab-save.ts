@@ -24,8 +24,9 @@ import {
   isServerDivergenceError,
   SERVER_ORIGIN,
 } from "./docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
-export const PENDING_SERVER_SAVE_KEY = "pendingServerSave";
+export { PENDING_SERVER_SAVE_KEY };
 
 type UseDocsCollabSaveOptions = {
   refs: DocsCollabSessionRefs;
