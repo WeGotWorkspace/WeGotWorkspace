@@ -25,6 +25,8 @@ use Illuminate\Support\Str;
  */
 final class FileNodeIndexService
 {
+    private bool $searchSyncSuspended = false;
+
     public function __construct(
         private readonly WgwStorage $storage,
         private readonly SearchIndexerService $search,
@@ -105,8 +107,28 @@ final class FileNodeIndexService
         return ! StorageKeyClass::classify($key)->isFileIndexed();
     }
 
+    /**
+     * File-index backfill must not mirror each mint into search. The search
+     * reindex clears that index and rebuilds it from the nodes afterwards.
+     *
+     * @param  callable(): void  $operation
+     */
+    public function withoutSearchSync(callable $operation): void
+    {
+        $this->searchSyncSuspended = true;
+        try {
+            $operation();
+        } finally {
+            $this->searchSyncSuspended = false;
+        }
+    }
+
     private function syncSearch(string $key, bool $deleted = false): void
     {
+        if ($this->searchSyncSuspended) {
+            return;
+        }
+
         $this->searchSync->sync(
             'filenode',
             fn () => $deleted
@@ -272,9 +294,13 @@ final class FileNodeIndexService
      */
     public function recordMove(string $fromKey, string $toKey): ?JmapFileNode
     {
-        if ($this->isHiddenKey($fromKey) || $this->isHiddenKey($toKey)) {
+        if ($this->isHiddenKey($fromKey)) {
             $this->syncSearch($fromKey, deleted: true);
-            $this->syncSearch($toKey);
+
+            return $this->isHiddenKey($toKey) ? null : $this->recordCreate($toKey);
+        }
+        if ($this->isHiddenKey($toKey)) {
+            $this->recordDelete($fromKey);
 
             return null;
         }
@@ -308,12 +334,10 @@ final class FileNodeIndexService
         $this->syncSearch($toKey);
         if ($isDir) {
             foreach ($this->liveSelfAndDescendants($toKey) as $descendant) {
-                $newKey = (string) $descendant->storage_key;
-                $oldKey = $newKey === $toKey
-                    ? $fromKey
-                    : $fromKey.'/'.substr($newKey, strlen($toKey) + 1);
-                $this->syncSearch($oldKey, deleted: true);
-                $this->syncSearch($newKey);
+                $key = (string) $descendant->storage_key;
+                if ($key !== $toKey) {
+                    $this->syncSearch($key);
+                }
             }
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Search;
 
 use App\Models\JmapFileNode;
+use App\Services\Drive\DriveService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Search\SearchReindexRunner;
@@ -147,9 +148,9 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
         $disk->put("users/{$user}/sub/B.md", "# B\n");
         $disk->put("users/{$user}/.Trash/C.md", "# C\n");
 
-        // Product reindex: file-index backfill, then SearchIndexerService::reindexAll().
+        // Product reindex: file-index backfill, then SearchIndexerService::reindexAllFromFileNodes().
         app(SearchReindexRunner::class)->run();
-        app(SearchIndexerService::class)->reindexAll();
+        app(SearchIndexerService::class)->reindexAllFromFileNodes();
 
         foreach (["users/{$user}/A.md", "users/{$user}/sub/B.md", "users/{$user}/.Trash/C.md"] as $key) {
             $this->assertNotNull(
@@ -171,6 +172,48 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
         }
 
         $this->assertSearchDocumentMissing("users/{$user}/.Trash/C.md");
+        $this->assertNoSearchDocumentsWithoutALiveFileNode();
+    }
+
+    public function test_directory_move_replaces_search_keys_with_the_new_path(): void
+    {
+        $this->createDriveDirectory('/users/bob', 'dir');
+        $this->createDriveFile($this->userBearerToken(), '/users/bob/dir', 'a.md');
+
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob',
+            '/users/bob/dir',
+            'dir2',
+        ));
+
+        $this->assertSearchDocumentMissing('users/bob/dir');
+        $this->assertSearchDocumentMissing('users/bob/dir/a.md');
+        $this->assertSearchDocumentExists('users/bob/dir2');
+        $this->assertSearchDocumentExists('users/bob/dir2/a.md');
+        $this->assertNoSearchDocumentsWithoutALiveFileNode();
+    }
+
+    public function test_rename_out_of_a_hidden_name_mints_a_node_before_search(): void
+    {
+        app(WgwStorage::class)->files()->put('users/bob/.secret.md', "# Secret\n");
+
+        $this->assertSame('Renamed', app(DriveService::class)->renameItem(
+            $this->drivePrincipal('bob'),
+            '/users/bob',
+            '/users/bob/.secret.md',
+            'notes.md',
+        ));
+
+        $this->assertNotNull(
+            JmapFileNode::query()
+                ->where('storage_key', 'users/bob/notes.md')
+                ->whereNull('deleted_at')
+                ->first(),
+        );
+        $this->assertSearchDocumentMissing('users/bob/.secret.md');
+        $this->assertSearchDocumentExists('users/bob/notes.md');
+        $this->assertNoSearchDocumentsWithoutALiveFileNode();
     }
 
     public function test_collab_markdown_write_keeps_both_indexes_in_sync(): void
@@ -187,6 +230,17 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
             JmapFileNode::query()->where('storage_key', $key)->whereNull('deleted_at')->first(),
         );
         $this->assertSearchDocumentExists($key);
+    }
+
+    private function assertNoSearchDocumentsWithoutALiveFileNode(): void
+    {
+        $keys = JmapFileNode::query()->whereNull('deleted_at')->pluck('storage_key')->all();
+        $orphans = DB::connection('wgw')->table('search_documents')
+            ->whereIn('source_type', ['file', 'note'])
+            ->whereNotIn('source_key', $keys)
+            ->pluck('source_key')
+            ->all();
+        $this->assertSame([], $orphans, 'search_documents rows without a live file node');
     }
 
     private function keyIsTrashOrAttachment(string $key): bool

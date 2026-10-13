@@ -342,9 +342,12 @@ final class SearchIndexerService
     }
 
     /**
+     * Project live file nodes into search, then rebuild caldav and carddav.
+     * Callers must backfill the file index first; SearchReindexRunner does.
+     *
      * @param  callable(int, int, string): void|null  $progress
      */
-    public function reindexAll(?callable $progress = null): void
+    public function reindexAllFromFileNodes(?callable $progress = null): void
     {
         $this->store->clearAll();
 

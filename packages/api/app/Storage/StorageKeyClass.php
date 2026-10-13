@@ -34,18 +34,18 @@ enum StorageKeyClass: string
                 continue;
             }
             if ($segment === self::TRASH_DIR) {
-                $class = self::Trash;
+                $class = self::moreRestrictive($class, self::Trash);
 
                 continue;
             }
             if ($segment === DocAttachmentPaths::DIR) {
-                $class = self::Attachment;
+                $class = self::moreRestrictive($class, self::Attachment);
 
                 continue;
             }
             if ($segment === self::NOTES_DIR) {
                 $underNotes = true;
-                $class = self::Note;
+                $class = self::moreRestrictive($class, self::Note);
 
                 continue;
             }
@@ -58,6 +58,26 @@ enum StorageKeyClass: string
         }
 
         return $class;
+    }
+
+    /**
+     * Hidden beats trash beats attachment beats note beats regular, whatever
+     * order the segments appear in.
+     */
+    private static function moreRestrictive(self $current, self $candidate): self
+    {
+        return self::rank($candidate) > self::rank($current) ? $candidate : $current;
+    }
+
+    private static function rank(self $class): int
+    {
+        return match ($class) {
+            self::Regular => 0,
+            self::Note => 1,
+            self::Attachment => 2,
+            self::Trash => 3,
+            self::Hidden => 4,
+        };
     }
 
     /** Kept in the JMAP file index (Drive needs trash and attachments). */

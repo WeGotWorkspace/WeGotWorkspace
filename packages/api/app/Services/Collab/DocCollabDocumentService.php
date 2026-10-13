@@ -145,7 +145,11 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
-                $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
+                try {
+                    $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
+                } catch (\Throwable $e) {
+                    Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+                }
                 $this->eventDispatch->fireMutation(
                     (string) $username,
                     'collab',

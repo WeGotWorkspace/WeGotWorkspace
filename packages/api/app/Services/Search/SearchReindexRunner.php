@@ -57,10 +57,12 @@ final class SearchReindexRunner
             $this->writePhase('starting');
             $this->store->appendLog('Search reindex started.');
 
-            $this->fileNodes->reindexAll();
+            $this->fileNodes->withoutSearchSync(function (): void {
+                $this->fileNodes->reindexAll();
+            });
 
             $phaseMap = ['files' => 'indexing_files', 'caldav' => 'indexing_caldav', 'carddav' => 'indexing_carddav'];
-            $this->indexer->reindexAll(function (int $done, int $total, string $phase) use ($phaseMap): void {
+            $this->indexer->reindexAllFromFileNodes(function (int $done, int $total, string $phase) use ($phaseMap): void {
                 if ($this->store->isCancelRequested()) {
                     throw new \RuntimeException('Search reindex cancelled by user.');
                 }

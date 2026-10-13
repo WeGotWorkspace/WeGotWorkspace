@@ -296,13 +296,13 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
     }
 
     /**
-     * Search reindex reads live file nodes. Backfill those nodes from disk
-     * first, the same order SearchReindexRunner uses.
+     * SearchIndexerService::reindexAllFromFileNodes() projects live file nodes.
+     * Backfill those nodes from disk first; SearchReindexRunner does the same.
      */
     private function reindexAll(): void
     {
         app(FileNodeIndexService::class)->reindexAll();
-        app(SearchIndexerService::class)->reindexAll();
+        app(SearchIndexerService::class)->reindexAllFromFileNodes();
     }
 
     private function setModifiedTs(string $sourceKey, int $ts): void
@@ -454,6 +454,9 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
             'users/alice/.notes/n-123.md',
             "---\ntitle: My Note Title\n---\nMy note body\nsecond line"
         );
+        app(WgwStorage::class)->files()->put('users/alice/.Trash/.notes/n-1.md', 'trash wins over a later note segment');
+        app(WgwStorage::class)->files()->put('users/alice/.attachments/.notes/n-2.md', 'attachment wins over a later note segment');
+        app(WgwStorage::class)->files()->put('users/alice/.notes/.Trash/n-3.md', 'trash wins over an earlier note segment');
 
         $this->reindexAll();
 
@@ -475,11 +478,23 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $attachmentFile = DB::connection('wgw')->table('search_documents')
             ->where('source_key', 'users/alice/.attachments/fn-1/pic.png')
             ->first();
+        $trashThenNote = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.Trash/.notes/n-1.md')
+            ->first();
+        $attachmentThenNote = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.attachments/.notes/n-2.md')
+            ->first();
+        $noteThenTrash = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.notes/.Trash/n-3.md')
+            ->first();
 
         $this->assertNull($hiddenFile);
         $this->assertNull($hiddenFolderFile);
         $this->assertNull($trashFile);
         $this->assertNull($attachmentFile);
+        $this->assertNull($trashThenNote);
+        $this->assertNull($attachmentThenNote);
+        $this->assertNull($noteThenTrash);
         $this->assertNotNull($noteFile);
         $this->assertSame('note', $noteFile->category);
         $this->assertSame('note', $noteFile->source_subtype);
