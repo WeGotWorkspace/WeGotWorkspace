@@ -49,6 +49,7 @@ describe("useCalendarController publish feed", () => {
     const publishCalendarFeed = vi.fn().mockResolvedValue({
       httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
       webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+      mode: "full",
     });
     const unpublishCalendarFeed = vi.fn().mockResolvedValue(undefined);
     const getCalendarFeed = vi.fn().mockResolvedValue(null);

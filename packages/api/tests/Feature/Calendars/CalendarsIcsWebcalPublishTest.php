@@ -231,7 +231,7 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertNotNull($private->RRULE);
         $this->assertNotNull($private->EXDATE);
         $this->assertNotNull($private->DTSTAMP);
-        $this->assertSame('3', $private->SEQUENCE->getValue());
+        $this->assertSame(3, $private->SEQUENCE->getValue());
         $this->assertSame('CANCELLED', $private->STATUS->getValue());
         $this->assertSame('TRANSPARENT', $private->TRANSP->getValue());
         $tzid = $private->DTSTART['TZID'];

@@ -163,7 +163,7 @@ export type CalendarFeedMode = "full" | "busy";
 export type CalendarFeedInfo = {
   httpsUrl: string;
   webcalUrl: string;
-  mode?: CalendarFeedMode;
+  mode: CalendarFeedMode;
 };
 
 export type CalendarAPIOperations = {

@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 const feed = {
   httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
   webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+  mode: "full" as const,
 };
 
 function renderSection(overrides: Partial<ComponentProps<typeof CalendarPublishSection>> = {}) {

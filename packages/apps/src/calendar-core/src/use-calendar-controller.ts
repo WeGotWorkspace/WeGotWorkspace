@@ -1174,7 +1174,7 @@ export function useCalendarController({
   ]);
 
   const toggleCalendarPublish = useCallback(
-    (enabled: boolean, mode: "full" | "busy" = "full") => {
+    (enabled: boolean, mode?: "full" | "busy") => {
       if (calendarDialog?.mode !== "edit" || !calendarDialog.canPublish) return;
       const calendarId = calendarDialog.calendarId;
       if (enabled) {

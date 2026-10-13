@@ -144,7 +144,7 @@ final class CalendarFeedService
 
     private function storedMode(CalendarFeedToken $row): string
     {
-        return $row->mode === 'busy' ? 'busy' : 'full';
+        return $row->mode === 'full' ? 'full' : 'busy';
     }
 
     private function assertPublishable(string $username, string $calendarId): void

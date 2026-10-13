@@ -32,5 +32,6 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
 - Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.
 - When the same mutation is allowed on REST and judged by a live-update guard, is the allow predicate the same for each field, including how user ids are compared?
+- Does a public redaction drop only the private values it recognizes? Unknown classification is private. Strip the properties the writer emits by the writer's list, and test the property the writer adds.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

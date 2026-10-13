@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * existing URL without regenerating. Hash-only storage cannot re-show the
  * token; a compromised APP_KEY recovers issued feed URLs.
  * mode is full (strip people and private events) or busy (every event is Busy).
+ * A stored value other than full is published as busy.
  *
  * @property int $id
  * @property string $token_hash
