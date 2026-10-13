@@ -8246,6 +8246,14 @@ export interface components {
         AdminAppsSettings: {
             calendars: boolean;
             contacts: boolean;
+            /** @description When false, Tasks is disabled for this instance. */
+            tasks: boolean;
+            /** @description When false, Calendar does not email new invitations to people outside this instance. Updates to people already invited, cancellation notices, and RSVP replies still send. */
+            imipExternalEnabled: boolean;
+            /** @description Maximum outbound invitation emails per user per hour. Clamped to the daily limit. */
+            imipHourlyLimit: number;
+            /** @description Maximum outbound invitation emails per user per day. Defaults to 300. */
+            imipDailyLimit: number;
         };
         AdminWebdavSettings: {
             sabreUi: boolean;
