@@ -314,7 +314,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('noteId', '[^/]+');
 
     // Chat channels (Epic #701, chunk B): CalDAV VJOURNAL collections with
-    // chat-/dm- URI prefixes, API-only (hidden from DAV by ChatHiddenCalendarBackend).
+    // chat-/dm- URI prefixes, API-only (hidden from DAV by WgwCalendarBackend).
     Route::get('chat/channels/changes', [ChatChannelsController::class, 'changes']);
     Route::get('chat/channels', [ChatChannelsController::class, 'index']);
     Route::post('chat/channels', [ChatChannelsController::class, 'store']);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
@@ -12,6 +13,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
@@ -33,6 +35,7 @@ final class TaskListRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -42,7 +45,7 @@ final class TaskListRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
         $lists = $this->collectionAccess
-            ->accessibleInstances($username, fn ($query) => $query->vtodoOnly())
+            ->accessibleInstances($username, CollectionKind::TaskList)
             ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
@@ -120,7 +123,7 @@ final class TaskListRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::TaskList, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -224,7 +227,7 @@ final class TaskListRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
         $instances = $this->collectionAccess->accessibleInstances(
             $username,
-            fn ($query) => $query->vtodoOnly(),
+            CollectionKind::TaskList,
         );
 
         $currentState = $this->computeInstancesState($instances);
@@ -611,7 +614,7 @@ final class TaskListRepository
         return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::TaskList))
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
@@ -624,7 +627,7 @@ final class TaskListRepository
             ->with('calendar')
             ->where('principaluri', $principalUri)
             ->where('uri', $taskListUri)
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::TaskList))
             ->first();
     }
 

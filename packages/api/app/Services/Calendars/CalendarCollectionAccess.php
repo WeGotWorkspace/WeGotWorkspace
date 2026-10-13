@@ -5,22 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
-use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
  * Shared CalDAV collection ACL: list accessible instances, dedupe owner vs
  * inbound sharee, sharee name/color PATCH, dismiss-on-delete, and item writes.
- * Calendar passes {@see Calendar::scopeSupportsVevent()}; Tasks
- * passes {@see Calendar::scopeVtodoOnly()}; Notes passes
- * {@see Calendar::scopeVjournalOnly()}.
+ * Each surface asks for its own CollectionKind. Component scopes are not usable
+ * here: notebooks, chat channels and docs thread pools are all VJOURNAL-only,
+ * so only the stored kind separates them.
  */
 final class CalendarCollectionAccess
 {
@@ -36,14 +34,13 @@ final class CalendarCollectionAccess
      * Personal + group + inbound sharee instances for $username, filtered by
      * component set, then highest-access-per-calendarid, then dismissals.
      *
-     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
-    public function accessibleInstances(string $username, \Closure $componentQuery)
+    public function accessibleInstances(string $username, CollectionKind $kind)
     {
-        $instances = $this->personalInstances($username, $componentQuery);
+        $instances = $this->personalInstances($username, $kind);
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            foreach ($this->groupInstances($slug, $componentQuery) as $groupInstance) {
+            foreach ($this->groupInstances($slug, $kind) as $groupInstance) {
                 $instances->push($groupInstance);
             }
         }
@@ -161,25 +158,23 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return Collection<int, CalendarInstance>
      */
-    private function personalInstances(string $username, \Closure $componentQuery)
+    private function personalInstances(string $username, CollectionKind $kind)
     {
         return CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $this->principalUri($username))
-            ->whereHas('calendar', $componentQuery)
+            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get();
     }
 
     /**
-     * @param  \Closure(Builder<Calendar>): mixed  $componentQuery
      * @return list<CalendarInstance>
      */
-    private function groupInstances(string $groupSlug, \Closure $componentQuery): array
+    private function groupInstances(string $groupSlug, CollectionKind $kind): array
     {
         $groupUri = AdminConstants::GROUP_PREFIX.$groupSlug;
         $group = Principal::query()->where('uri', $groupUri)->first(['uri', 'displayname']);
@@ -195,7 +190,7 @@ final class CalendarCollectionAccess
         return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
-            ->whereHas('calendar', $componentQuery)
+            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()

@@ -6,6 +6,7 @@ namespace App\Mcp\Tools;
 
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpScopes;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -52,7 +53,7 @@ final class CalendarListTool extends WgwMcpTool
     {
         $instances = $this->calendars->accessibleInstances(
             (string) $this->user()->username,
-            static fn ($query) => $query->supportsVevent(),
+            CollectionKind::EventCalendar,
         );
 
         $list = [];

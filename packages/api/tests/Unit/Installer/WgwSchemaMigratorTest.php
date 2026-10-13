@@ -159,6 +159,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'groupmembers',
             'app_settings',
             'calendarobjects',
+            'calendar_collection_meta',
             'cards',
             'app_update_history',
             'meet_peers',
