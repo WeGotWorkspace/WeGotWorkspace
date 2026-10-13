@@ -773,11 +773,33 @@
                     },
                     "contacts": {
                         "type": "boolean"
+                    },
+                    "tasks": {
+                        "type": "boolean",
+                        "description": "When false, Tasks is disabled for this instance."
+                    },
+                    "imipExternalEnabled": {
+                        "type": "boolean",
+                        "description": "When false, Calendar does not email new invitations to people outside this instance. Updates to people already invited, cancellation notices, and RSVP replies still send."
+                    },
+                    "imipHourlyLimit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum outbound invitation emails per user per hour. Clamped to the daily limit."
+                    },
+                    "imipDailyLimit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum outbound invitation emails per user per day. Defaults to 300."
                     }
                 },
                 "required": [
                     "calendars",
-                    "contacts"
+                    "contacts",
+                    "tasks",
+                    "imipExternalEnabled",
+                    "imipHourlyLimit",
+                    "imipDailyLimit"
                 ]
             },
             "AdminWebdavSettings": {

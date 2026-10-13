@@ -56,7 +56,7 @@ import {
   SERVER_ORIGIN,
 } from "./docs-collab-utils";
 import { trackChangesAuthorIdFromName } from "@/text-editor-core/src/text-editor-track-changes";
-import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,

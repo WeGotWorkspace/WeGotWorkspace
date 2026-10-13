@@ -88,6 +88,50 @@ final class CalendarPrincipalAddresses
     }
 
     /**
+     * Local user mailboxes among the given addresses, resolved in one query
+     * plus a username lookup for local-only domains.
+     *
+     * @param  list<string>  $emails  normalized addresses
+     * @return array<string, true>
+     */
+    public function localMailboxes(array $emails): array
+    {
+        $emails = array_values(array_unique($emails));
+        if ($emails === []) {
+            return [];
+        }
+
+        $local = [];
+        foreach (array_chunk($emails, 100) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+            $rows = $this->userPrincipalQuery()
+                ->whereRaw('lower(email) in ('.$placeholders.')', $chunk)
+                ->pluck('email');
+            foreach ($rows as $email) {
+                if (! is_string($email)) {
+                    continue;
+                }
+                $normalized = strtolower(trim($email));
+                if ($normalized !== '') {
+                    $local[$normalized] = true;
+                }
+            }
+        }
+
+        foreach ($emails as $email) {
+            if (isset($local[$email])) {
+                continue;
+            }
+            $username = $this->localUsernameIfLocalDomain($email);
+            if ($username !== null && Principal::forUsername($username) !== null) {
+                $local[$email] = true;
+            }
+        }
+
+        return $local;
+    }
+
+    /**
      * CalDAV share_href: profile email, else mailto:{username}, else mailto:groups/{slug}.
      */
     public function shareHrefForPrincipal(Principal $principal): string

@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 import {
   clearDocsCollabPendingServerSave,
   captureDocsCollabOfflinePersistence,

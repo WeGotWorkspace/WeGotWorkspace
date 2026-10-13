@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
  *
+ * A row is also the proof this address was mailed for the event.
+ * Deleting one, even after expiry, stops later updates when external invites are off.
+ *
  * @property int $id
  * @property string $token_hash
  * @property string $event_uid

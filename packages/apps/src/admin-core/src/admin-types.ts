@@ -98,6 +98,12 @@ export type AdminRtcSettings = {
 export type AdminAppsSettings = {
   calendars: boolean;
   contacts: boolean;
+  /** When false, Calendar must not email new invitations outside this instance. */
+  imipExternalEnabled: boolean;
+  /** Maximum outbound invitation emails one user can send per hour. */
+  imipHourlyLimit: number;
+  /** Maximum outbound invitation emails one user can send per day. */
+  imipDailyLimit: number;
 };
 
 export type AdminWebdavSettings = {

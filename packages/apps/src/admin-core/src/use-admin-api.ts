@@ -36,6 +36,9 @@ export function useAdminAPI(source?: AdminApiSource) {
       apps: {
         calendars: true,
         contacts: true,
+        imipExternalEnabled: true,
+        imipHourlyLimit: 100,
+        imipDailyLimit: 300,
       },
       webdav: {
         sabreUi: true,
