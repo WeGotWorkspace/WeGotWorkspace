@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { deleteRow, insertRowAfter, setCell } from "../ycsv-model/mutate";
@@ -55,6 +55,17 @@ export function Grid({ doc, awareness, user }: Props) {
       selectedRow && selectedCol ? { rowId: selectedRow.rowId, colId: selectedCol.colId } : null;
     awareness.setLocalState({ user, cursor });
   }, [awareness, user, selectedRow, selectedCol]);
+
+  useLayoutEffect(() => {
+    if (performance.getEntriesByName("commit").length === 0) return;
+    requestAnimationFrame(() => {
+      if (performance.getEntriesByName("commit").length === 0) return;
+      performance.measure("commit→paint", "commit");
+      performance.clearMarks("commit");
+      const painted = (window as Window & { __ycsvPainted?: () => void }).__ycsvPainted;
+      painted?.();
+    });
+  }, [values]);
 
   useEffect(() => {
     const read = () => {
