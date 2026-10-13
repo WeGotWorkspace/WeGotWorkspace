@@ -67,6 +67,7 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -99,6 +100,9 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
     ->middleware(['wgw.auth', 'throttle:wgw-api']);
+// Guests read room status before they join, so this stays unauthenticated.
+// It is not on the account bucket, and not on the room limiter: that limiter
+// resolves the actor with the same Basic check, which would consume a login attempt.
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
@@ -202,8 +206,10 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         Route::post('files/rooms', [FilesController::class, 'resolveRoom']);
     });
 
-    Route::get('search/results', UnifiedSearchController::class);
+    Route::get('search/results', UnifiedSearchController::class)
+        ->middleware('throttle:'.WgwApiRateLimiters::SEARCH);
     Route::get('search/results/{resultId}/content', [UnifiedSearchDownloadController::class, 'contentByResultId'])
+        ->middleware('throttle:'.WgwApiRateLimiters::SEARCH)
         ->where('resultId', '.+');
 
     // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.

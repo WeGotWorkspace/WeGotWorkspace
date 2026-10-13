@@ -16,6 +16,7 @@ use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
@@ -24,7 +25,6 @@ use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
 use App\Support\PublicAppUrl;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -33,7 +33,6 @@ use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\Middleware\ThrottleRequestsWithRedis;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -161,6 +160,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 404 => 'not_found',
                 405 => 'method_not_allowed',
                 413 => 'post_too_large',
+                429 => 'rate_limited',
                 default => 'server_error',
             };
 
@@ -173,34 +173,17 @@ return Application::configure(basePath: dirname(__DIR__))
                     'not_found' => 'Not found.',
                     'method_not_allowed' => 'Method not allowed.',
                     'post_too_large' => 'Upload too large.',
+                    'rate_limited' => 'Too many requests.',
                     default => 'Internal server error.',
                 };
 
             return response()->json([
                 'error' => $message,
                 'code' => $code,
-            ], $status);
+            ], $status, $e instanceof HttpExceptionInterface ? $e->getHeaders() : []);
         });
     })
     ->booted(function (): void {
-        RateLimiter::for('wgw-api', static function (Request $request): Limit {
-            $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-            $username = null;
-            if (is_array($principal)) {
-                $candidate = $principal['username'] ?? null;
-                if (is_string($candidate) && $candidate !== '') {
-                    $username = $candidate;
-                }
-            }
-            if ($username !== null) {
-                return Limit::perMinute(600)->by('user:'.$username);
-            }
-
-            $ip = $request->ip();
-
-            return Limit::perMinute(600)->by(
-                'ip:'.(is_string($ip) && $ip !== '' ? $ip : 'unknown'),
-            );
-        });
+        WgwApiRateLimiters::register();
     })
     ->create();

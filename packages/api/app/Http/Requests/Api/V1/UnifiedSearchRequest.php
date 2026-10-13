@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Services\Search\UnifiedSearchService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -21,9 +22,9 @@ final class UnifiedSearchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'q' => ['sometimes', 'string', 'min:2', 'max:512'],
+            'q' => ['sometimes', 'string', 'min:2', 'max:'.UnifiedSearchService::MAX_QUERY_LENGTH],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
-            'offset' => ['sometimes', 'integer', 'min:0'],
+            'offset' => ['sometimes', 'integer', 'min:0', 'max:'.UnifiedSearchService::MAX_OFFSET],
             'sources' => ['sometimes', 'array'],
             'sources.*' => ['string', Rule::in(['file', 'note', 'caldav', 'carddav'])],
             'categories' => ['sometimes', 'array'],
