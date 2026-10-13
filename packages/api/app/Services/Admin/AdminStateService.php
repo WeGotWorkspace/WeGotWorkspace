@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Rtc\MeetVideoProfile;
@@ -113,12 +114,9 @@ final class AdminStateService
 
     private function imipHourlyLimit(): int
     {
-        $raw = AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, 100);
-        if (is_int($raw) && $raw > 0) {
-            return $raw;
-        }
-
-        return 100;
+        return CalendarImipService::normalizeHourlyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, CalendarImipService::HOURLY_LIMIT_DEFAULT),
+        );
     }
 
     /**

@@ -8246,9 +8246,11 @@ export interface components {
         AdminAppsSettings: {
             calendars: boolean;
             contacts: boolean;
-            /** @description When false, Calendar must not send iMIP to external attendees. */
+            /** @description When false, Tasks is disabled for this instance. */
+            tasks: boolean;
+            /** @description When false, Calendar does not email new invitations to people outside this instance. Cancellation notices and RSVP replies still send. */
             imipExternalEnabled: boolean;
-            /** @description Maximum outbound iMIP messages per user per hour. */
+            /** @description Maximum outbound invitation emails per user per hour. Clamped to the daily cap of 300. */
             imipHourlyLimit: number;
         };
         AdminWebdavSettings: {

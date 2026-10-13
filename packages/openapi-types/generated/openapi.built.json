@@ -793,18 +793,25 @@
                     "contacts": {
                         "type": "boolean"
                     },
+                    "tasks": {
+                        "type": "boolean",
+                        "description": "When false, Tasks is disabled for this instance."
+                    },
                     "imipExternalEnabled": {
                         "type": "boolean",
-                        "description": "When false, Calendar must not send iMIP to external attendees."
+                        "description": "When false, Calendar does not email new invitations to people outside this instance. Cancellation notices and RSVP replies still send."
                     },
                     "imipHourlyLimit": {
                         "type": "integer",
-                        "description": "Maximum outbound iMIP messages per user per hour."
+                        "minimum": 1,
+                        "maximum": 300,
+                        "description": "Maximum outbound invitation emails per user per hour. Clamped to the daily cap of 300."
                     }
                 },
                 "required": [
                     "calendars",
                     "contacts",
+                    "tasks",
                     "imipExternalEnabled",
                     "imipHourlyLimit"
                 ]

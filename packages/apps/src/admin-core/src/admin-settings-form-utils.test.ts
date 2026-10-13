@@ -93,9 +93,17 @@ describe("adminSettingsFormToMap", () => {
     });
     const form = buildAdminSettingsFormState(data);
     expect(form.imipExternalEnabled).toBe(false);
-    expect(form.imipHourlyLimit).toBe(25);
+    expect(form.imipHourlyLimit).toBe("25");
     const values = adminSettingsFormToMap(form);
     expect(values.imip_external_enabled).toBe(false);
     expect(values.imip_hourly_limit).toBe(25);
+  });
+
+  it("keeps a cleared hourly limit as text and normalizes it on save", () => {
+    const { data } = createAdminAppBootstrap();
+    const form = buildAdminSettingsFormState(data);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "" }).imip_hourly_limit).toBe(100);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "500" }).imip_hourly_limit).toBe(300);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "40" }).imip_hourly_limit).toBe(40);
   });
 });

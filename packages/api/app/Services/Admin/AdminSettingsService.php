@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliverySettingsStore;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpEnabled;
@@ -116,17 +117,7 @@ final class AdminSettingsService
 
     private function hourlyInviteLimit(mixed $value): int
     {
-        if (is_int($value) && $value > 0) {
-            return $value;
-        }
-        if (is_string($value)) {
-            $parsed = filter_var($value, FILTER_VALIDATE_INT);
-            if (is_int($parsed) && $parsed > 0) {
-                return $parsed;
-            }
-        }
-
-        return 100;
+        return CalendarImipService::normalizeHourlyLimit($value);
     }
 
     private function normalizeRtcUrls(mixed $value): string

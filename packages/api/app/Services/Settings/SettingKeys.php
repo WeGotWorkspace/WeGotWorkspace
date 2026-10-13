@@ -18,10 +18,10 @@ final class SettingKeys
 
     public const CALENDAR_ENABLED = 'calendar_enabled';
 
-    /** When false, Calendar must not send iMIP to external attendees. Default true. */
+    /** When false, Calendar does not email new external invitations. CANCEL and REPLY still send. Default true. */
     public const IMIP_EXTERNAL_ENABLED = 'imip_external_enabled';
 
-    /** Maximum outbound iMIP messages per user per hour. Default 100. */
+    /** Maximum outbound invitation emails per user per hour, clamped to the daily cap. Default 100. */
     public const IMIP_HOURLY_LIMIT = 'imip_hourly_limit';
 
     public const CONTACTS_ENABLED = 'contacts_enabled';

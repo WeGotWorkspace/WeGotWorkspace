@@ -20,6 +20,7 @@ Read the [SSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheats
 Answer each item in the handoff. A happy-path test does not answer them.
 
 - What is the rate-limit or cache key, and can the caller mint new keys (wildcard DNS, a spoofed header, a new origin)?
+- Does a cap live only on a service instance? PHP-FPM builds a new process per request, so that cap resets. Count from the durable record or from shared cache, and test a second request. If the record or the address cannot be read, refuse the send.
 - Does the limit run before the expensive work?
 - Is the body streamed with a cap, or buffered fully and then rejected?
 - Which hosts does `filter_var` or the allowlist still accept?

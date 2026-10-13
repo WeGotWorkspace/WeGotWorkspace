@@ -14,7 +14,6 @@ use App\Services\Notify\CalendarRsvpNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Sabre\VObject\Component\VCalendar;
@@ -30,11 +29,6 @@ use Sabre\VObject\Reader;
  */
 final class CalendarSchedulingService
 {
-    private const int EXTERNAL_ATTENDEE_CAP = 50;
-
-    /** @var array<string, array<string, true>> */
-    private array $externalRecipientsByUid = [];
-
     public function __construct(
         private readonly CalendarPrincipalAddresses $addresses,
         private readonly SearchIndexerService $searchIndexer,
@@ -318,9 +312,6 @@ final class CalendarSchedulingService
     {
         $recipient = $this->addresses->principalForMailto((string) $message->recipient);
         if ($recipient === null) {
-            if (! $this->allowExternalRecipient($message)) {
-                return;
-            }
             $this->imip->deliver($username, $message);
 
             return;
@@ -331,33 +322,6 @@ final class CalendarSchedulingService
         }
 
         $this->deliverLocal($username, $message, (string) $recipient->uri);
-    }
-
-    private function allowExternalRecipient(Message $message): bool
-    {
-        $email = $this->addresses->normalizedEmail((string) $message->recipient);
-        $uid = trim((string) $message->uid);
-        if ($email === null || $uid === '') {
-            return true;
-        }
-
-        $seen = $this->externalRecipientsByUid[$uid] ?? [];
-        if (isset($seen[$email])) {
-            return true;
-        }
-        if (count($seen) >= self::EXTERNAL_ATTENDEE_CAP) {
-            Log::warning('imip.attendee_cap', [
-                'uid' => $uid,
-                'cap' => self::EXTERNAL_ATTENDEE_CAP,
-            ]);
-
-            return false;
-        }
-
-        $seen[$email] = true;
-        $this->externalRecipientsByUid[$uid] = $seen;
-
-        return true;
     }
 
     private function isOrganizerRequestToSelf(Message $message, Principal $recipient): bool

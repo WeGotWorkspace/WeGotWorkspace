@@ -131,6 +131,31 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ->assertJsonPath('apps.imipHourlyLimit', 25);
     }
 
+    public function test_hourly_invite_limit_is_clamped_to_the_daily_cap(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_HOURLY_LIMIT => 500,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 300);
+
+        $this->setAppSetting(SettingKeys::IMIP_HOURLY_LIMIT, 500);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 300);
+    }
+
     public function test_admin_save_of_browser_plugin_sets_the_marker(): void
     {
         $token = $this->adminBearerToken();
