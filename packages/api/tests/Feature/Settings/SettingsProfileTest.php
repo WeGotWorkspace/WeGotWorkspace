@@ -268,7 +268,11 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             ->assertJsonPath('user.email', 'bob@example.test');
     }
 
-    public function test_password_change_revokes_every_refresh_token_including_the_callers(): void
+    /**
+     * Refresh tokens are revoked, including the caller's. Access JWTs stay
+     * valid until WGW_API_JWT_ACCESS_TTL; bearer auth does not read ui_session_epoch.
+     */
+    public function test_password_change_leaves_existing_access_tokens_valid_until_expiry(): void
     {
         $caller = $this->postJson('/api/v1/auth/token', [
             'username' => 'bob',
@@ -281,6 +285,7 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             'username' => 'bob',
             'password' => 'secret',
         ])->assertOk();
+        $otherAccess = (string) $other->json('access_token');
         $otherRefresh = $this->refreshCookieValue($other);
         $epochBefore = (int) User::query()->where('username', 'bob')->value('ui_session_epoch');
 
@@ -296,6 +301,8 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
 
         $this->postRefresh($refresh)->assertUnauthorized();
         $this->postRefresh($otherRefresh)->assertUnauthorized();
+        $this->withBearer($access)->getJson('/api/v1/settings/state')->assertOk();
+        $this->withBearer($otherAccess)->getJson('/api/v1/settings/state')->assertOk();
     }
 
     public function test_wrong_current_password_shares_the_login_rate_limit(): void

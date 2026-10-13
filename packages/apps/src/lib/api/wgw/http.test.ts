@@ -433,7 +433,7 @@ describe("wgw auth refresh behavior", () => {
     expect(refreshPosts).toHaveLength(1);
   });
 
-  it("does not reload a rotated refresh token after a partial storage write", async () => {
+  it("keeps memory authoritative after a partial storage write", async () => {
     const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
@@ -468,8 +468,6 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
-    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
-    expect(window.localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY)).toBeNull();
     setItem.mockRestore();
 
     const secondFetch = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));

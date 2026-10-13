@@ -1,19 +1,31 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 import { Input } from "@/ui/input";
 import { Card } from "@/card/src/card";
 import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
 import type { SettingsControllerState } from "@/settings-core/src/use-settings-controller";
+import { buttonVariants } from "@/ui/button";
 import { Form } from "@/ui/form";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormSaveActionRow } from "@/ui/form-save-action-row";
 import { FormTextField } from "@/ui/form-text-field";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
 
 export type SettingsProfilePaneProps = {
   profile: SettingsControllerState["profile"];
 };
 
 export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
-  const { form, username, saveProfile } = profile;
+  const { form, username, saveProfile, unsyncedDiscard } = profile;
+  const suppressDiscardCancel = useRef(false);
   const usernameId = useId();
   const [newPasswordWatch, confirmPasswordWatch] = form.watch(["newPassword", "confirmPassword"]);
   const emailDirty = Boolean(form.formState.dirtyFields.email);
@@ -82,6 +94,36 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
           onSave={saveProfile}
         />
       </Card>
+      <AlertDialog
+        open={unsyncedDiscard !== null}
+        onOpenChange={(open) => {
+          if (open || suppressDiscardCancel.current) {
+            suppressDiscardCancel.current = false;
+            return;
+          }
+          unsyncedDiscard?.cancel();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsynced changes?</AlertDialogTitle>
+            <AlertDialogDescription>{unsyncedDiscard?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={(event) => {
+                event.preventDefault();
+                suppressDiscardCancel.current = true;
+                unsyncedDiscard?.confirm();
+              }}
+            >
+              Change password
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Form>
   );
 }
