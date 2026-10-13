@@ -14,7 +14,7 @@ import {
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
