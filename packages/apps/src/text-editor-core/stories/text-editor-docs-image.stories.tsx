@@ -91,7 +91,7 @@ export const ExternalImagePlaceholder: Story = {
     docs: {
       description: {
         story:
-          "https images render a Load external image button and do not set img src until click. http images show Insecure image blocked and never load. The opt-in stays in memory on that editor.",
+          "https images render a Load external image button (alt, then host) and do not set img src until click. http images show Insecure image blocked and never load. One click allows that host for the rest of this editor. The opt-in stays in memory.",
       },
     },
   },

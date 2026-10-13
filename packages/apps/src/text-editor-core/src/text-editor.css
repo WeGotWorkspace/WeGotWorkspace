@@ -672,6 +672,32 @@
   @apply outline-none ring-1 ring-ring;
 }
 
+/*
+ * Opt-in chip and the blocked notice share the delete control's surface.
+ * `hidden` still wins: Tailwind preflight sets `display: none !important`.
+ */
+.text-editor-image__external-load,
+.text-editor-image__external-blocked {
+  @apply box-border inline-flex max-w-full items-center px-2.5 py-1.5 text-start text-xs font-medium break-words;
+  min-height: var(--control-height-sm, 2rem);
+  border-radius: var(--control-radius);
+  background-color: var(--workspace-surface);
+  color: var(--workspace-foreground);
+  box-shadow: var(--control-shadow);
+}
+
+.text-editor-image__external-load {
+  @apply cursor-pointer appearance-none border-0 font-sans;
+}
+
+.text-editor-image__external-load:hover {
+  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, var(--workspace-surface));
+}
+
+.text-editor-image__external-load:focus-visible {
+  @apply outline-none ring-1 ring-ring;
+}
+
 .ProseMirror[contenteditable="false"] .text-editor-image__delete-host {
   @apply hidden;
 }

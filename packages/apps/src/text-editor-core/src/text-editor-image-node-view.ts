@@ -13,9 +13,15 @@ import { isHttpImageSrc, parseDriveFnSrc } from "@/text-editor-core/src/text-edi
 export { DOCS_IMAGE_DELETE_LABEL };
 
 const INSECURE_IMAGE_BLOCKED_TEXT = "Insecure image blocked";
+const LOAD_EXTERNAL_IMAGE_PREFIX = "Load external image";
 
-/** Reader opt-in for one https src. Keyed by the editor so it dies with that document. */
-const externalImageOptInByEditor = new WeakMap<Editor, Set<string>>();
+type ExternalImageOptIn = {
+  hosts: Set<string>;
+  refresh: Set<() => void>;
+};
+
+/** Reader opt-in for one https host. Keyed by the editor so it dies with that document. */
+const externalImageOptInByEditor = new WeakMap<Editor, ExternalImageOptIn>();
 
 type ImageNodeView = {
   dom: HTMLElement;
@@ -33,17 +39,23 @@ type ExternalImageChrome = {
   blockedNotice: HTMLElement;
 };
 
-function rememberExternalImageOptIn(editor: Editor, src: string): void {
-  let allowed = externalImageOptInByEditor.get(editor);
-  if (!allowed) {
-    allowed = new Set();
-    externalImageOptInByEditor.set(editor, allowed);
+function externalImageOptIn(editor: Editor): ExternalImageOptIn {
+  let state = externalImageOptInByEditor.get(editor);
+  if (!state) {
+    state = { hosts: new Set(), refresh: new Set() };
+    externalImageOptInByEditor.set(editor, state);
   }
-  allowed.add(src);
+  return state;
 }
 
-function hasExternalImageOptIn(editor: Editor, src: string): boolean {
-  return externalImageOptInByEditor.get(editor)?.has(src) ?? false;
+function rememberExternalImageOptIn(editor: Editor, host: string): void {
+  const state = externalImageOptIn(editor);
+  state.hosts.add(host);
+  for (const refresh of state.refresh) refresh();
+}
+
+function hasExternalImageOptIn(editor: Editor, host: string): boolean {
+  return externalImageOptInByEditor.get(editor)?.hosts.has(host) ?? false;
 }
 
 function parsedHttpUrl(src: string): URL | null {
@@ -65,6 +77,28 @@ function isInsecureHttpImageSrc(src: string): boolean {
   return parsedHttpUrl(src)?.protocol === "http:";
 }
 
+type ExternalImagePrompt =
+  | { kind: "empty" }
+  | { kind: "insecure" }
+  | { kind: "https"; host: string }
+  | { kind: "drive"; nodeId: string }
+  | { kind: "unsupported" };
+
+function nodeImageSrc(node: ProseMirrorNode): string {
+  return typeof node.attrs.src === "string" ? node.attrs.src.trim() : "";
+}
+
+/** One classification of a stored src, shared by the first paint and a later relabel. */
+function externalImagePrompt(src: string): ExternalImagePrompt {
+  if (!src) return { kind: "empty" };
+  if (isInsecureHttpImageSrc(src)) return { kind: "insecure" };
+  const host = httpsImageHost(src);
+  if (host) return { kind: "https", host };
+  const nodeId = parseDriveFnSrc(src);
+  if (!nodeId) return { kind: "unsupported" };
+  return { kind: "drive", nodeId };
+}
+
 function nodeIsWithin(target: EventTarget | null, root: Node): boolean {
   return target instanceof Node && (target === root || root.contains(target));
 }
@@ -75,24 +109,51 @@ function clearExternalPrompt(chrome: ExternalImageChrome): void {
   chrome.img.hidden = false;
 }
 
-function showInsecureImage(chrome: ExternalImageChrome): void {
+function imageAlt(node: ProseMirrorNode): string {
+  return typeof node.attrs.alt === "string" ? node.attrs.alt.trim() : "";
+}
+
+function loadExternalImageLabel(alt: string, host: string): string {
+  return alt
+    ? `${LOAD_EXTERNAL_IMAGE_PREFIX}: ${alt} (${host})`
+    : `${LOAD_EXTERNAL_IMAGE_PREFIX} (${host})`;
+}
+
+function insecureImageLabel(alt: string): string {
+  return alt ? `${INSECURE_IMAGE_BLOCKED_TEXT}: ${alt}` : INSECURE_IMAGE_BLOCKED_TEXT;
+}
+
+function showInsecureImage(chrome: ExternalImageChrome, alt: string): void {
   chrome.img.removeAttribute("src");
   chrome.img.hidden = true;
   chrome.loadButton.hidden = true;
   chrome.blockedNotice.hidden = false;
+  chrome.blockedNotice.textContent = insecureImageLabel(alt);
 }
 
-function showExternalOptIn(chrome: ExternalImageChrome, host: string): void {
+function showExternalOptIn(chrome: ExternalImageChrome, alt: string, host: string): void {
   chrome.img.removeAttribute("src");
   chrome.img.hidden = true;
   chrome.blockedNotice.hidden = true;
   chrome.loadButton.hidden = false;
-  chrome.loadButton.textContent = `Load external image (${host})`;
+  chrome.loadButton.textContent = loadExternalImageLabel(alt, host);
 }
 
 function assignImageSrc(chrome: ExternalImageChrome, src: string): void {
   clearExternalPrompt(chrome);
   chrome.img.src = src;
+}
+
+/** Relabel a prompt that is already on screen. Does not fetch or assign `src`. */
+function relabelVisiblePrompt(chrome: ExternalImageChrome, src: string, alt: string): void {
+  const prompt = externalImagePrompt(src);
+  if (prompt.kind === "https" && !chrome.loadButton.hidden) {
+    showExternalOptIn(chrome, alt, prompt.host);
+    return;
+  }
+  if (prompt.kind === "insecure" && !chrome.blockedNotice.hidden) {
+    showInsecureImage(chrome, alt);
+  }
 }
 
 function applyStaticAttrs(dom: HTMLImageElement, node: ProseMirrorNode): void {
@@ -106,7 +167,7 @@ function applyStaticAttrs(dom: HTMLImageElement, node: ProseMirrorNode): void {
 /**
  * DOM `src` is a `blob:` display URL for `drive:fn-`, or https only after the
  * reader opts in. Document attrs stay `drive:fn-` / http(s). Plain http never
- * loads. The opt-in is remembered on the editor in memory only.
+ * loads. The opt-in is the host, remembered on the editor in memory only.
  * Hover or NodeSelection shows a Docs-washed trash control; the node is removed from the doc, not Drive GC.
  */
 export function createDocsImageNodeView(
@@ -151,42 +212,31 @@ export function createDocsImageNodeView(
 
   const resolveSrc = (next: ProseMirrorNode) => {
     applyStaticAttrs(img, next);
-    const src = typeof next.attrs.src === "string" ? next.attrs.src.trim() : "";
+    const src = nodeImageSrc(next);
+    const prompt = externalImagePrompt(src);
+    const alt = imageAlt(next);
     const generation = ++token;
     cancelled = false;
 
-    if (!src) {
+    if (prompt.kind === "insecure") {
       revoke();
-      img.removeAttribute("src");
-      clearExternalPrompt(chrome);
+      showInsecureImage(chrome, alt);
       return;
     }
-    if (isInsecureHttpImageSrc(src)) {
+    if (prompt.kind === "https") {
       revoke();
-      showInsecureImage(chrome);
+      if (hasExternalImageOptIn(editor, prompt.host)) assignImageSrc(chrome, src);
+      else showExternalOptIn(chrome, alt, prompt.host);
       return;
     }
-    const host = httpsImageHost(src);
-    if (host) {
-      revoke();
-      if (hasExternalImageOptIn(editor, src)) assignImageSrc(chrome, src);
-      else showExternalOptIn(chrome, host);
-      return;
-    }
-    if (src.startsWith("data:")) {
-      revoke();
-      assignImageSrc(chrome, src);
-      return;
-    }
-
-    const nodeId = parseDriveFnSrc(src);
-    if (!nodeId) {
+    if (prompt.kind !== "drive") {
       revoke();
       img.removeAttribute("src");
       clearExternalPrompt(chrome);
       return;
     }
 
+    const nodeId = prompt.nodeId;
     revoke();
     img.removeAttribute("src");
     clearExternalPrompt(chrome);
@@ -203,14 +253,25 @@ export function createDocsImageNodeView(
     })();
   };
 
+  // One click allows the host for every image already mounted in this editor.
+  const refreshOptIn = () => {
+    const src = nodeImageSrc(currentNode);
+    const prompt = externalImagePrompt(src);
+    if (prompt.kind !== "https" || !hasExternalImageOptIn(editor, prompt.host)) return;
+    if (img.getAttribute("src") === src) return;
+    revoke();
+    assignImageSrc(chrome, src);
+  };
+  const optIn = externalImageOptIn(editor);
+  optIn.refresh.add(refreshOptIn);
+
   loadButton.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const src = typeof currentNode.attrs.src === "string" ? currentNode.attrs.src.trim() : "";
-    if (!httpsImageHost(src)) return;
-    rememberExternalImageOptIn(editor, src);
-    revoke();
-    assignImageSrc(chrome, src);
+    const src = nodeImageSrc(currentNode);
+    const prompt = externalImagePrompt(src);
+    if (prompt.kind !== "https") return;
+    rememberExternalImageOptIn(editor, prompt.host);
   });
 
   deleteRoot = mountTextEditorImageDeleteControl(deleteHost, {
@@ -235,6 +296,7 @@ export function createDocsImageNodeView(
         resolveSrc(updated);
       } else {
         applyStaticAttrs(img, updated);
+        relabelVisiblePrompt(chrome, nodeImageSrc(updated), imageAlt(updated));
       }
       return true;
     },
@@ -257,6 +319,7 @@ export function createDocsImageNodeView(
     destroy() {
       cancelled = true;
       token += 1;
+      optIn.refresh.delete(refreshOptIn);
       deleteRoot?.unmount();
       deleteRoot = null;
       revoke();
