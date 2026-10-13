@@ -89,7 +89,7 @@ final class CalendarFeedIcsBuilder
 
     private function redact(VEvent $event, bool $forceBusy): void
     {
-        if ($forceBusy || $this->isPrivateOrConfidential($event)) {
+        if ($forceBusy || $this->isNotPublic($event)) {
             $this->reduceToBusy($event);
 
             return;
@@ -98,7 +98,7 @@ final class CalendarFeedIcsBuilder
         $this->stripSensitive($event);
     }
 
-    private function isPrivateOrConfidential(VEvent $event): bool
+    private function isNotPublic(VEvent $event): bool
     {
         $class = $event->CLASS;
         if ($class === null) {
@@ -111,7 +111,7 @@ final class CalendarFeedIcsBuilder
 
     private function reduceToBusy(VEvent $event): void
     {
-        $this->removeChildren($event, function (string $name, Property|Component $child): bool {
+        $this->removeChildren($event, function (string $name): bool {
             return ! in_array($name, self::BUSY_KEEP, true);
         });
         $event->add('SUMMARY', 'Busy');
@@ -120,56 +120,18 @@ final class CalendarFeedIcsBuilder
 
     private function stripSensitive(VEvent $event): void
     {
-        $conferenceHrefs = $this->conferenceHrefs($event);
-        $this->removeChildren($event, function (string $name, Property|Component $child) use ($conferenceHrefs): bool {
-            if (in_array($name, ['ATTENDEE', 'ORGANIZER', 'CONTACT', 'VALARM', 'ATTACH'], true)) {
-                return true;
-            }
-            if (LocationConversionSupport::isConferenceIcsProp($name) || str_starts_with($name, 'X-WGW-')) {
+        $this->removeChildren($event, function (string $name): bool {
+            if (in_array($name, ['ATTENDEE', 'ORGANIZER', 'CONTACT', 'VALARM', 'ATTACH', 'URL'], true)) {
                 return true;
             }
 
-            return $name === 'URL'
-                && $child instanceof Property
-                && ($this->urlPointsAtMeet($child) || isset($conferenceHrefs[trim((string) $child->getValue())]));
+            return LocationConversionSupport::isConferenceIcsProp($name) || str_starts_with($name, 'X-WGW-');
         });
         $this->stripVendorParameters($event);
     }
 
     /**
-     * Hrefs that identify a conference. Property values come from the writer's
-     * list. When the event has none, the reader's resolved href is the URL a
-     * virtual location was stored as.
-     *
-     * @return array<string, true>
-     */
-    private function conferenceHrefs(VEvent $event): array
-    {
-        /** @var array<string, true> $hrefs */
-        $hrefs = [];
-        foreach ($event->children() as $child) {
-            if (! $child instanceof Property || ! LocationConversionSupport::isConferenceIcsProp($child->name)) {
-                continue;
-            }
-            $href = trim((string) $child->getValue());
-            if ($href !== '') {
-                $hrefs[$href] = true;
-            }
-        }
-        if ($hrefs !== []) {
-            return $hrefs;
-        }
-
-        $resolved = LocationConversionSupport::conferenceHrefFromVEvent($event);
-        if ($resolved !== null && $resolved !== '') {
-            $hrefs[$resolved] = true;
-        }
-
-        return $hrefs;
-    }
-
-    /**
-     * @param  callable(string, Property|Component): bool  $shouldDrop
+     * @param  callable(string): bool  $shouldDrop
      */
     private function removeChildren(VEvent $event, callable $shouldDrop): void
     {
@@ -178,7 +140,7 @@ final class CalendarFeedIcsBuilder
             if (! $child instanceof Property && ! $child instanceof Component) {
                 continue;
             }
-            if ($shouldDrop(strtoupper($child->name), $child)) {
+            if ($shouldDrop(strtoupper($child->name))) {
                 $drop[] = $child;
             }
         }
@@ -200,15 +162,5 @@ final class CalendarFeedIcsBuilder
                 unset($child->parameters[$paramName]);
             }
         }
-    }
-
-    private function urlPointsAtMeet(Property $property): bool
-    {
-        $value = $property->getValue();
-        if ($value === '') {
-            return false;
-        }
-
-        return preg_match('~/meet(?:/|\?|#|$)~i', $value) === 1;
     }
 }
