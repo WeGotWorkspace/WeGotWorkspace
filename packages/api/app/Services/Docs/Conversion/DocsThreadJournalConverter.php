@@ -17,7 +17,7 @@ use Sabre\VObject\Reader;
  * Docs comment/suggestion thread <-> VJOURNAL mapping (Task #749; mirrors chat).
  *
  * VJOURNAL is a serialization format — these objects are DAV-hidden
- * (ChatHiddenCalendarBackend + docs-threads prefix):
+ * (WgwCalendarBackend, kind docs_thread_pool):
  * - UID              = client ULID
  * - DESCRIPTION      = message body
  * - RELATED-TO       = thread root (replies only; chat single-level rule)

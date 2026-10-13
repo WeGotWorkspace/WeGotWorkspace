@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarFeedToken;
@@ -39,6 +40,7 @@ final class CalendarRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -128,7 +130,7 @@ final class CalendarRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::EventCalendar, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -420,10 +422,7 @@ final class CalendarRepository
      */
     public function accessibleVeventInstances(string $username)
     {
-        return $this->collectionAccess->accessibleInstances(
-            $username,
-            fn ($query) => $query->supportsVevent(),
-        );
+        return $this->collectionAccess->accessibleInstances($username, CollectionKind::EventCalendar);
     }
 
     /**

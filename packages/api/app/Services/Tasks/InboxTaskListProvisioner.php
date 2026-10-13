@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarColorPalette;
+use App\Services\Calendars\CollectionKind;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -28,6 +30,10 @@ final class InboxTaskListProvisioner
     public const LEGACY_URI = CalendarCollectionUris::LEGACY_TASK_INBOX;
 
     public const DISPLAY_NAME = 'Inbox';
+
+    public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
+    ) {}
 
     /**
      * @return array{scanned: int, created: int, skipped: int}
@@ -78,8 +84,7 @@ final class InboxTaskListProvisioner
             return false;
         }
 
-        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
-        $caldav->createCalendar($principalUri, self::URI, [
+        $this->backends->make()->createCollection(CollectionKind::TaskList, $principalUri, self::URI, [
             '{DAV:}displayname' => self::DISPLAY_NAME,
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
             CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri(self::URI),
