@@ -210,6 +210,16 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
                 'created_at' => sprintf('2026-10-04 12:%02d:00', $i),
             ]);
         }
+        McpAuditEvent::query()->create([
+            'event_type' => McpAuditLogger::TOOL_CALL,
+            'username' => 'bob',
+            'client_id' => $clientId,
+            'tool' => 'fake_share',
+            'access' => 'write',
+            'outcome' => 'ok',
+            'target' => 'not-a-share-tool',
+            'created_at' => '2026-10-05 12:00:00',
+        ]);
 
         $list = $this->withBearer($this->userBearerToken())->getJson('/api/v1/settings/mcp-grants');
         $list->assertOk();
@@ -217,11 +227,14 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         $this->assertIsArray($calls);
         $this->assertCount(20, $calls);
         $this->assertSame('calendar_share', $calls[0]['tool']);
+        $this->assertSame('ok', $calls[0]['outcome']);
+        $this->assertArrayHasKey('createdAt', $calls[0]);
         $this->assertSame('cal-19', $calls[0]['target']);
         $tools = array_column($calls, 'tool');
         $this->assertNotContains('drive_write', $tools);
         $this->assertNotContains('docs_share', $tools);
         $this->assertNotContains('drive_share', $tools);
+        $this->assertNotContains('fake_share', $tools);
     }
 
     public function test_consent_page_leaves_drive_share_unchecked(): void

@@ -74,6 +74,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -129,6 +130,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["mail.read", "mail.send"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -148,6 +150,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read", "offline_access", "settings"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -171,17 +174,35 @@ describe("SettingsAssistantsPane", () => {
           shareCalls: [
             {
               tool: "drive_share",
-              outcome: "error",
+              outcome: "denied",
               createdAt: "2026-10-02T12:00:00Z",
-              target: "/users/bob/shared.txt",
+              target: '{"action":"set","path":"/users/bob/shared.txt"}',
+            },
+            {
+              tool: "drive_share",
+              outcome: "denied",
+              createdAt: "2026-10-02T12:00:00Z",
+              target: '{"action":"set","path":"/users/bob/shared.txt"}',
+            },
+            {
+              tool: "calendar_share",
+              outcome: "ok",
+              createdAt: "2026-10-04T12:19:00Z",
+              target: "cal-19",
             },
           ],
         },
       ],
     });
     expect(screen.getByRole("heading", { name: "Share activity" })).toBeTruthy();
-    expect(screen.getByText("drive_share")).toBeTruthy();
-    expect(screen.getByText("/users/bob/shared.txt")).toBeTruthy();
+    expect(screen.getAllByText("drive_share")).toHaveLength(2);
+    expect(screen.getAllByText("/users/bob/shared.txt")).toHaveLength(2);
+    expect(screen.queryByText('{"action":"set","path":"/users/bob/shared.txt"}')).toBeNull();
+    expect(screen.getAllByText("Denied — external share")).toHaveLength(2);
+    expect(screen.getAllByText("2026-10-02 12:00")).toHaveLength(2);
+    expect(screen.getByText("cal-19")).toBeTruthy();
+    expect(screen.getByText("ok")).toBeTruthy();
+    expect(screen.getByText("2026-10-04 12:19")).toBeTruthy();
   });
 
   it("uses a generic revoke label when the grant has no client name", () => {
@@ -194,6 +215,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
