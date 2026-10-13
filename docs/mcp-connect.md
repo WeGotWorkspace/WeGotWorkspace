@@ -29,7 +29,11 @@ Content the assistant reads may leave this instance for the vendor’s model. Un
 
 ## Permissions (read vs write)
 
-Consent is grouped by app. Each suite app has a **read** scope and a **write** scope. **Read does not include write.** Search and list tools use `*.read`. Create, update, delete, and share tools use `*.write` (there is no separate `*.share` or `*.search` OAuth id).
+Consent is grouped by app. Each suite app has a **read** scope and a **write** scope. **Read does not include write.** Search and list tools use `*.read`. Create, update, and delete tools use `*.write`.
+
+Drive and Docs sharing is a separate opt-in scope, `drive.share`. It stays unchecked on the consent page until you enable it. The Share toggle sits in the Drive group: a Doc is a Drive file, so `docs_share` asks for `drive.share` as well.
+
+Calendar, Notes, Contacts, and Tasks keep sharing on their `*.write` scope. Those share tools only accept workspace principals the server already knows, so they cannot invite someone outside the workspace. Drive is different because public links and guest email invites exist there. `drive.share` may create **member** shares only. Public links and guest invites stay in the WeGotWorkspace UI. A legacy `drive` or `docs` grant does not include `drive.share`.
 
 | App | Read | Write |
 |-----|------|-------|
@@ -39,6 +43,7 @@ Consent is grouped by app. Each suite app has a **read** scope and a **write** s
 | Tasks | `tasks.read` | `tasks.write` |
 | Docs | `docs.read` | `docs.write` |
 | Drive | `drive.read` | `drive.write` |
+| Drive and Docs sharing | — | `drive.share` |
 | Meet | `meet.read` | `meet.write` |
 
 Unchanged:
@@ -58,7 +63,7 @@ Existing assistants that already hold a **bare** scope keep working. Bare ids ar
 | Legacy id | Grants |
 |-----------|--------|
 | `calendar` | `calendar.read` and `calendar.write` |
-| `drive` | `drive.read` and `drive.write` |
+| `drive` | `drive.read` and `drive.write` only. Does not grant `drive.share` |
 | `tasks` | `tasks.read` and `tasks.write` |
 | `contacts` | `contacts.read` and `contacts.write` |
 | `docs` | `docs.read` + `docs.write` **and** `notes.read` + `notes.write` |
@@ -67,7 +72,7 @@ Existing assistants that already hold a **bare** scope keep working. Bare ids ar
 
 The `capabilities` tool lists **MCP names** (not PHP class names). Tools for a domain appear only when that app is enabled (Admin kill-switches: Files, Calendar, Contacts, Tasks, Notes; Mail via mail enabled). Meet has no separate Admin kill-switch; its tools stay in the catalog when Connected assistants is on.
 
-Search is `*.read`. Share is `*.write`.
+Search is `*.read`. Share is `*.write`, except `drive_share` and `docs_share`, which require `drive.share` and can only create member shares.
 
 | App | Read | Write / share |
 |-----|------|----------------|
@@ -75,8 +80,8 @@ Search is `*.read`. Share is `*.write`.
 | Notes | `notes_search`, `notebook_list`, `notes_query` | `notebook_write`, `note_write`, `notebook_share` |
 | Contacts | `contacts_search`, `addressbook_list`, `contact_query` | `addressbook_write` (description / sharee dismiss only — **no** owner create/rename/delete), `contact_write`, `addressbook_share` |
 | Tasks | `tasks_list` | `tasklist_write`, `task_write`, `tasklist_share` |
-| Docs | `docs_search`, `docs_read` | `docs_write`, `docs_share` (Drive `**.md` text, not collaborative Yjs) |
-| Drive | `drive_search`, `drive_list`, `drive_read` | `drive_write` (mkdir / write_text / move / delete), `drive_share` |
+| Docs | `docs_search`, `docs_read` | `docs_write` (Drive `**.md` text, not collaborative Yjs). `docs_share` needs `drive.share` |
+| Drive | `drive_search`, `drive_list`, `drive_read` | `drive_write` (mkdir / write_text / move / delete). `drive_share` needs `drive.share` |
 | Meet | `meet_channel_list`, `meet_message_list` | `meet_channel_write`, `meet_message_write`, `meet_create_scheduled` |
 
 Always available when MCP is on: `whoami`, `capabilities`.
@@ -113,7 +118,7 @@ OAuth discovery is at the **origin root**:
 1. Open Claude → custom connectors / MCP.
 2. Add a connector with the **public** `/mcp` URL (a hostname Anthropic’s servers can resolve — not `localhost`).
 3. Complete the browser sign-in and consent pages on your instance. The page shows the **client origin** (for example `https://claude.ai`) as the identity — treat that origin as the real client, not a self-asserted name.
-4. Approve the app permissions you want (Read / Write per app). Staying connected is not a checkbox: refresh tokens are always issued.
+4. Approve the app permissions you want (Read / Write per app, plus Share for Drive and Docs). Staying connected is not a checkbox: refresh tokens are always issued.
 
 ### “Couldn’t determine the server settings”
 

@@ -25,8 +25,24 @@ final class McpScopesTest extends TestCase
         ] as $scope) {
             $this->assertContains($scope, $ids);
         }
+        $this->assertContains('drive.share', $ids);
         $this->assertNotContains('calendar', $ids);
         $this->assertNotContains('docs', $ids);
+    }
+
+    public function test_drive_share_is_advertised_unchecked_and_not_implied_by_write(): void
+    {
+        $this->assertSame(
+            'Share Drive files and Docs with workspace members',
+            McpScopes::advertisedDescriptions()['drive.share'] ?? null,
+        );
+        $this->assertContains('drive.share', McpScopes::clientAllowlist());
+        $this->assertContains('drive.share', McpScopes::consentUncheckedByDefault());
+        $this->assertSame('Share', McpScopes::consentActionLabel('drive.share'));
+        $this->assertFalse(McpScopes::grantedSatisfies([McpScopes::DRIVE_WRITE], 'drive.share'));
+        $this->assertFalse(McpScopes::grantedSatisfies([McpScopes::DRIVE], 'drive.share'));
+        $this->assertFalse(McpScopes::grantedSatisfies([McpScopes::DOCS_WRITE], 'drive.share'));
+        $this->assertFalse(McpScopes::grantedSatisfies([McpScopes::DOCS], 'drive.share'));
     }
 
     public function test_client_allowlist_keeps_advertised_and_legacy_ids(): void

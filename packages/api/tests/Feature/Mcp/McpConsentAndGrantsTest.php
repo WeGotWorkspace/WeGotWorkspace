@@ -161,6 +161,146 @@ final class McpConsentAndGrantsTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_list_grants_includes_recent_share_tool_calls(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient('Claude', 'https://claude.ai');
+        $other = $this->mcpClient('Other', 'https://other.example');
+        $this->issueMcpGrant($user, $client, [McpScopes::DRIVE_WRITE]);
+        $clientId = (string) $client->getKey();
+
+        McpAuditEvent::query()->create([
+            'event_type' => McpAuditLogger::TOOL_CALL,
+            'username' => 'bob',
+            'client_id' => $clientId,
+            'tool' => 'drive_write',
+            'access' => 'write',
+            'outcome' => 'ok',
+            'target' => '{"action":"write_text"}',
+            'created_at' => '2026-10-01 12:00:00',
+        ]);
+        McpAuditEvent::query()->create([
+            'event_type' => McpAuditLogger::TOOL_CALL,
+            'username' => 'bob',
+            'client_id' => $clientId,
+            'tool' => 'drive_share',
+            'access' => 'write',
+            'outcome' => 'error',
+            'target' => '{"action":"set","path":"/users/bob/shared.txt"}',
+            'created_at' => '2026-10-02 12:00:00',
+        ]);
+        McpAuditEvent::query()->create([
+            'event_type' => McpAuditLogger::TOOL_CALL,
+            'username' => 'bob',
+            'client_id' => (string) $other->getKey(),
+            'tool' => 'docs_share',
+            'access' => 'write',
+            'outcome' => 'ok',
+            'created_at' => '2026-10-03 12:00:00',
+        ]);
+        for ($i = 0; $i < 20; $i++) {
+            McpAuditEvent::query()->create([
+                'event_type' => McpAuditLogger::TOOL_CALL,
+                'username' => 'bob',
+                'client_id' => $clientId,
+                'tool' => 'calendar_share',
+                'access' => 'write',
+                'outcome' => 'ok',
+                'target' => 'cal-'.$i,
+                'created_at' => sprintf('2026-10-04 12:%02d:00', $i),
+            ]);
+        }
+        McpAuditEvent::query()->create([
+            'event_type' => McpAuditLogger::TOOL_CALL,
+            'username' => 'bob',
+            'client_id' => $clientId,
+            'tool' => 'fake_share',
+            'access' => 'write',
+            'outcome' => 'ok',
+            'target' => 'not-a-share-tool',
+            'created_at' => '2026-10-05 12:00:00',
+        ]);
+
+        $list = $this->withBearer($this->userBearerToken())->getJson('/api/v1/settings/mcp-grants');
+        $list->assertOk();
+        $calls = $list->json('grants.0.shareCalls');
+        $this->assertIsArray($calls);
+        $this->assertCount(20, $calls);
+        $this->assertSame('calendar_share', $calls[0]['tool']);
+        $this->assertSame('ok', $calls[0]['outcome']);
+        $this->assertMatchesRegularExpression(
+            '/^2026-10-04T12:19:00\+00:00$/',
+            (string) $calls[0]['createdAt'],
+        );
+        $this->assertSame('cal-19', $calls[0]['target']);
+        $tools = array_column($calls, 'tool');
+        $this->assertNotContains('drive_write', $tools);
+        $this->assertNotContains('docs_share', $tools);
+        $this->assertNotContains('drive_share', $tools);
+        $this->assertNotContains('fake_share', $tools);
+    }
+
+    public function test_consent_page_leaves_drive_share_unchecked(): void
+    {
+        $html = view('mcp.authorize', [
+            'authToken' => 'token',
+            'client' => (object) [
+                'id' => 'client-1',
+                'name' => 'Claude',
+                'redirect_uris' => ['https://claude.ai/callback'],
+            ],
+            'user' => (object) ['username' => 'bob'],
+            'scopes' => [
+                (object) ['id' => McpScopes::DRIVE_WRITE, 'description' => 'Write'],
+                (object) ['id' => 'drive.share', 'description' => 'Share'],
+            ],
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*value="drive\.write"[^>]*\bchecked\b/',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*value="drive\.share"(?![^>]*\bchecked\b)[^>]*>/',
+            $html,
+        );
+    }
+
+    public function test_approve_keeps_drive_share_only_when_checked(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        $redirect = 'https://claude.ai/callback';
+        $authRequest = new AuthorizationRequest;
+        $authRequest->setGrantTypeId('authorization_code');
+        $authRequest->setClient(new BridgeClient((string) $client->getKey(), 'Claude', [$redirect], false));
+        $authRequest->setUser(new BridgeUser((string) $user->getAuthIdentifier()));
+        $authRequest->setRedirectUri($redirect);
+        $authRequest->setScopes([new Scope(McpScopes::DRIVE_READ), new Scope('drive.share')]);
+        $verifier = 'share-consent-verifier-share-consent-verifier';
+        $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+        $authRequest->setCodeChallenge($challenge);
+        $authRequest->setCodeChallengeMethod('S256');
+
+        $authToken = 'approve-share-filter';
+        $intent = app(ConsentIntent::class)->issue('bob', (string) $client->getKey());
+        $this->actingAs($user, 'web');
+        $this->withSession([
+            'authRequest' => serialize($authRequest),
+            'authToken' => $authToken,
+        ])->post('/oauth/authorize', [
+            'auth_token' => $authToken,
+            'intent' => $intent,
+            'client_id' => (string) $client->getKey(),
+            'scope' => [McpScopes::DRIVE_READ],
+        ])->assertRedirect();
+
+        $stored = Passport::authCode()->newQuery()->where('client_id', $client->getKey())->first();
+        $this->assertNotNull($stored);
+        $scopes = json_decode((string) $stored->getAttribute('scopes'), true);
+        $this->assertSame([McpScopes::DRIVE_READ, McpScopes::OFFLINE_ACCESS], $scopes);
+    }
+
     public function test_approve_drops_unchecked_mail_scope(): void
     {
         $user = $this->mcpUser('bob');

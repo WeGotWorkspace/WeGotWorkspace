@@ -1,7 +1,7 @@
 {
   "SettingsMcpGrant": {
     "type": "object",
-    "required": ["clientId", "clientName", "clientOrigin", "connectedAt", "scopes"],
+    "required": ["clientId", "clientName", "clientOrigin", "connectedAt", "scopes", "shareCalls"],
     "properties": {
       "clientId": { "type": "string" },
       "clientName": { "type": "string" },
@@ -11,7 +11,22 @@
         "type": "array",
         "items": { "type": "string" }
       },
-      "lastUsedAt": { "type": ["string", "null"] }
+      "lastUsedAt": { "type": ["string", "null"] },
+      "shareCalls": {
+        "type": "array",
+        "description": "Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first.",
+        "items": { "$ref": "#/components/schemas/SettingsMcpShareCall" }
+      }
+    }
+  },
+  "SettingsMcpShareCall": {
+    "type": "object",
+    "required": ["tool", "outcome", "createdAt"],
+    "properties": {
+      "tool": { "type": "string" },
+      "outcome": { "type": "string" },
+      "createdAt": { "type": "string" },
+      "target": { "type": ["string", "null"] }
     }
   },
   "SettingsMcpGrantList": {

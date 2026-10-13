@@ -11754,6 +11754,8 @@ export interface components {
             connectedAt: string;
             scopes: string[];
             lastUsedAt?: string | null;
+            /** @description Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first. */
+            shareCalls: components["schemas"]["SettingsMcpShareCall"][];
         };
         SettingsMcpGrantList: {
             grants: components["schemas"]["SettingsMcpGrant"][];
@@ -12096,6 +12098,12 @@ export interface components {
         AdminAppUrlSaveRequest: {
             /** @description Public http or https address. The path may be empty or the install base. No user info or query. */
             url: string;
+        };
+        SettingsMcpShareCall: {
+            tool: string;
+            outcome: string;
+            createdAt: string;
+            target?: string | null;
         };
     };
     responses: {

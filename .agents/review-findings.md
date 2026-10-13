@@ -12,6 +12,7 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 
 - 2026-10-06: A path rewrite can carry a grant into a location that must not grant access (a share followed its folder into product trash and stayed live).
 - 2026-10-07: A plan that leaves a write path as a hard delete must name every caller, not only the UI that stopped using it (MCP `deleteItems` hard-deleted a grantee's shared file).
+- 2026-10-13: A `LIKE ... ESCAPE '\\'` clause is valid on SQLite and a syntax error on MySQL. The PHP string becomes `ESCAPE '\'`, which MySQL reads as an escaped quote.
 - 2026-10-13: A migration `down()` that drops the only ciphertext copy is not a rollback. Restore the plaintext first, or say in the migration that `down()` is one-way.
 - 2026-10-13: Token hash helpers in one change must normalize the same way. Tests call the helper; a copied `hash()` stops tracking the implementation.
 - 2026-10-13: An encrypted column with both a cast and a manual decrypt reader has two failure modes. App code reads through the helper named on the property.
@@ -20,6 +21,7 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 
 | Date | Finding | Example | Promoted to |
 |------|---------|---------|-------------|
+| 2026-10-13 | A guard checked the request and then updated the newest row | MCP `drive.share` could raise an existing guest share to `full` | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-09-28 | A green suite did not pin the old contract | Notes YAML stars; a cross-boundary `openapi.json` input can hash wrong while typegen stays green | [testing/test-first.md](skills/testing/test-first.md) |
 | 2026-09-28 | A security control matched the letter and missed the bypass | Rate-limit key the caller can mint; body buffered before the size cap | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | An IP-literal check that matches one or two spellings lets the same address through in another spelling | Expanded `::ffff:` forms passed `filter_var` after the regex missed them | [security/SKILL.md](skills/security/SKILL.md) |
