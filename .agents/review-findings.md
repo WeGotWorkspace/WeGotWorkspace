@@ -30,3 +30,4 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 | 2026-10-13 | A CSP hash was taken from HTML the server never sends | Vite `dist/index.html` hashed; runtime `index.html` is generated without that script | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | Security headers set only in PHP miss static responses, and `Header set` misses 304 | HSTS absent on Apache-served `index.html`, `sw.js`, and assets | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | An open report endpoint logged warnings on the default channel | CSP reports would bury the error channel GlitchTip reads | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | Copying X-Forwarded-Proto into the HTTPS variable bypasses trustProxies | Static HSTS behind a TLS proxy must use a separate env name | [security/SKILL.md](skills/security/SKILL.md) |

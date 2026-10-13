@@ -130,9 +130,10 @@ return [
         ],
 
         'csp' => [
-            'driver' => 'single',
+            'driver' => 'daily',
             'path' => storage_path('logs/csp.log'),
             'level' => 'info',
+            'days' => env('LOG_CSP_DAYS', 7),
             'replace_placeholders' => true,
         ],
 

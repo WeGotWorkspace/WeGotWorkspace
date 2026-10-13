@@ -26,7 +26,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
 - Does a hash or allowlist in a response header come from the bytes the client receives? A build artifact a later step replaces is a different document.
-- Do security headers that only PHP sets also exist for files the web server serves itself? `Header set` misses 304 responses; use `Header always set`.
-- Does an unauthenticated report endpoint log at warning on the default channel? Browser noise hides real failures. Use a separate channel.
+- Do security headers that only PHP sets also exist for files the web server serves itself? `Header set` misses 304 responses; use `Header always set`. When TLS ends at a proxy, do not copy `X-Forwarded-Proto` into the `HTTPS` variable: `Request::isSecure()` reads that name and skips `trustProxies`.
+- Does an unauthenticated report endpoint log at warning on the default channel? Browser noise hides real failures. Use a separate channel, and rotate it.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

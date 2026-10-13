@@ -340,6 +340,8 @@ final class FrontRoutingTest extends TestCase
         $this->postCspReport(str_repeat('a', 8192))->assertNoContent();
         $this->assertCount(2, $reports);
         $this->assertSame('info', $reports[0]->level);
+        $this->assertSame('daily', config('logging.channels.csp.driver'));
+        $this->assertSame(7, (int) config('logging.channels.csp.days'));
         $this->assertSame('script-src', $reports[0]->context['violated-directive'] ?? null);
 
         $beforeRejects = count($reports);
@@ -389,6 +391,21 @@ final class FrontRoutingTest extends TestCase
             $htaccess = (string) file_get_contents($root.'/'.$name);
             $this->assertMatchesRegularExpression(
                 '/Header always set Strict-Transport-Security "'.preg_quote(WgwSecurityHeaders::HSTS, '/').'" env=HTTPS/',
+                $htaccess,
+                $name,
+            );
+            $this->assertMatchesRegularExpression(
+                '/SetEnvIf X-Forwarded-Proto "\^https\$" WGW_HTTPS=on/',
+                $htaccess,
+                $name,
+            );
+            $this->assertMatchesRegularExpression(
+                '/Header always set Strict-Transport-Security "'.preg_quote(WgwSecurityHeaders::HSTS, '/').'" env=WGW_HTTPS/',
+                $htaccess,
+                $name,
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/SetEnvIf\s+X-Forwarded-Proto\b[^\n]*\bHTTPS=/',
                 $htaccess,
                 $name,
             );
