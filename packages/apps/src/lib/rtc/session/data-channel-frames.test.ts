@@ -238,8 +238,13 @@ describe("large Yjs state over a capped data channel", () => {
   });
 });
 
-function binaryFrame(messageId: number, index: number, count: number, payload: string): Uint8Array {
-  const body = new TextEncoder().encode(payload);
+function binaryFrame(
+  messageId: number,
+  index: number,
+  count: number,
+  payload: string | Uint8Array,
+): Uint8Array {
+  const body = typeof payload === "string" ? new TextEncoder().encode(payload) : payload;
   const frame = new Uint8Array(BINARY_FRAME_HEADER_BYTES + body.byteLength);
   const view = new DataView(frame.buffer);
   view.setUint32(0, messageId >>> 0);
@@ -306,6 +311,31 @@ describe("FrameReassembler pending bounds", () => {
     for (let messageId = 1; messageId <= 4; messageId += 1) {
       expect(reassembler.push("remote-a", binaryFrame(messageId, 1, 2, "b"))).toBe("ab");
     }
+  });
+
+  it("drops the oldest incomplete message when a remote exceeds the pending byte budget", () => {
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    const chunk = new Uint8Array(payloadBytes);
+    const budget = 16 * 1024 * 1024;
+    const perMessage = 400;
+    const count = perMessage + 1;
+    expect(perMessage * payloadBytes * 2).toBeLessThan(budget);
+    expect(perMessage * payloadBytes * 4).toBeGreaterThan(budget);
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      clock.set(1_000 + messageId);
+      for (let index = 0; index < perMessage; index += 1) {
+        expect(
+          reassembler.push("remote-a", binaryFrame(messageId, index, count, chunk)),
+        ).toBeNull();
+      }
+    }
+
+    const newest = new TextDecoder().decode(new Uint8Array(payloadBytes * count));
+    expect(reassembler.push("remote-a", binaryFrame(4, perMessage, count, chunk))).toBe(newest);
+    expect(reassembler.push("remote-a", binaryFrame(1, perMessage, count, chunk))).toBeNull();
   });
 
   it("reassembles a three-frame message when chunks arrive out of order", () => {
