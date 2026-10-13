@@ -23,7 +23,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Does a cap live only on a service instance? PHP-FPM builds a new process per request, so that cap resets. Count from the durable record or from shared cache, and test a second request. If the record or the address cannot be read, refuse the send.
 - Does the limit run before the expensive work?
 - Is the body streamed with a cap, or buffered fully and then rejected?
-- Which hosts does `filter_var` or the allowlist still accept?
+- Which hosts does `filter_var` or the allowlist still accept? Parse IP literals with `inet_pton`, including expanded IPv4-mapped IPv6. A regex of one or two spellings leaves the others for `filter_var` to treat as "already an IP, so allowed."
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
 - Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.

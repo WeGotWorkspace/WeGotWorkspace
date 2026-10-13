@@ -9,10 +9,15 @@ const database = process.env.WGW_E2E_DB ?? "sqlite";
 expect.configure({ timeout: 15_000 });
 
 async function assertInstallerNotInstalled(page: Page): Promise<void> {
-  const response = await page.request.get("/api/v1/installer/state");
-  expect(response.ok(), "installer state must respond before the wizard starts").toBe(true);
-  const body = (await response.json()) as { installed?: boolean };
-  expect(body.installed, "fresh install requires an uninstalled tree").toBe(false);
+  const response = await page.request.get("/api/v1/installer/bootstrap");
+  expect(response.ok(), "installer bootstrap must respond before the wizard starts").toBe(true);
+  const body = (await response.json()) as {
+    state?: { already_installed?: boolean; step?: string };
+  };
+  expect(body.state?.already_installed ?? false, "fresh install requires an uninstalled tree").toBe(
+    false,
+  );
+  expect(body.state?.step).not.toBe("installed");
 }
 
 test.describe("Fresh install", () => {
