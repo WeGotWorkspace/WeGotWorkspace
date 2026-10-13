@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from
 import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { deleteRow, insertRowAfter, setCell } from "../ycsv-model/mutate";
-import { toFileForm } from "../ycsv-model/refs";
+import { toFileForm, toIdForm } from "../ycsv-model/refs";
 import "./Grid.css";
 import { formatValue } from "./format";
 import { useSheet } from "./useSheet";
@@ -14,20 +14,41 @@ type Peer = { clientId: number; user: User; cursor: { rowId: string; colId: stri
 export function Grid({ doc, awareness, user }: Props) {
   const { columns, rows, values } = useSheet(doc);
   const [rowIndex, setRowIndex] = useState(0);
+  const [anchorId, setAnchorId] = useState<string | null>(null);
   const [colIndex, setColIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [peers, setPeers] = useState<Peer[]>([]);
   const editingRef = useRef(false);
+  const idDraftRef = useRef("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const rowCount = rows.length;
   const colCount = columns.length;
-  const safeRow = rowCount === 0 ? 0 : Math.min(rowIndex, rowCount - 1);
+  const anchored = anchorId === null ? -1 : rows.findIndex((row) => row.rowId === anchorId);
+  const safeRow = rowCount === 0 ? 0 : anchored >= 0 ? anchored : Math.min(rowIndex, rowCount - 1);
   const safeCol = colCount === 0 ? 0 : Math.min(colIndex, colCount - 1);
   const selectedRow = rows[safeRow];
   const selectedCol = columns[safeCol];
+  const cols = columns.map((column) => ({ colId: column.colId, ref: column.ref }));
+  const rowIds = rows.map((row) => row.rowId);
+  const rowKey = rowIds.join("\n");
+  const colKey = cols.map((column) => `${column.colId}:${column.ref}`).join("\n");
+
+  useEffect(() => {
+    const row = rows[safeRow];
+    if (!row) {
+      if (anchorId !== null) setAnchorId(null);
+      return;
+    }
+    if (row.rowId !== anchorId) setAnchorId(row.rowId);
+  }, [rows, safeRow, anchorId]);
+
+  useEffect(() => {
+    if (!editingRef.current) return;
+    setDraft(toFileForm(idDraftRef.current, cols, rowIds));
+  }, [rowKey, colKey]);
 
   useEffect(() => {
     const cursor =
@@ -65,9 +86,17 @@ export function Grid({ doc, awareness, user }: Props) {
     );
   }
 
+  function selectIndex(index: number) {
+    if (rowCount === 0) return;
+    const next = Math.max(0, Math.min(index, rowCount - 1));
+    setRowIndex(next);
+    setAnchorId(rows[next]?.rowId ?? null);
+  }
+
   function beginEdit(initial: string) {
     if (!selectedRow || !selectedCol) return;
     editingRef.current = true;
+    idDraftRef.current = toIdForm(initial, cols, rowIds);
     setDraft(initial);
     setEditing(true);
   }
@@ -76,8 +105,8 @@ export function Grid({ doc, awareness, user }: Props) {
     if (!editingRef.current || !selectedRow || !selectedCol) return;
     editingRef.current = false;
     setEditing(false);
-    setCell(doc, selectedRow.rowId, selectedCol.colId, draft);
-    if (move === "down") setRowIndex((index) => Math.min(index + 1, Math.max(rowCount - 1, 0)));
+    setCell(doc, selectedRow.rowId, selectedCol.colId, toFileForm(idDraftRef.current, cols, rowIds));
+    if (move === "down") selectIndex(safeRow + 1);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -95,10 +124,10 @@ export function Grid({ doc, awareness, user }: Props) {
     if (rowCount === 0 || colCount === 0) return;
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setRowIndex((index) => Math.max(0, index - 1));
+      selectIndex(safeRow - 1);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
-      setRowIndex((index) => Math.min(rowCount - 1, index + 1));
+      selectIndex(safeRow + 1);
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
       setColIndex((index) => Math.max(0, index - 1));
@@ -110,12 +139,12 @@ export function Grid({ doc, awareness, user }: Props) {
       if (event.shiftKey) {
         if (safeCol > 0) setColIndex(safeCol - 1);
         else if (safeRow > 0) {
-          setRowIndex(safeRow - 1);
+          selectIndex(safeRow - 1);
           setColIndex(colCount - 1);
         }
       } else if (safeCol < colCount - 1) setColIndex(safeCol + 1);
       else if (safeRow < rowCount - 1) {
-        setRowIndex(safeRow + 1);
+        selectIndex(safeRow + 1);
         setColIndex(0);
       }
     } else if (event.key === "Enter" || event.key === "F2") {
@@ -135,7 +164,7 @@ export function Grid({ doc, awareness, user }: Props) {
     if ((event.target as HTMLElement).tagName === "INPUT") return;
     event.preventDefault();
     if (editingRef.current) commit("none");
-    setRowIndex(row);
+    selectIndex(row);
     setColIndex(col);
     wrapRef.current?.focus();
   }
@@ -168,9 +197,9 @@ export function Grid({ doc, awareness, user }: Props) {
           {rows.map((row, r) => (
             <tr key={row.rowId}>
               {columns.map((column, c) => {
-                const here = peers.filter(
-                  (peer) => peer.cursor?.rowId === row.rowId && peer.cursor.colId === column.colId,
-                );
+                const here = peers
+                  .filter((peer) => peer.cursor?.rowId === row.rowId && peer.cursor.colId === column.colId)
+                  .sort((a, b) => a.clientId - b.clientId);
                 const value = values.get(`${column.ref}@${row.rowId}`);
                 const selected = r === safeRow && c === safeCol;
                 return (
@@ -190,7 +219,11 @@ export function Grid({ doc, awareness, user }: Props) {
                       <input
                         ref={inputRef}
                         value={draft}
-                        onChange={(event) => setDraft(event.target.value)}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          idDraftRef.current = toIdForm(value, cols, rowIds);
+                          setDraft(value);
+                        }}
                         onBlur={() => commit("none")}
                       />
                     ) : (
@@ -200,11 +233,11 @@ export function Grid({ doc, awareness, user }: Props) {
                         locale: column.locale,
                       })
                     )}
-                    {here.map((peer) => (
+                    {here.map((peer, index) => (
                       <span
                         key={peer.clientId}
                         className="ycsv-peer-label"
-                        style={{ background: peer.user.color }}
+                        style={{ background: peer.user.color, top: `${-1.2 * (index + 1)}em` }}
                       >
                         {peer.user.name}
                       </span>

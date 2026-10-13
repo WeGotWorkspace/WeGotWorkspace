@@ -8,6 +8,7 @@ type DomProps = {
   value?: string;
   checked?: boolean;
   disabled?: boolean;
+  "aria-label"?: string;
   ref?: unknown;
   onClick?: () => void;
   onBlur?: () => void;

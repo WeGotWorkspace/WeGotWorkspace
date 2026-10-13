@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -6,31 +6,17 @@ import { parse } from "../ycsv-core/parse";
 import { serialize } from "../ycsv-core/serialize";
 import { Grid } from "../ycsv-grid/Grid";
 import { docToFile, fileToDoc } from "../ycsv-model";
+import { connect, type Conn } from "./channel";
 import { SEED } from "./fixtures";
-import { link, type Link } from "./relay";
+import { identity } from "./identity";
+
+const ROOM = "ycsv-proto";
 
 type Session = {
-  docA: Y.Doc;
-  docB: Y.Doc;
-  aw: Awareness;
-  bw: Awareness;
-  connection: Link;
+  doc: Y.Doc;
+  awareness: Awareness;
+  conn: Conn;
 };
-
-const userA = { id: "wouter", name: "Wouter", color: "#2e7d32" };
-const userB = { id: "priya", name: "Priya", color: "#1565c0" };
-
-function createSession(latency: number): Session {
-  const docA = new Y.Doc();
-  const docB = new Y.Doc();
-  fileToDoc(parse(SEED), docA);
-  const aw = new Awareness(docA);
-  const bw = new Awareness(docB);
-  const connection = link(docA, docB, aw, bw);
-  connection.setLatency(latency);
-  Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA), "remote");
-  return { docA, docB, aw, bw, connection };
-}
 
 function lineDiff(before: string, after: string): { text: string; changed: number } {
   const left = before.split("\n");
@@ -47,64 +33,114 @@ function lineDiff(before: string, after: string): { text: string; changed: numbe
   return { text: lines.join("\n"), changed };
 }
 
-function CollabStory({ latency }: { latency: number }) {
-  const [session] = useState(() => createSession(latency));
-  const [offlineA, setOfflineA] = useState(false);
-  const [offlineB, setOfflineB] = useState(false);
+function SheetStory({ latency }: { latency: number }) {
+  const latencyRef = useRef(latency);
+  latencyRef.current = latency;
+  const connRef = useRef<Conn | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [peerIds, setPeerIds] = useState<number[]>([]);
+  const [name, setName] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [shown, setShown] = useState<string | null>(null);
   const [previous, setPrevious] = useState<string | null>(null);
 
   useEffect(() => {
-    session.connection.setLatency(latency);
+    let cancelled = false;
+    const onUnload = () => {
+      cancelled = true;
+      connRef.current?.destroy();
+    };
+    window.addEventListener("beforeunload", onUnload);
+
+    const run = async () => {
+      let current: Session | null = null;
+      // Hello stays inside the lock so a second tab cannot answer with an empty document.
+      await navigator.locks.request(`${ROOM}:seed`, async () => {
+        if (cancelled) return;
+        const doc = new Y.Doc();
+        const awareness = new Awareness(doc);
+        const conn = connect(doc, awareness, ROOM);
+        current = { doc, awareness, conn };
+        connRef.current = conn;
+        conn.setLatency(latencyRef.current);
+        conn.onPeers((ids) => {
+          if (!cancelled) setPeerIds(ids);
+        });
+        const synced = await conn.waitForState(400);
+        if (cancelled) return;
+        if (!synced && doc.getArray("rows").length === 0) {
+          fileToDoc(parse(SEED), doc);
+        }
+      });
+      if (!cancelled && current) setSession(current);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+      window.removeEventListener("beforeunload", onUnload);
+      connRef.current?.destroy();
+      connRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    session?.conn.setLatency(latency);
   }, [latency, session]);
 
   useEffect(() => {
-    return () => {
-      session.connection.destroy();
-      session.aw.destroy();
-      session.bw.destroy();
-    };
-  }, [session]);
+    session?.conn.setOffline(offline);
+  }, [offline, session]);
 
-  useEffect(() => {
-    session.connection.setOffline("a", offlineA);
-  }, [offlineA, session]);
-
-  useEffect(() => {
-    session.connection.setOffline("b", offlineB);
-  }, [offlineB, session]);
+  const me = useMemo(() => (session ? identity(session.doc.clientID) : null), [session]);
+  const shownName = name ?? me?.name ?? "";
+  const user = useMemo(() => {
+    if (!me) return null;
+    return { id: me.id, name: shownName, color: me.color };
+  }, [me, shownName]);
 
   const diff = shown !== null && previous !== null ? lineDiff(previous, shown) : null;
+  const tabs = peerIds.length + (session ? 1 : 0);
 
   return (
     <div style={{ padding: 16, fontFamily: "sans-serif" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <section>
-          <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <strong style={{ color: userA.color }}>{userA.name}</strong>
-            <label>
-              <input type="checkbox" checked={offlineA} onChange={(event) => setOfflineA(event.target.checked)} />{" "}
-              Offline
-            </label>
-          </header>
-          <Grid doc={session.docA} awareness={session.aw} user={userA} />
-        </section>
-        <section>
-          <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <strong style={{ color: userB.color }}>{userB.name}</strong>
-            <label>
-              <input type="checkbox" checked={offlineB} onChange={(event) => setOfflineB(event.target.checked)} />{" "}
-              Offline
-            </label>
-          </header>
-          <Grid doc={session.docB} awareness={session.bw} user={userB} />
-        </section>
-      </div>
+      <header style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 8 }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 999,
+              background: user?.color ?? "#999",
+              display: "inline-block",
+            }}
+          />
+          <input
+            aria-label="Naam"
+            value={shownName}
+            disabled={!session}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+        <span>{tabs} tabs verbonden</span>
+        <label>
+          <input
+            type="checkbox"
+            checked={offline}
+            disabled={!session}
+            onChange={(event) => setOffline(event.target.checked)}
+          />{" "}
+          Offline
+        </label>
+      </header>
+      {session && user ? <Grid doc={session.doc} awareness={session.awareness} user={user} /> : null}
       <div style={{ marginTop: 16 }}>
         <button
           type="button"
+          disabled={!session}
           onClick={() => {
-            const text = serialize(docToFile(session.docA));
+            if (!session) return;
+            const text = serialize(docToFile(session.doc));
             setPrevious(shown);
             setShown(text);
           }}
@@ -127,17 +163,17 @@ function CollabStory({ latency }: { latency: number }) {
 
 const meta = {
   title: "YCSV/Collab",
-  args: { latency: 150 },
+  args: { latency: 0 },
   argTypes: {
     latency: { control: { type: "number", min: 0, max: 2000 } },
   },
-  render: (args) => <CollabStory latency={args.latency} />,
+  render: (args) => <SheetStory latency={args.latency} />,
 } satisfies Meta<{ latency: number }>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const TweeGebruikers: Story = {
-  name: "Twee gebruikers",
+export const Sheet: Story = {
+  name: "Sheet",
 };

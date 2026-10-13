@@ -33,6 +33,10 @@
   outline-offset: -2px;
 }
 
+.ycsv-grid td:has(.ycsv-peer-label) {
+  z-index: 2;
+}
+
 .ycsv-grid input {
   width: 100%;
   box-sizing: border-box;
@@ -41,11 +45,12 @@
 
 .ycsv-peer-label {
   position: absolute;
-  top: 0;
   right: 0;
+  z-index: 1;
   font-size: 10px;
   line-height: 1.2;
   color: #fff;
   padding: 1px 4px;
   pointer-events: none;
+  white-space: nowrap;
 }
