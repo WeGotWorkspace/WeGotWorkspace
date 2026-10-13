@@ -468,11 +468,6 @@ final class InstallerWizardTest extends TestCase
 
     public function test_duplicate_admin_username_does_not_create_a_second_user(): void
     {
-        // Target contract is below. Current behavior returns ok and ignores the new password.
-        $this->markTestIncomplete(
-            'Reinstall on an existing database must be refused. https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
-        );
-
         $sqlite = $this->sqlitePath('duplicate-admin.sqlite');
         $this->installAdmin($sqlite);
 
@@ -558,25 +553,11 @@ final class InstallerWizardTest extends TestCase
             'password' => 'intruder-password',
         ])->assertUnauthorized();
 
-        $keysAfter = $this->jwtKeyMaterial();
-        if ($keysAfter !== $keysBefore) {
-            $this->markTestIncomplete(
-                'Reinstall with the JWT key files still on disk replaced them. Launch-blocker: https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
-            );
-        }
-        $this->assertSame($keysBefore, $keysAfter, 'Reinstall must not replace JWT keys.');
+        $this->assertSame($keysBefore, $this->jwtKeyMaterial(), 'Reinstall must not replace JWT keys.');
 
-        // Keys are still on disk, so connecting to the existing database closes the wizard.
-        // A success here would be the misleading ok:true tracked by #993.
-        if ($again->json('ok') !== false) {
-            $this->markTestIncomplete(
-                'Reinstall on an existing database must be refused. https://github.com/WeGotWorkspace/WeGotWorkspace/issues/993'
-            );
-        }
-
-        $again->assertOk()
-            ->assertJsonPath('ok', false)
-            ->assertJsonPath('error', 'This instance is already installed.');
+        $this->assertExistingAccountRefused($again);
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
+        $this->assertFileDoesNotExist($this->installRoot.'/packages/api/.env');
     }
 
     public function test_already_installed_state_returns_error(): void
