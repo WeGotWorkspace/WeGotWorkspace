@@ -14,7 +14,15 @@ const meta = {
   parameters: meetStoryParameters(),
   render: (args) => (
     <MeetStoryScope variant="in-call">
-      <MeetPeerTile {...args} />
+      <div className="h-80 w-full max-w-3xl p-4">
+        <div className="meet-call-stage h-full">
+          <ul className="meet-call-stage__grid h-full" data-columns="1">
+            <li className="meet-call-stage__grid-item">
+              <MeetPeerTile {...args} />
+            </li>
+          </ul>
+        </div>
+      </div>
     </MeetStoryScope>
   ),
   argTypes: {
@@ -32,6 +40,7 @@ export const NoVideo: Story = {
     name: "Alex Morgan",
     stream: null,
     compact: false,
+    spotlight: true,
     disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },
@@ -54,7 +63,6 @@ export const Speaking: Story = {
     name: "Alex Morgan",
     stream: null,
     speaking: true,
-    spotlight: true,
     disclosedMedia: { camera: true, mic: true },
     onMuteParticipant: STORY_NOOP,
   },

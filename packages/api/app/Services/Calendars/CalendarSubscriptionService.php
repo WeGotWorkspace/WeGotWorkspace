@@ -77,7 +77,11 @@ final class CalendarSubscriptionService
             }
             $this->sync->sync($instance, $ics);
         } catch (\Throwable $exception) {
-            $this->calendars->deleteIncludingContents($username, $calendarId);
+            try {
+                $this->calendars->deleteIncludingContents($username, $calendarId);
+            } catch (\Throwable) {
+                // Best effort. The original failure is what the caller sees.
+            }
             if ($exception instanceof ApiHttpException) {
                 throw $exception;
             }

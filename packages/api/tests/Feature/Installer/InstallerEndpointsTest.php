@@ -78,18 +78,13 @@ final class InstallerEndpointsTest extends TestCase
         unset($_ENV['WGW_INSTALL_CHANNEL'], $_SERVER['WGW_INSTALL_CHANNEL']);
     }
 
-    public function test_state_and_bootstrap_expose_welcome_step(): void
+    public function test_bootstrap_exposes_welcome_step(): void
     {
-        $state = $this->getJson('/api/v1/installer/state');
-        $state->assertOk()
-            ->assertJsonPath('installed', false)
-            ->assertJsonPath('maintenance', false)
+        $this->getJson('/api/v1/installer/bootstrap')
+            ->assertOk()
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'welcome')
             ->assertJsonStructure(['state' => ['checks']]);
-
-        $bootstrap = $this->getJson('/api/v1/installer/bootstrap');
-        $bootstrap->assertOk()
-            ->assertJsonPath('state.step', 'welcome');
     }
 
     public function test_stale_lock_without_keys_allows_installer(): void
@@ -170,9 +165,9 @@ final class InstallerEndpointsTest extends TestCase
         $stmt = $db->query("SELECT value FROM app_settings WHERE name = 'base_uri'");
         $this->assertSame('/', $stmt->fetchColumn());
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', true)
+            ->assertJsonPath('state.already_installed', true)
             ->assertJsonPath('state.step', 'installed');
     }
 
@@ -325,9 +320,9 @@ final class InstallerEndpointsTest extends TestCase
         $stmt = $db->query('SELECT COUNT(*) FROM users');
         $this->assertSame('1', (string) $stmt->fetchColumn());
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', true)
+            ->assertJsonPath('state.already_installed', true)
             ->assertJsonPath('state.step', 'installed');
 
         putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
@@ -433,30 +428,25 @@ final class InstallerEndpointsTest extends TestCase
         $this->assertSame('Enter a valid email address.', $invalid->json('error'));
     }
 
-    public function test_state_and_bootstrap_expose_db_from_env_when_driver_set(): void
+    public function test_bootstrap_exposes_db_from_env_when_driver_set(): void
     {
         $this->setInstallConfig([
             'db_driver' => 'sqlite',
             'db_sqlite_path' => './wgw-content/env-flag.sqlite',
         ]);
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.db_from_env', true)
             ->assertJsonPath('state.db_driver', 'sqlite')
             ->assertJsonPath('state.db.sqlite_path', './wgw-content/env-flag.sqlite');
-
-        $this->getJson('/api/v1/installer/bootstrap')
-            ->assertOk()
-            ->assertJsonPath('state.db_from_env', true)
-            ->assertJsonPath('state.db_driver', 'sqlite');
     }
 
-    public function test_state_exposes_db_from_env_false_without_driver(): void
+    public function test_bootstrap_exposes_db_from_env_false_without_driver(): void
     {
         $this->setInstallConfig(['db_driver' => '']);
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.db_from_env', false);
     }
@@ -520,9 +510,9 @@ final class InstallerEndpointsTest extends TestCase
         $stmt = $db->query("SELECT email FROM principals WHERE uri = 'principals/envadmin'");
         $this->assertSame('envadmin@example.test', $stmt->fetchColumn());
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', true)
+            ->assertJsonPath('state.already_installed', true)
             ->assertJsonPath('state.step', 'installed');
     }
 

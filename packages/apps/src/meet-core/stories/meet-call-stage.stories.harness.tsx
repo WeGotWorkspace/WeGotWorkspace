@@ -241,6 +241,7 @@ export type MeetCallStageStoryArgs = {
   peerCount: number;
   defaultChatOpen?: boolean;
   sidebarOpen?: boolean;
+  screenShare?: boolean;
 };
 
 export function MeetCallStageStoryHarness({
@@ -249,6 +250,7 @@ export function MeetCallStageStoryHarness({
   peerCount,
   defaultChatOpen = true,
   sidebarOpen: sidebarOpenInitial = false,
+  screenShare = false,
 }: MeetCallStageStoryArgs) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [layout, setLayout] = useState<MeetCallStageLayout>(layoutInitial);
@@ -282,6 +284,7 @@ export function MeetCallStageStoryHarness({
       peers: callActive ? peers : [],
       inCall: callActive,
       status: callActive ? "in-call" : "idle",
+      screenOn: screenShare,
       switchCamera: async (deviceId) => setActiveCamera(deviceId),
       switchMic: async (deviceId) => setActiveMic(deviceId),
     },

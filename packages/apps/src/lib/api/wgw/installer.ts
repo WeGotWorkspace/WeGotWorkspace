@@ -3,7 +3,6 @@ import type {
   WgwInstallerActionResponse,
   WgwInstallerBootstrapResponse,
   WgwInstallerDbDriver,
-  WgwInstallerStateResponse,
 } from "@/lib/api/wgw/types";
 
 type RequestOptions = { signal?: AbortSignal };
@@ -106,19 +105,15 @@ async function requestInstallerAction(
   return (await wgwReadJson(res)) as WgwInstallerActionResponse;
 }
 
-export async function fetchInstallerState(
-  opts?: RequestOptions,
-): Promise<WgwInstallerStateResponse> {
-  const res = await installerRequest("/state", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /installer/state failed (${res.status})`);
-  return (await wgwReadJson(res)) as WgwInstallerStateResponse;
-}
-
 export async function fetchInstallerBootstrap(
   opts?: RequestOptions,
 ): Promise<WgwInstallerBootstrapResponse> {
   const res = await installerRequest("/bootstrap", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /installer/bootstrap failed (${res.status})`);
+  if (!res.ok) {
+    throw new Error(
+      await readInstallerError(res, `GET /installer/bootstrap failed (${res.status})`),
+    );
+  }
   return (await wgwReadJson(res)) as WgwInstallerBootstrapResponse;
 }
 

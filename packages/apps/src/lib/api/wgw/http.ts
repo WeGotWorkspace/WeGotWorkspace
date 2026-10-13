@@ -3,7 +3,10 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
+import { readLoggedOutMarker, setLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
+import { appendSessionDebugRecord } from "@/lib/api/wgw/session-debug";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -55,11 +58,8 @@ const ACCESS_TOKEN_KEY = "wgw.api.access_token";
 const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
-const LOGGED_OUT_KEY = "wgw.api.logged_out";
 const GUEST_SHARE_TOKEN_KEY = "wgw.api.guest_share_token";
 const GUEST_SHARE_PATH_KEY = "wgw.api.guest_share_path";
-const SESSION_DEBUG_RING_KEY = "wgw.api.session_debug";
-const SESSION_DEBUG_RING_MAX = 20;
 const REFRESH_RETRY_CAP = 3;
 const REFRESH_RETRY_WINDOW_MS = 15 * 60 * 1_000;
 const RETRY_CAP_MARGIN_SEC = 0;
@@ -128,28 +128,6 @@ function persistTokens(): void {
   }
 }
 
-function readLoggedOutMarker(): boolean {
-  if (!hasWindowStorage()) return false;
-  try {
-    return window.localStorage.getItem(LOGGED_OUT_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function setLoggedOutMarker(value: boolean): void {
-  if (!hasWindowStorage()) return;
-  try {
-    if (value) {
-      window.localStorage.setItem(LOGGED_OUT_KEY, "1");
-    } else {
-      window.localStorage.removeItem(LOGGED_OUT_KEY);
-    }
-  } catch {
-    // Ignore storage failures and keep in-memory fallback.
-  }
-}
-
 function parseTimestamp(raw: string | null): number | null {
   if (!raw) return null;
   const parsed = Number(raw);
@@ -209,26 +187,13 @@ function noteRefreshFailure(): void {
 }
 
 function appendSessionDebugEvent(reason: WgwSessionClearReason): void {
-  const payload = {
+  appendSessionDebugRecord({
     event: "wgw.session.cleared",
     reason,
     online: readBrowserOnline(),
     hadRefreshExpiry: refreshExpiresAt !== null,
     timestamp: new Date().toISOString(),
-  };
-  if (import.meta.env.DEV) {
-    console.debug(payload.event, payload);
-  }
-  if (!hasWindowStorage()) return;
-  try {
-    const raw = window.localStorage.getItem(SESSION_DEBUG_RING_KEY);
-    const parsed = raw ? (JSON.parse(raw) as unknown[]) : [];
-    const ring = Array.isArray(parsed) ? parsed.slice(-(SESSION_DEBUG_RING_MAX - 1)) : [];
-    ring.push(payload);
-    window.localStorage.setItem(SESSION_DEBUG_RING_KEY, JSON.stringify(ring));
-  } catch {
-    // Ignore localStorage debug write failures.
-  }
+  });
 }
 
 export function clearWgwSession(reason: WgwSessionClearReason): void {
@@ -618,8 +583,12 @@ async function assertOkResponse(res: Response): Promise<void> {
 
 export async function wgwLogout(): Promise<void> {
   readTokensFromStorage();
+  const guest = wgwIsGuestSession();
   setLoggedOutMarker(true);
-  try {
+  if (!guest) {
+    await offlineWipe.runLogoutStep(() => offlineWipe.releasePushOnLogout(wgwFetch), "push");
+  }
+  await offlineWipe.runLogoutStep(async () => {
     if (refreshToken || accessToken) {
       await postJson(
         "/auth/revoke",
@@ -627,11 +596,12 @@ export async function wgwLogout(): Promise<void> {
         accessToken ?? undefined,
       );
     }
-  } catch {
-    // Best effort: local token cleanup always runs.
-  } finally {
-    clearWgwSession("user_initiated");
+  }, "revoke");
+  setLoggedOutMarker(true);
+  if (!guest) {
+    await offlineWipe.runLogoutStep(offlineWipe.wipeOfflineAccountData, "wipe");
   }
+  clearWgwSession("user_initiated");
 }
 
 /** Obtain tokens using `VITE_WGW_DEV_USERNAME` / `VITE_WGW_DEV_PASSWORD` (local `.env.local` only). */

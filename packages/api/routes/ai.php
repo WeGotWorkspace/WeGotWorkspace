@@ -8,6 +8,7 @@ use App\Http\Controllers\Mcp\OAuthRegisterController;
 use App\Http\Controllers\Mcp\OAuthSessionController;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
 use App\Http\Middleware\TouchMcpSession;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Mcp\Servers\WorkspaceServer;
 use Illuminate\Support\Facades\Route;
 use Laravel\Mcp\Facades\Mcp;
@@ -35,6 +36,7 @@ Route::post('/oauth/register', OAuthRegisterController::class)
 Mcp::web('/mcp', WorkspaceServer::class)->middleware([
     RejectSpaJwtOnMcp::class,
     'auth:api',
+    'throttle:'.WgwApiRateLimiters::API,
     TouchMcpSession::class,
 ]);
 

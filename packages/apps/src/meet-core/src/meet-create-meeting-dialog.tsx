@@ -345,7 +345,7 @@ export function MeetCreateMeetingDialog({
         hideRecurrence: true,
         hideAlarms: true,
         hideShowAs: true,
-        hideInvitees: !scheduled,
+        hideInvitees: false,
         hideNotes: !scheduled,
         meetCopyOnly: true,
       }}
