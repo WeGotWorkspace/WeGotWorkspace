@@ -50,6 +50,7 @@ final class WgwRuntimeEnvBridge
         }
 
         config(['database.connections.wgw' => $wgw]);
+        config(['wgw.installer_db_applied' => false]);
     }
 
     private static function envString(string $key): ?string

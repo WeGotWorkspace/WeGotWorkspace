@@ -112,6 +112,10 @@ final class AppPaths
 
     public function clearStaleInstallLock(): void
     {
+        if (config('wgw.installer_db_applied') === true) {
+            return;
+        }
+
         if (is_file($this->lockFile()) && ! $this->runtimeInstallReady()) {
             @unlink($this->lockFile());
         }
