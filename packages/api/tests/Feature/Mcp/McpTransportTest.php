@@ -240,7 +240,11 @@ final class McpTransportTest extends WgwDatabaseTestCase
 
     public function test_original_host_from_a_trusted_proxy_is_honoured_when_forwarded_host_is_absent(): void
     {
-        $this->withoutConfiguredMcpOrigin();
+        config([
+            'app.url' => 'https://wgw.example.test',
+            'wgw.trusted_hosts' => 'original.example.com',
+            'wgw.mcp.public_origin' => null,
+        ]);
         $origin = 'https://original.example.com';
         $server = [
             'REMOTE_ADDR' => '127.0.0.1',
@@ -345,7 +349,8 @@ final class McpTransportTest extends WgwDatabaseTestCase
     public function test_original_host_without_forwarded_proto_on_http_defaults_to_https(): void
     {
         config([
-            'app.url' => 'http://127.0.0.1:9080',
+            'app.url' => 'https://wgw.example.test',
+            'wgw.trusted_hosts' => 'original.example.com',
             'wgw.mcp.public_origin' => null,
         ]);
         $origin = 'https://original.example.com';
@@ -372,7 +377,8 @@ final class McpTransportTest extends WgwDatabaseTestCase
     public function test_original_host_explicit_http_proto_stays_http(): void
     {
         config([
-            'app.url' => 'http://127.0.0.1:9080',
+            'app.url' => 'https://wgw.example.test',
+            'wgw.trusted_hosts' => 'original.example.com',
             'wgw.mcp.public_origin' => null,
         ]);
         $server = [
