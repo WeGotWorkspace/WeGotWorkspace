@@ -139,10 +139,26 @@ describe("useMeetCallSession rtc settings", () => {
     }));
     renderSession({ rtcSettings: read } as unknown as MeetAPIOperations);
 
-    await rtcOptions?.refreshRtcSettings?.({ sessionKey: "sk-1" });
+    await expect(rtcOptions?.refreshRtcSettings?.({ sessionKey: "sk-1" })).resolves.toMatchObject({
+      stunUrls: "stun:room.example:3478",
+      source: "server",
+    });
 
     expect(read).toHaveBeenCalledTimes(1);
     expect(read).toHaveBeenCalledWith({ room: "room-1", sessionKey: "sk-1" });
+  });
+
+  it("treats a fallback answer as no answer so a later mesh keeps its settings", async () => {
+    const read = vi.fn(async () => ({
+      stunUrls: "",
+      turnAvailable: false,
+      forceRelay: false,
+      source: "fallback" as const,
+    }));
+    renderSession({ rtcSettings: read } as unknown as MeetAPIOperations);
+
+    await expect(rtcOptions?.refreshRtcSettings?.({ sessionKey: "sk-1" })).resolves.toBeNull();
+    expect(read).toHaveBeenCalledTimes(1);
   });
 
   it("resolves null when operations have no rtcSettings hook", async () => {

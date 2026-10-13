@@ -108,7 +108,10 @@ export function useMeetCallSession({
       const roomCode = room.roomCodeRef.current;
       const read = operationsRef.current?.rtcSettings;
       if (!roomCode || !read) return null;
-      return read({ room: roomCode, sessionKey });
+      // `fetchRtcSettings` answers a non-OK response with fallback defaults
+      // rather than throwing; that is "no answer", not "no STUN configured".
+      const next = await read({ room: roomCode, sessionKey });
+      return next.source === "fallback" ? null : next;
     },
     onRtcSettings: (settings) => setEffectiveRtc({ ...settings, source: "server" }),
     persistentSessionRef: callStore?.rtcSessionRef,

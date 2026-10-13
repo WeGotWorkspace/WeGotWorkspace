@@ -68,16 +68,25 @@ export class MeshRtcSettings {
   }
 
   /**
-   * Once per session key, and never fatal: a failed refresh keeps the settings
-   * the mesh already had, so a join never fails on the configuration request.
+   * Once per session key after a real answer, and never fatal. Null and a
+   * rejection both keep the settings the mesh already had and leave the key
+   * free to try again, so a join never fails on the configuration request.
    */
   async adoptSessionKey(sessionKey: string): Promise<void> {
     if (!this.ports.refresh || this.refreshedKey === sessionKey) return;
     this.refreshedKey = sessionKey;
     try {
       const next = await this.ports.refresh({ sessionKey });
-      if (next) this.apply(next);
+      if (!next) {
+        this.refreshedKey = null;
+        return;
+      }
+      this.ports.log("rtc-settings-refresh", {
+        changed: this.apply(next),
+        turnAvailable: next.turnAvailable,
+      });
     } catch (error) {
+      this.refreshedKey = null;
       this.ports.log("rtc-settings-refresh-failed", { error });
     }
   }

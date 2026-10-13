@@ -76,6 +76,18 @@ describe("MeshRtcSettings", () => {
     expect(settings.current().turnAvailable).toBe(true);
   });
 
+  it("logs a refresh that left the ICE fields unchanged", async () => {
+    const refresh = vi.fn(async () => ({ ...initial }));
+    const { settings, log, onApplied } = holder({ refresh });
+    await settings.adoptSessionKey("k");
+    expect(settings.current()).toEqual(applyRtcDebugOverrides(initial));
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith("rtc-settings-refresh", {
+      changed: false,
+      turnAvailable: initial.turnAvailable,
+    });
+  });
+
   it("keeps the current settings and logs when refresh rejects", async () => {
     const refresh = vi.fn(async () => {
       throw new Error("configuration down");
@@ -89,12 +101,26 @@ describe("MeshRtcSettings", () => {
     });
   });
 
+  it("retries the same session key after a rejecting refresh", async () => {
+    const refresh = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("configuration down"))
+      .mockResolvedValueOnce({ ...initial, turnAvailable: true });
+    const { settings } = holder({ refresh });
+    await settings.adoptSessionKey("k");
+    await settings.adoptSessionKey("k");
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(settings.current().turnAvailable).toBe(true);
+  });
+
   it("leaves settings unchanged when refresh resolves null", async () => {
     const refresh = vi.fn(async () => null);
     const { settings, onApplied } = holder({ refresh });
     await settings.adoptSessionKey("k");
     expect(settings.current()).toEqual(applyRtcDebugOverrides(initial));
     expect(onApplied).not.toHaveBeenCalled();
+    await settings.adoptSessionKey("k");
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it("does nothing on adopt when no refresh port is wired", async () => {

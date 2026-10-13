@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
+import { RtcPeerMesh, type RtcPeerMeshOptions } from "@/lib/rtc/session/peer-mesh";
 import type { HttpSignalingClient } from "@/lib/rtc/signaling/http-client";
 import { netClassForJoin } from "@/lib/rtc/net-probe-session";
 
@@ -48,7 +48,12 @@ function stubPeerConnection(): RTCPeerConnection {
 
 function meshWith(
   net: "symmetric" | "unknown" | "open",
-  options?: { forceRelay?: boolean; channel?: "meet" | "collab" },
+  options?: {
+    forceRelay?: boolean;
+    channel?: "meet" | "collab";
+    sessionKey?: string | null;
+    refreshRtcSettings?: RtcPeerMeshOptions["refreshRtcSettings"];
+  },
 ) {
   vi.mocked(netClassForJoin).mockResolvedValue(net);
   const order: string[] = [];
@@ -66,7 +71,7 @@ function meshWith(
     join: vi.fn(async (input: { peerId?: string }) => ({
       peerId: input.peerId ?? "peer-z",
       peers: [{ id: "peer-a", name: "Ada" }],
-      sessionKey: null,
+      sessionKey: options?.sessionKey ?? null,
     })),
     poll: vi.fn(async () => ({ peers: [{ id: "peer-a", name: "Ada" }], messages: [] })),
     send,
@@ -84,6 +89,7 @@ function meshWith(
       turnAvailable: true,
       forceRelay: options?.forceRelay === true,
     },
+    refreshRtcSettings: options?.refreshRtcSettings,
     ports: {
       createPeerConnection: (config) => {
         configs.push(config);
@@ -123,6 +129,21 @@ describe("mesh relay requests", () => {
       urls: ["turn:turn.example:3478"],
       username: "user",
     });
+    await mesh.leave();
+  });
+
+  it("force relay from a guest refresh mints TURN before the first offer", async () => {
+    const { mesh, order, configs } = meshWith("open", {
+      sessionKey: "sk-1",
+      refreshRtcSettings: async () => ({
+        stunUrls: "stun:stun.example:3478",
+        turnAvailable: true,
+        forceRelay: true,
+      }),
+    });
+    await mesh.join({ name: "Guest", peerId: "peer-z" });
+    expect(order[0]).toBe("relay:precheck:*");
+    expect(configs[0]?.iceTransportPolicy).toBe("relay");
     await mesh.leave();
   });
 
