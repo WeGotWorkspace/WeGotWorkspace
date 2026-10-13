@@ -217,20 +217,20 @@ final class CalendarRepository
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
-
         if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
         }
         if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
         }
-        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
+        if (($options['subscriptionDelete'] ?? false) !== true) {
+            $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
+        }
         $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
         $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
         if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents && ! $isSubscription) {
             throw new ApiHttpException(409, 'Calendar contains events.', 'calendarHasContents');
         }
-
         $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance));
         $this->forgetCalendarSideTables($username, (string) $instance->uri);
 
@@ -239,7 +239,7 @@ final class CalendarRepository
 
     public function deleteIncludingContents(string $username, string $calendarId): void
     {
-        $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true]);
+        $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true, 'subscriptionDelete' => true]);
     }
 
     public function isSubscriptionCalendar(string $username, string $calendarId): bool
@@ -671,7 +671,7 @@ final class CalendarRepository
                 'mayRead' => true,
                 'mayWrite' => false,
                 'mayShare' => false,
-                'mayDelete' => $groupMayDelete,
+                'mayDelete' => true,
             ];
         }
 
