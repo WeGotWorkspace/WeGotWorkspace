@@ -1,5 +1,7 @@
-import { Check, Hand, X } from "lucide-react";
-import { Button, IconButton } from "@/button/src/button";
+import { useId, useRef, useState } from "react";
+import { Hand } from "lucide-react";
+import { Button } from "@/button/src/button";
+import { Separator } from "@/ui/separator";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { cn } from "@/lib/utils";
@@ -8,57 +10,97 @@ export type MeetCallKnocker = { id: string; name: string };
 
 export type MeetCallKnockQueueProps = {
   knockers: readonly MeetCallKnocker[];
-  onAdmit: (peerId: string) => void;
+  onAdmit: (peerId: string) => void | Promise<void>;
   onDeny: (peerId: string) => void;
+  /** Admit all stopped on a rejection. The host can retry. */
+  onAdmitError?: (message: string) => void;
   className?: string;
 };
 
 /**
- * Compact admit/deny rows for waiting knockers. Host chrome mounts these in
- * the `MeetKnockBadge` popover (action-row icon), not as a floating banner.
+ * Host admit banner. Visible whenever someone is waiting; not behind a menu.
  */
 export function MeetCallKnockQueue({
   knockers,
   onAdmit,
   onDeny,
+  onAdmitError,
   className,
 }: MeetCallKnockQueueProps) {
+  const titleId = useId();
+  const admittingAll = useRef(false);
+  const [admitAllBusy, setAdmitAllBusy] = useState(false);
   if (knockers.length === 0) return null;
+  const admitAll = () => {
+    if (admittingAll.current) return;
+    admittingAll.current = true;
+    setAdmitAllBusy(true);
+    void (async () => {
+      try {
+        for (const knocker of knockers) await onAdmit(knocker.id);
+      } catch (error) {
+        console.error(error);
+        onAdmitError?.(meetLabels.couldNotAdmitParticipant);
+      } finally {
+        admittingAll.current = false;
+        setAdmitAllBusy(false);
+      }
+    })();
+  };
   return (
-    <div className={cn("meet-knock-list", className)}>
-      {knockers.map((knocker) => (
-        <div key={knocker.id} className="meet-knock-row">
-          <UserAvatar
-            displayName={knocker.name}
-            compact
-            size="md"
-            color={avatarColorForUserId(knocker.id)}
-          />
-          <div className="meet-knock-row__copy">
-            <div className="meet-knock-row__name">{knocker.name}</div>
-            <div className="meet-knock-row__hint">{meetLabels.wantsToJoin}</div>
-          </div>
-          <IconButton
-            onClick={() => onDeny(knocker.id)}
-            icon={<X />}
-            label={meetLabels.denyName(knocker.name)}
-            variant="outline"
-            size="md"
-            showTooltip={false}
-            className="meet-knock-row__deny"
-          />
-          <IconButton
-            onClick={() => onAdmit(knocker.id)}
-            icon={<Check />}
-            label={meetLabels.admitName(knocker.name)}
-            variant="primary"
-            size="md"
-            showTooltip={false}
-            className="meet-knock-row__admit"
-          />
-        </div>
-      ))}
-    </div>
+    <section className={cn("meet-lobby-banner", className)} aria-labelledby={titleId}>
+      <header className="meet-lobby-banner__header">
+        <h3 id={titleId} className="meet-lobby-banner__title">
+          {meetLabels.lobbyWaiting(knockers.length)}
+        </h3>
+        <Button
+          variant="primary"
+          size="sm"
+          label={meetLabels.admitAll}
+          disabled={admitAllBusy}
+          onClick={admitAll}
+        />
+      </header>
+      <Separator />
+      <ul className="meet-lobby-banner__list">
+        {knockers.map((knocker) => (
+          <li key={knocker.id} className="meet-lobby-banner__row">
+            <UserAvatar
+              displayName={knocker.name}
+              compact
+              size="md"
+              color={avatarColorForUserId(knocker.id)}
+            />
+            <div className="meet-lobby-banner__copy">
+              <p className="meet-lobby-banner__name">
+                {meetLabels.knockerWantsToJoin(knocker.name)}
+              </p>
+              <p className="meet-lobby-banner__hint">{meetLabels.waitingInLobby}</p>
+            </div>
+            <div className="meet-lobby-banner__actions">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={meetLabels.denyName(knocker.name)}
+                disabled={admitAllBusy}
+                onClick={() => onDeny(knocker.id)}
+              >
+                {meetLabels.deny}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                aria-label={meetLabels.admitName(knocker.name)}
+                disabled={admitAllBusy}
+                onClick={() => onAdmit(knocker.id)}
+              >
+                {meetLabels.admit}
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

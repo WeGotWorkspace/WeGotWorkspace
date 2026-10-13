@@ -28,8 +28,8 @@ function liveAudioTracks(source: MeetSpeechSource): MediaStreamTrack[] {
 }
 
 /**
- * Smoothed 0–1 speech levels for the mini-player. Samples only while `active`
- * so the full call stage does not keep an extra audio graph.
+ * Smoothed 0–1 speech levels for the mini-player and the expanded stage.
+ * Samples only while `active`, so a parked stage does not keep an audio graph.
  */
 export function useMeetSpeechLevels(
   sources: readonly MeetSpeechSource[],

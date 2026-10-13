@@ -30,9 +30,10 @@ export function pickMeetCallSpotlight<T extends MeetCallSpotlightPeer>(
 }
 
 /**
- * Expanded-stage columns. One person is fullscreen. Two to four share two
- * columns. Five to nine use three, ten to sixteen use four, then the grid
- * stays roughly square.
+ * Expanded-stage columns for a wide stage. One person is fullscreen. Two to
+ * four share two columns. Five to nine use three, ten to sixteen use four,
+ * then the grid stays roughly square. Stages narrower than 40rem cap this at
+ * two columns in CSS (except a single tile).
  */
 export function meetCallGridColumns(count: number): number {
   if (count <= 1) return 1;

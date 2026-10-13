@@ -116,16 +116,15 @@ describe("meetCallUiParkedOnWorkspaceUnmount", () => {
 });
 
 describe("meetResumeCallLayout", () => {
-  it("restores the chrome the user left (compact, split, or fullscreen)", () => {
-    expect(meetResumeCallLayout("compact")).toBe("compact");
-    expect(meetResumeCallLayout("side-by-side")).toBe("side-by-side");
+  it("restores fullscreen, a deliberate collapse, and the expanded stage", () => {
     expect(meetResumeCallLayout("fullscreen")).toBe("fullscreen");
+    expect(meetResumeCallLayout("collapsed")).toBe("collapsed");
+    expect(meetResumeCallLayout("side-by-side")).toBe("side-by-side");
   });
 
-  it("defaults to the compact bar when nothing was persisted", () => {
-    expect(meetResumeCallLayout(null)).toBe("compact");
-    expect(meetResumeCallLayout(undefined)).toBe("compact");
-    expect(meetResumeCallLayout("collapsed")).toBe("compact");
+  it("defaults to the expanded stage when nothing was persisted", () => {
+    expect(meetResumeCallLayout(null)).toBe("side-by-side");
+    expect(meetResumeCallLayout(undefined)).toBe("side-by-side");
   });
 });
 
