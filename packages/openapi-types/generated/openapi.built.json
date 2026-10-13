@@ -20346,6 +20346,50 @@
                 },
                 "x-wgw-access": "admin"
             }
+        },
+        "/csp-reports": {
+            "post": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Accept a Content-Security-Policy report",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/csp-report": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Report accepted"
+                    },
+                    "413": {
+                        "description": "Report larger than 8 KiB",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many reports from this address"
+                    }
+                },
+                "x-wgw-access": "guest"
+            }
         }
     }
 }
