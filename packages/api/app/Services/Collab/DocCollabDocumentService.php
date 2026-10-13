@@ -7,8 +7,6 @@ namespace App\Services\Collab;
 use App\Events\EventDispatch;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\ExclusiveFileLock;
@@ -36,20 +34,9 @@ final class DocCollabDocumentService
         private WgwStorage $storage,
         private StoragePaths $paths,
         private DriveShareAuthorizer $authorizer,
-        private SearchIndexerService $search,
-        private BestEffortSearchIndexSync $searchSync,
         private FileNodeIndexService $fileNodes,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
-
-    private function syncFileNodeIndex(callable $operation): void
-    {
-        try {
-            $operation();
-        } catch (\Throwable $e) {
-            Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
-        }
-    }
 
     public function getMarkdown(Request $request, mixed $room): string
     {
@@ -158,16 +145,7 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
-                // Keep the unified search index in sync with the written content so size and
-                // body reflect the latest save without waiting for a later rename/upload.
-                $this->searchSync->sync(
-                    'collab',
-                    fn () => $this->search->indexFileStorageKey($documentKey),
-                    'files/'.$documentKey,
-                );
-                $this->syncFileNodeIndex(
-                    fn () => $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown)),
-                );
+                $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
                 $this->eventDispatch->fireMutation(
                     (string) $username,
                     'collab',

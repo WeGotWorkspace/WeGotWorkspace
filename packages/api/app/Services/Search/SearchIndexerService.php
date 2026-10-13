@@ -6,6 +6,8 @@ namespace App\Services\Search;
 
 use App\Models\CalendarObject;
 use App\Models\Card;
+use App\Models\JmapFileNode;
+use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
@@ -108,12 +110,13 @@ final class SearchIndexerService
             $group = $segments[1];
         }
         $isDirectory = $disk->directoryExists($key);
-        $isNotePath = $this->isNotePath($key);
-        if ($this->isHiddenPath($key) && ! $isNotePath) {
+        $class = StorageKeyClass::classify($key);
+        if (! $class->isSearchIndexed()) {
             $this->deleteFileLikeDocuments($key);
 
             return;
         }
+        $isNotePath = $class === StorageKeyClass::Note;
         if ($isDirectory) {
             if ($isNotePath) {
                 // Keep .notes containers out of file results.
@@ -345,19 +348,20 @@ final class SearchIndexerService
     {
         $this->store->clearAll();
 
-        $allFileKeys = array_values(array_unique(array_merge(
-            $this->storage->files()->allDirectories(),
-            $this->storage->files()->allFiles()
-        )));
-        $total = count($allFileKeys);
+        $total = JmapFileNode::query()->whereNull('deleted_at')->count();
         $done = 0;
-        foreach ($allFileKeys as $key) {
-            $done++;
-            $this->indexFileStorageKey($key);
-            if ($progress !== null) {
-                $progress($done, max(1, $total), 'files');
-            }
-        }
+        JmapFileNode::query()
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->chunkById(500, function ($rows) use (&$done, $total, $progress): void {
+                foreach ($rows as $row) {
+                    $done++;
+                    $this->indexFileStorageKey((string) $row->storage_key);
+                    if ($progress !== null) {
+                        $progress($done, max(1, $total), 'files');
+                    }
+                }
+            });
 
         /** @var list<object{principaluri:string, calendar_uri:string, object_uri:string}> $calendarRows */
         $calendarRows = CalendarObject::query()
@@ -541,24 +545,6 @@ final class SearchIndexerService
         $body = substr($normalized, $idx + strlen($token));
 
         return [$body, $header !== '' ? $header : null];
-    }
-
-    private function isHiddenPath(string $key): bool
-    {
-        foreach (explode('/', trim($key, '/')) as $segment) {
-            if ($segment !== '' && str_starts_with($segment, '.')) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function isNotePath(string $key): bool
-    {
-        $normalized = '/'.trim($key, '/');
-
-        return str_contains($normalized, '/.notes/');
     }
 
     private function titleFromFrontmatter(?string $frontmatter): ?string

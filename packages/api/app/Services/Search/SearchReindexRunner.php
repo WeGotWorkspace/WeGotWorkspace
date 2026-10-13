@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use Illuminate\Support\Facades\Cache;
 
 final class SearchReindexRunner
@@ -13,6 +14,7 @@ final class SearchReindexRunner
     public function __construct(
         private SearchReindexStateStore $store,
         private SearchIndexerService $indexer,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -54,6 +56,8 @@ final class SearchReindexRunner
             $this->store->clearCancelRequest();
             $this->writePhase('starting');
             $this->store->appendLog('Search reindex started.');
+
+            $this->fileNodes->reindexAll();
 
             $phaseMap = ['files' => 'indexing_files', 'caldav' => 'indexing_caldav', 'carddav' => 'indexing_carddav'];
             $this->indexer->reindexAll(function (int $done, int $total, string $phase) use ($phaseMap): void {

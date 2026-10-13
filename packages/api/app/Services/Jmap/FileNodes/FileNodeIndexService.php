@@ -6,7 +6,9 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
-use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
+use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,19 +25,11 @@ use Illuminate\Support\Str;
  */
 final class FileNodeIndexService
 {
-    /** Dot-prefixed segments are internal (collab sidecars, AppleDouble) unless product-excepted. */
-    private const HIDDEN_SEGMENT_PREFIX = '.';
-
-    /** Product trash is hidden from browse listings but is a FileNode. */
-    private const PRODUCT_TRASH_DIR = '.Trash';
-
-    /** Product notes tree is hidden from Drive browse but is a FileNode. */
-    private const PRODUCT_NOTES_DIR = '.notes';
-
-    /** `.archive` is a FileNode only when it lives under `.notes`. */
-    private const PRODUCT_NOTES_ARCHIVE_DIR = '.archive';
-
-    public function __construct(private readonly WgwStorage $storage) {}
+    public function __construct(
+        private readonly WgwStorage $storage,
+        private readonly SearchIndexerService $search,
+        private readonly BestEffortSearchIndexSync $searchSync,
+    ) {}
 
     // ---------------------------------------------------------------
     // Sequence + state
@@ -108,32 +102,18 @@ final class FileNodeIndexService
 
     private function isHiddenKey(string $key): bool
     {
-        $underNotes = false;
-        foreach (explode('/', $key) as $segment) {
-            if ($segment === '') {
-                continue;
-            }
-            if ($this->isIndexedDotSegment($segment, $underNotes)) {
-                if ($segment === self::PRODUCT_NOTES_DIR) {
-                    $underNotes = true;
-                }
-
-                continue;
-            }
-            if (str_starts_with($segment, self::HIDDEN_SEGMENT_PREFIX)) {
-                return true;
-            }
-        }
-
-        return false;
+        return ! StorageKeyClass::classify($key)->isFileIndexed();
     }
 
-    private function isIndexedDotSegment(string $segment, bool $underNotes): bool
+    private function syncSearch(string $key, bool $deleted = false): void
     {
-        return $segment === self::PRODUCT_TRASH_DIR
-            || $segment === DocAttachmentPaths::DIR
-            || $segment === self::PRODUCT_NOTES_DIR
-            || ($segment === self::PRODUCT_NOTES_ARCHIVE_DIR && $underNotes);
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $deleted
+                ? $this->search->deleteDavPath('files/'.$key)
+                : $this->search->indexFileStorageKey($key),
+            'files/'.$key,
+        );
     }
 
     // ---------------------------------------------------------------
@@ -240,7 +220,7 @@ final class FileNodeIndexService
 
         $seq = $this->nextSeq();
 
-        return JmapFileNode::query()->create([
+        $node = JmapFileNode::query()->create([
             'node_id' => $this->mintNodeId(),
             'storage_key' => $key,
             'parent_node_id' => $parent?->node_id,
@@ -251,6 +231,9 @@ final class FileNodeIndexService
             'created_seq' => $seq,
             'change_seq' => $seq,
         ]);
+        $this->syncSearch($key);
+
+        return $node;
     }
 
     public function recordContentWrite(string $key, ?string $sha256 = null): ?JmapFileNode
@@ -276,6 +259,7 @@ final class FileNodeIndexService
         $row->content_sha256 = $row->is_dir ? null : $sha256;
         $row->change_seq = $this->nextSeq();
         $row->save();
+        $this->syncSearch($key);
 
         return $row;
     }
@@ -289,10 +273,15 @@ final class FileNodeIndexService
     public function recordMove(string $fromKey, string $toKey): ?JmapFileNode
     {
         if ($this->isHiddenKey($fromKey) || $this->isHiddenKey($toKey)) {
+            $this->syncSearch($fromKey, deleted: true);
+            $this->syncSearch($toKey);
+
             return null;
         }
         $row = $this->liveByKey($fromKey);
         if ($row === null) {
+            $this->syncSearch($fromKey, deleted: true);
+
             return $this->recordCreate($toKey);
         }
 
@@ -308,11 +297,25 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
+        $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
         $row->change_seq = $this->nextSeq();
         $row->save();
+
+        $this->syncSearch($fromKey, deleted: true);
+        $this->syncSearch($toKey);
+        if ($isDir) {
+            foreach ($this->liveSelfAndDescendants($toKey) as $descendant) {
+                $newKey = (string) $descendant->storage_key;
+                $oldKey = $newKey === $toKey
+                    ? $fromKey
+                    : $fromKey.'/'.substr($newKey, strlen($toKey) + 1);
+                $this->syncSearch($oldKey, deleted: true);
+                $this->syncSearch($newKey);
+            }
+        }
 
         return $row;
     }
@@ -321,6 +324,8 @@ final class FileNodeIndexService
     {
         $row = $this->liveByKey($key);
         if ($row === null) {
+            $this->syncSearch($key, deleted: true);
+
             return;
         }
 
@@ -336,6 +341,7 @@ final class FileNodeIndexService
             $node->change_seq = $this->nextSeq();
             $node->save();
         }
+        $this->syncSearch($key, deleted: true);
     }
 
     // ---------------------------------------------------------------
