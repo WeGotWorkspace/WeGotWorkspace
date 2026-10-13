@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Installer;
 
+use App\Services\Installer\InstallerIpv4Resolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\TestResponse;
@@ -629,6 +630,148 @@ final class InstallerWizardTest extends TestCase
         $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
     }
 
+    public function test_expired_install_window_locks_every_action_and_bootstrap(): void
+    {
+        $openedAt = time() - (31 * 60);
+        $this->writeInstallWindow($openedAt);
+
+        foreach ([
+            'welcome_next',
+            'requirements_check',
+            'requirements_next',
+            'database_test',
+            'database_next',
+            'site_next',
+            'install',
+        ] as $action) {
+            $locked = $this->postAction($action);
+            $locked->assertStatus(423)
+                ->assertJsonPath('code', 'installer_locked')
+                ->assertJsonPath(
+                    'error',
+                    'The installer closed 30 minutes after it was first opened. Delete packages/api/storage/app/install-window on the server to reopen it.',
+                );
+        }
+
+        $this->getJson('/api/v1/installer/bootstrap')
+            ->assertStatus(423)
+            ->assertJsonPath('code', 'installer_locked')
+            ->assertJsonPath(
+                'error',
+                'The installer closed 30 minutes after it was first opened. Delete packages/api/storage/app/install-window on the server to reopen it.',
+            );
+
+        $this->assertSame((string) $openedAt, trim((string) file_get_contents($this->installWindowPath())));
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
+    }
+
+    public function test_fresh_install_window_allows_the_wizard_and_does_not_slide(): void
+    {
+        $this->assertFileDoesNotExist($this->installWindowPath());
+
+        $this->getJson('/api/v1/installer/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('state.step', 'welcome');
+
+        $created = trim((string) file_get_contents($this->installWindowPath()));
+        $this->assertMatchesRegularExpression('/^[1-9][0-9]*$/', $created);
+        $this->assertGreaterThanOrEqual(time() - 30, (int) $created);
+        $this->assertLessThanOrEqual(time() + 1, (int) $created);
+
+        $openedAt = time() - (29 * 60);
+        $this->writeInstallWindow($openedAt);
+
+        $this->postAction('welcome_next')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('state.step', 'requirements');
+
+        $this->assertSame((string) $openedAt, trim((string) file_get_contents($this->installWindowPath())));
+    }
+
+    public function test_finished_install_keeps_already_installed_when_the_window_is_old(): void
+    {
+        $sqlite = $this->sqlitePath('window-installed.sqlite');
+        $this->advanceToAccount($sqlite);
+        $this->postAction('install', $this->installPayload([
+            'username' => 'admin',
+            'email' => 'admin@example.test',
+        ]))->assertOk()->assertJsonPath('ok', true);
+
+        $this->writeInstallWindow(time() - (31 * 60));
+
+        $this->postAction('welcome_next')
+            ->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'This instance is already installed.');
+
+        $this->postAction('database_test', [
+            'db_driver' => 'mysql',
+            'mysql_host' => '169.254.169.254',
+            'mysql_port' => 3306,
+            'mysql_db' => 'wgw',
+            'mysql_user' => 'wgw',
+            'mysql_password' => 'secret',
+        ])->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'This instance is already installed.');
+
+        $this->getJson('/api/v1/installer/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('state.already_installed', true)
+            ->assertJsonPath('state.step', 'installed');
+    }
+
+    public function test_headless_install_ignores_an_expired_window(): void
+    {
+        config(['wgw.install.headless' => true]);
+        $this->writeInstallWindow(time() - (31 * 60));
+
+        $this->postAction('welcome_next')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('state.step', 'requirements');
+
+        $this->getJson('/api/v1/installer/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('state.step', 'requirements');
+    }
+
+    public function test_database_steps_reject_link_local_hosts_without_connecting(): void
+    {
+        $this->app->singleton(InstallerIpv4Resolver::class, static fn (): InstallerIpv4Resolver => new class implements InstallerIpv4Resolver
+        {
+            public function lookup(string $host): array
+            {
+                if ($host === 'metadata.invalid') {
+                    return ['169.254.169.254'];
+                }
+
+                return [];
+            }
+        });
+
+        $this->advanceToDatabase();
+
+        foreach (['169.254.169.254', '::ffff:169.254.169.254', '::ffff:a9fe:a9fe', 'metadata.invalid'] as $host) {
+            $tested = $this->postAction('database_test', $this->mysqlPayload($host));
+            $tested->assertOk()
+                ->assertJsonPath('ok', false)
+                ->assertJsonPath('error', 'That database host is not allowed.')
+                ->assertJsonPath('state.step', 'database');
+        }
+
+        $this->postAction('database_next', $this->mysqlPayload('169.254.0.1'))
+            ->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'That database host is not allowed.');
+
+        $local = $this->postAction('database_test', $this->mysqlPayload('127.0.0.1', 1));
+        $local->assertOk()->assertJsonPath('ok', false);
+        $this->assertNotSame('That database host is not allowed.', $local->json('error'));
+        $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -680,6 +823,36 @@ final class InstallerWizardTest extends TestCase
     private function sqlitePath(string $name = 'wizard.sqlite'): string
     {
         return './wgw-content/'.$name;
+    }
+
+    private function installWindowPath(): string
+    {
+        return $this->installRoot.'/packages/api/storage/app/install-window';
+    }
+
+    private function writeInstallWindow(int $openedAt): void
+    {
+        $path = $this->installWindowPath();
+        $dir = dirname($path);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        file_put_contents($path, $openedAt."\n");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mysqlPayload(string $host, int $port = 3306): array
+    {
+        return [
+            'db_driver' => 'mysql',
+            'mysql_host' => $host,
+            'mysql_port' => $port,
+            'mysql_db' => 'wgw',
+            'mysql_user' => 'wgw',
+            'mysql_password' => 'secret',
+        ];
     }
 
     private function absoluteSqlite(string $relative): string
