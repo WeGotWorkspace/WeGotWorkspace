@@ -12,6 +12,7 @@ use App\Services\Mcp\McpGrantService;
 use App\Services\Mcp\McpScopes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 final class McpGrantsController
 {
@@ -66,7 +67,7 @@ final class McpGrantsController
             $calls[] = [
                 'tool' => $tool,
                 'outcome' => $row->outcome,
-                'createdAt' => (string) $row->created_at,
+                'createdAt' => Carbon::parse((string) $row->created_at)->toIso8601String(),
                 'target' => is_string($target) ? $target : null,
             ];
         }

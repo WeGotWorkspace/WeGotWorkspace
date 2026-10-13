@@ -141,12 +141,14 @@ function shareCallPath(target: string | null): string | null {
 function shareCallTimeLabel(createdAt: string): string {
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return createdAt;
-  const iso = date.toISOString();
-  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function shareCallOutcomeLabel(outcome: string): string {
+function shareCallOutcomeLabel(outcome: string): string | null {
+  if (outcome === "ok") return null;
   if (outcome === "denied") return "Denied — external share";
+  if (outcome === "error") return "Failed";
   return outcome;
 }
 
@@ -158,6 +160,7 @@ function ShareActivity({ calls }: { calls: SettingsMcpShareCall[] }) {
       <ul className="settings-assistants-pane__share-calls-list">
         {calls.map((call, index) => {
           const path = shareCallPath(call.target);
+          const outcome = shareCallOutcomeLabel(call.outcome);
           return (
             <li
               key={`${call.tool}-${call.createdAt}-${index}`}
@@ -170,15 +173,17 @@ function ShareActivity({ calls }: { calls: SettingsMcpShareCall[] }) {
               <time className="settings-assistants-pane__share-call-time" dateTime={call.createdAt}>
                 {shareCallTimeLabel(call.createdAt)}
               </time>
-              <span
-                className={cn(
-                  "settings-assistants-pane__share-call-outcome",
-                  call.outcome === "denied" &&
-                    "settings-assistants-pane__share-call-outcome--denied",
-                )}
-              >
-                {shareCallOutcomeLabel(call.outcome)}
-              </span>
+              {outcome ? (
+                <span
+                  className={cn(
+                    "settings-assistants-pane__share-call-outcome",
+                    call.outcome === "denied" &&
+                      "settings-assistants-pane__share-call-outcome--denied",
+                  )}
+                >
+                  {outcome}
+                </span>
+              ) : null}
             </li>
           );
         })}
