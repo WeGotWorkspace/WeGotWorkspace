@@ -25,5 +25,8 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Which hosts does `filter_var` or the allowlist still accept?
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- Reissuing a time-limited secret must rotate the value and the expiry. A resend that returns the stored secret hands out a credential the accept path already rejects.
+- Do not allowlist a secret-shaped string this change introduces. Rewrite the commit while it is still off the default branch. A global allowlist regex hides that string in every future file.
+- Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).
