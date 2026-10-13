@@ -35,8 +35,21 @@ final class FreshDeployBootstrapTest extends TestCase
         $this->assertFileExists($apiRoot.'/.env');
         $env = (string) file_get_contents($apiRoot.'/.env');
         $this->assertMatchesRegularExpression('/^APP_KEY=base64:/m', $env);
-        $this->assertStringContainsString('APP_URL=http://127.0.0.1:8080', $env);
+        $this->assertStringContainsString('APP_URL=http://localhost', $env);
+        $this->assertStringNotContainsString('127.0.0.1:8080', $env);
         $this->assertStringContainsString('<!doctype html>', strtolower($body));
+    }
+
+    public function test_bootstrap_leaves_localhost_app_url_unchanged_for_an_attacker_host(): void
+    {
+        $this->deployRoot = $this->createFreshDeployRoot();
+        $envPath = $this->deployRoot.'/packages/api/.env';
+        $body = "APP_KEY=base64:YWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWI=\nAPP_URL=http://localhost\n";
+        file_put_contents($envPath, $body);
+
+        $this->runDeployRequest('/install/', 'attacker.example', 'https');
+
+        $this->assertSame($body, (string) file_get_contents($envPath));
     }
 
     public function test_bootstrap_seeds_htaccess_when_missing(): void
@@ -64,11 +77,16 @@ final class FreshDeployBootstrapTest extends TestCase
         $this->assertSame("RewriteBase /custom/\n", (string) file_get_contents($this->deployRoot.'/.htaccess'));
     }
 
-    private function runDeployRequest(string $requestUri): string
+    private function runDeployRequest(string $requestUri, string $host = '127.0.0.1:8080', ?string $forwardedProto = null): string
     {
-        $_SERVER['HTTP_HOST'] = '127.0.0.1:8080';
+        $_SERVER['HTTP_HOST'] = $host;
         $_SERVER['SERVER_PORT'] = '8080';
         $_SERVER['HTTPS'] = '';
+        if ($forwardedProto === null) {
+            unset($_SERVER['HTTP_X_FORWARDED_PROTO']);
+        } else {
+            $_SERVER['HTTP_X_FORWARDED_PROTO'] = $forwardedProto;
+        }
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = $requestUri;
         $_SERVER['SCRIPT_NAME'] = '/index.php';

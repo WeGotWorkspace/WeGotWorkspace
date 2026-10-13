@@ -7909,6 +7909,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/settings/app-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set APP_URL from an admin-confirmed address */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
+                };
+            };
+            responses: {
+                /** @description APP_URL saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
+                    };
+                };
+                /** @description Environment file is not writable */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Address is not http or https, or includes user info, a query, or a path other than the install base */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -12011,6 +12065,10 @@ export interface components {
         };
         /** @description The send was queued. The same object carries the sender's pending mailbox so the client can apply it without waiting for the next poll. */
         RtcSendEventResponse: components["schemas"]["OkResponse"] & components["schemas"]["RtcPollResponse"];
+        AdminAppUrlSaveRequest: {
+            /** @description Public http or https address. The path may be empty or the install base. No user info or query. */
+            url: string;
+        };
     };
     responses: {
         /** @description Invalid request */

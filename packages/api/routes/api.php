@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\Admin\AppUrlController as AdminAppUrlController;
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
@@ -383,6 +384,7 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
         ->where('group', '[a-z0-9_-]+');
     Route::delete('groups/{group}', [AdminGroupsController::class, 'destroy'])
         ->where('group', '[a-z0-9_-]+');
+    Route::put('settings/app-url', AdminAppUrlController::class);
     Route::put('settings', AdminSettingsController::class);
     Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);

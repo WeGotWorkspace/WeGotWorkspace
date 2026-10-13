@@ -89,7 +89,7 @@ class FakeSession implements PresenceMeshSession {
 
   private readonly listeners = new Set<(event: PresenceMeshEvent) => void>();
 
-  async join(): Promise<{ peerId: string }> {
+  async join(): Promise<{ peerId: string; superseded?: true }> {
     this.joinCalls += 1;
     if (this.failJoin) throw new Error("join failed");
     return { peerId: "alice-abc123" };
@@ -244,6 +244,66 @@ describe("PresenceStore join timing", () => {
     // Collab waits PRINCIPAL_JOIN_WAIT_MS for this flag; a failed join must not
     // leave every document stalled for the full timeout.
     expect(getPrincipalLinkRegistry().hasPrincipalJoinAttempted()).toBe(true);
+  });
+});
+
+/** Mesh session whose `join` stays pending until the test resolves it. */
+class HandResolvedSession extends FakeSession {
+  private resolveHeldJoin: ((value: { peerId: string; superseded?: true }) => void) | null = null;
+
+  async join(): Promise<{ peerId: string; superseded?: true }> {
+    this.joinCalls += 1;
+    return new Promise((resolve) => {
+      this.resolveHeldJoin = resolve;
+    });
+  }
+
+  resolveJoin(result: { peerId: string; superseded?: true }): void {
+    const resolve = this.resolveHeldJoin;
+    if (!resolve) throw new Error("join was not waiting");
+    this.resolveHeldJoin = null;
+    resolve(result);
+  }
+}
+
+function privateJoined(store: object): boolean {
+  return (store as unknown as { joined: boolean }).joined;
+}
+
+describe("PresenceStore superseded join", () => {
+  it("ignores a join that resolves after onResignLeader replaces the session", async () => {
+    const session = new HandResolvedSession();
+    const store = createPresenceStore({
+      createSession: () => session,
+      joinMode: "eager",
+      visibility: null,
+    });
+    store.start(SELF);
+    expect(store.getSnapshot().status).toBe("joining");
+
+    await (store as unknown as { onResignLeader(): Promise<void> }).onResignLeader();
+    session.resolveJoin({ peerId: "stale-peer" });
+    await flushMicrotasks();
+
+    expect(privateJoined(store)).toBe(false);
+    expect(store.getSnapshot().status).toBe("waiting");
+  });
+
+  it("treats a superseded join as not joined while the session is unchanged", async () => {
+    const session = new HandResolvedSession();
+    const store = createPresenceStore({
+      createSession: () => session,
+      joinMode: "eager",
+      visibility: null,
+    });
+    store.start(SELF);
+    expect(store.getSnapshot().status).toBe("joining");
+
+    session.resolveJoin({ peerId: "", superseded: true });
+    await flushMicrotasks();
+
+    expect(privateJoined(store)).toBe(false);
+    expect(store.getSnapshot().status).toBe("waiting");
   });
 });
 

@@ -55,6 +55,9 @@ final class AdminSettingsService
                 $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
             }
             AppSetting::setValue($key, $value);
+            if ($key === SettingKeys::BROWSER_PLUGIN) {
+                AppSetting::setValue('browser_plugin_admin_set', true);
+            }
             $saved[] = $key;
         }
 

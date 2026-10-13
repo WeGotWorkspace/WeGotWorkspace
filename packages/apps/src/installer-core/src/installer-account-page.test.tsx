@@ -67,7 +67,15 @@ describe("InstallerAccountPage", () => {
       username: "jane",
       email: "jane@example.com",
       password: "hunter2hunter",
+      appUrl: window.location.origin,
     });
+  });
+
+  it("prefills the site address from the browser origin", () => {
+    render(<InstallerAccountPage />);
+    expect((screen.getByLabelText("Site address") as HTMLInputElement).value).toBe(
+      window.location.origin,
+    );
   });
 
   it("collapses username feedback until an invalid slug is shown", () => {
