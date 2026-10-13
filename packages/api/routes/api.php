@@ -39,7 +39,6 @@ use App\Http\Controllers\Api\V1\Files\FilesController;
 use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
-use App\Http\Controllers\Api\V1\Installer\StateController as InstallerStateController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
@@ -136,7 +135,6 @@ Route::middleware([
     AddQueuedCookiesToResponse::class,
     StartSession::class,
 ])->group(function (): void {
-    Route::get('installer/state', InstallerStateController::class);
     Route::get('installer/bootstrap', InstallerBootstrapController::class);
     Route::post('installer/action', InstallerActionController::class);
 });

@@ -62,6 +62,8 @@ cp example.htaccess .htaccess
 
 ## 3) Open the installer
 
+Run the installer right after uploading.
+
 Visit:
 
 - `https://your-domain/install/`

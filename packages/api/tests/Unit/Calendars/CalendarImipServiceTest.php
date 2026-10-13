@@ -175,8 +175,9 @@ final class CalendarImipServiceTest extends WgwDatabaseTestCase
             ? 'mailto:carol@example.test'
             : 'mailto:bob@example.test';
         $message->senderName = $senderName;
+        $attendee = $method === 'REPLY' ? 'mailto:carol@example.test' : 'mailto:guest@elsewhere.test';
         $message->message = Reader::read(
-            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:{$method}\r\nBEGIN:VEVENT\r\nUID:event-uid-1\r\nSUMMARY:External Sync\r\nDTSTART:20300201T100000Z\r\nDTEND:20300201T103000Z\r\nORGANIZER:mailto:bob@example.test\r\nATTENDEE;PARTSTAT={$partstat}:mailto:carol@example.test\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:{$method}\r\nBEGIN:VEVENT\r\nUID:event-uid-1\r\nSUMMARY:External Sync\r\nDTSTART:20300201T100000Z\r\nDTEND:20300201T103000Z\r\nORGANIZER:mailto:bob@example.test\r\nATTENDEE;PARTSTAT={$partstat}:{$attendee}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
         );
 
         return $message;

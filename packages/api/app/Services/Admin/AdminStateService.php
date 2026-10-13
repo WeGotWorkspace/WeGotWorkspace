@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Rtc\MeetVideoProfile;
@@ -52,6 +53,9 @@ final class AdminStateService
                 'calendars' => (bool) ($cfg[SettingKeys::CALENDAR_ENABLED] ?? true),
                 'contacts' => (bool) ($cfg[SettingKeys::CONTACTS_ENABLED] ?? true),
                 'tasks' => (bool) ($cfg[SettingKeys::TASKS_ENABLED] ?? true),
+                'imipExternalEnabled' => $this->imipExternalEnabled(),
+                'imipHourlyLimit' => $this->imipHourlyLimit(),
+                'imipDailyLimit' => $this->imipDailyLimit(),
             ],
             'webdav' => [
                 'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? false),
@@ -99,6 +103,29 @@ final class AdminStateService
         }
 
         return $warnings;
+    }
+
+    private function imipExternalEnabled(): bool
+    {
+        return filter_var(
+            AppSetting::getValue(SettingKeys::IMIP_EXTERNAL_ENABLED, true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+    }
+
+    private function imipDailyLimit(): int
+    {
+        return CalendarImipService::normalizeDailyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_DAILY_LIMIT, CalendarImipService::DAILY_LIMIT_DEFAULT),
+        );
+    }
+
+    private function imipHourlyLimit(): int
+    {
+        return CalendarImipService::normalizeHourlyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, CalendarImipService::HOURLY_LIMIT_DEFAULT),
+            $this->imipDailyLimit(),
+        );
     }
 
     /**

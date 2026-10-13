@@ -43,10 +43,10 @@ final class TaskListRepository
 
         $lists = $this->collectionAccess
             ->accessibleInstances($username, fn ($query) => $query->vtodoOnly())
-            ->map(function (CalendarInstance $instance): array {
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapTaskList($instance, $groupSlug);
+                return $this->mapTaskList($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -65,7 +65,7 @@ final class TaskListRepository
         $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -130,7 +130,7 @@ final class TaskListRepository
             throw new ApiHttpException(500, 'Could not load created task list.', 'server_error');
         }
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -185,7 +185,7 @@ final class TaskListRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -208,6 +208,7 @@ final class TaskListRepository
         if ($this->isProvisionedGroupTaskList($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group task list cannot be deleted.', 'forbidden');
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         if ($instance->objects()->where('componenttype', 'VTODO')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Task list contains tasks.', 'taskListHasContents');
         }
@@ -499,7 +500,7 @@ final class TaskListRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapTaskList($instance, $groupSlug);
+        $mapped = $this->mapTaskList($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'task list');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -523,7 +524,7 @@ final class TaskListRepository
     }
 
     /** @return array<mixed> */
-    private function mapTaskList(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapTaskList(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? '')) ?: $uri;
@@ -533,7 +534,7 @@ final class TaskListRepository
         $isOwnedInbox = ! $isSharee && ! $isGroup && $uri === InboxTaskListProvisioner::URI;
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
         $mayWrite = ! $this->shareInvites->isReadOnly($instance);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => [
                 'mayReadItems' => true,
@@ -562,7 +563,7 @@ final class TaskListRepository
                 'mayUpdatePrivate' => $mayWrite,
                 'mayRSVP' => $mayWrite,
                 'mayAdmin' => false,
-                'mayDelete' => ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
+                'mayDelete' => $groupMayDelete && ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
                 'mayShare' => $mayShare,
             ],
         };

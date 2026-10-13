@@ -4717,20 +4717,6 @@
         "x-wgw-access": "guest"
       }
     },
-    "/installer/state": {
-      "get": {
-        "tags": [
-          "Installer"
-        ],
-        "summary": "Installer summary and current state snapshot",
-        "responses": {
-          "200": {
-            "description": "Installer state"
-          }
-        },
-        "x-wgw-access": "guest"
-      }
-    },
     "/me": {
       "get": {
         "tags": [

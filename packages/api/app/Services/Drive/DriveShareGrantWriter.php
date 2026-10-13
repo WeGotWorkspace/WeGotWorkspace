@@ -110,8 +110,19 @@ final class DriveShareGrantWriter
         }
     }
 
-    public function upsertEmailInviteGrant(DriveShare $share, string $email, string $access): DriveShareGrant
-    {
+    /**
+     * Email invite grant. $rotatePending is the resend path (POST /invites):
+     * a still-pending grant gets a new token and expiry. A shareWith merge
+     * leaves it false, so a live invite link stays put. An already-expired
+     * pending token is rotated either way; that link was already dead, and
+     * the replacement is not returned on the merge response.
+     */
+    public function upsertEmailInviteGrant(
+        DriveShare $share,
+        string $email,
+        string $access,
+        bool $rotatePending = false,
+    ): DriveShareGrant {
         /** @var DriveShareGrant|null $grant */
         $grant = DriveShareGrant::query()
             ->where('share_id', $share->id)
@@ -130,12 +141,14 @@ final class DriveShareGrantWriter
             $grant->grantee_type = 'email';
             $grant->grantee_email = $email;
             $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
+            $grant->issueInviteToken();
         } elseif ($grant->status === 'revoked') {
             $grant->grantee_type = 'email';
             $grant->grantee_user = null;
             $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
+            $grant->issueInviteToken();
+        } elseif ($rotatePending || ($grant->invite_expires_at?->isPast() ?? false)) {
+            $grant->issueInviteToken();
         }
 
         $grant->access = $access;

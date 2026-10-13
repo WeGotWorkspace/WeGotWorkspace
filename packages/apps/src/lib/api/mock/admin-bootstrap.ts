@@ -86,6 +86,9 @@ const DEFAULT_DATA: AdminUIData = {
   apps: {
     calendars: true,
     contacts: true,
+    imipExternalEnabled: true,
+    imipHourlyLimit: 100,
+    imipDailyLimit: 300,
   },
   webdav: {
     sabreUi: true,

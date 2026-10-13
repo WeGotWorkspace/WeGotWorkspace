@@ -11,7 +11,13 @@
 .chat-message:focus-within {
   /* Above sticky day headers (z-[5]) so short-row hover actions stay visible. */
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
+  background-color: var(
+    --collection-sidebar-row-hover-bg,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+    )
+  );
 }
 
 .chat-message--continuation {
@@ -64,7 +70,7 @@
 }
 
 .chat-message__body {
-  @apply mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
+  @apply relative mt-0.5 min-w-0 max-w-full break-words text-sm leading-snug;
   overflow-wrap: anywhere;
   color: var(--chat-body, color-mix(in oklab, var(--workspace-foreground) 88%, transparent));
 }
@@ -122,7 +128,9 @@
 }
 
 .chat-message__actions {
-  @apply absolute top-1 right-3 hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
+  /* Anchored under the last line, painting over replies and reactions.
+     Opaque surface, so the overlay reads as the bar rather than a mix. */
+  @apply absolute start-0 top-full z-[1] hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
   border-color: var(
     --chat-border,
     color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
@@ -140,7 +148,13 @@
    and the picker closes before the cursor can reach it. */
 .chat-message:has([data-state="open"]) {
   z-index: 6;
-  background-color: var(--chat-hover, color-mix(in oklch, var(--workspace-accent) 8%, transparent));
+  background-color: var(
+    --collection-sidebar-row-hover-bg,
+    var(
+      --button-outline-hover-background,
+      color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
+    )
+  );
 }
 
 .chat-message:has([data-state="open"]) .chat-message__actions {
