@@ -164,6 +164,13 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       applySettingsMap(current, values, opts);
       return snapshot();
     },
+    setAppUrl: async (_url, opts) => {
+      await sleep(120, opts?.signal);
+      current.securityWarnings = current.securityWarnings.filter(
+        (warning) => !warning.startsWith("APP_URL is not set"),
+      );
+      return snapshot();
+    },
     sendMailDeliveryTest: async (opts) => {
       await sleep(150, opts?.signal);
       const to = opts?.to?.trim() ?? "";

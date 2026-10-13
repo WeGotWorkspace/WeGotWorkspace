@@ -3,8 +3,8 @@ Options -Indexes -MultiViews
 # Deny private trees and known sensitive dotfiles even when mod_rewrite is off.
 # mod_alias is effectively always present. Other "/." segments stay reachable
 # so WebDAV can serve .attachments, .notes, .Trash, and AppleDouble files.
-RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)
-RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
+RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 
 # Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
 # see .user.ini. Must stay in sync with docker/php/uploads.ini.
@@ -67,7 +67,7 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
     # index.php with other unknown paths. Do not require /api for those URLs.
 
     # Never expose runtime internals, config, or source trees directly.
-    RewriteRule ^(?:wgw-modules|wgw-private|wgw-content)(?:/|$) - [F,L,NC]
+    RewriteRule ^(?:wgw-plugins|wgw-content)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:wgw-src|src|resources|vendor|scripts|patches|config|public|packages)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php|\.env)$ - [F,L,NC]
 

@@ -69,6 +69,7 @@ export function useRtcSession(options: UseRtcSessionOptions): UseRtcSessionResul
     join: async (input) => {
       if (!mesh) throw new Error("RTC session is not initialized");
       const joined = await mesh.join(input);
+      if (joined.superseded) return;
       setPeerId(joined.peerId);
       refresh();
     },

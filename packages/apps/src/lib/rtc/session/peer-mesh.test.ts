@@ -1368,3 +1368,46 @@ describe("RtcPeerMesh delivery cursor", () => {
     await guest.mesh.leave();
   });
 });
+
+describe("RtcPeerMesh join queue", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("drops a join that was still queued when leave ran", async () => {
+    const signaling = createMockSignaling({ peerId: "peer-a" });
+    let releaseFirst: () => void = () => undefined;
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let markStarted: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    signaling.client.join.mockImplementationOnce(async () => {
+      markStarted();
+      await firstHeld;
+      return { peerId: "peer-a", peers: [], sessionKey: null };
+    });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const { mesh } = meshWithStubPc(signaling.client);
+
+    const firstJoined = mesh.join({ name: "Host", peerId: "peer-a" });
+    await started;
+    const secondJoined = mesh.join({ name: "Host", peerId: "peer-b" });
+    await mesh.leave();
+    const joinsAtLeave = signaling.client.join.mock.calls.length;
+    releaseFirst();
+    const secondResult = await secondJoined;
+    await firstJoined;
+
+    expect(signaling.client.join.mock.calls.length).toBe(joinsAtLeave);
+    expect((secondResult as { superseded?: true }).superseded).toBe(true);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 400);
+    setTimeoutSpy.mockRestore();
+  });
+});

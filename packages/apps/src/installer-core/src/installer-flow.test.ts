@@ -62,8 +62,14 @@ describe("installer-flow", () => {
     expect(site.enable_contacts).toBe(true);
     expect(site.show_browser_ui).toBe(false);
 
-    const install = buildInstallerInstallPayload("jane", "hunter2hunter", " jane@example.test ");
+    const install = buildInstallerInstallPayload(
+      "jane",
+      "hunter2hunter",
+      " jane@example.test ",
+      "https://wgw.example",
+    );
     expect(install.username).toBe("jane");
+    expect(install.app_url).toBe("https://wgw.example");
     expect(install.display_name).toBe("jane");
     expect(install.email).toBe("jane@example.test");
     expect(install.mail_enabled).toBe(false);

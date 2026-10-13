@@ -31,8 +31,8 @@ Apache `.htaccess` rewrite rules are included for typical shared Apache hosts. O
 Nginx does not read `.htaccess`. Deny the private trees and the same sensitive dotfiles. Leave other `/.` segments alone so WebDAV can serve `.attachments`, `.notes`, `.Trash`, and AppleDouble files:
 
 ```nginx
-location ~ ^/(wgw-content|wgw-private|wgw-modules|packages)(/|$) { deny all; }
-location ~ /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
+location ~ ^/(wgw-content|wgw-plugins|packages)(/|$) { deny all; }
+location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }
 ```
 
 ## 2) First request bootstrap
@@ -41,6 +41,10 @@ On the first HTTP request, the install bootstrap automatically:
 
 - creates `packages/api/.env` from `.env.example` and generates `APP_KEY` when missing
 - creates `.htaccess` from `example.htaccess` when missing (common when SFTP drops dotfiles)
+
+`APP_URL` is not taken from the request `Host` header. The installer asks for the public site address (`app_url`), prefilled from the browser origin, and writes it only after that address is confirmed. On an existing install where `APP_URL` is unset or still a loopback address, Administration shows "APP_URL is not set…" with a **Use this address** button that saves the address open in the browser, including the install base path.
+
+`WGW_TRUSTED_HOSTS` is a comma-separated list of extra hosts trusted in addition to the `APP_URL` host: a LAN IP, both www and apex, or a reverse proxy that rewrites the `Host` header.
 
 Existing installs are not overwritten: a present `.env` or `.htaccess` is left as-is (including custom `RewriteBase` rules).
 
@@ -108,3 +112,9 @@ For local smoke tests with PHP’s built-in server (no Apache rewrites):
 ```bash
 php -S localhost:8080 -t . index.php
 ```
+
+### TURN relay credentials
+
+`WGW_RTC_TURN_TTL_SECONDS` in `packages/api/.env` is how long a minted TURN credential stays valid. The default is 3600 seconds. Values below 300 are raised to 300, and values above 86400 are lowered to 86400. An empty or non-numeric value uses the default.
+
+`WGW_RTC_RELAY_REQUESTS_PER_MINUTE` caps relay credential requests for one signed-in actor. The default is 6.

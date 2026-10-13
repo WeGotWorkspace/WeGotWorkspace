@@ -2753,6 +2753,48 @@
         "x-wgw-access": "admin"
       }
     },
+    "/admin/settings/app-url": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Set APP_URL from an admin-confirmed address",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminAppUrlSaveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "APP_URL saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAppUrlSaveRequest"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Environment file is not writable"
+          },
+          "422": {
+            "description": "Address is not http or https, or includes user info, a query, or a path other than the install base"
+          }
+        },
+        "x-wgw-access": "admin"
+      }
+    },
     "/admin/settings": {
       "put": {
         "tags": [

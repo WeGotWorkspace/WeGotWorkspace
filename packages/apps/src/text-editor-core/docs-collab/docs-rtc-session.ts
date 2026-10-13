@@ -597,6 +597,7 @@ export class DocsRtcSession {
   async join(name: string): Promise<{ peerId: string; peers: DocsCollabMeshPeer[] }> {
     this.myName = name.trim();
     const joined = await this.mesh.join({ name: this.myName });
+    if (joined.superseded) return { peerId: "", peers: [] };
     this.noteOwnAccessFromPoll(joined);
     const live = liveCollabSessions.get(this.room) ?? new Set<DocsRtcSession>();
     live.add(this);
