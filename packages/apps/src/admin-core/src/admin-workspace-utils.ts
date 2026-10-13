@@ -1,5 +1,13 @@
 import { AlertTriangle, CheckCircle2, CircleX, type LucideIcon } from "lucide-react";
 
+/** Browser origin plus the install base path, for the APP_URL warning button. */
+export function appUrlFromBrowserLocation(origin: string, baseUri: string): string {
+  const trimmedOrigin = origin.replace(/\/+$/, "");
+  const base = baseUri.trim();
+  if (base === "" || base === "/") return trimmedOrigin;
+  return `${trimmedOrigin}/${base.replace(/^\/+|\/+$/g, "")}`;
+}
+
 export type UpdateLogRow = { id: string; date: string | null; level: string; message: string };
 
 export type ServerCheckTone = "error" | "warning" | "success";

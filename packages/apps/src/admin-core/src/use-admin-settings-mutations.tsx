@@ -123,5 +123,27 @@ export function useAdminSettingsMutations({
     }
   };
 
-  return { saveSettings, clearMailDeliverySmtpPassword, clearTurnSecret, sendMailDeliveryTest };
+  const useThisAddress = async (url: string): Promise<boolean> => {
+    if (!operations?.setAppUrl) {
+      showError("Admin API is not ready yet");
+      return false;
+    }
+    try {
+      const next = await operations.setAppUrl(url);
+      applyAdminData(next);
+      showSuccess("Site address saved");
+      return true;
+    } catch (error) {
+      showError(mutationErrorMessage(error, "Could not save the site address"));
+      return false;
+    }
+  };
+
+  return {
+    saveSettings,
+    clearMailDeliverySmtpPassword,
+    clearTurnSecret,
+    sendMailDeliveryTest,
+    useThisAddress,
+  };
 }

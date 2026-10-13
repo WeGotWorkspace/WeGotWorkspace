@@ -311,6 +311,8 @@ final class InstallerWizardService
             throw new \RuntimeException('Passwords do not match.');
         }
 
+        $appUrl = $this->resolveAppUrlForInstall($payload, (string) ($state['base_uri'] ?? '/'));
+
         /** @var array<string, mixed> $db */
         $db = $state['db'] ?? [];
         if ($db === []) {
@@ -394,7 +396,7 @@ final class InstallerWizardService
             throw new \RuntimeException('Database was set up but the install lock file could not be written.');
         }
 
-        $this->apiEnv->ensure($this->paths->installRoot(), $this->resolveAppUrlForInstall());
+        $this->apiEnv->ensure($this->paths->installRoot(), $appUrl);
         @chmod($this->paths->lockFile(), 0600);
 
         $this->saveWizardState([
@@ -709,11 +711,19 @@ final class InstallerWizardService
         }
     }
 
-    private function resolveAppUrlForInstall(): ?string
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolveAppUrlForInstall(array $payload, string $baseUri): ?string
     {
-        $fromRequest = ApiRuntimeEnvService::guessRequestAppUrl();
-        if ($fromRequest !== null) {
-            return $fromRequest;
+        $fromField = trim((string) ($payload['app_url'] ?? ''));
+        if ($fromField !== '') {
+            $normalized = AppUrlCandidate::normalize($fromField, $baseUri);
+            if ($normalized === null) {
+                throw new \RuntimeException('Enter a public http or https address for this site, with no user info, query, or extra path.');
+            }
+
+            return $normalized;
         }
 
         $fromEnv = getenv('APP_URL');

@@ -25,8 +25,9 @@ export function docsCollabLegacyIndexedDbKeys(roomKey: string): string[] {
 /**
  * Moves a pre-v2 room into v2. A non-empty legacy body is applied first when v2
  * is still empty, then the pending-save flag. When v2 already has a body, that
- * body stays authoritative and the legacy body is discarded. A wiped legacy
- * body is skipped so an empty delete-set cannot replace the v2 document.
+ * body stays authoritative. A legacy body that still has unsynced pending edits
+ * stays in the legacy database. A wiped legacy body is skipped so an empty
+ * delete-set cannot replace the v2 document.
  */
 export async function migrateDocsCollabPendingSaveFromLegacy(
   roomKey: string,
@@ -46,8 +47,15 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
       };
     });
     if (!legacy || (!legacy.update && !legacy.pending)) continue;
+    let applied = false;
     if (legacy.update && isYDocEmpty(v2Doc)) {
       Y.applyUpdate(v2Doc, legacy.update);
+      applied = true;
+    }
+    if (legacy.pending && legacy.update && !applied) {
+      // Unsynced legacy edits we cannot merge safely: keep that database and its flag.
+      console.warn("[docs-collab] kept legacy room with unsynced edits", { legacyKey });
+      continue;
     }
     if (legacy.pending) pending = true;
     legacyKeysToClear.push(legacyKey);

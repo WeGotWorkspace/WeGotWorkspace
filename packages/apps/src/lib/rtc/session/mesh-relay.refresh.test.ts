@@ -307,4 +307,41 @@ describe("MeshRelay credential lifetime", () => {
     relay.dispose();
     expect(cancel).toHaveBeenCalledWith(7);
   });
+
+  it("keeps a short credential and schedules refresh before half its ttl", async () => {
+    const short = await issuedRelay(60);
+    expect(short.relay.credentials()).not.toBeNull();
+    expect(short.scheduled).toEqual([30_000]);
+
+    const hour = await issuedRelay(3600);
+    expect(hour.scheduled).toEqual([3_540_000]);
+  });
 });
+
+async function issuedRelay(ttl: number): Promise<{
+  relay: MeshRelay;
+  scheduled: number[];
+}> {
+  const scheduled: number[] = [];
+  const relay = new MeshRelay({
+    enabled: true,
+    forceRelay: false,
+    roomId: "room-1",
+    settings,
+    localPeerId: () => "self",
+    localNet: () => "symmetric",
+    peerName: () => "Ada",
+    postRelay: async () => ({ turn: turn(ttl, "cred-1") }),
+    getPeerConnection: () => null,
+    onOutcome: () => undefined,
+    log: () => undefined,
+    now: () => 1_000_000,
+    schedule: (_fn, delay) => {
+      scheduled.push(delay);
+      return 1 as unknown as ReturnType<typeof setTimeout>;
+    },
+    cancel: () => undefined,
+  });
+  await relay.request("peer-a", "failed");
+  return { relay, scheduled };
+}

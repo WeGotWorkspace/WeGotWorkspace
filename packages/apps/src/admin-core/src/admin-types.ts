@@ -231,6 +231,7 @@ export type AdminAPIOperations = {
     values: Record<string, string | number | boolean | null>,
     opts?: { signal?: AbortSignal; clearSmtpPassword?: boolean; clearTurnSecret?: boolean },
   ) => Promise<AdminUIData>;
+  setAppUrl: (url: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;

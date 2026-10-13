@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import { DocsCollabHttpSync } from "./docs-collab-http-sync";
 import {
   PrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
@@ -705,6 +706,48 @@ describe("DocsRtcSession join access and single session", () => {
       expect.anything(),
     );
     await third.leave();
+  });
+
+  it("does not start http sync or register a superseded join", async () => {
+    const start = vi.spyOn(DocsCollabHttpSync.prototype, "start");
+    const doc = new Y.Doc();
+    const room = "docs/superseded-join.md";
+    const superseded = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    captured.mesh.join.mockResolvedValueOnce({
+      peerId: "",
+      peers: [],
+      superseded: true,
+    } as { peerId: string; peers: []; ticket?: string });
+
+    const result = await superseded.join("Self");
+
+    expect(result).toEqual({ peerId: "", peers: [] });
+    expect(start).not.toHaveBeenCalled();
+
+    const follower = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    captured.mesh.join.mockResolvedValueOnce({ peerId: "me", peers: [] });
+    vi.mocked(rtcLog).mockClear();
+    await follower.join("Other");
+    expect(rtcLog).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "duplicate-session",
+      expect.anything(),
+    );
+
+    await superseded.leave();
+    await follower.leave();
+    start.mockRestore();
+    doc.destroy();
   });
 });
 

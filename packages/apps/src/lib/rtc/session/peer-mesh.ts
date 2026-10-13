@@ -88,6 +88,8 @@ export class RtcPeerMesh {
    */
   private sessionEpoch = 0;
 
+  private leaveEpoch = 0;
+
   private activeEpoch = 0;
 
   private localNet: NetClass | undefined;
@@ -595,18 +597,25 @@ export class RtcPeerMesh {
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
     ticket?: string;
+    superseded?: true;
   }> {
     const key = `${this.options.channel}\0${this.options.room}`;
-    return enqueueMeshJoin(key, () => this.joinSerialized(input));
+    const queuedLeaveEpoch = this.leaveEpoch;
+    return enqueueMeshJoin(key, () => this.joinSerialized(input, queuedLeaveEpoch));
   }
 
-  private async joinSerialized(input: { name: string; peerId?: string }): Promise<{
+  private async joinSerialized(
+    input: { name: string; peerId?: string },
+    queuedLeaveEpoch: number,
+  ): Promise<{
     peerId: string;
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
     ticket?: string;
+    superseded?: true;
   }> {
+    if (queuedLeaveEpoch !== this.leaveEpoch) return { peerId: "", peers: [], superseded: true };
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");
     const epoch = ++this.sessionEpoch;
@@ -627,13 +636,13 @@ export class RtcPeerMesh {
           // The next join must not overlap a peer this attempt already created.
         }
       }
-      return { peerId: peerId ?? "", peers: [] };
+      return { peerId: peerId ?? "", peers: [], superseded: true };
     }
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
     if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
     await this.prepareRelay();
-    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [] };
+    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [], superseded: true };
     this.lastRosterSig = null;
     this.log("join-response", {
       peerId: this.myId,
@@ -754,6 +763,7 @@ export class RtcPeerMesh {
   }
 
   async leave(): Promise<void> {
+    this.leaveEpoch += 1;
     this.sessionEpoch += 1;
     this.metrics.flush();
     this.stopPolling();
