@@ -10,6 +10,7 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -232,6 +233,21 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertSame([$shareeId], $dismissed['destroyed']);
         $this->assertSame('Leave Me', $this->jmapCalendar('bob', $sharedId)['name']);
         $this->assertNull($this->jmapCalendarNamedOrNull('carol', 'Leave Me'));
+    }
+
+    public function test_is_admin_is_memoized_on_the_resolver_instance(): void
+    {
+        $resolver = new AdminRoleResolver;
+        $connection = DB::connection('wgw');
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+
+        $this->assertFalse($resolver->isAdmin('bob'));
+        $this->assertFalse($resolver->isAdmin('bob'));
+        $this->assertTrue($resolver->isAdmin('alice'));
+        $this->assertTrue($resolver->isAdmin('alice'));
+
+        $this->assertCount(2, $connection->getQueryLog());
     }
 
     private function assertAdminOnlyRest(string $username, string $path): void

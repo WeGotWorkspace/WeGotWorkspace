@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Calendars;
 
+use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\CalendarSubscription;
 use App\Models\Principal;
@@ -292,6 +293,7 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
         $this->assertSame('group', $bobCalendar['scope']);
         $this->assertSame('team', $bobCalendar['groupSlug']);
         $this->assertFalse($bobCalendar['myRights']['mayWriteAll']);
+        $this->assertTrue($bobCalendar['myRights']['mayDelete']);
 
         $carolCalendar = $this->withBearer($this->issueBearerTokenFor('carol'))
             ->postJson('/api/v1/jmap', [
@@ -304,6 +306,59 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
             ->json('methodResponses.0.1.list.0');
         $this->assertSame($created['id'], $carolCalendar['subscriptionId']);
         $this->assertSame('team', $carolCalendar['groupSlug']);
+        $this->assertTrue($carolCalendar['myRights']['mayDelete']);
+    }
+
+    public function test_member_can_unsubscribe_a_group_feed(): void
+    {
+        $this->seedTeamWithBob();
+        Http::fake([
+            self::FEED_URL => Http::response($this->sampleIcs('Holiday', 'team-unsub@example.test'), 200, [
+                'Content-Type' => 'text/calendar',
+            ]),
+        ]);
+
+        $created = $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+            'name' => 'Team holidays',
+            'groupSlug' => 'team',
+        ])->assertCreated()->json();
+
+        $this->assertTrue($this->jmapCalendar($created['calendarId'])['myRights']['mayDelete']);
+
+        $this->asBob()->deleteJson('/api/v1/calendars/subscriptions/'.$created['id'])
+            ->assertNoContent();
+
+        $this->asBob()->getJson('/api/v1/calendars/subscriptions/'.$created['id'])
+            ->assertNotFound();
+        $this->assertSame(0, CalendarSubscription::query()->count());
+        $this->assertNull(CalendarInstance::query()->where('uri', $created['calendarId'])->first());
+        $this->assertSame(0, CalendarObject::query()->where('uid', 'team-unsub@example.test')->count());
+    }
+
+    public function test_member_group_subscription_rollback_reports_the_feed_error(): void
+    {
+        $this->seedTeamWithBob();
+        Http::fake([
+            self::FEED_URL => Http::response($this->minutelyIcs(), 200, [
+                'Content-Type' => 'text/calendar',
+            ]),
+        ]);
+
+        $this->asBob()->postJson('/api/v1/calendars/subscriptions', [
+            'url' => self::FEED_URL,
+            'groupSlug' => 'team',
+        ])->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request')
+            ->assertJsonPath('error', 'The calendar feed contains no events.');
+
+        $this->assertSame(0, CalendarSubscription::query()->count());
+        $this->assertNull(
+            CalendarInstance::query()
+                ->where('principaluri', 'principals/groups/team')
+                ->where('displayname', 'holidays')
+                ->first(),
+        );
     }
 
     public function test_subscription_id_is_scoped_to_the_calendar_owner(): void
@@ -399,6 +454,19 @@ final class CalendarsIcsWebcalSubscribeTest extends WgwDatabaseTestCase
             ->deleteJson('/api/v1/calendars/subscriptions/'.$created['id'])
             ->assertNotFound();
         $this->assertSame(1, CalendarSubscription::query()->count());
+    }
+
+    private function seedTeamWithBob(): void
+    {
+        $team = $this->seedWgwGroup('principals/groups/team', 'Team');
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($team, $bob);
+    }
+
+    private function minutelyIcs(): string
+    {
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:minutely@example.test\r\nSUMMARY:Too fast\r\nDTSTART:20261015T100000Z\r\nDTEND:20261015T110000Z\r\nRRULE:FREQ=MINUTELY\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
     }
 
     private function asBob(): self
