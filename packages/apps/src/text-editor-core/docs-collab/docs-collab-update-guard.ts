@@ -15,7 +15,8 @@
  * - Nobody writes an entry attributed to someone else, and a commenter does
  *   not touch entries other people wrote. Reactions carry only the sender's
  *   own id. A commenter may resolve a thread they own; resolving someone
- *   else's thread stays an editor right.
+ *   else's thread stays an editor right. User ids are compared trimmed and
+ *   lowercased, the same way the REST author check compares them.
  */
 
 import * as Y from "yjs";
@@ -239,6 +240,9 @@ function snapshotEntries(map: Y.Map<unknown>): Map<string, EntryFacts> {
   return entries;
 }
 
+/** Same fold as the REST author check: trim, then lowercase. */
+const foldUser = (value: string): string => value.trim().toLowerCase();
+
 function readEntryFacts(value: unknown): EntryFacts {
   const entry = toPlainRecord(value);
   const messages = new Map<string, MessageFacts>();
@@ -264,7 +268,10 @@ function readEntryFacts(value: unknown): EntryFacts {
     const emoji = typeof reaction.emoji === "string" ? reaction.emoji : "";
     if (emoji === "") continue;
     const userIds = Array.isArray(reaction.userIds) ? reaction.userIds : [];
-    reactions.set(emoji, new Set(userIds.filter((id): id is string => typeof id === "string")));
+    reactions.set(
+      emoji,
+      new Set(userIds.filter((id): id is string => typeof id === "string").map(foldUser)),
+    );
   }
 
   const shell: Record<string, unknown> = {};
@@ -292,7 +299,7 @@ function toPlainRecord(value: unknown): Record<string, unknown> {
 
 function readAuthorId(value: unknown): string {
   const author = toPlainRecord(value);
-  return typeof author.id === "string" ? author.id : "";
+  return typeof author.id === "string" ? foldUser(author.id) : "";
 }
 
 /**
@@ -306,7 +313,7 @@ function findAuthorshipBreach(
   input: DocsCollabGuardedUpdate,
   access: "comment" | "write",
 ): DocsCollabUpdateDropReason | null {
-  const sender = input.senderUser;
+  const sender = foldUser(input.senderUser);
   if (sender === "") return "foreign-authorship";
 
   for (const root of DOCS_COLLAB_COMMENT_ROOTS) {

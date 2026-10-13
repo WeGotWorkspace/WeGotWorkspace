@@ -196,6 +196,18 @@ describe("docs-collab-update-guard", () => {
     expect(local.getMap(DOCS_COMMENTS_MAP_KEY).get("t1")).toMatchObject({ resolved: true });
   });
 
+  it("lets a commenter resolve their own thread when only case and space differ", () => {
+    const { local, remote } = pair((doc) => {
+      doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "Alice", [message("m1", "Alice")]));
+    });
+    remote
+      .getMap(DOCS_COMMENTS_MAP_KEY)
+      .set("t1", { ...thread("t1", "Alice", [message("m1", "Alice")]), resolved: true });
+
+    expect(guard(local, remote, "comment", " alice ")).toEqual({ applied: true });
+    expect(local.getMap(DOCS_COMMENTS_MAP_KEY).get("t1")).toMatchObject({ resolved: true });
+  });
+
   it("lets an editor resolve and delete", () => {
     const { local, remote } = pair((doc) => {
       doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "carol", [message("m1", "carol")]));
@@ -243,6 +255,14 @@ describe("docs-collab-update-guard", () => {
       applied: false,
       reason: "foreign-authorship",
     });
+
+    const { local: foldedLocal, remote: foldedRemote } = pair((doc) => {
+      doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", base);
+    });
+    foldedRemote
+      .getMap(DOCS_COMMENTS_MAP_KEY)
+      .set("t1", { ...base, reactions: [{ emoji: "👍", userIds: [" Alice "] }] });
+    expect(guard(foldedLocal, foldedRemote, "comment", "alice")).toEqual({ applied: true });
   });
 
   it("drops an update from a sender with no verified username", () => {
