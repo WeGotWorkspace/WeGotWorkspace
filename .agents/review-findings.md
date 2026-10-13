@@ -19,6 +19,7 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 |------|---------|---------|-------------|
 | 2026-09-28 | A green suite did not pin the old contract | Notes YAML stars; a cross-boundary `openapi.json` input can hash wrong while typegen stays green | [testing/test-first.md](skills/testing/test-first.md) |
 | 2026-09-28 | A security control matched the letter and missed the bypass | Rate-limit key the caller can mint; body buffered before the size cap | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | A REST allow and a live-update drop for the same field split a session | A commenter resolving their own doc thread persisted on REST and was dropped on the mesh | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | A per-entity cap stored on a service instance resets on the next PHP-FPM request, and an unreadable address skipped the cap | iMIP distinct-recipient set lived on `CalendarSchedulingService` and failed open | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-09-28 | An unresolved choice was treated as decided during implementation | The same choice left open across review rounds | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
 | 2026-09-28 | A rewrite dropped a decided section without saying so | A later draft removed a previously decided section | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
