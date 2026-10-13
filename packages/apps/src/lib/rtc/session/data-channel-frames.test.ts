@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import {
+  BINARY_FRAME_BYTES,
+  BINARY_FRAME_HEADER_BYTES,
   DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES,
   decodeBinaryFrame,
+  encodeBinaryFrames,
+  FrameReassembler,
 } from "@/lib/rtc/session/data-channel-frames";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 
@@ -229,6 +233,111 @@ describe("large Yjs state over a capped data channel", () => {
       "[rtc] datachannel-send-failed",
       expect.objectContaining({ remoteId: "peer-b", message: "send failed" }),
     );
+  });
+});
+
+function binaryFrame(messageId: number, index: number, count: number, payload: string): Uint8Array {
+  const body = new TextEncoder().encode(payload);
+  const frame = new Uint8Array(BINARY_FRAME_HEADER_BYTES + body.byteLength);
+  const view = new DataView(frame.buffer);
+  view.setUint32(0, messageId >>> 0);
+  view.setUint16(4, index);
+  view.setUint16(6, count);
+  frame.set(body, BINARY_FRAME_HEADER_BYTES);
+  return frame;
+}
+
+function manualClock(start = 0): { now: () => number; set: (value: number) => void } {
+  let current = start;
+  return {
+    now: () => current,
+    set(value: number) {
+      current = value;
+    },
+  };
+}
+
+const PENDING_MESSAGE_TTL_MS = 30_000;
+const MAX_MESSAGE_FRAMES = 512;
+
+describe("FrameReassembler pending bounds", () => {
+  it("drops an incomplete message after the ttl on the next push for that remote", () => {
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "aa"))).toBeNull();
+
+    clock.set(1_000 + PENDING_MESSAGE_TTL_MS + 1_000);
+    expect(reassembler.push("remote-a", binaryFrame(2, 0, 1, "zz"))).toBe("zz");
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "bb"))).toBeNull();
+  });
+
+  it("drops the oldest incomplete message when a remote exceeds the pending cap", () => {
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    for (let messageId = 1; messageId <= 5; messageId += 1) {
+      clock.set(1_000 + messageId);
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 0, 2, "p"))).toBeNull();
+    }
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "q"))).toBeNull();
+    expect(reassembler.push("remote-a", binaryFrame(2, 1, 2, "q"))).toBe("pq");
+  });
+
+  it("rejects a frame count above the ceiling and does not open a pending entry", () => {
+    const count = MAX_MESSAGE_FRAMES + 1;
+    const illegal = binaryFrame(1, 0, count, "x");
+    expect(decodeBinaryFrame(illegal)).toBeNull();
+
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    expect(encodeBinaryFrames(new Uint8Array(MAX_MESSAGE_FRAMES * payloadBytes), 4)).toHaveLength(
+      MAX_MESSAGE_FRAMES,
+    );
+    expect(() => encodeBinaryFrames(new Uint8Array(count * payloadBytes), 4)).toThrow(
+      /frame count/,
+    );
+
+    const reassembler = new FrameReassembler(() => 0);
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 0, 2, "a"))).toBeNull();
+    }
+    expect(reassembler.push("remote-a", illegal)).toBeNull();
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 1, 2, "b"))).toBe("ab");
+    }
+  });
+
+  it("reassembles a three-frame message when chunks arrive out of order", () => {
+    const frames = ["one", "two", "three"].map((part, index) => binaryFrame(9, index, 3, part));
+    const reassembler = new FrameReassembler();
+
+    expect(reassembler.push("remote-a", frames[2]!)).toBeNull();
+    expect(reassembler.push("remote-a", frames[0]!)).toBeNull();
+    expect(reassembler.push("remote-a", frames[1]!)).toBe("onetwothree");
+  });
+
+  it("does not expire another remote's incomplete message", () => {
+    const clock = manualClock(0);
+    const reassembler = new FrameReassembler(clock.now);
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "a"))).toBeNull();
+    clock.set(1);
+    expect(reassembler.push("remote-b", binaryFrame(1, 0, 2, "b"))).toBeNull();
+
+    clock.set(PENDING_MESSAGE_TTL_MS + 2);
+    expect(reassembler.push("remote-b", binaryFrame(2, 0, 1, "z"))).toBe("z");
+
+    clock.set(0);
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "c"))).toBe("ac");
+  });
+
+  it("uses the latest bytes when the same chunk index arrives twice", () => {
+    const reassembler = new FrameReassembler();
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "aa"))).toBeNull();
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "b"))).toBeNull();
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "c"))).toBe("bc");
   });
 });
 
