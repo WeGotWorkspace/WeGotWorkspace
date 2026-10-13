@@ -14,7 +14,8 @@
  *   A suggestion is a body edit, so accepting one is not a comment right.
  * - Nobody writes an entry attributed to someone else, and a commenter does
  *   not touch entries other people wrote. Reactions carry only the sender's
- *   own id. Resolving and deleting stay editor rights.
+ *   own id. A commenter may resolve a thread they own; resolving someone
+ *   else's thread stays an editor right.
  */
 
 import * as Y from "yjs";
@@ -369,7 +370,9 @@ function inspectChangedEntry(
       if (after.messages.has(id)) continue;
       if (message.author !== sender) return "foreign-entry-change";
     }
-    if (after.resolved !== before.resolved) return "resolve-by-commenter";
+    if (after.resolved !== before.resolved && before.owner !== sender) {
+      return "resolve-by-commenter";
+    }
     if (after.shellFingerprint !== before.shellFingerprint && before.owner !== sender) {
       return "foreign-entry-change";
     }
