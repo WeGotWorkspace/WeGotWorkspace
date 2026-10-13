@@ -223,11 +223,11 @@ final class CalendarRepository
         if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
         }
-        if (($options['subscriptionDelete'] ?? false) !== true) {
+        $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
+        if (($options['subscriptionDelete'] ?? false) !== true || ! $isSubscription) {
             $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         }
         $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
-        $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
         if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents && ! $isSubscription) {
             throw new ApiHttpException(409, 'Calendar contains events.', 'calendarHasContents');
         }
@@ -239,6 +239,8 @@ final class CalendarRepository
 
     public function deleteIncludingContents(string $username, string $calendarId): void
     {
+        // create() maps the calendar before the subscription row exists.
+        $this->subscriptionRowsByUri = null;
         $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true, 'subscriptionDelete' => true]);
     }
 
@@ -719,9 +721,7 @@ final class CalendarRepository
         return null;
     }
 
-    /**
-     * @return list<array{id: string, username: string}>
-     */
+    /** @return list<array{id: string, username: string}> */
     private function subscriptionRowsForUri(string $calendarUri): array
     {
         if ($this->subscriptionRowsByUri === null) {
