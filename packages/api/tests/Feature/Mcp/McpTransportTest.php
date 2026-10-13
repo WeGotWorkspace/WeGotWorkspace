@@ -7,6 +7,7 @@ namespace Tests\Feature\Mcp;
 use App\Models\McpSession;
 use App\Services\Mcp\McpScopes;
 use Laravel\Passport\Passport;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\ConfiguresMcp;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -148,6 +149,117 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('resource', $origin.'/mcp')
             ->assertJsonPath('authorization_servers.0', $origin);
+    }
+
+    /**
+     * @return array<string, array{0: array<string, string>}>
+     */
+    public static function spoofedForwardedHostProvider(): array
+    {
+        return [
+            'x-forwarded-host' => [[
+                'HTTP_X_FORWARDED_HOST' => 'evil.example',
+                'HTTP_X_FORWARDED_PROTO' => 'https',
+            ]],
+            'x-original-host' => [[
+                'HTTP_X_ORIGINAL_HOST' => 'evil.example',
+            ]],
+            'forwarded' => [[
+                'HTTP_FORWARDED' => 'host=evil.example;proto=https',
+            ]],
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $spoofed
+     */
+    #[DataProvider('spoofedForwardedHostProvider')]
+    public function test_spoofed_forwarded_host_from_an_untrusted_client_does_not_change_metadata(array $spoofed): void
+    {
+        $this->withoutConfiguredMcpOrigin();
+        $real = 'https://wgw.example.test';
+        $server = $spoofed + [
+            'REMOTE_ADDR' => '203.0.113.9',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $www = (string) $this->call('GET', $real.'/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$real.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+        $this->assertStringNotContainsString('evil.example', $www);
+
+        $authorization = $this->call('GET', $real.'/.well-known/oauth-authorization-server', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('issuer', $real)
+            ->assertJsonPath('authorization_endpoint', $real.'/oauth/authorize')
+            ->assertJsonPath('token_endpoint', $real.'/oauth/token');
+        $this->assertStringNotContainsString('evil.example', (string) $authorization->getContent());
+
+        $protected = $this->call('GET', $real.'/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $real.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $real);
+        $this->assertStringNotContainsString('evil.example', (string) $protected->getContent());
+    }
+
+    public function test_forwarded_host_from_a_trusted_proxy_is_honoured(): void
+    {
+        $this->withoutConfiguredMcpOrigin();
+        $origin = 'https://mcp-tunnel.example.com';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_FORWARDED_HOST' => 'mcp-tunnel.example.com',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'HTTP_X_ORIGINAL_HOST' => 'evil.example',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $www = (string) $this->call('GET', 'https://wgw.example.test/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$origin.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+        $this->assertStringNotContainsString('evil.example', $www);
+
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-authorization-server', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('issuer', $origin)
+            ->assertJsonPath('token_endpoint', $origin.'/oauth/token');
+
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+    }
+
+    public function test_original_host_from_a_trusted_proxy_is_honoured_when_forwarded_host_is_absent(): void
+    {
+        $this->withoutConfiguredMcpOrigin();
+        $origin = 'https://original.example.com';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_ORIGINAL_HOST' => 'original.example.com',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+
+        $www = (string) $this->call('GET', 'https://wgw.example.test/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$origin.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
     }
 
     public function test_original_host_outside_the_trusted_host_list_is_ignored(): void
@@ -342,5 +454,13 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ],
             '{"jsonrpc":"2.0","id":1,"method":"ping"}',
         )->assertStatus(413);
+    }
+
+    private function withoutConfiguredMcpOrigin(): void
+    {
+        config([
+            'app.env' => 'testing',
+            'wgw.mcp.public_origin' => null,
+        ]);
     }
 }
