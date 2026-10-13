@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useId } from "react";
 import { Input } from "@/ui/input";
 import { Card } from "@/card/src/card";
 import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
@@ -25,7 +25,6 @@ export type SettingsProfilePaneProps = {
 
 export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
   const { form, username, saveProfile, unsyncedDiscard } = profile;
-  const suppressDiscardCancel = useRef(false);
   const usernameId = useId();
   const [newPasswordWatch, confirmPasswordWatch] = form.watch(["newPassword", "confirmPassword"]);
   const emailDirty = Boolean(form.formState.dirtyFields.email);
@@ -97,11 +96,7 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
       <AlertDialog
         open={unsyncedDiscard !== null}
         onOpenChange={(open) => {
-          if (open || suppressDiscardCancel.current) {
-            suppressDiscardCancel.current = false;
-            return;
-          }
-          unsyncedDiscard?.cancel();
+          if (!open) unsyncedDiscard?.cancel();
         }}
       >
         <AlertDialogContent>
@@ -115,7 +110,6 @@ export function SettingsProfilePane({ profile }: SettingsProfilePaneProps) {
               className={buttonVariants({ variant: "destructive" })}
               onClick={(event) => {
                 event.preventDefault();
-                suppressDiscardCancel.current = true;
                 unsyncedDiscard?.confirm();
               }}
             >
