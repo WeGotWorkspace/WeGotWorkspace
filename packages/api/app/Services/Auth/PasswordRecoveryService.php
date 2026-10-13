@@ -76,6 +76,7 @@ final class PasswordRecoveryService
             $result = $this->mailDelivery->send($message, $config);
         } catch (InvalidOutboundMessageException) {
             ApiPasswordResetToken::query()->where('token_hash', hash('sha256', $token))->delete();
+            $this->logSkipped('invalid_recipient');
 
             return;
         }
