@@ -25,5 +25,6 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Which hosts does `filter_var` or the allowlist still accept?
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- When a caller may create only one kind of row, do updates and revokes select that same kind? Checking the request and then writing the newest row lets a guest or public share be changed through a member-only tool.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

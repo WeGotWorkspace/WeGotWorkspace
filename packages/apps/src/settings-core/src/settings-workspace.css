@@ -209,13 +209,21 @@
   color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
+.settings-workspace .settings-assistants-pane__share-call {
+  @apply flex flex-wrap items-baseline gap-x-2;
+}
+
 .settings-workspace .settings-assistants-pane__share-call-tool {
   @apply font-medium;
   color: var(--workspace-foreground);
 }
 
 .settings-workspace .settings-assistants-pane__share-call-target {
-  @apply ml-2;
+  @apply min-w-0 break-all;
+}
+
+.settings-workspace .settings-assistants-pane__share-call-outcome--denied {
+  @apply font-medium text-destructive;
 }
 
 /* Storybook scopes — mirror workspace chrome without inline presets */

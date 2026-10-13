@@ -72,8 +72,8 @@ export type SettingsMcpGrant = {
   connectedAt: string;
   scopes: string[];
   lastUsedAt: string | null;
-  /** Last share-creating MCP tool calls for this assistant. */
-  shareCalls?: SettingsMcpShareCall[];
+  /** Last share-tool MCP calls for this assistant. Required by the OpenAPI grant schema. */
+  shareCalls: SettingsMcpShareCall[];
 };
 
 export type SettingsUIData = {

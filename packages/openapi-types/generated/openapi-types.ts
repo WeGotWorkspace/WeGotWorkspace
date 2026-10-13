@@ -11726,7 +11726,7 @@ export interface components {
             connectedAt: string;
             scopes: string[];
             lastUsedAt?: string | null;
-            /** @description Last 20 MCP audit rows for this client whose tool name ends in _share, newest first. */
+            /** @description Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first. */
             shareCalls: components["schemas"]["SettingsMcpShareCall"][];
         };
         SettingsMcpGrantList: {

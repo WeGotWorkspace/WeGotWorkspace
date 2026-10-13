@@ -251,14 +251,33 @@ final class McpScopes
     }
 
     /**
+     * Tool names recorded when an assistant creates or changes a share.
+     * The settings audit query matches this list exactly (portable on MySQL and SQLite).
+     *
+     * @return list<string>
+     */
+    public static function shareToolNames(): array
+    {
+        return [
+            'drive_share',
+            'docs_share',
+            'calendar_share',
+            'addressbook_share',
+            'notebook_share',
+            'tasklist_share',
+        ];
+    }
+
+    /**
      * Launch MCP may create member shares only. Public links and guest emails
-     * stay in the WeGotWorkspace UI.
+     * stay in the WeGotWorkspace UI. Anything other than an omitted kind or
+     * `member` is refused, including disguised values that would fail later
+     * kind normalization.
      */
     public static function assertLaunchMemberShare(mixed $kind, mixed $shareWith): void
     {
-        $normalized = strtolower(trim(is_string($kind) ? $kind : ''));
-        if ($normalized === 'public' || $normalized === 'guest') {
-            throw new \InvalidArgumentException(self::EXTERNAL_SHARE_REFUSED);
+        if ($kind !== null && $kind !== '' && self::normalizedKind($kind) !== 'member') {
+            throw new McpExternalShareRefused(self::EXTERNAL_SHARE_REFUSED);
         }
         if (! is_array($shareWith)) {
             return;
@@ -266,9 +285,14 @@ final class McpScopes
         foreach (array_keys($shareWith) as $principalId) {
             $id = trim((string) $principalId);
             if ($id !== '' && str_contains($id, '@')) {
-                throw new \InvalidArgumentException(self::EXTERNAL_SHARE_REFUSED);
+                throw new McpExternalShareRefused(self::EXTERNAL_SHARE_REFUSED);
             }
         }
+    }
+
+    private static function normalizedKind(mixed $kind): string
+    {
+        return strtolower(trim(is_string($kind) ? $kind : ''));
     }
 
     /**

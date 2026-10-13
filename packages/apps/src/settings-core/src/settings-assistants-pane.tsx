@@ -119,20 +119,69 @@ export function SettingsAssistantsPane({
   );
 }
 
+function shareCallPath(target: string | null): string | null {
+  if (target == null || target === "") return null;
+  try {
+    const parsed: unknown = JSON.parse(target);
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      "path" in parsed &&
+      typeof parsed.path === "string" &&
+      parsed.path !== ""
+    ) {
+      return parsed.path;
+    }
+  } catch {
+    // Target is not JSON; show the stored string.
+  }
+  return target;
+}
+
+function shareCallTimeLabel(createdAt: string): string {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return createdAt;
+  const iso = date.toISOString();
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
+}
+
+function shareCallOutcomeLabel(outcome: string): string {
+  if (outcome === "denied") return "Denied — external share";
+  return outcome;
+}
+
 function ShareActivity({ calls }: { calls: SettingsMcpShareCall[] }) {
   if (calls.length === 0) return null;
   return (
     <section className="settings-assistants-pane__share-calls">
       <h3 className="settings-assistants-pane__share-calls-title">Share activity</h3>
       <ul className="settings-assistants-pane__share-calls-list">
-        {calls.map((call) => (
-          <li key={`${call.tool}-${call.createdAt}-${call.target ?? ""}`}>
-            <span className="settings-assistants-pane__share-call-tool">{call.tool}</span>
-            {call.target ? (
-              <span className="settings-assistants-pane__share-call-target">{call.target}</span>
-            ) : null}
-          </li>
-        ))}
+        {calls.map((call, index) => {
+          const path = shareCallPath(call.target);
+          return (
+            <li
+              key={`${call.tool}-${call.createdAt}-${index}`}
+              className="settings-assistants-pane__share-call"
+            >
+              <span className="settings-assistants-pane__share-call-tool">{call.tool}</span>
+              {path ? (
+                <span className="settings-assistants-pane__share-call-target">{path}</span>
+              ) : null}
+              <time className="settings-assistants-pane__share-call-time" dateTime={call.createdAt}>
+                {shareCallTimeLabel(call.createdAt)}
+              </time>
+              <span
+                className={cn(
+                  "settings-assistants-pane__share-call-outcome",
+                  call.outcome === "denied" &&
+                    "settings-assistants-pane__share-call-outcome--denied",
+                )}
+              >
+                {shareCallOutcomeLabel(call.outcome)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -193,7 +242,7 @@ function GrantCard({
         grantedScopeIds={grant.scopes}
         idPrefix={`mcp-grant-${grant.clientId}`}
       />
-      <ShareActivity calls={grant.shareCalls ?? []} />
+      <ShareActivity calls={grant.shareCalls} />
     </article>
   );
 }

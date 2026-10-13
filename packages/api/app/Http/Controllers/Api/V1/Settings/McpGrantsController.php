@@ -9,6 +9,7 @@ use App\Models\McpAuditEvent;
 use App\Models\User;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpGrantService;
+use App\Services\Mcp\McpScopes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -39,7 +40,7 @@ final class McpGrantsController
     }
 
     /**
-     * Last 20 tool-call audit rows for this client whose tool name ends in `_share`.
+     * Last 20 share-tool audit rows for this client, newest first.
      *
      * @return list<array{tool: string, outcome: string, createdAt: string, target: string|null}>
      */
@@ -49,7 +50,7 @@ final class McpGrantsController
             ->where('username', $username)
             ->where('client_id', $clientId)
             ->where('event_type', McpAuditLogger::TOOL_CALL)
-            ->whereRaw("tool LIKE ? ESCAPE '\\'", ['%\_share'])
+            ->whereIn('tool', McpScopes::shareToolNames())
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit(20)
@@ -58,14 +59,14 @@ final class McpGrantsController
         $calls = [];
         foreach ($rows as $row) {
             $tool = $row->tool;
-            if (! is_string($tool) || ! str_ends_with($tool, '_share')) {
+            if (! is_string($tool)) {
                 continue;
             }
             $target = $row->target;
             $calls[] = [
                 'tool' => $tool,
                 'outcome' => $row->outcome,
-                'createdAt' => $row->created_at,
+                'createdAt' => (string) $row->created_at,
                 'target' => is_string($target) ? $target : null,
             ];
         }
