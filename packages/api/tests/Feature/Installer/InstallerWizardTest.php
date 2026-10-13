@@ -15,7 +15,7 @@ use Tests\TestCase;
  * HTTP-boundary behavior for the installer wizard.
  *
  * Steps are driven through POST /api/v1/installer/action and read back from
- * GET /api/v1/installer/state. Outcomes are the JSON contract plus the
+ * GET /api/v1/installer/bootstrap. Outcomes are the JSON contract plus the
  * database the wizard creates.
  */
 final class InstallerWizardTest extends TestCase
@@ -88,16 +88,11 @@ final class InstallerWizardTest extends TestCase
 
     public function test_welcome_screen_starts_uninstalled_and_advances(): void
     {
-        $this->getJson('/api/v1/installer/state')
-            ->assertOk()
-            ->assertJsonPath('installed', false)
-            ->assertJsonPath('maintenance', false)
-            ->assertJsonPath('state.step', 'welcome')
-            ->assertJsonStructure(['state' => ['checks']]);
-
         $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('state.step', 'welcome');
+            ->assertJsonMissingPath('state.already_installed')
+            ->assertJsonPath('state.step', 'welcome')
+            ->assertJsonStructure(['state' => ['checks']]);
 
         $this->postJson('/api/v1/installer/action', [])
             ->assertStatus(400)
@@ -114,9 +109,9 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('ok', true)
             ->assertJsonPath('state.step', 'requirements');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false)
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'requirements');
     }
 
@@ -142,10 +137,10 @@ final class InstallerWizardTest extends TestCase
         ));
         $this->assertNotEmpty($failed);
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.step', 'requirements')
-            ->assertJsonPath('installed', false);
+            ->assertJsonMissingPath('state.already_installed');
 
         $this->repairApiPackageRequirements();
 
@@ -192,9 +187,9 @@ final class InstallerWizardTest extends TestCase
         $this->assertInstallerErrorIsSafe((string) $invalid->json('error'));
         $this->assertArrayNotHasKey('mysql_password', (array) $invalid->json('state.db'));
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false)
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'database');
         $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
     }
@@ -216,7 +211,7 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('state.step', 'site')
             ->assertJsonPath('error', 'Enable at least one of WebDAV files, calendars, or contacts.');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.step', 'site');
 
@@ -269,9 +264,9 @@ final class InstallerWizardTest extends TestCase
                 ->assertJsonPath('error', $expected);
         }
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false)
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'account');
         $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
 
@@ -331,9 +326,9 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('state.already_installed', true);
         $this->assertStringStartsWith('/login', (string) $install->json('redirect'));
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', true)
+            ->assertJsonPath('state.already_installed', true)
             ->assertJsonPath('state.step', 'installed');
 
         $this->assertFileExists($this->installRoot.'/wgw-content/.installed');
@@ -416,7 +411,7 @@ final class InstallerWizardTest extends TestCase
         ])->assertStatus(400)
             ->assertJsonPath('code', 'bad_request');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.step', 'account');
 
@@ -432,7 +427,7 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('ok', true)
             ->assertJsonPath('state.step', 'requirements');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
             ->assertJsonPath('state.step', 'requirements');
 
@@ -482,9 +477,9 @@ final class InstallerWizardTest extends TestCase
 
         $this->clearInstallMarkers();
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false)
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'welcome');
 
         $this->advanceToAccount($sqlite);
@@ -521,9 +516,9 @@ final class InstallerWizardTest extends TestCase
         // request matches a new process whose .env is gone and whose key files remain.
         $this->forgetInstallerDatabaseRuntime();
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false)
+            ->assertJsonMissingPath('state.already_installed')
             ->assertJsonPath('state.step', 'welcome');
 
         $this->advanceToDatabase();
@@ -605,9 +600,9 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('ok', false)
             ->assertJsonPath('error', 'This instance is already installed.');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', true)
+            ->assertJsonPath('state.already_installed', true)
             ->assertJsonPath('state.step', 'installed');
 
         $db = $this->installedPdo($sqlite);
@@ -624,9 +619,9 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('ok', false)
             ->assertJsonPath('error', 'Your session expired before installation finished. Please start again.');
 
-        $this->getJson('/api/v1/installer/state')
+        $this->getJson('/api/v1/installer/bootstrap')
             ->assertOk()
-            ->assertJsonPath('installed', false);
+            ->assertJsonMissingPath('state.already_installed');
         $this->assertFileDoesNotExist($this->installRoot.'/wgw-content/.installed');
     }
 
@@ -649,7 +644,7 @@ final class InstallerWizardTest extends TestCase
                 ->assertJsonPath('code', 'installer_locked')
                 ->assertJsonPath(
                     'error',
-                    'The installer closed 30 minutes after it was first opened. Delete packages/api/storage/app/install-window on the server to reopen it.',
+                    $this->lockedWindowMessage(),
                 );
         }
 
@@ -658,7 +653,7 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('code', 'installer_locked')
             ->assertJsonPath(
                 'error',
-                'The installer closed 30 minutes after it was first opened. Delete packages/api/storage/app/install-window on the server to reopen it.',
+                $this->lockedWindowMessage(),
             );
 
         $this->assertSame((string) $openedAt, trim((string) file_get_contents($this->installWindowPath())));
@@ -673,20 +668,62 @@ final class InstallerWizardTest extends TestCase
             ->assertOk()
             ->assertJsonPath('state.step', 'welcome');
 
-        $created = trim((string) file_get_contents($this->installWindowPath()));
-        $this->assertMatchesRegularExpression('/^[1-9][0-9]*$/', $created);
-        $this->assertGreaterThanOrEqual(time() - 30, (int) $created);
-        $this->assertLessThanOrEqual(time() + 1, (int) $created);
-
-        $openedAt = time() - (29 * 60);
-        $this->writeInstallWindow($openedAt);
+        $this->assertFileDoesNotExist($this->installWindowPath());
 
         $this->postAction('welcome_next')
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('state.step', 'requirements');
 
+        $created = trim((string) file_get_contents($this->installWindowPath()));
+        $this->assertMatchesRegularExpression('/^[1-9][0-9]*$/', $created);
+        $this->assertGreaterThanOrEqual(time() - 30, (int) $created);
+        $this->assertLessThanOrEqual(time() + 1, (int) $created);
+        $this->assertSame(0600, fileperms($this->installWindowPath()) & 0777);
+
+        $openedAt = time() - (29 * 60);
+        $this->writeInstallWindow($openedAt);
+
+        $this->postAction('requirements_check', ['db_driver' => 'sqlite'])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
         $this->assertSame((string) $openedAt, trim((string) file_get_contents($this->installWindowPath())));
+    }
+
+    public function test_unwritable_data_dir_keeps_the_window_open_and_shows_the_check(): void
+    {
+        $dataDir = $this->installRoot.'/wgw-content';
+        chmod($dataDir, 0555);
+
+        try {
+            $this->getJson('/api/v1/installer/bootstrap')
+                ->assertOk()
+                ->assertJsonPath('state.step', 'welcome');
+            $this->assertFileDoesNotExist($this->installWindowPath());
+
+            $advanced = $this->postAction('welcome_next');
+            $advanced->assertOk()
+                ->assertJsonPath('ok', true)
+                ->assertJsonPath('state.step', 'requirements');
+            $this->assertFileDoesNotExist($this->installWindowPath());
+
+            $failed = array_values(array_filter(
+                $advanced->json('state.checks'),
+                static fn (mixed $check): bool => is_array($check)
+                    && ($check['label'] ?? '') === 'Installer window'
+                    && ($check['ok'] ?? true) === false,
+            ));
+            $this->assertNotEmpty($failed);
+            $this->assertStringContainsString('.install-window', (string) ($failed[0]['detail'] ?? ''));
+
+            $this->postAction('requirements_next', ['db_driver' => 'sqlite'])
+                ->assertOk()
+                ->assertJsonPath('ok', false)
+                ->assertJsonPath('state.step', 'requirements');
+        } finally {
+            chmod($dataDir, 0775);
+        }
     }
 
     public function test_finished_install_keeps_already_installed_when_the_window_is_old(): void
@@ -753,7 +790,7 @@ final class InstallerWizardTest extends TestCase
 
         $this->advanceToDatabase();
 
-        foreach (['169.254.169.254', '::ffff:169.254.169.254', '::ffff:a9fe:a9fe', 'metadata.invalid'] as $host) {
+        foreach (['169.254.169.254', '::ffff:169.254.169.254', '::ffff:a9fe:a9fe', '0:0:0:0:0:ffff:169.254.169.254', 'metadata.invalid'] as $host) {
             $tested = $this->postAction('database_test', $this->mysqlPayload($host));
             $tested->assertOk()
                 ->assertJsonPath('ok', false)
@@ -827,7 +864,12 @@ final class InstallerWizardTest extends TestCase
 
     private function installWindowPath(): string
     {
-        return $this->installRoot.'/packages/api/storage/app/install-window';
+        return $this->installRoot.'/wgw-content/.install-window';
+    }
+
+    private function lockedWindowMessage(): string
+    {
+        return 'The installer closed 30 minutes after it was first opened. Delete '.$this->installWindowPath().' on the server to reopen it.';
     }
 
     private function writeInstallWindow(int $openedAt): void

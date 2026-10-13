@@ -4,12 +4,14 @@ const installBaseURL =
   process.env.WGW_INSTALL_BASE_URL ?? "http://127.0.0.1:9080";
 
 async function isWorkspaceInstalled(request: APIRequestContext): Promise<boolean> {
-  const response = await request.get("/api/v1/installer/state");
+  const response = await request.get("/api/v1/installer/bootstrap");
   if (!response.ok()) {
     return false;
   }
-  const body = (await response.json()) as { installed?: boolean };
-  return body.installed === true;
+  const body = (await response.json()) as {
+    state?: { already_installed?: boolean; step?: string };
+  };
+  return body.state?.already_installed === true || body.state?.step === "installed";
 }
 
 test.describe("Install wizard", () => {

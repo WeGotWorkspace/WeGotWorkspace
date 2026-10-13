@@ -31,6 +31,8 @@ final class InstallerDatabaseHostGuardTest extends TestCase
             '::ffff:169.254.169.254',
             '::ffff:a9fe:a9fe',
             '[::ffff:169.254.1.1]',
+            '0:0:0:0:0:ffff:169.254.169.254',
+            '0000:0000:0000:0000:0000:ffff:a9fe:a9fe',
             'metadata.invalid',
         ] as $host) {
             $this->assertSame(
