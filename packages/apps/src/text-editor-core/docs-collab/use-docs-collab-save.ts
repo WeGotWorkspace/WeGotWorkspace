@@ -26,8 +26,6 @@ import {
 } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
-export { PENDING_SERVER_SAVE_KEY };
-
 type UseDocsCollabSaveOptions = {
   refs: DocsCollabSessionRefs;
   room: string;
