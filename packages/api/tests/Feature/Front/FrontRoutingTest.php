@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Front;
 
-use App\Http\Middleware\WgwSecurityHeaders;
+use App\Support\SecurityHeaderPolicy;
+use App\Support\WebRootDeny;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Testing\TestResponse;
@@ -190,8 +191,12 @@ final class FrontRoutingTest extends TestCase
         $this->assertMatchesRegularExpression('/src="[^"]*\/swagger-init\.js"/', $content);
         $this->assertDoesNotMatchRegularExpression('/<script(?![^>]*\bsrc=)[^>]*>/i', $content);
         $this->assertSame(
-            WgwSecurityHeaders::reportOnlyPolicy(),
-            $response->headers->get('Content-Security-Policy-Report-Only'),
+            SecurityHeaderPolicy::policy(),
+            $response->headers->get('Content-Security-Policy'),
+        );
+        $this->assertStringNotContainsString(
+            'nonce-',
+            (string) $response->headers->get('Content-Security-Policy'),
         );
 
         $script = (string) $this->get('/api/docs/swagger-init.js')
@@ -282,13 +287,14 @@ final class FrontRoutingTest extends TestCase
             ->assertHeader('Content-Type', 'text/html; charset=utf-8');
     }
 
-    public function test_csp_shell_sends_report_only_policy(): void
+    public function test_csp_shell_sends_enforcing_policy(): void
     {
         $this->installedShell();
         $policy = $this->shellPolicy();
 
-        $this->assertSame(WgwSecurityHeaders::reportOnlyPolicy(), $policy);
+        $this->assertSame(SecurityHeaderPolicy::policy(), $policy);
         $this->assertStringContainsString("script-src 'self' 'wasm-unsafe-eval'", $policy);
+        $this->assertStringNotContainsString('nonce-', $policy);
         $this->assertStringNotContainsString('sha256-', $policy);
         $this->assertStringContainsString("default-src 'self'", $policy);
         $this->assertStringContainsString("style-src 'self' 'unsafe-inline'", $policy);
@@ -314,7 +320,7 @@ final class FrontRoutingTest extends TestCase
             'HTTP_ACCEPT' => 'text/html',
         ]);
         $https->assertOk();
-        $https->assertHeader('Strict-Transport-Security', WgwSecurityHeaders::HSTS);
+        $https->assertHeader('Strict-Transport-Security', SecurityHeaderPolicy::HSTS);
         $hsts = (string) $https->headers->get('Strict-Transport-Security');
         $this->assertStringNotContainsString('includeSubDomains', $hsts);
         $this->assertStringNotContainsString('preload', $hsts);
@@ -373,6 +379,7 @@ final class FrontRoutingTest extends TestCase
             ->assertOk()
             ->assertHeader('X-Content-Type-Options', 'nosniff')
             ->assertHeaderMissing('Strict-Transport-Security')
+            ->assertHeaderMissing('Content-Security-Policy')
             ->assertHeaderMissing('Content-Security-Policy-Report-Only');
 
         $https = $this->call('GET', 'https://localhost/api/v1/health', [], [], [], [
@@ -380,17 +387,18 @@ final class FrontRoutingTest extends TestCase
         ]);
         $https->assertOk();
         $https->assertHeader('X-Content-Type-Options', 'nosniff');
-        $https->assertHeader('Strict-Transport-Security', WgwSecurityHeaders::HSTS);
+        $https->assertHeader('Strict-Transport-Security', SecurityHeaderPolicy::HSTS);
+        $https->assertHeaderMissing('Content-Security-Policy');
         $https->assertHeaderMissing('Content-Security-Policy-Report-Only');
     }
 
-    public function test_csp_htaccess_sets_report_only_header(): void
+    public function test_csp_htaccess_sets_enforcing_header(): void
     {
         $root = dirname(__DIR__, 5).'/apps/wegotworkspace';
         foreach (['.htaccess', 'example.htaccess'] as $name) {
             $htaccess = (string) file_get_contents($root.'/'.$name);
             $this->assertMatchesRegularExpression(
-                '/Header always set Strict-Transport-Security "'.preg_quote(WgwSecurityHeaders::HSTS, '/').'" env=HTTPS/',
+                '/Header always set Strict-Transport-Security "'.preg_quote(SecurityHeaderPolicy::HSTS, '/').'" env=HTTPS/',
                 $htaccess,
                 $name,
             );
@@ -400,7 +408,7 @@ final class FrontRoutingTest extends TestCase
                 $name,
             );
             $this->assertMatchesRegularExpression(
-                '/Header always set Strict-Transport-Security "'.preg_quote(WgwSecurityHeaders::HSTS, '/').'" env=WGW_HTTPS/',
+                '/Header always set Strict-Transport-Security "'.preg_quote(SecurityHeaderPolicy::HSTS, '/').'" env=WGW_HTTPS/',
                 $htaccess,
                 $name,
             );
@@ -409,20 +417,9 @@ final class FrontRoutingTest extends TestCase
                 $htaccess,
                 $name,
             );
-            $this->assertSame(1, preg_match(
-                '/Header always set Content-Security-Policy-Report-Only "([^"]+)"/',
-                $htaccess,
-                $matches,
-            ), $name);
-            $policy = $matches[1];
-            $this->assertSame(WgwSecurityHeaders::reportOnlyPolicy(), $policy, $name);
-            $this->assertStringNotContainsString('https:', $policy, $name);
-            $this->assertStringNotContainsString('Header set Content-Security-Policy "', $htaccess, $name);
-            $this->assertStringNotContainsString(
-                'Header set Content-Security-Policy-Report-Only',
-                $htaccess,
-                $name,
-            );
+            $this->assertStringContainsString(WebRootDeny::managedHeadersBlock(), $htaccess, $name);
+            $this->assertStringNotContainsString('Content-Security-Policy-Report-Only', $htaccess, $name);
+            $this->assertStringNotContainsString('https:', $htaccess, $name);
         }
     }
 
@@ -448,9 +445,9 @@ final class FrontRoutingTest extends TestCase
             'HTTP_ACCEPT' => 'text/html',
         ], $server));
         $response->assertOk();
-        $response->assertHeaderMissing('Content-Security-Policy');
-        $policy = $response->headers->get('Content-Security-Policy-Report-Only');
-        $this->assertIsString($policy, 'SPA shell is missing Content-Security-Policy-Report-Only');
+        $response->assertHeaderMissing('Content-Security-Policy-Report-Only');
+        $policy = $response->headers->get('Content-Security-Policy');
+        $this->assertIsString($policy, 'SPA shell is missing Content-Security-Policy');
 
         return $policy;
     }

@@ -36,6 +36,8 @@ wgw-plugins/my-plugin/
     editor.html         # optional; editor.html or editor/index.html for runtime.editorReady
 ```
 
+> **No inline scripts.** Plugin HTML is served under an enforcing Content-Security-Policy (`script-src 'self' 'wasm-unsafe-eval'`). WeGotWorkspace injects its own config script with a per-response nonce; a `<script>` without `src` in your `index.html` or `editor.html` carries no nonce and will not run. Load your bundle from a file in the plugin's `assets/` directory. Violations are reported to `/api/v1/csp-reports`.
+
 ### Admin ZIP layout
 
 Upload ZIPs use a single top-level folder matching the plugin id:
