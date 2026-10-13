@@ -12,6 +12,9 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 
 - 2026-10-06: A path rewrite can carry a grant into a location that must not grant access (a share followed its folder into product trash and stayed live).
 - 2026-10-07: A plan that leaves a write path as a hard delete must name every caller, not only the UI that stopped using it (MCP `deleteItems` hard-deleted a grantee's shared file).
+- 2026-10-13: A migration `down()` that drops the only ciphertext copy is not a rollback. Restore the plaintext first, or say in the migration that `down()` is one-way.
+- 2026-10-13: Token hash helpers in one change must normalize the same way. Tests call the helper; a copied `hash()` stops tracking the implementation.
+- 2026-10-13: An encrypted column with both a cast and a manual decrypt reader has two failure modes. App code reads through the helper named on the property.
 
 ## Promoted
 
@@ -30,6 +33,10 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 | 2026-09-28 | Infra or config could fail quietly with no signal | Cross-boundary `openapi.json` hash stays green; a runtime image with unpinned versions | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
 | 2026-09-28 | Work drawn from a budget did not name what it displaces | The install matrix grew inside the #584 budget; a chunk was not on the sprint plan | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
 | 2026-09-28 | The first design did not name the existing component it could have used | A new component chosen where one already provides the behavior | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
+| 2026-10-13 | A resend of a time-limited secret returned the stored value | An expired drive invite stayed pending and the owner received a token accept rejects | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | A secret-scanner allowlist covered a string introduced in the same unmerged history | A global gitleaks `regexes` entry for a share-invite fixture that a later commit already replaced | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | Decrypting ciphertext inside a list serializer failed the whole response | One drive share with a bad `APP_KEY` cipher returned 500 for the owner share list | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | A permission merge reused the invite resend path and rotated a live token | PATCH shareWith on a pending guest replaced the emailed link and did not return the new token | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | A feature test that calls `withoutDefer()` runs deferred work inline, so a green HTTP assertion does not prove a control that waits until after the response | Password reset enumeration tests swapped defer off in `setUp()` | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | A rate-limit response mapped to `server_error` and dropped `Retry-After` | Catch-all renderer treated 429 as an internal error and built a fresh response | [security/SKILL.md](skills/security/SKILL.md) |
 | 2026-10-13 | A middleware-order test read the declared list, so the priority sort could run the limiter before auth | `Route::gatherMiddleware()` stayed green when throttle moved ahead of `wgw.auth` and keyed on the address | [security/SKILL.md](skills/security/SKILL.md) |

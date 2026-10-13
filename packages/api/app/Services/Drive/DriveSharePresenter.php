@@ -57,7 +57,7 @@ final class DriveSharePresenter
             'path' => (string) $share->path,
             'kind' => (string) $share->kind,
             'defaultAccess' => (string) $share->default_access,
-            'publicToken' => $share->public_token,
+            'publicToken' => $share->displayedPublicToken(),
             'hasPassword' => $share->password_hash !== null && $share->password_hash !== '',
             'expiresAt' => $share->expires_at?->toISOString(),
             'updatedAt' => $share->updated_at?->toISOString(),
