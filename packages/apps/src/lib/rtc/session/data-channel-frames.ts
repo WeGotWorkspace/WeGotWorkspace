@@ -14,6 +14,13 @@ export const BINARY_FRAME_BYTES = 16 * 1024;
 export const BINARY_FRAME_HEADER_BYTES = 8;
 export const DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES = 1024 * 1024;
 
+/** Drop an incomplete message that is still open after 30 seconds. */
+export const PENDING_MESSAGE_TTL_MS = 30_000;
+/** Several messages in flight is normal. A fifth drops the oldest. */
+export const MAX_PENDING_MESSAGES_PER_REMOTE = 4;
+/** 512 frames × 16 KiB is about 8 MiB. A full sheet state is far smaller. */
+export const MAX_MESSAGE_FRAMES = 512;
+
 const PAYLOAD_BYTES = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
 
 export type DecodedBinaryFrame = {
@@ -29,7 +36,7 @@ export function peerAdvertisesBin(caps: readonly string[] | undefined): boolean 
 
 export function encodeBinaryFrames(payload: Uint8Array, messageId: number): Uint8Array[] {
   const count = Math.max(1, Math.ceil(payload.byteLength / PAYLOAD_BYTES));
-  if (count > 0xffff) {
+  if (count > MAX_MESSAGE_FRAMES) {
     throw new Error("data-channel message exceeds frame count");
   }
   const frames: Uint8Array[] = [];
@@ -55,7 +62,7 @@ export function decodeBinaryFrame(bytes: Uint8Array): DecodedBinaryFrame | null 
   const messageId = view.getUint32(0);
   const index = view.getUint16(4);
   const count = view.getUint16(6);
-  if (count === 0 || index >= count) return null;
+  if (count === 0 || index >= count || count > MAX_MESSAGE_FRAMES) return null;
   return {
     messageId,
     index,
@@ -64,35 +71,32 @@ export function decodeBinaryFrame(bytes: Uint8Array): DecodedBinaryFrame | null 
   };
 }
 
-/** Collects chunked frames for one remote until every index of a message is present. */
+type PendingMessage = {
+  count: number;
+  chunks: Map<number, Uint8Array>;
+  createdAtMs: number;
+  bytes: number;
+};
+
+/**
+ * Collects chunked frames for one remote until every index of a message is present.
+ * Expired and excess incomplete messages are dropped on `push`. There is no timer.
+ */
 export class FrameReassembler {
-  private readonly pending = new Map<string, { count: number; chunks: Map<number, Uint8Array> }>();
+  private readonly pending = new Map<string, PendingMessage>();
+
+  constructor(private readonly now: () => number = Date.now) {}
 
   push(remoteId: string, bytes: Uint8Array): string | null {
     const frame = decodeBinaryFrame(bytes);
     if (!frame) return null;
+    this.evictExpired(remoteId);
     const key = `${remoteId}:${frame.messageId}`;
-    let entry = this.pending.get(key);
-    if (!entry || entry.count !== frame.count) {
-      entry = { count: frame.count, chunks: new Map() };
-      this.pending.set(key, entry);
-    }
-    entry.chunks.set(frame.index, frame.payload);
+    const entry = this.entryFor(remoteId, key, frame.count);
+    this.storeChunk(entry, frame.index, frame.payload);
     if (entry.chunks.size < entry.count) return null;
-    let total = 0;
-    for (let index = 0; index < entry.count; index += 1) {
-      const part = entry.chunks.get(index);
-      if (!part) return null;
-      total += part.byteLength;
-    }
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (let index = 0; index < entry.count; index += 1) {
-      const part = entry.chunks.get(index);
-      if (!part) return null;
-      merged.set(part, offset);
-      offset += part.byteLength;
-    }
+    const merged = this.merge(entry);
+    if (!merged) return null;
     this.pending.delete(key);
     return new TextDecoder().decode(merged);
   }
@@ -102,6 +106,71 @@ export class FrameReassembler {
     for (const key of this.pending.keys()) {
       if (key.startsWith(prefix)) this.pending.delete(key);
     }
+  }
+
+  private entryFor(remoteId: string, key: string, count: number): PendingMessage {
+    const existing = this.pending.get(key);
+    if (existing && existing.count === count) return existing;
+    if (!existing) this.dropOldestIfFull(remoteId);
+    const entry: PendingMessage = {
+      count,
+      chunks: new Map(),
+      createdAtMs: this.now(),
+      bytes: 0,
+    };
+    this.pending.set(key, entry);
+    return entry;
+  }
+
+  private storeChunk(entry: PendingMessage, index: number, payload: Uint8Array): void {
+    const previous = entry.chunks.get(index);
+    if (previous) entry.bytes -= previous.byteLength;
+    entry.chunks.set(index, payload);
+    entry.bytes += payload.byteLength;
+  }
+
+  private merge(entry: PendingMessage): Uint8Array | null {
+    let total = 0;
+    for (let index = 0; index < entry.count; index += 1) {
+      const part = entry.chunks.get(index);
+      if (!part) return null;
+      total += part.byteLength;
+    }
+    if (total !== entry.bytes) return null;
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (let index = 0; index < entry.count; index += 1) {
+      const part = entry.chunks.get(index);
+      if (!part) return null;
+      merged.set(part, offset);
+      offset += part.byteLength;
+    }
+    return merged;
+  }
+
+  private evictExpired(remoteId: string): void {
+    const prefix = `${remoteId}:`;
+    const now = this.now();
+    for (const [key, entry] of this.pending) {
+      if (!key.startsWith(prefix)) continue;
+      if (now - entry.createdAtMs > PENDING_MESSAGE_TTL_MS) this.pending.delete(key);
+    }
+  }
+
+  private dropOldestIfFull(remoteId: string): void {
+    const prefix = `${remoteId}:`;
+    let open = 0;
+    let oldestKey: string | null = null;
+    let oldestAt = Number.POSITIVE_INFINITY;
+    for (const [key, entry] of this.pending) {
+      if (!key.startsWith(prefix)) continue;
+      open += 1;
+      if (entry.createdAtMs < oldestAt) {
+        oldestAt = entry.createdAtMs;
+        oldestKey = key;
+      }
+    }
+    if (open >= MAX_PENDING_MESSAGES_PER_REMOTE && oldestKey) this.pending.delete(oldestKey);
   }
 }
 

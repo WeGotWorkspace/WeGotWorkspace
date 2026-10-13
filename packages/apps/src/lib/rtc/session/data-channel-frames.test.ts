@@ -7,6 +7,8 @@ import {
   decodeBinaryFrame,
   encodeBinaryFrames,
   FrameReassembler,
+  MAX_MESSAGE_FRAMES,
+  PENDING_MESSAGE_TTL_MS,
 } from "@/lib/rtc/session/data-channel-frames";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 
@@ -257,9 +259,6 @@ function manualClock(start = 0): { now: () => number; set: (value: number) => vo
   };
 }
 
-const PENDING_MESSAGE_TTL_MS = 30_000;
-const MAX_MESSAGE_FRAMES = 512;
-
 describe("FrameReassembler pending bounds", () => {
   it("drops an incomplete message after the ttl on the next push for that remote", () => {
     const clock = manualClock(1_000);
@@ -281,8 +280,9 @@ describe("FrameReassembler pending bounds", () => {
       expect(reassembler.push("remote-a", binaryFrame(messageId, 0, 2, "p"))).toBeNull();
     }
 
-    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "q"))).toBeNull();
+    // Finish the survivor first. Probing the evicted id opens a new message and would drop the next oldest.
     expect(reassembler.push("remote-a", binaryFrame(2, 1, 2, "q"))).toBe("pq");
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "q"))).toBeNull();
   });
 
   it("rejects a frame count above the ceiling and does not open a pending entry", () => {
