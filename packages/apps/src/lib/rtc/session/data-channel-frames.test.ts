@@ -8,6 +8,7 @@ import {
   encodeBinaryFrames,
   FrameReassembler,
   MAX_MESSAGE_FRAMES,
+  MAX_PENDING_BYTES_PER_REMOTE,
   PENDING_MESSAGE_TTL_MS,
 } from "@/lib/rtc/session/data-channel-frames";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
@@ -316,11 +317,10 @@ describe("FrameReassembler pending bounds", () => {
   it("drops the oldest incomplete message when a remote exceeds the pending byte budget", () => {
     const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
     const chunk = new Uint8Array(payloadBytes);
-    const budget = 16 * 1024 * 1024;
     const perMessage = 400;
     const count = perMessage + 1;
-    expect(perMessage * payloadBytes * 2).toBeLessThan(budget);
-    expect(perMessage * payloadBytes * 4).toBeGreaterThan(budget);
+    expect(perMessage * payloadBytes * 2).toBeLessThan(MAX_PENDING_BYTES_PER_REMOTE);
+    expect(perMessage * payloadBytes * 4).toBeGreaterThan(MAX_PENDING_BYTES_PER_REMOTE);
     const clock = manualClock(1_000);
     const reassembler = new FrameReassembler(clock.now);
 
@@ -336,6 +336,20 @@ describe("FrameReassembler pending bounds", () => {
     const newest = new TextDecoder().decode(new Uint8Array(payloadBytes * count));
     expect(reassembler.push("remote-a", binaryFrame(4, perMessage, count, chunk))).toBe(newest);
     expect(reassembler.push("remote-a", binaryFrame(1, perMessage, count, chunk))).toBeNull();
+  });
+
+  it("drops an incomplete message that itself crosses the pending byte budget", () => {
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    const chunk = new Uint8Array(payloadBytes);
+    const frames = Math.floor(MAX_PENDING_BYTES_PER_REMOTE / payloadBytes) + 1;
+    const count = frames + 1;
+    expect(count).toBeLessThanOrEqual(MAX_MESSAGE_FRAMES);
+    const reassembler = new FrameReassembler();
+
+    for (let index = 0; index < frames; index += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(1, index, count, chunk))).toBeNull();
+    }
+    expect(reassembler.push("remote-a", binaryFrame(1, frames, count, chunk))).toBeNull();
   });
 
   it("reassembles a three-frame message when chunks arrive out of order", () => {

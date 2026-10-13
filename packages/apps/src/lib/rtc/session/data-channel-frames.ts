@@ -18,8 +18,13 @@ export const DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES = 1024 * 1024;
 export const PENDING_MESSAGE_TTL_MS = 30_000;
 /** Several messages in flight is normal. A fifth drops the oldest. */
 export const MAX_PENDING_MESSAGES_PER_REMOTE = 4;
-/** 512 frames × 16 KiB is about 8 MiB. A full sheet state is far smaller. */
-export const MAX_MESSAGE_FRAMES = 512;
+/**
+ * Sanity ceiling for one message, on both encode and decode.
+ * 4096 frames is about 64 MiB on the wire, above real Yjs JSON traffic.
+ */
+export const MAX_MESSAGE_FRAMES = 4_096;
+/** Retained incomplete payload bytes per remote. Past this, the oldest message goes. */
+export const MAX_PENDING_BYTES_PER_REMOTE = 16 * 1024 * 1024;
 
 const PAYLOAD_BYTES = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
 
@@ -83,7 +88,7 @@ type PendingMessage = {
  * Expired and excess incomplete messages are dropped on `push`. There is no timer.
  */
 export class FrameReassembler {
-  private readonly pending = new Map<string, PendingMessage>();
+  private readonly pending = new Map<string, Map<number, PendingMessage>>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -91,34 +96,47 @@ export class FrameReassembler {
     const frame = decodeBinaryFrame(bytes);
     if (!frame) return null;
     this.evictExpired(remoteId);
-    const key = `${remoteId}:${frame.messageId}`;
-    const entry = this.entryFor(remoteId, key, frame.count);
+    const messages = this.messagesFor(remoteId);
+    const entry = this.entryFor(messages, frame.messageId, frame.count);
     this.storeChunk(entry, frame.index, frame.payload);
-    if (entry.chunks.size < entry.count) return null;
-    const merged = this.merge(entry);
-    if (!merged) return null;
-    this.pending.delete(key);
-    return new TextDecoder().decode(merged);
+    if (entry.chunks.size >= entry.count) {
+      const merged = this.merge(entry);
+      messages.delete(frame.messageId);
+      this.forgetIfEmpty(remoteId);
+      return merged ? new TextDecoder().decode(merged) : null;
+    }
+    this.enforceByteBudget(remoteId);
+    return null;
   }
 
   dropRemote(remoteId: string): void {
-    const prefix = `${remoteId}:`;
-    for (const key of this.pending.keys()) {
-      if (key.startsWith(prefix)) this.pending.delete(key);
-    }
+    this.pending.delete(remoteId);
   }
 
-  private entryFor(remoteId: string, key: string, count: number): PendingMessage {
-    const existing = this.pending.get(key);
+  private messagesFor(remoteId: string): Map<number, PendingMessage> {
+    let messages = this.pending.get(remoteId);
+    if (!messages) {
+      messages = new Map();
+      this.pending.set(remoteId, messages);
+    }
+    return messages;
+  }
+
+  private entryFor(
+    messages: Map<number, PendingMessage>,
+    messageId: number,
+    count: number,
+  ): PendingMessage {
+    const existing = messages.get(messageId);
     if (existing && existing.count === count) return existing;
-    if (!existing) this.dropOldestIfFull(remoteId);
+    if (!existing) this.dropOldestIfFull(messages);
     const entry: PendingMessage = {
       count,
       chunks: new Map(),
       createdAtMs: this.now(),
       bytes: 0,
     };
-    this.pending.set(key, entry);
+    messages.set(messageId, entry);
     return entry;
   }
 
@@ -136,7 +154,6 @@ export class FrameReassembler {
       if (!part) return null;
       total += part.byteLength;
     }
-    if (total !== entry.bytes) return null;
     const merged = new Uint8Array(total);
     let offset = 0;
     for (let index = 0; index < entry.count; index += 1) {
@@ -149,28 +166,53 @@ export class FrameReassembler {
   }
 
   private evictExpired(remoteId: string): void {
-    const prefix = `${remoteId}:`;
+    const messages = this.pending.get(remoteId);
+    if (!messages) return;
     const now = this.now();
-    for (const [key, entry] of this.pending) {
-      if (!key.startsWith(prefix)) continue;
-      if (now - entry.createdAtMs > PENDING_MESSAGE_TTL_MS) this.pending.delete(key);
+    for (const [messageId, entry] of messages) {
+      if (now - entry.createdAtMs > PENDING_MESSAGE_TTL_MS) messages.delete(messageId);
     }
+    this.forgetIfEmpty(remoteId);
   }
 
-  private dropOldestIfFull(remoteId: string): void {
-    const prefix = `${remoteId}:`;
-    let open = 0;
-    let oldestKey: string | null = null;
+  private dropOldestIfFull(messages: Map<number, PendingMessage>): void {
+    if (messages.size < MAX_PENDING_MESSAGES_PER_REMOTE) return;
+    const oldest = this.oldestId(messages);
+    if (oldest !== undefined) messages.delete(oldest);
+  }
+
+  private enforceByteBudget(remoteId: string): void {
+    const messages = this.pending.get(remoteId);
+    if (!messages) return;
+    while (this.totalBytes(messages) > MAX_PENDING_BYTES_PER_REMOTE) {
+      const oldest = this.oldestId(messages);
+      if (oldest === undefined) break;
+      messages.delete(oldest);
+    }
+    this.forgetIfEmpty(remoteId);
+  }
+
+  private totalBytes(messages: Map<number, PendingMessage>): number {
+    let total = 0;
+    for (const entry of messages.values()) total += entry.bytes;
+    return total;
+  }
+
+  private oldestId(messages: Map<number, PendingMessage>): number | undefined {
+    let oldestId: number | undefined;
     let oldestAt = Number.POSITIVE_INFINITY;
-    for (const [key, entry] of this.pending) {
-      if (!key.startsWith(prefix)) continue;
-      open += 1;
+    for (const [messageId, entry] of messages) {
       if (entry.createdAtMs < oldestAt) {
         oldestAt = entry.createdAtMs;
-        oldestKey = key;
+        oldestId = messageId;
       }
     }
-    if (open >= MAX_PENDING_MESSAGES_PER_REMOTE && oldestKey) this.pending.delete(oldestKey);
+    return oldestId;
+  }
+
+  private forgetIfEmpty(remoteId: string): void {
+    const messages = this.pending.get(remoteId);
+    if (messages && messages.size === 0) this.pending.delete(remoteId);
   }
 }
 
