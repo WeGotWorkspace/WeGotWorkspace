@@ -150,6 +150,113 @@ final class McpTransportTest extends WgwDatabaseTestCase
             ->assertJsonPath('authorization_servers.0', $origin);
     }
 
+    public function test_original_host_outside_the_trusted_host_list_is_ignored(): void
+    {
+        config([
+            'app.url' => 'https://wgw.example.test',
+            'wgw.mcp.public_origin' => null,
+        ]);
+        $real = 'https://wgw.example.test';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_ORIGINAL_HOST' => 'evil.example',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $www = (string) $this->call('GET', $real.'/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$real.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+        $this->assertStringNotContainsString('evil.example', $www);
+
+        $this->call('GET', $real.'/.well-known/oauth-authorization-server', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('issuer', $real);
+
+        $this->call('GET', $real.'/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $real.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $real);
+    }
+
+    public function test_original_host_on_the_trusted_host_list_is_honoured(): void
+    {
+        config([
+            'app.url' => 'https://wgw.example.test',
+            'wgw.trusted_hosts' => 'original.example.com',
+            'wgw.mcp.public_origin' => null,
+        ]);
+        $origin = 'https://original.example.com';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_ORIGINAL_HOST' => 'original.example.com',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $this->call('GET', 'https://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+    }
+
+    public function test_forwarded_header_from_a_trusted_proxy_is_ignored(): void
+    {
+        config([
+            'app.url' => 'http://127.0.0.1:9080',
+            'wgw.mcp.public_origin' => null,
+        ]);
+        $real = 'https://wgw.example.test';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_FORWARDED' => 'host=evil.example;proto=https',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $www = (string) $this->call('GET', $real.'/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$real.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+        $this->assertStringNotContainsString('evil.example', $www);
+
+        $this->call('GET', $real.'/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $real.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $real);
+    }
+
+    public function test_original_host_without_forwarded_proto_on_http_defaults_to_https(): void
+    {
+        config([
+            'app.url' => 'http://127.0.0.1:9080',
+            'wgw.mcp.public_origin' => null,
+        ]);
+        $origin = 'https://original.example.com';
+        $server = [
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_ORIGINAL_HOST' => 'original.example.com',
+            'HTTP_ACCEPT' => 'application/json',
+        ];
+
+        $this->call('GET', 'http://wgw.example.test/.well-known/oauth-protected-resource/mcp', [], [], [], $server)
+            ->assertOk()
+            ->assertJsonPath('resource', $origin.'/mcp')
+            ->assertJsonPath('authorization_servers.0', $origin);
+
+        $www = (string) $this->call('GET', 'http://wgw.example.test/mcp', [], [], [], $server)
+            ->assertUnauthorized()
+            ->headers->get('WWW-Authenticate');
+        $this->assertStringContainsString(
+            'resource_metadata="'.$origin.'/.well-known/oauth-protected-resource/mcp"',
+            $www,
+        );
+    }
+
     public function test_ngrok_host_wins_over_app_url_localhost(): void
     {
         config(['app.url' => 'https://wegotworkspace.localhost']);
