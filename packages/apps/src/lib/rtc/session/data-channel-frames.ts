@@ -185,6 +185,7 @@ export class FrameReassembler {
     if (oldest !== undefined) messages.delete(oldest);
   }
 
+  // Ordered SCTP: frames of N+1 arrive only after N, so this keep id stays with the open message.
   private enforceByteBudget(remoteId: string, keepMessageId: number): void {
     const messages = this.pending.get(remoteId);
     if (!messages) return;
