@@ -10,11 +10,13 @@ use App\Mcp\Tools\AddressBookListTool;
 use App\Mcp\Tools\AddressBookShareTool;
 use App\Mcp\Tools\AddressBookWriteTool;
 use App\Mcp\Tools\ContactQueryTool;
+use App\Mcp\Tools\ContactsSearchTool;
 use App\Mcp\Tools\ContactWriteTool;
 use App\Models\Addressbook;
 use App\Services\Contacts\AddressBookCollectionUris;
 use App\Services\Contacts\ContactCardRepository;
 use App\Services\Mcp\McpScopes;
+use App\Services\Search\UnifiedSearchService;
 use App\Support\WgwSettings;
 use Laravel\Passport\Passport;
 use Tests\Support\ConfiguresMcp;
@@ -219,5 +221,19 @@ final class McpContactsToolsTest extends WgwDatabaseTestCase
         $tools = app(McpToolCatalog::class)->enabledTools();
         $this->assertNotContains(ContactWriteTool::class, $tools);
         $this->assertNotContains(AddressBookListTool::class, $tools);
+    }
+
+    public function test_contacts_search_rejects_a_query_longer_than_200_characters(): void
+    {
+        $user = $this->mcpUser('bob');
+        $client = $this->mcpClient();
+        Passport::actingAs($user, [McpScopes::CONTACTS_READ], 'api', $client);
+
+        WorkspaceServer::actingAs($user, 'api')
+            ->tool(ContactsSearchTool::class, [
+                'query' => str_repeat('a', UnifiedSearchService::MAX_QUERY_LENGTH + 1),
+            ])
+            ->assertSee('200')
+            ->assertDontSee('Search query is too long.');
     }
 }

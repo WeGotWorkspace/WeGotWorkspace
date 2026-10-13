@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Search;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
 use App\Services\Search\SearchIndexerService;
+use App\Services\Search\UnifiedSearchService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -548,12 +550,44 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
                 'q' => str_repeat('a', 201),
             ]))
             ->assertStatus(400)
-            ->assertJsonPath('code', 'query_too_long');
+            ->assertJsonPath('code', 'bad_request');
 
         $this->withBearer($token)
             ->getJson('/api/v1/search/results?'.http_build_query([
                 'q' => str_repeat('a', 200),
             ]))
             ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => 'hello',
+                'offset' => 1001,
+            ]))
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => 'hello',
+                'offset' => 1000,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('data.offset', 1000);
+    }
+
+    public function test_unified_search_service_still_caps_length_and_offset(): void
+    {
+        $search = app(UnifiedSearchService::class);
+
+        try {
+            $search->search('alice', str_repeat('a', 201), 20, ['file']);
+            $this->fail('A query past 200 characters must be rejected before SQL.');
+        } catch (ApiHttpException $e) {
+            $this->assertSame(400, $e->getStatusCode());
+            $this->assertSame('query_too_long', $e->errorCode());
+        }
+
+        $clamped = $search->search('alice', 'hello', 20, ['file'], [], 5000);
+        $this->assertSame(UnifiedSearchService::MAX_OFFSET, $clamped['offset']);
     }
 }

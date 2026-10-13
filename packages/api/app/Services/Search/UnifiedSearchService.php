@@ -15,6 +15,8 @@ final class UnifiedSearchService
 {
     public const MAX_QUERY_LENGTH = 200;
 
+    public const MAX_OFFSET = 1000;
+
     public function __construct(
         private DriveGroupResolver $groups,
         private SearchTokenService $tokens,
@@ -49,7 +51,7 @@ final class UnifiedSearchService
             throw new ApiHttpException(400, 'Search query is too long.', 'query_too_long');
         }
         $limit = max(1, min(100, $limit));
-        $offset = max(0, $offset);
+        $offset = max(0, min(self::MAX_OFFSET, $offset));
         $allowedSources = array_values(array_intersect(['file', 'note', 'caldav', 'carddav'], $sources));
         $normalizedFilters = $this->normalizeFilters($filters);
         $tokens = $this->tokens->tokenize($query, SearchTokenService::MAX_QUERY_TOKENS);

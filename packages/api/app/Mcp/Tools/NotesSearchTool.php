@@ -31,7 +31,9 @@ final class NotesSearchTool extends WgwMcpTool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'query' => $schema->string()->description('Search query'),
+            'query' => $schema->string()
+                ->max(UnifiedSearchService::MAX_QUERY_LENGTH)
+                ->description('Search query'),
             'limit' => $schema->integer()->min(1)->max(50),
         ];
     }
@@ -54,7 +56,7 @@ final class NotesSearchTool extends WgwMcpTool
     protected function run(Request $request): Response
     {
         $validated = $request->validate([
-            'query' => ['required', 'string', 'min:1'],
+            'query' => ['required', 'string', 'min:1', 'max:'.UnifiedSearchService::MAX_QUERY_LENGTH],
             'limit' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
