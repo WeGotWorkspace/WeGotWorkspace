@@ -32,5 +32,8 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
 - Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.
 - When the same mutation is allowed on REST and judged by a live-update guard, is the allow predicate the same for each field, including how user ids are compared?
+- Does a 429 reach the client as `rate_limited` with the exception's `Retry-After` (and the other throttle headers)? The catch-all renderer must not map it to `server_error` or build a fresh response that drops those headers.
+- Does the order test use the sorted pipeline (`Router::gatherRouteMiddleware`), not `Route::gatherMiddleware()`? Declared order stays green when the priority sort moves the limiter in front of auth and the key falls back to the client address.
+- Does every entry that reaches the expensive call share the cap (HTTP rules and MCP tool rules), with the service check as the last line? An offset on a query that sorts with per-row work needs a ceiling. Clamping it and setting `hasMore` false stops a scroll; rejecting it with 400 breaks clients that page until `hasMore` is false. Skipping rows does not skip the scan.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

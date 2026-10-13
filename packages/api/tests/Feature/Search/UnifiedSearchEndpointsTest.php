@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Search;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
 use App\Services\Search\SearchIndexerService;
+use App\Services\Search\UnifiedSearchService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -505,5 +507,114 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $this->assertNotEmpty($updatedRows);
         $this->assertSame('note', $updatedRows[0]['sourceType'] ?? null);
         $this->assertSame('Untitled', $updatedRows[0]['title'] ?? null);
+    }
+
+    public function test_unified_search_uses_only_the_first_ten_tokens(): void
+    {
+        $storage = app(WgwStorage::class)->files();
+        $storage->put('users/alice/early-token.md', 'aa01 appears here');
+        $storage->put('users/alice/eleventh-token.md', 'zz99 appears here');
+        app(SearchIndexerService::class)->reindexAll();
+
+        $tokens = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $tokens[] = sprintf('aa%02d', $i);
+        }
+        $tokens[] = 'zz99';
+
+        $token = $this->issueBearerToken();
+        $capped = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => implode(' ', $tokens),
+            'limit' => 20,
+        ]));
+        $capped->assertOk();
+        $keys = array_column((array) $capped->json('data.results'), 'sourceKey');
+        $this->assertContains('users/alice/early-token.md', $keys);
+        $this->assertNotContains('users/alice/eleventh-token.md', $keys);
+
+        $eleventh = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'zz99',
+            'limit' => 20,
+        ]));
+        $eleventh->assertOk();
+        $eleventhKeys = array_column((array) $eleventh->json('data.results'), 'sourceKey');
+        $this->assertContains('users/alice/eleventh-token.md', $eleventhKeys);
+    }
+
+    public function test_unified_search_rejects_queries_longer_than_200_characters(): void
+    {
+        $token = $this->issueBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => str_repeat('a', 201),
+            ]))
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'bad_request');
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/search/results?'.http_build_query([
+                'q' => str_repeat('a', 200),
+            ]))
+            ->assertOk();
+    }
+
+    public function test_unified_search_clamps_offset_and_stops_the_page_at_the_ceiling(): void
+    {
+        $now = date('c');
+        $rows = [];
+        for ($i = 0; $i < 1001; $i++) {
+            $rows[] = [
+                'source_type' => 'file',
+                'source_key' => 'users/alice/hello-'.$i.'.md',
+                'owner_username' => 'alice',
+                'title' => 'hello',
+                'extension' => 'md',
+                'body_text' => 'hello',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::connection('wgw')->table('search_documents')->insert($chunk);
+        }
+
+        $token = $this->issueBearerToken();
+        $atCeiling = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'hello',
+            'limit' => 1,
+            'offset' => 1000,
+        ]));
+        $atCeiling->assertOk()
+            ->assertJsonPath('data.offset', 1000)
+            ->assertJsonPath('data.hasMore', false);
+        $this->assertCount(1, (array) $atCeiling->json('data.results'));
+
+        $pastCeiling = $this->withBearer($token)->getJson('/api/v1/search/results?'.http_build_query([
+            'q' => 'hello',
+            'limit' => 1,
+            'offset' => 1001,
+        ]));
+        $pastCeiling->assertOk()
+            ->assertJsonPath('data.offset', 1000)
+            ->assertJsonPath('data.hasMore', false);
+        $this->assertCount(1, (array) $pastCeiling->json('data.results'));
+    }
+
+    public function test_unified_search_service_still_caps_length_and_offset(): void
+    {
+        $search = app(UnifiedSearchService::class);
+
+        try {
+            $search->search('alice', str_repeat('a', 201), 20, ['file']);
+            $this->fail('A query past 200 characters must be rejected before SQL.');
+        } catch (ApiHttpException $e) {
+            $this->assertSame(400, $e->getStatusCode());
+            $this->assertSame('query_too_long', $e->errorCode());
+        }
+
+        $clamped = $search->search('alice', 'hello', 20, ['file'], [], 5000);
+        $this->assertSame(UnifiedSearchService::MAX_OFFSET, $clamped['offset']);
+        $this->assertFalse($clamped['hasMore']);
     }
 }
