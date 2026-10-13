@@ -131,18 +131,29 @@ describe("docs image external opt-in", () => {
     expect(img?.getAttribute("src")).toBeNull();
     expect(getTextEditorContent(editor, "markdown")).toContain(HTTPS_SRC);
 
-    fireEvent.click(screen.getByRole("button", { name: "Load external image (cdn.example)" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Load external image: Photo (cdn.example)" }),
+    );
     expect(img?.getAttribute("src")).toBe(HTTPS_SRC);
     editor.destroy();
   });
 
-  it("labels the opt-in with the host and omits URL userinfo", () => {
+  it("labels the opt-in with the alt and host and omits URL userinfo", () => {
     const editor = mountEditor(false, `![Photo](${USERINFO_SRC})`);
     expect(imageElements(editor)[0]?.getAttribute("src")).toBeNull();
-    const button = screen.getByRole("button", { name: "Load external image (cdn.example)" });
+    const button = screen.getByRole("button", {
+      name: "Load external image: Photo (cdn.example)",
+    });
     expect(button.textContent).not.toContain("secret");
     fireEvent.click(button);
     expect(imageElements(editor)[0]?.getAttribute("src")).toBe(USERINFO_SRC);
+    editor.destroy();
+  });
+
+  it("falls back to the host label when the image has no alt", () => {
+    const editor = mountEditor(false, `![](${HTTPS_SRC})`);
+    fireEvent.click(screen.getByRole("button", { name: "Load external image (cdn.example)" }));
+    expect(imageElements(editor)[0]?.getAttribute("src")).toBe(HTTPS_SRC);
     editor.destroy();
   });
 
@@ -151,7 +162,7 @@ describe("docs image external opt-in", () => {
     const img = imageElements(editor)[0];
     expect(img?.getAttribute("src")).toBeNull();
     expect(screen.queryByRole("button", { name: /Load external image/ })).toBeNull();
-    fireEvent.click(screen.getByText("Insecure image blocked"));
+    fireEvent.click(screen.getByText("Insecure image blocked: Legacy"));
     expect(img?.getAttribute("src")).toBeNull();
     expect(getTextEditorContent(editor, "markdown")).toContain(HTTP_SRC);
     editor.destroy();
@@ -170,18 +181,24 @@ describe("docs image external opt-in", () => {
     editor.destroy();
   });
 
-  it("remembers an https opt-in on that document and not for other hosts or editors", () => {
-    const editor = mountEditor(false, `![Photo](${HTTPS_SRC})\n\n![Other](${OTHER_HTTPS_SRC})`);
-    expect(imageElements(editor)[0]?.getAttribute("src")).toBeNull();
-    expect(imageElements(editor)[1]?.getAttribute("src")).toBeNull();
+  it("remembers an https host for that editor and does not load a second host", () => {
+    const sameHost = "https://cdn.example/other.png?v=2";
+    const editor = mountEditor(
+      false,
+      `![Photo](${HTTPS_SRC})\n\n![Again](${sameHost})\n\n![Other](${OTHER_HTTPS_SRC})`,
+    );
+    expect(imageElements(editor).map((img) => img.getAttribute("src"))).toEqual([null, null, null]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Load external image (cdn.example)" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Load external image: Photo (cdn.example)" }),
+    );
     expect(imageElements(editor)[0]?.getAttribute("src")).toBe(HTTPS_SRC);
-    expect(imageElements(editor)[1]?.getAttribute("src")).toBeNull();
+    expect(imageElements(editor)[1]?.getAttribute("src")).toBe(sameHost);
+    expect(imageElements(editor)[2]?.getAttribute("src")).toBeNull();
 
     editor.commands.setContent(`![Photo](${HTTPS_SRC})`);
     expect(imageElements(editor)[0]?.getAttribute("src")).toBe(HTTPS_SRC);
-    expect(screen.queryByRole("button", { name: "Load external image (cdn.example)" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Load external image/ })).toBeNull();
 
     const fresh = mountEditor(false, `![Photo](${HTTPS_SRC})`);
     expect(imageElements(fresh)[0]?.getAttribute("src")).toBeNull();
@@ -192,8 +209,39 @@ describe("docs image external opt-in", () => {
   it("does not request a loopback https image until the reader opts in", () => {
     const editor = mountEditor(false, `![Secret](${LOOPBACK_SRC})`);
     expect(imageElements(editor)[0]?.getAttribute("src")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Load external image (127.0.0.1)" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Load external image: Secret (127.0.0.1)" }),
+    );
     expect(imageElements(editor)[0]?.getAttribute("src")).toBe(LOOPBACK_SRC);
+    editor.destroy();
+  });
+
+  it("does not display a data url", () => {
+    const editor = mountEditor(false, `![Photo](${HTTPS_SRC})`);
+    const pos = findImagePos(editor);
+    const node = editor.state.doc.nodeAt(pos);
+    expect(node).toBeTruthy();
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup(pos, undefined, {
+        ...node!.attrs,
+        src: "data:image/png;base64,AAAA",
+      }),
+    );
+    expect(imageElements(editor)[0]?.getAttribute("src")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Load external image/ })).toBeNull();
+    expect(screen.getByText("Insecure image blocked").hidden).toBe(true);
+    editor.destroy();
+  });
+
+  it("serializes the https url for the clipboard without attaching that img to the live document", () => {
+    const editor = mountEditor(false, `![Photo](${HTTPS_SRC})`);
+    editor.commands.selectAll();
+    const { dom } = editor.view.serializeForClipboard(editor.state.selection.content());
+    const copied = dom.querySelector("img");
+    expect(copied?.getAttribute("src")).toBe(HTTPS_SRC);
+    expect(copied?.ownerDocument).not.toBe(document);
+    expect(document.body.querySelector(`img[src="${HTTPS_SRC}"]`)).toBeNull();
+    expect(imageElements(editor)[0]?.getAttribute("src")).toBeNull();
     editor.destroy();
   });
 });
