@@ -165,7 +165,7 @@ describe("docs image external opt-in", () => {
     });
     expect(createObjectURL).toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Load external image/ })).toBeNull();
-    expect(screen.queryByText("Insecure image blocked")).toBeNull();
+    expect(screen.getByText("Insecure image blocked").hidden).toBe(true);
     createObjectURL.mockRestore();
     editor.destroy();
   });

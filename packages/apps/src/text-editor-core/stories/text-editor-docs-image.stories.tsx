@@ -59,6 +59,45 @@ export const DriveFnAndHttps: Story = {
   render: () => <DocsImageFixtureEditor />,
 };
 
+function ExternalImagePlaceholderEditor() {
+  const editor = useTextEditor({
+    format: "markdown",
+    editable: false,
+    content: [
+      "HTTPS images stay unloaded until the reader chooses to load them.",
+      "",
+      "![Photo](https://images.example/photo.png)",
+      "",
+      "Plain HTTP images never load.",
+      "",
+      "![Legacy](http://images.example/legacy.png)",
+    ].join("\n"),
+    fetchImageContent: fetchFixtureImage,
+  });
+
+  return (
+    <div className="docs-workspace text-editor flex min-h-[min(640px,80dvh)] w-full max-w-3xl flex-col p-6">
+      <div className="text-editor-sheet text-editor-sheet--inline min-h-[320px] flex-1">
+        <EditorContent editor={editor} className="text-editor-sheet__surface paper-sheet" />
+      </div>
+    </div>
+  );
+}
+
+export const ExternalImagePlaceholder: Story = {
+  name: "External image placeholder",
+  tags: ["vitest-ci"],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "https images render a Load external image button and do not set img src until click. http images show Insecure image blocked and never load. The opt-in stays in memory on that editor.",
+      },
+    },
+  },
+  render: () => <ExternalImagePlaceholderEditor />,
+};
+
 function InsertChooserHarness() {
   const [open, setOpen] = useState(true);
   return (
