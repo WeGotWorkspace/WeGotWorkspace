@@ -61,6 +61,7 @@ final class WgwCalendarBackend extends CalPDO
         string $calendarUri,
         array $properties,
     ): void {
+        $this->assertUriAllowedForKind($kind, $calendarUri);
         $this->persistCollection($kind, $principalUri, $calendarUri, $properties);
     }
 
@@ -178,6 +179,23 @@ final class WgwCalendarBackend extends CalPDO
         }
 
         return false;
+    }
+
+    /**
+     * chat-, dm-, and docs-threads belong to one kind. Any other kind claiming
+     * them would shadow Meet rooms or block the docs thread pool.
+     */
+    private function assertUriAllowedForKind(CollectionKind $kind, string $uri): void
+    {
+        $owner = match (true) {
+            str_starts_with($uri, ChatCollectionUris::PREFIX_CHANNEL),
+            str_starts_with($uri, ChatCollectionUris::PREFIX_DM) => CollectionKind::ChatChannel,
+            str_starts_with($uri, DocsThreadCollectionUris::POOL_URI) => CollectionKind::DocsThreadPool,
+            default => null,
+        };
+        if ($owner !== null && $owner !== $kind) {
+            throw new Forbidden('This collection URI prefix belongs to '.$owner->value.'.');
+        }
     }
 
     /**

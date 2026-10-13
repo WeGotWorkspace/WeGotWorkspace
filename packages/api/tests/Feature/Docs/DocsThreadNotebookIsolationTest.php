@@ -14,8 +14,7 @@ use Tests\Support\WgwTestDisks;
 
 /**
  * Docs thread pools and notebooks are both VJOURNAL-only. The stored
- * CollectionKind is the discriminator, including for a notebook that already
- * occupies the pool uri.
+ * CollectionKind is the discriminator. Notebooks cannot take the pool uri.
  */
 final class DocsThreadNotebookIsolationTest extends WgwDatabaseTestCase
 {
@@ -141,29 +140,39 @@ final class DocsThreadNotebookIsolationTest extends WgwDatabaseTestCase
         }
     }
 
-    public function test_a_notebook_under_the_pool_uri_is_not_adopted_as_the_thread_pool(): void
+    public function test_a_notebook_cannot_claim_the_docs_thread_pool_uri(): void
     {
         $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
             'id' => 'docs-threads',
             'name' => 'Not the pool',
-        ])->assertCreated();
+        ])->assertStatus(409)->assertJsonPath('error', 'This notebook id is reserved for docs threads.');
+
+        $created = $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Docs threads',
+        ])->assertCreated()->json();
+        $this->assertSame('notebook-docs-threads', $created['id']);
 
         app(WgwStorage::class)->files()->put('users/alice/docs/plan.md', "# Plan\n");
+        $threadId = '01J6Y6M0R2V9GKJ4W1T8Q3ZBF4';
         $this->asUser('alice')->postJson('/api/v1/files/threads?path='.urlencode('/users/alice/docs/plan.md'), [
-            'id' => '01J6Y6M0R2V9GKJ4W1T8Q3ZBF4',
+            'id' => $threadId,
             'kind' => 'comment',
             'body' => 'a thread',
             'anchorText' => 'Plan',
-        ]);
+        ])->assertCreated();
 
         $this->asUser('alice')
-            ->getJson('/api/v1/notes/items?notebookId=docs-threads')
+            ->getJson('/api/v1/files/threads?path='.urlencode('/users/alice/docs/plan.md'))
+            ->assertOk()
+            ->assertJsonPath('list.0.id', $threadId);
+        $this->asUser('alice')
+            ->getJson('/api/v1/notes/notebooks/notebook-docs-threads')
+            ->assertOk()
+            ->assertJsonPath('name', 'Docs threads');
+        $this->asUser('alice')
+            ->getJson('/api/v1/notes/items?notebookId=notebook-docs-threads')
             ->assertOk()
             ->assertJsonPath('list', []);
-        $this->asUser('alice')
-            ->getJson('/api/v1/notes/notebooks/docs-threads')
-            ->assertOk()
-            ->assertJsonPath('name', 'Not the pool');
     }
 
     private function createUserThread(string $username, string $path, string $id): void

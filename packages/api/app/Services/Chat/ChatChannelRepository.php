@@ -514,7 +514,6 @@ final class ChatChannelRepository
 
         return $this->collectionAccess
             ->accessibleInstances($username, CollectionKind::ChatChannel)
-            ->filter(fn (CalendarInstance $instance): bool => ChatCollectionUris::isChatUri((string) $instance->uri))
             ->values();
     }
 

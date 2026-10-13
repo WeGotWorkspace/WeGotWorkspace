@@ -15,6 +15,8 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Chat\ChatCollectionUris;
+use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
 use Illuminate\Support\Collection;
@@ -481,6 +483,21 @@ final class NotebookRepository
                     'alreadyExists',
                 );
             }
+            $reserved = $this->reservedPrefixOwner($requestedId);
+            if ($reserved === CollectionKind::ChatChannel) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for chat channels.',
+                    'alreadyExists',
+                );
+            }
+            if ($reserved === CollectionKind::DocsThreadPool) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for docs threads.',
+                    'alreadyExists',
+                );
+            }
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
                 || $this->collectionUriTaken($principalUri, $requestedId)
@@ -493,6 +510,9 @@ final class NotebookRepository
         $base = Str::slug($name, '-') ?: 'notes';
         if (str_starts_with($base, 'group-')) {
             $base = 'notebook-'.substr($base, strlen('group-'));
+        }
+        if ($this->reservedPrefixOwner($base) !== null) {
+            $base = 'notebook-'.$base;
         }
         if (in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
             $base = 'notebook';
@@ -689,6 +709,23 @@ final class NotebookRepository
             ->where('uri', $notebookUri)
             ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::Notebook))
             ->first();
+    }
+
+    /**
+     * Prefixes that belong to another app. A notebook must not be created on
+     * them: chat-/dm- would shadow Meet rooms, and docs-threads would block
+     * the thread pool for that principal.
+     */
+    private function reservedPrefixOwner(string $uri): ?CollectionKind
+    {
+        if (ChatCollectionUris::isChatUri($uri)) {
+            return CollectionKind::ChatChannel;
+        }
+        if (str_starts_with($uri, DocsThreadCollectionUris::POOL_URI)) {
+            return CollectionKind::DocsThreadPool;
+        }
+
+        return null;
     }
 
     /**

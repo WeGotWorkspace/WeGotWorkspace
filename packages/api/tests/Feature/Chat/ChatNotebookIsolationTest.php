@@ -86,12 +86,12 @@ final class ChatNotebookIsolationTest extends WgwDatabaseTestCase
 
     public function test_notebook_ids_collide_with_any_existing_collection_uri(): void
     {
-        // A free chat-prefixed id is a notebook. Kind, not the prefix, separates the apps.
-        $created = $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+        $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
             'name' => 'Not a channel', 'id' => 'chat-evil',
-        ])->assertCreated()->json();
-        $this->assertSame('chat-evil', $created['id']);
-        $this->asUser('alice')->getJson('/api/v1/chat/channels/chat-evil')->assertNotFound();
+        ])->assertStatus(409)->assertJsonPath('error', 'This notebook id is reserved for chat channels.');
+        $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Not a DM', 'id' => 'dm-evil',
+        ])->assertStatus(409)->assertJsonPath('error', 'This notebook id is reserved for chat channels.');
 
         $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Real', 'kind' => 'channel',
@@ -103,7 +103,12 @@ final class ChatNotebookIsolationTest extends WgwDatabaseTestCase
         $slug = (string) $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
             'name' => 'chat-adjacent notes',
         ])->assertCreated()->json('id');
-        $this->assertSame('chat-adjacent-notes', $slug);
+        $this->assertSame('notebook-chat-adjacent-notes', $slug);
+
+        $docsSlug = (string) $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Docs threads',
+        ])->assertCreated()->json('id');
+        $this->assertSame('notebook-docs-threads', $docsSlug);
     }
 
     public function test_shared_notebook_resolves_by_kind_through_its_sharee_uri(): void
