@@ -1,0 +1,51 @@
+.ycsv-grid {
+  font: 14px/1.4 sans-serif;
+  color: #222;
+}
+
+.ycsv-grid-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ycsv-grid table {
+  border-collapse: collapse;
+}
+
+.ycsv-grid th,
+.ycsv-grid td {
+  border: 1px solid #bbb;
+  padding: 4px 8px;
+  min-width: 7rem;
+  position: relative;
+  vertical-align: top;
+  background: #fff;
+}
+
+.ycsv-grid th {
+  background: #f6f6f6;
+  text-align: left;
+}
+
+.ycsv-grid td.is-selected {
+  outline: 2px solid #333;
+  outline-offset: -2px;
+}
+
+.ycsv-grid input {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.ycsv-peer-label {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 10px;
+  line-height: 1.2;
+  color: #fff;
+  padding: 1px 4px;
+  pointer-events: none;
+}

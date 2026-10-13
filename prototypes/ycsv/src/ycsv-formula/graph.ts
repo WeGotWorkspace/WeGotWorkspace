@@ -1,0 +1,153 @@
+import type { Node } from "./ast";
+import { evalNode, isCellError, type EvalCtx, type Value } from "./eval";
+import { parseFormula } from "./parser";
+
+export type RawCells = Map<string, string>;
+export type Values = Map<string, Value>;
+
+type Item = { ast: Node | null; literal?: Value };
+
+function literal(raw: string): Value {
+  if (raw === "") return "";
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw);
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return raw;
+}
+
+function splitKey(key: string): { col: string; row: string } {
+  const at = key.indexOf("@");
+  return { col: key.slice(0, at), row: key.slice(at + 1) };
+}
+
+function orderedKeys(raw: RawCells, rowOrder: string[]): string[] {
+  const byRow = new Map<string, string[]>();
+  for (const key of raw.keys()) {
+    const { col, row } = splitKey(key);
+    const cols = byRow.get(row);
+    if (cols) cols.push(col);
+    else byRow.set(row, [col]);
+  }
+  for (const cols of byRow.values()) cols.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  const pushRow = (row: string) => {
+    seen.add(row);
+    for (const col of byRow.get(row) ?? []) keys.push(`${col}@${row}`);
+  };
+  for (const row of rowOrder) pushRow(row);
+  for (const row of [...byRow.keys()].filter((row) => !seen.has(row)).sort()) pushRow(row);
+  return keys;
+}
+
+function rangeRows(rowOrder: string[], from: string, to: string): string[] {
+  const start = rowOrder.indexOf(from);
+  const end = rowOrder.indexOf(to);
+  if (start < 0 || end < 0) return [];
+  const lo = Math.min(start, end);
+  const hi = Math.max(start, end);
+  return rowOrder.slice(lo, hi + 1);
+}
+
+function dependencies(node: Node, rowOrder: string[], out: string[]) {
+  switch (node.k) {
+    case "ref":
+      out.push(`${node.col}@${node.row}`);
+      break;
+    case "range":
+      for (const row of rangeRows(rowOrder, node.from, node.to)) out.push(`${node.col}@${row}`);
+      break;
+    case "call":
+      for (const arg of node.args) dependencies(arg, rowOrder, out);
+      break;
+    case "unary":
+      dependencies(node.arg, rowOrder, out);
+      break;
+    case "bin":
+      dependencies(node.l, rowOrder, out);
+      dependencies(node.r, rowOrder, out);
+      break;
+    default:
+      break;
+  }
+}
+
+function lookupDef(defs: Record<string, unknown>, path: string): Value | undefined {
+  let current: unknown = defs;
+  for (const part of path.split(".")) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  if (typeof current === "number" || typeof current === "string" || typeof current === "boolean") {
+    if (typeof current === "string" && isCellError(current)) return current;
+    return current;
+  }
+  return undefined;
+}
+
+export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<string, unknown>): Values {
+  const items = new Map<string, Item>();
+  for (const key of orderedKeys(raw, rowOrder)) {
+    const text = raw.get(key) ?? "";
+    if (!text.startsWith("=")) {
+      items.set(key, { ast: null, literal: literal(text) });
+      continue;
+    }
+    try {
+      items.set(key, { ast: parseFormula(text.slice(1)) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      items.set(key, { ast: null, literal: isCellError(message) ? message : "#SYNTAX" });
+    }
+  }
+
+  const values: Values = new Map();
+  const color = new Map<string, "white" | "grey" | "black">();
+  const cycle = new Set<string>();
+  const ctx: EvalCtx = {
+    cell: (col, row) => {
+      if (!rowOrder.includes(row)) return "#REF";
+      const key = `${col}@${row}`;
+      return values.has(key) ? (values.get(key) as Value) : "";
+    },
+    def: (path) => lookupDef(defs, path),
+    rowOrder,
+  };
+
+  const visit = (key: string, stack: string[]) => {
+    const item = items.get(key);
+    if (!item) return;
+    color.set(key, "grey");
+    stack.push(key);
+    if (item.ast) {
+      const deps: string[] = [];
+      dependencies(item.ast, rowOrder, deps);
+      for (const dep of deps) {
+        const state = color.get(dep) ?? "white";
+        if (state === "grey") {
+          for (const stacked of stack) cycle.add(stacked);
+          cycle.add(dep);
+        } else if (state === "white" && items.has(dep)) {
+          visit(dep, stack);
+        }
+      }
+    }
+    stack.pop();
+    color.set(key, "black");
+    if (cycle.has(key)) {
+      values.set(key, "#CYCLE");
+      return;
+    }
+    if (!item.ast) {
+      values.set(key, item.literal ?? "");
+      return;
+    }
+    values.set(key, evalNode(item.ast, ctx));
+  };
+
+  for (const key of items.keys()) {
+    if ((color.get(key) ?? "white") === "white") visit(key, []);
+  }
+  return values;
+}
