@@ -201,7 +201,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNull($emailGrant->getRawOriginal('invite_token'));
         $this->assertNotSame('', (string) $emailGrant->invite_token_cipher);
         $this->assertSame(
-            hash('sha256', (string) $emailGrant->invite_token_cipher),
+            DriveShareGrant::hashInviteToken((string) $emailGrant->invite_token_cipher),
             (string) $emailGrant->invite_token_hash,
         );
         $this->assertNotSame(
@@ -211,7 +211,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNull($emailGrant->grantee_user);
     }
 
-    public function test_duplicate_pending_email_invite_is_idempotent(): void
+    public function test_resending_pending_invite_rotates_the_token(): void
     {
         $token = $this->userBearerToken();
 
@@ -239,8 +239,10 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $second->assertOk()
             ->assertJsonPath('data.id', $inviteId)
             ->assertJsonPath('data.email', 'guest@example.com')
-            ->assertJsonPath('data.access', 'edit')
-            ->assertJsonPath('data.inviteToken', $inviteToken);
+            ->assertJsonPath('data.access', 'edit');
+        $rotatedToken = (string) $second->json('data.inviteToken');
+        $this->assertNotSame('', $rotatedToken);
+        $this->assertNotSame($inviteToken, $rotatedToken);
 
         $grantCount = DriveShareGrant::query()
             ->where('share_id', $shareId)
@@ -389,6 +391,62 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
             ->assertJsonPath('code', 'invite_expired');
     }
 
+    public function test_resending_expired_invite_issues_a_working_token(): void
+    {
+        $token = $this->userBearerToken();
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+        $expiredToken = (string) $created->json('data.inviteToken');
+
+        $grant = DriveShareGrant::query()->where('id', (string) $created->json('data.id'))->first();
+        $this->assertNotNull($grant);
+        $grant->invite_expires_at = Carbon::now()->subDays(15);
+        $grant->save();
+
+        $resent = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+        $freshToken = (string) $resent->json('data.inviteToken');
+        $this->assertNotSame('', $freshToken);
+        $this->assertNotSame($expiredToken, $freshToken);
+
+        $grant->refresh();
+        $this->assertNotNull($grant->invite_expires_at);
+        $this->assertTrue($grant->invite_expires_at->greaterThan(Carbon::now()->addDays(13)));
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $freshToken,
+        ])->assertOk();
+    }
+
+    public function test_undecryptable_public_token_omits_the_link(): void
+    {
+        $token = $this->userBearerToken();
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        DB::connection('wgw')->table('drive_shares')->where('id', $shareId)->update([
+            'public_token_cipher' => 'not-a-laravel-cipher',
+        ]);
+
+        $this->withBearer($token)->getJson('/api/v1/files/shares?path=/users/bob/shared.md')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $shareId)
+            ->assertJsonPath('data.0.publicToken', null);
+    }
+
     public function test_plaintext_tokens_keep_working_after_hash_migration(): void
     {
         $token = $this->userBearerToken();
@@ -435,7 +493,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $publicRow = DriveShare::query()->find($publicId);
         $this->assertNotNull($publicRow);
         $this->assertNull($publicRow->getRawOriginal('public_token'));
-        $this->assertSame(hash('sha256', $publicToken), (string) $publicRow->public_token_hash);
+        $this->assertSame(DriveShare::hashPublicToken($publicToken), (string) $publicRow->public_token_hash);
 
         $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
             'inviteToken' => $inviteToken,

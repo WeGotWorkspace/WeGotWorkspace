@@ -156,7 +156,7 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         $row = DriveShare::query()->where('id', (string) $share->json('data.id'))->first();
         $this->assertNotNull($row);
         $this->assertNull($row->getRawOriginal('public_token'));
-        $this->assertSame(hash('sha256', $publicToken), (string) $row->public_token_hash);
+        $this->assertSame(DriveShare::hashPublicToken($publicToken), (string) $row->public_token_hash);
         $this->assertSame($publicToken, $row->public_token_cipher);
         $this->assertNotSame($publicToken, (string) $row->getRawOriginal('public_token_cipher'));
 
