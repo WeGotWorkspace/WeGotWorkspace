@@ -1,9 +1,33 @@
 import type { Node } from "./ast";
-import { evalNode, isCellError, type EvalCtx, type Value } from "./eval";
+import { evalNode, isCellError, type CellError, type EvalCtx, type Value } from "./eval";
 import { parseFormula } from "./parser";
 
 export type RawCells = Map<string, string>;
 export type Values = Map<string, Value>;
+
+const AST_CACHE_LIMIT = 10_000;
+const astCache = new Map<string, Node | CellError>();
+let astMisses = 0;
+
+function astFor(src: string): Node | CellError {
+  const hit = astCache.get(src);
+  if (hit !== undefined) return hit;
+  if (astCache.size >= AST_CACHE_LIMIT) astCache.clear();
+  astMisses += 1;
+  let n: Node | CellError;
+  try {
+    n = parseFormula(src.slice(1));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    n = isCellError(message) ? message : "#SYNTAX";
+  }
+  astCache.set(src, n);
+  return n;
+}
+
+export function astCacheStats(): { entries: number; misses: number } {
+  return { entries: astCache.size, misses: astMisses };
+}
 
 type Item = { ast: Node | null; literal?: Value };
 
@@ -94,12 +118,9 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
       items.set(key, { ast: null, literal: literal(text) });
       continue;
     }
-    try {
-      items.set(key, { ast: parseFormula(text.slice(1)) });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      items.set(key, { ast: null, literal: isCellError(message) ? message : "#SYNTAX" });
-    }
+    const parsed = astFor(text);
+    if (typeof parsed === "string") items.set(key, { ast: null, literal: parsed });
+    else items.set(key, { ast: parsed });
   }
 
   const values: Values = new Map();

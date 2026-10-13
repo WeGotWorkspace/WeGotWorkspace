@@ -50,3 +50,51 @@ Each of the 50 document updates was 36 bytes. The encoded full state grew from 4
 - M8 ran before M7. M7 deletes and inserts rows, and M8 is specified against the full sheet.
 - Each M7 run restores the sheet to 1,200 rows before the next run. `insertRowAfter(599)` inserts after the 600th data row, and that new row is then deleted outside the sample. Each timed `deleteRow` removes the row at index 599; a blank row is inserted back outside the sample. From the second delete on, that row is the blank replacement.
 - The performance story passes a local `Awareness` into `Grid` because the component requires that prop. Nothing calls `connect` or `BroadcastChannel`.
+
+## 1b — Na formatter- en AST-cache
+
+Same machine, same static Storybook build, StrictMode off, same `large.ycsv` (108.0 KB). M1, M4, M5, M6, and M8 were not repeated.
+
+| Meting | Was | Nu | Drempel | Boven drempel? |
+|---|---|---|---|---|
+| M2 evaluateAll mediaan | 25.1 ms | 18.5 ms | 50 ms | nee |
+| M2 evaluateAll p95 | 26.8 ms | 20.9 ms | 50 ms | nee |
+| M3 commit→paint mediaan | 187.5 ms | 50.3 ms | 100 ms | nee |
+| M3 commit→paint p95 | 256.0 ms | 67.2 ms | 100 ms | nee |
+| M7 insertRow | 215.4 ms | 66.4 ms | 100 ms | nee |
+| M7 deleteRow | 220.0 ms | 66.3 ms | 100 ms | nee |
+| M9 formatter-cache | — | 3 entries, 0 missers tijdens M3 (3 totaal) | — | — |
+| M9 AST-cache | — | 2401 entries, 0 missers tijdens M3 (2401 totaal) | — | — |
+
+M2 max over the 20 kept runs was 22.2 ms (was 29.9 ms). M3 max over the 50 edits was 77.1 ms.
+
+### Nieuw profiel
+
+One Chrome CPU profile of the same 50 `aantal` edits (sampling interval 100 µs, about 4.1 s of samples). Self time, after mapping minified names through the bundle's `l(fn, "name")` annotations:
+
+1. `evaluateAll` — 2.52 s. Of that, 2.31 s sits in the `cell` closure (`rowOrder.includes` plus the value-map read).
+2. `Grid` render — 0.18 s. Samples sit in the `<tbody>` element creation.
+3. `formatValue` — 0.16 s.
+
+`astFor` is 2.3 ms in that profile. `fmt` is 20.6 ms. `dependencies` is 9.6 ms.
+
+### Waarnemingen
+
+`formatValue` dropped from 6.49 s to 0.16 s of self time and is no longer first. `evaluateAll` stayed near its previous 2.61 s and is now first. The Grid render stayed near its previous 0.27 s.
+
+On this profile `evaluateAll` is the heaviest function. The assignment's rule for that outcome is incremental evaluation as the next decision. That is not built here.
+
+M9 matches the formatter expectation: 3 entries (`currency|nl-NL|EUR`, `percent|`, `date|`) and no further misses after the first render. The AST cache holds 2401 entries, one per formula (1,200 `totaal`, 1,200 `netto`, one `generaal`). Misses during M3 are 0, not one per edit. The edited cells are `aantal` literals. The row-1 `totaal` formula string was identical before and after the 50 edits, so those lookups are hits. The key is the formula text; an `aantal` write does not change it.
+
+`evalNode`, `dependencies`, and the parser only read AST fields. Nothing in `src/ycsv-formula` assigns to a node. Cached nodes are not mutated.
+
+`dependencies` is a separate function, and it was not cached. A range's expanded row list depends on the current `rowOrder`, so the formula string is not a sufficient key. The walk still runs on every `evaluateAll`.
+
+The AST cache did not reach 10,000 entries, so it was not cleared.
+
+### Afwijkingen
+
+- Same environment deviation as the first run: Headless Chrome 153 on this Linux VM, static files from `python3 -m http.server`.
+- A parse error whose message is already a cell error (`#REF` as well as `#SYNTAX`) is cached as that error. The sketch cached every throw as `#SYNTAX`.
+- Both caches count misses so M9 can be read. The counters are not part of the sketches.
+- Meet runs M2, M3, M9, then M7 on the sheet the story already loaded. It does not call `fileToDoc` again, so the entry counts are the first render's caches. M1, M4, M5, M6, and M8 are unchanged from the first section.
