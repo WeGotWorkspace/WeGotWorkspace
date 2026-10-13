@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
+use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Services\Drive\DriveService;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -194,8 +198,16 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNotNull($emailGrant);
         $this->assertSame('email', (string) $emailGrant->grantee_type);
         $this->assertSame('pending', (string) $emailGrant->status);
-        $this->assertNotNull($emailGrant->invite_token);
-        $this->assertNotSame('', (string) $emailGrant->invite_token);
+        $this->assertNull($emailGrant->getRawOriginal('invite_token'));
+        $this->assertNotSame('', (string) $emailGrant->invite_token_cipher);
+        $this->assertSame(
+            hash('sha256', (string) $emailGrant->invite_token_cipher),
+            (string) $emailGrant->invite_token_hash,
+        );
+        $this->assertNotSame(
+            (string) $emailGrant->invite_token_cipher,
+            (string) $emailGrant->getRawOriginal('invite_token_cipher'),
+        );
         $this->assertNull($emailGrant->grantee_user);
     }
 
@@ -326,5 +338,116 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
             ->getJson('/api/v1/files/shares/at-path?path=/users/bob/RenamedFolder')
             ->assertOk()
             ->assertJsonPath('data.myRights.mayEditContent', true);
+    }
+
+    public function test_email_invite_expires_after_fourteen_days(): void
+    {
+        $token = $this->userBearerToken();
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+
+        $grant = DriveShareGrant::query()->where('id', (string) $created->json('data.id'))->first();
+        $this->assertNotNull($grant);
+        $this->assertNotNull($grant->invite_expires_at);
+        $this->assertTrue($grant->invite_expires_at->between(
+            Carbon::now()->addDays(14)->subMinutes(2),
+            Carbon::now()->addDays(14)->addMinutes(2),
+        ));
+    }
+
+    public function test_expired_email_invite_returns_gone(): void
+    {
+        $token = $this->userBearerToken();
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        $created = $this->withBearer($token)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
+            'email' => 'guest@example.com',
+            'access' => 'view',
+        ])->assertOk();
+        $inviteToken = (string) $created->json('data.inviteToken');
+
+        $grant = DriveShareGrant::query()->where('id', (string) $created->json('data.id'))->first();
+        $this->assertNotNull($grant);
+        $grant->invite_expires_at = Carbon::now()->subMinute();
+        $grant->save();
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $inviteToken,
+        ])->assertStatus(410)
+            ->assertJsonPath('code', 'invite_expired');
+    }
+
+    public function test_plaintext_tokens_keep_working_after_hash_migration(): void
+    {
+        $token = $this->userBearerToken();
+        $shareId = (string) $this->withBearer($token)->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/shared.md',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.id');
+
+        $publicToken = 'legacy-public-token-0123456789abcd';
+        $publicId = (string) Str::uuid();
+        $now = Carbon::now();
+        DB::connection('wgw')->table('drive_shares')->insert([
+            'id' => $publicId,
+            'path' => '/users/bob/shared.md',
+            'owner_username' => 'bob',
+            'kind' => 'public',
+            'default_access' => 'view',
+            'public_token' => $publicToken,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $inviteToken = 'example-invite-token';
+        $inviteId = (string) Str::uuid();
+        DB::connection('wgw')->table('drive_share_grants')->insert([
+            'id' => $inviteId,
+            'share_id' => $shareId,
+            'grantee_type' => 'email',
+            'grantee_email' => 'legacy@example.com',
+            'access' => 'view',
+            'status' => 'pending',
+            'invite_token' => $inviteToken,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $path = database_path('migrations/wgw/2026_10_13_000460_wgw_hash_drive_share_tokens.php');
+        $this->assertFileExists($path);
+        $migration = require $path;
+        $this->assertIsObject($migration);
+        $migration->up();
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertOk()->assertJsonPath('role', 'guest');
+
+        $publicRow = DriveShare::query()->find($publicId);
+        $this->assertNotNull($publicRow);
+        $this->assertNull($publicRow->getRawOriginal('public_token'));
+        $this->assertSame(hash('sha256', $publicToken), (string) $publicRow->public_token_hash);
+
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $inviteToken,
+        ])->assertOk();
+
+        $inviteRow = DriveShareGrant::query()->find($inviteId);
+        $this->assertNotNull($inviteRow);
+        $this->assertNull($inviteRow->getRawOriginal('invite_token'));
+        $this->assertSame('active', (string) $inviteRow->status);
     }
 }

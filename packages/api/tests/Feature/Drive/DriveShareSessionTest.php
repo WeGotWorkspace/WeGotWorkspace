@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
+use App\Models\DriveShare;
 use App\Models\DriveShareSession;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DriveTestFixtures;
@@ -137,5 +138,38 @@ final class DriveShareSessionTest extends WgwDatabaseTestCase
         ])->assertStatus(410)
             ->assertJsonPath('code', 'share_unavailable')
             ->assertJsonPath('error', 'This share link is no longer available.');
+    }
+
+    public function test_public_token_is_hashed_and_column_dump_is_not_a_link(): void
+    {
+        $ownerToken = $this->userBearerToken();
+        $share = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares', [
+            'path' => self::SHARE_ROOT,
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk();
+
+        $publicToken = (string) $share->json('data.publicToken');
+        $this->assertNotSame('', $publicToken);
+        $this->assertNull($share->json('data.expiresAt'));
+
+        $row = DriveShare::query()->where('id', (string) $share->json('data.id'))->first();
+        $this->assertNotNull($row);
+        $this->assertNull($row->getRawOriginal('public_token'));
+        $this->assertSame(hash('sha256', $publicToken), (string) $row->public_token_hash);
+        $this->assertSame($publicToken, $row->public_token_cipher);
+        $this->assertNotSame($publicToken, (string) $row->getRawOriginal('public_token_cipher'));
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertOk()->assertJsonPath('role', 'guest');
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => (string) $row->public_token_hash,
+        ])->assertNotFound();
+
+        $this->postJson('/api/v1/files/share-sessions', [
+            'token' => (string) $row->getRawOriginal('public_token_cipher'),
+        ])->assertNotFound();
     }
 }
