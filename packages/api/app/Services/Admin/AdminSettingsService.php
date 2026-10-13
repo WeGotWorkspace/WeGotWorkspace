@@ -62,6 +62,9 @@ final class AdminSettingsService
                 $value = $this->hourlyInviteLimit($value);
             }
             AppSetting::setValue($key, $value);
+            if ($key === SettingKeys::BROWSER_PLUGIN) {
+                AppSetting::setValue('browser_plugin_admin_set', true);
+            }
             $saved[] = $key;
         }
 

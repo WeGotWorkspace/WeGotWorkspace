@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AppSetting;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -128,6 +129,22 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('apps.imipExternalEnabled', false)
             ->assertJsonPath('apps.imipHourlyLimit', 25);
+    }
+
+    public function test_admin_save_of_browser_plugin_sets_the_marker(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::BROWSER_PLUGIN => true,
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertTrue(AppSetting::getValue('browser_plugin_admin_set'));
+        $this->assertTrue(AppSetting::getValue(SettingKeys::BROWSER_PLUGIN));
     }
 
     public function test_mcp_kill_switch_persists_in_admin_state(): void

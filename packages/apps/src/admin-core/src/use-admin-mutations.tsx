@@ -31,6 +31,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
     refreshingServerChecks: updates.refreshingServerChecks,
     actions: {
       saveSettings: settings.saveSettings,
+      useThisAddress: settings.useThisAddress,
       clearMailDeliverySmtpPassword: settings.clearMailDeliverySmtpPassword,
       clearTurnSecret: settings.clearTurnSecret,
       sendMailDeliveryTest: settings.sendMailDeliveryTest,

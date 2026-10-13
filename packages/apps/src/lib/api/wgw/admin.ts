@@ -330,6 +330,22 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       if (!res.ok) throw new Error(`PUT /admin/settings failed (${res.status})`);
       return fetchAdminUiData(opts);
     },
+    setAppUrl: async (url, opts) => {
+      const res = await wgwFetch("/admin/settings/app-url", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+        signal: opts?.signal,
+      });
+      if (!res.ok) {
+        const message = await readApiError(
+          res,
+          `PUT /admin/settings/app-url failed (${res.status})`,
+        );
+        throw new Error(message);
+      }
+      return fetchAdminUiData(opts);
+    },
     sendMailDeliveryTest: async (opts) => {
       const res = await wgwFetch("/admin/mail-delivery/test", {
         method: "POST",
