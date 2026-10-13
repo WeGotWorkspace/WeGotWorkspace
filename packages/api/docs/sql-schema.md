@@ -38,6 +38,8 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `search_documents` | `App\Models\SearchDocument` | Unified search index documents |
 | `search_terms` | `App\Models\SearchTerm` | Search token weights (FK → `search_documents`) |
 | `drive_starred_items` | `App\Models\DriveStarredItem` | Per-user starred drive paths. `idx_drive_starred_path` covers prefix rewrite and delete (`path` / `path/%`) so those updates are not a full-table lock. |
+| `drive_shares` | `App\Models\DriveShare` | Path shares. `public_token_hash` is SHA-256 for link lookup; `public_token_cipher` is Laravel-encrypted (APP_KEY) so the owner can redisplay the link. Plaintext `public_token` stays nullable and empty. Public links stay until revoked (or until the share's own `expires_at`). |
+| `drive_share_grants` | `App\Models\DriveShareGrant` | Member, group, and email grants. `invite_token_hash` is SHA-256; `invite_token_cipher` is Laravel-encrypted so the invite response can redisplay the token. Email invites set `invite_expires_at` (14 days). Plaintext `invite_token` stays nullable and empty. |
 | `calendar_rsvp_tokens` | `App\Models\CalendarRsvpToken` | Public iMIP RSVP tokens (`token_hash` SHA-256, event uid + attendee mailto + expiry) |
 | `calendar_subscriptions` | `App\Models\CalendarSubscription` | Live ICS/webcal subscriptions (owner username + personal calendar uri + normalized source URL) |
 | `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; `token_cipher` Laravel-encrypted with APP_KEY so the owner URL can be re-shown — not hash-only like RSVP) |

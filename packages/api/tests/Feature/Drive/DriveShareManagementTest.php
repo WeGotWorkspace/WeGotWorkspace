@@ -276,7 +276,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNotNull($grant);
 
         $this->withBearer($guestToken)->postJson('/api/v1/files/share-sessions/accept', [
-            'inviteToken' => (string) $grant->invite_token,
+            'inviteToken' => (string) $grant->invite_token_cipher,
         ])->assertOk();
 
         $duplicate = $this->withBearer($ownerToken)->postJson('/api/v1/files/shares/'.$shareId.'/invites', [
@@ -426,11 +426,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
             'updated_at' => $now,
         ]);
 
-        $path = database_path('migrations/wgw/2026_10_13_000460_wgw_hash_drive_share_tokens.php');
-        $this->assertFileExists($path);
-        $migration = require $path;
-        $this->assertIsObject($migration);
-        $migration->up();
+        $this->loadHashShareTokensMigration()->up();
 
         $this->postJson('/api/v1/files/share-sessions', [
             'token' => $publicToken,
@@ -449,5 +445,26 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->assertNotNull($inviteRow);
         $this->assertNull($inviteRow->getRawOriginal('invite_token'));
         $this->assertSame('active', (string) $inviteRow->status);
+    }
+
+    private function loadHashShareTokensMigration(): object
+    {
+        $path = database_path('migrations/wgw/2026_10_13_000460_wgw_hash_drive_share_tokens.php');
+        $this->assertFileExists($path);
+        $copy = tempnam(sys_get_temp_dir(), 'wgw1156');
+        $this->assertNotFalse($copy);
+        $php = $copy.'.php';
+        $this->assertTrue(rename($copy, $php));
+        $contents = file_get_contents($path);
+        $this->assertNotFalse($contents);
+        $this->assertNotFalse(file_put_contents($php, $contents));
+        try {
+            $migration = require $php;
+        } finally {
+            unlink($php);
+        }
+        $this->assertIsObject($migration);
+
+        return $migration;
     }
 }

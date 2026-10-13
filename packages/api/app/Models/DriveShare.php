@@ -18,6 +18,8 @@ use Illuminate\Support\Carbon;
  * @property string $kind
  * @property string $default_access
  * @property string|null $public_token
+ * @property string|null $public_token_hash
+ * @property string|null $public_token_cipher
  * @property string|null $password_hash
  * @property Carbon|null $expires_at
  * @property Carbon|null $revoked_at
@@ -42,6 +44,8 @@ final class DriveShare extends Model
         'kind',
         'default_access',
         'public_token',
+        'public_token_hash',
+        'public_token_cipher',
         'password_hash',
         'expires_at',
         'revoked_at',
@@ -49,9 +53,43 @@ final class DriveShare extends Model
 
     /** @var array<string, string> */
     protected $casts = [
+        'public_token_cipher' => 'encrypted',
         'expires_at' => 'datetime',
         'revoked_at' => 'datetime',
     ];
+
+    public static function hashPublicToken(string $token): string
+    {
+        return hash('sha256', strtolower(trim($token)));
+    }
+
+    /**
+     * Public links stay until revoked (or until the share's own expires_at).
+     * The raw token is encrypted so the owner UI can redisplay it.
+     */
+    public function storePublicToken(?string $token): void
+    {
+        $this->public_token = null;
+        if ($token === null || trim($token) === '') {
+            $this->public_token_hash = null;
+            $this->public_token_cipher = null;
+
+            return;
+        }
+
+        $this->public_token_hash = self::hashPublicToken($token);
+        $this->public_token_cipher = $token;
+    }
+
+    public function displayedPublicToken(): ?string
+    {
+        $token = $this->public_token_cipher;
+        if (! is_string($token) || $token === '') {
+            return null;
+        }
+
+        return $token;
+    }
 
     /** @return HasMany<DriveShareGrant, $this> */
     public function grants(): HasMany

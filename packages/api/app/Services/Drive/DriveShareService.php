@@ -145,7 +145,7 @@ final class DriveShareService
             $share->owner_username = $owner;
             $share->kind = $kind;
             $share->default_access = $defaultAccess;
-            $share->public_token = $publicToken;
+            $share->storePublicToken($publicToken);
             $share->password_hash = $password !== null ? Hash::make($password) : null;
             $share->expires_at = $expiresAt;
             $share->revoked_at = null;
@@ -308,7 +308,7 @@ final class DriveShareService
                 'id' => (string) $grant->id,
                 'email' => $email,
                 'access' => $access,
-                'inviteToken' => (string) $grant->invite_token,
+                'inviteToken' => $grant->displayedInviteToken(),
             ];
         });
     }
@@ -484,11 +484,13 @@ final class DriveShareService
             throw new ApiHttpException(429, 'Too many attempts. Please try again later.', 'throttled');
         }
 
+        $expectedHash = DriveShare::hashPublicToken($token);
         $share = DriveShare::query()
-            ->where('public_token', $token)
+            ->where('public_token_hash', $expectedHash)
             ->first();
 
-        if ($share === null) {
+        $storedHash = $share?->public_token_hash;
+        if ($share === null || ! is_string($storedHash) || ! hash_equals($storedHash, $expectedHash)) {
             throw new ApiHttpException(404, 'This share link is invalid or has expired.', 'share_unavailable');
         }
 
@@ -558,23 +560,38 @@ final class DriveShareService
         }
 
         return DB::connection('wgw')->transaction(function () use ($username, $inviteToken): array {
+            $expectedHash = DriveShareGrant::hashInviteToken($inviteToken);
             /** @var DriveShareGrant|null $grant */
             $grant = DriveShareGrant::query()
                 ->with('share')
-                ->where('invite_token', $inviteToken)
+                ->where('invite_token_hash', $expectedHash)
                 ->where('grantee_type', 'email')
                 ->where('status', 'pending')
                 ->lockForUpdate()
                 ->first();
 
-            if ($grant === null || $grant->share === null || $grant->share->revoked_at !== null) {
+            $storedHash = $grant?->invite_token_hash;
+            if (
+                $grant === null
+                || ! is_string($storedHash)
+                || ! hash_equals($storedHash, $expectedHash)
+                || $grant->share === null
+                || $grant->share->revoked_at !== null
+            ) {
                 throw new ApiHttpException(404, 'Invite not found.', 'not_found');
+            }
+
+            if ($grant->invite_expires_at !== null && $grant->invite_expires_at->lessThanOrEqualTo(Carbon::now())) {
+                throw new ApiHttpException(410, 'This invite has expired.', 'invite_expired');
             }
 
             $grant->grantee_type = 'user';
             $grant->grantee_user = strtolower($username);
             $grant->status = 'active';
             $grant->invite_token = null;
+            $grant->invite_token_hash = null;
+            $grant->invite_token_cipher = null;
+            $grant->invite_expires_at = null;
             $grant->save();
 
             return ['shareId' => (string) $grant->share_id, 'accepted' => true];

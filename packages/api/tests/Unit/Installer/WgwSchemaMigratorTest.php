@@ -153,6 +153,10 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'admitted'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'grantee_group'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_shares', 'public_token_hash'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_shares', 'public_token_cipher'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'invite_token_hash'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('drive_share_grants', 'invite_expires_at'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));

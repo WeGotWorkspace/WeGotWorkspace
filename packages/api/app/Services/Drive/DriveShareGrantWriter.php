@@ -130,12 +130,12 @@ final class DriveShareGrantWriter
             $grant->grantee_type = 'email';
             $grant->grantee_email = $email;
             $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
+            $grant->issueInviteToken();
         } elseif ($grant->status === 'revoked') {
             $grant->grantee_type = 'email';
             $grant->grantee_user = null;
             $grant->status = 'pending';
-            $grant->invite_token = bin2hex(random_bytes(16));
+            $grant->issueInviteToken();
         }
 
         $grant->access = $access;
