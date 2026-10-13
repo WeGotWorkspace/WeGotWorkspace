@@ -46,10 +46,10 @@ final class CalendarRepository
     public function list(string $username): array
     {
         $calendars = $this->accessibleVeventInstances($username)
-            ->map(function (CalendarInstance $instance): array {
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapCalendar($instance, $groupSlug);
+                return $this->mapCalendar($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -68,7 +68,7 @@ final class CalendarRepository
         $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $payload
@@ -143,7 +143,7 @@ final class CalendarRepository
             $instance->refresh();
         }
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $payload
@@ -201,7 +201,7 @@ final class CalendarRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $options
@@ -224,7 +224,7 @@ final class CalendarRepository
         if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
         }
-
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
         $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
         if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents && ! $isSubscription) {
@@ -619,7 +619,7 @@ final class CalendarRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapCalendar($instance, $groupSlug);
+        $mapped = $this->mapCalendar($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'calendar');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -643,7 +643,7 @@ final class CalendarRepository
     }
 
     /** @return array<string, mixed> */
-    private function mapCalendar(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapCalendar(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? ''));
@@ -655,7 +655,7 @@ final class CalendarRepository
         $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
         $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
             SharingPlugin::ACCESS_READWRITE => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
@@ -663,7 +663,7 @@ final class CalendarRepository
                 'mayRead' => true,
                 'mayWrite' => true,
                 'mayShare' => $mayShare,
-                'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
+                'mayDelete' => $groupMayDelete && ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
             ],
         };
         if ($subscriptionId !== null) {
@@ -671,7 +671,7 @@ final class CalendarRepository
                 'mayRead' => true,
                 'mayWrite' => false,
                 'mayShare' => false,
-                'mayDelete' => true,
+                'mayDelete' => $groupMayDelete,
             ];
         }
 
