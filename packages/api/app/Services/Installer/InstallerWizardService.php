@@ -336,42 +336,42 @@ final class InstallerWizardService
         $this->paths->clearStaleInstallLock();
         $this->removeEmptySqliteDatabase($db);
 
+        if ($this->database->hasUsers($db)) {
+            throw new \RuntimeException('An account already exists in this database. Sign in instead, or point the installer at an empty database.');
+        }
+
         try {
-            if ($this->database->hasUsers($db)) {
-                $this->jwtKeys->ensureKeys();
-            } else {
-                $this->database->installFresh(
-                    $db,
-                    $username,
-                    $pass,
-                    $display,
-                    $email,
-                    $enableCalendars,
-                    $enableContacts,
-                    [
-                        SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
-                        SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
-                        SettingKeys::AUTH_REALM => 'SabreDAV',
-                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
-                        SettingKeys::FILES_ENABLED => $enableFiles,
-                        SettingKeys::CALENDAR_ENABLED => $enableCalendars,
-                        SettingKeys::CONTACTS_ENABLED => $enableContacts,
-                        SettingKeys::MAIL_ENABLED => $mailEnabled,
-                        SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
-                        SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
-                        SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
-                        SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
-                        SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
-                        SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
-                        SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
-                        SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
-                        SettingKeys::RTC_TURN_SECRET => $meetEnabled
-                            ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
-                            : '',
-                    ],
-                );
-                $this->jwtKeys->ensureKeys();
-            }
+            $this->database->installFresh(
+                $db,
+                $username,
+                $pass,
+                $display,
+                $email,
+                $enableCalendars,
+                $enableContacts,
+                [
+                    SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
+                    SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
+                    SettingKeys::AUTH_REALM => 'SabreDAV',
+                    SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
+                    SettingKeys::FILES_ENABLED => $enableFiles,
+                    SettingKeys::CALENDAR_ENABLED => $enableCalendars,
+                    SettingKeys::CONTACTS_ENABLED => $enableContacts,
+                    SettingKeys::MAIL_ENABLED => $mailEnabled,
+                    SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
+                    SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
+                    SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
+                    SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
+                    SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
+                    SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
+                    SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
+                    SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
+                    SettingKeys::RTC_TURN_SECRET => $meetEnabled
+                        ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
+                        : '',
+                ],
+            );
+            $this->jwtKeys->ensureKeys();
         } catch (\Throwable $e) {
             throw new \RuntimeException('Installation failed: '.$e->getMessage(), 0, $e);
         }
