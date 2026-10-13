@@ -26,6 +26,10 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Which hosts does `filter_var` or the allowlist still accept? Parse IP literals with `inet_pton`, including expanded IPv4-mapped IPv6. A regex of one or two spellings leaves the others for `filter_var` to treat as "already an IP, so allowed."
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- Reissuing a time-limited secret must rotate the value and the expiry. A resend that returns the stored secret hands out a credential the accept path already rejects.
+- A permission update must not rotate a live invite. Only the resend path rotates a token that still accepts. An already-expired token may be replaced; the caller does not receive that replacement unless the route is a resend.
+- Do not allowlist a secret-shaped string this change introduces. Rewrite the commit while it is still off the default branch. A global allowlist regex hides that string in every future file.
+- Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
 - Does a test that claims to prove work after the response leave `defer()` enabled? `withoutDefer()` invokes the callback inside `offsetSet`, before the response exists, so the assertion passes with that control turned off. `MakesHttpRequests::call()` already runs `InvokeDeferredCallbacks` during `terminate()`.
 - When the same mutation is allowed on REST and judged by a live-update guard, is the allow predicate the same for each field, including how user ids are compared?
 
