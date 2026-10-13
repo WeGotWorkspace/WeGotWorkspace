@@ -14,15 +14,19 @@
       },
       "imipExternalEnabled": {
         "type": "boolean",
-        "description": "When false, Calendar does not email new invitations to people outside this instance. Cancellation notices and RSVP replies still send."
+        "description": "When false, Calendar does not email new invitations to people outside this instance. Updates to people already invited, cancellation notices, and RSVP replies still send."
       },
       "imipHourlyLimit": {
         "type": "integer",
         "minimum": 1,
-        "maximum": 300,
-        "description": "Maximum outbound invitation emails per user per hour. Clamped to the daily cap of 300."
+        "description": "Maximum outbound invitation emails per user per hour. Clamped to the daily limit."
+      },
+      "imipDailyLimit": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Maximum outbound invitation emails per user per day. Defaults to 300."
       }
     },
-    "required": ["calendars", "contacts", "tasks", "imipExternalEnabled", "imipHourlyLimit"]
+    "required": ["calendars", "contacts", "tasks", "imipExternalEnabled", "imipHourlyLimit", "imipDailyLimit"]
   }
 }

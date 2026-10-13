@@ -489,18 +489,157 @@ final class CalendarsSchedulingImipTest extends WgwDatabaseTestCase
         });
     }
 
-    public function test_daily_cap_still_blocks_cancel(): void
+    public function test_daily_cap_does_not_block_cancel_or_reply_or_consume_the_counter(): void
     {
         $limiter = $this->app->make(RateLimiter::class);
         for ($i = 0; $i < 300; $i++) {
             $limiter->hit('imip:user-day:bob', 86400);
         }
+        $dailyBefore = $limiter->attempts('imip:user-day:bob');
 
         $cancel = $this->externalRequest('guest@elsewhere.test', 'day-cancel');
         $cancel->method = 'CANCEL';
-        $this->app->make(CalendarImipService::class)->deliver('bob', $cancel);
+        $reply = $this->externalRequest('org@elsewhere.test', 'day-reply');
+        $reply->method = 'REPLY';
+        $imip = $this->app->make(CalendarImipService::class);
+        $imip->deliver('bob', $cancel);
+        $imip->deliver('bob', $reply);
+
+        Mail::assertSent(OutboundMessageMail::class, 2);
+        $this->assertSame($dailyBefore, $limiter->attempts('imip:user-day:bob'));
+        $this->assertSame(0, $limiter->attempts('imip:user:bob'));
+    }
+
+    public function test_daily_limit_setting_blocks_the_next_invite(): void
+    {
+        $this->setAppSetting(SettingKeys::IMIP_DAILY_LIMIT, 1);
+        $imip = $this->app->make(CalendarImipService::class);
+
+        $imip->deliver('bob', $this->externalRequest('one@elsewhere.test', 'day-limit-1'));
+        $imip->deliver('bob', $this->externalRequest('two@elsewhere.test', 'day-limit-2'));
+
+        Mail::assertSent(OutboundMessageMail::class, 1);
+        $this->assertSame(1, CalendarRsvpToken::query()->count());
+    }
+
+    public function test_reschedule_reaches_a_previously_invited_guest_when_invites_are_off(): void
+    {
+        $eventId = $this->bobInvitesExternal();
+        Mail::assertSent(OutboundMessageMail::class, 1);
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+        $this->forgetSchedulingProcess();
+
+        $this->jmapAs('bob', [[
+            'CalendarEvent/set',
+            ['accountId' => 'bob', 'update' => [$eventId => [
+                'start' => '2030-02-01T12:00:00Z',
+                'end' => '2030-02-01T12:30:00Z',
+            ]]],
+            'c0',
+        ]])->assertOk();
+
+        $this->assertSame(2, $this->sentTo('guest@elsewhere.test'));
+        Mail::assertSent(OutboundMessageMail::class, 2);
+    }
+
+    public function test_reschedule_does_not_reach_a_guest_who_fell_outside_the_cap(): void
+    {
+        $created = $this->jmapAs('bob', [[
+            'CalendarEvent/set',
+            ['accountId' => 'bob', 'create' => ['inv' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Wide Sync',
+                'start' => '2030-03-01T10:00:00Z',
+                'end' => '2030-03-01T10:30:00Z',
+                'participants' => $this->externalParticipants(51),
+            ]]],
+            'c0',
+        ]])->assertOk();
+        $eventId = (string) $created->json('methodResponses.0.1.created.inv.id');
+        $this->assertNotSame('', $eventId);
+        $this->assertSame(1, $this->sentTo('guest1@elsewhere.test'));
+        $this->assertSame(0, $this->sentTo('guest51@elsewhere.test'));
+        $this->assertSame(
+            0,
+            CalendarRsvpToken::query()->where('attendee_email', 'guest51@elsewhere.test')->count(),
+        );
+
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+        $this->forgetSchedulingProcess();
+
+        $this->jmapAs('bob', [[
+            'CalendarEvent/set',
+            ['accountId' => 'bob', 'update' => [$eventId => [
+                'start' => '2030-03-01T12:00:00Z',
+                'end' => '2030-03-01T12:30:00Z',
+            ]]],
+            'c0',
+        ]])->assertOk();
+
+        $this->assertSame(2, $this->sentTo('guest1@elsewhere.test'));
+        $this->assertSame(0, $this->sentTo('guest51@elsewhere.test'));
+        $this->assertSame(
+            0,
+            CalendarRsvpToken::query()->where('attendee_email', 'guest51@elsewhere.test')->count(),
+        );
+    }
+
+    public function test_previously_invited_guest_past_the_cap_still_receives_an_update_when_invites_are_off(): void
+    {
+        $this->setAppSetting(SettingKeys::IMIP_EXTERNAL_ENABLED, false);
+        CalendarRsvpToken::query()->create([
+            'token_hash' => CalendarRsvpToken::hashRaw('already-sent'),
+            'event_uid' => 'wide-update',
+            'attendee_email' => 'guest51@elsewhere.test',
+            'organizer_username' => 'bob',
+            'expires_at' => time() - 10,
+            'used_partstat' => null,
+        ]);
+
+        $this->app->make(CalendarImipService::class)->deliver(
+            'bob',
+            $this->wideExternalRequest('wide-update', 'guest51@elsewhere.test'),
+        );
+
+        Mail::assertSent(OutboundMessageMail::class, function (OutboundMessageMail $mail): bool {
+            return $mail->outbound->to === ['guest51@elsewhere.test']
+                && $mail->outbound->calendarMethod === 'REQUEST';
+        });
+    }
+
+    public function test_event_cap_resolves_local_principals_once_per_attendee_list(): void
+    {
+        $connection = DB::connection('wgw');
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+
+        $imip = $this->app->make(CalendarImipService::class);
+        $imip->deliver('bob', $this->wideExternalRequest('wide-memo', 'guest1@elsewhere.test'));
+        $imip->deliver('bob', $this->wideExternalRequest('wide-memo', 'guest2@elsewhere.test'));
+
+        $principalQueries = 0;
+        foreach ($connection->getQueryLog() as $query) {
+            if (str_contains(strtolower((string) ($query['query'] ?? '')), 'principals')) {
+                $principalQueries++;
+            }
+        }
+        $connection->disableQueryLog();
+
+        $this->assertSame(1, $principalQueries);
+        Mail::assertSent(OutboundMessageMail::class, 2);
+    }
+
+    public function test_sequence_above_zero_does_not_admit_a_guest_who_was_never_invited(): void
+    {
+        $message = $this->wideExternalRequest('wide-update', 'guest51@elsewhere.test');
+        $message->sequence = 4;
+        $this->app->make(CalendarImipService::class)->deliver('bob', $message);
 
         Mail::assertNothingSent();
+        $this->assertSame(
+            0,
+            CalendarRsvpToken::query()->where('attendee_email', 'guest51@elsewhere.test')->count(),
+        );
     }
 
     public function test_unreadable_recipient_does_not_bypass_the_event_cap(): void
@@ -650,6 +789,32 @@ final class CalendarsSchedulingImipTest extends WgwDatabaseTestCase
         );
 
         return $message;
+    }
+
+    private function wideExternalRequest(string $uid, string $recipient): Message
+    {
+        $attendees = '';
+        for ($i = 1; $i <= 51; $i++) {
+            $attendees .= "ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:guest{$i}@elsewhere.test\r\n";
+        }
+        $message = new Message;
+        $message->uid = $uid;
+        $message->method = 'REQUEST';
+        $message->sequence = 2;
+        $message->recipient = 'mailto:'.$recipient;
+        $message->sender = 'mailto:bob@example.test';
+        $message->message = Reader::read(
+            "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:{$uid}\r\nSUMMARY:Wide\r\nDTSTART:20300301T120000Z\r\nDTEND:20300301T123000Z\r\nSEQUENCE:2\r\nORGANIZER:mailto:bob@example.test\r\n{$attendees}END:VEVENT\r\nEND:VCALENDAR\r\n",
+        );
+
+        return $message;
+    }
+
+    private function sentTo(string $email): int
+    {
+        return Mail::sent(OutboundMessageMail::class, function (OutboundMessageMail $mail) use ($email): bool {
+            return in_array($email, $mail->outbound->to, true);
+        })->count();
     }
 
     /**

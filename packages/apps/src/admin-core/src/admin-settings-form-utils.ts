@@ -4,16 +4,25 @@ import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props
 /** Matches CalendarImipService::HOURLY_LIMIT_DEFAULT. The server applies the same fallback. */
 export const IMIP_HOURLY_LIMIT_DEFAULT = 100;
 
-/** Matches CalendarImipService::DAILY_LIMIT. The server clamps the hourly setting to this. */
-export const IMIP_HOURLY_LIMIT_MAX = 300;
+/** Matches CalendarImipService::DAILY_LIMIT_DEFAULT. The server applies the same fallback. */
+export const IMIP_DAILY_LIMIT_DEFAULT = 300;
 
-export function normalizeImipHourlyLimit(raw: string): number {
+export function normalizeImipDailyLimit(raw: string): number {
   const parsed = Number(raw.trim());
   if (!Number.isFinite(parsed) || parsed < 1) {
-    return IMIP_HOURLY_LIMIT_DEFAULT;
+    return IMIP_DAILY_LIMIT_DEFAULT;
   }
 
-  return Math.min(Math.floor(parsed), IMIP_HOURLY_LIMIT_MAX);
+  return Math.floor(parsed);
+}
+
+export function normalizeImipHourlyLimit(raw: string, dailyRaw: string): number {
+  const daily = normalizeImipDailyLimit(dailyRaw);
+  const parsed = Number(raw.trim());
+  const hourly =
+    !Number.isFinite(parsed) || parsed < 1 ? IMIP_HOURLY_LIMIT_DEFAULT : Math.floor(parsed);
+
+  return Math.min(hourly, daily);
 }
 
 export type AdminSettingsFormState = {
@@ -37,6 +46,8 @@ export type AdminSettingsFormState = {
   imipExternalEnabled: boolean;
   /** Raw hourly-limit field. Normalized in {@link adminSettingsFormToMap}. */
   imipHourlyLimit: string;
+  /** Raw daily-limit field. Normalized in {@link adminSettingsFormToMap}. */
+  imipDailyLimit: string;
   sabreUi: boolean;
   timezone: string;
   baseUri: string;
@@ -98,6 +109,7 @@ export function buildAdminSettingsFormState(
     contacts: data.apps.contacts,
     imipExternalEnabled: data.apps.imipExternalEnabled,
     imipHourlyLimit: String(data.apps.imipHourlyLimit),
+    imipDailyLimit: String(data.apps.imipDailyLimit),
     sabreUi: data.webdav.sabreUi,
     timezone: data.webdav.timezone,
     baseUri: data.webdav.baseUri,
@@ -138,7 +150,8 @@ export function adminSettingsFormToMap(
     calendar_enabled: state.calendars,
     contacts_enabled: state.contacts,
     imip_external_enabled: state.imipExternalEnabled,
-    imip_hourly_limit: normalizeImipHourlyLimit(state.imipHourlyLimit),
+    imip_hourly_limit: normalizeImipHourlyLimit(state.imipHourlyLimit, state.imipDailyLimit),
+    imip_daily_limit: normalizeImipDailyLimit(state.imipDailyLimit),
     browser_plugin: state.sabreUi,
     timezone: state.timezone,
     base_uri: state.baseUri,

@@ -35,6 +35,7 @@ describe("AdminWebdavPane", () => {
 
     expect(screen.getByLabelText("External invitations enabled")).toBeTruthy();
     expect(screen.getByLabelText("Hourly invitation limit")).toBeTruthy();
+    expect(screen.getByLabelText("Daily invitation limit")).toBeTruthy();
   });
 
   it("keeps the hourly limit empty while the field is cleared", () => {
@@ -46,5 +47,9 @@ describe("AdminWebdavPane", () => {
 
     fireEvent.change(limit, { target: { value: "42" } });
     expect(limit).toHaveProperty("value", "42");
+
+    const daily = screen.getByLabelText("Daily invitation limit");
+    fireEvent.change(daily, { target: { value: "" } });
+    expect(daily).toHaveProperty("value", "");
   });
 });

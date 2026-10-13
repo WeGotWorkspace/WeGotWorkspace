@@ -25,14 +25,23 @@ final class CalendarImipService
     /** Distinct external attendees on one event that may receive a REQUEST. */
     public const int EVENT_ATTENDEE_CAP = 50;
 
-    /** Outbound iMIP ceiling per user per day, including CANCEL and REPLY. */
-    public const int DAILY_LIMIT = 300;
+    /** Default outbound iMIP ceiling per user per day. Overridable via imip_daily_limit. */
+    public const int DAILY_LIMIT_DEFAULT = 300;
 
     public const int HOURLY_LIMIT_DEFAULT = 100;
 
     private const int HOURLY_DECAY_SECONDS = 3600;
 
     private const int DAILY_DECAY_SECONDS = 86400;
+
+    /**
+     * Latest attendee-cap result for this process. One entry, keyed by the
+     * attendee list, so a queue worker cannot grow the cache or reuse a set
+     * after the event changes.
+     *
+     * @var array{key: string, allowed: array<string, true>}|null
+     */
+    private ?array $externalAttendeeCapCache = null;
 
     public function __construct(
         private readonly MailDeliveryService $mail,
@@ -42,23 +51,31 @@ final class CalendarImipService
 
     public function deliver(string $organizerUsername, Message $message): void
     {
-        $invitation = $this->isInvitation($message);
-        if ($invitation && ! $this->externalInvitesEnabled()) {
-            Log::warning('imip.disabled', [
-                'organizer' => $organizerUsername,
-            ]);
+        if ($this->isSchedulingNotice($message)) {
+            $this->sendComposed($organizerUsername, $message, false);
 
             return;
         }
-        if ($invitation && ! $this->withinEventAttendeeCap($message)) {
-            Log::warning('imip.attendee_cap', [
-                'uid' => trim((string) $message->uid),
-                'cap' => self::EVENT_ATTENDEE_CAP,
-            ]);
 
-            return;
+        if (! $this->wasPreviouslyInvited($message)) {
+            if (! $this->externalInvitesEnabled()) {
+                Log::warning('imip.disabled', [
+                    'organizer' => $organizerUsername,
+                ]);
+
+                return;
+            }
+            if (! $this->withinEventAttendeeCap($message)) {
+                Log::warning('imip.attendee_cap', [
+                    'uid' => trim((string) $message->uid),
+                    'cap' => self::EVENT_ATTENDEE_CAP,
+                ]);
+
+                return;
+            }
         }
-        if ($this->sendCapped($organizerUsername, $invitation)) {
+
+        if ($this->sendCapped($organizerUsername)) {
             Log::warning('imip.throttled', [
                 'organizer' => $organizerUsername,
             ]);
@@ -66,39 +83,44 @@ final class CalendarImipService
             return;
         }
 
-        $outbound = $this->compose($organizerUsername, $message);
-        if ($outbound === null) {
-            return;
-        }
+        $this->sendComposed($organizerUsername, $message, true);
+    }
 
-        $this->recordSend($organizerUsername, $invitation);
-        $to = $outbound->to[0] ?? '';
-        Log::info('imip.sent', [
-            'organizer' => $organizerUsername,
-            'to_domain' => $this->recipientDomain($to),
-        ]);
-        $this->mail->send($outbound);
+    /**
+     * Positive daily invitation cap. Invalid values fall back to the default.
+     */
+    public static function normalizeDailyLimit(mixed $value): int
+    {
+        return self::positiveInt($value) ?? self::DAILY_LIMIT_DEFAULT;
     }
 
     /**
      * Positive hourly invitation cap, never above the daily ceiling.
      */
-    public static function normalizeHourlyLimit(mixed $value): int
+    public static function normalizeHourlyLimit(mixed $value, ?int $dailyLimit = null): int
     {
-        $parsed = null;
-        if (is_int($value) && $value > 0) {
-            $parsed = $value;
-        } elseif (is_string($value)) {
-            $filtered = filter_var($value, FILTER_VALIDATE_INT);
-            if (is_int($filtered) && $filtered > 0) {
-                $parsed = $filtered;
-            }
-        }
-        if ($parsed === null) {
-            return self::HOURLY_LIMIT_DEFAULT;
+        $parsed = self::positiveInt($value) ?? self::HOURLY_LIMIT_DEFAULT;
+        $ceiling = $dailyLimit ?? self::DAILY_LIMIT_DEFAULT;
+        if ($ceiling < 1) {
+            $ceiling = self::DAILY_LIMIT_DEFAULT;
         }
 
-        return min($parsed, self::DAILY_LIMIT);
+        return min($parsed, $ceiling);
+    }
+
+    private static function positiveInt(mixed $value): ?int
+    {
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $filtered = filter_var($value, FILTER_VALIDATE_INT);
+            if (is_int($filtered) && $filtered > 0) {
+                return $filtered;
+            }
+        }
+
+        return null;
     }
 
     public function compose(string $organizerUsername, Message $message): ?OutboundMessage
@@ -245,36 +267,84 @@ final class CalendarImipService
 
     private function hourlyLimit(): int
     {
-        return self::normalizeHourlyLimit(AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, self::HOURLY_LIMIT_DEFAULT));
+        return self::normalizeHourlyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, self::HOURLY_LIMIT_DEFAULT),
+            $this->dailyLimit(),
+        );
+    }
+
+    private function dailyLimit(): int
+    {
+        return self::normalizeDailyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_DAILY_LIMIT, self::DAILY_LIMIT_DEFAULT),
+        );
     }
 
     /**
-     * REQUEST counts toward the hourly and daily caps. CANCEL and REPLY skip
-     * the hourly cap so a user who already hit it can still cancel or RSVP,
-     * and they still consume the daily cap.
+     * New invitations and updates count toward both caps. CANCEL and REPLY
+     * never reach this path and do not consume either counter.
      */
-    private function sendCapped(string $organizerUsername, bool $invitation): bool
+    private function sendCapped(string $organizerUsername): bool
     {
-        if ($invitation && RateLimiter::tooManyAttempts($this->hourlyKey($organizerUsername), $this->hourlyLimit())) {
+        if (RateLimiter::tooManyAttempts($this->hourlyKey($organizerUsername), $this->hourlyLimit())) {
             return true;
         }
 
-        return RateLimiter::tooManyAttempts($this->dailyKey($organizerUsername), self::DAILY_LIMIT);
+        return RateLimiter::tooManyAttempts($this->dailyKey($organizerUsername), $this->dailyLimit());
     }
 
-    private function recordSend(string $organizerUsername, bool $invitation): void
+    private function recordSend(string $organizerUsername): void
     {
-        if ($invitation) {
-            RateLimiter::hit($this->hourlyKey($organizerUsername), self::HOURLY_DECAY_SECONDS);
-        }
+        RateLimiter::hit($this->hourlyKey($organizerUsername), self::HOURLY_DECAY_SECONDS);
         RateLimiter::hit($this->dailyKey($organizerUsername), self::DAILY_DECAY_SECONDS);
     }
 
-    private function isInvitation(Message $message): bool
+    private function sendComposed(string $organizerUsername, Message $message, bool $countTowardLimits): void
+    {
+        $outbound = $this->compose($organizerUsername, $message);
+        if ($outbound === null) {
+            return;
+        }
+        if ($countTowardLimits) {
+            $this->recordSend($organizerUsername);
+        }
+        $to = $outbound->to[0] ?? '';
+        Log::info('imip.sent', [
+            'organizer' => $organizerUsername,
+            'to_domain' => $this->recipientDomain($to),
+        ]);
+        $this->mail->send($outbound);
+    }
+
+    /**
+     * Cancellations and RSVP replies always send, and they do not consume the
+     * hourly or daily counters.
+     */
+    private function isSchedulingNotice(Message $message): bool
     {
         $method = strtoupper((string) $message->method);
 
-        return ! in_array($method, ['CANCEL', 'REPLY'], true);
+        return in_array($method, ['CANCEL', 'REPLY'], true);
+    }
+
+    /**
+     * A token row for this UID and address means a message was actually sent
+     * before. Expired rows still count: a later update invalidates the token
+     * without deleting it. No row means nothing arrived, including the path
+     * where mail could not be submitted.
+     */
+    private function wasPreviouslyInvited(Message $message): bool
+    {
+        $uid = trim((string) $message->uid);
+        $email = $this->addresses->normalizedEmail((string) $message->recipient);
+        if ($uid === '' || $email === null) {
+            return false;
+        }
+
+        return CalendarRsvpToken::query()
+            ->where('event_uid', $uid)
+            ->where('attendee_email', $email)
+            ->exists();
     }
 
     /**
@@ -297,7 +367,38 @@ final class CalendarImipService
      */
     private function externalAttendeesWithinCap(Message $message): array
     {
-        $allowed = [];
+        $key = $this->attendeeCapKey($message);
+        if ($this->externalAttendeeCapCache !== null && $this->externalAttendeeCapCache['key'] === $key) {
+            return $this->externalAttendeeCapCache['allowed'];
+        }
+
+        $allowed = $this->resolveExternalAttendeesWithinCap($message);
+        $this->externalAttendeeCapCache = ['key' => $key, 'allowed' => $allowed];
+
+        return $allowed;
+    }
+
+    private function attendeeCapKey(Message $message): string
+    {
+        $parts = [trim((string) $message->uid)];
+        foreach ($message->message->select('VEVENT') as $event) {
+            if (! $event instanceof VEvent || ! isset($event->ATTENDEE)) {
+                continue;
+            }
+            foreach ($event->ATTENDEE as $attendee) {
+                $parts[] = (string) $attendee;
+            }
+        }
+
+        return hash('sha256', implode("\n", $parts));
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function resolveExternalAttendeesWithinCap(Message $message): array
+    {
+        $ordered = [];
         foreach ($message->message->select('VEVENT') as $event) {
             if (! $event instanceof VEvent || ! isset($event->ATTENDEE)) {
                 continue;
@@ -307,17 +408,23 @@ final class CalendarImipService
                 : null;
             foreach ($event->ATTENDEE as $attendee) {
                 $candidate = $this->addresses->normalizedEmail((string) $attendee);
-                if ($candidate === null || $candidate === $organizer || isset($allowed[$candidate])) {
+                if ($candidate === null || $candidate === $organizer || isset($ordered[$candidate])) {
                     continue;
                 }
-                if ($this->addresses->principalForMailto($candidate) !== null) {
-                    continue;
-                }
-                if (count($allowed) >= self::EVENT_ATTENDEE_CAP) {
-                    return $allowed;
-                }
-                $allowed[$candidate] = true;
+                $ordered[$candidate] = true;
             }
+        }
+
+        $local = $this->addresses->localMailboxes(array_keys($ordered));
+        $allowed = [];
+        foreach (array_keys($ordered) as $candidate) {
+            if (isset($local[$candidate])) {
+                continue;
+            }
+            if (count($allowed) >= self::EVENT_ATTENDEE_CAP) {
+                return $allowed;
+            }
+            $allowed[$candidate] = true;
         }
 
         return $allowed;

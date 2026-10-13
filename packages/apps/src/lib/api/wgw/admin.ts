@@ -161,6 +161,7 @@ export function mapWgwAdminStateToUI(
       contacts: state.apps.contacts,
       imipExternalEnabled: state.apps.imipExternalEnabled,
       imipHourlyLimit: state.apps.imipHourlyLimit,
+      imipDailyLimit: state.apps.imipDailyLimit,
     },
     webdav: {
       sabreUi: state.webdav.sabreUi,

@@ -82,6 +82,8 @@ function applySettingsMap(
   if (imipExternalEnabled !== undefined) data.apps.imipExternalEnabled = imipExternalEnabled;
   const imipHourlyLimit = readNumber("imip_hourly_limit");
   if (imipHourlyLimit !== undefined) data.apps.imipHourlyLimit = imipHourlyLimit;
+  const imipDailyLimit = readNumber("imip_daily_limit");
+  if (imipDailyLimit !== undefined) data.apps.imipDailyLimit = imipDailyLimit;
 
   const sabreUi = readBool("browser_plugin");
   if (sabreUi !== undefined) data.webdav.sabreUi = sabreUi;

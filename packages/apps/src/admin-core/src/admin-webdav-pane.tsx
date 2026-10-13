@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { buttonVariants } from "@/ui/button";
-import { IMIP_HOURLY_LIMIT_MAX } from "@/admin-core/src/admin-settings-form-utils";
 import { TIMEZONES } from "@/admin-core/src/admin-workspace-utils";
 import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
@@ -137,7 +136,7 @@ export function AdminWebdavPane({ controller }: AdminWebdavPaneProps) {
       <Card title="Invitations">
         <FeatureRow
           label="External invitations"
-          desc="Email new invitations to people outside this instance. Cancellations and RSVP replies still send."
+          desc="Email new invitations to people outside this instance. Updates to people already invited, cancellations, and RSVP replies still send."
           value={controller.settingsForm.imipExternalEnabled}
           onChange={(next) =>
             controller.setSettingsForm((prev) => ({ ...prev, imipExternalEnabled: next }))
@@ -148,13 +147,27 @@ export function AdminWebdavPane({ controller }: AdminWebdavPaneProps) {
             id="admin-webdav-imip-hourly-limit"
             type="number"
             min={1}
-            max={IMIP_HOURLY_LIMIT_MAX}
             value={controller.settingsForm.imipHourlyLimit}
             onChange={(event) => {
               const value = event.target.value;
               controller.setSettingsForm((prev) => ({
                 ...prev,
                 imipHourlyLimit: value,
+              }));
+            }}
+          />
+        </FormField>
+        <FormField htmlFor="admin-webdav-imip-daily-limit" label="Daily invitation limit">
+          <Input
+            id="admin-webdav-imip-daily-limit"
+            type="number"
+            min={1}
+            value={controller.settingsForm.imipDailyLimit}
+            onChange={(event) => {
+              const value = event.target.value;
+              controller.setSettingsForm((prev) => ({
+                ...prev,
+                imipDailyLimit: value,
               }));
             }}
           />
