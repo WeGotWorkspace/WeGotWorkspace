@@ -227,6 +227,36 @@ final class PasswordRecoveryTest extends WgwDatabaseTestCase
         $this->assertSame(0, $this->tokenCount());
     }
 
+    public function test_rejected_outbound_recipient_logs_a_reason_and_drops_the_token(): void
+    {
+        $logged = [];
+        Log::listen(function (MessageLogged $event) use (&$logged): void {
+            if ($event->message !== 'password-recovery.skipped') {
+                return;
+            }
+
+            $logged[] = ['level' => $event->level, 'context' => $event->context];
+        });
+
+        $this->enableMailDelivery();
+        $this->seedWgwUser('alice', email: 'alice@example.test');
+        $GLOBALS['wgw_force_invalid_mail_recipient'] = true;
+
+        try {
+            $this->postJson('/api/v1/auth/password-resets', ['identifier' => 'alice'])
+                ->assertOk()
+                ->assertJson(['ok' => true]);
+        } finally {
+            unset($GLOBALS['wgw_force_invalid_mail_recipient']);
+        }
+
+        $this->assertSame([
+            ['level' => 'warning', 'context' => ['reason' => 'invalid_recipient']],
+        ], $logged);
+        $this->assertSame(0, $this->tokenCount());
+        Mail::assertNothingSent();
+    }
+
     public function test_request_is_rate_limited(): void
     {
         putenv('WGW_DISABLE_LOGIN_THROTTLE');
