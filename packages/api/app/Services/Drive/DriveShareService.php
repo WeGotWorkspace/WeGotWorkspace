@@ -302,7 +302,7 @@ final class DriveShareService
             }
             $this->rules->assertCommentReviewApplicable($share->path, $access);
 
-            $grant = $this->grantWriter->upsertEmailInviteGrant($share, $email, $access);
+            $grant = $this->grantWriter->upsertEmailInviteGrant($share, $email, $access, rotatePending: true);
             $inviteToken = $grant->displayedInviteToken();
             if (! is_string($inviteToken) || $inviteToken === '') {
                 throw new ApiHttpException(500, 'Invite token could not be issued.', 'server_error');

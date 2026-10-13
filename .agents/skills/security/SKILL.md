@@ -26,6 +26,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
 - Reissuing a time-limited secret must rotate the value and the expiry. A resend that returns the stored secret hands out a credential the accept path already rejects.
+- A permission update must not rotate a live invite. Only the resend path rotates a token that still accepts. An already-expired token may be replaced; the caller does not receive that replacement unless the route is a resend.
 - Do not allowlist a secret-shaped string this change introduces. Rewrite the commit while it is still off the default branch. A global allowlist regex hides that string in every future file.
 - Decrypting a stored secret while building a list must fail that row only. One undecryptable record must not fail the whole response.
 
