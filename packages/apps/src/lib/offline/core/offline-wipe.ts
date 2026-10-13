@@ -8,6 +8,10 @@ const COLLAB_DB_SUFFIX = ":v2";
 const NOTES_STORE = "notes_notes";
 const DOCS_STORE = "docs_availability";
 const OUTBOX_STORE = "outbox";
+/** y-indexeddb store that holds `PENDING_SERVER_SAVE_KEY` (`use-docs-collab-save.ts`). */
+const COLLAB_CUSTOM_STORE = "custom";
+const PENDING_SERVER_SAVE_KEY = "pendingServerSave";
+const INDEXED_DB_STEP_TIMEOUT_MS = 2_000;
 
 type AuthorizedFetch = (path: string, init?: RequestInit) => Promise<Response>;
 type AccountKeyFromUsername = (username: string) => string;
@@ -44,8 +48,8 @@ export async function releasePushOnLogout(authorizedFetch: AuthorizedFetch): Pro
 /**
  * Close and delete every offline account database, every note and document
  * collab room, and the remembered usernames. The account database includes the
- * outbox, so unsynced mutations are discarded with it. The logout screen counts
- * those rows and asks before it calls this.
+ * outbox and every collab room, including document and note bodies that were
+ * never saved. The logout screen counts that work and asks before it calls this.
  */
 export async function wipeOfflineAccountData(): Promise<void> {
   const Dexie = (await import("dexie")).default;
@@ -64,13 +68,18 @@ export async function wipeOfflineAccountData(): Promise<void> {
   if (failure) throw failure;
 }
 
-/** Outbox rows the next logout wipe would discard. */
-export async function countLogoutOutboxMutations(): Promise<number> {
-  const names = await accountDatabaseNames();
+/**
+ * Unsynced work the next logout wipe discards, on every account database on
+ * this device. The wipe deletes all of them, so the number is device-wide:
+ * outbox rows plus collab rooms that still hold an unsaved body.
+ */
+export async function countDiscardedUnsyncedChanges(): Promise<number> {
+  const targets = await collectWipeTargets();
   let total = 0;
-  for (const name of names) {
+  for (const name of targets.accountNames) {
     total += await countObjectStore(name, OUTBOX_STORE);
   }
+  total += await countPendingCollabRooms(targets.collabNames);
   return total;
 }
 
@@ -100,20 +109,30 @@ async function deleteServerPushSubscription(
   }
 }
 
+type WipeTargets = {
+  accountNames: string[];
+  collabNames: string[];
+};
+
 async function databasesToWipe(): Promise<string[]> {
+  const targets = await collectWipeTargets();
+  return [...targets.accountNames, ...targets.collabNames];
+}
+
+async function collectWipeTargets(): Promise<WipeTargets> {
   const listed = await listIndexedDatabaseNames();
   const accountNames = await accountNamesFromListing(listed);
-  const names = new Set<string>(accountNames);
+  const collabNames = new Set<string>();
   for (const roomKey of await roomKeysFromAccountDatabases(accountNames)) {
-    addCollabNames(names, roomKey);
+    addCollabNames(collabNames, roomKey);
   }
   if (listed) {
     for (const name of listed) {
       const roomKey = roomKeyFromListedCollabDatabase(name);
-      if (roomKey) addCollabNames(names, roomKey);
+      if (roomKey) addCollabNames(collabNames, roomKey);
     }
   }
-  return [...names];
+  return { accountNames, collabNames: [...collabNames] };
 }
 
 /**
@@ -124,10 +143,6 @@ async function databasesToWipe(): Promise<string[]> {
  * referenced there survives. The logout test that removes `databases()` covers
  * that narrower path.
  */
-async function accountDatabaseNames(): Promise<string[]> {
-  return accountNamesFromListing(await listIndexedDatabaseNames());
-}
-
 async function accountNamesFromListing(listed: string[] | null): Promise<string[]> {
   if (listed) return listed.filter((name) => name.startsWith(OFFLINE_DB_PREFIX));
   const { offlineAccountKeyFromUsername } = await import("@/lib/offline/core/offline-db");
@@ -176,6 +191,44 @@ function roomKeyFromListedCollabDatabase(name: string): string | null {
   return room ? room : null;
 }
 
+/** One room counts once, even when both the `:v2` database and a legacy name have the flag. */
+async function countPendingCollabRooms(databaseNames: string[]): Promise<number> {
+  const rooms = new Set<string>();
+  for (const name of databaseNames) {
+    if (!(await collabDatabaseHasPendingSave(name))) continue;
+    rooms.add(collabRoomKeyFromDatabaseName(name));
+  }
+  return rooms.size;
+}
+
+function collabRoomKeyFromDatabaseName(name: string): string {
+  const withoutVersion = name.endsWith(COLLAB_DB_SUFFIX)
+    ? name.slice(0, -COLLAB_DB_SUFFIX.length)
+    : name;
+  return withoutVersion.replace(/^\/+/, "");
+}
+
+async function collabDatabaseHasPendingSave(databaseName: string): Promise<boolean> {
+  const value = await readObjectStoreValue(
+    databaseName,
+    COLLAB_CUSTOM_STORE,
+    PENDING_SERVER_SAVE_KEY,
+  );
+  return Boolean(value);
+}
+
+function readObjectStoreValue(
+  databaseName: string,
+  storeName: string,
+  key: string,
+): Promise<unknown> {
+  return openStore(databaseName, storeName, undefined, (store, done, fail) => {
+    const request = store.get(key);
+    request.onerror = () => fail(request.error ?? new Error(`read ${storeName} failed`));
+    request.onsuccess = () => done(request.result);
+  });
+}
+
 async function listIndexedDatabaseNames(): Promise<string[] | null> {
   if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
   try {
@@ -217,15 +270,27 @@ function openStore<T>(
       return missing;
     }
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, "readonly");
+      let settled = false;
+      const timer = setTimeout(() => {
+        fail(new Error(`read ${storeName} timed out`));
+      }, INDEXED_DB_STEP_TIMEOUT_MS);
       const finish = (value: T) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         db.close();
         resolve(value);
       };
       const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         db.close();
         reject(error);
       };
+      const tx = db.transaction(storeName, "readonly");
+      tx.onabort = () => fail(tx.error ?? new Error(`read ${storeName} aborted`));
+      tx.onerror = () => fail(tx.error ?? new Error(`read ${storeName} failed`));
       read(tx.objectStore(storeName), finish, fail);
     });
   });
@@ -241,29 +306,51 @@ function openExistingDatabase(databaseName: string): Promise<IDBDatabase | null>
       resolve(null);
       return;
     }
+    let settled = false;
+    const timer = setTimeout(() => {
+      fail(new Error(`open ${databaseName} timed out`));
+    }, INDEXED_DB_STEP_TIMEOUT_MS);
+    const finish = (value: IDBDatabase | null) => {
+      if (settled) {
+        value?.close();
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    };
     const request = indexedDB.open(databaseName);
     let created = false;
     request.onupgradeneeded = () => {
       created = true;
       request.transaction?.abort();
     };
+    request.onblocked = () => {
+      fail(new Error(`open ${databaseName} blocked`));
+    };
     request.onerror = () => {
       if (created || request.error?.name === "AbortError") {
-        resolve(null);
+        finish(null);
         return;
       }
-      reject(request.error ?? new Error(`open ${databaseName} failed`));
+      fail(request.error ?? new Error(`open ${databaseName} failed`));
     };
     request.onsuccess = () => {
       const db = request.result;
       if (!created) {
-        resolve(db);
+        finish(db);
         return;
       }
       db.close();
       const drop = indexedDB.deleteDatabase(databaseName);
-      drop.onsuccess = () => resolve(null);
-      drop.onerror = () => resolve(null);
+      drop.onsuccess = () => finish(null);
+      drop.onerror = () => finish(null);
     };
   });
 }

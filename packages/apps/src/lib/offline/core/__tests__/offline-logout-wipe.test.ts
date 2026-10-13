@@ -13,7 +13,7 @@ import {
   resolveOfflineUsername,
 } from "@/lib/offline/core/offline-account";
 import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/core/offline-db";
-import { countLogoutOutboxMutations, runLogoutStep } from "@/lib/offline/core/offline-wipe";
+import { countDiscardedUnsyncedChanges, runLogoutStep } from "@/lib/offline/core/offline-wipe";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 
@@ -67,6 +67,32 @@ async function createNamedDatabase(name: string): Promise<void> {
   await db.open();
   await db.table("meta").put({ key: "body", value: "secret" });
   db.close();
+}
+
+/** y-indexeddb `custom` store, the place an unsaved body records `pendingServerSave`. */
+async function seedPendingServerSave(name: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(name);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains("custom")) {
+        request.result.createObjectStore("custom");
+      }
+    };
+    request.onerror = () => reject(request.error ?? new Error("open failed"));
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("custom", "readwrite");
+      tx.objectStore("custom").put(1, "pendingServerSave");
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onabort = () => {
+        db.close();
+        reject(tx.error ?? new Error("write aborted"));
+      };
+    };
+  });
 }
 
 function installPushSubscription(endpoint: string): {
@@ -255,6 +281,7 @@ describe("user-initiated logout", () => {
     await createNamedDatabase("note-uid");
     await createNamedDatabase("/note-uid");
     await createNamedDatabase("Docs/private.md:v2");
+    await createNamedDatabase("Docs/private.md");
     await createNamedDatabase("/Docs/private.md");
     await createNamedDatabase("orphan-room:v2");
     await createNamedDatabase("report:v2-draft");
@@ -331,7 +358,15 @@ describe("user-initiated logout", () => {
       retries: 0,
     });
 
-    await expect(countLogoutOutboxMutations()).resolves.toBe(2);
+    await expect(countDiscardedUnsyncedChanges()).resolves.toBe(2);
+  });
+
+  it("counts an unsaved document body when the outbox is empty", async () => {
+    await seedPendingServerSave("Docs/private.md:v2");
+    await seedPendingServerSave("Docs/private.md");
+
+    await expect(countDiscardedUnsyncedChanges()).resolves.toBe(1);
+    expect(await indexedDbNames()).not.toContain("/Docs/private.md");
   });
 
   it("does not create a database while counting a remembered username that has none", async () => {
@@ -339,12 +374,41 @@ describe("user-initiated logout", () => {
     const databases = indexedDB.databases.bind(indexedDB);
     Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
     try {
-      await expect(countLogoutOutboxMutations()).resolves.toBe(0);
+      await expect(countDiscardedUnsyncedChanges()).resolves.toBe(0);
     } finally {
       Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
     }
 
     expect(await indexedDbNames()).not.toContain("wgw-offline-nobody");
+  });
+
+  it("rejects a logout count when indexedDB.open never settles", async () => {
+    vi.useFakeTimers();
+    rememberOfflineUsername("notes", "alice");
+    const databases = indexedDB.databases;
+    const open = indexedDB.open.bind(indexedDB);
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    Object.defineProperty(indexedDB, "open", {
+      configurable: true,
+      value: () => ({
+        result: null,
+        error: null,
+        onsuccess: null,
+        onerror: null,
+        onupgradeneeded: null,
+        onblocked: null,
+      }),
+    });
+    try {
+      const pending = countDiscardedUnsyncedChanges();
+      const assertion = expect(pending).rejects.toThrow(/timed out/);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+      Object.defineProperty(indexedDB, "open", { configurable: true, value: open });
+    }
   });
 
   it("marks the session logged out before revoke finishes", async () => {

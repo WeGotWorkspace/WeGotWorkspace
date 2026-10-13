@@ -34,6 +34,7 @@ describe("WeGotWorkspaceLogout", () => {
 
   it("asks before discarding unsynced changes", async () => {
     const completeLogout = vi.fn().mockResolvedValue("member_login");
+    Object.defineProperty(window.history, "length", { configurable: true, value: 2 });
     const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
 
     render(
@@ -45,11 +46,34 @@ describe("WeGotWorkspaceLogout", () => {
     );
 
     expect(await screen.findByRole("alertdialog")).toBeTruthy();
-    expect(screen.getByText("You have 2 unsynced changes. They will be discarded.")).toBeTruthy();
+    expect(
+      screen.getByText("This device has 2 unsynced changes. They will be discarded."),
+    ).toBeTruthy();
     expect(completeLogout).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(back).toHaveBeenCalledOnce();
+    expect(completeLogout).not.toHaveBeenCalled();
+  });
+
+  it("returns home when cancel has no history entry to restore", async () => {
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+    Object.defineProperty(window.history, "length", { configurable: true, value: 1 });
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 1}
+        isGuestSession={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(back).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith({ to: "/" });
     expect(completeLogout).not.toHaveBeenCalled();
   });
 
@@ -65,7 +89,7 @@ describe("WeGotWorkspaceLogout", () => {
     );
 
     expect(
-      await screen.findByText("You have 1 unsynced change. It will be discarded."),
+      await screen.findByText("This device has 1 unsynced change. It will be discarded."),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
 

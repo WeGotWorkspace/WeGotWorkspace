@@ -5,7 +5,7 @@ import {
   wgwIsGuestSession,
   type WgwLogoutNavigation,
 } from "@/lib/api/wgw/http";
-import { countLogoutOutboxMutations } from "@/lib/offline/core/offline-wipe";
+import { countDiscardedUnsyncedChanges } from "@/lib/offline/core/offline-wipe";
 import { buttonVariants } from "@/ui/button";
 import {
   AlertDialog,
@@ -26,12 +26,12 @@ type WeGotWorkspaceLogoutProps = {
 
 function unsyncedLogoutWarning(count: number | null): string {
   if (count === null) return "Unsynced changes on this device will be discarded.";
-  if (count === 1) return "You have 1 unsynced change. It will be discarded.";
-  return `You have ${count} unsynced changes. They will be discarded.`;
+  if (count === 1) return "This device has 1 unsynced change. It will be discarded.";
+  return `This device has ${count} unsynced changes. They will be discarded.`;
 }
 
 export function WeGotWorkspaceLogout({
-  countUnsyncedChanges = countLogoutOutboxMutations,
+  countUnsyncedChanges = countDiscardedUnsyncedChanges,
   isGuestSession = wgwIsGuestSession,
   completeLogout = wgwCompleteLogoutNavigation,
 }: WeGotWorkspaceLogoutProps = {}) {
@@ -93,7 +93,11 @@ export function WeGotWorkspaceLogout({
         open={phase === "confirm"}
         onOpenChange={(open) => {
           if (open || leaving.current) return;
-          window.history.back();
+          if (window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+          void navigate({ to: "/" });
         }}
       >
         <AlertDialogContent>
