@@ -338,18 +338,29 @@ describe("FrameReassembler pending bounds", () => {
     expect(reassembler.push("remote-a", binaryFrame(1, perMessage, count, chunk))).toBeNull();
   });
 
-  it("drops an incomplete message that itself crosses the pending byte budget", () => {
+  it("finishes a message larger than the byte budget and drops the other one", () => {
     const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
     const chunk = new Uint8Array(payloadBytes);
-    const frames = Math.floor(MAX_PENDING_BYTES_PER_REMOTE / payloadBytes) + 1;
-    const count = frames + 1;
+    const framesOverBudget = Math.floor(MAX_PENDING_BYTES_PER_REMOTE / payloadBytes) + 1;
+    const count = framesOverBudget + 1;
+    expect(framesOverBudget * payloadBytes).toBeGreaterThan(MAX_PENDING_BYTES_PER_REMOTE);
     expect(count).toBeLessThanOrEqual(MAX_MESSAGE_FRAMES);
-    const reassembler = new FrameReassembler();
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
 
-    for (let index = 0; index < frames; index += 1) {
+    for (let index = 0; index < framesOverBudget; index += 1) {
       expect(reassembler.push("remote-a", binaryFrame(1, index, count, chunk))).toBeNull();
     }
-    expect(reassembler.push("remote-a", binaryFrame(1, frames, count, chunk))).toBeNull();
+
+    clock.set(2_000);
+    for (let index = 0; index < framesOverBudget; index += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(2, index, count, chunk))).toBeNull();
+    }
+    const completed = new TextDecoder().decode(new Uint8Array(payloadBytes * count));
+    expect(reassembler.push("remote-a", binaryFrame(2, framesOverBudget, count, chunk))).toBe(
+      completed,
+    );
+    expect(reassembler.push("remote-a", binaryFrame(1, framesOverBudget, count, chunk))).toBeNull();
   });
 
   it("reassembles a three-frame message when chunks arrive out of order", () => {
