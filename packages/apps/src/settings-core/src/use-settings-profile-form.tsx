@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useRunWithAppToast } from "@/hooks/use-run-with-app-toast";
+import { wgwCompleteLogoutNavigation } from "@/lib/api/wgw/http";
 import {
   settingsProfileFormSchemaFor,
   settingsProfileFormToRequest,
@@ -44,22 +45,32 @@ export function useSettingsProfileForm({
 
   const saveProfile = profileForm.handleSubmit(async (values) => {
     const requestBody = settingsProfileFormToRequest(values, user.email);
-    await runWithAppToast(
+    const passwordChanged =
+      typeof requestBody.password === "string" && requestBody.password.length > 0;
+    const saved = await runWithAppToast(
       async () => {
         await operations?.saveProfile(requestBody);
-        reset({
-          ...values,
-          newPassword: "",
-          confirmPassword: "",
-          currentPassword: "",
-        });
+        if (!passwordChanged) {
+          reset({
+            ...values,
+            newPassword: "",
+            confirmPassword: "",
+            currentPassword: "",
+          });
+        }
+        return passwordChanged ? "password-changed" : "saved";
       },
       {
-        success: "Profile saved",
+        success: passwordChanged ? "Password changed. Sign in again." : "Profile saved",
         successOptions: { icon: <Check className="size-4" /> },
         mapError: (error) => (error instanceof Error ? error.message : "Could not save profile"),
       },
     );
+    if (saved !== "password-changed") return;
+    const navigation = await wgwCompleteLogoutNavigation();
+    if (navigation === "member_login") {
+      window.location.assign("/login");
+    }
   });
 
   return {

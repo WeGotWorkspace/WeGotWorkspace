@@ -3,8 +3,16 @@ import { describe, expect, it, vi } from "vitest";
 import type { SettingsUIData } from "@/settings-core/src/settings-types";
 import { useSettingsProfileForm } from "@/settings-core/src/use-settings-profile-form";
 
+const { completeLogout } = vi.hoisted(() => ({
+  completeLogout: vi.fn(async () => "member_login" as const),
+}));
+
 vi.mock("@/hooks/use-run-with-app-toast", () => ({
   useRunWithAppToast: () => async (work: () => Promise<unknown>) => work(),
+}));
+
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwCompleteLogoutNavigation: completeLogout,
 }));
 
 const baseUser = {
@@ -58,6 +66,7 @@ describe("useSettingsProfileForm", () => {
         displayName: "Alice Updated",
       });
     });
+    expect(completeLogout).not.toHaveBeenCalled();
   });
 
   it("includes password in the request when a new password is set", async () => {
@@ -77,6 +86,12 @@ describe("useSettingsProfileForm", () => {
       result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
     });
 
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { assign },
+    });
+
     await act(async () => {
       await result.current.saveProfile();
     });
@@ -90,5 +105,7 @@ describe("useSettingsProfileForm", () => {
         }),
       );
     });
+    expect(completeLogout).toHaveBeenCalledOnce();
+    expect(assign).toHaveBeenCalledWith("/login");
   });
 });

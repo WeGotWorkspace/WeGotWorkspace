@@ -49,11 +49,6 @@
             "type": "string",
             "maxLength": 4096,
             "description": "Current password. Required when password or email is changed."
-          },
-          "refreshToken": {
-            "type": "string",
-            "maxLength": 512,
-            "description": "Current device refresh token. Sent with a password change so this session stays signed in."
           }
         }
       },
@@ -61,7 +56,6 @@
         "type": "object",
         "required": [
           "access_token",
-          "refresh_token",
           "token_type",
           "expires_in",
           "refresh_expires_in",
@@ -70,9 +64,6 @@
         ],
         "properties": {
           "access_token": {
-            "type": "string"
-          },
-          "refresh_token": {
             "type": "string"
           },
           "token_type": {
@@ -3164,28 +3155,18 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Refresh access token using refresh token",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "refresh_token"
-                ],
-                "properties": {
-                  "refresh_token": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
+        "summary": "Refresh access token using the HttpOnly refresh cookie",
         "responses": {
           "200": {
-            "description": "Refreshed token pair",
+            "description": "Refreshed token pair. The JSON body has no refresh_token; the rotated token is Set-Cookie.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -3198,7 +3179,15 @@
             "description": "Invalid request"
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Unauthorized. The response expires wgw_refresh so a dead token is not presented again.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Clears the wgw_refresh cookie (expired, empty value, same path and SameSite=Strict).",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
@@ -3209,27 +3198,12 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Revoke current access token and/or refresh token",
+        "summary": "Revoke current access token and the HttpOnly refresh cookie",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "refresh_token": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Revocation result"
@@ -3268,7 +3242,15 @@
         },
         "responses": {
           "200": {
-            "description": "Token issued",
+            "description": "Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie.",
+            "headers": {
+              "Set-Cookie": {
+                "description": "HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {

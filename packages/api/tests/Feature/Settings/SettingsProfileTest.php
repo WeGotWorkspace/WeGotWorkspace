@@ -268,41 +268,34 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             ->assertJsonPath('user.email', 'bob@example.test');
     }
 
-    public function test_password_change_revokes_other_refresh_tokens_and_keeps_the_callers(): void
+    public function test_password_change_revokes_every_refresh_token_including_the_callers(): void
     {
         $caller = $this->postJson('/api/v1/auth/token', [
             'username' => 'bob',
             'password' => 'secret',
         ])->assertOk();
         $access = (string) $caller->json('access_token');
-        $refresh = (string) $caller->json('refresh_token');
+        $refresh = $this->refreshCookieValue($caller);
 
         $other = $this->postJson('/api/v1/auth/token', [
             'username' => 'bob',
             'password' => 'secret',
         ])->assertOk();
-        $otherRefresh = (string) $other->json('refresh_token');
+        $otherRefresh = $this->refreshCookieValue($other);
         $epochBefore = (int) User::query()->where('username', 'bob')->value('ui_session_epoch');
 
         $this->withBearer($access)->putJson('/api/v1/settings/profile', [
             'password' => 'newpassword12',
             'currentPassword' => 'secret',
-            'refreshToken' => $refresh,
         ])->assertOk();
 
         $this->assertSame(
             $epochBefore + 1,
             (int) User::query()->where('username', 'bob')->value('ui_session_epoch'),
         );
-        $this->withBearer($access)->getJson('/api/v1/settings/state')->assertOk();
 
-        $this->postJson('/api/v1/auth/refresh', [
-            'refresh_token' => $refresh,
-        ])->assertOk();
-
-        $this->postJson('/api/v1/auth/refresh', [
-            'refresh_token' => $otherRefresh,
-        ])->assertUnauthorized();
+        $this->postRefresh($refresh)->assertUnauthorized();
+        $this->postRefresh($otherRefresh)->assertUnauthorized();
     }
 
     public function test_wrong_current_password_shares_the_login_rate_limit(): void

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveSettingsProfile } from "@/lib/api/wgw/settings";
-import { resetWgwSessionStateForTests, WGW_GUEST_REFRESH_TOKEN } from "@/lib/api/wgw/http";
+import { resetWgwSessionStateForTests } from "@/lib/api/wgw/http";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
-const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+const SESSION_KIND_KEY = "wgw.api.session_kind";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 
@@ -21,20 +21,20 @@ function makeJwt(exp: number): string {
   return `${header}.${payload}.signature`;
 }
 
-function installSession(refreshToken: string): void {
+function installSession(sessionKind: "member" | "guest" = "member"): void {
   const expiresAt = Date.now() + 60 * 60_000;
   window.localStorage.setItem(ACCESS_TOKEN_KEY, makeJwt(Math.floor(Date.now() / 1_000) + 3600));
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  window.localStorage.setItem(SESSION_KIND_KEY, sessionKind);
   window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(expiresAt));
   window.localStorage.setItem(REFRESH_EXPIRES_AT_KEY, String(expiresAt));
 }
 
 /** Access token still valid, but inside the 180s client refresh margin. */
-function installSessionInsideRefreshMargin(refreshToken: string): void {
+function installSessionInsideRefreshMargin(): void {
   const accessTtlMs = 60_000;
   const expiresAt = Date.now() + accessTtlMs;
   window.localStorage.setItem(ACCESS_TOKEN_KEY, makeJwt(Math.floor(Date.now() / 1_000) + 60));
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  window.localStorage.setItem(SESSION_KIND_KEY, "member");
   window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(expiresAt));
   window.localStorage.setItem(REFRESH_EXPIRES_AT_KEY, String(Date.now() + 14 * 24 * 60 * 60_000));
 }
@@ -83,8 +83,8 @@ afterEach(() => {
 });
 
 describe("saveSettingsProfile", () => {
-  it("sends the current refresh token when the password changes", async () => {
-    installSession("refresh-current");
+  it("sends the profile body without a refresh token when the password changes", async () => {
+    installSession("member");
     const fetchMock = vi.fn(async () => settingsStateResponse());
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -94,16 +94,17 @@ describe("saveSettingsProfile", () => {
       currentPassword: "secret",
     });
 
-    expect(profileRequestBody(fetchMock)).toMatchObject({
+    const body = profileRequestBody(fetchMock);
+    expect(body).toMatchObject({
       displayName: "Alice Example",
       password: "newpassword12",
       currentPassword: "secret",
-      refreshToken: "refresh-current",
     });
+    expect(body).not.toHaveProperty("refreshToken");
   });
 
   it("omits refreshToken when the password is unchanged", async () => {
-    installSession("refresh-current");
+    installSession("member");
     const fetchMock = vi.fn(async () => settingsStateResponse());
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -121,7 +122,7 @@ describe("saveSettingsProfile", () => {
   });
 
   it("omits refreshToken for a guest session even when the password changes", async () => {
-    installSession(WGW_GUEST_REFRESH_TOKEN);
+    installSession("guest");
     const fetchMock = vi.fn(async () => settingsStateResponse());
     globalThis.fetch = fetchMock as typeof fetch;
 
@@ -134,8 +135,8 @@ describe("saveSettingsProfile", () => {
     expect(profileRequestBody(fetchMock)).not.toHaveProperty("refreshToken");
   });
 
-  it("sends the refresh token rotated inside the access-token margin", async () => {
-    installSessionInsideRefreshMargin("refresh-current");
+  it("refreshes inside the access-token margin and still omits refreshToken", async () => {
+    installSessionInsideRefreshMargin();
     const rotatedAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3600);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -143,7 +144,6 @@ describe("saveSettingsProfile", () => {
         return new Response(
           JSON.stringify({
             access_token: rotatedAccess,
-            refresh_token: "refresh-rotated",
             expires_in: 3600,
             refresh_expires_in: 1209600,
             token_type: "Bearer",
@@ -162,11 +162,12 @@ describe("saveSettingsProfile", () => {
       currentPassword: "secret",
     });
 
-    expect(profileRequestBody(fetchMock)).toMatchObject({
+    const body = profileRequestBody(fetchMock);
+    expect(body).toMatchObject({
       displayName: "Alice Example",
       password: "newpassword12",
       currentPassword: "secret",
-      refreshToken: "refresh-rotated",
     });
+    expect(body).not.toHaveProperty("refreshToken");
   });
 });

@@ -3,6 +3,7 @@
 ## Wire contract (parity)
 
 - RS256 bearer + refresh rotation; same JSON keys as OpenAPI `AuthTokenResponse`
+- The refresh token is cookie-borne (`wgw_refresh`, HttpOnly, path `<webBase>/api/v1/auth`). It is not in the JSON body and is not accepted from the request body.
 - Endpoints: `auth/token`, `auth/session`, `auth/refresh`, `auth/revoke`, `me`, `/.well-known/jwks.json`
 
 ## Implementation (greenfield)

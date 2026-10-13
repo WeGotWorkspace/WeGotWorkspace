@@ -18,6 +18,7 @@ use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
+use App\Services\Auth\RefreshCookie;
 use App\Services\Collab\CollabResponseException;
 use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpPublicOrigin;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: [
             'sabre_ui_auth',
+            RefreshCookie::NAME,
         ]);
         $middleware->alias([
             'wgw.auth' => AuthenticateWgwApi::class,

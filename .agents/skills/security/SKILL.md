@@ -40,5 +40,6 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - Does a 429 reach the client as `rate_limited` with the exception's `Retry-After` (and the other throttle headers)? The catch-all renderer must not map it to `server_error` or build a fresh response that drops those headers.
 - Does the order test use the sorted pipeline (`Router::gatherRouteMiddleware`), not `Route::gatherMiddleware()`? Declared order stays green when the priority sort moves the limiter in front of auth and the key falls back to the client address.
 - Does every entry that reaches the expensive call share the cap (HTTP rules and MCP tool rules), with the service check as the last line? An offset on a query that sorts with per-row work needs a ceiling. Clamping it and setting `hasMore` false stops a scroll; rejecting it with 400 breaks clients that page until `hasMore` is false. Skipping rows does not skip the scan.
+- A long-lived refresh credential must not be readable by script. Put it in an HttpOnly cookie scoped to the endpoints that redeem it, and test that a body-supplied copy is ignored. A rejected cookie must be cleared so the browser does not present a dead token forever.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

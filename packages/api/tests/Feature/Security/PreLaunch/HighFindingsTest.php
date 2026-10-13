@@ -130,7 +130,7 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->deleteJson('/api/v1/admin/users/bob')
             ->assertSuccessful();
 
-        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+        $this->postRefresh($bob['refresh_token'])
             ->assertUnauthorized();
     }
 
@@ -149,7 +149,7 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->deleteJson('/api/v1/admin/groups/administrators/members/alice')
             ->assertOk();
 
-        $refreshed = $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $alice['refresh_token']]);
+        $refreshed = $this->postRefresh($alice['refresh_token']);
         if ($refreshed->status() === 401) {
             $this->assertTrue(true);
 
@@ -193,7 +193,7 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->patchJson('/api/v1/admin/users/bob', ['password' => 'a-brand-new-password'])
             ->assertSuccessful();
 
-        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+        $this->postRefresh($bob['refresh_token'])
             ->assertUnauthorized();
     }
 
@@ -310,7 +310,7 @@ final class HighFindingsTest extends WgwDatabaseTestCase
 
         return [
             'access_token' => (string) $response->json('access_token'),
-            'refresh_token' => (string) $response->json('refresh_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
         ];
     }
 }
