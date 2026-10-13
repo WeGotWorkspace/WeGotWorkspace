@@ -347,9 +347,7 @@ export const InChannel: Story = {
     expect(canvasElement.querySelector(".meet-call-expanded")).toBeTruthy();
     expect(canvasElement.querySelector(".workspace-app-layout__main-header")).toBeNull();
     expect(canvasElement.querySelector(".meet-chat")).toBeNull();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.chatEmpty)).not.toBeInTheDocument();
     await expect(
       canvas.getByRole("heading", { name: meetLabels.meetInChannel("Design") }),

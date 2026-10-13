@@ -1,4 +1,4 @@
-export type MeetCallStageLayout = "collapsed" | "compact" | "side-by-side" | "fullscreen";
+export type MeetCallStageLayout = "collapsed" | "side-by-side" | "fullscreen";
 
 /** Sticky-bar invite while a meeting is live and this user has not joined. Start never lives here. */
 export type MeetCallInvite = "join";
@@ -100,13 +100,9 @@ export function meetCallHeaderStartVisible(meetingLive: boolean): boolean {
   return !meetingLive;
 }
 
-export function meetCallStageShowsBar(layout: MeetCallStageLayout): boolean {
-  return layout === "compact";
-}
-
 /**
- * Sticky bar / tile strip when this channel has a live meeting and the stage is not expanded.
- * Idle channels show no chrome.
+ * Sticky bar when a meeting is live, this user has not joined, and the stage is not up.
+ * Idle channels show no chrome. There is no in-call compact bar.
  */
 export function meetCallBarVisible(
   layout: MeetCallStageLayout,
@@ -116,7 +112,7 @@ export function meetCallBarVisible(
   return meetingLive && !localJoined && !meetCallStageShowsStage(layout);
 }
 
-/** Mic / camera / settings / expand / leave — only after this user joins. */
+/** Mic / camera / settings / leave — only after this user joins. */
 export function meetCallChromeVisible(localJoined: boolean): boolean {
   return localJoined;
 }

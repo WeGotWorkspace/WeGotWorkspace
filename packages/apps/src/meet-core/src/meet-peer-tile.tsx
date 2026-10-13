@@ -35,8 +35,8 @@ type MeetPeerTileProps = {
    */
   onMuteParticipant?: (muted: boolean) => void;
   /**
-   * Local pin. Omitted state is kept on the tile — Meet has no pin signal.
-   * Pass `pinned` to control it from the parent.
+   * Local pin. When omitted, the tile keeps its own state for Storybook.
+   * A live call passes `pinned` from the parent, which is what makes pin exclusive.
    */
   pinned?: boolean;
   onTogglePin?: (pinned: boolean) => void;
@@ -181,10 +181,20 @@ export function MeetPeerTile({
           variant="outline"
           icon={micLiveUi ? <Mic /> : <MicOff />}
           label={muteLabel}
-          aria-pressed={micLiveUi}
           onClick={onMuteClick}
         />
-      ) : null}
+      ) : (
+        <span
+          className={cn(
+            "meet-peer-tile__control meet-peer-tile__mic-state",
+            !micLiveUi && "meet-peer-tile__control--persistent",
+          )}
+          role="img"
+          aria-label={micLiveUi ? meetLabels.micLive(name) : meetLabels.micMuted(name)}
+        >
+          {micLiveUi ? <Mic /> : <MicOff />}
+        </span>
+      )}
       <IconButton
         className={cn(
           "meet-peer-tile__control meet-peer-tile__pin",

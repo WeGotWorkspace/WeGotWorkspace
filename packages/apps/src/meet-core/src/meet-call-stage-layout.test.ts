@@ -7,7 +7,6 @@ import {
   meetCallInviteStartOptions,
   meetCallIsActive,
   meetCallLiveAudioOnly,
-  meetCallStageShowsBar,
   meetCallStageShowsChat,
   meetCallStageShowsStage,
   meetChannelMeetingLive,
@@ -18,17 +17,10 @@ import {
 } from "@/meet-core/src/meet-call-stage-layout";
 
 describe("meetCallStage layout", () => {
-  it("keeps chat as the main column while the compact bar is up", () => {
-    expect(meetCallIsActive("compact")).toBe(true);
-    expect(meetCallStageShowsBar("compact")).toBe(true);
-    expect(meetCallStageShowsChat("compact")).toBe(true);
-    expect(meetCallStageShowsStage("compact")).toBe(false);
-  });
-
   it("shows chat and stage side by side", () => {
     expect(meetCallStageShowsChat("side-by-side")).toBe(true);
     expect(meetCallStageShowsStage("side-by-side")).toBe(true);
-    expect(meetCallStageShowsBar("side-by-side")).toBe(false);
+    expect(meetCallIsActive("side-by-side")).toBe(true);
   });
 
   it("keeps the white chat column when the stage is expanded", () => {
@@ -40,15 +32,13 @@ describe("meetCallStage layout", () => {
 
   it("hides the stage when collapsed", () => {
     expect(meetCallIsActive("collapsed")).toBe(false);
-    expect(meetCallStageShowsBar("collapsed")).toBe(false);
     expect(meetCallStageShowsChat("collapsed")).toBe(true);
     expect(meetCallStageShowsStage("collapsed")).toBe(false);
   });
 
-  it("shows the sticky bar only when a meeting is live and the stage is not expanded", () => {
+  it("shows the sticky bar only when a meeting is live and this user has not joined", () => {
     expect(meetCallBarVisible("collapsed", false)).toBe(false);
     expect(meetCallBarVisible("collapsed", true)).toBe(true);
-    expect(meetCallBarVisible("compact", true, true)).toBe(false);
     expect(meetCallBarVisible("collapsed", true, true)).toBe(false);
     expect(meetCallBarVisible("side-by-side", true)).toBe(false);
     expect(meetCallBarVisible("fullscreen", true)).toBe(false);

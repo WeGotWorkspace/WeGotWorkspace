@@ -13,12 +13,12 @@ export type UseMeetCallLayoutArgs = {
    * follows session *transitions*: a session that ends (remote end, join
    * failure) collapses its channel's chrome, and an already-running session
    * (e.g. restored from the suite call store after a route remount) restores
-   * the last compact/expanded chrome instead of forcing the split stage.
+   * that session's stage chrome instead of forcing side-by-side.
    */
   liveCallChannelId?: string | null;
   /**
-   * Compact vs expanded chrome to restore when an already-running session is
-   * remounted. Defaults to the compact bar (join chrome), not the split stage.
+   * Stage chrome to restore when an already-running session is remounted.
+   * Omitted values open the expanded stage.
    */
   resumeLayout?: MeetCallStageLayout;
 };
@@ -37,21 +37,15 @@ export function meetInitialCallLayoutForChannel(
   return initialLayout;
 }
 
-function joinedStageLayout(layout: MeetCallStageLayout): MeetCallStageLayout {
-  return layout === "compact" ? "side-by-side" : layout;
-}
-
 function seedLayouts(
   channelId: string | null,
   initialLayout: MeetCallStageLayout,
   liveCallChannelId?: string | null,
 ): Record<string, MeetCallStageLayout> {
   if (initialLayout === "collapsed") return {};
-  const openLayout = joinedStageLayout(
-    meetInitialCallLayoutForChannel(channelId, initialLayout, liveCallChannelId),
-  );
+  const openLayout = meetInitialCallLayoutForChannel(channelId, initialLayout, liveCallChannelId);
   if (openLayout === "collapsed") {
-    return liveCallChannelId ? { [liveCallChannelId]: joinedStageLayout(initialLayout) } : {};
+    return liveCallChannelId ? { [liveCallChannelId]: initialLayout } : {};
   }
   if (!channelId) return {};
   return { [channelId]: openLayout };
@@ -87,9 +81,8 @@ export function useMeetCallLayout({
         delete next[id];
         return next;
       }
-      const stored = joinedStageLayout(layout);
-      if (current[id] === stored) return current;
-      return { ...current, [id]: stored };
+      if (current[id] === layout) return current;
+      return { ...current, [id]: layout };
     });
   }, []);
 

@@ -152,4 +152,75 @@ describe("Meet call screen-share layout", () => {
       "Alex Morgan",
     );
   });
+
+  it("plays a pinned remote through exactly one video", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    const alex = mediaStream();
+    const jamie = mediaStream();
+    const self = mediaStream();
+    const controller = createMeetStoryController(createRef<HTMLVideoElement>(), {
+      screenOn: false,
+      peers: [
+        { ...STORY_MEET_PEERS[0]!, stream: alex },
+        { ...STORY_MEET_PEERS[1]!, stream: jamie },
+      ],
+      getLocalStream: () => self,
+      videoOn: false,
+      displayName: "Demo User",
+    });
+    const { container } = render(
+      <TooltipProvider>
+        <MeetCallExpanded
+          monitorSpeech={false}
+          controller={controller}
+          displayName="Demo User"
+          hasSignedInIdentity
+          participantCount={3}
+          callExitLabel={meetLabels.leave}
+          callExitTitle={meetLabels.leave}
+          callExitDescription={meetLabels.leave}
+          cameras={STORY_MEET_DEVICES}
+          microphones={STORY_MEET_MICROPHONES}
+          speakers={STORY_MEET_SPEAKERS}
+          activeCamera={STORY_MEET_DEVICES[0]!.id}
+          activeMic={STORY_MEET_MICROPHONES[0]!.id}
+          activeSpeaker={STORY_MEET_SPEAKERS[0]!.id}
+          onSpeakerChange={() => undefined}
+          onCopyLink={() => undefined}
+          onToastInfo={() => undefined}
+          onToastError={() => undefined}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") }));
+
+    const videos = [...container.querySelectorAll("video")];
+    const bound = (stream: MediaStream) => videos.filter((node) => node.srcObject === stream);
+    expect(bound(alex).filter((node) => !node.muted)).toHaveLength(1);
+    expect(bound(alex).filter((node) => node.muted)).toHaveLength(1);
+    expect(bound(jamie).filter((node) => !node.muted)).toHaveLength(1);
+    expect(bound(jamie)).toHaveLength(1);
+    expect(bound(self).filter((node) => !node.muted)).toHaveLength(0);
+    expect(bound(self).length).toBeGreaterThan(0);
+  });
 });
+
+function mediaStream(): MediaStream {
+  const track = {
+    kind: "audio",
+    id: "audio",
+    readyState: "live",
+    enabled: true,
+    muted: false,
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  return {
+    getTracks: () => [track],
+    getAudioTracks: () => [track],
+    getVideoTracks: () => [],
+    addEventListener() {},
+    removeEventListener() {},
+  } as unknown as MediaStream;
+}

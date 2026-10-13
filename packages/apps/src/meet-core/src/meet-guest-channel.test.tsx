@@ -119,7 +119,7 @@ describe("MeetGuestChannel knock wait", () => {
     expect(document.querySelector(".meet-call-expanded")).toBeTruthy();
     expect(document.querySelector(".workspace-app-layout__main-header")).toBeNull();
     expect(screen.queryByRole("heading", { name: "yes" })).toBeNull();
-    expect(screen.queryByRole("button", { name: meetLabels.collapseCall })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Collapse call" })).toBeNull();
     expect(screen.getByText("guest-chat")).toBeTruthy();
     expect(document.querySelector(".meet-chat")).toBeNull();
   });
@@ -128,7 +128,6 @@ describe("MeetGuestChannel knock wait", () => {
 describe("meetGuestChannelStageLayout", () => {
   it("never parks the guest stage onto the signed-in collapsed chat column", () => {
     expect(meetGuestChannelStageLayout("collapsed")).toBe("side-by-side");
-    expect(meetGuestChannelStageLayout("compact")).toBe("side-by-side");
     expect(meetGuestChannelStageLayout("side-by-side")).toBe("side-by-side");
     expect(meetGuestChannelStageLayout("fullscreen")).toBe("fullscreen");
   });

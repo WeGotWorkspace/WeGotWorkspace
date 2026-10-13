@@ -1,29 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
+import { MeetCallKnockQueue } from "@/meet-core/src/meet-call-knock";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { STORY_MEET_KNOCKERS } from "@/meet-core/stories/meet-pane-stories.fixtures";
 import { meetStoryParameters, STORY_NOOP } from "@/meet-core/stories/meet-story-shared";
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
 
 const meta = {
-  title: "Features/Meet/Components/MeetKnockBadge",
-  component: MeetKnockBadge,
+  title: "Features/Meet/Components/MeetCallKnockQueue",
+  component: MeetCallKnockQueue,
   render: (args) => (
     <MeetStoryScope variant="root">
       <div className="max-w-3xl p-4">
-        <MeetKnockBadge {...args} />
+        <MeetCallKnockQueue {...args} />
       </div>
     </MeetStoryScope>
   ),
   parameters: meetStoryParameters({
     componentDescription:
-      "Visible lobby banner (MeetCallKnockQueue) for people waiting to join. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
+      "Visible lobby banner for people waiting to join. Guests waiting in an expanded stage see MeetCallKnockWaiting.",
   }),
-} satisfies Meta<typeof MeetKnockBadge>;
+} satisfies Meta<typeof MeetCallKnockQueue>;
 
 export default meta;
-type Story = StoryObj<typeof MeetKnockBadge>;
+type Story = StoryObj<typeof MeetCallKnockQueue>;
 
 export const OneGuest: Story = {
   name: "One guest",
@@ -44,9 +44,8 @@ export const OneGuest: Story = {
     expect(deny.compareDocumentPosition(admit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await expect(deny.className).toContain("button--variant-outline");
     await expect(admit.className).toContain("button--variant-primary");
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.waitingToJoin(1) }),
-    ).not.toBeInTheDocument();
+    const region = canvas.getByRole("region", { name: meetLabels.lobbyWaiting(1) });
+    await expect(region.getAttribute("aria-label")).toBeNull();
   },
 };
 

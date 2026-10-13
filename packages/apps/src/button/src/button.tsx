@@ -8,12 +8,10 @@ import {
   BUTTON_ICON_SLOT_CLASSNAME,
   BUTTON_PILL_CLASSNAME,
   BUTTON_VARIANT_CLASSNAMES,
-  BUTTON_SEVERITY_CLASSNAMES,
   getButtonSizeClassName,
   normalizeButtonVariant,
   type ButtonSizeProp,
   type ButtonVariantProp,
-  type ButtonSeverity,
 } from "@/button/src/button.shared";
 export {
   BUTTON_SIZE_OPTIONS,
@@ -41,8 +39,6 @@ export type ButtonProps = Omit<React.ComponentPropsWithRef<"button">, "children"
   size?: ButtonSizeProp;
   pill?: boolean;
   variant?: ButtonVariantProp;
-  /** Green (`success`) or danger wash, same as IconButton. */
-  severity?: ButtonSeverity;
   asChild?: boolean;
   children?: ReactNode;
 };
@@ -55,7 +51,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size = "md",
       pill = false,
       variant = "primary",
-      severity,
       className,
       style,
       children,
@@ -85,7 +80,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           getButtonSizeClassName(size),
           pill && BUTTON_PILL_CLASSNAME,
           BUTTON_VARIANT_CLASSNAMES[normalizedVariant],
-          severity ? BUTTON_SEVERITY_CLASSNAMES[severity] : undefined,
           className,
         )}
         style={style}

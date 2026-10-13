@@ -2,35 +2,21 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
 import { MeetCallBar } from "@/meet-core/src/meet-call-bar";
 import { meetLabels } from "@/meet-core/src/meet-labels";
-import {
-  STORY_MEET_DEVICES,
-  STORY_MEET_MICROPHONES,
-  STORY_MEET_PEERS,
-  STORY_MEET_SPEAKERS,
-} from "@/meet-core/stories/meet-pane-stories.fixtures";
+import { STORY_MEET_PEERS } from "@/meet-core/stories/meet-pane-stories.fixtures";
 import {
   meetStoryParameters,
   STORY_NOOP,
   storyBooleanControl,
 } from "@/meet-core/stories/meet-story-shared";
 import { MeetStoryScope } from "@/meet-core/stories/meet-story-scope";
-import { useState } from "react";
 
 type MeetCallBarStoryArgs = {
   joined: boolean;
-  micOn: boolean;
-  videoOn: boolean;
   invite: "join" | null;
   audioOnly: boolean;
 };
 
-function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCallBarStoryArgs) {
-  const [camera, setCamera] = useState(STORY_MEET_DEVICES[0]!.id);
-  const [microphone, setMicrophone] = useState(STORY_MEET_MICROPHONES[0]!.id);
-  const [speaker, setSpeaker] = useState(STORY_MEET_SPEAKERS[0]!.id);
-  const [mic, setMic] = useState(micOn);
-  const [video, setVideo] = useState(videoOn);
-
+function MeetCallBarStory({ joined, invite, audioOnly }: MeetCallBarStoryArgs) {
   return (
     <MeetStoryScope
       variant="split"
@@ -47,22 +33,6 @@ function MeetCallBarStory({ joined, micOn, videoOn, invite, audioOnly }: MeetCal
           remoteMedia: peer.remoteMedia,
         }))}
         participantCount={joined ? 1 + STORY_MEET_PEERS.length : STORY_MEET_PEERS.length}
-        micOn={mic}
-        videoOn={video}
-        cameras={STORY_MEET_DEVICES}
-        microphones={STORY_MEET_MICROPHONES}
-        speakers={STORY_MEET_SPEAKERS}
-        activeCamera={camera}
-        activeMic={microphone}
-        activeSpeaker={speaker}
-        onToggleMic={() => setMic((value) => !value)}
-        onToggleVideo={() => setVideo((value) => !value)}
-        onCameraChange={setCamera}
-        onMicrophoneChange={setMicrophone}
-        onSpeakerChange={setSpeaker}
-        onExpand={STORY_NOOP}
-        onLeave={STORY_NOOP}
-        onMuteParticipant={STORY_NOOP}
         joined={joined}
         invite={invite}
         audioOnly={audioOnly}
@@ -94,8 +64,6 @@ const meta = {
   },
   argTypes: {
     joined: storyBooleanControl,
-    micOn: storyBooleanControl,
-    videoOn: storyBooleanControl,
     invite: { control: "select", options: [null, "join"] as const },
     audioOnly: storyBooleanControl,
   },
@@ -109,8 +77,6 @@ export const InviteToJoin: Story = {
   tags: ["vitest-ci"],
   args: {
     joined: false,
-    micOn: true,
-    videoOn: false,
     invite: "join",
     audioOnly: false,
   },
@@ -121,9 +87,7 @@ export const InviteToJoin: Story = {
     await expect(join.className).toContain("button--variant-primary");
     await expect(join.className).not.toContain("button--severity-success");
     await expect(join.querySelector(".lucide-video")).toBeTruthy();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("img", { name: "Demo User", hidden: true }),
     ).not.toBeInTheDocument();
@@ -139,8 +103,6 @@ export const InviteToJoinAudioOnly: Story = {
   tags: ["vitest-ci"],
   args: {
     joined: false,
-    micOn: true,
-    videoOn: false,
     invite: "join",
     audioOnly: true,
   },
@@ -150,8 +112,6 @@ export const InviteToJoinAudioOnly: Story = {
     await expect(join).toBeInTheDocument();
     await expect(join.querySelector(".lucide-mic")).toBeTruthy();
     await expect(join.querySelector(".lucide-video")).toBeNull();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
   },
 };

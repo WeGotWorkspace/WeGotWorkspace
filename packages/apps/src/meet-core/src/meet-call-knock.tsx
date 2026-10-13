@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from "react";
 import { Hand } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Separator } from "@/ui/separator";
@@ -9,7 +10,7 @@ export type MeetCallKnocker = { id: string; name: string };
 
 export type MeetCallKnockQueueProps = {
   knockers: readonly MeetCallKnocker[];
-  onAdmit: (peerId: string) => void;
+  onAdmit: (peerId: string) => void | Promise<void>;
   onDeny: (peerId: string) => void;
   className?: string;
 };
@@ -23,21 +24,42 @@ export function MeetCallKnockQueue({
   onDeny,
   className,
 }: MeetCallKnockQueueProps) {
+  const titleId = useId();
+  const admittingAll = useRef(false);
+  const mounted = useRef(true);
+  const [admitAllBusy, setAdmitAllBusy] = useState(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   if (knockers.length === 0) return null;
+  const admitAll = () => {
+    if (admittingAll.current) return;
+    admittingAll.current = true;
+    setAdmitAllBusy(true);
+    void (async () => {
+      try {
+        for (const knocker of knockers) await onAdmit(knocker.id);
+      } finally {
+        admittingAll.current = false;
+        if (mounted.current) setAdmitAllBusy(false);
+      }
+    })();
+  };
   return (
-    <section
-      className={cn("meet-lobby-banner", className)}
-      aria-label={meetLabels.lobbyWaiting(knockers.length)}
-    >
+    <section className={cn("meet-lobby-banner", className)} aria-labelledby={titleId}>
       <header className="meet-lobby-banner__header">
-        <h3 className="meet-lobby-banner__title">{meetLabels.lobbyWaiting(knockers.length)}</h3>
+        <h3 id={titleId} className="meet-lobby-banner__title">
+          {meetLabels.lobbyWaiting(knockers.length)}
+        </h3>
         <Button
           variant="primary"
           size="sm"
           label={meetLabels.admitAll}
-          onClick={() => {
-            for (const knocker of knockers) onAdmit(knocker.id);
-          }}
+          disabled={admitAllBusy}
+          onClick={admitAll}
         />
       </header>
       <Separator />

@@ -45,9 +45,7 @@ export const Default: Story = {
     await expect(canvas.getByText(meetLabels.sidebarMeetings)).toBeInTheDocument();
     await expect(canvas.getByRole("img", { name: meetLabels.liveCall })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
     ).not.toBeInTheDocument();
@@ -68,12 +66,8 @@ export const Default: Story = {
     await userEvent.click(join);
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
@@ -220,12 +214,8 @@ export const CallBar: Story = {
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
     const leave = canvas.getByRole("button", { name: meetLabels.leave });
@@ -306,12 +296,8 @@ export const CallBarVideo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },
@@ -338,9 +324,7 @@ export const CallFullscreen: Story = {
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getAllByRole("button", { name: "Show sidebar" }).length).toBeGreaterThan(0);
     await expect(canvas.getByRole("button", { name: /Show chat|Hide chat/ })).toBeInTheDocument();
@@ -401,23 +385,20 @@ export const KnockQueue: Story = {
   },
 };
 
-export const KnockQueueCompact: Story = {
-  name: "Knock queue (saved compact layout)",
+export const AdHocKnockWaiting: Story = {
+  name: "Ad-hoc knock waiting",
   args: {
-    initialChannelId: "channel-general",
-    initialCallLayout: "compact",
-    initialKnockers: [
-      { id: "guest-1", name: "Alex Morgan" },
-      { id: "guest-2", name: "Jamie Lee" },
-    ],
+    unmatchedAdHocRoom: "aaaa-bbbb-cccc",
+    initialWaitingForAdmission: true,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText(meetLabels.lobbyWaiting(2))).toBeInTheDocument();
+    // No selected channel: the visit still shows the stage knock-wait card.
+    await expect(canvas.getAllByText(meetLabels.knockWaitHint).length).toBeGreaterThan(0);
     await expect(
-      canvas.queryByRole("button", { name: meetLabels.expandCall }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+      canvas.getByRole("button", { name: meetLabels.cancelRequest }),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByText(meetLabels.emptyChannelMain)).not.toBeInTheDocument();
   },
 };
 
@@ -472,8 +453,6 @@ export const ThreadOpenDuringCall: Story = {
     ).not.toBeInTheDocument();
     await expect(body.getByText(meetLabels.chatInChannel("#general"))).toBeInTheDocument();
     await expect(body.getByRole("button", { name: meetLabels.chatClose })).toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: meetLabels.collapseCall }),
-    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
   },
 };

@@ -63,13 +63,14 @@ export function meetCallUiParkedOnWorkspaceUnmount(callEngaged: boolean): boolea
 }
 
 /**
- * Chrome to restore after Meet remounts mid-call. A joined call opens the
- * expanded stage. The compact bar is not an in-call state.
+ * Chrome to restore after Meet remounts mid-call. Fullscreen and a deliberate
+ * collapse come back as stored. Anything else opens the expanded stage.
  */
 export function meetResumeCallLayout(
   persisted: MeetCallStageLayout | null | undefined,
 ): MeetCallStageLayout {
-  return persisted === "fullscreen" ? "fullscreen" : "side-by-side";
+  if (persisted === "fullscreen" || persisted === "collapsed") return persisted;
+  return "side-by-side";
 }
 
 /**

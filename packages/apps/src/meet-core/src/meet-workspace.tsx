@@ -375,8 +375,10 @@ export function MeetWorkspace({
   const fixtureCallChannelId = callChannelId ?? initialChannelId ?? data.channels?.[0]?.id ?? null;
   const externalStageOnSelected =
     callStage != null && Boolean(selectedId) && selectedId === fixtureCallChannelId;
+  // A visit has no channel id. Waiting, preparing, and in-call are all
+  // engaged, so the stage (including the knock-wait card) stays up.
   const resolvedCallActive = visitOwnsLayout
-    ? Boolean(callStageRoom?.controller.inCall)
+    ? true
     : externalStageOnSelected
       ? callActive
       : call.callActive;
@@ -635,7 +637,6 @@ export function MeetWorkspace({
                 directory={data.directory}
                 invite={callInvite}
                 audioOnly={callAudioOnly}
-                onExpand={() => handleCallLayoutChange("fullscreen")}
                 onLeave={visitCallToggle}
                 onInvite={onCallInvite}
               />

@@ -13,7 +13,6 @@ import {
   AlertDialogTrigger,
 } from "@/ui/alert-dialog";
 import "@/floating-action-bar/src/floating-action-bar.css";
-import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
 import { MeetCircleToggle } from "@/meet-core/src/meet-circle-toggle";
 import { MeetDevicePopover } from "@/meet-core/src/meet-device-popover";
 import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
@@ -61,10 +60,6 @@ type MeetCallToolbarProps = {
    */
   confirmExit?: boolean;
   extraActions?: ReactNode;
-  /** Host: waiting knockers. Shown as an action-row icon (production MeetKnockBadge). */
-  knockers?: readonly MeetCallKnocker[];
-  onAdmitKnocker?: (peerId: string) => void;
-  onDenyKnocker?: (peerId: string) => void;
 };
 
 export function MeetCallToolbar({
@@ -97,9 +92,6 @@ export function MeetCallToolbar({
   onConfirmExit,
   confirmExit = true,
   extraActions,
-  knockers: _knockers = [],
-  onAdmitKnocker: _onAdmitKnocker,
-  onDenyKnocker: _onDenyKnocker,
 }: MeetCallToolbarProps) {
   const shareAvailable = canShareScreen ?? isDisplayCaptureSupported();
   const videoLabel = videoLocked

@@ -1,9 +1,8 @@
 import { type ReactElement } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
-import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { meetGuestChannelPhase } from "@/meet-core/src/meet-guest-channel";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
@@ -43,34 +42,45 @@ describe("MeetCallKnockQueue", () => {
     );
     expect(container.querySelector(".meet-lobby-banner")).toBeNull();
   });
-});
 
-describe("MeetKnockBadge", () => {
-  const knockers = [
-    { id: "peer-1", name: "Alex Morgan" },
-    { id: "peer-2", name: "Jamie Lee" },
-  ];
-
-  it("shows the lobby banner without a menu", () => {
-    renderKnock(<MeetKnockBadge knockers={knockers} onAdmit={() => {}} onDeny={() => {}} />);
-    expect(screen.getByText(meetLabels.lobbyWaiting(2))).toBeTruthy();
-    expect(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: meetLabels.waitingToJoin(2) })).toBeNull();
+  it("names the section from the heading", () => {
+    renderKnock(<MeetCallKnockQueue knockers={knockers} onAdmit={() => {}} onDeny={() => {}} />);
+    const region = screen.getByRole("region", { name: meetLabels.lobbyWaiting(2) });
+    const heading = screen.getByRole("heading", { name: meetLabels.lobbyWaiting(2) });
+    expect(region.getAttribute("aria-labelledby")).toBe(heading.id);
+    expect(region.getAttribute("aria-label")).toBeNull();
   });
 
-  it("admits from the visible row", () => {
-    const onAdmit = vi.fn();
-    renderKnock(<MeetKnockBadge knockers={knockers} onAdmit={onAdmit} onDeny={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: meetLabels.admitName("Alex Morgan") }));
-    expect(onAdmit).toHaveBeenCalledWith("peer-1");
-    expect(document.querySelector(".meet-knock-badge__popover")).toBeNull();
-  });
-
-  it("renders nothing without knockers", () => {
-    const { container } = render(
-      <MeetKnockBadge knockers={[]} onAdmit={() => {}} onDeny={() => {}} />,
+  it("admits each knocker once and ignores a second click while that runs", async () => {
+    const resolvers: Array<() => void> = [];
+    const onAdmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
     );
-    expect(container.firstChild).toBeNull();
+    renderKnock(<MeetCallKnockQueue knockers={knockers} onAdmit={onAdmit} onDeny={() => {}} />);
+    const admitAll = screen.getByRole("button", { name: meetLabels.admitAll });
+    fireEvent.click(admitAll);
+    fireEvent.click(admitAll);
+    expect(onAdmit).toHaveBeenCalledTimes(1);
+    expect(onAdmit).toHaveBeenCalledWith("peer-1");
+    expect((admitAll as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => {
+      resolvers[0]!();
+      await Promise.resolve();
+    });
+    expect(onAdmit).toHaveBeenCalledTimes(2);
+    expect(onAdmit).toHaveBeenNthCalledWith(2, "peer-2");
+
+    await act(async () => {
+      resolvers[1]!();
+      await Promise.resolve();
+    });
+    expect(
+      (screen.getByRole("button", { name: meetLabels.admitAll }) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 });
 

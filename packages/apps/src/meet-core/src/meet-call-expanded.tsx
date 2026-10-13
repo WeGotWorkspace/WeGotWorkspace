@@ -2,7 +2,7 @@ import { type CSSProperties, type ReactNode, useCallback, useState } from "react
 import { MessageSquare, Video } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
-import { MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
+import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
 import { defaultMeetCallChatOpen } from "@/meet-core/src/meet-call-chat-panel";
 import {
   meetCallGridColumns,
@@ -17,7 +17,6 @@ import { MeetCallToolbar } from "@/meet-core/src/meet-call-toolbar";
 import { meetDeviceIdForOption } from "@/meet-core/src/meet-device-utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import { remoteVideoSuppressed } from "@/meet-core/src/meet-video-sender";
-import { MeetKnockBadge } from "@/meet-core/src/meet-knock-badge";
 import { MeetPeerTile } from "@/meet-core/src/meet-peer-tile";
 import { MeetStreamVideo } from "@/meet-core/src/meet-stream-video";
 import { cn } from "@/lib/utils";
@@ -26,7 +25,6 @@ import { WorkspaceSidebarToggle } from "@/workspace-shell/src/workspace-app-layo
 export type MeetCallExpandedProps = MeetCallStageRoomProps & {
   chat?: ReactNode;
   channelTitle?: string;
-  onCollapse?: () => void;
   onLeave?: () => void;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
@@ -71,7 +69,6 @@ function MeetCallChatToggle({ open, onToggle }: { open: boolean; onToggle: () =>
 export function MeetCallExpanded({
   chat: _chat,
   channelTitle,
-  onCollapse: _onCollapse,
   onLeave,
   sidebarOpen = false,
   onToggleSidebar,
@@ -110,8 +107,8 @@ export function MeetCallExpanded({
     ],
     monitorSpeech && !waitingForAdmission,
   );
-  // Chunk-I knock chrome: knocker-side wait state on the stage; member-side
-  // admit/deny lives on the action-row icon (guests never moderate knocks).
+  // Knocker-side wait state replaces the grid. Members admit from the lobby
+  // banner; guests never moderate knocks.
   const knockers = room.hasSignedInIdentity && !waitingForAdmission ? room.controller.knockers : [];
   const cancelKnock = useCallback(() => {
     onLeave?.();
@@ -125,14 +122,18 @@ export function MeetCallExpanded({
   // area once the share stops.
   const showFilmstrip = sharing || pinnedPeer != null;
   const gridColumns = meetCallGridColumns(peers.length);
-  const renderPeerTile = (peer: (typeof peers)[number]) => {
+  const renderPeerTile = (peer: (typeof peers)[number], featured = false) => {
     const isSelf = peer.id === self.id;
+    // A pinned peer is mounted in the featured area and again in the filmstrip.
+    // Only the featured copy plays that peer's audio.
+    const duplicate = !sharing && pinnedPeer?.id === peer.id;
+    const playbackMuted = isSelf || (duplicate && !featured);
     return (
       <MeetPeerTile
         name={peer.name}
         stream={peer.stream ?? null}
         userId={peer.id}
-        muted={isSelf}
+        muted={playbackMuted}
         spotlight={!showFilmstrip && peers.length === 1}
         speaking={(levels[peer.id] ?? 0) >= MEET_MINI_PLAYER_SPEECH_ON}
         pinned={peer.id === pinnedPeer?.id}
@@ -190,10 +191,10 @@ export function MeetCallExpanded({
         </header>
 
         {knockers.length > 0 ? (
-          <MeetKnockBadge
+          <MeetCallKnockQueue
             knockers={knockers}
-            onAdmit={(peerId) => void room.controller.admitKnocker(peerId)}
-            onDeny={(peerId) => void room.controller.denyKnocker(peerId)}
+            onAdmit={(peerId) => room.controller.admitKnocker(peerId)}
+            onDeny={(peerId) => room.controller.denyKnocker(peerId)}
           />
         ) : null}
 
@@ -253,7 +254,7 @@ export function MeetCallExpanded({
                       </div>
                     )
                   ) : pinnedPeer ? (
-                    renderPeerTile(pinnedPeer)
+                    renderPeerTile(pinnedPeer, true)
                   ) : null}
                 </div>
                 <ul className="meet-call-stage__share-peers">{peerTiles}</ul>
@@ -307,9 +308,6 @@ export function MeetCallExpanded({
             onSpeakerChange={room.onSpeakerChange}
             lowData={room.controller.lowData}
             onLowDataChange={room.controller.setLowData}
-            knockers={knockers}
-            onAdmitKnocker={(peerId) => void room.controller.admitKnocker(peerId)}
-            onDenyKnocker={(peerId) => void room.controller.denyKnocker(peerId)}
             // Members leave without ceremony (rejoining is one click); guests
             // and end-call-for-all keep the confirmation dialog.
             confirmExit={!room.hasSignedInIdentity || room.callExitLabel === meetLabels.endCall}

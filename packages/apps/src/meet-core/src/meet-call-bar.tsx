@@ -1,8 +1,6 @@
 import { Button } from "@/button/src/button";
 import { meetCallLiveIcon } from "@/meet-core/src/meet-call-live-icon";
 import type { MeetCallInvite } from "@/meet-core/src/meet-call-stage-layout";
-import type { MeetCallKnocker } from "@/meet-core/src/meet-call-knock";
-import type { MeetDeviceOption } from "@/meet-core/src/meet-device-utils";
 import {
   meetCallBarMeta,
   meetCallBarRoster,
@@ -28,36 +26,13 @@ export type MeetCallBarProps = {
   selfStream?: MediaStream | null;
   peers: MeetCallBarPeer[];
   participantCount: number;
-  micOn: boolean;
-  videoOn: boolean;
-  cameras: MeetDeviceOption[];
-  microphones: MeetDeviceOption[];
-  speakers: MeetDeviceOption[];
-  activeCamera: string;
-  activeMic: string;
-  activeSpeaker: string;
-  onToggleMic: () => void;
-  onToggleVideo: () => void;
-  onCameraChange: (optionId: string) => void;
-  onMicrophoneChange: (optionId: string) => void;
-  onSpeakerChange: (optionId: string) => void;
-  lowData?: boolean;
-  onLowDataChange?: (enabled: boolean) => void;
-  onExpand: () => void;
-  onLeave: () => void;
-  /** Host/moderator: mute (`true`) or unmute (`false`) a remote peer. Omitted for guests. */
-  onMuteParticipant?: (peerId: string, muted?: boolean) => void;
-  /** IconButton cluster + camera tiles — only after this user joins. */
+  /** Include this user in the roster and show elapsed time. Device controls live on the stage. */
   joined?: boolean;
   /** Join on the bar while a meeting is live and this user has not joined. Start never lives here. */
   invite?: MeetCallInvite | null;
   onInvite?: () => void;
   /** Meeting was started as Meet (Audio Only) — mark and Join use audio chrome. */
   audioOnly?: boolean;
-  /** Host: waiting knockers. Shown as an action-row icon (production MeetKnockBadge). */
-  knockers?: readonly MeetCallKnocker[];
-  onAdmitKnocker?: (peerId: string) => void;
-  onDenyKnocker?: (peerId: string) => void;
   className?: string;
 };
 

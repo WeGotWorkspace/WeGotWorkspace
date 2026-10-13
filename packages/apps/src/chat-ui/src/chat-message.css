@@ -142,6 +142,14 @@
   @apply flex;
 }
 
+/* The bar is taken out of flow under the body. Reserve its height so replies
+   and reactions start below it, and so the last row is not clipped by the scroller. */
+.chat-message:hover .chat-message__body,
+.chat-message:focus-within .chat-message__body,
+.chat-message:has([data-state="open"]) .chat-message__body {
+  margin-bottom: calc(var(--control-height-md, 2.25rem) + 0.5rem);
+}
+
 /* Keep the hover toolbar mounted while the portaled picker is open — otherwise
    leaving the row (or Radix moving focus into the portal) hides the trigger
    and the picker closes before the cursor can reach it. */

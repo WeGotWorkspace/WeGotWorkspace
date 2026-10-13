@@ -116,16 +116,15 @@ describe("meetCallUiParkedOnWorkspaceUnmount", () => {
 });
 
 describe("meetResumeCallLayout", () => {
-  it("restores fullscreen and otherwise opens the expanded stage", () => {
+  it("restores fullscreen, a deliberate collapse, and the expanded stage", () => {
     expect(meetResumeCallLayout("fullscreen")).toBe("fullscreen");
+    expect(meetResumeCallLayout("collapsed")).toBe("collapsed");
     expect(meetResumeCallLayout("side-by-side")).toBe("side-by-side");
-    expect(meetResumeCallLayout("compact")).toBe("side-by-side");
   });
 
   it("defaults to the expanded stage when nothing was persisted", () => {
     expect(meetResumeCallLayout(null)).toBe("side-by-side");
     expect(meetResumeCallLayout(undefined)).toBe("side-by-side");
-    expect(meetResumeCallLayout("collapsed")).toBe("side-by-side");
   });
 });
 

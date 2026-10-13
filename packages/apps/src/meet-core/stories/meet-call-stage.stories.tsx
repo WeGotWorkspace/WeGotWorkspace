@@ -40,7 +40,7 @@ const meta = {
   argTypes: {
     layout: {
       control: "select",
-      options: ["compact", "side-by-side", "fullscreen", "collapsed"],
+      options: ["side-by-side", "fullscreen", "collapsed"],
     },
     callActive: storyBooleanControl,
     peerCount: storyNumberControl(0, 2),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useMeetCallLayout } from "@/meet-core/src/use-meet-call-layout";
 
 describe("useMeetCallLayout", () => {
-  it("joins into the expanded stage, not the compact bar", () => {
+  it("joins into the expanded stage", () => {
     const startCall = vi.fn(async () => undefined);
     const { result } = renderHook(() =>
       useMeetCallLayout({
@@ -22,27 +22,11 @@ describe("useMeetCallLayout", () => {
     expect(startCall).toHaveBeenCalledWith("channel-general");
   });
 
-  it("stays on the expanded stage when compact is requested", () => {
-    const { result } = renderHook(() =>
-      useMeetCallLayout({
-        initialLayout: "side-by-side",
-        channelId: "channel-general",
-      }),
-    );
-
-    act(() => {
-      result.current.onLayoutChange("compact");
-    });
-
-    expect(result.current.callActive).toBe(true);
-    expect(result.current.callLayout).toBe("side-by-side");
-  });
-
   it("leaves the call when layout collapses", () => {
     const leaveCall = vi.fn(async () => undefined);
     const { result } = renderHook(() =>
       useMeetCallLayout({
-        initialLayout: "compact",
+        initialLayout: "side-by-side",
         channelId: "channel-general",
         operations: { startCall: vi.fn(async () => undefined), leaveCall },
       }),
@@ -128,6 +112,20 @@ describe("useMeetCallLayout", () => {
     expect(result.current.callLayout).toBe("side-by-side");
   });
 
+  it("restores a collapsed stage after remount", () => {
+    const { result } = renderHook(() =>
+      useMeetCallLayout({
+        initialLayout: "collapsed",
+        channelId: "channel-general",
+        liveCallChannelId: "channel-general",
+        resumeLayout: "collapsed",
+      }),
+    );
+
+    expect(result.current.callActive).toBe(false);
+    expect(result.current.callLayout).toBe("collapsed");
+  });
+
   it("restores the expanded stage when that was the last chrome", () => {
     const { result } = renderHook(() =>
       useMeetCallLayout({
@@ -171,7 +169,7 @@ describe("useMeetCallLayout", () => {
     const { result, rerender } = renderHook(
       ({ live }: { live: string | null }) =>
         useMeetCallLayout({
-          initialLayout: "compact",
+          initialLayout: "side-by-side",
           channelId: "channel-general",
           liveCallChannelId: live,
         }),
@@ -212,7 +210,7 @@ describe("useMeetCallLayout", () => {
     const { result, rerender } = renderHook(
       ({ channelId }: { channelId: string }) =>
         useMeetCallLayout({
-          initialLayout: "compact",
+          initialLayout: "side-by-side",
           channelId,
           liveCallChannelId: "channel-design",
         }),
