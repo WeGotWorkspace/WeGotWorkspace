@@ -69,12 +69,6 @@ for (const entry of appReleaseEntries) {
   cpSync(source, target, { recursive: true });
 }
 
-const cspHashes = resolve(repoRoot, "packages/apps/dist/csp-hashes.json");
-const stagedShellDist = resolve(stagingRoot, "packages/apps/shell/dist");
-if (existsSync(cspHashes) && existsSync(stagedShellDist)) {
-  cpSync(cspHashes, resolve(stagedShellDist, "csp-hashes.json"));
-}
-
 for (const file of readdirSync(appRoot)) {
   if (
     file === "index.html" ||

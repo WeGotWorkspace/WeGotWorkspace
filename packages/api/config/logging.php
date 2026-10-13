@@ -129,6 +129,13 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'csp' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/csp.log'),
+            'level' => 'info',
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

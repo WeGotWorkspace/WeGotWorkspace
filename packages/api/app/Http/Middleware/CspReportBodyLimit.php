@@ -10,10 +10,13 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Caps an unauthenticated CSP report before the controller reads it.
+ * Caps what the application keeps from an unauthenticated CSP report.
  *
- * A declared Content-Length over 8 KiB is rejected without reading. Otherwise
- * the body is read in chunks from the request stream and stopped at the cap.
+ * With enable_post_data_reading on (the PHP default), the SAPI has already
+ * buffered the body up to post_max_size (32M in .user.ini) before Laravel
+ * runs. A declared Content-Length over 8 KiB is rejected here, and the stream
+ * read stops at the same cap, so the controller never holds more than 8 KiB.
+ * This middleware does not stop the server from reading the request.
  */
 final class CspReportBodyLimit
 {
@@ -52,7 +55,13 @@ final class CspReportBodyLimit
             return false;
         }
 
-        return strlen($declared) > 4 || (int) $declared > self::MAX_BODY_BYTES;
+        // "08192" is within the cap. strlen() on the raw header would reject it.
+        $digits = ltrim($declared, '0');
+        if ($digits === '') {
+            return false;
+        }
+
+        return strlen($digits) > 4 || (int) $digits > self::MAX_BODY_BYTES;
     }
 
     /**

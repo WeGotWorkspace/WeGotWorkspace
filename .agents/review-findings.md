@@ -27,3 +27,6 @@ This intake is new. After a few weeks, check whether unpromoted findings shrink,
 | 2026-09-28 | Infra or config could fail quietly with no signal | Cross-boundary `openapi.json` hash stays green; a runtime image with unpinned versions | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
 | 2026-09-28 | Work drawn from a budget did not name what it displaces | The install matrix grew inside the #584 budget; a chunk was not on the sprint plan | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
 | 2026-09-28 | The first design did not name the existing component it could have used | A new component chosen where one already provides the behavior | [plan-feature/SKILL.md](skills/plan-feature/SKILL.md) |
+| 2026-10-13 | A CSP hash was taken from HTML the server never sends | Vite `dist/index.html` hashed; runtime `index.html` is generated without that script | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | Security headers set only in PHP miss static responses, and `Header set` misses 304 | HSTS absent on Apache-served `index.html`, `sw.js`, and assets | [security/SKILL.md](skills/security/SKILL.md) |
+| 2026-10-13 | An open report endpoint logged warnings on the default channel | CSP reports would bury the error channel GlitchTip reads | [security/SKILL.md](skills/security/SKILL.md) |

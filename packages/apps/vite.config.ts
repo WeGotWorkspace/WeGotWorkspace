@@ -3,11 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { VitePWA } from "vite-plugin-pwa";
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Plugin } from "vite";
 import { wgwApiViteProxy } from "./scripts/wgw-proxy-target";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,35 +12,6 @@ const wgwMonorepoRoot = path.join(__dirname, "..", "..");
 
 const DEFAULT_DEV_PORT = 5173;
 const DEFAULT_PREVIEW_PORT = 4173;
-
-function cspHashPlugin(): Plugin {
-  return {
-    name: "wgw-csp-hashes",
-    apply: "build",
-    closeBundle() {
-      const indexPath = path.resolve(__dirname, "dist/index.html");
-      if (!existsSync(indexPath)) {
-        return;
-      }
-      const html = readFileSync(indexPath, "utf8");
-      const hashes: string[] = [];
-      const scripts = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
-      for (const match of html.matchAll(scripts)) {
-        const attrs = match[1] ?? "";
-        const body = match[2] ?? "";
-        if (/\bsrc\s*=/i.test(attrs) || body.trim() === "") {
-          continue;
-        }
-        const digest = createHash("sha256").update(body).digest("base64");
-        hashes.push(`sha256-${digest}`);
-      }
-      writeFileSync(
-        path.resolve(__dirname, "dist/csp-hashes.json"),
-        `${JSON.stringify({ hashes }, null, 2)}\n`,
-      );
-    },
-  };
-}
 
 function resolveWgwVitePort(raw: string | undefined, defaultPort: number, envVar: string): number {
   if (raw === undefined || raw.trim() === "") {
@@ -84,7 +52,6 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       tsconfigPaths(),
-      cspHashPlugin(),
       VitePWA({
         // Custom SW so push/notificationclick can run; generateSW cannot host those handlers.
         strategies: "injectManifest",

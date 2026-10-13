@@ -21,9 +21,12 @@ Answer each item in the handoff. A happy-path test does not answer them.
 
 - What is the rate-limit or cache key, and can the caller mint new keys (wildcard DNS, a spoofed header, a new origin)?
 - Does the limit run before the expensive work?
-- Is the body streamed with a cap, or buffered fully and then rejected?
+- Is the body streamed with a cap, or buffered fully and then rejected? An application cap does not undo a SAPI buffer (`enable_post_data_reading`, `post_max_size`).
 - Which hosts does `filter_var` or the allowlist still accept?
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
+- Does a hash or allowlist in a response header come from the bytes the client receives? A build artifact a later step replaces is a different document.
+- Do security headers that only PHP sets also exist for files the web server serves itself? `Header set` misses 304 responses; use `Header always set`.
+- Does an unauthenticated report endpoint log at warning on the default channel? Browser noise hides real failures. Use a separate channel.
 
 A security finding is promoted into this skill on the first occurrence. See [review-findings.md](../../review-findings.md).

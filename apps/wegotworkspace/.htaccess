@@ -26,16 +26,20 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 </IfModule>
 
 # WebAssembly assets: ensure correct Content-Type when host mime.types omits .wasm.
+# script-src includes 'wasm-unsafe-eval' because plugin bundles compile these
+# files in the page. Chromium blocks WebAssembly.compile/instantiate without it.
 <IfModule mod_mime.c>
     AddType application/wasm .wasm
 </IfModule>
 
-# Direct /index.html is served by Apache and never reaches Laravel. Report-only
-# until enforcement. The hash is the dev-source inline PWA script; the SPA shell
-# that goes through Laravel prefers dist/csp-hashes.json.
+# Apache serves /index.html, /sw.js, /assets/*, and fonts without PHP, so HSTS
+# has to be set here or a first visit to the static shell never records it.
+# Middleware still sets HSTS when mod_headers is off. The served shell has no
+# inline script, so the policy has no script hash. Report-only until enforcement.
 <IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
     <Files "index.html">
-        Header set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'sha256-koYKTa6HwF82TTLzdGOJpStHMXx2oeIvhoodNHKGkOg='; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
+        Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
     </Files>
 </IfModule>
 

@@ -2,7 +2,6 @@
 
 import {
   cpSync,
-  existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -115,11 +114,6 @@ export function syncRuntimeAppBuilds() {
 
     for (const file of pwaServiceWorkerFiles) {
       cpSync(resolve(distRoot, file), resolve(targetDist, file));
-    }
-
-    const cspHashes = resolve(distRoot, "csp-hashes.json");
-    if (existsSync(cspHashes)) {
-      cpSync(cspHashes, resolve(targetDist, "csp-hashes.json"));
     }
 
     for (const file of readdirSync(targetAssetsDir)) {

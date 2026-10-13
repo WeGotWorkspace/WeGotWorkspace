@@ -5,24 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Security;
 
 use App\Http\Middleware\CspReportBodyLimit;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 
 final class CspReportController
 {
-    public function __invoke(Request $request): Response|JsonResponse
+    public function __invoke(Request $request): Response
     {
         $body = $request->attributes->get(CspReportBodyLimit::BODY_ATTRIBUTE);
-        if (! is_string($body)) {
-            return response()->json([
-                'error' => 'CSP report body was not limited.',
-                'code' => 'bad_request',
-            ], 400);
-        }
-
-        Log::warning('csp.report', $this->context($body));
+        // The route middleware always sets this. A missing value means that
+        // middleware was removed; still accept, and do not invent a 400.
+        Log::channel('csp')->info('csp.report', $this->context(is_string($body) ? $body : ''));
 
         return response()->noContent();
     }
