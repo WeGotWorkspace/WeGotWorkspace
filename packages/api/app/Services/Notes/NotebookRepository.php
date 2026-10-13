@@ -44,10 +44,10 @@ final class NotebookRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
         $lists = $this->accessibleNotebookInstances($username)
-            ->map(function (CalendarInstance $instance): array {
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapNotebook($instance, $groupSlug);
+                return $this->mapNotebook($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -66,7 +66,7 @@ final class NotebookRepository
         $groupSlug = CalendarCollectionUris::parseGroupNotebookApiId($notebookId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -131,7 +131,7 @@ final class NotebookRepository
             throw new ApiHttpException(500, 'Could not load created notebook.', 'server_error');
         }
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -186,7 +186,7 @@ final class NotebookRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -209,6 +209,7 @@ final class NotebookRepository
         if ($this->isProvisionedGroupNotebook($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group notebook cannot be deleted.', 'forbidden');
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         if ($instance->objects()->where('componenttype', 'VJOURNAL')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Notebook contains notes.', 'notebookHasContents');
         }
@@ -572,7 +573,7 @@ final class NotebookRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapNotebook($instance, $groupSlug);
+        $mapped = $this->mapNotebook($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'notebook');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -596,7 +597,7 @@ final class NotebookRepository
     }
 
     /** @return array<mixed> */
-    private function mapNotebook(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapNotebook(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? '')) ?: $uri;
@@ -606,7 +607,7 @@ final class NotebookRepository
         $isOwnedGeneral = ! $isSharee && ! $isGroup && $uri === CalendarCollectionUris::NOTE_GENERAL;
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
         $mayWrite = ! $this->shareInvites->isReadOnly($instance);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => [
                 'mayReadItems' => true,
@@ -635,7 +636,7 @@ final class NotebookRepository
                 'mayUpdatePrivate' => $mayWrite,
                 'mayRSVP' => $mayWrite,
                 'mayAdmin' => false,
-                'mayDelete' => ! $isSharedGroupList && $uri !== CalendarCollectionUris::NOTE_GENERAL,
+                'mayDelete' => $groupMayDelete && ! $isSharedGroupList && $uri !== CalendarCollectionUris::NOTE_GENERAL,
                 'mayShare' => $mayShare,
             ],
         };

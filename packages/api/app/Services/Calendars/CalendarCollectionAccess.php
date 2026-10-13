@@ -9,6 +9,7 @@ use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -28,6 +29,7 @@ final class CalendarCollectionAccess
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarShareVisibility $shareVisibility,
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
+        private readonly AdminRoleResolver $admins,
     ) {}
 
     /**
@@ -114,6 +116,36 @@ final class CalendarCollectionAccess
         if ($disallowed !== []) {
             throw new ApiHttpException(403, $message, 'forbidden');
         }
+    }
+
+    /**
+     * Group-owned collections (not inbound sharee copies) may be destroyed
+     * only by an instance admin. Sharees still dismiss; personal owners stay.
+     */
+    public function mayDeleteGroupOwned(string $username, CalendarInstance $instance): bool
+    {
+        if ($this->shareInvites->isSharee($instance)) {
+            return true;
+        }
+
+        $principalUri = $instance->principaluri;
+
+        return ! is_string($principalUri)
+            || ! str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)
+            || $this->admins->isAdmin($username);
+    }
+
+    public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
+    {
+        if ($this->mayDeleteGroupOwned($username, $instance)) {
+            return;
+        }
+
+        throw new ApiHttpException(
+            403,
+            'Only an instance admin can delete a group collection.',
+            'group_delete_admin_only',
+        );
     }
 
     /** Hide an inbound share. Returns true when the instance was a sharee. */
