@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
-import type { CalendarFeedInfo } from "@/calendar-core/src/calendar-types";
+import type { CalendarFeedInfo, CalendarFeedMode } from "@/calendar-core/src/calendar-types";
 import type { CalendarUILabels } from "@/calendar-core/src/calendar-labels";
 import "@/share-ui/share-ui.css";
 import "./calendar-publish-section.css";
@@ -25,7 +25,7 @@ export type CalendarPublishSectionProps = {
   feed: CalendarFeedInfo | null;
   busy?: boolean;
   disabled?: boolean;
-  onToggle: (enabled: boolean) => void;
+  onToggle: (enabled: boolean, mode?: CalendarFeedMode) => void;
   onCopyHttps: () => void;
 };
 
@@ -79,6 +79,24 @@ export function CalendarPublishSection({
               variant="outline"
               onClick={onCopyHttps}
             />
+          </div>
+          <div className="calendar-publish-section__mode">
+            <div className="calendar-publish-section__mode-copy">
+              <span className="calendar-publish-section__mode-title">
+                {labels.publishCalendarBusyLabel}
+              </span>
+              <span className="calendar-publish-section__mode-hint">
+                {labels.publishCalendarBusyHint}
+              </span>
+            </div>
+            <span className="share-dialog__switch-touch">
+              <Switch
+                checked={feed.mode === "busy"}
+                disabled={disabled || busy}
+                onCheckedChange={(next) => onToggle(true, next ? "busy" : "full")}
+                aria-label={labels.publishCalendarBusyLabel}
+              />
+            </span>
           </div>
         </div>
       ) : null}

@@ -214,7 +214,9 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertNotNull($private->RRULE);
         $this->assertNotNull($private->EXDATE);
         $this->assertNotNull($private->DTSTAMP);
-        $this->assertStringContainsString('Europe/Amsterdam', (string) $private->DTSTART);
+        $tzid = $private->DTSTART['TZID'];
+        $this->assertNotNull($tzid);
+        $this->assertSame('Europe/Amsterdam', $tzid->getValue());
         $this->assertStringNotContainsString('secret-board-notes@example.test', $private->serialize());
         $this->assertStringNotContainsString('secret-room', $private->serialize());
 

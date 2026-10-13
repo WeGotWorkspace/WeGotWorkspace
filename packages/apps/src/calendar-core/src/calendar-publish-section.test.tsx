@@ -65,4 +65,23 @@ describe("CalendarPublishSection", () => {
     );
     expect(onToggle).toHaveBeenCalledWith(false);
   });
+
+  it("switches a published feed to busy only and back", () => {
+    const onToggle = vi.fn();
+    renderSection({ feed, onToggle });
+
+    const busyOnly = screen.getByRole("switch", {
+      name: defaultCalendarLabels.publishCalendarBusyLabel,
+    });
+    expect(busyOnly.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(busyOnly);
+    expect(onToggle).toHaveBeenCalledWith(true, "busy");
+
+    cleanup();
+    renderSection({ feed: { ...feed, mode: "busy" }, onToggle });
+    fireEvent.click(
+      screen.getByRole("switch", { name: defaultCalendarLabels.publishCalendarBusyLabel }),
+    );
+    expect(onToggle).toHaveBeenCalledWith(true, "full");
+  });
 });

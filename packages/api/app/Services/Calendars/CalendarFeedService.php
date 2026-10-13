@@ -19,7 +19,7 @@ final class CalendarFeedService
     ) {}
 
     /**
-     * @return array{httpsUrl: string, webcalUrl: string}
+     * @return array{httpsUrl: string, webcalUrl: string, mode: string}
      */
     public function show(string $username, string $calendarId): array
     {
@@ -32,24 +32,35 @@ final class CalendarFeedService
             throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
         }
 
-        return $this->urlsFor($this->rawToken($row));
+        return $this->feedPayload($this->rawToken($row), $this->storedMode($row));
     }
 
     /**
-     * @return array{created: bool, feed: array{httpsUrl: string, webcalUrl: string}}
+     * @param  array<mixed>  $payload
+     * @return array{created: bool, feed: array{httpsUrl: string, webcalUrl: string, mode: string}}
      */
-    public function publish(string $username, string $calendarId): array
+    public function publish(string $username, string $calendarId, array $payload = []): array
     {
         $this->assertPublishable($username, $calendarId);
+        $mode = $this->requestedMode($payload);
         $existing = CalendarFeedToken::query()
             ->where('owner_username', $username)
             ->where('calendar_uri', $calendarId)
             ->first();
         if ($existing !== null) {
-            return ['created' => false, 'feed' => $this->urlsFor($this->rawToken($existing))];
+            if ($mode !== null && $this->storedMode($existing) !== $mode) {
+                $existing->mode = $mode;
+                $existing->save();
+            }
+
+            return [
+                'created' => false,
+                'feed' => $this->feedPayload($this->rawToken($existing), $this->storedMode($existing)),
+            ];
         }
 
         $raw = Str::lower(Str::random(48));
+        $stored = $mode ?? 'full';
         CalendarFeedToken::query()->create([
             'token_hash' => CalendarFeedToken::hashRaw($raw),
             // Encrypted so show()/publish() can return the same public URL.
@@ -57,9 +68,10 @@ final class CalendarFeedService
             'token_cipher' => $raw,
             'owner_username' => $username,
             'calendar_uri' => $calendarId,
+            'mode' => $stored,
         ]);
 
-        return ['created' => true, 'feed' => $this->urlsFor($raw)];
+        return ['created' => true, 'feed' => $this->feedPayload($raw, $stored)];
     }
 
     public function revoke(string $username, string $calendarId): void
@@ -94,7 +106,45 @@ final class CalendarFeedService
             throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
         }
 
-        return $this->builder->build($instance);
+        return $this->builder->build($instance, $this->storedMode($row));
+    }
+
+    /**
+     * @param  array<mixed>  $payload
+     */
+    private function requestedMode(array $payload): ?string
+    {
+        if ($payload === []) {
+            return null;
+        }
+        if (array_is_list($payload)) {
+            throw new ApiHttpException(400, 'Feed publish body must be an object.', 'bad_request');
+        }
+        foreach (array_keys($payload) as $key) {
+            if (is_string($key) && $key === 'mode') {
+                continue;
+            }
+            throw new ApiHttpException(
+                400,
+                'Unsupported feed publish field.',
+                'bad_request',
+                [is_string($key) ? $key : 'mode'],
+            );
+        }
+        if (! array_key_exists('mode', $payload)) {
+            return null;
+        }
+        $mode = $payload['mode'];
+        if ($mode !== 'full' && $mode !== 'busy') {
+            throw new ApiHttpException(400, 'mode must be full or busy.', 'bad_request', ['mode']);
+        }
+
+        return $mode;
+    }
+
+    private function storedMode(CalendarFeedToken $row): string
+    {
+        return $row->mode === 'busy' ? 'busy' : 'full';
     }
 
     private function assertPublishable(string $username, string $calendarId): void
@@ -106,15 +156,16 @@ final class CalendarFeedService
     }
 
     /**
-     * @return array{httpsUrl: string, webcalUrl: string}
+     * @return array{httpsUrl: string, webcalUrl: string, mode: string}
      */
-    private function urlsFor(string $raw): array
+    private function feedPayload(string $raw, string $mode): array
     {
         $https = $this->urls->v1('calendars/feeds/'.$raw);
 
         return [
             'httpsUrl' => $https,
             'webcalUrl' => (string) preg_replace('#^https?://#i', 'webcal://', $https),
+            'mode' => $mode,
         ];
     }
 

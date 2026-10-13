@@ -78,10 +78,14 @@ export function createMockCalendarIcsOperations(
     },
     refreshStaleCalendarSubscriptions: async () => false,
     getCalendarFeed: async (calendarId) => state.feeds.get(calendarId) ?? null,
-    publishCalendarFeed: async (calendarId) => {
+    publishCalendarFeed: async (calendarId, mode = "full") => {
+      const existing = state.feeds.get(calendarId);
       const feed: CalendarFeedInfo = {
-        httpsUrl: `https://example.test/api/v1/calendars/feeds/${calendarId}token`,
-        webcalUrl: `webcal://example.test/api/v1/calendars/feeds/${calendarId}token`,
+        httpsUrl:
+          existing?.httpsUrl ?? `https://example.test/api/v1/calendars/feeds/${calendarId}token`,
+        webcalUrl:
+          existing?.webcalUrl ?? `webcal://example.test/api/v1/calendars/feeds/${calendarId}token`,
+        mode,
       };
       state.feeds.set(calendarId, feed);
       return feed;

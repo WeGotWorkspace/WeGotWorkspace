@@ -66,9 +66,21 @@
       }
     }
   },
+  "CalendarFeedPublishRequest": {
+    "type": "object",
+    "additionalProperties": false,
+    "description": "Optional publish mode. Omitted mode leaves an existing feed unchanged and creates a new feed as full.",
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["full", "busy"],
+        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
+      }
+    }
+  },
   "CalendarFeed": {
     "type": "object",
-    "required": ["httpsUrl", "webcalUrl"],
+    "required": ["httpsUrl", "webcalUrl", "mode"],
     "additionalProperties": false,
     "description": "Owner-visible published ICS/webcal feed URLs for an owned personal calendar.",
     "properties": {
@@ -80,6 +92,11 @@
       "webcalUrl": {
         "type": "string",
         "description": "Same feed advertised as webcal:// for calendar clients."
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["full", "busy"],
+        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
       }
     }
   }

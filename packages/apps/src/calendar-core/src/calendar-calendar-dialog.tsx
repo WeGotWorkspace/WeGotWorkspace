@@ -89,7 +89,7 @@ export type CalendarCalendarDialogConfirmInput = {
 export type CalendarCalendarDialogPublish = {
   feed: CalendarFeedInfo | null;
   busy?: boolean;
-  onToggle: (enabled: boolean) => void;
+  onToggle: (enabled: boolean, mode?: "full" | "busy") => void;
   onCopyHttps: () => void;
 };
 

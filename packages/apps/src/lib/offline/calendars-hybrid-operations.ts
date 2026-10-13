@@ -357,9 +357,9 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
       requireOnline("Load calendar feed");
       return getCalendarFeedLive(calendarId);
     },
-    publishCalendarFeed: async (calendarId) => {
+    publishCalendarFeed: async (calendarId, mode) => {
       requireOnline("Publish");
-      return publishCalendarFeedLive(calendarId);
+      return publishCalendarFeedLive(calendarId, mode);
     },
     unpublishCalendarFeed: async (calendarId) => {
       requireOnline("Unpublish");

@@ -75,7 +75,7 @@ describe("useCalendarController publish feed", () => {
     await act(async () => {
       result.current.toggleCalendarPublish(true);
     });
-    expect(publishCalendarFeed).toHaveBeenCalledWith("default");
+    expect(publishCalendarFeed).toHaveBeenCalledWith("default", "full");
     expect(result.current.publishFeed?.httpsUrl).toContain("/calendars/feeds/");
 
     await act(async () => {

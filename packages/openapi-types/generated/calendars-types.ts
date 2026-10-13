@@ -31,6 +31,7 @@ export type CalendarEventSetCreated = components["schemas"]["CalendarEventSetCre
 export type CalendarEventSetRequest = components["schemas"]["CalendarEventSetRequest"];
 export type CalendarEventSetResponse = components["schemas"]["CalendarEventSetResponse"];
 export type CalendarFeed = components["schemas"]["CalendarFeed"];
+export type CalendarFeedPublishRequest = components["schemas"]["CalendarFeedPublishRequest"];
 export type CalendarListResponse = components["schemas"]["CalendarListResponse"];
 export type CalendarPatch = components["schemas"]["CalendarPatch"];
 export type CalendarRecurrenceNDay = components["schemas"]["CalendarRecurrenceNDay"];

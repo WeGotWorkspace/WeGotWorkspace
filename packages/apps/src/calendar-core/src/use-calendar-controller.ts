@@ -1174,14 +1174,14 @@ export function useCalendarController({
   ]);
 
   const toggleCalendarPublish = useCallback(
-    (enabled: boolean) => {
+    (enabled: boolean, mode: "full" | "busy" = "full") => {
       if (calendarDialog?.mode !== "edit" || !calendarDialog.canPublish) return;
       const calendarId = calendarDialog.calendarId;
       if (enabled) {
         if (!operations?.publishCalendarFeed) return;
         setPublishBusy(true);
         void operations
-          .publishCalendarFeed(calendarId)
+          .publishCalendarFeed(calendarId, mode)
           .then((feed) => {
             setPublishFeed(feed);
             show(L.toastFeedPublished);
