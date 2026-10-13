@@ -83,7 +83,6 @@ import type {
   InstallerDbDriver,
   InstallerDbState,
   InstallerRuntimeState,
-  InstallerStateResponse,
   InstallerStep,
 } from "@wgw/openapi-types/installer-types";
 
@@ -305,7 +304,6 @@ export type WgwInstallerDbDriver = InstallerDbDriver;
 export type WgwInstallerDbState = InstallerDbState;
 export type WgwInstallerCheck = InstallerCheck;
 export type WgwInstallerRuntimeState = InstallerRuntimeState;
-export type WgwInstallerStateResponse = InstallerStateResponse;
 export type WgwInstallerBootstrapResponse = InstallerBootstrapResponse;
 export type WgwInstallerAction = InstallerAction;
 export type WgwInstallerActionPayload = InstallerActionPayload;

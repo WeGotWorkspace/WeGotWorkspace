@@ -88,7 +88,6 @@ Routes that remain:
 
 | Route | Access |
 |-------|--------|
-| `GET /api/v1/installer/state` | guest |
 | `GET /api/v1/installer/bootstrap` | guest |
 | `POST /api/v1/installer/action` | guest |
 

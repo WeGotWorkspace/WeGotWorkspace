@@ -284,25 +284,6 @@
                     "state"
                 ]
             },
-            "InstallerStateResponse": {
-                "type": "object",
-                "properties": {
-                    "installed": {
-                        "type": "boolean"
-                    },
-                    "maintenance": {
-                        "type": "boolean"
-                    },
-                    "state": {
-                        "$ref": "#/components/schemas/InstallerRuntimeState"
-                    }
-                },
-                "required": [
-                    "installed",
-                    "maintenance",
-                    "state"
-                ]
-            },
             "InstallerActionResponse": {
                 "type": "object",
                 "properties": {
@@ -13996,20 +13977,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/installer/state": {
-            "get": {
-                "tags": [
-                    "Installer"
-                ],
-                "summary": "Installer summary and current state snapshot",
-                "responses": {
-                    "200": {
-                        "description": "Installer state"
-                    }
-                },
-                "x-wgw-access": "guest"
             }
         },
         "/installer/bootstrap": {

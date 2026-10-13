@@ -30,27 +30,13 @@ final class InstallerWizardService
     ) {}
 
     /**
-     * @return array{installed: bool, maintenance: bool, state: array<string, mixed>}
-     */
-    public function summary(string $webBase): array
-    {
-        $this->paths->clearStaleInstallLock();
-
-        return [
-            'installed' => $this->paths->isInstalled(),
-            'maintenance' => $this->paths->isMaintenance(),
-            'state' => $this->runtimeState($webBase),
-        ];
-    }
-
-    /**
      * @return array{state: array<string, mixed>}
      */
     public function bootstrap(string $webBase): array
     {
         $this->paths->clearStaleInstallLock();
         if (! $this->paths->isInstalled()) {
-            $this->window->assertOpen();
+            $this->window->assertNotExpired();
         }
 
         return [
@@ -73,7 +59,7 @@ final class InstallerWizardService
             ];
         }
 
-        $this->window->assertOpen();
+        $this->window->open();
 
         return match ($action) {
             'welcome_next' => $this->actionWelcomeNext($webBase),

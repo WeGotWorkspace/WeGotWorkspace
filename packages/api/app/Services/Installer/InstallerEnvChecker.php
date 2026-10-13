@@ -10,7 +10,10 @@ final class InstallerEnvChecker
 {
     public const MIN_PHP = '8.3.0';
 
-    public function __construct(private AppPaths $paths) {}
+    public function __construct(
+        private AppPaths $paths,
+        private InstallerWindow $window,
+    ) {}
 
     /**
      * @return list<array{ok: bool, label: string, detail: string, optional?: bool}>
@@ -23,6 +26,7 @@ final class InstallerEnvChecker
         }
         $checks[] = $this->extension($dbDriver === 'mysql' ? 'pdo_mysql' : 'pdo_sqlite');
         $checks[] = $this->writable($this->paths->dataDir());
+        $checks[] = $this->installWindow();
         $this->paths->ensureDataDirWebDeny();
         $checks[] = $this->writable($this->paths->configDir());
         foreach ($this->apiRuntimeChecks($this->paths->installRoot()) as $check) {
@@ -110,6 +114,23 @@ final class InstallerEnvChecker
             'ok' => $ok,
             'label' => 'Extension: '.$name,
             'detail' => $ok ? 'Loaded' : 'Missing',
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, label: string, detail: string}
+     */
+    private function installWindow(): array
+    {
+        $ok = $this->window->canRecord();
+        $path = $this->window->stampPath();
+
+        return [
+            'ok' => $ok,
+            'label' => 'Installer window',
+            'detail' => $ok
+                ? 'Can record when the installer was opened'
+                : 'Cannot write '.$path.' — adjust permissions for the web server user',
         ];
     }
 

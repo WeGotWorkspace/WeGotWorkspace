@@ -7,6 +7,9 @@ namespace App\Services\Installer;
 /**
  * Rejects installer database hosts that are, or resolve to, IPv4 link-local
  * (169.254.0.0/16). Localhost and private ranges stay allowed.
+ *
+ * IPv4 only. gethostbynamel() does not see IPv6, so link-local and AAAA-only
+ * names are outside this check.
  */
 final class InstallerDatabaseHostGuard
 {
@@ -67,46 +70,22 @@ final class InstallerDatabaseHostGuard
         }
         $host = rtrim($host, '.');
 
-        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
-            return $host;
-        }
-
-        if (preg_match('/\A(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)\z/i', $host, $dotted) === 1) {
-            $ipv4 = $dotted[1];
-            if (filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
-                return null;
-            }
-
-            return $ipv4;
-        }
-
-        if (preg_match('/\A::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})\z/i', $host, $mapped) !== 1) {
+        $packed = @inet_pton($host);
+        if ($packed === false) {
             return null;
         }
+        if (strlen($packed) === 4) {
+            $canonical = inet_ntop($packed);
 
-        $hi = $this->hex16($mapped[1]);
-        $lo = $this->hex16($mapped[2]);
-        if ($hi === null || $lo === null) {
-            return null;
+            return is_string($canonical) ? $canonical : null;
+        }
+        if (strlen($packed) === 16 && str_starts_with($packed, "\0\0\0\0\0\0\0\0\0\0\xff\xff")) {
+            $canonical = inet_ntop(substr($packed, 12));
+
+            return is_string($canonical) ? $canonical : null;
         }
 
-        $ip = long2ip(($hi << 16) | $lo);
-
-        return is_string($ip) ? $ip : null;
-    }
-
-    private function hex16(mixed $hex): ?int
-    {
-        if (! is_string($hex)) {
-            return null;
-        }
-
-        $value = hexdec($hex);
-        if (! is_int($value) || $value < 0 || $value > 0xFFFF) {
-            return null;
-        }
-
-        return $value;
+        return null;
     }
 
     private function isLinkLocal(string $ip): bool

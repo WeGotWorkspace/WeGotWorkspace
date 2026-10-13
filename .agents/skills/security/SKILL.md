@@ -22,7 +22,7 @@ Answer each item in the handoff. A happy-path test does not answer them.
 - What is the rate-limit or cache key, and can the caller mint new keys (wildcard DNS, a spoofed header, a new origin)?
 - Does the limit run before the expensive work?
 - Is the body streamed with a cap, or buffered fully and then rejected?
-- Which hosts does `filter_var` or the allowlist still accept?
+- Which hosts does `filter_var` or the allowlist still accept? Parse IP literals with `inet_pton`, including expanded IPv4-mapped IPv6. A regex of one or two spellings leaves the others for `filter_var` to treat as "already an IP, so allowed."
 - Does a pre-auth middleware run the limit and the size cap before the handler reads the body?
 - Is there a test that tries the bypass, not only the happy path?
 
