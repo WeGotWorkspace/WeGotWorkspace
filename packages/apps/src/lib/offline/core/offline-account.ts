@@ -1,17 +1,7 @@
-/** Same key and value as `setLoggedOutMarker` in the API session module. */
-const LOGGED_OUT_MARKER_KEY = "wgw.api.logged_out";
+import { readLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
 
 function offlineUsernameKey(domain: string): string {
   return `wgw.offline.${domain}.username`;
-}
-
-function readLoggedOutMarker(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(LOGGED_OUT_MARKER_KEY) === "1";
-  } catch {
-    return false;
-  }
 }
 
 /** Persist the last known username for a domain so its cache can be found while offline. */

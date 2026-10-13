@@ -2,12 +2,20 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetWgwSessionStateForTests, wgwEnsureSession, wgwLogout } from "@/lib/api/wgw/http";
+import {
+  resetWgwSessionStateForTests,
+  WGW_GUEST_REFRESH_TOKEN,
+  wgwEnsureSession,
+  wgwLogout,
+} from "@/lib/api/wgw/http";
 import {
   rememberOfflineUsername,
   resolveOfflineUsername,
 } from "@/lib/offline/core/offline-account";
-import { offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/core/offline-db";
+import { countLogoutOutboxMutations, runLogoutStep } from "@/lib/offline/core/offline-wipe";
+import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
+import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
 const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
@@ -51,6 +59,14 @@ async function seedOfflineAccount(username: string, domain = "calendars"): Promi
 async function indexedDbNames(): Promise<string[]> {
   const rows = await indexedDB.databases();
   return rows.flatMap((row) => (row.name ? [row.name] : []));
+}
+
+async function createNamedDatabase(name: string): Promise<void> {
+  const db = new Dexie(name);
+  db.version(1).stores({ meta: "key" });
+  await db.open();
+  await db.table("meta").put({ key: "body", value: "secret" });
+  db.close();
 }
 
 function installPushSubscription(endpoint: string): {
@@ -111,6 +127,7 @@ afterEach(async () => {
   resetWgwSessionStateForTests();
   window.localStorage.clear();
   Reflect.deleteProperty(navigator, "serviceWorker");
+  resetOfflineDatabaseCache();
   const names = await indexedDbNames();
   await Promise.all(names.map((name) => Dexie.delete(name)));
 });
@@ -212,6 +229,7 @@ describe("user-initiated logout", () => {
   });
 
   it("falls back to remembered usernames when indexedDB.databases is missing", async () => {
+    // Browsers without indexedDB.databases() only wipe remembered usernames.
     installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
     await seedOfflineAccount("alice", "contacts");
     const other = offlineDbForAccount("mallory");
@@ -230,18 +248,172 @@ describe("user-initiated logout", () => {
     expect(names).toContain("wgw-offline-mallory");
     expect(window.localStorage.getItem("wgw.offline.contacts.username")).toBeNull();
   });
+
+  it("deletes note and document collab rooms, including legacy names", async () => {
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await createNamedDatabase("note-uid:v2");
+    await createNamedDatabase("note-uid");
+    await createNamedDatabase("/note-uid");
+    await createNamedDatabase("Docs/private.md:v2");
+    await createNamedDatabase("/Docs/private.md");
+    await createNamedDatabase("orphan-room:v2");
+    await createNamedDatabase("report:v2-draft");
+    await createNamedDatabase("not-wgw-cache");
+
+    await wgwLogout();
+
+    const names = await indexedDbNames();
+    expect(names).not.toContain("note-uid:v2");
+    expect(names).not.toContain("note-uid");
+    expect(names).not.toContain("/note-uid");
+    expect(names).not.toContain("Docs/private.md:v2");
+    expect(names).not.toContain("Docs/private.md");
+    expect(names).not.toContain("/Docs/private.md");
+    expect(names).not.toContain("orphan-room:v2");
+    expect(names).toContain("report:v2-draft");
+    expect(names).toContain("not-wgw-cache");
+  });
+
+  it("deletes collab rooms recorded in the account when indexedDB.databases is missing", async () => {
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await seedOfflineAccount("alice", "notes");
+    const db = offlineDbForAccount("alice");
+    await notesNotesTable(db).put({
+      id: "note-uid",
+      notebookId: "nb",
+      data: "{}",
+      pendingSync: true,
+      updatedAt: 1,
+    });
+    await docsAvailabilityTable(db).put({
+      id: "Docs/private.md",
+      pinnedAt: 1,
+      lastSyncedAt: null,
+      location: "My Drive",
+    });
+    await createNamedDatabase("note-uid:v2");
+    await createNamedDatabase("Docs/private.md:v2");
+    await createNamedDatabase("orphan-room:v2");
+    const databases = indexedDB.databases.bind(indexedDB);
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    try {
+      await wgwLogout();
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
+
+    const names = await indexedDbNames();
+    expect(names).not.toContain("wgw-offline-alice");
+    expect(names).not.toContain("note-uid:v2");
+    expect(names).not.toContain("note-uid");
+    expect(names).not.toContain("Docs/private.md:v2");
+    expect(names).toContain("orphan-room:v2");
+  });
+
+  it("counts outbox rows that logout will discard", async () => {
+    rememberOfflineUsername("notes", "alice");
+    const db = offlineDbForAccount("alice");
+    await db.open();
+    await db.outbox.put({
+      id: "pending-1",
+      domain: "notes",
+      op: "update",
+      payload: "{}",
+      createdAt: 1,
+      retries: 0,
+    });
+    await db.outbox.put({
+      id: "pending-2",
+      domain: "notes",
+      op: "update",
+      payload: "{}",
+      createdAt: 2,
+      retries: 0,
+    });
+
+    await expect(countLogoutOutboxMutations()).resolves.toBe(2);
+  });
+
+  it("does not create a database while counting a remembered username that has none", async () => {
+    rememberOfflineUsername("notes", "nobody");
+    const databases = indexedDB.databases.bind(indexedDB);
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    try {
+      await expect(countLogoutOutboxMutations()).resolves.toBe(0);
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
+
+    expect(await indexedDbNames()).not.toContain("wgw-offline-nobody");
+  });
+
+  it("marks the session logged out before revoke finishes", async () => {
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    let markerDuringRevoke: string | null = null;
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/auth/revoke")) {
+        markerDuringRevoke = window.localStorage.getItem(LOGGED_OUT_KEY);
+      }
+      return new Response("{}", { status: 200 });
+    }) as typeof fetch;
+
+    await wgwLogout();
+
+    expect(markerDuringRevoke).toBe("1");
+    expect(window.localStorage.getItem(LOGGED_OUT_KEY)).toBe("1");
+  });
+
+  it("leaves the member cache and push subscription when a guest signs out", async () => {
+    const endpoint = "https://push.example.test/subscription/alice";
+    const { unsubscribe } = installPushSubscription(endpoint);
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await seedOfflineAccount("alice", "calendars");
+    await createNamedDatabase("alice-note:v2");
+    window.localStorage.setItem(REFRESH_TOKEN_KEY, WGW_GUEST_REFRESH_TOKEN);
+    resetWgwSessionStateForTests();
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await wgwLogout();
+
+    expect(unsubscribe).not.toHaveBeenCalled();
+    expect(fetchCalls(fetchMock).some((call) => isPushDelete(call, endpoint))).toBe(false);
+    expect(window.localStorage.getItem("wgw.offline.calendars.username")).toBe("alice");
+    expect(await indexedDbNames()).toContain("wgw-offline-alice");
+    expect(await indexedDbNames()).toContain("alice-note:v2");
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
+  });
+
+  it("records a logout step failure without skipping later steps", async () => {
+    await runLogoutStep(async () => {
+      throw new Error("wipe blocked");
+    }, "wipe");
+
+    const ring = JSON.parse(window.localStorage.getItem("wgw.api.session_debug") ?? "[]") as Array<{
+      event: string;
+      step: string;
+      message: string;
+    }>;
+    expect(ring.at(-1)).toMatchObject({
+      event: "wgw.logout.step_failed",
+      step: "wipe",
+      message: "wipe blocked",
+    });
+  });
 });
 
 describe("session loss without logout", () => {
   it("keeps offline data when the refresh token expires", async () => {
     installSession(Date.now() - 60_000, Date.now() - 60_000);
     await seedOfflineAccount("bob", "calendars");
+    await createNamedDatabase("bob-note:v2");
 
     await expect(wgwEnsureSession()).rejects.toThrow(/Missing auth session/);
 
     expect(window.localStorage.getItem("wgw.offline.calendars.username")).toBe("bob");
     expect(window.localStorage.getItem(LOGGED_OUT_KEY)).toBeNull();
     expect(await indexedDbNames()).toContain("wgw-offline-bob");
+    expect(await indexedDbNames()).toContain("bob-note:v2");
     expect(resolveOfflineUsername("calendars", undefined)).toBe("bob");
   });
 
