@@ -42,17 +42,29 @@ final class PasswordRecoveryService
     {
         $user = $this->resolveUser($identifier);
         if ($user === null) {
+            $this->logSkipped('unknown_identifier');
+
             return;
         }
 
         $email = $this->principalEmail((string) $user->username);
         if ($email === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            $this->logSkipped('no_email');
+
             return;
         }
 
         $config = $this->mailDelivery->loadConfig();
         $canSubmit = (bool) ($this->mailDelivery->adminState()['capability']['canSubmit'] ?? false);
-        if (! $canSubmit || ! PublicAppUrl::isConfigured()) {
+        if (! $canSubmit) {
+            $this->logSkipped('cannot_submit');
+
+            return;
+        }
+
+        if (! PublicAppUrl::isConfigured()) {
+            $this->logSkipped('no_public_url');
+
             return;
         }
 
@@ -148,5 +160,10 @@ final class PasswordRecoveryService
     private function logDelivery(DeliveryResult $result): void
     {
         Log::info('password-recovery.delivery', $result->toArray());
+    }
+
+    private function logSkipped(string $reason): void
+    {
+        Log::warning('password-recovery.skipped', ['reason' => $reason]);
     }
 }
