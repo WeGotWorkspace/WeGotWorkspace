@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Exceptions\ApiHttpException;
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Models\CalendarObject;
 use App\Models\Card;
 use App\Services\Drive\DriveGroupResolver;
@@ -12,6 +14,10 @@ use App\Storage\StoragePaths;
 
 final class UnifiedSearchService
 {
+    public const MAX_QUERY_LENGTH = 200;
+
+    public const MAX_OFFSET = 1000;
+
     public function __construct(
         private DriveGroupResolver $groups,
         private SearchTokenService $tokens,
@@ -42,11 +48,14 @@ final class UnifiedSearchService
     public function search(string $username, string $query, int $limit, array $sources, array $filters = [], int $offset = 0): array
     {
         $query = trim($query);
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            throw new ApiHttpException(400, 'Search query is too long.', 'query_too_long');
+        }
         $limit = max(1, min(100, $limit));
-        $offset = max(0, $offset);
+        $offset = max(0, min(self::MAX_OFFSET, $offset));
         $allowedSources = array_values(array_intersect(['file', 'note', 'caldav', 'carddav'], $sources));
         $normalizedFilters = $this->normalizeFilters($filters);
-        $tokens = $this->tokens->tokenize($query);
+        $tokens = $this->tokens->tokenize($query, SearchTokenService::MAX_QUERY_TOKENS);
         $browseMode = $query === '' && $this->isBrowseMode($allowedSources, $normalizedFilters);
         if (! $browseMode && ($query === '' || $tokens === [])) {
             return [
@@ -58,6 +67,12 @@ final class UnifiedSearchService
                 'filters' => $normalizedFilters,
                 'results' => [],
             ];
+        }
+
+        // Browse mode has no tokens and no LIKE scans, so it stays on the
+        // account bucket. A token query is the scan the search bucket exists for.
+        if ($tokens !== []) {
+            WgwApiRateLimiters::consumeSearch($username);
         }
 
         $rows = $this->store->search(
@@ -103,7 +118,7 @@ final class UnifiedSearchService
             'query' => $query,
             'limit' => $limit,
             'offset' => $offset,
-            'hasMore' => count($results) >= $limit,
+            'hasMore' => $offset >= self::MAX_OFFSET ? false : count($results) >= $limit,
             'sources' => $allowedSources === [] ? ['file', 'note', 'caldav', 'carddav'] : $allowedSources,
             'filters' => $normalizedFilters,
             'results' => $this->annotateHasShares($username, $results),

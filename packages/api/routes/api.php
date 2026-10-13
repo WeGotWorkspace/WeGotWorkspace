@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Rtc\MetricsController as RtcMetricsController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
+use App\Http\Controllers\Api\V1\Security\CspReportController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
@@ -65,6 +66,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
+use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -79,6 +81,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class);
 Route::get('capabilities', CapabilitiesController::class);
+Route::post('csp-reports', CspReportController::class)
+    ->middleware(['throttle:60,1', CspReportBodyLimit::class]);
 
 Route::get('.well-known/jwks.json', JwksController::class);
 
@@ -97,11 +101,14 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware('wgw.auth');
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+// Guests read room status before they join, so this stays unauthenticated.
+// It is not on the account bucket, and not on the room limiter: that limiter
+// resolves the actor with the same Basic check, which would consume a login attempt.
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware('wgw.auth')
+    ->middleware(['wgw.auth', 'throttle:wgw-api'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 // Signaling is unauthenticated by design (guests join meetings with a session
@@ -145,7 +152,7 @@ $filesSession = [
     StartSession::class,
 ];
 
-Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(function () use ($filesSession): void {
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
@@ -358,7 +365,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
-Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
@@ -369,7 +376,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
 
 Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
-Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
     Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);

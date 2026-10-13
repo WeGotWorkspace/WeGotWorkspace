@@ -29,9 +29,6 @@ final class ApiDocsController
 
     private function buildDocsHtml(string $specUrl, string $docsBase, string $tokenUrl): string
     {
-        $specUrlJs = json_encode($specUrl, JSON_UNESCAPED_SLASHES);
-        $tokenUrlJs = json_encode($tokenUrl, JSON_UNESCAPED_SLASHES);
-
         return <<<HTML
 <!doctype html>
 <html lang="en">
@@ -54,7 +51,7 @@ final class ApiDocsController
 </style>
 </head>
 <body>
-<div id="wgw-docs-auth" class="wgw-docs-auth">
+<div id="wgw-docs-auth" class="wgw-docs-auth" data-spec-url="{$this->escapeHtml($specUrl)}" data-token-url="{$this->escapeHtml($tokenUrl)}">
 <form id="wgw-docs-auth-form">
 <label>Username <input type="text" id="wgw-docs-username" name="username" autocomplete="username" required></label>
 <label>Password <input type="password" id="wgw-docs-password" name="password" autocomplete="current-password" required></label>
@@ -65,63 +62,7 @@ final class ApiDocsController
 <div id="swagger-ui"></div>
 <script src="{$this->escapeHtml($docsBase.'/swagger-ui-bundle.js')}"></script>
 <script src="{$this->escapeHtml($docsBase.'/swagger-ui-standalone-preset.js')}"></script>
-<script>
-(function () {
-  var tokenUrl = {$tokenUrlJs};
-  var statusEl = document.getElementById("wgw-docs-auth-status");
-  var submitBtn = document.getElementById("wgw-docs-auth-submit");
-
-  function setStatus(message, kind) {
-    statusEl.textContent = message;
-    statusEl.className = "wgw-docs-auth-status" + (kind ? " wgw-docs-auth-status--" + kind : "");
-  }
-
-  window.ui = SwaggerUIBundle({
-    url: {$specUrlJs},
-    dom_id: "#swagger-ui",
-    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-    layout: "BaseLayout",
-    persistAuthorization: false
-  });
-
-  document.getElementById("wgw-docs-auth-form").addEventListener("submit", function (event) {
-    event.preventDefault();
-    setStatus("", "");
-    var username = document.getElementById("wgw-docs-username").value.trim();
-    var password = document.getElementById("wgw-docs-password").value;
-    if (!username || !password) {
-      setStatus("Enter username and password.", "error");
-      return;
-    }
-    submitBtn.disabled = true;
-    fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ username: username, password: password })
-    })
-      .then(function (response) {
-        return response.json().catch(function () { return {}; }).then(function (data) {
-          if (!response.ok) {
-            setStatus(data.error || data.message || ("Login failed (" + response.status + ")."), "error");
-            return;
-          }
-          if (!data.access_token) {
-            setStatus("Token response missing access_token.", "error");
-            return;
-          }
-          window.ui.preauthorizeApiKey("bearerAuth", data.access_token);
-          setStatus("Authorized" + (data.username ? " as " + data.username : "") + ".", "success");
-        });
-      })
-      .catch(function () {
-        setStatus("Network error: could not reach token endpoint.", "error");
-      })
-      .finally(function () {
-        submitBtn.disabled = false;
-      });
-  });
-})();
-</script>
+<script src="{$this->escapeHtml($docsBase.'/swagger-init.js')}"></script>
 </body>
 </html>
 HTML;
@@ -159,7 +100,7 @@ HTML;
     {
         return match ($asset) {
             'swagger-ui.css' => 'text/css; charset=utf-8',
-            'swagger-ui-bundle.js', 'swagger-ui-standalone-preset.js' => 'application/javascript; charset=utf-8',
+            'swagger-ui-bundle.js', 'swagger-ui-standalone-preset.js', 'swagger-init.js' => 'application/javascript; charset=utf-8',
             'favicon-32x32.png', 'favicon-16x16.png' => 'image/png',
             default => 'application/octet-stream',
         };
@@ -167,6 +108,10 @@ HTML;
 
     private function resolveSwaggerAssetPath(string $file): string
     {
+        if ($file === 'swagger-init.js') {
+            return resource_path('docs/swagger-init.js');
+        }
+
         $candidates = [
             base_path('vendor/swagger-api/swagger-ui/dist/'.$file),
             dirname(__DIR__, 4).'/vendor/swagger-api/swagger-ui/dist/'.$file,
