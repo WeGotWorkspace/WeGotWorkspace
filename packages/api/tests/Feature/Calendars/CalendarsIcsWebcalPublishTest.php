@@ -170,14 +170,21 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
     {
         $this->seedEventViaPdo('bob', 'public-detail.ics', $this->publicDetailIcs());
 
+        $this->seedEventViaPdo('bob', 'zoom-only.ics', $this->zoomOnlyIcs());
+
         $ics = $this->publishAndDownload();
-        $event = $this->eventsByUid($ics)['public-detail@example.test'];
+        $events = $this->eventsByUid($ics);
+        $event = $events['public-detail@example.test'];
 
         $this->assertNull($event->ATTENDEE);
         $this->assertNull($event->ORGANIZER);
+        $this->assertNull($event->CONTACT);
         $this->assertNull($event->VALARM);
+        $this->assertNull($event->ATTACH);
         $this->assertNull($event->{'X-WGW-NOTE'});
         $this->assertNull($event->CONFERENCE);
+        $this->assertNull($event->{'X-GOOGLE-CONFERENCE'});
+        $this->assertNull($event->{'X-MICROSOFT-SKYPETEAMSMEETINGURL'});
         $this->assertSame('Public standup', $event->SUMMARY->getValue());
         $this->assertSame('Agenda lives on the external site', $event->DESCRIPTION->getValue());
         $this->assertSame('Library', $event->LOCATION->getValue());
@@ -185,11 +192,20 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString('attendee-hidden@example.test', $ics);
         $this->assertStringNotContainsString('folded-attendee@example.test', $ics);
         $this->assertStringNotContainsString('organizer-hidden@example.test', $ics);
+        $this->assertStringNotContainsString('hidden-contact@example.test', $ics);
         $this->assertStringNotContainsString('vendor-prop-token', $ics);
         $this->assertStringNotContainsString('vendor-param-token', $ics);
         $this->assertStringNotContainsString('board-room', $ics);
+        $this->assertStringNotContainsString('secret-token', $ics);
+        $this->assertStringNotContainsString('secret-teams', $ics);
+        $this->assertStringNotContainsString('secret-attachment', $ics);
         $this->assertStringNotContainsString('BEGIN:VALARM', $ics);
         $this->assertStringNotContainsString('Alarm text token', $ics);
+
+        $zoomOnly = $events['zoom-only@example.test'];
+        $this->assertSame('External call', $zoomOnly->SUMMARY->getValue());
+        $this->assertNull($zoomOnly->URL);
+        $this->assertStringNotContainsString('zoom-only-secret', $ics);
     }
 
     public function test_private_and_confidential_events_become_busy_placeholders(): void
@@ -198,7 +214,8 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->seedEventViaPdo('bob', 'confidential-hiring.ics', $this->confidentialHiringIcs());
         $this->seedEventViaPdo('bob', 'not-private.ics', $this->notPrivateClassIcs());
 
-        $events = $this->eventsByUid($this->publishAndDownload());
+        $ics = $this->publishAndDownload();
+        $events = $this->eventsByUid($ics);
 
         $private = $events['private-board@example.test'];
         $this->assertSame('Busy', $private->SUMMARY->getValue());
@@ -214,6 +231,9 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertNotNull($private->RRULE);
         $this->assertNotNull($private->EXDATE);
         $this->assertNotNull($private->DTSTAMP);
+        $this->assertSame('3', $private->SEQUENCE->getValue());
+        $this->assertSame('CANCELLED', $private->STATUS->getValue());
+        $this->assertSame('TRANSPARENT', $private->TRANSP->getValue());
         $tzid = $private->DTSTART['TZID'];
         $this->assertNotNull($tzid);
         $this->assertSame('Europe/Amsterdam', $tzid->getValue());
@@ -227,7 +247,10 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertNotNull($confidential->{'RECURRENCE-ID'});
         $this->assertStringNotContainsString('hiring-secret', $confidential->serialize());
 
-        $this->assertSame('Not actually private', $events['not-private@example.test']->SUMMARY->getValue());
+        $unknownClass = $events['not-private@example.test'];
+        $this->assertSame('Busy', $unknownClass->SUMMARY->getValue());
+        $this->assertNull($unknownClass->DESCRIPTION);
+        $this->assertStringNotContainsString('Not actually private', $ics);
         $this->assertSame('Published Meeting', $events['pub-event@example.test']->SUMMARY->getValue());
     }
 
@@ -299,6 +322,25 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
         $this->assertSame('full', (string) $row->mode);
     }
 
+    public function test_unknown_stored_mode_publishes_as_busy(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/calendars/default/feed')->assertCreated()->json();
+        $row = CalendarFeedToken::query()->first();
+        $this->assertNotNull($row);
+        $row->mode = 'x-custom';
+        $row->save();
+
+        $this->asBob()->getJson('/api/v1/calendars/default/feed')
+            ->assertOk()
+            ->assertJsonPath('mode', 'busy');
+
+        $ics = $this->get('/api/v1/calendars/feeds/'.$this->tokenFromHttpsUrl($created['httpsUrl']))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringNotContainsString('Published Meeting', $ics);
+        $this->assertStringContainsString('SUMMARY:Busy', $ics);
+    }
+
     private function asBob(): self
     {
         return $this->withBearer($this->userBearerToken());
@@ -358,7 +400,13 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
             ' dee@example.test',
             'URL:https://notes.example.test/agenda',
             'URL:https://cal.example.test/meet/board-room',
-            'CONFERENCE;VALUE=URI:https://cal.example.test/meet',
+            'URL:https://zoom.example.test/j/123?pwd=secret-token',
+            'URL:https://teams.example.test/secret-teams',
+            'CONFERENCE;VALUE=URI:https://zoom.example.test/j/123?pwd=secret-token',
+            'X-GOOGLE-CONFERENCE:https://cal.example.test/meet/board-room',
+            'X-MICROSOFT-SKYPETEAMSMEETINGURL:https://teams.example.test/secret-teams',
+            'ATTACH;FMTTYPE=application/pdf:https://drive.example.test/files/secret-attachment',
+            'CONTACT:mailto:hidden-contact@example.test',
             'X-WGW-NOTE:vendor-prop-token',
             'BEGIN:VALARM',
             'ACTION:DISPLAY',
@@ -379,6 +427,9 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
             'BEGIN:VEVENT',
             'UID:private-board@example.test',
             'DTSTAMP:20261013T120000Z',
+            'SEQUENCE:3',
+            'STATUS:CANCELLED',
+            'TRANSP:TRANSPARENT',
             'DTSTART;TZID=Europe/Amsterdam:20261015T090000',
             'DTEND;TZID=Europe/Amsterdam:20261015T100000',
             'RRULE:FREQ=WEEKLY;COUNT=4',
@@ -428,6 +479,24 @@ final class CalendarsIcsWebcalPublishTest extends WgwDatabaseTestCase
             'DTEND:20261017T110000Z',
             'SUMMARY:Not actually private',
             'CLASS:PRIVATEEVENT',
+            'END:VEVENT',
+            'END:VCALENDAR',
+            '',
+        ]);
+    }
+
+    private function zoomOnlyIcs(): string
+    {
+        return implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'BEGIN:VEVENT',
+            'UID:zoom-only@example.test',
+            'DTSTAMP:20261013T120000Z',
+            'DTSTART:20261018T100000Z',
+            'DTEND:20261018T110000Z',
+            'SUMMARY:External call',
+            'URL:https://zoom.example.test/j/999?pwd=zoom-only-secret',
             'END:VEVENT',
             'END:VCALENDAR',
             '',
