@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Security;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarRepository;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Jmap\JmapCapabilities;
@@ -233,6 +235,26 @@ final class GroupCollectionDeleteAuthorizationTest extends WgwDatabaseTestCase
         $this->assertSame([$shareeId], $dismissed['destroyed']);
         $this->assertSame('Leave Me', $this->jmapCalendar('bob', $sharedId)['name']);
         $this->assertNull($this->jmapCalendarNamedOrNull('carol', 'Leave Me'));
+    }
+
+    public function test_delete_including_contents_does_not_skip_the_guard_for_a_group_calendar(): void
+    {
+        app(UserCalendarCollectionsProvisioner::class)->ensureForGroupPrincipal(
+            'principals/groups/'.self::GROUP,
+            'Crew',
+        );
+        $calendarId = $this->jmapCreate('bob', ['name' => 'Crew calendar', 'groupSlug' => self::GROUP]);
+
+        try {
+            app(CalendarRepository::class)->deleteIncludingContents('bob', $calendarId);
+            $this->fail('Expected the group-admin delete guard.');
+        } catch (ApiHttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+            $this->assertSame('group_delete_admin_only', $exception->errorCode());
+            $this->assertSame(self::ADMIN_ONLY, $exception->getMessage());
+        }
+
+        $this->assertSame('Crew calendar', $this->jmapCalendar('bob', $calendarId)['name']);
     }
 
     public function test_is_admin_is_memoized_on_the_resolver_instance(): void
