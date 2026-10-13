@@ -22,7 +22,12 @@ use Illuminate\Support\Facades\RateLimiter;
  * `wgw-search` is not route middleware. {@see consumeSearch()} runs inside
  * {@see UnifiedSearchService} when the query has tokens, so
  * the SPA and MCP share one 60/min scan budget. Browse mode has no tokens and
- * stays on the account bucket.
+ * stays on the account bucket. {@see SEARCH} is only the cache-key prefix.
+ * `register()` does not install `throttle:wgw-search`; that middleware name
+ * fails at runtime.
+ *
+ * `X-RateLimit-*` on a search response comes from the `wgw-api` middleware and
+ * describes the account bucket. A scan-budget 429 carries `Retry-After` only.
  */
 final class WgwApiRateLimiters
 {
@@ -34,6 +39,9 @@ final class WgwApiRateLimiters
 
     /** Type-ahead with debounce stays under this. Each call scans document text. */
     private const SEARCH_REQUESTS_PER_MINUTE = 60;
+
+    /** Decay passed to {@see RateLimiter::hit()}. Separate from the attempt count. */
+    private const SEARCH_WINDOW_SECONDS = 60;
 
     public static function register(): void
     {
@@ -59,7 +67,7 @@ final class WgwApiRateLimiters
             );
         }
 
-        RateLimiter::hit($key, 60);
+        RateLimiter::hit($key, self::SEARCH_WINDOW_SECONDS);
     }
 
     private static function limit(Request $request, int $perMinute): Limit
