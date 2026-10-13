@@ -34,14 +34,15 @@ RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
     AddType application/wasm .wasm
 </IfModule>
 
-# Apache serves /index.html, /sw.js, /assets/*, and fonts without PHP, so HSTS
-# for those files has to be set here. Middleware still sets HSTS when mod_headers
-# is off. env=HTTPS is mod_ssl, when Apache itself terminates TLS. Behind a proxy
-# that sends X-Forwarded-Proto, WGW_HTTPS covers the same header. Do not copy that
-# proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
+# BEGIN wgw-headers
+# Apache serves /index.html, /sw.js, /assets/*, and fonts without PHP, so HSTS and
+# the CSP for those files have to be set here. Middleware still sets both when
+# mod_headers is off. env=HTTPS is mod_ssl, when Apache itself terminates TLS. Behind
+# a proxy that sends X-Forwarded-Proto, WGW_HTTPS covers the same header. Do not copy
+# that proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
 # trustProxies. Browsers ignore HSTS on plain HTTP, so a spoofed proto does not stick.
-# The served shell has no inline script, so the policy has no script hash.
-# Report-only until enforcement.
+# The served shell has no inline script, so the policy needs no hash and no nonce.
+# Between the markers: managed by WebRootDeny::managedHeadersBlock(), rewritten on upgrade.
 <IfModule mod_headers.c>
     <IfModule mod_setenvif.c>
         SetEnvIf X-Forwarded-Proto "^https$" WGW_HTTPS=on
@@ -49,9 +50,10 @@ RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
     Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
     Header always set Strict-Transport-Security "max-age=15552000" env=WGW_HTTPS
     <Files "index.html">
-        Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
+        Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
     </Files>
 </IfModule>
+# END wgw-headers
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
