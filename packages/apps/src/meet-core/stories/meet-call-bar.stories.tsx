@@ -87,7 +87,6 @@ export const InviteToJoin: Story = {
     await expect(join.className).toContain("button--variant-primary");
     await expect(join.className).not.toContain("button--severity-success");
     await expect(join.querySelector(".lucide-video")).toBeTruthy();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("img", { name: "Demo User", hidden: true }),
     ).not.toBeInTheDocument();
@@ -112,6 +111,5 @@ export const InviteToJoinAudioOnly: Story = {
     await expect(join).toBeInTheDocument();
     await expect(join.querySelector(".lucide-mic")).toBeTruthy();
     await expect(join.querySelector(".lucide-video")).toBeNull();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
   },
 };

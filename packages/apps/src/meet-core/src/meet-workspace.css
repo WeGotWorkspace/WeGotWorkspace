@@ -1297,6 +1297,10 @@
 .meet-call-expanded {
   @apply relative h-full min-h-0 flex-col overflow-hidden;
   container: meet-call-expanded / inline-size;
+  /* Shared by the dock offset and the body clearance so a safe-area inset
+     moves both. 4.75rem is the toolbar (padding + control) above that inset. */
+  --meet-call-dock-inset: max(1rem, env(safe-area-inset-bottom, 0px));
+  --meet-call-dock-clearance: calc(4.75rem + var(--meet-call-dock-inset));
 }
 
 .meet-call-stage__chrome {
@@ -1345,9 +1349,13 @@
 
 .meet-call-stage__body {
   /* Inline inset matches `.meet-call-stage__header` (`p-4 md:p-6`).
-     Bottom padding clears the fixed control dock so the tile and name stay visible. */
+     Bottom padding clears the dock, using the same inset the dock positions with. */
   @apply flex min-h-0 min-w-0 flex-1 overflow-hidden gap-3 px-4 md:px-6;
-  padding-bottom: 5.75rem;
+  padding-bottom: var(--meet-call-dock-clearance);
+}
+
+.meet-call-stage__body--waiting {
+  @apply pb-4 md:pb-6;
 }
 
 .meet-call-stage__grid {
@@ -1541,7 +1549,7 @@
      the controls stay at the bottom of the stage and do not cover the sidebar
      or the chat rail. Viewport-fixed would, once container containment is absent. */
   @apply pointer-events-none absolute inset-x-0 z-30 flex justify-center;
-  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  bottom: var(--meet-call-dock-inset);
 }
 
 .meet-call-stage__dock .meet-workspace__toolbar.floating-action-bar {

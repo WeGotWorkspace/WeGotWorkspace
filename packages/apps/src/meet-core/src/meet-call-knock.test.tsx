@@ -66,6 +66,17 @@ describe("MeetCallKnockQueue", () => {
     expect(onAdmit).toHaveBeenCalledTimes(1);
     expect(onAdmit).toHaveBeenCalledWith("peer-1");
     expect((admitAll as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: meetLabels.admitName("Alex Morgan"),
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: meetLabels.denyName("Jamie Lee") }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
 
     await act(async () => {
       resolvers[0]!();
@@ -80,6 +91,36 @@ describe("MeetCallKnockQueue", () => {
     });
     expect(
       (screen.getByRole("button", { name: meetLabels.admitAll }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it("reports a failed admit and leaves the button ready to retry", async () => {
+    const onAdmitError = vi.fn();
+    const onAdmit = vi
+      .fn()
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockImplementationOnce(() => Promise.reject(new Error("offline")));
+    renderKnock(
+      <MeetCallKnockQueue
+        knockers={knockers}
+        onAdmit={onAdmit}
+        onDeny={() => {}}
+        onAdmitError={onAdmitError}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.admitAll }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(onAdmit).toHaveBeenCalledTimes(2);
+    expect(onAdmitError).toHaveBeenCalledWith("offline");
+    expect(
+      (screen.getByRole("button", { name: meetLabels.admitAll }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(
+      (screen.getByRole("button", { name: meetLabels.admitName("Jamie Lee") }) as HTMLButtonElement)
+        .disabled,
     ).toBe(false);
   });
 });

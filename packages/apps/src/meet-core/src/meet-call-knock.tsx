@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Hand } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Separator } from "@/ui/separator";
@@ -12,6 +12,8 @@ export type MeetCallKnockQueueProps = {
   knockers: readonly MeetCallKnocker[];
   onAdmit: (peerId: string) => void | Promise<void>;
   onDeny: (peerId: string) => void;
+  /** Admit all stopped on a rejection. The host can retry. */
+  onAdmitError?: (message: string) => void;
   className?: string;
 };
 
@@ -22,18 +24,12 @@ export function MeetCallKnockQueue({
   knockers,
   onAdmit,
   onDeny,
+  onAdmitError,
   className,
 }: MeetCallKnockQueueProps) {
   const titleId = useId();
   const admittingAll = useRef(false);
-  const mounted = useRef(true);
   const [admitAllBusy, setAdmitAllBusy] = useState(false);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
   if (knockers.length === 0) return null;
   const admitAll = () => {
     if (admittingAll.current) return;
@@ -42,9 +38,13 @@ export function MeetCallKnockQueue({
     void (async () => {
       try {
         for (const knocker of knockers) await onAdmit(knocker.id);
+      } catch (error) {
+        onAdmitError?.(
+          error instanceof Error ? error.message : meetLabels.couldNotAdmitParticipant,
+        );
       } finally {
         admittingAll.current = false;
-        if (mounted.current) setAdmitAllBusy(false);
+        setAdmitAllBusy(false);
       }
     })();
   };
@@ -83,6 +83,7 @@ export function MeetCallKnockQueue({
                 variant="outline"
                 size="sm"
                 aria-label={meetLabels.denyName(knocker.name)}
+                disabled={admitAllBusy}
                 onClick={() => onDeny(knocker.id)}
               >
                 {meetLabels.deny}
@@ -91,6 +92,7 @@ export function MeetCallKnockQueue({
                 variant="primary"
                 size="sm"
                 aria-label={meetLabels.admitName(knocker.name)}
+                disabled={admitAllBusy}
                 onClick={() => onAdmit(knocker.id)}
               >
                 {meetLabels.admit}

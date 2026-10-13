@@ -231,5 +231,9 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.getAllByText(meetLabels.knockWaitHint).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: meetLabels.cancelRequest })).toBeTruthy();
     expect(screen.queryByText(meetLabels.emptyChannelMain)).toBeNull();
+    expect(document.querySelector(".meet-call-stage__dock")).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.shareScreen })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
   });
 });

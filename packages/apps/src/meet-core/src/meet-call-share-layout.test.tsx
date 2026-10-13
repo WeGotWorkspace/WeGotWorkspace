@@ -198,11 +198,111 @@ describe("Meet call screen-share layout", () => {
     const videos = [...container.querySelectorAll("video")];
     const bound = (stream: MediaStream) => videos.filter((node) => node.srcObject === stream);
     expect(bound(alex).filter((node) => !node.muted)).toHaveLength(1);
-    expect(bound(alex).filter((node) => node.muted)).toHaveLength(1);
+    expect(bound(alex)).toHaveLength(1);
     expect(bound(jamie).filter((node) => !node.muted)).toHaveLength(1);
     expect(bound(jamie)).toHaveLength(1);
     expect(bound(self).filter((node) => !node.muted)).toHaveLength(0);
     expect(bound(self).length).toBeGreaterThan(0);
+  });
+
+  it("shows a low-data pinned peer in the featured area", () => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => Promise.resolve());
+    const capped = mediaStream();
+    const kept = mediaStream();
+    const disclosed = { camera: true, mic: true, screen: false };
+    const controller = createMeetStoryController(createRef<HTMLVideoElement>(), {
+      screenOn: false,
+      lowData: true,
+      peers: [
+        { ...STORY_MEET_PEERS[0]!, id: "peer-1", stream: kept, disclosedMedia: disclosed },
+        { ...STORY_MEET_PEERS[1]!, id: "peer-2", stream: kept, disclosedMedia: disclosed },
+        {
+          id: "peer-3",
+          name: "Sam Rivera",
+          stream: capped,
+          connectionState: "connected" as const,
+          remoteMedia: null,
+          disclosedMedia: disclosed,
+        },
+      ],
+      videoOn: false,
+      displayName: "Demo User",
+    });
+    const { container } = render(
+      <TooltipProvider>
+        <MeetCallExpanded
+          monitorSpeech={false}
+          controller={controller}
+          displayName="Demo User"
+          hasSignedInIdentity
+          participantCount={4}
+          callExitLabel={meetLabels.leave}
+          callExitTitle={meetLabels.leave}
+          callExitDescription={meetLabels.leave}
+          cameras={STORY_MEET_DEVICES}
+          microphones={STORY_MEET_MICROPHONES}
+          speakers={STORY_MEET_SPEAKERS}
+          activeCamera={STORY_MEET_DEVICES[0]!.id}
+          activeMic={STORY_MEET_MICROPHONES[0]!.id}
+          activeSpeaker={STORY_MEET_SPEAKERS[0]!.id}
+          onSpeakerChange={() => undefined}
+          onCopyLink={() => undefined}
+          onToastInfo={() => undefined}
+          onToastError={() => undefined}
+        />
+      </TooltipProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: meetLabels.pinParticipant("Sam Rivera") }));
+
+    const main = container.querySelector(".meet-call-stage__share-main");
+    expect(main?.querySelector("video")?.srcObject).toBe(capped);
+    const filmstrip = container.querySelector(".meet-call-stage__share-peers");
+    const sam = [...(filmstrip?.querySelectorAll(".meet-peer-tile") ?? [])].find((tile) =>
+      tile.textContent?.includes("Sam Rivera"),
+    );
+    expect(sam?.querySelector("video")).toBeNull();
+  });
+
+  it("hides the control dock while waiting for admission", () => {
+    const controller = createMeetStoryController(createRef<HTMLVideoElement>(), {
+      waitingForAdmission: true,
+      inCall: false,
+      status: "waiting",
+      peers: [],
+    });
+    const { container } = render(
+      <TooltipProvider>
+        <MeetCallExpanded
+          monitorSpeech={false}
+          channelTitle="#design"
+          controller={controller}
+          displayName="Demo User"
+          hasSignedInIdentity
+          participantCount={0}
+          callExitLabel={meetLabels.leave}
+          callExitTitle={meetLabels.leave}
+          callExitDescription={meetLabels.leave}
+          cameras={STORY_MEET_DEVICES}
+          microphones={STORY_MEET_MICROPHONES}
+          speakers={STORY_MEET_SPEAKERS}
+          activeCamera={STORY_MEET_DEVICES[0]!.id}
+          activeMic={STORY_MEET_MICROPHONES[0]!.id}
+          activeSpeaker={STORY_MEET_SPEAKERS[0]!.id}
+          onSpeakerChange={() => undefined}
+          onCopyLink={() => undefined}
+          onToastInfo={() => undefined}
+          onToastError={() => undefined}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByText(meetLabels.knockWaitHint)).toBeTruthy();
+    expect(container.querySelector(".meet-call-stage__dock")).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.shareScreen })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
+    expect(screen.getByRole("button", { name: meetLabels.cancelRequest })).toBeTruthy();
   });
 });
 

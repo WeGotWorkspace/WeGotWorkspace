@@ -124,6 +124,7 @@ export const meetLabels = {
   couldNotStartCall: "Could not start the call.",
   couldNotMuteParticipant: "Could not mute that participant.",
   couldNotUnmuteParticipant: "Could not unmute that participant.",
+  couldNotAdmitParticipant: "Could not admit that participant.",
   newChannel: "New channel",
   newMeeting: "New meeting",
   scheduleMeeting: "Schedule",

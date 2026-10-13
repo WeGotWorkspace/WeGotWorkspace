@@ -45,6 +45,11 @@ type MeetPeerTileProps = {
    * picture is replaced by the avatar.
    */
   hideVideo?: boolean;
+  /**
+   * Skip the media element. A pinned peer's filmstrip copy still reads
+   * `stream` for the mic indicator; the featured tile owns playback.
+   */
+  omitPlayback?: boolean;
 };
 
 export function MeetPeerTile({
@@ -64,6 +69,7 @@ export function MeetPeerTile({
   onTogglePin,
   muted,
   hideVideo = false,
+  omitPlayback = false,
 }: MeetPeerTileProps) {
   const toast = useAppToast();
   const [uncontrolledPinned, setUncontrolledPinned] = useState(false);
@@ -143,7 +149,7 @@ export function MeetPeerTile({
         speaking && "meet-peer-tile--speaking",
       )}
     >
-      {playbackStream ? (
+      {playbackStream && !omitPlayback ? (
         <div className={cn("meet-peer-tile__media", !showRemoteVideo && "sr-only")}>
           <MeetStreamVideo
             stream={playbackStream}

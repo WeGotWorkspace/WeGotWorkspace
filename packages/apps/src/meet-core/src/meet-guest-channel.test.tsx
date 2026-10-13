@@ -119,7 +119,6 @@ describe("MeetGuestChannel knock wait", () => {
     expect(document.querySelector(".meet-call-expanded")).toBeTruthy();
     expect(document.querySelector(".workspace-app-layout__main-header")).toBeNull();
     expect(screen.queryByRole("heading", { name: "yes" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Collapse call" })).toBeNull();
     expect(screen.getByText("guest-chat")).toBeTruthy();
     expect(document.querySelector(".meet-chat")).toBeNull();
   });

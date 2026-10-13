@@ -125,15 +125,21 @@ export function MeetCallExpanded({
   const renderPeerTile = (peer: (typeof peers)[number], featured = false) => {
     const isSelf = peer.id === self.id;
     // A pinned peer is mounted in the featured area and again in the filmstrip.
-    // Only the featured copy plays that peer's audio.
+    // Only the featured copy mounts the media element and plays that peer's audio.
     const duplicate = !sharing && pinnedPeer?.id === peer.id;
-    const playbackMuted = isSelf || (duplicate && !featured);
+    const filmstripCopy = duplicate && !featured;
+    const playbackMuted = isSelf || filmstripCopy;
+    // A pin is the request to see that person. It beats the low-data cap,
+    // which only applies to unpinned filmstrip and grid tiles.
+    const hideVideo =
+      !isSelf && !featured && remoteVideoSuppressed(peer.id, remoteIds, room.controller.lowData);
     return (
       <MeetPeerTile
         name={peer.name}
         stream={peer.stream ?? null}
         userId={peer.id}
         muted={playbackMuted}
+        omitPlayback={filmstripCopy}
         spotlight={!showFilmstrip && peers.length === 1}
         speaking={(levels[peer.id] ?? 0) >= MEET_MINI_PLAYER_SPEECH_ON}
         pinned={peer.id === pinnedPeer?.id}
@@ -152,7 +158,7 @@ export function MeetCallExpanded({
             ? undefined
             : (muted) => void room.controller.mutePeer(peer.id, muted)
         }
-        hideVideo={!isSelf && remoteVideoSuppressed(peer.id, remoteIds, room.controller.lowData)}
+        hideVideo={hideVideo}
       />
     );
   };
@@ -195,6 +201,7 @@ export function MeetCallExpanded({
             knockers={knockers}
             onAdmit={(peerId) => room.controller.admitKnocker(peerId)}
             onDeny={(peerId) => room.controller.denyKnocker(peerId)}
+            onAdmitError={room.onToastError}
           />
         ) : null}
 
@@ -229,7 +236,7 @@ export function MeetCallExpanded({
         ) : null}
 
         {waitingForAdmission ? (
-          <div className="meet-call-stage__body">
+          <div className="meet-call-stage__body meet-call-stage__body--waiting">
             <MeetCallKnockWaiting
               variant="stage"
               channelTitle={channelTitle}
@@ -272,53 +279,55 @@ export function MeetCallExpanded({
           </div>
         )}
 
-        <div className="meet-call-stage__dock">
-          <MeetCallToolbar
-            micOn={room.controller.micOn}
-            videoOn={room.controller.videoOn}
-            screenOn={room.controller.screenOn}
-            callExitLabel={meetLabels.leave}
-            callExitTitle={room.callExitTitle}
-            callExitDescription={room.callExitDescription}
-            cameras={room.cameras}
-            microphones={room.microphones}
-            speakers={room.speakers}
-            activeCamera={room.activeCamera}
-            activeMic={room.activeMic}
-            activeSpeaker={room.activeSpeaker}
-            onToggleMic={room.controller.toggleMic}
-            onToggleVideo={room.controller.toggleVideo}
-            videoLocked={room.controller.cameraSendingDisabled}
-            onToggleScreenShare={() => void room.controller.toggleScreenShare()}
-            screenMode={room.controller.screenMode}
-            onStartScreenShare={(mode) => void room.controller.startScreenShare(mode)}
-            onScreenOptimize={(mode) => void room.controller.setScreenOptimize(mode)}
-            onStopScreenShare={() => void room.controller.stopScreenShare()}
-            canShareScreen={room.controller.canShareScreen}
-            onCameraChange={(id) => {
-              const deviceId = meetDeviceIdForOption(room.cameras, id);
-              if (!deviceId) return;
-              void room.controller.switchCamera(deviceId);
-            }}
-            onMicrophoneChange={(id) => {
-              const deviceId = meetDeviceIdForOption(room.microphones, id);
-              if (!deviceId) return;
-              void room.controller.switchMic(deviceId);
-            }}
-            onSpeakerChange={room.onSpeakerChange}
-            lowData={room.controller.lowData}
-            onLowDataChange={room.controller.setLowData}
-            // Members leave without ceremony (rejoining is one click); guests
-            // and end-call-for-all keep the confirmation dialog.
-            confirmExit={!room.hasSignedInIdentity || room.callExitLabel === meetLabels.endCall}
-            onConfirmExit={() => {
-              onLeave?.();
-              void (room.callExitLabel === meetLabels.endCall
-                ? room.controller.endCallForAll()
-                : room.controller.leave());
-            }}
-          />
-        </div>
+        {waitingForAdmission ? null : (
+          <div className="meet-call-stage__dock">
+            <MeetCallToolbar
+              micOn={room.controller.micOn}
+              videoOn={room.controller.videoOn}
+              screenOn={room.controller.screenOn}
+              callExitLabel={meetLabels.leave}
+              callExitTitle={room.callExitTitle}
+              callExitDescription={room.callExitDescription}
+              cameras={room.cameras}
+              microphones={room.microphones}
+              speakers={room.speakers}
+              activeCamera={room.activeCamera}
+              activeMic={room.activeMic}
+              activeSpeaker={room.activeSpeaker}
+              onToggleMic={room.controller.toggleMic}
+              onToggleVideo={room.controller.toggleVideo}
+              videoLocked={room.controller.cameraSendingDisabled}
+              onToggleScreenShare={() => void room.controller.toggleScreenShare()}
+              screenMode={room.controller.screenMode}
+              onStartScreenShare={(mode) => void room.controller.startScreenShare(mode)}
+              onScreenOptimize={(mode) => void room.controller.setScreenOptimize(mode)}
+              onStopScreenShare={() => void room.controller.stopScreenShare()}
+              canShareScreen={room.controller.canShareScreen}
+              onCameraChange={(id) => {
+                const deviceId = meetDeviceIdForOption(room.cameras, id);
+                if (!deviceId) return;
+                void room.controller.switchCamera(deviceId);
+              }}
+              onMicrophoneChange={(id) => {
+                const deviceId = meetDeviceIdForOption(room.microphones, id);
+                if (!deviceId) return;
+                void room.controller.switchMic(deviceId);
+              }}
+              onSpeakerChange={room.onSpeakerChange}
+              lowData={room.controller.lowData}
+              onLowDataChange={room.controller.setLowData}
+              // Members leave without ceremony (rejoining is one click); guests
+              // and end-call-for-all keep the confirmation dialog.
+              confirmExit={!room.hasSignedInIdentity || room.callExitLabel === meetLabels.endCall}
+              onConfirmExit={() => {
+                onLeave?.();
+                void (room.callExitLabel === meetLabels.endCall
+                  ? room.controller.endCallForAll()
+                  : room.controller.leave());
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

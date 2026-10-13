@@ -45,7 +45,6 @@ export const Default: Story = {
     await expect(canvas.getByText(meetLabels.sidebarMeetings)).toBeInTheDocument();
     await expect(canvas.getByRole("img", { name: meetLabels.liveCall })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
     ).not.toBeInTheDocument();
@@ -66,8 +65,6 @@ export const Default: Story = {
     await userEvent.click(join);
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.joined })).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
@@ -214,8 +211,6 @@ export const CallBar: Story = {
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: meetLabels.join })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.enableVideo })).toBeInTheDocument();
     const devices = canvas.getByRole("button", { name: meetLabels.devices });
     const leave = canvas.getByRole("button", { name: meetLabels.leave });
@@ -296,8 +291,6 @@ export const CallBarVideo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText(meetLabels.meetInChannel("#design"))).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Expand call" })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.shareScreen })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },
@@ -324,7 +317,6 @@ export const CallFullscreen: Story = {
     await expect(canvas.getByText(meetLabels.chatInChannel("#design"))).toBeInTheDocument();
     await expect(canvas.getByText(meetLabels.meetingStarted)).toBeInTheDocument();
     await expect(canvas.queryByRole("button", { name: /^Meet$/ })).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
     await expect(canvas.getAllByRole("button", { name: "Show sidebar" }).length).toBeGreaterThan(0);
     await expect(canvas.getByRole("button", { name: /Show chat|Hide chat/ })).toBeInTheDocument();
@@ -399,6 +391,11 @@ export const AdHocKnockWaiting: Story = {
       canvas.getByRole("button", { name: meetLabels.cancelRequest }),
     ).toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.emptyChannelMain)).not.toBeInTheDocument();
+    await expect(canvasElement.querySelector(".meet-call-stage__dock")).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: meetLabels.devices }),
+    ).not.toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
   },
 };
 
@@ -443,7 +440,6 @@ export const ThreadOpenDuringCall: Story = {
     initialThreadId: "msg-1",
   },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     await expect(body.getByRole("button", { name: meetLabels.threadBack })).toBeInTheDocument();
     await expect(body.getAllByText(meetLabels.threadTitle).length).toBeGreaterThan(0);
@@ -453,6 +449,5 @@ export const ThreadOpenDuringCall: Story = {
     ).not.toBeInTheDocument();
     await expect(body.getByText(meetLabels.chatInChannel("#general"))).toBeInTheDocument();
     await expect(body.getByRole("button", { name: meetLabels.chatClose })).toBeInTheDocument();
-    await expect(canvas.queryByRole("button", { name: "Collapse call" })).not.toBeInTheDocument();
   },
 };
