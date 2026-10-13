@@ -14,12 +14,15 @@ use Illuminate\Database\Eloquent\Model;
  * Laravel-encrypted (APP_KEY) so GET /calendars/{id}/feed can redisplay the
  * existing URL without regenerating. Hash-only storage cannot re-show the
  * token; a compromised APP_KEY recovers issued feed URLs.
+ * mode is full (strip people and private events) or busy (every event is Busy).
+ * A stored value other than full is published as busy.
  *
  * @property int $id
  * @property string $token_hash
  * @property string $token_cipher
  * @property string $owner_username
  * @property string $calendar_uri
+ * @property string $mode
  */
 final class CalendarFeedToken extends Model
 {
@@ -35,6 +38,7 @@ final class CalendarFeedToken extends Model
         'token_cipher',
         'owner_username',
         'calendar_uri',
+        'mode',
     ];
 
     /** @var array<string, string> */

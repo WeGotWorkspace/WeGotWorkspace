@@ -6049,7 +6049,7 @@ export interface paths {
         put?: never;
         /**
          * Publish a calendar as an ICS / webcal feed
-         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.
+         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
          */
         post: {
             parameters: {
@@ -6060,7 +6060,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CalendarFeedPublishRequest"];
+                };
+            };
             responses: {
                 /** @description Existing published feed URLs */
                 200: {
@@ -11482,6 +11486,11 @@ export interface components {
             httpsUrl: string;
             /** @description Same feed advertised as webcal:// for calendar clients. */
             webcalUrl: string;
+            /**
+             * @description full strips people, alarms, and private details. busy publishes every event as a Busy placeholder.
+             * @enum {string}
+             */
+            mode: "full" | "busy";
         };
         CalendarEventImportError: {
             index: number;
@@ -12098,6 +12107,14 @@ export interface components {
         AdminAppUrlSaveRequest: {
             /** @description Public http or https address. The path may be empty or the install base. No user info or query. */
             url: string;
+        };
+        /** @description Optional publish mode. Omitted mode leaves an existing feed unchanged and creates a new feed as full. */
+        CalendarFeedPublishRequest: {
+            /**
+             * @description full strips people, alarms, and private details. busy publishes every event as a Busy placeholder.
+             * @enum {string}
+             */
+            mode?: "full" | "busy";
         };
         SettingsMcpShareCall: {
             tool: string;

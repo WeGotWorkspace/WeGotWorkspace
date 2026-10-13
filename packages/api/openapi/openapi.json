@@ -8742,7 +8742,7 @@
           "Calendars"
         ],
         "summary": "Publish a calendar as an ICS / webcal feed",
-        "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.",
+        "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.",
         "security": [
           {
             "bearerAuth": []
@@ -8758,6 +8758,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarFeedPublishRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Existing published feed URLs",

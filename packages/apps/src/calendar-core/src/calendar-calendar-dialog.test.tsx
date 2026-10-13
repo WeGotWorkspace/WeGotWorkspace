@@ -464,6 +464,7 @@ describe("CalendarCalendarDialog", () => {
           feed: {
             httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
             webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+            mode: "full",
           },
           onToggle: vi.fn(),
           onCopyHttps: vi.fn(),

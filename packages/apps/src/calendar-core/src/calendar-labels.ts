@@ -81,6 +81,8 @@ export type CalendarUILabels = {
   publishCalendarEnabledHint: string;
   publishCalendarDisabledHint: string;
   publishCalendarHttpsLabel: string;
+  publishCalendarBusyLabel: string;
+  publishCalendarBusyHint: string;
   copyHttpsUrl: string;
   /** Tooltip / accessible name for the webcal:// subscribe link. */
   openInCalendar: string;
@@ -346,6 +348,8 @@ export const defaultCalendarLabels: CalendarUILabels = {
   publishCalendarEnabledHint: "Anyone with the link can subscribe. Access is view only",
   publishCalendarDisabledHint: "Turn on to publish this calendar as an ICS / webcal feed.",
   publishCalendarHttpsLabel: "Web address",
+  publishCalendarBusyLabel: "Busy only",
+  publishCalendarBusyHint: "Publish times only. Titles, people, and notes stay off the feed.",
   copyHttpsUrl: "Copy link",
   openInCalendar: "Open in Calendar",
   unpublishCalendarTitle: "Stop publishing?",
