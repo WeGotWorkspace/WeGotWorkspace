@@ -281,13 +281,7 @@ final class DocCollabDocumentService
 
     private function yjsSidecarPath(string $documentVirtualPath): string
     {
-        $normalized = $this->paths->normalizeVirtualPath($documentVirtualPath);
-        $dir = (string) dirname($normalized);
-        $name = (string) basename($normalized);
-        $hidden = '.'.$name.'.yjs';
-        $prefix = $dir === '/' ? '' : $dir;
-
-        return $this->paths->normalizeVirtualPath($prefix.'/'.$hidden);
+        return CollabSidecarPaths::sidecarVirtualPath($this->paths, $documentVirtualPath);
     }
 
     private function resolveReadablePath(Request $request, mixed $room): string

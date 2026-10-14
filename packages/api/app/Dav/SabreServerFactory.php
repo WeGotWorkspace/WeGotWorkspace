@@ -110,7 +110,7 @@ final class SabreServerFactory
         $server->setLogger(new NullLogger);
 
         $server->addPlugin($authPlugin);
-        $server->addPlugin(new WebdavWriteGuardPlugin);
+        $server->addPlugin(app(WebdavWriteGuardPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
         $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));

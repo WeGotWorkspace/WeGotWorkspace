@@ -7,6 +7,7 @@ namespace App\Services\Drive;
 use App\Events\EventDispatch;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRelocator;
@@ -867,15 +868,11 @@ final class DriveService
         return $path === '/' ? '/' : $path.'/';
     }
 
-    private function isHiddenNotesPath(string $virtualPath): bool
-    {
-        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1;
-    }
-
     private function isHiddenBrowsePath(string $virtualPath): bool
     {
-        return $this->isHiddenNotesPath($virtualPath)
-            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
+        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1
+            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath)
+            || CollabSidecarPaths::isHiddenBrowseVirtualPath($virtualPath);
     }
 
     private function disk(): Filesystem
