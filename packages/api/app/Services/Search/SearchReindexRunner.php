@@ -9,13 +9,12 @@ use Illuminate\Support\Facades\Cache;
 
 final class SearchReindexRunner
 {
-    private const LOCK_NAME = 'search-reindex-runner';
-
     /**
-     * The lock covers the file-node backfill and the search projection.
-     * Fifteen minutes released while a large run was still going.
+     * The reindex runs inside one HTTP request. This only has to outlive a
+     * request the worker is allowed to finish; a killed worker must not
+     * block the next attempt for hours.
      */
-    private const LOCK_TTL_SECONDS = 14400;
+    private const LOCK_TTL_SECONDS = 900;
 
     private const STALE_PROGRESS_SECONDS = 120;
 
@@ -50,7 +49,7 @@ final class SearchReindexRunner
     public function run(): array
     {
         $this->store->ensureDirs();
-        $lock = Cache::lock(self::LOCK_NAME, self::LOCK_TTL_SECONDS);
+        $lock = Cache::lock('search-reindex-runner', self::LOCK_TTL_SECONDS);
         if (! $lock->get()) {
             throw new \RuntimeException('Another search reindex process is already running.');
         }
@@ -67,7 +66,12 @@ final class SearchReindexRunner
 
             $this->writePhase('indexing_file_nodes');
             $this->fileNodes->withoutSearchSync(function (): void {
-                $this->fileNodes->reindexAll();
+                $this->fileNodes->reindexAll(progress: function (int $done, int $total): void {
+                    if ($this->store->isCancelRequested()) {
+                        throw new \RuntimeException('Search reindex cancelled by user.');
+                    }
+                    $this->writeProgress('indexing_file_nodes', $done, $total);
+                });
             });
             if ($this->store->isCancelRequested()) {
                 throw new \RuntimeException('Search reindex cancelled by user.');
@@ -129,15 +133,6 @@ final class SearchReindexRunner
         if ($phase === '' || ! $this->isStaleProgressState($state)) {
             return;
         }
-
-        // A backfill has no progress ticks, so the timestamp goes stale while
-        // the run still holds the lock. Only a released lock means the runner
-        // is gone.
-        $lock = Cache::lock(self::LOCK_NAME, self::LOCK_TTL_SECONDS);
-        if (! $lock->get()) {
-            return;
-        }
-        $lock->release();
 
         unset($state['phase'], $state['phase_progress'], $state['phase_updated_at'], $state['cancel_requested']);
         $this->store->write($state);

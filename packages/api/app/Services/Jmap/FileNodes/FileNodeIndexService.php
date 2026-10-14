@@ -441,35 +441,59 @@ final class FileNodeIndexService
     }
 
     /**
+     * How often the optional progress callback runs during the mint walk.
+     * Often enough that a caller's phase timestamp stays inside the reindex
+     * stale window, without a state write per key.
+     */
+    private const REINDEX_PROGRESS_STRIDE = 100;
+
+    /**
      * Full-tree backfill/reconcile (the reindexAll pattern). Existing keys
      * keep their node ids; new keys are minted; vanished keys tombstoned.
      * Also prunes tombstones older than the retention window.
      *
+     * `$progress` is `function (int $done, int $total): void`. SearchReindexRunner
+     * uses it to refresh the phase and to cancel between batches. A throw
+     * aborts the walk.
+     *
+     * @param  callable(int, int): void|null  $progress
      * @return array{indexed: int, tombstoned: int, pruned: int}
      */
-    public function reindexAll(int $tombstoneRetentionDays = 30): array
+    public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
     {
         $disk = $this->storage->files();
-        $indexed = 0;
-
-        $seen = [];
+        $directoryKeys = [];
         foreach ($disk->allDirectories() as $key) {
-            if ($this->isHiddenKey($key) || ! $this->isRootedKey($key)) {
-                continue;
-            }
-            $seen[$key] = true;
-            if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                $indexed++;
-            }
+            $directoryKeys[] = (string) $key;
         }
+        $fileKeys = [];
         foreach ($disk->allFiles() as $key) {
-            if ($this->isHiddenKey($key) || ! $this->isRootedKey($key)) {
-                continue;
+            $fileKeys[] = (string) $key;
+        }
+        $total = count($directoryKeys) + count($fileKeys);
+        $indexed = 0;
+        $seen = [];
+        $done = 0;
+
+        foreach ($directoryKeys as $key) {
+            $done++;
+            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
+                $seen[$key] = true;
+                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
+                    $indexed++;
+                }
             }
-            $seen[$key] = true;
-            if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                $indexed++;
+            $this->reportReindexProgress($progress, $done, $total, $done === count($directoryKeys));
+        }
+        foreach ($fileKeys as $key) {
+            $done++;
+            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
+                $seen[$key] = true;
+                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
+                    $indexed++;
+                }
             }
+            $this->reportReindexProgress($progress, $done, $total, $done === $total);
         }
 
         $tombstoned = 0;
@@ -491,6 +515,20 @@ final class FileNodeIndexService
         $pruned = $this->pruneTombstones($tombstoneRetentionDays);
 
         return ['indexed' => $indexed, 'tombstoned' => $tombstoned, 'pruned' => $pruned];
+    }
+
+    /**
+     * @param  callable(int, int): void|null  $progress
+     */
+    private function reportReindexProgress(?callable $progress, int $done, int $total, bool $boundary): void
+    {
+        if ($progress === null || $total === 0) {
+            return;
+        }
+        if (! $boundary && $done % self::REINDEX_PROGRESS_STRIDE !== 0) {
+            return;
+        }
+        $progress($done, $total);
     }
 
     public function pruneTombstones(int $retentionDays): int

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\JmapFileNode;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchReindexRunner;
 use App\Services\Search\SearchReindexStateStore;
 use App\Storage\WgwStorage;
@@ -45,7 +47,7 @@ final class AdminSearchTest extends WgwDatabaseTestCase
             ->assertJsonPath('lastResult.ok', true);
     }
 
-    public function test_long_backfill_stays_cancellable_while_the_lock_is_held(): void
+    public function test_stale_reindex_state_clears_without_taking_the_lock(): void
     {
         $store = app(SearchReindexStateStore::class);
         $store->ensureDirs();
@@ -54,22 +56,39 @@ final class AdminSearchTest extends WgwDatabaseTestCase
             'phase_updated_at' => date('c', time() - 600),
         ]);
 
-        $lock = Cache::lock('search-reindex-runner', 14400);
+        $lock = Cache::lock('search-reindex-runner', 900);
         $this->assertTrue($lock->get());
         try {
-            $state = app(SearchReindexRunner::class)->cancel();
-            $this->assertTrue($state['inProgress']);
-            $this->assertSame('indexing_file_nodes', $state['phase']);
-            $this->assertTrue($state['cancelRequested']);
-            $this->assertTrue($store->isCancelRequested());
+            $state = app(SearchReindexRunner::class)->getState();
+            $this->assertFalse($state['inProgress']);
+            $this->assertNull($state['phase']);
         } finally {
             $lock->release();
-            $store->clearCancelRequest();
+        }
+    }
+
+    public function test_backfill_progress_callback_can_stop_the_walk_before_files_are_minted(): void
+    {
+        $ticked = false;
+        try {
+            app(FileNodeIndexService::class)->reindexAll(progress: function (int $done, int $total) use (&$ticked): void {
+                $this->assertGreaterThan(0, $done);
+                $this->assertGreaterThanOrEqual($done, $total);
+                $ticked = true;
+                throw new \RuntimeException('Search reindex cancelled by user.');
+            });
+            $this->fail('Expected the progress callback to abort the backfill.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Search reindex cancelled by user.', $e->getMessage());
         }
 
-        $cleared = app(SearchReindexRunner::class)->getState();
-        $this->assertFalse($cleared['inProgress']);
-        $this->assertNull($cleared['phase']);
+        $this->assertTrue($ticked);
+        $this->assertNull(
+            JmapFileNode::query()
+                ->where('storage_key', 'users/alice/admin-search.txt')
+                ->whereNull('deleted_at')
+                ->first(),
+        );
     }
 
     public function test_cancel_search_reindex_when_idle_returns_bad_request(): void
