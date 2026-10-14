@@ -164,12 +164,11 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden(self::message());
         }
 
-        // Temporary until the document and sidecar share an ETag. An external
-        // edit is blocked here; it is not yet detectable, and this is not permanent policy.
-        // DELETE stays open: the owner is removing the file on purpose, and a
-        // parent-folder delete already wipes the tree. The sidecar can be left
-        // behind; cleaning those orphans is a separate issue.
-        if (in_array($method, ['PUT', 'PATCH', 'MOVE', 'COPY'], true)
+        // Refuse a write that replaces the bytes of a collaborative document.
+        // Moving, copying, or deleting the document itself stays allowed:
+        // those are explicit, and a renamed file rebuilds its Yjs state from
+        // the markdown. A move or copy onto the document is rejected above.
+        if (in_array($method, ['PUT', 'PATCH'], true)
             && $this->hasCollabSidecar($path)) {
             throw new Forbidden('This document is edited collaboratively; write it through the app.');
         }
