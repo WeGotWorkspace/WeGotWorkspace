@@ -24,6 +24,8 @@ export type CreateRtcSessionOptions = {
   channel: SignalingChannel;
   room: string;
   rtcSettings: RtcSettings;
+  refreshRtcSettings?: RtcPeerMeshOptions["refreshRtcSettings"];
+  onRtcSettings?: RtcPeerMeshOptions["onRtcSettings"];
   binding?: RtcSessionBinding;
   signaling?: CreateRtcSessionSignalingOptions;
   pollIntervals?: RtcPollIntervals;
@@ -68,6 +70,8 @@ export function createRtcSession(options: CreateRtcSessionOptions): RtcPeerMesh 
     room: options.room,
     signaling,
     rtcSettings: options.rtcSettings,
+    refreshRtcSettings: options.refreshRtcSettings,
+    onRtcSettings: options.onRtcSettings,
     binding: options.binding,
     pollIntervals:
       options.pollIntervals ??

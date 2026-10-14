@@ -18,11 +18,9 @@ function refreshLeadMs(ttlMs: number): number {
 }
 
 export type MeshRelayPorts = {
-  enabled: boolean;
+  enabled: () => boolean;
   roomId: string;
-  settings: RtcSettings;
-  /** Admin/test forced relay. Join mints TURN even when the net class is open. */
-  forceRelay: boolean;
+  settings: () => RtcSettings;
   iceCandidatePoolSize?: number;
   localPeerId: () => string | null;
   localNet: () => NetClass | undefined;
@@ -82,10 +80,10 @@ export class MeshRelay {
    * (lobby) may run again once the peer is allowed in.
    */
   async beforeDial(): Promise<void> {
-    if (!this.ports.enabled) return;
-    const forced = this.ports.forceRelay;
+    if (!this.ports.enabled()) return;
+    const forced = this.ports.settings().forceRelay;
     if (this.prechecked && !(forced && !this.turn)) return;
-    if (!this.ports.forceRelay && !needsRelayPrecheck(this.ports.localNet())) return;
+    if (!forced && !needsRelayPrecheck(this.ports.localNet())) return;
     const peerId = this.ports.localPeerId();
     if (!peerId || !this.ports.postRelay) return;
     this.prechecked = true;
@@ -109,7 +107,7 @@ export class MeshRelay {
    */
   async request(remoteId: string, reason: Exclude<RelayReason, "precheck">): Promise<void> {
     if (this.credentialsAreStale()) this.requested.delete(remoteId);
-    if (!this.ports.enabled || this.requested.has(remoteId)) return;
+    if (!this.ports.enabled() || this.requested.has(remoteId)) return;
     const peerId = this.ports.localPeerId();
     if (!peerId || !this.ports.postRelay) return;
     this.requested.add(remoteId);
@@ -133,7 +131,7 @@ export class MeshRelay {
    * `applyTurnOnPeerConnection` puts the new servers on the live connection.
    */
   async onIceRestart(remoteId: string): Promise<void> {
-    if (!this.ports.enabled) return;
+    if (!this.ports.enabled()) return;
     if (!this.turn && !this.requested.has(remoteId)) return;
     this.requested.delete(remoteId);
     await this.request(remoteId, "failed");
@@ -143,7 +141,7 @@ export class MeshRelay {
     const pc = this.ports.getPeerConnection(remoteId);
     if (!pc) return;
     try {
-      applyTurnOnPeerConnection(pc, this.ports.settings, turn, this.ports.iceCandidatePoolSize);
+      applyTurnOnPeerConnection(pc, this.ports.settings(), turn, this.ports.iceCandidatePoolSize);
       this.ports.onApplied?.(remoteId);
       this.ports.log("relay-applied", { remoteId, ttl: turn.ttl });
     } catch (error) {

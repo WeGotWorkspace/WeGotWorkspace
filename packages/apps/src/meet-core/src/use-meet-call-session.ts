@@ -95,8 +95,25 @@ export function useMeetCallSession({
     [isGuestSession, operations],
   );
 
+  // Settings in force. The bootstrap value is a guest's fallback until the join
+  // session key lets the mesh read the real room configuration (#1219).
+  const [effectiveRtc, setEffectiveRtc] = useState<MeetRtcSettings>(rtc);
+  useEffect(() => {
+    setEffectiveRtc(rtc);
+  }, [rtc]);
+
   const meetRtc = useMeetRtc({
-    rtcSettings: rtc,
+    rtcSettings: effectiveRtc,
+    refreshRtcSettings: async ({ sessionKey }) => {
+      const roomCode = room.roomCodeRef.current;
+      const read = operationsRef.current?.rtcSettings;
+      if (!roomCode || !read) return null;
+      // `fetchRtcSettings` answers a non-OK response with fallback defaults
+      // rather than throwing; that is "no answer", not "no STUN configured".
+      const next = await read({ room: roomCode, sessionKey });
+      return next.source === "fallback" ? null : next;
+    },
+    onRtcSettings: (settings) => setEffectiveRtc({ ...settings, source: "server" }),
     persistentSessionRef: callStore?.rtcSessionRef,
     signalingFetch: guestSignalingFetch,
     getLocalStream: () => getLocalStreamRef.current(),
@@ -187,12 +204,12 @@ export function useMeetCallSession({
   useEffect(() => {
     debugRtc("controller-init", {
       rtcDebugEnabled: isRtcDebugEnabled(),
-      stunCount: parseUrlList(rtc.stunUrls, "stun").length,
-      forceRelay: rtc.forceRelay,
-      turnAvailable: rtc.turnAvailable,
-      rtcSource: rtc.source ?? "unknown",
+      stunCount: parseUrlList(effectiveRtc.stunUrls, "stun").length,
+      forceRelay: effectiveRtc.forceRelay,
+      turnAvailable: effectiveRtc.turnAvailable,
+      rtcSource: effectiveRtc.source ?? "unknown",
     });
-  }, [debugRtc, rtc]);
+  }, [debugRtc, effectiveRtc]);
 
   const refreshPeers = useCallback(() => {
     const next: MeetRemotePeer[] = [];

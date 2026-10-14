@@ -1411,3 +1411,97 @@ describe("RtcPeerMesh join queue", () => {
     setTimeoutSpy.mockRestore();
   });
 });
+
+describe("RtcPeerMesh guest rtc settings", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reads room configuration after the session key and before the first peer connection", async () => {
+    const order: string[] = [];
+    const configs: RTCConfiguration[] = [];
+    const refreshRtcSettings = vi.fn(async () => {
+      order.push("refresh");
+      return {
+        stunUrls: "stun:stun.example.test:3478",
+        turnAvailable: true,
+        forceRelay: false,
+      };
+    });
+    const signaling = createMockSignaling({
+      peerId: "peer-b",
+      peers: [{ id: "peer-a", name: "Ada" }],
+      sessionKey: "sk-1",
+    });
+    const mesh = new RtcPeerMesh({
+      channel: "meet",
+      room: "test-room",
+      signaling: signaling.client as unknown as HttpSignalingClient,
+      rtcSettings: RTC_SETTINGS,
+      initiatorRule: "higherId",
+      pollIntervals: { connectingMs: 400, steadyMs: 1200 },
+      refreshRtcSettings,
+      ports: {
+        createPeerConnection: (config) => {
+          order.push("pc");
+          configs.push(config);
+          return createStubPeerConnection();
+        },
+      },
+    });
+
+    await mesh.join({ name: "Host", peerId: "peer-b" });
+
+    expect(refreshRtcSettings).toHaveBeenCalledTimes(1);
+    expect(refreshRtcSettings).toHaveBeenCalledWith({ sessionKey: "sk-1" });
+    expect(order.indexOf("refresh")).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf("refresh")).toBeLessThan(order.indexOf("pc"));
+    expect(configs[0]?.iceServers).toEqual([
+      expect.objectContaining({ urls: ["stun:stun.example.test:3478"] }),
+    ]);
+    await mesh.leave();
+  });
+
+  it("completes the join on the original settings when the refresh rejects", async () => {
+    const configs: RTCConfiguration[] = [];
+    const signaling = createMockSignaling({
+      peerId: "peer-b",
+      peers: [{ id: "peer-a", name: "Ada" }],
+      sessionKey: "sk-1",
+    });
+    const mesh = new RtcPeerMesh({
+      channel: "meet",
+      room: "test-room",
+      signaling: signaling.client as unknown as HttpSignalingClient,
+      rtcSettings: {
+        stunUrls: "stun:original.example:3478",
+        turnAvailable: false,
+        forceRelay: false,
+      },
+      initiatorRule: "higherId",
+      pollIntervals: { connectingMs: 400, steadyMs: 1200 },
+      refreshRtcSettings: vi.fn(async () => {
+        throw new Error("configuration down");
+      }),
+      ports: {
+        createPeerConnection: (config) => {
+          configs.push(config);
+          return createStubPeerConnection();
+        },
+      },
+    });
+
+    const joined = await mesh.join({ name: "Host", peerId: "peer-b" });
+
+    expect(joined.peerId).toBe("peer-b");
+    expect(joined.superseded).toBeUndefined();
+    expect(configs[0]?.iceServers).toEqual([
+      expect.objectContaining({ urls: ["stun:original.example:3478"] }),
+    ]);
+    await mesh.leave();
+  });
+});

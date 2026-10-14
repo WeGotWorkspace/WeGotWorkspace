@@ -16,7 +16,7 @@ Enable browser logging with **Admin → Real-time collaboration → Detailed con
 | N0 | Direct LAN | Two browsers, same network, meet room | `[rtc][meet][…][selected-pair]` shows `host` or `srflx`; A/V connected | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N1 | Guest meet TURN | Guest join URL (no auth) | Configuration returns `turnAvailable` only. Credentials come from `POST /rooms/{id}/relay`. A knocking peer receives 403 | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
 | N2 | Docs collab | Two users, same doc | Data channel open; Yjs sync; `[rtc][collab][…][dc-open]` | Passed 2026-10-07/08 ([M1](#manual-runs-2026-10-07-08), [M3](#manual-runs-2026-10-07-08)); reconfirmed 2026-10-12 |
-| N3 | Force relay (debug) | Admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1`, or a Playwright `forceRelay` override | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | Meet+Docs via Admin force-relay on online release ([M6](#manual-runs-2026-10-12-online)); earlier Meet-via-override in [M5](#manual-runs-2026-10-12). Docs+iPhone 4G row still optional |
+| N3 | Force relay (debug) | Admin **Always use the TURN relay**, or `VITE_WGW_RTC_FORCE_RELAY=1`, or a Playwright `forceRelay` override | `iceTransportPolicy: relay` in `pc-created` log; selected pair `relay` | Signed-in Meet+Docs via Admin force-relay on online release ([M6](#manual-runs-2026-10-12-online)); guest Meet via Admin force-relay, no test override ([M7](#manual-runs-2026-10-14-guest)); earlier Meet-via-override in [M5](#manual-runs-2026-10-12). Docs+iPhone 4G row still optional |
 | N4 | Relay fallback | Symmetric NAT or firewall block direct | `[relay-fallback-start]` then `[relay-fallback-offer-sent]` or connected | |
 | N5 | Hotspot | Phone hotspot client | Session connects (often via `relay`); no endless `failed` | Passed 2026-10-12 online ([M6](#manual-runs-2026-10-12-online)) |
 | N6 | Unknown peer recovery | Docs: stale tab after server prune | `[peer-recover-start]` / `[peer-recover-success]` | Passed 2026-10-12 ([M5](#manual-runs-2026-10-12)) |
@@ -124,7 +124,7 @@ Superseded in part by [M6](#manual-runs-2026-10-12-online). See that section for
 |---|---|
 | [#1218](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1218) signed-in Meet bootstrap without bearer | Fixed in [#1220](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1220) (`55c506e`) |
 | [#1217](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1217) host mute waited on ~4s idle poll | Fixed in [#1221](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1221) (`b704ee8`) |
-| [#1219](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1219) guest bootstrap still has no STUN/TURN | Open — needs post-join `sessionKey` refetch + mid-session ICE replace |
+| [#1219](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1219) guest bootstrap still has no STUN/TURN | Open on this date. Guest session-key refresh re-run in [M7](#manual-runs-2026-10-14-guest) |
 
 <a id="manual-runs-2026-10-12-online"></a>
 
@@ -158,14 +158,14 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | N13 | Skipped as N/A: Join is already a user gesture, so “silent until tap” is not a realistic product path |
 | `pnpm test:rtc-relay` | Not run against this host |
 
-### Combined scorecard (M5 + M6)
+### Combined scorecard (M5–M7)
 
 | ID | Status |
 |---|---|
 | N0 | pass (M5) |
 | N1 | pass (M5) |
 | N2 | pass (M5) |
-| N3 Meet | pass — Admin force-relay on online release (M6); earlier override-only (M5) |
+| N3 Meet | pass — signed-in Admin force-relay (M6); guest Admin force-relay, no test override (M7); earlier override-only (M5) |
 | N3 Docs | pass — Admin force-relay (M6) |
 | N4 | not proven |
 | N5 | pass (M6) |
@@ -175,3 +175,26 @@ N0, N1, N2, N3 (Meet via override), N6–N12 — see [M5](#manual-runs-2026-10-1
 | N14 | pass (M6) |
 | N15 | pass (M6) — iOS Safari + PWA |
 | Long TTL / TCP TURN | not run |
+
+<a id="manual-runs-2026-10-14-guest"></a>
+
+## Manual runs — 2026-10-14 (guest force-relay, M7)
+
+Tracked on [#1219](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1219) / [#1269](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1269) at `30883ef1`. Local Vite `http://127.0.0.1:5173`, API `http://127.0.0.1:9080`, coturn on `127.0.0.1:3478` (`use-auth-secret`). Admin **Always use the TURN relay** and detailed connection logs on. STUN `stun:127.0.0.1:3478`, TURN `turn:127.0.0.1:3478?transport=udp`. Headless Chromium, fake camera and microphone, two contexts. No `__WGW_RTC_TEST_OVERRIDES__`.
+
+Room `6czc-2kd2-ubvy`. Host Admin (signed in). Guest Ada (no auth cookie) knocks, host admits.
+
+### Passed (M7)
+
+| ID | Setup | Channel | Path | Result |
+|---|---|---|---|---|
+| N3 guest | Admin force-relay; guest invite, no test override | Meet | Forced relay | Guest made no `GET /rooms/bootstrap/configuration`. One `GET /rooms/6czc-2kd2-ubvy/configuration?sessionKey=…` → 200, then `[rtc-settings-refresh]` `changed: true` and `[rtc-settings-applied]` `stunUrls: stun:127.0.0.1:3478`, `turnAvailable: true`, `forceRelay: true`. `[controller-init]` `rtcSource: "server"`, `stunCount: 1`. Knock `POST …/relay` **403** `relay_denied`. Admit re-join posted participants and relay again, with no second configuration request; relay **200** `issued`. `[pc-created]` `iceTransportPolicy: relay`. `[selected-pair]` `localType` / `remoteType` `relay`, `connectionState: connected`. Both tiles showed video |
+| N3 host | Same room, signed-in Admin | Meet | Forced relay | One `GET /rooms/bootstrap/configuration` → 200. `[controller-init]` `rtcSource: "server"`, `stunCount: 1`, `forceRelay: true`. `[pc-created]` `iceTransportPolicy: relay` → `connected`, selected pair `relay` |
+
+### Not run (M7)
+
+| ID | Why |
+|---|---|
+| Blocked configuration URL | Not exercised. The unit tests cover a rejected refresh and a `source: "fallback"` answer. This pass left the configuration URL reachable |
+| N3 Docs guest | Docs has no guest Meet path |
+| Long TTL / real NAT | Local coturn on loopback; TTL left at 3600 |

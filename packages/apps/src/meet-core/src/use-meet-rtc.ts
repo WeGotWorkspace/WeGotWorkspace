@@ -24,6 +24,9 @@ export type UseMeetRtcOptions = {
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   onVideoLimits?: (limits: VideoLimits) => void;
   onMeetData?: (remoteId: string, data: string) => void;
+  /** Guest path: read room ICE settings once the join returns a session key. */
+  refreshRtcSettings?: (input: { sessionKey: string }) => Promise<RtcSettings | null>;
+  onRtcSettings?: (settings: RtcSettings) => void;
   /**
    * Suite-level session holder (from `MeetCallStore`). When provided, the RTC
    * session survives route unmounts instead of living in a per-mount ref.
@@ -48,6 +51,8 @@ function createSession(options: UseMeetRtcOptions): MeetRtcSession {
     onRelayOutcome: options.onRelayOutcome,
     onVideoLimits: options.onVideoLimits,
     onMeetData: options.onMeetData,
+    refreshRtcSettings: options.refreshRtcSettings,
+    onRtcSettings: options.onRtcSettings,
   });
 }
 

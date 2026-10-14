@@ -67,4 +67,13 @@ export type RtcPeerMeshOptions = {
   shouldAcceptOffer?: (from: string) => boolean;
   /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
   onMeetData?: (remoteId: string, data: string) => void;
+  /**
+   * Called once a join has produced a session key, before relay prep and the
+   * first dial. Guest Meet uses it to read the room configuration an anonymous
+   * bootstrap could not reach (#1219). Returning null keeps the current
+   * settings; a rejection never fails the join.
+   */
+  refreshRtcSettings?: (input: { sessionKey: string }) => Promise<RtcSettings | null>;
+  /** The settings actually in force after a refresh changed them. */
+  onRtcSettings?: (settings: RtcSettings) => void;
 };

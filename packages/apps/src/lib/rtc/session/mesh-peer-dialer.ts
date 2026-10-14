@@ -19,7 +19,7 @@ export function initialIceMode(
 /** What the dialer needs from the mesh that owns the peer registry. */
 export type MeshPeerDialerContext = {
   channel: SignalingChannel;
-  rtcSettings: RtcSettings;
+  rtcSettings: () => RtcSettings;
   binding?: RtcSessionBinding;
   iceCandidatePoolSize?: number;
   peers: MeshPeerRegistry;
@@ -44,15 +44,11 @@ export type MeshPeerDialerContext = {
  * the outbound offer, and the one-shot relay retry after a failed direct link.
  */
 export class MeshPeerDialer {
-  private readonly turnConfigured: boolean;
-
   private turn: TurnCredentials | null = null;
 
   private loggedMissingRelayCredentials = false;
 
-  constructor(private readonly context: MeshPeerDialerContext) {
-    this.turnConfigured = context.rtcSettings.turnAvailable;
-  }
+  constructor(private readonly context: MeshPeerDialerContext) {}
 
   /** Credentials from a relay request, applied to peer connections created after this. */
   setTurn(turn: TurnCredentials | null): void {
@@ -61,7 +57,8 @@ export class MeshPeerDialer {
 
   /** Force-relay is on, TURN is configured, and no credential has been minted yet. */
   needsRelayCredentials(): boolean {
-    return this.context.rtcSettings.forceRelay && this.turnConfigured && !this.turn;
+    const settings = this.context.rtcSettings();
+    return settings.forceRelay && settings.turnAvailable && !this.turn;
   }
 
   /**
@@ -70,7 +67,8 @@ export class MeshPeerDialer {
    * policy at `all`, and that pair never gathers a relay candidate.
    */
   initialMode(): IceMode {
-    if (!this.context.rtcSettings.forceRelay || !this.turnConfigured) return "direct";
+    const settings = this.context.rtcSettings();
+    if (!settings.forceRelay || !settings.turnAvailable) return "direct";
     return this.turn ? "relay" : "direct";
   }
 
@@ -149,7 +147,7 @@ export class MeshPeerDialer {
       !entry.initiator ||
       entry.mode === "relay" ||
       entry.relayFallbackTried ||
-      !this.turnConfigured
+      !this.context.rtcSettings().turnAvailable
     ) {
       return false;
     }
@@ -183,7 +181,7 @@ export class MeshPeerDialer {
   /** One log per dialer when force-relay has no credential yet, so no direct PC opens. */
   private noteMissingRelayCredentials(remoteId: string): void {
     if (this.loggedMissingRelayCredentials) return;
-    if (!this.context.rtcSettings.forceRelay || !this.turnConfigured || this.turn) return;
+    if (!this.needsRelayCredentials()) return;
     this.loggedMissingRelayCredentials = true;
     this.context.log("relay-mode-without-credentials", { remoteId });
   }
@@ -216,7 +214,7 @@ export class MeshPeerDialer {
   }
 
   private makePc(remoteId: string, mode: IceMode): RTCPeerConnection {
-    const config = toRtcConfig(this.context.rtcSettings, mode, {
+    const config = toRtcConfig(this.context.rtcSettings(), mode, {
       iceCandidatePoolSize: this.context.iceCandidatePoolSize,
       turn: this.turn,
     });

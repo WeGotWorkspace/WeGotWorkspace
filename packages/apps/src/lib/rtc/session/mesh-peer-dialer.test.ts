@@ -40,11 +40,11 @@ function harness(options?: { forceRelay?: boolean; turnAvailable?: boolean }) {
   let now = 1_000_000;
   const dialer = new MeshPeerDialer({
     channel: "collab",
-    rtcSettings: {
+    rtcSettings: () => ({
       stunUrls: "stun:stun.example:3478",
       turnAvailable: options?.turnAvailable ?? true,
       forceRelay: options?.forceRelay ?? false,
-    },
+    }),
     peers,
     createPeerConnection: (config) => {
       configs.push(config);
