@@ -53,7 +53,7 @@ final class AdminSearchTest extends WgwDatabaseTestCase
         $store->ensureDirs();
         $store->write([
             'phase' => 'indexing_file_nodes',
-            'phase_updated_at' => date('c', time() - 600),
+            'phase_updated_at' => date('c', time() - 700),
         ]);
 
         $lock = Cache::lock('search-reindex-runner', 900);

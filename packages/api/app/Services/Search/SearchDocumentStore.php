@@ -6,6 +6,7 @@ namespace App\Services\Search;
 
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
+use Illuminate\Support\Facades\DB;
 
 final class SearchDocumentStore
 {
@@ -69,10 +70,63 @@ final class SearchDocumentStore
             ->delete();
     }
 
-    public function clearAll(): void
+    /**
+     * Drop file and note rows whose storage key is no longer a live file node.
+     * Terms go with the document via the foreign key. A reindex sweeps with
+     * this instead of truncating first, so an interrupted run cannot empty search.
+     */
+    public function deleteFileLikeOrphans(): void
     {
-        SearchTerm::query()->delete();
-        SearchDocument::query()->delete();
+        SearchDocument::query()
+            ->whereIn('source_type', ['file', 'note'])
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('jmap_file_nodes')
+                    ->whereColumn('jmap_file_nodes.storage_key', 'search_documents.source_key')
+                    ->whereNull('jmap_file_nodes.deleted_at');
+            })
+            ->delete();
+    }
+
+    public function deleteCaldavOrphans(): void
+    {
+        $match = $this->davSourceKeyMatch('i.principaluri', 'i.uri', 'o.uri');
+        SearchDocument::query()
+            ->where('source_type', 'caldav')
+            ->whereNotExists(function ($query) use ($match): void {
+                $query->selectRaw('1')
+                    ->from('calendarobjects as o')
+                    ->join('calendarinstances as i', 'i.calendarid', '=', 'o.calendarid')
+                    ->whereRaw($match);
+            })
+            ->delete();
+    }
+
+    public function deleteCarddavOrphans(): void
+    {
+        $match = $this->davSourceKeyMatch('a.principaluri', 'a.uri', 'c.uri');
+        SearchDocument::query()
+            ->where('source_type', 'carddav')
+            ->whereNotExists(function ($query) use ($match): void {
+                $query->selectRaw('1')
+                    ->from('cards as c')
+                    ->join('addressbooks as a', 'a.id', '=', 'c.addressbookid')
+                    ->whereRaw($match);
+            })
+            ->delete();
+    }
+
+    private function davSourceKeyMatch(string $principalColumn, string $collectionColumn, string $objectColumn): string
+    {
+        $driver = DB::connection('wgw')->getDriverName();
+        $principal = $driver === 'sqlite'
+            ? 'substr('.$principalColumn.', 12)'
+            : 'SUBSTRING('.$principalColumn.', 12)';
+        if ($driver === 'sqlite') {
+            return "search_documents.source_key = {$principal} || '|' || {$collectionColumn} || '|' || {$objectColumn}";
+        }
+
+        return "search_documents.source_key = CONCAT({$principal}, '|', {$collectionColumn}, '|', {$objectColumn})";
     }
 
     /**

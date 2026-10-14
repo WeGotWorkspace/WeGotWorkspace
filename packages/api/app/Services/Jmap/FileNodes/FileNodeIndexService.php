@@ -462,14 +462,8 @@ final class FileNodeIndexService
     public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
     {
         $disk = $this->storage->files();
-        $directoryKeys = [];
-        foreach ($disk->allDirectories() as $key) {
-            $directoryKeys[] = (string) $key;
-        }
-        $fileKeys = [];
-        foreach ($disk->allFiles() as $key) {
-            $fileKeys[] = (string) $key;
-        }
+        $directoryKeys = $disk->allDirectories();
+        $fileKeys = $disk->allFiles();
         $total = count($directoryKeys) + count($fileKeys);
         $indexed = 0;
         $seen = [];

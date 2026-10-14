@@ -16,7 +16,12 @@ final class SearchReindexRunner
      */
     private const LOCK_TTL_SECONDS = 900;
 
-    private const STALE_PROGRESS_SECONDS = 120;
+    /**
+     * How long a phase may sit without a progress tick before a status poll
+     * treats the run as dead. The file listing before the first backfill tick
+     * can outlast a couple of minutes on a large disk.
+     */
+    private const STALE_PROGRESS_SECONDS = 600;
 
     public function __construct(
         private SearchReindexStateStore $store,

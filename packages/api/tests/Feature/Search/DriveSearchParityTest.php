@@ -175,6 +175,63 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
         $this->assertNoSearchDocumentsWithoutALiveFileNode();
     }
 
+    public function test_reindex_drops_a_search_row_whose_file_was_removed(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/gone.md', "# Gone\n");
+        app(SearchReindexRunner::class)->run();
+        $this->assertSearchDocumentExists('users/bob/gone.md');
+        $this->insertSearchDocument('caldav', 'bob|default|missing.ics');
+
+        $disk->delete('users/bob/gone.md');
+        app(SearchReindexRunner::class)->run();
+
+        $this->assertNotNull(
+            JmapFileNode::query()
+                ->where('storage_key', 'users/bob/gone.md')
+                ->whereNotNull('deleted_at')
+                ->first(),
+        );
+        $this->assertSearchDocumentMissing('users/bob/gone.md');
+        $this->assertNull($this->searchDocument('caldav', 'bob|default|missing.ics'));
+        $this->assertNoSearchDocumentsWithoutALiveFileNode();
+    }
+
+    public function test_cancelled_projection_keeps_existing_search_rows(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/keep.md', "# Keep\n");
+        $disk->put('users/bob/later.md', "# Later\n");
+        app(SearchReindexRunner::class)->run();
+        $this->assertSearchDocumentExists('users/bob/keep.md');
+        $this->assertSearchDocumentExists('users/bob/later.md');
+        $this->insertSearchDocument('caldav', 'bob|default|keep.ics');
+
+        $ticks = 0;
+        try {
+            app(SearchIndexerService::class)->reindexAllFromFileNodes(
+                function (int $done, int $total, string $phase) use (&$ticks): void {
+                    if ($phase !== 'files') {
+                        return;
+                    }
+                    $ticks++;
+                    if ($ticks >= 1) {
+                        throw new \RuntimeException('Search reindex cancelled by user.');
+                    }
+                },
+            );
+            $this->fail('Expected the projection to stop on cancel.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Search reindex cancelled by user.', $e->getMessage());
+        }
+
+        $this->assertGreaterThan(0, $ticks);
+        $this->assertSearchDocumentExists('users/bob/keep.md');
+        $this->assertSearchDocumentExists('users/bob/later.md');
+        $this->assertNotNull($this->searchDocument('caldav', 'bob|default|keep.ics'));
+        $this->assertNoSearchDocumentsWithoutALiveFileNode();
+    }
+
     public function test_directory_move_replaces_search_keys_with_the_new_path(): void
     {
         $this->createDriveDirectory('/users/bob', 'dir');
@@ -230,6 +287,26 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
             JmapFileNode::query()->where('storage_key', $key)->whereNull('deleted_at')->first(),
         );
         $this->assertSearchDocumentExists($key);
+    }
+
+    private function insertSearchDocument(string $sourceType, string $sourceKey): void
+    {
+        DB::connection('wgw')->table('search_documents')->insert([
+            'source_type' => $sourceType,
+            'source_key' => $sourceKey,
+            'created_at' => date('c'),
+            'updated_at' => date('c'),
+        ]);
+    }
+
+    private function searchDocument(string $sourceType, string $sourceKey): ?object
+    {
+        $row = DB::connection('wgw')->table('search_documents')
+            ->where('source_type', $sourceType)
+            ->where('source_key', $sourceKey)
+            ->first();
+
+        return $row === null ? null : $row;
     }
 
     private function assertNoSearchDocumentsWithoutALiveFileNode(): void

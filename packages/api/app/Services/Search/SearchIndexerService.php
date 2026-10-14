@@ -343,14 +343,14 @@ final class SearchIndexerService
 
     /**
      * Project live file nodes into search, then rebuild caldav and carddav.
-     * Callers must backfill the file index first; SearchReindexRunner does.
+     * Upserts in place and sweeps orphans at the end of each phase. Callers
+     * must backfill the file index first; SearchReindexRunner does. An
+     * interrupted run leaves existing rows in place.
      *
      * @param  callable(int, int, string): void|null  $progress
      */
     public function reindexAllFromFileNodes(?callable $progress = null): void
     {
-        $this->store->clearAll();
-
         $total = JmapFileNode::query()->whereNull('deleted_at')->count();
         $done = 0;
         JmapFileNode::query()
@@ -365,6 +365,7 @@ final class SearchIndexerService
                     }
                 }
             });
+        $this->store->deleteFileLikeOrphans();
 
         /** @var list<object{principaluri:string, calendar_uri:string, object_uri:string}> $calendarRows */
         $calendarRows = CalendarObject::query()
@@ -386,6 +387,7 @@ final class SearchIndexerService
                 $progress($idx + 1, max(1, $totalCal), 'caldav');
             }
         }
+        $this->store->deleteCaldavOrphans();
 
         /** @var list<object{principaluri:string, book_uri:string, card_uri:string}> $cardRows */
         $cardRows = Card::query()
@@ -407,6 +409,7 @@ final class SearchIndexerService
                 $progress($idx + 1, max(1, $totalCard), 'carddav');
             }
         }
+        $this->store->deleteCarddavOrphans();
     }
 
     private function normalizeDavPath(string $path): string
