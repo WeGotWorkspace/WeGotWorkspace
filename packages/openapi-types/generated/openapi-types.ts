@@ -134,9 +134,11 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Token issued */
+                /** @description Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie. */
                 200: {
                     headers: {
+                        /** @description HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -188,7 +190,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh access token using refresh token */
+        /** Refresh access token using the HttpOnly refresh cookie */
         post: {
             parameters: {
                 query?: never;
@@ -196,17 +198,13 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        refresh_token: string;
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description Refreshed token pair */
+                /** @description Refreshed token pair. The JSON body has no refresh_token; the rotated token is Set-Cookie. */
                 200: {
                     headers: {
+                        /** @description HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -220,9 +218,11 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Unauthorized */
+                /** @description Unauthorized. The response expires wgw_refresh so a dead token is not presented again. */
                 401: {
                     headers: {
+                        /** @description Clears the wgw_refresh cookie (expired, empty value, same path and SameSite=Strict). */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -244,7 +244,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke current access token and/or refresh token */
+        /** Revoke current access token and the HttpOnly refresh cookie */
         post: {
             parameters: {
                 query?: never;
@@ -252,13 +252,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        refresh_token?: string;
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
                 /** @description Revocation result */
                 200: {
@@ -8002,7 +7996,6 @@ export interface components {
         };
         AuthTokenResponse: {
             access_token: string;
-            refresh_token: string;
             token_type: string;
             expires_in: number;
             refresh_expires_in: number;
@@ -8432,8 +8425,6 @@ export interface components {
             password?: string;
             /** @description Current password. Required when password or email is changed. */
             currentPassword?: string;
-            /** @description Current device refresh token. Sent with a password change so this session stays signed in. */
-            refreshToken?: string;
         };
         /**
          * @example {

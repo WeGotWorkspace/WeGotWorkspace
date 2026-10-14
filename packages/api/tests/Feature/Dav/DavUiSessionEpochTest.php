@@ -7,6 +7,7 @@ namespace Tests\Feature\Dav;
 use App\Dav\Auth\UiAuthSecret;
 use App\Models\ApiPasswordResetToken;
 use App\Services\Auth\PasswordRecoveryService;
+use App\Services\Auth\RefreshCookie;
 use App\Services\Auth\UiSessionService;
 use App\Support\WgwSettings;
 use Illuminate\Testing\TestResponse;
@@ -49,7 +50,9 @@ final class DavUiSessionEpochTest extends WgwDatabaseTestCase
         $tokens = $this->login('bob');
 
         $this->withBearer($tokens['access_token'])
-            ->postJson('/api/v1/auth/revoke', ['refresh_token' => $tokens['refresh_token']])
+            ->withUnencryptedCookie(RefreshCookie::NAME, $tokens['refresh_token'])
+            ->withCredentials()
+            ->postJson('/api/v1/auth/revoke')
             ->assertOk()
             ->assertCookieExpired('sabre_ui_auth');
 
@@ -137,7 +140,7 @@ final class DavUiSessionEpochTest extends WgwDatabaseTestCase
 
         return [
             'access_token' => (string) $response->json('access_token'),
-            'refresh_token' => (string) $response->json('refresh_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
         ];
     }
 }

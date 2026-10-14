@@ -65,12 +65,13 @@ JSON
 Expected success fields:
 
 - `access_token`
-- `refresh_token`
 - `token_type` (`Bearer`)
 - `expires_in`
 - `refresh_expires_in`
 - `role`
 - `username`
+
+The refresh token is not in the JSON body. The response sets an `HttpOnly` `wgw_refresh` cookie (`SameSite=Strict`, path `<webBase>/api/v1/auth`, `Secure` when the request is HTTPS, `Max-Age` = `WGW_API_JWT_REFRESH_TTL`).
 
 ## 3) Use the token
 
@@ -84,23 +85,28 @@ curl -k "${BASE_URL}/api/v1/me" \
 
 ## 4) Refresh and revoke
 
+The refresh token travels only in the `wgw_refresh` cookie. Save it on token issuance and send the jar back.
+
 Refresh:
 
 ```bash
 BASE_URL="${BASE_URL:-https://${VHOST_DOMAIN:-localhost}:8443}"
-curl -k -X POST "${BASE_URL}/api/v1/auth/refresh" \
+curl -k -c jar.txt -X POST "${BASE_URL}/api/v1/auth/token" \
   -H "Content-Type: application/json" \
-  --data '{"refresh_token":"PASTE_REFRESH_TOKEN"}'
+  --data '{"username":"admin","password":"YOUR_PASSWORD"}'
+curl -k -b jar.txt -c jar.txt -X POST "${BASE_URL}/api/v1/auth/refresh" \
+  -H "Content-Type: application/json" \
+  --data '{}'
 ```
 
-Revoke current access token and optionally a refresh token:
+Revoke the current access token and the refresh cookie:
 
 ```bash
 BASE_URL="${BASE_URL:-https://${VHOST_DOMAIN:-localhost}:8443}"
-curl -k -X POST "${BASE_URL}/api/v1/auth/revoke" \
+curl -k -b jar.txt -c jar.txt -X POST "${BASE_URL}/api/v1/auth/revoke" \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  --data '{"refresh_token":"PASTE_REFRESH_TOKEN"}'
+  --data '{}'
 ```
 
 ## 5) Verify via JWKS

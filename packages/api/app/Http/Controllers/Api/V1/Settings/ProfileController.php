@@ -19,8 +19,6 @@ use Illuminate\Http\JsonResponse;
 
 final class ProfileController
 {
-    private const int REFRESH_TOKEN_MAX = 512;
-
     public function __construct(
         private UserProfileService $profiles,
         private SettingsStateService $settings,
@@ -60,7 +58,7 @@ final class ProfileController
 
         if ($password !== null) {
             $this->profiles->updatePassword($username, $password);
-            $this->sessions->revokeAll($username, $this->callerRefreshTokenHash($request));
+            $this->sessions->revokeAll($username);
         }
 
         return (new SettingsStateResource(
@@ -113,20 +111,5 @@ final class ProfileController
         }
 
         $this->loginLimiter->reset($username, $ip);
-    }
-
-    private function callerRefreshTokenHash(SettingsProfileRequest $request): ?string
-    {
-        $token = $request->validated()['refreshToken'] ?? null;
-        if (! is_string($token)) {
-            return null;
-        }
-
-        $token = trim($token);
-        if ($token === '' || strlen($token) > self::REFRESH_TOKEN_MAX) {
-            return null;
-        }
-
-        return hash('sha256', $token);
     }
 }

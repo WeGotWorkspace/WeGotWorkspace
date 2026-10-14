@@ -6,9 +6,9 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 | Route | Access | Notes |
 |-------|--------|-------|
-| `POST /api/v1/auth/token` | guest | Issue bearer + refresh token. |
-| `POST /api/v1/auth/refresh` | guest | Rotate access token. |
-| `POST /api/v1/auth/revoke` | guest | Revoke refresh token. |
+| `POST /api/v1/auth/token` | guest | Issue bearer token. Sets the HttpOnly `wgw_refresh` cookie. JSON has no `refresh_token`. |
+| `POST /api/v1/auth/refresh` | guest | Rotate the access token from the `wgw_refresh` cookie. No request body. A 401 clears the cookie. |
+| `POST /api/v1/auth/revoke` | guest | Revoke the bearer and the `wgw_refresh` cookie. No request body. |
 | `GET /api/v1/me` | user | Current principal. |
 | `GET /api/v1/health` | guest | Liveness. |
 | `GET /api/v1/capabilities` | guest | Feature discovery. |

@@ -163,7 +163,7 @@ final class AdminUsersTest extends WgwDatabaseTestCase
         ]);
         $bobTokenResponse->assertOk();
         $bobAccess = (string) $bobTokenResponse->json('access_token');
-        $bobRefresh = (string) $bobTokenResponse->json('refresh_token');
+        $bobRefresh = $this->refreshCookieValue($bobTokenResponse);
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/users/bob', [
@@ -190,9 +190,7 @@ final class AdminUsersTest extends WgwDatabaseTestCase
 
         $this->withBearer($bobAccess)->getJson('/api/v1/me')->assertUnauthorized();
 
-        $this->postJson('/api/v1/auth/refresh', [
-            'refresh_token' => $bobRefresh,
-        ])->assertUnauthorized();
+        $this->postRefresh($bobRefresh)->assertUnauthorized();
 
         $this->withBearer($token)
             ->patchJson('/api/v1/admin/users/bob', [

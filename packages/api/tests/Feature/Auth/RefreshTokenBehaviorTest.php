@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Auth;
 
 use App\Models\ApiRevokedToken;
+use App\Services\Auth\RefreshCookie;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -43,8 +44,10 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $rotated = $this->refresh($issued['refresh_token']);
 
         $rotated->assertOk();
+        $this->assertArrayNotHasKey('refresh_token', $rotated->json());
         $this->assertNotSame('', (string) $rotated->json('access_token'));
-        $this->assertNotSame($issued['refresh_token'], (string) $rotated->json('refresh_token'));
+        $rotatedRefresh = $this->refreshCookieValue($rotated);
+        $this->assertNotSame($issued['refresh_token'], $rotatedRefresh);
         $this->assertNotSame($issued['access_token'], (string) $rotated->json('access_token'));
     }
 
@@ -53,7 +56,7 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $issued = $this->issueTokenPair();
         $rotated = $this->refresh($issued['refresh_token']);
         $rotated->assertOk();
-        $nextRefresh = (string) $rotated->json('refresh_token');
+        $nextRefresh = $this->refreshCookieValue($rotated);
 
         $this->refresh($issued['refresh_token'])
             ->assertUnauthorized()
@@ -100,17 +103,20 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $issued = $this->issueTokenPair();
 
         $this->withBearer($issued['access_token'])
-            ->postJson('/api/v1/auth/revoke', [
-                'refresh_token' => $issued['refresh_token'],
-            ])
-            ->assertOk();
+            ->withUnencryptedCookie(RefreshCookie::NAME, $issued['refresh_token'])
+            ->withCredentials()
+            ->postJson('/api/v1/auth/revoke')
+            ->assertOk()
+            ->assertCookieExpired(RefreshCookie::NAME)
+            ->assertCookieExpired('sabre_ui_auth');
 
         $this->refresh($issued['refresh_token'])
             ->assertUnauthorized()
             ->assertJson([
                 'error' => 'Invalid refresh token.',
                 'code' => 'unauthorized',
-            ]);
+            ])
+            ->assertCookieExpired(RefreshCookie::NAME);
 
         $this->withBearer($issued['access_token'])
             ->getJson('/api/v1/me')
@@ -130,14 +136,12 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
 
         return [
             'access_token' => (string) $response->json('access_token'),
-            'refresh_token' => (string) $response->json('refresh_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
         ];
     }
 
     private function refresh(string $refreshToken): TestResponse
     {
-        return $this->postJson('/api/v1/auth/refresh', [
-            'refresh_token' => $refreshToken,
-        ]);
+        return $this->postRefresh($refreshToken);
     }
 }

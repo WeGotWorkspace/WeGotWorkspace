@@ -39,6 +39,7 @@ function ProfileStoryHarness({ variant = "default" }: { variant?: ProfileStoryVa
       username: getProfileStoryUsername(),
       form,
       saveProfile: form.handleSubmit(async () => {}),
+      unsyncedDiscard: null,
     }),
     [form],
   );

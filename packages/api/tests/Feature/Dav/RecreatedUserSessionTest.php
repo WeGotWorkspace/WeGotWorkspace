@@ -152,7 +152,7 @@ final class RecreatedUserSessionTest extends WgwDatabaseTestCase
 
         return [
             'access_token' => (string) $response->json('access_token'),
-            'refresh_token' => (string) $response->json('refresh_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
         ];
     }
 
