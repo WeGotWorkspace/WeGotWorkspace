@@ -146,6 +146,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             if (CollabSidecarPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The Yjs sidecar is server-owned.');
             }
+            if ($this->hasCollabSidecar($destPath)) {
+                throw new Forbidden('This document is edited collaboratively; write it through the app.');
+            }
             if (self::isCalendarFolderPath($path) || self::isCalendarFolderPath($destPath)) {
                 throw new Forbidden('Moving or copying calendar homes or calendar collections is not allowed.');
             }
@@ -163,7 +166,10 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
 
         // Temporary until the document and sidecar share an ETag. An external
         // edit is blocked here; it is not yet detectable, and this is not permanent policy.
-        if (in_array($method, ['PUT', 'PATCH', 'DELETE', 'MOVE', 'COPY'], true)
+        // DELETE stays open: the owner is removing the file on purpose, and a
+        // parent-folder delete already wipes the tree. The sidecar can be left
+        // behind; cleaning those orphans is a separate issue.
+        if (in_array($method, ['PUT', 'PATCH', 'MOVE', 'COPY'], true)
             && $this->hasCollabSidecar($path)) {
             throw new Forbidden('This document is edited collaboratively; write it through the app.');
         }
