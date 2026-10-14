@@ -2866,7 +2866,7 @@ export interface paths {
                     path: string;
                 };
                 header?: {
-                    /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. */
+                    /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. A yjs write that sends neither this header nor `If-None-Match` is refused with 428 when a sidecar already exists. */
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
@@ -2914,6 +2914,15 @@ export interface paths {
                 };
                 /** @description `payload_too_large` */
                 413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A yjs write over an existing sidecar carried neither If-Match nor If-None-Match */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
