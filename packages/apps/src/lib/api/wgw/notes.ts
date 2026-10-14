@@ -15,6 +15,7 @@ import {
   unstarNote,
   createNotebook as createVjournalNotebook,
   deleteNotebook as deleteVjournalNotebook,
+  type NotesVjournalNote,
   type NotesVjournalNotebook,
 } from "@/lib/api/wgw/notes-vjournal";
 
@@ -271,6 +272,54 @@ export async function createNoteItem(
   return noteFromVjournal(created, notebooks);
 }
 
+type NoteMetadataPatch = {
+  notebookId?: string;
+  title?: string | null;
+  categories?: string[];
+};
+
+function noteMetadataPatch(
+  body: WgwNoteUpsertRequest,
+  notebookId: string | undefined,
+): NoteMetadataPatch {
+  return {
+    ...(notebookId ? { notebookId } : {}),
+    ...(body.title !== undefined ? { title: body.title } : {}),
+    // Categories stay off the wire unless this write carried tags. Archive
+    // STATUS is never part of this patch: a stale archived:false was PATCHing
+    // FINAL and un-archiving the note.
+    ...(body.tags !== undefined ? { categories: body.tags } : {}),
+  };
+}
+
+/** Server order first, then local tags the server does not have yet. */
+function unionNoteTags(serverTags: readonly string[], localTags: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const tag of [...serverTags, ...localTags]) {
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    merged.push(tag);
+  }
+  return merged;
+}
+
+function noteMetadataPatchAfterConflict(
+  first: NoteMetadataPatch,
+  fresh: NotesVjournalNote,
+  localTags: readonly string[] | undefined,
+): NoteMetadataPatch {
+  const notebookStillMatches =
+    first.notebookId !== undefined && fresh.notebookId === first.notebookId;
+  return {
+    ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+    ...(first.title !== undefined ? { title: first.title } : {}),
+    ...(first.categories !== undefined
+      ? { categories: unionNoteTags(fresh.categories, localTags ?? []) }
+      : {}),
+  };
+}
+
 export async function updateNoteItem(
   id: string,
   body: WgwNoteUpsertRequest,
@@ -280,25 +329,20 @@ export async function updateNoteItem(
   const notebook =
     (body.notebookId ? notebooks.find((item) => item.id === body.notebookId) : undefined) ??
     notebooks.find((item) => item.name === body.notebook);
-  const apply = async (ifMatch: string | undefined) =>
-    patchNote(
-      id,
-      {
-        ...(notebook ? { notebookId: notebook.id } : {}),
-        ...(body.title !== undefined ? { title: body.title } : {}),
-        categories: body.tags,
-        // Archive/restore own STATUS. A metadata upsert with stale archived:false
-        // was PATCHing FINAL and un-archiving the note.
-      },
-      { ...opts, ifMatch },
-    );
+  const firstPatch = noteMetadataPatch(body, notebook?.id);
+  const apply = async (ifMatch: string | undefined, patch: NoteMetadataPatch) =>
+    patchNote(id, patch, { ...opts, ifMatch });
   const ifMatch = await ifMatchForNote(id, body.etag, opts);
   let patched;
   try {
-    patched = await apply(ifMatch);
+    patched = await apply(ifMatch, firstPatch);
   } catch (error) {
     if (!isNotePreconditionFailed(error)) throw error;
-    patched = await apply(await ifMatchForNote(id, undefined, opts));
+    // Someone else wrote first. Replaying this payload would drop their tag
+    // additions. Union keeps both sets; a lost deletion stays on the note.
+    // A different notebook means they moved it, so this retry leaves that move.
+    const fresh = await getNote(id, opts);
+    patched = await apply(fresh.etag, noteMetadataPatchAfterConflict(firstPatch, fresh, body.tags));
   }
   if (body.starred === true) await starNote(id, opts);
   if (body.starred === false) await unstarNote(id, opts);
