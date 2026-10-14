@@ -70,13 +70,11 @@ final class SearchReindexRunner
             $this->store->appendLog('Search reindex started.');
 
             $this->writePhase('indexing_file_nodes');
-            $this->fileNodes->withoutSearchSync(function (): void {
-                $this->fileNodes->reindexAll(progress: function (int $done, int $total): void {
-                    if ($this->store->isCancelRequested()) {
-                        throw new \RuntimeException('Search reindex cancelled by user.');
-                    }
-                    $this->writeProgress('indexing_file_nodes', $done, $total);
-                });
+            $this->fileNodes->reindexAll(progress: function (int $done, int $total): void {
+                if ($this->store->isCancelRequested()) {
+                    throw new \RuntimeException('Search reindex cancelled by user.');
+                }
+                $this->writeProgress('indexing_file_nodes', $done, $total);
             });
             if ($this->store->isCancelRequested()) {
                 throw new \RuntimeException('Search reindex cancelled by user.');

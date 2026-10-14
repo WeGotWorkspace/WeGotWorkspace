@@ -6,7 +6,6 @@ namespace App\Services\Search;
 
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
-use Illuminate\Support\Facades\DB;
 
 final class SearchDocumentStore
 {
@@ -20,7 +19,9 @@ final class SearchDocumentStore
      */
     public function upsert(string $sourceType, string $sourceKey, array $document, array $tokensByField): void
     {
-        $now = date('c');
+        // UTC so updated_at stays in lexicographic order across a DST change.
+        // deleteStaleRows() compares this string against a gmdate('c') cutoff.
+        $now = gmdate('c');
         $payload = [
             'source_type' => $sourceType,
             'source_subtype' => $this->nullableString($document['source_subtype'] ?? null),
@@ -72,8 +73,10 @@ final class SearchDocumentStore
 
     /**
      * Drop file and note rows whose storage key is no longer a live file node.
-     * Terms go with the document via the foreign key. A reindex sweeps with
-     * this instead of truncating first, so an interrupted run cannot empty search.
+     * Terms go with the document via the foreign key. The key is the storage
+     * key, so this can be exact. Calendar and contact rows cannot: their
+     * source keys are decoded in PHP, and deleteStaleRows() drops whatever
+     * the phase did not refresh.
      */
     public function deleteFileLikeOrphans(): void
     {
@@ -88,45 +91,16 @@ final class SearchDocumentStore
             ->delete();
     }
 
-    public function deleteCaldavOrphans(): void
+    /**
+     * Drop rows of one source that this phase did not refresh. `$cutoff` is
+     * gmdate('c'), captured before the phase. upsert() writes that same clock.
+     */
+    public function deleteStaleRows(string $sourceType, string $cutoff): void
     {
-        $match = $this->davSourceKeyMatch('i.principaluri', 'i.uri', 'o.uri');
         SearchDocument::query()
-            ->where('source_type', 'caldav')
-            ->whereNotExists(function ($query) use ($match): void {
-                $query->selectRaw('1')
-                    ->from('calendarobjects as o')
-                    ->join('calendarinstances as i', 'i.calendarid', '=', 'o.calendarid')
-                    ->whereRaw($match);
-            })
+            ->where('source_type', $sourceType)
+            ->where('updated_at', '<', $cutoff)
             ->delete();
-    }
-
-    public function deleteCarddavOrphans(): void
-    {
-        $match = $this->davSourceKeyMatch('a.principaluri', 'a.uri', 'c.uri');
-        SearchDocument::query()
-            ->where('source_type', 'carddav')
-            ->whereNotExists(function ($query) use ($match): void {
-                $query->selectRaw('1')
-                    ->from('cards as c')
-                    ->join('addressbooks as a', 'a.id', '=', 'c.addressbookid')
-                    ->whereRaw($match);
-            })
-            ->delete();
-    }
-
-    private function davSourceKeyMatch(string $principalColumn, string $collectionColumn, string $objectColumn): string
-    {
-        $driver = DB::connection('wgw')->getDriverName();
-        $principal = $driver === 'sqlite'
-            ? 'substr('.$principalColumn.', 12)'
-            : 'SUBSTRING('.$principalColumn.', 12)';
-        if ($driver === 'sqlite') {
-            return "search_documents.source_key = {$principal} || '|' || {$collectionColumn} || '|' || {$objectColumn}";
-        }
-
-        return "search_documents.source_key = CONCAT({$principal}, '|', {$collectionColumn}, '|', {$objectColumn})";
     }
 
     /**

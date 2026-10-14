@@ -25,8 +25,6 @@ use Illuminate\Support\Str;
  */
 final class FileNodeIndexService
 {
-    private bool $searchSyncSuspended = false;
-
     public function __construct(
         private readonly WgwStorage $storage,
         private readonly SearchIndexerService $search,
@@ -107,28 +105,8 @@ final class FileNodeIndexService
         return ! StorageKeyClass::classify($key)->isFileIndexed();
     }
 
-    /**
-     * File-index backfill must not mirror each mint into search. The search
-     * reindex clears that index and rebuilds it from the nodes afterwards.
-     *
-     * @param  callable(): void  $operation
-     */
-    public function withoutSearchSync(callable $operation): void
-    {
-        $this->searchSyncSuspended = true;
-        try {
-            $operation();
-        } finally {
-            $this->searchSyncSuspended = false;
-        }
-    }
-
     private function syncSearch(string $key, bool $deleted = false): void
     {
-        if ($this->searchSyncSuspended) {
-            return;
-        }
-
         $this->searchSync->sync(
             'filenode',
             fn () => $deleted

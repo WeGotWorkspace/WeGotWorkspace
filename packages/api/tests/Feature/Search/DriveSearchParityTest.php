@@ -6,6 +6,7 @@ namespace Tests\Feature\Search;
 
 use App\Models\JmapFileNode;
 use App\Services\Drive\DriveService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Search\SearchReindexRunner;
@@ -289,13 +290,63 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
         $this->assertSearchDocumentExists($key);
     }
 
+    public function test_reindex_keeps_a_calendar_object_whose_uri_contains_percent_encoding(): void
+    {
+        DB::connection('wgw')->table('calendars')->insert([
+            'id' => 1,
+            'synctoken' => 1,
+            'components' => 'VEVENT',
+        ]);
+        DB::connection('wgw')->table('calendarinstances')->insert([
+            'id' => 1,
+            'calendarid' => 1,
+            'principaluri' => 'principals/bob',
+            'access' => 1,
+            'uri' => 'default',
+            'displayname' => 'Default',
+        ]);
+        DB::connection('wgw')->table('calendarobjects')->insert([
+            'calendardata' => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:meet-1\r\nSUMMARY:Meet ing\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n",
+            'uri' => 'meet%20ing.ics',
+            'calendarid' => 1,
+            'lastmodified' => time(),
+            'etag' => '"m1"',
+            'size' => 120,
+            'componenttype' => 'VEVENT',
+            'firstoccurence' => time(),
+            'lastoccurence' => time(),
+            'uid' => 'meet-1',
+        ]);
+
+        app(SearchReindexRunner::class)->run();
+
+        $this->assertNotNull($this->searchDocument('caldav', 'bob|default|meet ing.ics'));
+    }
+
+    public function test_backfill_writes_a_search_row_when_it_mints_a_node(): void
+    {
+        app(WgwStorage::class)->files()->put('users/bob/minted.md', "# Minted\n");
+
+        app(FileNodeIndexService::class)->reindexAll();
+
+        $this->assertNotNull(
+            JmapFileNode::query()
+                ->where('storage_key', 'users/bob/minted.md')
+                ->whereNull('deleted_at')
+                ->first(),
+        );
+        $this->assertSearchDocumentExists('users/bob/minted.md');
+    }
+
     private function insertSearchDocument(string $sourceType, string $sourceKey): void
     {
+        // Older than any gmdate('c') cutoff, in UTC, so a stale sweep deletes
+        // the row on every timezone. date('c') can sort after that cutoff.
         DB::connection('wgw')->table('search_documents')->insert([
             'source_type' => $sourceType,
             'source_key' => $sourceKey,
-            'created_at' => date('c'),
-            'updated_at' => date('c'),
+            'created_at' => '2000-01-01T00:00:00+00:00',
+            'updated_at' => '2000-01-01T00:00:00+00:00',
         ]);
     }
 
