@@ -28,7 +28,7 @@ function generaalValue(text: string): unknown {
       raw.set(`${refs[c]}@${rowId}`, cells.get(colId) ?? "");
     }
   }
-  return evaluateAll(raw, rowOrder, {}).get(`generaal@${rowOrder[0]}`);
+  return evaluateAll(raw, rowOrder, {}, refs).get(`generaal@${rowOrder[0]}`);
 }
 
 const here = dirname(fileURLToPath(import.meta.url));

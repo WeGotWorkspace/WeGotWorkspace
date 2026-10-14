@@ -37,6 +37,8 @@ test("translates current-row, absolute, and quoted refs", () => {
   expect(toIdForm("='q'12", ambiguous, rows)).toBe("=#REF!");
   expect(toIdForm("='q'2", ambiguous, rows)).toBe("='q'@r_b");
   expect(toIdForm("=q12", ambiguous, rows)).toBe("=q1@r_b");
+  // q1 is the column name. Digits in the name are not a row suffix, so this stays current-row.
+  expect(toIdForm("=q1", ambiguous, rows)).toBe("=q1");
 });
 
 test("uses the longest column ref that leaves a numeric suffix", () => {

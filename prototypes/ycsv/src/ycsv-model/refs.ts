@@ -108,7 +108,9 @@ export function toIdForm(
       if (rowNumber < 1 || rowNumber > rowIds.length) return "#REF!";
       return `${quoteRef(span.v)}@${rowIds[rowNumber - 1]}`;
     }
-    if (span.v.includes(".") || span.v.includes("@") || !/\d/.test(span.v)) return span.raw;
+    if (span.v.includes(".") || span.v.includes("@")) return span.raw;
+    // Digits inside the column name are not a row suffix. q1 is the column.
+    if (cols.some((col) => col.ref === span.v) || !/\d/.test(span.v)) return span.raw;
     const byRef = matchLabel(span.v, cols, rowIds, (col) => col.ref);
     if (byRef) return byRef;
     const byHeader = matchLabel(span.v, cols, rowIds, (col) => (col.header && col.header !== col.ref ? col.header : ""));

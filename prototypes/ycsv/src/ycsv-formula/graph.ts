@@ -155,13 +155,17 @@ function lookupDef(defs: Record<string, unknown>, path: string): Value | undefin
   return undefined;
 }
 
-export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<string, unknown>): Values {
+export function evaluateAll(
+  raw: RawCells,
+  rowOrder: string[],
+  defs: Record<string, unknown>,
+  columnRefs: readonly string[],
+): Values {
   const rowIndex = new Map<string, number>();
   rowOrder.forEach((id, i) => rowIndex.set(id, i));
-  const columnNames = new Set<string>();
-  for (const key of raw.keys()) columnNames.add(key.slice(0, key.indexOf("@")));
-  const columnsKey = [...columnNames].sort().join("\0");
-  const isColumn = (path: string) => columnNames.has(path);
+  const columnRefSet = new Set(columnRefs);
+  const columnsKey = [...columnRefSet].sort().join("\0");
+  const isColumn = (path: string) => columnRefSet.has(path);
 
   const items = new Map<string, Item>();
   for (const key of orderedKeys(raw, rowOrder)) {

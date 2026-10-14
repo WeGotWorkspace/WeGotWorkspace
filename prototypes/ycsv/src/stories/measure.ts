@@ -17,6 +17,7 @@ type Model = {
   raw: RawCells;
   rowOrder: string[];
   defs: Record<string, unknown>;
+  columnRefs: string[];
   aantalColId: string;
   rowIds: string[];
 };
@@ -65,6 +66,7 @@ function readModel(doc: Y.Doc): Model {
     raw,
     rowOrder: rowIds,
     defs,
+    columnRefs: refs,
     aantalColId: colIds[refs.indexOf("aantal")] ?? "",
     rowIds,
   };
@@ -137,7 +139,7 @@ export async function measureAll(doc: Y.Doc, text: string, heap: HeapMarks): Pro
   const evalSamples: number[] = [];
   for (let i = 0; i < 23; i += 1) {
     const started = performance.now();
-    evaluateAll(model.raw, model.rowOrder, model.defs);
+    evaluateAll(model.raw, model.rowOrder, model.defs, model.columnRefs);
     const elapsed = performance.now() - started;
     if (elapsed > PAINT_TIMEOUT_MS) {
       note(`M2 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
@@ -275,7 +277,7 @@ export async function measureCached(doc: Y.Doc): Promise<string> {
   const evalSamples: number[] = [];
   for (let i = 0; i < 23; i += 1) {
     const started = performance.now();
-    evaluateAll(model.raw, model.rowOrder, model.defs);
+    evaluateAll(model.raw, model.rowOrder, model.defs, model.columnRefs);
     const elapsed = performance.now() - started;
     if (elapsed > PAINT_TIMEOUT_MS) {
       note(`M2 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
@@ -380,7 +382,7 @@ function evalMedian(rowCount: number): number {
   const samples: number[] = [];
   for (let i = 0; i < 23; i += 1) {
     const started = performance.now();
-    evaluateAll(model.raw, model.rowOrder, model.defs);
+    evaluateAll(model.raw, model.rowOrder, model.defs, model.columnRefs);
     const elapsed = performance.now() - started;
     if (elapsed > PAINT_TIMEOUT_MS) {
       throw new Error(`M10 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${rowCount} rijen`);
@@ -400,7 +402,7 @@ export async function measureIndexed(doc: Y.Doc): Promise<string> {
   const evalSamples: number[] = [];
   for (let i = 0; i < 23; i += 1) {
     const started = performance.now();
-    evaluateAll(model.raw, model.rowOrder, model.defs);
+    evaluateAll(model.raw, model.rowOrder, model.defs, model.columnRefs);
     const elapsed = performance.now() - started;
     if (elapsed > PAINT_TIMEOUT_MS) {
       note(`M2 afgebroken na run ${i + 1}: ${ms(elapsed)} bij ${model.rowIds.length} rijen`);
@@ -540,7 +542,7 @@ function measureVariant(label: string, text: string): {
   const samples: number[] = [];
   for (let i = 0; i < 23; i += 1) {
     const t = performance.now();
-    evaluateAll(model.raw, model.rowOrder, model.defs);
+    evaluateAll(model.raw, model.rowOrder, model.defs, model.columnRefs);
     const elapsed = performance.now() - t;
     if (elapsed > PAINT_TIMEOUT_MS) throw new Error(`M2 ${label} afgebroken na run ${i + 1}: ${ms(elapsed)}`);
     samples.push(elapsed);
@@ -619,7 +621,7 @@ export async function measureSpike2(
     const samples: number[] = [];
     for (let i = 0; i < 23; i += 1) {
       const t = performance.now();
-      evaluateAll(sized.raw, sized.rowOrder, sized.defs);
+      evaluateAll(sized.raw, sized.rowOrder, sized.defs, sized.columnRefs);
       const elapsed = performance.now() - t;
       if (elapsed > PAINT_TIMEOUT_MS) {
         note(`M10 afgebroken bij ${count} rijen run ${i + 1}: ${ms(elapsed)}`);

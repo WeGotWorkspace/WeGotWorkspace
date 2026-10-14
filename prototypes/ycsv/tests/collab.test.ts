@@ -66,7 +66,12 @@ function valuesOf(doc: Y.Doc) {
     for (const column of cols) raw.set(`${column.ref}@${id}`, cells.get(column.colId) ?? "");
   }
   const defs = doc.getMap("raw").get("defs");
-  return evaluateAll(raw, rowOrder, defs && typeof defs === "object" ? (defs as Record<string, unknown>) : {});
+  return evaluateAll(
+    raw,
+    rowOrder,
+    defs && typeof defs === "object" ? (defs as Record<string, unknown>) : {},
+    cols.map((column) => column.ref),
+  );
 }
 
 test("T1 basis convergence", async () => {

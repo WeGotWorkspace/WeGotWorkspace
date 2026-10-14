@@ -83,6 +83,7 @@ function readSheet(doc: Y.Doc): {
     raw,
     rows.map((row) => row.rowId),
     defs && typeof defs === "object" ? (defs as Record<string, unknown>) : {},
+    columns.map((column) => column.ref),
   );
   return { columns, rows, values };
 }

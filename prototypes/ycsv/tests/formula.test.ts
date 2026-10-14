@@ -3,10 +3,15 @@ import { evalNode, evaluateAll, parseFormula, type RawCells } from "../src/ycsv-
 
 const rowOrder = ["r_a", "r_b"];
 
-function evalFormula(formula: string, extra: RawCells = new Map(), defs: Record<string, unknown> = {}) {
+function evalFormula(
+  formula: string,
+  extra: RawCells = new Map(),
+  defs: Record<string, unknown> = {},
+  columnRefs: readonly string[] = [],
+) {
   const raw: RawCells = new Map(extra);
   raw.set("a@r_a", formula);
-  return evaluateAll(raw, rowOrder, defs).get("a@r_a");
+  return evaluateAll(raw, rowOrder, defs, columnRefs).get("a@r_a");
 }
 
 test("evaluates formulas", () => {
@@ -40,7 +45,7 @@ test("a bare ref reads the current row, and one AST serves every row", () => {
     ["totaal@r_a", "=aantal*prijs"],
     ["totaal@r_b", "=aantal*prijs"],
   ]);
-  const values = evaluateAll(raw, rowOrder, {});
+  const values = evaluateAll(raw, rowOrder, {}, ["aantal", "prijs", "totaal"]);
   expect(values.get("totaal@r_a")).toBeCloseTo(2.7);
   expect(values.get("totaal@r_b")).toBeCloseTo(5.98);
 
@@ -70,7 +75,12 @@ test("a bare name prefers a column over a def", () => {
     ["aantal@r_a", "6"],
     ["totaal@r_a", "=aantal"],
   ]);
-  expect(evaluateAll(raw, ["r_a"], { aantal: 99 }).get("totaal@r_a")).toBe(6);
+  expect(evaluateAll(raw, ["r_a"], { aantal: 99 }, ["aantal", "totaal"]).get("totaal@r_a")).toBe(6);
+});
+
+test("a column with no stored cells is still a column", () => {
+  const raw: RawCells = new Map([["totaal@r_a", "=notitie"]]);
+  expect(evaluateAll(raw, ["r_a"], {}, ["notitie", "totaal"]).get("totaal@r_a")).toBe("");
 });
 
 test("a cross-sheet ref without a row is a syntax error", () => {
@@ -83,7 +93,7 @@ test("marks a cycle and propagates it", () => {
     ["b@r_a", "=a@r_a"],
     ["c@r_a", "=a@r_a+1"],
   ]);
-  const values = evaluateAll(raw, rowOrder, {});
+  const values = evaluateAll(raw, rowOrder, {}, ["a", "b", "c"]);
   expect(values.get("a@r_a")).toBe("#CYCLE");
   expect(values.get("b@r_a")).toBe("#CYCLE");
   expect(values.get("c@r_a")).toBe("#CYCLE");
