@@ -3540,7 +3540,7 @@
             "name": "If-Match",
             "in": "header",
             "required": false,
-            "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on.",
+            "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. A yjs write that sends neither this header nor `If-None-Match` is refused with 428 when a sidecar already exists.",
             "schema": {
               "type": "string"
             }
@@ -3599,6 +3599,16 @@
           },
           "413": {
             "description": "`payload_too_large`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "A yjs write over an existing sidecar carried neither If-Match nor If-None-Match",
             "content": {
               "application/json": {
                 "schema": {

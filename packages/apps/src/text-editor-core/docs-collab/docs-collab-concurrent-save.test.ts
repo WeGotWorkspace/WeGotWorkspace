@@ -12,7 +12,7 @@ const DOCUMENT_URL = "/api/v1/files/collaboration?path=docs%2Ftogether.md";
 const YJS_URL = `${DOCUMENT_URL}&format=yjs`;
 const ROOM = "docs/together.md";
 
-/** Minimal C7 server: sha1-free opaque ETag, If-Match / If-None-Match, 412. */
+/** Minimal C7 server: opaque ETag, If-Match / If-None-Match, 412 and 428. */
 function createCollabServer() {
   let sidecar: Uint8Array | null = null;
   let revision = 0;
@@ -30,16 +30,19 @@ function createCollabServer() {
       });
     }
 
+    const body = JSON.parse(String(init?.body ?? "{}")) as { yjs?: number[] };
     const ifMatch = headers["If-Match"];
     const ifNoneMatch = headers["If-None-Match"];
     const current = etag();
+    if (body.yjs && ifMatch === undefined && ifNoneMatch === undefined && current !== null) {
+      return new Response(JSON.stringify({ error: "precondition_required" }), { status: 428 });
+    }
     const refused =
       (ifMatch !== undefined && ifMatch !== current) || (ifNoneMatch === "*" && current !== null);
     if (refused) {
       return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
     }
 
-    const body = JSON.parse(String(init?.body ?? "{}")) as { yjs?: number[] };
     if (body.yjs) {
       sidecar = new Uint8Array(body.yjs);
       revision += 1;
@@ -158,5 +161,29 @@ describe("two clients saving in turn without a live mesh", () => {
     const error = Object.assign(new Error("precondition_failed"), { status: 412 });
 
     expect(isServerDivergenceError(error)).toBe(true);
+  });
+
+  it("keeps both edits when a header-less save is refused with 428", async () => {
+    const server = createCollabServer();
+    vi.stubGlobal("fetch", server.fetchStub);
+
+    rememberSidecarEtag(ROOM, null);
+    const first = new Y.Doc();
+    edit(first, "first client edit");
+    await saveWithRemerge(first, "first client edit");
+
+    // No remembered ETag: the save goes out with neither If-Match nor If-None-Match.
+    resetSidecarEtagsForTests();
+    const second = new Y.Doc();
+    edit(second, "second client edit");
+    await saveWithRemerge(second, "second client edit");
+
+    const stored = new Y.Doc();
+    const settled = await loadYjsSnapshot(YJS_URL, stored, undefined, SERVER_ORIGIN);
+
+    expect(settled.applied).toBe(true);
+    const text = stored.getXmlFragment("default").toString();
+    expect(text).toContain("first client edit");
+    expect(text).toContain("second client edit");
   });
 });

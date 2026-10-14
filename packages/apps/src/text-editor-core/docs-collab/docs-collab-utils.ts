@@ -66,12 +66,12 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   return /precondition failed/i.test(message);
 }
 
-/** 409 / 412 — the stored document moved on; reload, merge, and save again. */
+/** 409 / 412 / 428 — the stored document moved on; reload, merge, and save again. */
 export function isServerDivergenceError(error: unknown): boolean {
   const status = collabErrorStatus(error);
-  if (status === 409 || status === 412) return true;
+  if (status === 409 || status === 412 || status === 428) return true;
   const message = error instanceof Error ? error.message : String(error);
-  return /precondition[ _]failed/i.test(message);
+  return /precondition[ _](failed|required)/i.test(message);
 }
 
 /** 413 / markdown cap — permanent; do not exponential-backoff. */

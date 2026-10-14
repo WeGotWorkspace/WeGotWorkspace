@@ -12,8 +12,9 @@ use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
 
 /**
- * Contract C7: the Yjs sidecar carries an ETag, and a save without a current
- * precondition is refused with 412 instead of overwriting concurrent work.
+ * Contract C7: the Yjs sidecar carries an ETag. A stale precondition is
+ * refused with 412. A yjs write over an existing sidecar with no precondition
+ * is refused with 428.
  */
 final class CollabDocumentEtagTest extends WgwDatabaseTestCase
 {
@@ -241,16 +242,42 @@ PHP);
             ->assertStatus(412);
     }
 
-    public function test_put_without_a_precondition_is_still_accepted(): void
+    public function test_a_first_put_without_a_precondition_is_accepted(): void
+    {
+        $this->withBearer($this->issueBearerToken())
+            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
+            ->assertOk();
+
+        $storage = app(WgwStorage::class)->files();
+        $this->assertTrue($storage->fileExists(self::SIDECAR_STORAGE_PATH));
+        $this->assertSame("\x01", (string) $storage->get(self::SIDECAR_STORAGE_PATH));
+    }
+
+    public function test_a_header_less_put_over_an_existing_sidecar_is_refused_with_428(): void
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
             ->assertOk();
 
-        // Old clients send no precondition at all and must keep working.
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# Two\n", 'yjs' => [2]])
+            ->putJson($this->collaborationUrl(), ['yjs' => [2]])
+            ->assertStatus(428)
+            ->assertJsonPath('error', 'precondition_required');
+
+        $storage = app(WgwStorage::class)->files();
+        $this->assertSame("\x01", (string) $storage->get(self::SIDECAR_STORAGE_PATH));
+    }
+
+    public function test_a_markdown_only_put_over_an_existing_sidecar_stays_accepted(): void
+    {
+        $token = $this->issueBearerToken();
+        $this->withBearer($token)
+            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->putJson($this->collaborationUrl(), ['markdown' => "# Two\n"])
             ->assertOk();
     }
 
