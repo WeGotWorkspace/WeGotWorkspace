@@ -9,6 +9,8 @@ use App\Support\UpdateFeedDefaults;
 return [
     'install_root' => env('WGW_APP_ROOT'),
     'data_dir' => env('WGW_DATA_DIR'),
+    /** True while the current wgw connection came from an installer probe, not runtime env. */
+    'installer_db_applied' => false,
     'update_feed_url' => env('WGW_UPDATE_FEED_URL', UpdateFeedDefaults::MANIFEST_URL),
 
     /**
