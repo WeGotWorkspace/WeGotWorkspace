@@ -23,8 +23,8 @@ cells:
       bold: IF(totaal > 500)
 ---
 product,aantal,prijs,totaal
-Appels,6,0.45,=aantal1*prijs1*(1+btw)
-Brood,2,2.99,=aantal2*prijs2*(1+btw)
-Kaas,1,4.50,=aantal3*prijs3*(1+btw)
-Wijn,3,8.95,=aantal4*prijs4*(1+btw)
+Appels,6,0.45,=aantal*prijs*(1+btw)
+Brood,2,2.99,=aantal*prijs*(1+btw)
+Kaas,1,4.50,=aantal*prijs*(1+btw)
+Wijn,3,8.95,=aantal*prijs*(1+btw)
 `;

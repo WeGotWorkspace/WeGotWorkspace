@@ -7,8 +7,12 @@ export type Value = number | string | boolean | CellError;
 export type EvalCtx = {
   cell: (col: string, row: string) => Value;
   def: (path: string) => Value | undefined;
-  rowOrder: string[];
   rowIndex: ReadonlyMap<string, number>;
+  rowOrder: string[];
+  /** The row that owns the formula being evaluated. */
+  currentRow: string;
+  /** Whether `path` is a column ref in this sheet. */
+  isColumn: (path: string) => boolean;
 };
 
 const ERRORS = new Set<string>(["#SYNTAX", "#REF", "#NAME", "#CYCLE", "#VALUE", "#DIV/0"]);
@@ -117,6 +121,7 @@ function evalAny(node: Node, ctx: EvalCtx): Result {
       return ctx.cell(node.col, node.row);
     case "name":
       if (node.path === "#REF!") return "#REF";
+      if (!node.path.includes(".") && ctx.isColumn(node.path)) return ctx.cell(node.path, ctx.currentRow);
       return ctx.def(node.path) ?? "#NAME";
     case "range": {
       const rows = rowsBetween(ctx.rowOrder, ctx.rowIndex, node.from, node.to);

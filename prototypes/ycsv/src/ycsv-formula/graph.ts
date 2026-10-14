@@ -29,6 +29,12 @@ export function astCacheStats(): { entries: number; misses: number } {
   return { entries: astCache.size, misses: astMisses };
 }
 
+export function resetAstCache(): void {
+  astCache.clear();
+  astMisses = 0;
+  depCache.clear();
+}
+
 type Item = { ast: Node | null; literal?: Value };
 
 function literal(raw: string): Value {
@@ -65,36 +71,75 @@ function orderedKeys(raw: RawCells, rowOrder: string[]): string[] {
   return keys;
 }
 
-function rangeRows(rowOrder: string[], rowIndex: ReadonlyMap<string, number>, from: string, to: string): string[] {
-  const start = rowIndex.get(from);
-  const end = rowIndex.get(to);
-  if (start === undefined || end === undefined) return [];
-  const lo = Math.min(start, end);
-  const hi = Math.max(start, end);
-  return rowOrder.slice(lo, hi + 1);
+export type AstDeps = {
+  sameRowCols: string[];
+  absolute: { col: string; row: string }[];
+  ranges: { col: string; from: string; to: string }[];
+};
+
+const depCache = new Map<string, { columnsKey: string; deps: AstDeps }>();
+
+export function astDeps(node: Node, isColumn: (path: string) => boolean): AstDeps {
+  const out: AstDeps = { sameRowCols: [], absolute: [], ranges: [] };
+  walkAst(node, isColumn, out);
+  return out;
 }
 
-function dependencies(node: Node, rowOrder: string[], rowIndex: ReadonlyMap<string, number>, out: string[]) {
+function walkAst(node: Node, isColumn: (path: string) => boolean, out: AstDeps): void {
   switch (node.k) {
     case "ref":
-      out.push(`${node.col}@${node.row}`);
+      out.absolute.push({ col: node.col, row: node.row });
       break;
     case "range":
-      for (const row of rangeRows(rowOrder, rowIndex, node.from, node.to)) out.push(`${node.col}@${row}`);
+      out.ranges.push({ col: node.col, from: node.from, to: node.to });
+      break;
+    case "name":
+      if (!node.path.includes(".") && node.path !== "#REF!" && isColumn(node.path)) out.sameRowCols.push(node.path);
       break;
     case "call":
-      for (const arg of node.args) dependencies(arg, rowOrder, rowIndex, out);
+      for (const arg of node.args) walkAst(arg, isColumn, out);
       break;
     case "unary":
-      dependencies(node.arg, rowOrder, rowIndex, out);
+      walkAst(node.arg, isColumn, out);
       break;
     case "bin":
-      dependencies(node.l, rowOrder, rowIndex, out);
-      dependencies(node.r, rowOrder, rowIndex, out);
+      walkAst(node.l, isColumn, out);
+      walkAst(node.r, isColumn, out);
       break;
     default:
       break;
   }
+}
+
+export function cellDeps(
+  deps: AstDeps,
+  currentRow: string,
+  rowOrder: string[],
+  rowIndex: ReadonlyMap<string, number>,
+): string[] {
+  const keys: string[] = [];
+  for (const col of deps.sameRowCols) keys.push(`${col}@${currentRow}`);
+  for (const ref of deps.absolute) keys.push(`${ref.col}@${ref.row}`);
+  for (const range of deps.ranges) {
+    const start = rowIndex.get(range.from);
+    const end = rowIndex.get(range.to);
+    if (start === undefined || end === undefined) continue;
+    const lo = Math.min(start, end);
+    const hi = Math.max(start, end);
+    for (let i = lo; i <= hi; i += 1) {
+      const row = rowOrder[i];
+      if (row) keys.push(`${range.col}@${row}`);
+    }
+  }
+  return keys;
+}
+
+function cachedAstDeps(src: string, ast: Node, isColumn: (path: string) => boolean, columnsKey: string): AstDeps {
+  const hit = depCache.get(src);
+  if (hit && hit.columnsKey === columnsKey) return hit.deps;
+  const deps = astDeps(ast, isColumn);
+  depCache.set(src, { columnsKey, deps });
+  return deps;
 }
 
 function lookupDef(defs: Record<string, unknown>, path: string): Value | undefined {
@@ -113,6 +158,10 @@ function lookupDef(defs: Record<string, unknown>, path: string): Value | undefin
 export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<string, unknown>): Values {
   const rowIndex = new Map<string, number>();
   rowOrder.forEach((id, i) => rowIndex.set(id, i));
+  const columnNames = new Set<string>();
+  for (const key of raw.keys()) columnNames.add(key.slice(0, key.indexOf("@")));
+  const columnsKey = [...columnNames].sort().join("\0");
+  const isColumn = (path: string) => columnNames.has(path);
 
   const items = new Map<string, Item>();
   for (const key of orderedKeys(raw, rowOrder)) {
@@ -136,8 +185,10 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
       return values.has(key) ? (values.get(key) as Value) : "";
     },
     def: (path) => lookupDef(defs, path),
-    rowOrder,
     rowIndex,
+    rowOrder,
+    currentRow: "",
+    isColumn,
   };
 
   const visit = (key: string, stack: string[]) => {
@@ -146,8 +197,8 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
     color.set(key, "grey");
     stack.push(key);
     if (item.ast) {
-      const deps: string[] = [];
-      dependencies(item.ast, rowOrder, rowIndex, deps);
+      const { row } = splitKey(key);
+      const deps = cellDeps(cachedAstDeps(raw.get(key) ?? "", item.ast, isColumn, columnsKey), row, rowOrder, rowIndex);
       for (const dep of deps) {
         const state = color.get(dep) ?? "white";
         if (state === "grey") {
@@ -168,6 +219,7 @@ export function evaluateAll(raw: RawCells, rowOrder: string[], defs: Record<stri
       values.set(key, item.literal ?? "");
       return;
     }
+    ctx.currentRow = splitKey(key).row;
     values.set(key, evalNode(item.ast, ctx));
   };
 

@@ -20,7 +20,17 @@ function isoDay(index: number): string {
   return `${date.getUTCFullYear()}-${month}-${day}`;
 }
 
-export function buildLargeFile(rowCount: number): YcsvFile {
+export type SheetNotation = "current" | "absolute" | "positional" | "quoted";
+
+function formulas(notation: SheetNotation, n: number, rowCount: number): [string, string, string] {
+  const generaal = n === 1 ? `=SUM(netto1:netto${rowCount})` : "";
+  if (notation === "current") return ["=aantal*prijs", "=totaal*(1-korting)", generaal];
+  if (notation === "positional") return [`=C${n}*D${n}`, `=G${n}*(1-E${n})`, generaal];
+  if (notation === "quoted") return [`='aantal'${n}*'prijs'${n}`, `='totaal'${n}*(1-'korting'${n})`, generaal];
+  return [`=aantal${n}*prijs${n}`, `=totaal${n}*(1-korting${n})`, generaal];
+}
+
+export function buildLargeFile(rowCount: number, notation: SheetNotation = "absolute"): YcsvFile {
   const rnd = mulberry32(20261013);
   const columns: ColumnDef[] = [
     { ref: "product", type: "string" },
@@ -47,9 +57,7 @@ export function buildLargeFile(rowCount: number): YcsvFile {
       (cents / 100).toFixed(2),
       String(rate),
       isoDay(i),
-      `=aantal${n}*prijs${n}`,
-      `=totaal${n}*(1-korting${n})`,
-      n === 1 ? `=SUM(netto1:netto${rowCount})` : "",
+      ...formulas(notation, n, rowCount),
     ]);
   }
   const frontmatter = {

@@ -2,15 +2,13 @@ import YAML from "yaml";
 import { parseCsv } from "./csv";
 import type { ColumnDef, YcsvFile } from "./types";
 
-function columnLetter(index: number): string {
-  let n = index + 1;
-  let label = "";
-  while (n > 0) {
-    n -= 1;
-    label = String.fromCharCode(65 + (n % 26)) + label;
-    n = Math.floor(n / 26);
-  }
-  return label;
+export function headerLooksNumeric(value: string): boolean {
+  return /^-?\d+(\.\d+)?$/.test(value.trim());
+}
+
+function usableHeader(value: string | undefined): string | undefined {
+  if (value === undefined || value.trim() === "") return undefined;
+  return value;
 }
 
 export function parse(text: string): YcsvFile {
@@ -40,17 +38,37 @@ export function parse(text: string): YcsvFile {
 
   const table = parseCsv(bodyText);
   const header = table[0] ?? [];
-  const columns: ColumnDef[] = Array.isArray(frontmatter.columns)
-    ? (frontmatter.columns as ColumnDef[])
-    : [];
-
-  for (let i = 0; i < columns.length; i += 1) {
-    const column = columns[i];
-    if (column && (column.ref === undefined || column.ref === "")) {
-      column.ref = columnLetter(i);
+  let columns: ColumnDef[];
+  if (!Array.isArray(frontmatter.columns)) {
+    // Header-only refs stay on YcsvFile.columns. Writing them into
+    // frontmatter.columns would add a columns block and break byte identity.
+    columns = header.map((cell) => {
+      const ref = usableHeader(cell);
+      return ref === undefined ? {} : { ref };
+    });
+  } else {
+    columns = frontmatter.columns as ColumnDef[];
+    for (let i = 0; i < columns.length; i += 1) {
+      const column = columns[i];
+      if (!column) continue;
+      if (typeof column.ref === "string") {
+        if (column.ref.trim() === "") throw new Error("YCSV: invalid column ref");
+      } else {
+        const ref = usableHeader(header[i]);
+        if (ref === undefined) delete column.ref;
+        else column.ref = ref;
+      }
     }
+    frontmatter.columns = columns;
   }
-  if (Array.isArray(frontmatter.columns)) frontmatter.columns = columns;
+
+  const seen = new Set<string>();
+  for (const column of columns) {
+    const ref = column.ref;
+    if (typeof ref !== "string" || ref === "") continue;
+    if (seen.has(ref)) throw new Error(`YCSV: duplicate column ref "${ref}"`);
+    seen.add(ref);
+  }
 
   if (columns.length > 0 && header.length !== columns.length) {
     throw new Error(

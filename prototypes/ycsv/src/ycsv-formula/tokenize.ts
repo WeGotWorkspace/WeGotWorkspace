@@ -8,7 +8,7 @@ export type Span =
   | { t: "ws"; raw: string }
   | { t: "num"; v: number; raw: string }
   | { t: "str"; v: string; raw: string }
-  | { t: "ident"; v: string; raw: string }
+  | { t: "ident"; v: string; raw: string; quoted?: boolean; suffix?: string }
   | { t: "op"; v: string; raw: string };
 
 const IDENT =
@@ -35,6 +35,38 @@ function readNumber(src: string, start: number): { v: number; raw: string; next:
   }
   const raw = src.slice(start, i);
   return { v: Number(raw), raw, next: i };
+}
+
+function readQuotedIdent(src: string, start: number): { v: string; raw: string; next: number; suffix: string } {
+  let i = start + 1;
+  let name = "";
+  while (i < src.length) {
+    if (src[i] === "'") {
+      if (src[i + 1] === "'") {
+        name += "'";
+        i += 2;
+        continue;
+      }
+      i += 1;
+      let suffix = "";
+      if (src[i] === "@") {
+        const rest = /^@[A-Za-z0-9_-]+/.exec(src.slice(i));
+        if (rest) {
+          suffix = rest[0];
+          i += rest[0].length;
+        }
+      } else {
+        const digits = i;
+        while (isDigit(src[i])) i += 1;
+        suffix = src.slice(digits, i);
+      }
+      const value = suffix.startsWith("@") ? `${name}${suffix}` : name;
+      return { v: value, raw: src.slice(start, i), next: i, suffix };
+    }
+    name += src[i] ?? "";
+    i += 1;
+  }
+  throw new Error("#SYNTAX");
 }
 
 function readString(src: string, start: number): { v: string; raw: string; next: number } {
@@ -76,6 +108,12 @@ export function scan(src: string): Span[] {
     if (src.startsWith("#REF!", i)) {
       spans.push({ t: "ident", v: "#REF!", raw: "#REF!" });
       i += "#REF!".length;
+      continue;
+    }
+    if (char === "'") {
+      const quoted = readQuotedIdent(src, i);
+      spans.push({ t: "ident", v: quoted.v, raw: quoted.raw, quoted: true, suffix: quoted.suffix });
+      i = quoted.next;
       continue;
     }
     const num = readNumber(src, i);

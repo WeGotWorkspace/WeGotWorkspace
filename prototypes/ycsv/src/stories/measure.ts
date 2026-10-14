@@ -3,7 +3,7 @@ import { parse } from "../ycsv-core/parse";
 import { serialize } from "../ycsv-core/serialize";
 import { buildLargeFile } from "./large-sheet";
 import { evaluateAll, type RawCells } from "../ycsv-formula";
-import { astCacheStats } from "../ycsv-formula/graph";
+import { astCacheStats, resetAstCache } from "../ycsv-formula/graph";
 import { formatCacheStats } from "../ycsv-grid/format";
 import { docToFile, fileToDoc } from "../ycsv-model";
 import { deleteRow, insertRowAfter, setCell } from "../ycsv-model/mutate";
@@ -512,6 +512,128 @@ export async function measureIndexed(doc: Y.Doc): Promise<string> {
   );
   note("");
   note(table.map((row) => row.join(" | ")).join("\n"));
+  note("klaar");
+  return lines.join("\n");
+}
+
+function throughModel(text: string): string {
+  const fresh = new Y.Doc();
+  fileToDoc(parse(text), fresh);
+  return serialize(docToFile(fresh));
+}
+
+function measureVariant(label: string, text: string): {
+  loadMs: number;
+  median: number;
+  p95: number;
+  max: number;
+  serialMs: number;
+  entries: number;
+} {
+  resetAstCache();
+  const file = parse(text);
+  const fresh = new Y.Doc();
+  const started = performance.now();
+  fileToDoc(file, fresh);
+  const loadMs = performance.now() - started;
+  const model = readModel(fresh);
+  const samples: number[] = [];
+  for (let i = 0; i < 23; i += 1) {
+    const t = performance.now();
+    evaluateAll(model.raw, model.rowOrder, model.defs);
+    const elapsed = performance.now() - t;
+    if (elapsed > PAINT_TIMEOUT_MS) throw new Error(`M2 ${label} afgebroken na run ${i + 1}: ${ms(elapsed)}`);
+    samples.push(elapsed);
+  }
+  const stats = summarize(samples.slice(3));
+  const entries = astCacheStats().entries;
+  const serialSamples: number[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    const t = performance.now();
+    serialize(docToFile(fresh));
+    const elapsed = performance.now() - t;
+    if (elapsed > PAINT_TIMEOUT_MS) throw new Error(`M8 ${label} afgebroken: ${ms(elapsed)}`);
+    serialSamples.push(elapsed);
+  }
+  return { loadMs, median: stats.median, p95: stats.p95, max: stats.max, serialMs: summarize(serialSamples).median, entries };
+}
+
+export async function measureSpike2(
+  doc: Y.Doc,
+  texts: { A: string; B: string; C: string; D: string },
+): Promise<string> {
+  const lines: string[] = [];
+  const note = (line: string) => {
+    lines.push(line);
+  };
+  const order = ["A", "B", "C", "D"] as const;
+  const results = [];
+  for (const label of order) {
+    const result = measureVariant(label, texts[label]);
+    results.push(result);
+    note(
+      `${label} M1 ${ms(result.loadMs)} M2 ${ms(result.median)} p95 ${ms(result.p95)} max ${ms(result.max)} M8 ${ms(result.serialMs)} M9 ${result.entries}`,
+    );
+    if (label === "A" && result.entries !== 3) {
+      note("M9(A) is niet 3. De AST is niet rij-onafhankelijk. gestopt.");
+      return lines.join("\n");
+    }
+  }
+
+  const [variantA, variantB, variantC, variantD] = results;
+  if (!variantA || !variantB || !variantC || !variantD) return lines.join("\n");
+
+  const checks: [string, string, boolean][] = [
+    ["serialize(parse(C)) via model", "=== B", throughModel(texts.C) === texts.B],
+    ["serialize(parse(D)) via model", "=== B", throughModel(texts.D) === texts.B],
+    ["serialize(parse(A)) via model", "=== A", throughModel(texts.A) === texts.A],
+    ["serialize(parse(B)) via model", "=== B", throughModel(texts.B) === texts.B],
+    ["serialize(parse(C)) literal", "body unchanged", serialize(parse(texts.C)) === texts.C],
+    ["serialize(parse(D)) literal", "body unchanged", serialize(parse(texts.D)) === texts.D],
+  ];
+  for (const [label, expect, ok] of checks) note(`${label} ${expect}: ${ok ? "ja" : "nee"}`);
+
+  const model = readModel(doc);
+  const paintSamples: number[] = [];
+  for (let i = 0; i < 50; i += 1) {
+    const index = (i * 24) % model.rowIds.length;
+    const rowId = model.rowIds[index];
+    if (!rowId) break;
+    const elapsed = await waitVisible(() => setCell(doc, rowId, model.aantalColId, String(100 + i)));
+    if (elapsed > PAINT_TIMEOUT_MS) {
+      note(`M3 afgebroken bij wijziging ${i + 1}: ${ms(elapsed)}`);
+      return lines.join("\n");
+    }
+    paintSamples.push(elapsed);
+  }
+  const paint = summarize(paintSamples);
+  note(`M3 commit→paint mediaan ${ms(paint.median)} p95 ${ms(paint.p95)} max ${ms(paint.max)}`);
+
+  const scaleCounts = [300, 600, 1200, 2400];
+  const scale: number[] = [];
+  for (const count of scaleCounts) {
+    resetAstCache();
+    const fresh = new Y.Doc();
+    fileToDoc(parse(serialize(buildLargeFile(count, "current"))), fresh);
+    const sized = readModel(fresh);
+    const samples: number[] = [];
+    for (let i = 0; i < 23; i += 1) {
+      const t = performance.now();
+      evaluateAll(sized.raw, sized.rowOrder, sized.defs);
+      const elapsed = performance.now() - t;
+      if (elapsed > PAINT_TIMEOUT_MS) {
+        note(`M10 afgebroken bij ${count} rijen run ${i + 1}: ${ms(elapsed)}`);
+        return lines.join("\n");
+      }
+      samples.push(elapsed);
+    }
+    const median = summarize(samples.slice(3)).median;
+    scale.push(median);
+    const previous = scale.length > 1 ? scale[scale.length - 2] : undefined;
+    const factor = previous && previous > 0 ? (median / previous).toFixed(2) : "—";
+    note(`M10 ${count} ${ms(median)} factor ${factor}`);
+  }
+
   note("klaar");
   return lines.join("\n");
 }

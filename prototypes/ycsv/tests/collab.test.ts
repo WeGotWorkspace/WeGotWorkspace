@@ -91,20 +91,23 @@ test("T2 different cells converge", async () => {
   ctx.close();
 });
 
-test("T3 concurrent row insert keeps the formula on the same logical row", async () => {
+test("T3 concurrent row insert keeps a current-row formula unchanged", async () => {
   const ctx = setup();
   ctx.connection.setOffline("a", true);
   ctx.connection.setOffline("b", true);
-  const row4 = ctx.rowId(ctx.docB, 3);
-  insertRowAfter(ctx.docA, 0);
-  setCell(ctx.docB, row4, ctx.colTotaal, "=aantal4*prijs4");
+  const rowWijn = ctx.rowId(ctx.docB, 3);
+  const rowKaas = ctx.rowId(ctx.docB, 2);
+  insertRowAfter(ctx.docA, -1);
+  setCell(ctx.docB, rowWijn, ctx.colTotaal, "=aantal*prijs");
+  setCell(ctx.docB, rowKaas, ctx.colTotaal, "=totaal1");
   ctx.connection.setOffline("a", false);
   ctx.connection.setOffline("b", false);
   await flush();
   const left = docToFile(ctx.docA);
   const right = docToFile(ctx.docB);
   expect(serialize(left)).toBe(serialize(right));
-  expect(left.rows[4]?.[3]).toBe("=aantal5*prijs5");
+  expect(left.rows[4]?.[3]).toBe("=aantal*prijs");
+  expect(left.rows[3]?.[3]).toBe("=totaal2");
   ctx.close();
 });
 

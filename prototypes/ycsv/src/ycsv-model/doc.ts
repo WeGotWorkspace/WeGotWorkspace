@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import type { ColumnDef, YcsvFile } from "../ycsv-core/types";
 import { newColId, newRowId } from "./ids";
-import { toFileForm, toIdForm, type ColInfo } from "./refs";
+import { refsThatMustBeQuoted, toFileForm, toIdForm, type ColInfo } from "./refs";
 
 const PREFERRED_KEYS = [
   "ycsv_version",
@@ -47,6 +47,7 @@ export function fileToDoc(file: YcsvFile, doc: Y.Doc): void {
     const colInfos: ColInfo[] = file.columns.map((column, index) => ({
       colId: colIds[index] ?? "",
       ref: column.ref ?? "",
+      header: file.header[index] ?? "",
     }));
 
     file.columns.forEach((column, index) => {
@@ -111,10 +112,11 @@ export function docToFile(doc: Y.Doc): YcsvFile {
 
   const rowIndex = new Map<string, number>();
   rowIds.forEach((id, index) => rowIndex.set(id, index));
+  const mustQuote = refsThatMustBeQuoted(colInfos.map((col) => col.ref));
 
   const dataRows = rowMaps.map((map) => {
     const cells = map.get("cells") as Y.Map<string>;
-    return colInfos.map((col) => toFileForm(cells.get(col.colId) ?? "", colInfos, rowIds, rowIndex));
+    return colInfos.map((col) => toFileForm(cells.get(col.colId) ?? "", colInfos, rowIds, rowIndex, mustQuote));
   });
 
   const bag: Record<string, unknown> = {};

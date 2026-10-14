@@ -6,8 +6,11 @@ import { parse } from "../ycsv-core/parse";
 import { Grid } from "../ycsv-grid/Grid";
 import { fileToDoc } from "../ycsv-model";
 import { SEED } from "./fixtures";
-import largeText from "./fixtures/large.ycsv?raw";
-import { measureEdits, measureIndexed, type HeapMarks } from "./measure";
+import textA from "./fixtures/large-a-current.ycsv?raw";
+import textB from "./fixtures/large-b-absolute.ycsv?raw";
+import textC from "./fixtures/large-c-positional.ycsv?raw";
+import textD from "./fixtures/large-d-quoted.ycsv?raw";
+import { measureEdits, measureSpike2, type HeapMarks } from "./measure";
 
 type Dataset = "klein" | "groot";
 
@@ -19,7 +22,7 @@ function readHeap(): number | null {
 }
 
 function PerformanceStory({ dataset }: { dataset: Dataset }) {
-  const text = dataset === "groot" ? largeText : SEED;
+  const text = dataset === "groot" ? textA : SEED;
   const [doc] = useState(() => new Y.Doc());
   const [awareness] = useState(() => new Awareness(doc));
   const heap = useRef<HeapMarks>({ beforeLoad: null, afterLoad: null });
@@ -53,7 +56,7 @@ function PerformanceStory({ dataset }: { dataset: Dataset }) {
           onClick={() => {
             setRunning(true);
             setReport(null);
-            void measureIndexed(doc)
+            void measureSpike2(doc, { A: textA, B: textB, C: textC, D: textD })
               .then((textOut) => setReport(textOut))
               .catch((error: unknown) => {
                 setReport(error instanceof Error ? error.message : String(error));
