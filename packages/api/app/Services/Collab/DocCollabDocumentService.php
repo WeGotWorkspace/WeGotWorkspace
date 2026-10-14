@@ -130,7 +130,7 @@ final class DocCollabDocumentService
         // puts the previous sidecar back.
         $lock = $this->acquireDocumentLock($sidecarKey);
         try {
-            $this->assertSidecarPrecondition($request, $sidecarKey);
+            $this->assertSidecarPrecondition($request, $sidecarKey, $yjsBytes !== null);
             $previousSidecar = $this->readSidecarBytes($sidecarKey);
             $wroteSidecar = false;
             if ($yjsBytes !== null) {
@@ -223,13 +223,22 @@ final class DocCollabDocumentService
 
     /**
      * C7: `If-Match` must name the stored sidecar, `If-None-Match: *` requires
-     * there to be none. A request carrying neither is accepted, for old clients.
+     * there to be none. A yjs write over an existing sidecar must carry one of
+     * the two; without it the save would blind-overwrite concurrent work.
      */
-    private function assertSidecarPrecondition(Request $request, string $sidecarKey): void
-    {
+    private function assertSidecarPrecondition(
+        Request $request,
+        string $sidecarKey,
+        bool $writesSidecar,
+    ): void {
         $ifMatch = trim((string) $request->headers->get('If-Match', ''));
         $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+
         if ($ifMatch === '' && $ifNoneMatch === '') {
+            if ($writesSidecar && $this->storedSidecarEtag($sidecarKey) !== null) {
+                $this->fail('precondition_required', 428);
+            }
+
             return;
         }
 
