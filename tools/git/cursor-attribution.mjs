@@ -1,11 +1,6 @@
 /** Shared detection for Cursor-injected commit trailers and PR description footers. */
 
-export const CURSOR_AGENT_AUTHOR_EMAIL = "cursoragent@cursor.com";
-
-const CURSOR_AGENT_AUTHOR_DOMAINS = new Set([
-  CURSOR_AGENT_AUTHOR_EMAIL.split("@")[1],
-  "cursor.sh",
-]);
+const CURSOR_AGENT_AUTHOR_DOMAINS = new Set(["cursor.com", "cursor.sh"]);
 
 const CURSOR_COMMIT_ATTRIBUTION_LINE_PATTERNS = [
   /^Co-authored-by:\s*Cursor\s*<cursoragent@cursor\.com>\s*$/i,
