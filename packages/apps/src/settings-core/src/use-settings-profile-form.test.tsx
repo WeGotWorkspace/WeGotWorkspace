@@ -223,4 +223,31 @@ describe("useSettingsProfileForm", () => {
     });
     expect(saveProfile).not.toHaveBeenCalled();
   });
+
+  it("releases the password save when the form unmounts during the discard prompt", async () => {
+    countUnsynced.mockResolvedValue(2);
+    const saveProfile = createSaveProfileMock();
+    const { result, unmount } = renderHook(() =>
+      useSettingsProfileForm({
+        user: baseUser,
+        operations: { saveProfile, saveMail: vi.fn() },
+      }),
+    );
+
+    act(() => {
+      result.current.form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
+      result.current.form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
+      result.current.form.setValue("currentPassword", "secret", { shouldDirty: true });
+    });
+
+    const pending = result.current.saveProfile();
+    await waitFor(() => {
+      expect(result.current.unsyncedDiscard).not.toBeNull();
+    });
+
+    unmount();
+    await expect(pending).resolves.toBeUndefined();
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect(completeLogout).not.toHaveBeenCalled();
+  });
 });

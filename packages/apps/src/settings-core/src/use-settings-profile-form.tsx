@@ -53,6 +53,7 @@ export function useSettingsProfileForm({
   const [discardPrompt, setDiscardPrompt] = useState<DiscardPrompt | null>(null);
   const discardPromptRef = useRef<DiscardPrompt | null>(null);
   const confirmingDiscard = useRef(false);
+  const settleDiscardRef = useRef<(accepted: boolean) => void>(() => {});
 
   const { reset } = profileForm;
 
@@ -73,6 +74,13 @@ export function useSettingsProfileForm({
     setDiscardPrompt(null);
     current?.resolve(accepted);
   }
+  settleDiscardRef.current = settleDiscard;
+
+  useEffect(() => {
+    return () => {
+      settleDiscardRef.current(false);
+    };
+  }, []);
 
   function askToDiscardUnsyncedChanges(count: number | null): Promise<boolean> {
     return new Promise((resolve) => {
