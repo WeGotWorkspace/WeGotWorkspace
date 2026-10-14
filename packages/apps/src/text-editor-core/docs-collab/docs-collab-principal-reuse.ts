@@ -10,6 +10,7 @@ import {
   tighterDocsCollabAccess,
   type DocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
+import { collabChannelParts } from "@/text-editor-core/docs-collab/docs-collab-channel";
 import {
   collabRoomKey,
   verifyCollabTicket,
@@ -20,11 +21,7 @@ import type {
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
 
-/**
- * Wait this long for an `ack` before falling back to a fresh collab ICE handshake.
- * The responder verifies a ticket asynchronously, and the principal channel has
- * often only just opened.
- */
+/** Wait for an ack before a fresh collab ICE handshake. Ticket checks need the time. */
 export const COLLAB_REUSE_ACK_TIMEOUT_MS = 1500;
 
 /** Hold a signed ticket this long while the roster poll catches up. Stays under the ack timeout. */
@@ -97,13 +94,9 @@ export type DocsCollabPrincipalReusePorts = {
  * envelopes). Call `considerRoster` from the collab poll callback *before*
  * `shouldConnectToPeer` so reuse-hit peers skip ICE.
  *
- * The principal `workspace` room holds every signed-in account, so an envelope
- * arriving on it says nothing about document access. A present C2 ticket is
- * verified for identity. A rostered peer's right is the tighter of that ticket
- * and the live roster row. An unrostered peer is dropped. An envelope with no
- * ticket is still gated by the collab roster, so a mixed-version room keeps
- * syncing. An unrostered `open` that also has no ticket is dropped without an
- * `ack`.
+ * The principal room lists every account, so an envelope there is not document
+ * access. A C2 ticket is checked and tightened by the roster. No ticket still
+ * requires a roster row. An unrostered open is dropped.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
@@ -233,13 +226,19 @@ export class DocsCollabPrincipalReuse {
   sendTo(collabPeerId: string, msg: unknown): boolean {
     const entry = this.reused.get(collabPeerId);
     if (!entry) return false;
-    return this.registry.sendToPrincipalPeer(entry.principalPeerId, this.dataEnvelope(msg));
+    const wire = collabChannelParts(msg);
+    return this.registry.sendToPrincipalPeer(
+      entry.principalPeerId,
+      this.dataEnvelope(wire.header),
+      wire.bytes,
+    );
   }
 
   broadcast(msg: unknown): void {
-    const envelope = this.dataEnvelope(msg);
+    const wire = collabChannelParts(msg);
+    const envelope = this.dataEnvelope(wire.header);
     for (const entry of this.reused.values()) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope);
+      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope, wire.bytes);
     }
   }
 

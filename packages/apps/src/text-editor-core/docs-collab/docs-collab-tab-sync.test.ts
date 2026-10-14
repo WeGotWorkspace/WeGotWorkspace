@@ -117,26 +117,26 @@ describe("docs-collab-tab-sync message routing", () => {
     const onAwarenessFromTab = vi.fn();
     const onMeshStateFromLeader = vi.fn();
 
-    routeTabSyncMessage({ type: "sync", u: [1, 2], fromTab: "other" }, "self", {
+    routeTabSyncMessage({ type: "sync", u: Uint8Array.of(1, 2), fromTab: "other" }, "self", {
       onSyncFromTab,
       onAwarenessFromTab,
       onMeshStateFromLeader,
     });
-    routeTabSyncMessage({ type: "awareness", u: [3, 4], fromTab: "other" }, "self", {
+    routeTabSyncMessage({ type: "awareness", u: Uint8Array.of(3, 4), fromTab: "other" }, "self", {
       onSyncFromTab,
       onAwarenessFromTab,
       onMeshStateFromLeader,
     });
-    routeTabSyncMessage({ type: "sync", u: [9], fromTab: "self" }, "self", {
+    routeTabSyncMessage({ type: "sync", u: Uint8Array.of(9), fromTab: "self" }, "self", {
       onSyncFromTab,
       onAwarenessFromTab,
       onMeshStateFromLeader,
     });
 
     expect(onSyncFromTab).toHaveBeenCalledOnce();
-    expect(onSyncFromTab).toHaveBeenCalledWith([1, 2]);
+    expect(onSyncFromTab).toHaveBeenCalledWith(Uint8Array.of(1, 2));
     expect(onAwarenessFromTab).toHaveBeenCalledOnce();
-    expect(onAwarenessFromTab).toHaveBeenCalledWith([3, 4]);
+    expect(onAwarenessFromTab).toHaveBeenCalledWith(Uint8Array.of(3, 4));
     expect(onMeshStateFromLeader).not.toHaveBeenCalled();
   });
 
@@ -153,10 +153,13 @@ describe("docs-collab-tab-sync message routing", () => {
   });
 
   it("relays only sync and awareness mesh payloads", () => {
-    expect(meshMessageForTabRelay({ type: "sync", u: [1] })).toEqual({ type: "sync", u: [1] });
-    expect(meshMessageForTabRelay({ type: "awareness", u: [2] })).toEqual({
+    expect(meshMessageForTabRelay({ type: "sync", u: Uint8Array.of(1) })).toEqual({
+      type: "sync",
+      u: Uint8Array.of(1),
+    });
+    expect(meshMessageForTabRelay({ type: "awareness", u: Uint8Array.of(2) })).toEqual({
       type: "awareness",
-      u: [2],
+      u: Uint8Array.of(2),
     });
     expect(meshMessageForTabRelay({ type: "link" })).toBeNull();
     expect(meshMessageForTabRelay({ type: "dc-open", from: "peer-a" })).toBeNull();
@@ -210,8 +213,8 @@ describe("docs-collab-tab-sync coordinator", () => {
     expect(tabA.meshLeader).toBe(true);
     expect(tabB.meshLeader).toBe(false);
 
-    tabA.publishSync([9, 8, 7]);
-    expect(onSyncB).toHaveBeenCalledWith([9, 8, 7]);
+    tabA.publishSync(Uint8Array.of(9, 8, 7));
+    expect(onSyncB).toHaveBeenCalledWith(Uint8Array.of(9, 8, 7));
 
     tabA.stop();
     tabB.stop();

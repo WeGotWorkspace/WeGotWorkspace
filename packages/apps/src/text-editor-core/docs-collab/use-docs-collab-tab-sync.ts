@@ -25,10 +25,10 @@ import { isYDocEmpty } from "./docs-collab-utils";
  * post it back onto the channel.
  */
 export function applyFollowerTabSync(input: {
-  updateBytes: number[];
+  updateBytes: Uint8Array;
   ydoc: Y.Doc;
   meshLeader: boolean;
-  broadcast: (message: { type: "sync"; u: number[] }) => void;
+  broadcast: (message: { type: "sync"; u: Uint8Array }) => void;
   noteLocalUpdate: (update: Uint8Array) => void;
   onDocReady: () => void;
   peerId?: string | null;
