@@ -32,18 +32,17 @@ function commitAs(repo, email) {
   execFileSync("git", ["add", "f"], { cwd: repo });
   execFileSync(
     "git",
-    [
-      "-c",
-      "commit.gpgsign=false",
-      "-c",
-      `user.name=Range Check`,
-      "-c",
-      `user.email=${email}`,
-      "commit",
-      "-m",
-      "probe",
-    ],
-    { cwd: repo },
+    ["-c", "commit.gpgsign=false", "commit", "-m", "probe"],
+    {
+      cwd: repo,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "Range Check",
+        GIT_AUTHOR_EMAIL: email,
+        GIT_COMMITTER_NAME: "Range Check",
+        GIT_COMMITTER_EMAIL: email,
+      },
+    },
   );
 }
 
