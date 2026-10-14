@@ -8,6 +8,7 @@ import {
   isCollabPayloadTooLarge,
   isCollabPreconditionFailed,
   isRemoteUpdateOrigin,
+  isServerDivergenceError,
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
@@ -25,6 +26,16 @@ describe("docs-collab-utils", () => {
       true,
     );
     expect(isCollabPreconditionFailed(new Error("network"))).toBe(false);
+    expect(
+      isCollabPreconditionFailed(
+        Object.assign(new Error("precondition_required"), { status: 428 }),
+      ),
+    ).toBe(false);
+  });
+
+  it("treats 428 and precondition_required as a server divergence", () => {
+    expect(isServerDivergenceError(Object.assign(new Error("stale"), { status: 428 }))).toBe(true);
+    expect(isServerDivergenceError(new Error("precondition_required"))).toBe(true);
   });
 
   it("treats 413 as a permanent save failure", () => {
