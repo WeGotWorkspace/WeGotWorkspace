@@ -352,12 +352,9 @@ async function upsertNoteOnline(
     return saved;
   } catch (error) {
     const status = persistHttpStatus(error);
-    if (status === 412) {
-      const saved = await updateNoteItem(note.id, { ...metadataRequest, etag: undefined }, opts);
-      await upsertNoteInCache(username, saved, false);
-      await runner.flush();
-      return saved;
-    }
+    // 412 is retried inside updateNoteItem with a merged payload. A second
+    // replay here would send the stale snapshot again. A 412 that still
+    // fails belongs in the outbox (shouldQueueNotesUpsert).
     if (status !== 404) throw error;
     if (await isNeverSyncedPendingNote(username, note.id)) {
       return queueOfflineUpsert(username, note, tempNoteIdForCreate(undefined, note));

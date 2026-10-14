@@ -75,14 +75,14 @@ describe("updateNoteItem metadata conflict retry", () => {
       id: "n-1",
       notebook: "General",
       title: "From A",
-      tags: ["focus"],
+      tags: ["focus", "van-a"],
       etag: '"stale"',
     });
 
     expect(patchNote).toHaveBeenNthCalledWith(
       1,
       "n-1",
-      { notebookId: "notes-general", title: "From A", categories: ["focus"] },
+      { notebookId: "notes-general", title: "From A", categories: ["focus", "van-a"] },
       expect.objectContaining({ ifMatch: '"stale"' }),
     );
     expect(patchNote).toHaveBeenNthCalledWith(
@@ -91,7 +91,7 @@ describe("updateNoteItem metadata conflict retry", () => {
       {
         notebookId: "notes-general",
         title: "From A",
-        categories: ["focus", "nieuw-van-b"],
+        categories: ["focus", "nieuw-van-b", "van-a"],
       },
       expect.objectContaining({ ifMatch: '"fresh"' }),
     );
