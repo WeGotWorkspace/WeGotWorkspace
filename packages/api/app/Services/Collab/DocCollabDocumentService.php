@@ -6,6 +6,7 @@ namespace App\Services\Collab;
 
 use App\Events\EventDispatch;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
@@ -13,6 +14,7 @@ use App\Storage\WgwStorage;
 use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Text document + Yjs sidecar persistence on the drive files disk.
@@ -36,8 +38,18 @@ final class DocCollabDocumentService
         private DriveShareAuthorizer $authorizer,
         private SearchIndexerService $search,
         private BestEffortSearchIndexSync $searchSync,
+        private FileNodeIndexService $fileNodes,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
+
+    private function syncFileNodeIndex(callable $operation): void
+    {
+        try {
+            $operation();
+        } catch (\Throwable $e) {
+            Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
+        }
+    }
 
     public function getMarkdown(Request $request, mixed $room): string
     {
@@ -152,6 +164,9 @@ final class DocCollabDocumentService
                     'collab',
                     fn () => $this->search->indexFileStorageKey($documentKey),
                     'files/'.$documentKey,
+                );
+                $this->syncFileNodeIndex(
+                    fn () => $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown)),
                 );
                 $this->eventDispatch->fireMutation(
                     (string) $username,
