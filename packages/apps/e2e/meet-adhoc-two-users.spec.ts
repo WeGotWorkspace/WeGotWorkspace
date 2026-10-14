@@ -77,16 +77,16 @@ async function openAs(
     data: { username, password: PASSWORD },
   });
   expect(response.ok(), await response.text()).toBeTruthy();
-  const tokens = (await response.json()) as { access_token?: string; refresh_token?: string };
-  if (!tokens.access_token || !tokens.refresh_token) {
+  const tokens = (await response.json()) as { access_token?: string };
+  if (!tokens.access_token) {
     throw new Error(`Login for ${username} did not return tokens.`);
   }
   await context.addInitScript(
-    ({ access, refresh }) => {
+    ({ access }) => {
       localStorage.setItem("wgw.api.access_token", access);
-      localStorage.setItem("wgw.api.refresh_token", refresh);
+      localStorage.setItem("wgw.api.session_kind", "member");
     },
-    { access: tokens.access_token, refresh: tokens.refresh_token },
+    { access: tokens.access_token },
   );
   return { context, page, accessToken: tokens.access_token };
 }

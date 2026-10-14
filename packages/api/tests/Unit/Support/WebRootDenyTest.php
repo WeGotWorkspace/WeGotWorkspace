@@ -85,7 +85,10 @@ final class WebRootDenyTest extends TestCase
         $this->assertSame(1, substr_count($once, '# BEGIN wgw-deny'));
         $this->assertSame(1, substr_count($once, '# END wgw-deny'));
         $this->assertStringContainsString($this->managedDenyBlock(), $once);
-        $this->assertStringStartsWith("Options -Indexes -MultiViews\n# BEGIN wgw-deny\n", $once);
+        $this->assertSame(1, substr_count($once, '# BEGIN wgw-headers'));
+        $this->assertSame(1, substr_count($once, '# END wgw-headers'));
+        $this->assertStringContainsString(WebRootDeny::managedHeadersBlock(), $once);
+        $this->assertStringStartsWith("Options -Indexes -MultiViews\n# BEGIN wgw-headers\n", $once);
         $this->assertStringContainsString("# admin-custom\nphp_value memory_limit 256M\n", $once);
 
         $this->assertTrue(WebRootDeny::ensureRootRules($root));
@@ -138,8 +141,50 @@ final class WebRootDenyTest extends TestCase
 
         $this->assertTrue(WebRootDeny::ensureRootRules($root));
         $contents = (string) file_get_contents($path);
-        $this->assertStringStartsWith("# BEGIN wgw-deny\n", $contents);
+        $this->assertStringStartsWith("# BEGIN wgw-headers\n", $contents);
+        $this->assertStringContainsString(WebRootDeny::managedHeadersBlock(), $contents);
         $this->assertStringEndsWith("# admin-custom\nRewriteBase /site\n", $contents);
+    }
+
+    public function test_ensure_root_rules_replaces_legacy_report_only_module(): void
+    {
+        $root = $this->tempRoot();
+        $path = $root.'/.htaccess';
+        $legacy = <<<'HTACCESS'
+Options -Indexes -MultiViews
+
+# Apache serves static files without PHP.
+# Report-only until enforcement.
+<IfModule mod_headers.c>
+    <IfModule mod_setenvif.c>
+        SetEnvIf X-Forwarded-Proto "^https$" WGW_HTTPS=on
+    </IfModule>
+    Header always set Content-Security-Policy-Report-Only "default-src 'self'"
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Admin-Keep "1"
+</IfModule>
+
+# admin-custom
+RewriteBase /
+HTACCESS;
+        file_put_contents($path, $legacy);
+
+        $this->assertTrue(WebRootDeny::ensureRootRules($root));
+        $contents = (string) file_get_contents($path);
+
+        $this->assertSame(1, substr_count($contents, '# BEGIN wgw-headers'));
+        $this->assertStringContainsString(WebRootDeny::managedHeadersBlock(), $contents);
+        $this->assertStringNotContainsString('Content-Security-Policy-Report-Only', $contents);
+        $this->assertStringNotContainsString('Report-only until enforcement', $contents);
+        $this->assertStringContainsString('Request::isSecure() reads it', $contents);
+        $this->assertStringContainsString('Header always set X-Admin-Keep "1"', $contents);
+        $this->assertStringContainsString("# admin-custom\nRewriteBase /", $contents);
+        $this->assertStringContainsString("# END wgw-headers\n", $contents);
+
+        $this->assertTrue(WebRootDeny::ensureRootRules($root));
+        $this->assertSame($contents, (string) file_get_contents($path));
     }
 
     public function test_ensure_root_rules_returns_false_on_a_read_only_file(): void

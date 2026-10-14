@@ -94,6 +94,7 @@ describe("installer-flow", () => {
   it("detects a taken-username error", () => {
     expect(isUsernameTakenError("That username is taken.")).toBe(true);
     expect(isUsernameTakenError("Connection failed.")).toBe(false);
+    expect(isUsernameTakenError("An account already exists in this database.")).toBe(false);
   });
 
   it("turns a raw MySQL connection failure into a short line", () => {

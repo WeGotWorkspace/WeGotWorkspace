@@ -133,7 +133,7 @@ export function buildInstallerDatabasePayload(
 }
 
 export function isUsernameTakenError(message: string): boolean {
-  return /taken|already exists/i.test(message);
+  return /username/i.test(message) && /taken|already exists/i.test(message);
 }
 
 /** Turn a raw installer/PDO failure into a short line for the Database screen. */

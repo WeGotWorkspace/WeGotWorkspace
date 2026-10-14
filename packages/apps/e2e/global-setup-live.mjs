@@ -37,22 +37,35 @@ export default async function globalSetup() {
   }
 
   const tokens = await response.json();
-  if (!tokens.access_token || !tokens.refresh_token) {
+  if (!tokens.access_token) {
     throw new Error("E2E auth setup response missing tokens.");
   }
+  const refreshCookie = readRefreshCookie(response);
+  const appUrl = new URL(appOrigin);
 
   await mkdir(authDir, { recursive: true });
   await writeFile(
     authFile,
     JSON.stringify(
       {
-        cookies: [],
+        cookies: [
+          {
+            name: "wgw_refresh",
+            value: refreshCookie.value,
+            domain: appUrl.hostname,
+            path: "/api/v1/auth",
+            httpOnly: true,
+            sameSite: "Strict",
+            secure: appUrl.protocol === "https:",
+            expires: refreshCookie.expires,
+          },
+        ],
         origins: [
           {
             origin: appOrigin,
             localStorage: [
               { name: "wgw.api.access_token", value: tokens.access_token },
-              { name: "wgw.api.refresh_token", value: tokens.refresh_token },
+              { name: "wgw.api.session_kind", value: "member" },
             ],
           },
         ],
@@ -61,6 +74,32 @@ export default async function globalSetup() {
       2,
     ),
   );
+}
+
+function readRefreshCookie(response) {
+  const lines =
+    typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : [];
+  const raw = lines.find((line) => line.toLowerCase().startsWith("wgw_refresh="));
+  if (!raw) {
+    throw new Error("E2E auth setup response missing the wgw_refresh cookie.");
+  }
+  const [pair, ...attrs] = raw.split(";").map((part) => part.trim());
+  const value = pair.slice("wgw_refresh=".length);
+  let maxAge = null;
+  let expires = null;
+  for (const attr of attrs) {
+    const separator = attr.indexOf("=");
+    if (separator === -1) continue;
+    const key = attr.slice(0, separator).trim().toLowerCase();
+    const attrValue = attr.slice(separator + 1).trim();
+    if (key === "max-age") maxAge = Number(attrValue);
+    if (key === "expires") expires = Date.parse(attrValue) / 1000;
+  }
+  const expiresAt = Number.isFinite(maxAge) ? Math.floor(Date.now() / 1000) + maxAge : expires;
+  if (!value || !Number.isFinite(expiresAt)) {
+    throw new Error("E2E auth setup could not parse the wgw_refresh cookie.");
+  }
+  return { value, expires: expiresAt };
 }
 
 export { authFile };

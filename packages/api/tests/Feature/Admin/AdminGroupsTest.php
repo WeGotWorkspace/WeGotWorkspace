@@ -111,9 +111,9 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $aliceHash)->value('revoked'));
         $this->assertSame(0, (int) ApiRefreshToken::query()->where('token_hash', $bobHash)->value('revoked'));
 
-        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $alice['refresh_token']])
+        $this->postRefresh($alice['refresh_token'])
             ->assertUnauthorized();
-        $this->postJson('/api/v1/auth/refresh', ['refresh_token' => $bob['refresh_token']])
+        $this->postRefresh($bob['refresh_token'])
             ->assertOk();
     }
 
@@ -196,7 +196,7 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
 
         return [
             'access_token' => (string) $response->json('access_token'),
-            'refresh_token' => (string) $response->json('refresh_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
         ];
     }
 }

@@ -4,12 +4,7 @@ import Dexie from "dexie";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import {
-  resetWgwSessionStateForTests,
-  WGW_GUEST_REFRESH_TOKEN,
-  wgwEnsureSession,
-  wgwLogout,
-} from "@/lib/api/wgw/http";
+import { resetWgwSessionStateForTests, wgwEnsureSession, wgwLogout } from "@/lib/api/wgw/http";
 import {
   rememberOfflineUsername,
   resolveOfflineUsername,
@@ -21,7 +16,7 @@ import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
-const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+const SESSION_KIND_KEY = "wgw.api.session_kind";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 const LOGGED_OUT_KEY = "wgw.api.logged_out";
@@ -47,7 +42,7 @@ function installSession(accessExpiresAt: number, refreshExpiresAt: number): void
     ACCESS_TOKEN_KEY,
     makeJwt(nowSec + (accessStillValid ? 3_600 : -100)),
   );
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, "refresh-token");
+  window.localStorage.setItem(SESSION_KIND_KEY, "member");
   window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(accessExpiresAt));
   window.localStorage.setItem(REFRESH_EXPIRES_AT_KEY, String(refreshExpiresAt));
 }
@@ -473,7 +468,7 @@ describe("user-initiated logout", () => {
     installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
     await seedOfflineAccount("alice", "calendars");
     await createNamedDatabase("alice-note:v2");
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, WGW_GUEST_REFRESH_TOKEN);
+    window.localStorage.setItem(SESSION_KIND_KEY, "guest");
     resetWgwSessionStateForTests();
     const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;

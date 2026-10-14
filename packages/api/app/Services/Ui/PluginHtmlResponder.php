@@ -7,6 +7,7 @@ namespace App\Services\Ui;
 use App\Dav\Auth\SabreUiAuthGate;
 use App\Services\Auth\UiSessionService;
 use App\Services\Installer\InstallerWebBase;
+use App\Support\CspNonce;
 use App\Support\WgwSettings;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -14,6 +15,7 @@ final class PluginHtmlResponder
 {
     public function __construct(
         private UiSessionService $uiSession,
+        private CspNonce $cspNonce,
     ) {}
 
     /**
@@ -108,7 +110,10 @@ final class PluginHtmlResponder
             $payload,
             JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
         );
-        $inject = '<script>window.'.$configGlobal.'='.$json.';</script>';
+        // base64 alphabet, so it needs no attribute escaping. Asking for the value
+        // here (and nowhere earlier in this method) is what puts 'nonce-…' in the
+        // header: the "plugin not built" and login-redirect paths return before this.
+        $inject = '<script nonce="'.$this->cspNonce->value().'">window.'.$configGlobal.'='.$json.';</script>';
 
         if (preg_match('#<head[^>]*>#i', $html, $m, PREG_OFFSET_CAPTURE)) {
             $tag = $m[0][0];

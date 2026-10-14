@@ -7,6 +7,7 @@ namespace App\Services\Auth;
 use App\Dav\Auth\UiAuthSecret;
 use App\Models\User;
 use App\Services\Installer\InstallerWebBase;
+use App\Support\HttpsDetection;
 use App\Support\WgwInstallConfig;
 use Symfony\Component\HttpFoundation\Cookie;
 
@@ -71,8 +72,7 @@ final class UiSessionService
         $sig = hash_hmac('sha256', $b64Payload, $secret, true);
         $value = $b64Payload.'.'.$this->base64UrlEncode($sig);
 
-        $secure = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        $secure = HttpsDetection::isSecure();
 
         return Cookie::create(
             self::COOKIE,

@@ -23,12 +23,12 @@ import {
   wgwResetPasswordWithToken,
   wgwRedirectGuestShareReauth,
   wgwRefreshInFlight,
-  WGW_GUEST_REFRESH_TOKEN,
 } from "./http";
 import { decodeJwtExp } from "./jwt-exp";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
-const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+const SESSION_KIND_KEY = "wgw.api.session_kind";
+const LEGACY_REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
@@ -53,17 +53,17 @@ function setOnline(next: boolean): void {
 
 function installSession({
   accessToken,
-  refreshToken = "refresh-token",
+  sessionKind = "member",
   accessExpiresAt,
   refreshExpiresAt,
 }: {
   accessToken: string;
-  refreshToken?: string;
+  sessionKind?: "member" | "guest";
   accessExpiresAt?: number;
   refreshExpiresAt?: number;
 }): void {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  window.localStorage.setItem(SESSION_KIND_KEY, sessionKind);
   if (accessExpiresAt !== undefined) {
     window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(accessExpiresAt));
   } else {
@@ -118,7 +118,6 @@ describe("wgw auth refresh behavior", () => {
   it("refreshes expired access token during ensureSession", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -129,7 +128,6 @@ describe("wgw auth refresh behavior", () => {
         return new Response(
           JSON.stringify({
             access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
-            refresh_token: "refresh-new",
             expires_in: 3600,
             refresh_expires_in: 1209600,
             token_type: "Bearer",
@@ -143,13 +141,12 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     await expect(wgwEnsureSession()).resolves.toBeUndefined();
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-new");
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
   });
 
   it("coalesces concurrent refresh calls in one tab", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 60),
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -173,7 +170,6 @@ describe("wgw auth refresh behavior", () => {
       new Response(
         JSON.stringify({
           access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
-          refresh_token: "refresh-new",
           expires_in: 3600,
           refresh_expires_in: 1209600,
           token_type: "Bearer",
@@ -191,7 +187,6 @@ describe("wgw auth refresh behavior", () => {
   it("uses a newer session another tab stored instead of refreshing the rotated token", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
-      refreshToken: "refresh-rotated",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
     });
@@ -200,7 +195,6 @@ describe("wgw auth refresh behavior", () => {
     const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
     installSession({
       accessToken: freshAccess,
-      refreshToken: "refresh-current",
       accessExpiresAt: Date.now() + 50 * 60_000,
       refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
     });
@@ -209,7 +203,7 @@ describe("wgw auth refresh behavior", () => {
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-current");
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
   });
 
   it("refreshes after a 401 when the stored access token is still inside the client skew window", async () => {
@@ -217,7 +211,6 @@ describe("wgw auth refresh behavior", () => {
     const renewed = makeJwt(Math.floor(Date.now() / 1_000) + 7_200);
     installSession({
       accessToken: rejected,
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() + 50 * 60_000,
       refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
     });
@@ -225,11 +218,11 @@ describe("wgw auth refresh behavior", () => {
     const fetchMock = vi.fn(async (input, init) => {
       const url = String(input);
       if (url.endsWith("/auth/refresh")) {
-        expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: "refresh-old" });
+        expect(JSON.parse(String(init?.body))).toEqual({});
+        expect(init?.credentials).toBe("same-origin");
         return new Response(
           JSON.stringify({
             access_token: renewed,
-            refresh_token: "refresh-new",
             expires_in: 3600,
             refresh_expires_in: 1209600,
             token_type: "Bearer",
@@ -258,7 +251,7 @@ describe("wgw auth refresh behavior", () => {
 
     const res = await wgwFetch("/me");
     expect(res.status).toBe(200);
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe("refresh-new");
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
     const refreshPosts = fetchMock.mock.calls.filter((call) =>
       String(call[0]).endsWith("/auth/refresh"),
     );
@@ -272,7 +265,6 @@ describe("wgw auth refresh behavior", () => {
     vi.useFakeTimers();
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
-      refreshToken: "refresh-stale",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -291,7 +283,6 @@ describe("wgw auth refresh behavior", () => {
     vi.advanceTimersByTime(1_000);
     installSession({
       accessToken: refreshedInOtherTabAccessToken,
-      refreshToken: "refresh-new",
       accessExpiresAt: Date.now() + 30 * 60_000,
       refreshExpiresAt: Date.now() + 60 * 60_000,
     });
@@ -324,7 +315,6 @@ describe("wgw auth refresh behavior", () => {
     setOnline(false);
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-offline",
       accessExpiresAt: Date.now() - 60_000,
     });
     globalThis.fetch = vi.fn(async () => {
@@ -339,7 +329,6 @@ describe("wgw auth refresh behavior", () => {
     setOnline(true);
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-unknown-expiry",
       accessExpiresAt: Date.now() - 60_000,
     });
     globalThis.fetch = vi.fn(async () => {
@@ -356,7 +345,6 @@ describe("wgw auth refresh behavior", () => {
   it("clears session on refresh 401 while online", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-invalid",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 60_000,
     });
@@ -374,7 +362,6 @@ describe("wgw auth refresh behavior", () => {
   it("posts auth refresh once when a second call waits on the Web Locks mutex", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -423,7 +410,6 @@ describe("wgw auth refresh behavior", () => {
       new Response(
         JSON.stringify({
           access_token: freshAccess,
-          refresh_token: "refresh-new",
           expires_in: 3600,
           refresh_expires_in: 1209600,
           token_type: "Bearer",
@@ -447,11 +433,10 @@ describe("wgw auth refresh behavior", () => {
     expect(refreshPosts).toHaveLength(1);
   });
 
-  it("does not reload a rotated refresh token after a partial storage write", async () => {
+  it("keeps memory authoritative after a partial storage write", async () => {
     const freshAccess = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 120),
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -461,7 +446,7 @@ describe("wgw auth refresh behavior", () => {
       key: string,
       value: string,
     ) {
-      if (key === REFRESH_TOKEN_KEY) throw new Error("quota");
+      if (key === SESSION_KIND_KEY) throw new Error("quota");
       return realSetItem.call(this, key, value);
     });
     globalThis.fetch = vi.fn(async (input) => {
@@ -470,7 +455,6 @@ describe("wgw auth refresh behavior", () => {
         return new Response(
           JSON.stringify({
             access_token: freshAccess,
-            refresh_token: "refresh-new",
             expires_in: 3600,
             refresh_expires_in: 1209600,
             token_type: "Bearer",
@@ -484,7 +468,6 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBe(freshAccess);
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
     setItem.mockRestore();
 
     const secondFetch = vi.fn(async () => new Response("should-not-refresh", { status: 500 }));
@@ -496,7 +479,6 @@ describe("wgw auth refresh behavior", () => {
   it("awaits in-flight refresh before reconnect flush", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
-      refreshToken: "refresh-old",
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 30 * 60_000,
     });
@@ -523,7 +505,6 @@ describe("wgw auth refresh behavior", () => {
       new Response(
         JSON.stringify({
           access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
-          refresh_token: "refresh-new",
           expires_in: 3600,
           refresh_expires_in: 1209600,
           token_type: "Bearer",
@@ -536,6 +517,91 @@ describe("wgw auth refresh behavior", () => {
 
     await Promise.all([refreshing, gate]);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("refresh cookie session", () => {
+  it("posts an empty refresh body with same-origin credentials", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 30 * 60_000,
+    });
+    const fetchMock = vi.fn(async (_input, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({});
+      expect(init?.credentials).toBe("same-origin");
+      return new Response(
+        JSON.stringify({
+          access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
+          expires_in: 3600,
+          refresh_expires_in: 1209600,
+          token_type: "Bearer",
+          username: "alice",
+          role: "user",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureSession()).resolves.toBeUndefined();
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/auth/refresh");
+  });
+
+  it("removes a legacy refresh token on first access and never sends it", async () => {
+    window.localStorage.setItem(LEGACY_REFRESH_TOKEN_KEY, "legacy-refresh-token");
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 30 * 60_000,
+    });
+    const fetchMock = vi.fn(async (_input, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({});
+      expect(String(init?.body)).not.toContain("legacy-refresh-token");
+      return new Response(
+        JSON.stringify({
+          access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
+          expires_in: 3600,
+          refresh_expires_in: 1209600,
+          token_type: "Bearer",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwEnsureSession()).resolves.toBeUndefined();
+    expect(window.localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY)).toBeNull();
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
+  });
+
+  it("resumes a member session from the cookie after a reload", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 14 * 24 * 60 * 60_000,
+    });
+    resetWgwSessionStateForTests();
+    const renewed = makeJwt(Math.floor(Date.now() / 1_000) + 3600);
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      expect(JSON.parse(String(init?.body))).toEqual({});
+      expect(init?.credentials).toBe("same-origin");
+      return new Response(
+        JSON.stringify({
+          access_token: renewed,
+          expires_in: 3600,
+          refresh_expires_in: 1209600,
+          token_type: "Bearer",
+          username: "alice",
+          role: "user",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).resolves.toBe(renewed);
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("member");
+    expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe(renewed);
   });
 });
 
@@ -596,7 +662,6 @@ describe("login applies refresh expiry metadata", () => {
       return new Response(
         JSON.stringify({
           access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600),
-          refresh_token: "refresh-new",
           expires_in: 3600,
           refresh_expires_in: 1209600,
           token_type: "Bearer",
@@ -657,7 +722,7 @@ describe("MCP OAuth web session", () => {
 });
 
 describe("guest share session", () => {
-  it("stores guest JWT with sentinel refresh token", () => {
+  it("stores a guest session kind with the access token", () => {
     const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
       sub: "share:abc123",
       role: "guest",
@@ -670,7 +735,7 @@ describe("guest share session", () => {
 
     expect(wgwHasAuthenticatedSession()).toBe(true);
     expect(wgwIsGuestSession()).toBe(true);
-    expect(window.localStorage.getItem(REFRESH_TOKEN_KEY)).toBe(WGW_GUEST_REFRESH_TOKEN);
+    expect(window.localStorage.getItem(SESSION_KIND_KEY)).toBe("guest");
     expect(window.localStorage.getItem(ACCESS_TOKEN_KEY)).toBe(accessToken);
     expect(window.sessionStorage.getItem("wgw.api.guest_share_token")).toBe("share-token-1");
     expect(window.sessionStorage.getItem("wgw.api.guest_share_path")).toBe(

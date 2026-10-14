@@ -11,24 +11,20 @@ use Laravel\Passport\Passport;
 /**
  * Drops bearer refresh tokens, Passport grants, and push subscriptions for one user.
  *
- * Pass $exceptRefreshTokenHash to leave that still-valid refresh token in place.
- * An already revoked hash is not restored. Each call bumps ui_session_epoch.
+ * Each call bumps ui_session_epoch.
  */
 final class UserSessionRevoker
 {
     public function __construct(private RefreshTokenRepository $refreshTokens) {}
 
-    public function revokeAll(string $username, ?string $exceptRefreshTokenHash = null): void
+    public function revokeAll(string $username): void
     {
         $username = strtolower(trim($username));
         if ($username === '') {
             return;
         }
 
-        $exceptHash = ($exceptRefreshTokenHash !== null && $exceptRefreshTokenHash !== '')
-            ? $exceptRefreshTokenHash
-            : null;
-        $this->refreshTokens->revokeAllForUsername($username, $exceptHash);
+        $this->refreshTokens->revokeAllForUsername($username);
 
         $user = User::query()->where('username', $username)->first();
         if ($user !== null) {
