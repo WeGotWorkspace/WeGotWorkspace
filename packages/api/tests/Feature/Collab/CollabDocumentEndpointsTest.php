@@ -147,7 +147,9 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         }
 
         $seq = $index->currentSeq();
-        $markdown = "# Together\n\nHello collab indexing.\n";
+        // TrimStrings drops leading and trailing whitespace on the JSON body,
+        // so the saved bytes are this string with no trailing newline.
+        $markdown = "# Together\n\nHello collab indexing.";
 
         $this->withBearer($token)
             ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ROOM), [
