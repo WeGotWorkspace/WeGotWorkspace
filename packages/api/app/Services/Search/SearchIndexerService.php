@@ -6,6 +6,8 @@ namespace App\Services\Search;
 
 use App\Models\CalendarObject;
 use App\Models\Card;
+use App\Models\JmapFileNode;
+use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
@@ -108,12 +110,13 @@ final class SearchIndexerService
             $group = $segments[1];
         }
         $isDirectory = $disk->directoryExists($key);
-        $isNotePath = $this->isNotePath($key);
-        if ($this->isHiddenPath($key) && ! $isNotePath) {
+        $class = StorageKeyClass::classify($key);
+        if (! $class->isSearchIndexed()) {
             $this->deleteFileLikeDocuments($key);
 
             return;
         }
+        $isNotePath = $class === StorageKeyClass::Note;
         if ($isDirectory) {
             if ($isNotePath) {
                 // Keep .notes containers out of file results.
@@ -181,16 +184,19 @@ final class SearchIndexerService
     public function indexCalendarObjectFromPath(string $path): void
     {
         $sourceKey = $this->calendarSourceKeyFromPath($path);
-        if ($sourceKey === null) {
+        $stored = $this->rawDavSegments($path, 'calendars');
+        if ($sourceKey === null || $stored === null) {
             return;
         }
         [$principal, $calendarUri, $objectUri] = explode('|', $sourceKey, 3);
+        // The uri column is the segment Sabre stored. The source key decodes it.
+        [$rawPrincipal, $rawCalendarUri, $rawObjectUri] = $stored;
         $row = CalendarObject::query()
             ->from('calendarobjects as o')
             ->join('calendarinstances as i', 'i.calendarid', '=', 'o.calendarid')
-            ->where('i.principaluri', 'principals/'.$principal)
-            ->where('i.uri', $calendarUri)
-            ->where('o.uri', $objectUri)
+            ->where('i.principaluri', 'principals/'.$rawPrincipal)
+            ->where('i.uri', $rawCalendarUri)
+            ->where('o.uri', $rawObjectUri)
             ->select([
                 'i.principaluri',
                 'i.uri as calendar_uri',
@@ -262,16 +268,18 @@ final class SearchIndexerService
     public function indexCardObjectFromPath(string $path): void
     {
         $sourceKey = $this->cardSourceKeyFromPath($path);
-        if ($sourceKey === null) {
+        $stored = $this->rawDavSegments($path, 'addressbooks');
+        if ($sourceKey === null || $stored === null) {
             return;
         }
         [$principal, $bookUri, $cardUri] = explode('|', $sourceKey, 3);
+        [$rawPrincipal, $rawBookUri, $rawCardUri] = $stored;
         $row = Card::query()
             ->from('cards as c')
             ->join('addressbooks as a', 'a.id', '=', 'c.addressbookid')
-            ->where('a.principaluri', 'principals/'.$principal)
-            ->where('a.uri', $bookUri)
-            ->where('c.uri', $cardUri)
+            ->where('a.principaluri', 'principals/'.$rawPrincipal)
+            ->where('a.uri', $rawBookUri)
+            ->where('c.uri', $rawCardUri)
             ->select([
                 'a.principaluri',
                 'a.uri as book_uri',
@@ -339,26 +347,32 @@ final class SearchIndexerService
     }
 
     /**
+     * Project live file nodes into search, then rebuild caldav and carddav.
+     * Upserts in place and sweeps orphans at the end of each phase. Callers
+     * must backfill the file index first; SearchReindexRunner does. An
+     * interrupted run leaves existing rows in place.
+     *
      * @param  callable(int, int, string): void|null  $progress
      */
-    public function reindexAll(?callable $progress = null): void
+    public function reindexAllFromFileNodes(?callable $progress = null): void
     {
-        $this->store->clearAll();
-
-        $allFileKeys = array_values(array_unique(array_merge(
-            $this->storage->files()->allDirectories(),
-            $this->storage->files()->allFiles()
-        )));
-        $total = count($allFileKeys);
+        $total = JmapFileNode::query()->whereNull('deleted_at')->count();
         $done = 0;
-        foreach ($allFileKeys as $key) {
-            $done++;
-            $this->indexFileStorageKey($key);
-            if ($progress !== null) {
-                $progress($done, max(1, $total), 'files');
-            }
-        }
+        JmapFileNode::query()
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->chunkById(500, function ($rows) use (&$done, $total, $progress): void {
+                foreach ($rows as $row) {
+                    $done++;
+                    $this->indexFileStorageKey((string) $row->storage_key);
+                    if ($progress !== null) {
+                        $progress($done, max(1, $total), 'files');
+                    }
+                }
+            });
+        $this->store->deleteFileLikeOrphans();
 
+        $caldavCutoff = gmdate('c');
         /** @var list<object{principaluri:string, calendar_uri:string, object_uri:string}> $calendarRows */
         $calendarRows = CalendarObject::query()
             ->from('calendarobjects as o')
@@ -379,7 +393,9 @@ final class SearchIndexerService
                 $progress($idx + 1, max(1, $totalCal), 'caldav');
             }
         }
+        $this->store->deleteStaleRows('caldav', $caldavCutoff);
 
+        $carddavCutoff = gmdate('c');
         /** @var list<object{principaluri:string, book_uri:string, card_uri:string}> $cardRows */
         $cardRows = Card::query()
             ->from('cards as c')
@@ -400,6 +416,7 @@ final class SearchIndexerService
                 $progress($idx + 1, max(1, $totalCard), 'carddav');
             }
         }
+        $this->store->deleteStaleRows('carddav', $carddavCutoff);
     }
 
     private function normalizeDavPath(string $path): string
@@ -543,24 +560,6 @@ final class SearchIndexerService
         return [$body, $header !== '' ? $header : null];
     }
 
-    private function isHiddenPath(string $key): bool
-    {
-        foreach (explode('/', trim($key, '/')) as $segment) {
-            if ($segment !== '' && str_starts_with($segment, '.')) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function isNotePath(string $key): bool
-    {
-        $normalized = '/'.trim($key, '/');
-
-        return str_contains($normalized, '/.notes/');
-    }
-
     private function titleFromFrontmatter(?string $frontmatter): ?string
     {
         if (! is_string($frontmatter) || trim($frontmatter) === '') {
@@ -596,36 +595,52 @@ final class SearchIndexerService
 
     private function calendarSourceKeyFromPath(string $path): ?string
     {
-        $parts = explode('/', $this->normalizeDavPath($path));
-        if (count($parts) < 4 || $parts[0] !== 'calendars') {
-            return null;
-        }
-
-        $objectUri = rawurldecode((string) array_pop($parts));
-        $calendarUri = rawurldecode((string) array_pop($parts));
-        $principal = rawurldecode(trim(implode('/', array_slice($parts, 1)), '/'));
-        if ($principal === '' || $calendarUri === '' || $objectUri === '') {
-            return null;
-        }
-
-        return $principal.'|'.$calendarUri.'|'.$objectUri;
+        return $this->decodedDavSourceKey($path, 'calendars');
     }
 
     private function cardSourceKeyFromPath(string $path): ?string
     {
+        return $this->decodedDavSourceKey($path, 'addressbooks');
+    }
+
+    /**
+     * Path segments as stored. Sabre decodes a request URL once; a second
+     * decode belongs only in the source key.
+     *
+     * @return array{0: string, 1: string, 2: string}|null
+     */
+    private function rawDavSegments(string $path, string $root): ?array
+    {
         $parts = explode('/', $this->normalizeDavPath($path));
-        if (count($parts) < 4 || $parts[0] !== 'addressbooks') {
+        if (count($parts) < 4 || $parts[0] !== $root) {
             return null;
         }
 
-        $cardUri = rawurldecode((string) array_pop($parts));
-        $bookUri = rawurldecode((string) array_pop($parts));
-        $principal = rawurldecode(trim(implode('/', array_slice($parts, 1)), '/'));
-        if ($principal === '' || $bookUri === '' || $cardUri === '') {
+        $leaf = (string) array_pop($parts);
+        $middle = (string) array_pop($parts);
+        $principal = trim(implode('/', array_slice($parts, 1)), '/');
+        if ($principal === '' || $middle === '' || $leaf === '') {
             return null;
         }
 
-        return $principal.'|'.$bookUri.'|'.$cardUri;
+        return [$principal, $middle, $leaf];
+    }
+
+    private function decodedDavSourceKey(string $path, string $root): ?string
+    {
+        $raw = $this->rawDavSegments($path, $root);
+        if ($raw === null) {
+            return null;
+        }
+
+        $principal = rawurldecode($raw[0]);
+        $middle = rawurldecode($raw[1]);
+        $leaf = rawurldecode($raw[2]);
+        if ($principal === '' || $middle === '' || $leaf === '') {
+            return null;
+        }
+
+        return $principal.'|'.$middle.'|'.$leaf;
     }
 
     /**

@@ -86,23 +86,35 @@ final class WritePathContractTest extends TestCase
         );
     }
 
-    public function test_drive_observation_has_three_hooks(): void
+    public function test_drive_observation_has_one_hook(): void
     {
+        $index = $this->appPath('Services/Jmap/FileNodes/FileNodeIndexService.php');
         $jmap = $this->appPath('Services/Jmap/FileNodes/FileNodeSetService.php');
         $drive = $this->appPath('Services/Drive/DriveService.php');
+        $relocator = $this->appPath('Services/Jmap/FileNodes/FileNodeRelocator.php');
         $dav = $this->appPath('Dav/Server/FileNodeIndexPlugin.php');
 
+        $this->assertFileExists($index);
         $this->assertFileExists($jmap);
         $this->assertFileExists($drive);
+        $this->assertFileExists($relocator);
         $this->assertFileExists($dav);
 
+        $indexSrc = (string) file_get_contents($index);
+        $this->assertStringContainsString('function syncSearch', $indexSrc);
+        $this->assertStringContainsString('indexFileStorageKey', $indexSrc);
+
+        foreach ([$jmap, $drive, $relocator] as $path) {
+            $src = (string) file_get_contents($path);
+            $this->assertStringNotContainsString('indexFileStorageKey', $src, $path);
+            $this->assertStringNotContainsString('deleteDavPath', $src, $path);
+        }
+
         $jmapSrc = (string) file_get_contents($jmap);
-        $this->assertStringContainsString('function syncSearchIndex', $jmapSrc);
         $this->assertStringContainsString('WgwStorage', $jmapSrc);
 
         $driveSrc = (string) file_get_contents($drive);
         $this->assertStringContainsString('function disk()', $driveSrc);
-        $this->assertStringContainsString('indexFileStorageKey', $driveSrc);
 
         $davSrc = (string) file_get_contents($dav);
         $this->assertStringContainsString('afterMethod:', $davSrc);
