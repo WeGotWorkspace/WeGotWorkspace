@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Storage;
 
+use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
 use Sabre\DAV;
 
@@ -76,6 +77,9 @@ class FlysystemDirectory extends FlysystemNode implements DAV\ICollection, DAV\I
         foreach ($this->filesystem->files($this->key) as $fileKey) {
             $name = substr($fileKey, strlen($prefix));
             if ($name === DocAttachmentPaths::DIR) {
+                continue;
+            }
+            if (CollabSidecarPaths::isSidecarName($name)) {
                 continue;
             }
             if ($name !== '' && $name !== '.' && $name !== '..') {

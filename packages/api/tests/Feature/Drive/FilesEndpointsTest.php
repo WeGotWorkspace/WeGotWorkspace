@@ -49,10 +49,13 @@ final class FilesEndpointsTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.name', 'Alice')
             ->assertJsonPath('data.roots', ['/users', '/groups']);
 
+        app(WgwStorage::class)->files()->put('users/alice/.welcome.txt.yjs', 'yjs-bytes');
+
         $listing = $this->withBearer($token)->getJson('/api/v1/files/children?path=/users/alice');
         $listing->assertOk()
             ->assertJsonPath('data.location', '/users/alice/')
-            ->assertJsonFragment(['name' => 'welcome.txt', 'type' => 'file']);
+            ->assertJsonFragment(['name' => 'welcome.txt', 'type' => 'file'])
+            ->assertJsonMissing(['name' => '.welcome.txt.yjs']);
 
         $star = $this->withBearer($token)->postJson('/api/v1/files/star?path=/users/alice/welcome.txt');
         $star->assertOk()->assertJsonPath('data', 'Updated');
