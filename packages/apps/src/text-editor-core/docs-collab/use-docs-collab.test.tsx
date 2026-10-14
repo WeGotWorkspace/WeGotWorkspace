@@ -83,12 +83,14 @@ const testUrls = {
   yjsUrl: "/api/v1/files/collaboration?path=docs%2Foffline-test.md&format=yjs",
 };
 
-function reconnectMarkerUpdate(marker: string): Uint8Array {
+function reconnectMarkerUpdate(marker: string): ArrayBuffer {
   const doc = new Y.Doc();
   doc.getText("reconnect-marker").insert(0, marker);
   const update = Y.encodeStateAsUpdate(doc);
   doc.destroy();
-  return update;
+  const body = new ArrayBuffer(update.byteLength);
+  new Uint8Array(body).set(update);
+  return body;
 }
 
 function mockFetchResponses(options: {
