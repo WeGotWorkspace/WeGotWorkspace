@@ -62,7 +62,12 @@ export async function persistNoteKeepingSyncRace<T>(
   try {
     return await persistNoteOrDropGone(write, onGone, noteId);
   } catch (error) {
-    if (isNotesMetadataSyncRace(error, noteId)) return undefined;
+    if (isNotesMetadataSyncRace(error, noteId)) {
+      if (persistHttpStatus(error) === 412) {
+        console.warn(`[notes] metadata update lost a 412 sync race for note ${noteId}`);
+      }
+      return undefined;
+    }
     throw error;
   }
 }

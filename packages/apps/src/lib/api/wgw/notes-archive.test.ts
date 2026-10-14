@@ -202,7 +202,11 @@ describe("updateNoteItem archive status", () => {
       { id: "notes-work", name: "Work" },
     ]);
     const movedRow = { ...activeRow, notebookId: "notes-work", etag: '"etag-9"' };
-    vi.mocked(getNote).mockResolvedValue({ ...activeRow, etag: '"fresh"' });
+    vi.mocked(getNote).mockResolvedValue({
+      ...activeRow,
+      notebookId: "notes-work",
+      etag: '"fresh"',
+    });
     vi.mocked(patchNote)
       .mockRejectedValueOnce(new NotesVjournalRequestError("PATCH failed (412)", 412))
       .mockResolvedValueOnce(movedRow);
