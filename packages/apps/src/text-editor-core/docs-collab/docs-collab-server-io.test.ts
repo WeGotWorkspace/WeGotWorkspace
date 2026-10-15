@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
-import { writeNoteTitle } from "@/notes-core/src/note-title-doc";
+import { writeNoteTitle } from "./docs-collab-document-title";
 import {
   fetchYjsSnapshot,
   loadMarkdown,
@@ -42,6 +42,20 @@ describe("docs-collab-server-io", () => {
       ),
     );
     await expect(loadMarkdown("/notes/items/n1")).resolves.toBe("# From note");
+  });
+
+  it("loadMarkdown throws when JSON has neither markdown nor body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ title: "Only" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    await expect(loadMarkdown("/notes/items/n1")).rejects.toThrow(/unexpected JSON/);
   });
 
   it("loadMarkdown throws on non-ok response", async () => {

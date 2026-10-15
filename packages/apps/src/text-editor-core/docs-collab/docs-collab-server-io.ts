@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
-import { noteTitleForSave } from "@/notes-core/src/note-title-doc";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
+import { noteTitleForSave } from "./docs-collab-document-title";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 function withBearerAuth(
@@ -22,7 +22,7 @@ export async function loadMarkdown(documentUrl: string, authToken?: string): Pro
     const data = (await res.json()) as { body?: unknown; markdown?: unknown };
     if (typeof data.markdown === "string") return data.markdown;
     if (typeof data.body === "string") return data.body;
-    return "";
+    throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
   return res.text();
 }

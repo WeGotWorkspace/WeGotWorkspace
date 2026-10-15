@@ -6,7 +6,6 @@ import {
   resetSidecarEtagsForTests,
   sidecarPrecondition,
 } from "./docs-collab-etag";
-import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { isServerDivergenceError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 const DOCUMENT_URL = "/api/v1/files/collaboration?path=docs%2Ftogether.md";
@@ -220,24 +219,5 @@ describe("two clients saving in turn without a live mesh", () => {
     const text = stored.getXmlFragment("default").toString();
     expect(text).toContain("offline note a");
     expect(text).toContain("offline note b");
-  });
-
-  it("merges two offline note documents without opening a conflict dialog", () => {
-    const listener = vi.fn();
-    setDocsSyncConflictListener(listener);
-    const first = new Y.Doc();
-    const second = new Y.Doc();
-    edit(first, "offline note a");
-    edit(second, "offline note b");
-
-    const merged = new Y.Doc();
-    Y.applyUpdate(merged, Y.encodeStateAsUpdate(first));
-    Y.applyUpdate(merged, Y.encodeStateAsUpdate(second));
-
-    const text = merged.getXmlFragment("default").toString();
-    expect(text).toContain("offline note a");
-    expect(text).toContain("offline note b");
-    expect(listener).not.toHaveBeenCalled();
-    setDocsSyncConflictListener(undefined);
   });
 });

@@ -103,7 +103,7 @@ export function NoteCollabSession({
   wire,
   initialMarkdown,
   localDisplayName,
-  documentTitle = "Note",
+  documentTitle = defaultNotesLabels.titlePlaceholder,
   onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {

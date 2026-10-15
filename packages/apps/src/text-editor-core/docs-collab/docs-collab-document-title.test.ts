@@ -5,7 +5,7 @@ import {
   noteTitleIsInDoc,
   readNoteTitle,
   writeNoteTitle,
-} from "@/notes-core/src/note-title-doc";
+} from "./docs-collab-document-title";
 
 function sync(left: Y.Doc, right: Y.Doc): void {
   Y.applyUpdate(left, Y.encodeStateAsUpdate(right));

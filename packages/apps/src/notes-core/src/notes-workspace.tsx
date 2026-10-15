@@ -416,7 +416,7 @@ export function NotesWorkspace({
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
-          documentTitle={active.title}
+          documentTitle={active.title?.trim() || L.titlePlaceholder}
           onBodyMarkdownChange={(markdown, source) => {
             markEditorDirty(source !== "hydrate");
             applyLocalBodyMarkdown(active.id, markdown, {
@@ -433,6 +433,7 @@ export function NotesWorkspace({
       applyLocalBodyMarkdown,
       collabEpoch,
       collabSessionActive,
+      L.titlePlaceholder,
       markEditorDirty,
       noteBodyCollab,
     ],
