@@ -1,13 +1,21 @@
+/** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
+import { loadBootstrapInParallel } from "./docs-collab-bootstrap";
 import {
   rememberSidecarEtag,
   resetSidecarEtagsForTests,
   sidecarPrecondition,
 } from "./docs-collab-etag";
+import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
 import { persistCollabSave } from "./docs-collab-save-attempt";
-import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import {
+  fetchYjsSnapshot,
+  loadMarkdown,
+  loadYjsSnapshot,
+  saveDocument,
+} from "./docs-collab-server-io";
 import type { DocsCollabUrls } from "./docs-collab-types";
 import { SERVER_ORIGIN } from "./docs-collab-utils";
 
@@ -16,9 +24,10 @@ import { SERVER_ORIGIN } from "./docs-collab-utils";
  * stand-in as `docs-collab-concurrent-save.test.ts`: ETag, If-Match,
  * If-None-Match, 412, and 428. No real backend. The table has no per-app branch.
  *
- * Two rows stay `todo` until #1314: an external writer, and a bootstrap whose
- * server state is missing. `writeExternally` is on the adapter for that first
- * row. This suite does not replace the existing `docs-collab-*` tests.
+ * An external writer is not in this table. Detection exists only for Notes.
+ * Docs has no journal and no `X-Wgw-External-Write` until N9/N10. The row
+ * comes back when Docs has the same mechanism. This suite does not replace
+ * the existing `docs-collab-*` tests.
  */
 type StoredDocument = {
   markdown: string;
@@ -31,8 +40,6 @@ type CollabApp = {
   createDocument(): Promise<{ id: string; urls: DocsCollabUrls }>;
   /** Reads what is stored on the server, independent of the client. */
   readStored(id: string): Promise<StoredDocument>;
-  /** Writes from outside the app, the way a CalDAV or WebDAV client would. */
-  writeExternally(id: string, markdown: string): Promise<void>;
 };
 
 type ServerDocument = StoredDocument & { revision: number };
@@ -110,13 +117,6 @@ function createCollabFakeServer(options: {
         yjs: document.yjs ? document.yjs.slice() : null,
       };
     },
-    writeExternal(id: string, markdown: string): void {
-      const document = documents.get(id);
-      if (!document) throw new Error(`missing document ${id}`);
-      document.markdown = markdown;
-      document.yjs = null;
-      document.revision += 1;
-    },
   };
 }
 
@@ -177,9 +177,6 @@ function createDocsCollabApp(): CollabApp {
     async readStored(id) {
       return server.read(id);
     },
-    async writeExternally(id, markdown) {
-      server.writeExternal(id, markdown);
-    },
   };
 }
 
@@ -221,9 +218,6 @@ function createNotesCollabApp(): CollabApp {
     },
     async readStored(id) {
       return server.read(id);
-    },
-    async writeExternally(id, markdown) {
-      server.writeExternal(id, markdown);
     },
   };
 }
@@ -283,25 +277,17 @@ function save(urls: DocsCollabUrls, ydoc: Y.Doc, markdown: string) {
   });
 }
 
-type ReadyScenario = {
+type Scenario = {
   name: string;
-  status: "ready";
   run(app: CollabApp): Promise<void>;
 };
 
-type TodoScenario = {
-  name: string;
-  status: "todo";
-  /** Why the row does not run yet. */
-  reason: string;
-};
-
-type Scenario = ReadyScenario | TodoScenario;
+/** Sentence two clients seed when the server has no Yjs state (#1089). */
+const UNSIDECARRED_MARKER = "must survive exactly once";
 
 const scenarios: Scenario[] = [
   {
     name: "two devices, both edited offline, come back online",
-    status: "ready",
     async run(app) {
       const listener = vi.fn();
       setDocsSyncConflictListener(listener);
@@ -325,7 +311,6 @@ const scenarios: Scenario[] = [
   },
   {
     name: "a save gets 412",
-    status: "ready",
     async run(app) {
       const { id, urls } = await app.createDocument();
       const author = await openClient(urls);
@@ -358,7 +343,6 @@ const scenarios: Scenario[] = [
   },
   {
     name: "a save with no precondition on an existing document",
-    status: "ready",
     async run(app) {
       const { id, urls } = await app.createDocument();
       const author = await openClient(urls);
@@ -389,7 +373,6 @@ const scenarios: Scenario[] = [
   },
   {
     name: "a reconnect with a save waiting",
-    status: "ready",
     async run(app) {
       // The reconnect hook writes a save that was waiting. Mesh and IndexedDB
       // stay in their own suites; this row is that client-to-server write.
@@ -409,7 +392,6 @@ const scenarios: Scenario[] = [
   },
   {
     name: "a document that has no server id yet",
-    status: "ready",
     async run(app) {
       const { id, urls } = await app.createDocument();
       const client = new Y.Doc();
@@ -424,14 +406,38 @@ const scenarios: Scenario[] = [
     },
   },
   {
-    name: "an external writer changes the content",
-    status: "todo",
-    reason: "#1314",
-  },
-  {
     name: "a bootstrap where the server state is missing",
-    status: "todo",
-    reason: "#1314",
+    async run(app) {
+      const markdown = `One paragraph that ${UNSIDECARRED_MARKER}.`;
+      const { id, urls } = await app.createDocument();
+      expect((await app.readStored(id)).yjs).toBeNull();
+
+      const load = await loadBootstrapInParallel({
+        loadMarkdown: () => loadMarkdown(urls.documentUrl),
+        fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl),
+        sleep: async () => undefined,
+        retryDelaysMs: [],
+      });
+      expect(load.snapshot.kind).toBe("absent");
+
+      const first = new Y.Doc();
+      const second = new Y.Doc();
+      applyContentSeedToYDoc(first, markdown, "markdown");
+      applyContentSeedToYDoc(second, markdown, "markdown");
+      rememberSidecarEtag(requireRoom(urls), null);
+      await save(urls, first, markdown);
+
+      // The second client still holds the pre-save view: no sidecar yet.
+      resetSidecarEtagsForTests();
+      rememberSidecarEtag(requireRoom(urls), null);
+      await save(urls, second, markdown);
+
+      const stored = await app.readStored(id);
+      const settled = new Y.Doc();
+      Y.applyUpdate(settled, stored.yjs!);
+      const text = readContentFromYDoc(settled, "markdown");
+      expect(text.split(UNSIDECARRED_MARKER).length - 1).toBe(1);
+    },
   },
 ];
 
@@ -441,9 +447,8 @@ describe.each(appFactories)("collab app conformance ($name)", ({ create }) => {
   beforeEach(() => {
     resetSidecarEtagsForTests();
     setDocsSyncConflictListener(undefined);
-    // Vitest's node navigator exists, but `onLine` is not a boolean. The shared
-    // save only remerges while the client is online.
-    vi.stubGlobal("navigator", { onLine: true });
+    // The shared save only remerges while the client is online.
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
     app = create();
   });
 
@@ -454,10 +459,6 @@ describe.each(appFactories)("collab app conformance ($name)", ({ create }) => {
   });
 
   for (const scenario of scenarios) {
-    if (scenario.status === "todo") {
-      it.todo(`${scenario.name} (${scenario.reason})`);
-      continue;
-    }
     it(scenario.name, () => scenario.run(app));
   }
 });
