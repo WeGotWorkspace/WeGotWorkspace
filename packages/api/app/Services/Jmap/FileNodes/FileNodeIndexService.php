@@ -6,6 +6,7 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
+use App\Services\Collab\CollabSidecarMover;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StorageKeyClass;
@@ -29,6 +30,7 @@ final class FileNodeIndexService
         private readonly WgwStorage $storage,
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
+        private readonly CollabSidecarMover $sidecars,
     ) {}
 
     // ---------------------------------------------------------------
@@ -344,6 +346,28 @@ final class FileNodeIndexService
             $node->save();
         }
         $this->syncSearch($key, deleted: true);
+    }
+
+    /**
+     * Document move on a write route: the Yjs sidecar follows the bytes,
+     * including a rename inside the same principal. Reindex and attachment
+     * folder moves stay on {@see recordMove} so they do not touch sidecars.
+     */
+    public function recordMoveWithSidecar(string $fromKey, string $toKey): ?JmapFileNode
+    {
+        $this->sidecars->moveWithDocument($fromKey, $toKey);
+
+        return $this->recordMove($fromKey, $toKey);
+    }
+
+    /**
+     * Document delete on a write route. {@see recordDelete} stays sidecar-free
+     * so a reindex of an already-missing file leaves an orphan sidecar in place.
+     */
+    public function recordDeleteWithSidecar(string $key): void
+    {
+        $this->sidecars->deleteWithDocument($key);
+        $this->recordDelete($key);
     }
 
     // ---------------------------------------------------------------
