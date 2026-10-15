@@ -232,6 +232,8 @@ export async function patchNote(
     title?: string | null;
     body?: string;
     categories?: string[];
+    categoriesAdd?: string[];
+    categoriesRemove?: string[];
     status?: "FINAL" | "CANCELLED" | null;
   },
   opts?: NotesRequestOpts,

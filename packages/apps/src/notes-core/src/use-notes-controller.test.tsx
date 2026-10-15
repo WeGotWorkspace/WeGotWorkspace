@@ -206,6 +206,70 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.notes.find((note) => note.id === "note-1")?.tags).toEqual(["draft"]);
   });
 
+  it("persists tag edits as a delta", async () => {
+    vi.useFakeTimers();
+    try {
+      const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+      const data: NotesUIData = {
+        notes: [{ ...localNote, id: "note-1", tags: ["draft"] }],
+        notebooks: ["Drafts"],
+        tags: ["draft"],
+      };
+      const { result } = renderHook(() =>
+        useNotesController({
+          data,
+          listLoading: false,
+          operations: {
+            upsertNote,
+            deleteNote: vi.fn(),
+            archiveNote: vi.fn(),
+            restoreNote: vi.fn(),
+            createNotebook: vi.fn(),
+            renameNotebook: vi.fn(),
+            deleteNotebook: vi.fn(),
+          },
+        }),
+      );
+
+      act(() => {
+        result.current.addNoteTag("note-1", "focus");
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: ["draft", "focus"] }),
+        expect.objectContaining({ tagsAdd: ["focus"] }),
+      );
+
+      upsertNote.mockClear();
+      act(() => {
+        result.current.toggleNoteTag("note-1", "draft");
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tagsRemove: ["draft"] }),
+      );
+
+      upsertNote.mockClear();
+      act(() => {
+        result.current.assignTagToNotes(["note-1"], "v2");
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tagsAdd: ["v2"] }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("keeps assigned tag on active note until bootstrap carries it", () => {
     const initialData: NotesUIData = {
       notes: [{ ...localNote, id: "note-1", tags: [] }],

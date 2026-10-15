@@ -463,6 +463,7 @@ export async function enqueueCoalescedNoteUpdate(
   note: Note,
   baseUpdatedAt: string | undefined,
   tempNoteId?: string,
+  _tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] },
 ): Promise<void> {
   const metadata = extractNoteMetadata(note);
   await enqueueCoalescedOutboxUpdate<NotesUpsertPayload>({

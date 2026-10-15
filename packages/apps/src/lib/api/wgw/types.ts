@@ -193,6 +193,10 @@ export type WgwNoteUpsertRequest = {
   title?: string | null;
   body?: string;
   tags?: string[];
+  /** Sent as `categoriesAdd`. Omit `tags` when this is set. */
+  tagsAdd?: string[];
+  /** Sent as `categoriesRemove`. Omit `tags` when this is set. */
+  tagsRemove?: string[];
   starred?: boolean;
   archived?: boolean;
   groupSlug?: string | null;
