@@ -44,4 +44,26 @@ describe("useNotesFailedSync", () => {
     const { result } = renderHook(() => useNotesFailedSync("bob"));
     await waitFor(() => expect(result.current).toBe(2));
   });
+
+  it("counts metadata conflict ids when the outbox has no retryable rows", async () => {
+    vi.mocked(listFailedNotesOutbox).mockResolvedValue([]);
+    const { result } = renderHook(() => useNotesFailedSync("bob", 0, ["note-1", "note-2"]));
+    await waitFor(() => expect(result.current).toBe(2));
+  });
+
+  it("adds metadata conflict ids to the retryable outbox count", async () => {
+    vi.mocked(listFailedNotesOutbox).mockResolvedValue([
+      {
+        id: "a",
+        domain: "notes",
+        op: "upsert",
+        payload: "{}",
+        createdAt: 1,
+        retries: 1,
+        lastError: "boom",
+      },
+    ]);
+    const { result } = renderHook(() => useNotesFailedSync("bob", 0, ["note-9"]));
+    await waitFor(() => expect(result.current).toBe(2));
+  });
 });

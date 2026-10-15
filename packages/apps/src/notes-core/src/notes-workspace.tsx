@@ -77,8 +77,6 @@ import {
   pendingMoveAfterNotebookCreate,
   type NotesNotebookSelectItem,
 } from "@/notes-core/src/notes-notebook-select";
-import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
-import { useNotesReconnectConflict } from "@/notes-core/src/use-notes-reconnect-conflict";
 import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import { Callout } from "@/callout/src/callout";
@@ -160,6 +158,8 @@ export function NotesWorkspace({
   initialNoteId,
   onViewChange,
   onNoteChange,
+  syncConflictNoteIds,
+  onClearSyncConflicts,
 }: NotesWorkspaceProps) {
   const closeSidebarOnMobile = (closeSidebar: () => void) => {
     if (!isSidebarOverlayViewport()) return;
@@ -317,21 +317,11 @@ export function NotesWorkspace({
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
-  const failedSyncCount = useNotesFailedSync(offlineUsername, bootstrapRevision);
-  const {
-    markEditorDirty,
-    markEditorSaved,
-    reconnectConflict,
-    setReconnectConflict,
-    keepMine,
-    applyTheirs,
-    resolving: resolvingReconnect,
-    collabEpoch,
-  } = useNotesReconnectConflict({
-    active: active ?? null,
-    applyLocalBodyMarkdown,
-    onRefreshList,
-  });
+  const failedSyncCount = useNotesFailedSync(
+    offlineUsername,
+    bootstrapRevision,
+    syncConflictNoteIds,
+  );
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
@@ -359,8 +349,6 @@ export function NotesWorkspace({
         setAccessLost(true);
         setNoteCollabUrls(undefined);
       },
-      onReconnectConflict: () => setReconnectConflict(true),
-      onPersistSuccess: markEditorSaved,
     })
       .then((urls) => {
         if (!cancelled) {
@@ -376,7 +364,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [activeNoteId, markEditorSaved, setReconnectConflict]);
+  }, [activeNoteId, session.user.username]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -410,7 +398,7 @@ export function NotesWorkspace({
       if (!collabSessionActive || !active || !noteBodyCollab) return children;
       return (
         <NoteCollabSession
-          key={`${noteBodyCollab.urls.room ?? active.id}:${collabEpoch}`}
+          key={noteBodyCollab.urls.room ?? active.id}
           initialMarkdown={noteBodyToMarkdown(active.body)}
           userName={noteBodyCollab.userName}
           urls={noteBodyCollab.urls}
@@ -418,7 +406,6 @@ export function NotesWorkspace({
           localDisplayName={noteBodyCollab.userName}
           documentTitle={active.title?.trim() || L.titlePlaceholder}
           onBodyMarkdownChange={(markdown, source) => {
-            markEditorDirty(source !== "hydrate");
             applyLocalBodyMarkdown(active.id, markdown, {
               bumpDate: source !== "hydrate",
             });
@@ -428,23 +415,16 @@ export function NotesWorkspace({
         </NoteCollabSession>
       );
     },
-    [
-      active,
-      applyLocalBodyMarkdown,
-      collabEpoch,
-      collabSessionActive,
-      L.titlePlaceholder,
-      markEditorDirty,
-      noteBodyCollab,
-    ],
+    [active, applyLocalBodyMarkdown, collabSessionActive, L.titlePlaceholder, noteBodyCollab],
   );
 
   const handleRetrySync = useCallback(() => {
+    onClearSyncConflicts?.();
     if (!offlineUsername) return;
     void getNotesSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
-  }, [offlineUsername, onRefreshList]);
+  }, [offlineUsername, onClearSyncConflicts, onRefreshList]);
 
   useSyncRetryToast({
     active: failedSyncCount > 0,
@@ -763,15 +743,6 @@ export function NotesWorkspace({
         }
         labels={notesNotebookDialogLabelsFrom(L)}
         contentClassName="notes-dialog-surface"
-      />
-
-      <NotesConflictDialog
-        open={reconnectConflict}
-        noteTitle={active ? noteListTitle(active) : ""}
-        busy={resolvingReconnect}
-        labels={L}
-        onKeepLocal={() => void keepMine()}
-        onUseServer={() => void applyTheirs()}
       />
 
       {confirmDialog}

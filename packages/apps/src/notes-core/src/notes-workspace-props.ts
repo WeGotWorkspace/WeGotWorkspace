@@ -30,4 +30,12 @@ export type NotesWorkspaceProps = {
   onViewChange?: (view: string) => void;
   /** Called whenever the active note changes so the app layer can sync the URL. */
   onNoteChange?: (noteId: string) => void;
+  /**
+   * Note ids whose metadata sync was refused (outbox `stateMismatch` or a JMAP
+   * change that collided with local pending work). Counted by the failed-sync
+   * indicator. This is not a choice dialog.
+   */
+  syncConflictNoteIds?: readonly string[];
+  /** Clear the metadata conflict set when the user retries sync. */
+  onClearSyncConflicts?: () => void;
 };

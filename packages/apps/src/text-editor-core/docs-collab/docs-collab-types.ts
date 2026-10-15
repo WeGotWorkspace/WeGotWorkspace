@@ -60,7 +60,6 @@ export type DocsCollabUrls = {
    */
   roomNotPersistent?: boolean;
   onPersistForbidden?: () => void;
-  onReconnectConflict?: () => void;
   /**
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.

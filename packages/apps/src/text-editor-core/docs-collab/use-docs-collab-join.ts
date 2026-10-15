@@ -45,7 +45,6 @@ import {
   colorForName,
   docSignature,
   isRemoteUpdateOrigin,
-  isCollabPreconditionFailed,
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
@@ -282,10 +281,7 @@ export function useDocsCollabJoin({
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       if (load.markdownError) {
-        if (isCollabPreconditionFailed(load.markdownError)) {
-          urls.onReconnectConflict?.();
-          return;
-        }
+        // A stale text read is not a choice screen. The snapshot still merges.
         console.warn("[docs-collab] markdown load failed", load.markdownError);
       }
 

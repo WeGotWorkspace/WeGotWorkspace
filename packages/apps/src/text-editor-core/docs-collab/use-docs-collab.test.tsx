@@ -1013,6 +1013,61 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("from outside");
   }, 15_000);
 
+  it("merges two offline edits and does not ask", async () => {
+    const room = "note-offline-merge";
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), new Y.Doc());
+    await persistence.whenSynced;
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+
+    const update = reconnectMarkerUpdate("other-device");
+    const listener = vi.fn();
+    setDocsSyncConflictListener(listener);
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(update, { status: 200, headers: { ETag: '"snap"' } });
+        }
+        if (method === "PUT" || method === "POST" || method === "PATCH") {
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response("# from the other device", { status: 200 });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room,
+          documentUrl: "/api/v1/notes/items/note-offline-merge",
+          yjsUrl: "/api/v1/notes/items/note-offline-merge?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(
+      () => {
+        expect(result.current.session?.ydoc.getText("reconnect-marker").toString()).toBe(
+          "other-device",
+        );
+      },
+      { timeout: 7000 },
+    );
+    expect(onExternalWrite).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+    setDocsSyncConflictListener(undefined);
+  }, 15_000);
+
   it("builds a note with no stored state from the markdown and does not ask", async () => {
     const onExternalWrite = vi.fn();
     vi.stubGlobal(
