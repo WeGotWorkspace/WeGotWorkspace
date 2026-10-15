@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import type { NotesApiSource } from "@/notes-core/src/notes-api-source";
@@ -13,6 +14,19 @@ export type NotesAppProps = {
 
 export function NotesApp({ apiSource }: NotesAppProps = {}) {
   const { initialView, initialNoteId, handleViewChange, handleNoteChange } = useNotesRouteSync();
+  const [syncConflictNoteIds, setSyncConflictNoteIds] = useState<string[]>([]);
+
+  const handleSyncConflict = useCallback((noteIds: string[]) => {
+    setSyncConflictNoteIds((prev) => {
+      const next = new Set(prev);
+      for (const id of noteIds) next.add(id);
+      return [...next];
+    });
+  }, []);
+
+  const clearSyncConflicts = useCallback(() => {
+    setSyncConflictNoteIds([]);
+  }, []);
 
   const {
     phase,
@@ -27,7 +41,7 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
     data,
     session,
     operations,
-  } = useNotesAPI(apiSource);
+  } = useNotesAPI(apiSource, { onSyncConflict: handleSyncConflict });
 
   useOfflineSyncToast(syncing, defaultNotesLabels.toastSynced);
 
@@ -51,6 +65,8 @@ export function NotesApp({ apiSource }: NotesAppProps = {}) {
           initialNoteId={initialNoteId}
           onViewChange={handleViewChange}
           onNoteChange={handleNoteChange}
+          syncConflictNoteIds={syncConflictNoteIds}
+          onClearSyncConflicts={clearSyncConflicts}
           onLogout={() => {
             window.location.assign("/logout");
           }}

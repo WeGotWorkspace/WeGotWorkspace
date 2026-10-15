@@ -234,15 +234,15 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 ## Property mapping (VJOURNAL ↔ REST Note)
 
-| VJOURNAL (RFC 5545) | REST `Note` field | Notes                                               |
-| ------------------- | ----------------- | --------------------------------------------------- |
-| `UID`               | `id`              | Canonical; never object-uri                         |
-| `SUMMARY`           | `title`           | Auto-fill once from first heading/line              |
-| `DESCRIPTION`       | `body`            | Markdown; soft 2 MiB cap → 413                      |
-| `CATEGORIES`        | `categories`      | Tags                                                |
-| `STATUS`            | `status`          | `CANCELLED` = archived; active = `FINAL` or omitted |
-| collection          | `notebookId`      | Exactly one notebook per note                       |
-| object etag         | `etag`            | `If-Match` on writes                                |
+| VJOURNAL (RFC 5545) | REST `Note` field | Notes                                                                               |
+| ------------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| `UID`               | `id`              | Canonical; never object-uri                                                         |
+| `SUMMARY`           | `title`           | Title comes from the collaborative document; `SUMMARY` is derived                   |
+| `DESCRIPTION`       | `body`            | Markdown; soft 2 MiB cap → 413                                                      |
+| `CATEGORIES`        | `categories`      | Tags                                                                                |
+| `STATUS`            | `status`          | `CANCELLED` = archived; active = `FINAL` or omitted                                 |
+| collection          | `notebookId`      | Exactly one notebook per note                                                       |
+| object etag         | `etag`            | Metadata PATCH sends this `If-Match`; the collaborative write checks the state ETag |
 
 Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for notes).
 

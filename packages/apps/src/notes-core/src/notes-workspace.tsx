@@ -158,6 +158,8 @@ export function NotesWorkspace({
   initialNoteId,
   onViewChange,
   onNoteChange,
+  syncConflictNoteIds,
+  onClearSyncConflicts,
 }: NotesWorkspaceProps) {
   const closeSidebarOnMobile = (closeSidebar: () => void) => {
     if (!isSidebarOverlayViewport()) return;
@@ -315,7 +317,11 @@ export function NotesWorkspace({
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
-  const failedSyncCount = useNotesFailedSync(offlineUsername, bootstrapRevision);
+  const failedSyncCount = useNotesFailedSync(
+    offlineUsername,
+    bootstrapRevision,
+    syncConflictNoteIds,
+  );
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
@@ -413,11 +419,12 @@ export function NotesWorkspace({
   );
 
   const handleRetrySync = useCallback(() => {
+    onClearSyncConflicts?.();
     if (!offlineUsername) return;
     void getNotesSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
-  }, [offlineUsername, onRefreshList]);
+  }, [offlineUsername, onClearSyncConflicts, onRefreshList]);
 
   useSyncRetryToast({
     active: failedSyncCount > 0,

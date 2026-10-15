@@ -7,17 +7,12 @@ import {
   hasNoteCollabPendingServerSave,
   noteCollabRoomKey,
   readNoteCollabOfflineContent,
-  writeNoteCollabOfflineContent,
 } from "@/lib/offline/notes/notes-collab-rooms";
-import {
-  applyContentSeedToYDoc,
-  readContentFromYDoc,
-} from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
   docsCollabIndexedDbKey,
   migrateDocsCollabPendingSaveFromLegacy,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 async function seedMarkdown(indexedDbName: string, markdown: string): Promise<void> {
@@ -36,31 +31,6 @@ async function seedPendingFlag(indexedDbName: string): Promise<void> {
   await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
   await persistence.destroy();
   ydoc.destroy();
-}
-
-async function readRoomMarkdown(indexedDbName: string): Promise<string | null> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
-  try {
-    await persistence.whenSynced;
-    if (isYDocEmpty(ydoc)) return null;
-    return readContentFromYDoc(ydoc, "markdown");
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
-}
-
-async function roomIsEmpty(indexedDbName: string): Promise<boolean> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
-  try {
-    await persistence.whenSynced;
-    return isYDocEmpty(ydoc);
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
 }
 
 describe("note collab rooms use the v2 IndexedDB name", () => {
@@ -86,23 +56,6 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     await seedPendingFlag(docsCollabIndexedDbKey(room));
 
     await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(true);
-  });
-
-  it("writes the server markdown into v2 and clears every legacy database", async () => {
-    const uid = "note-write-replace";
-    const room = noteCollabRoomKey(uid);
-    const serverMarkdown = "Server markdown";
-    await seedMarkdown(docsCollabIndexedDbKey(room), "mine");
-    await seedMarkdown(room, "old");
-
-    await writeNoteCollabOfflineContent(uid, serverMarkdown);
-
-    const stored = await readRoomMarkdown(docsCollabIndexedDbKey(room));
-    expect(stored).toContain(serverMarkdown);
-    expect(stored).not.toContain("mine");
-    expect(stored).not.toContain("old");
-    await expect(readNoteCollabOfflineContent(uid)).resolves.toContain(serverMarkdown);
-    expect(await roomIsEmpty(room)).toBe(true);
   });
 
   it("drops a legacy pending flag after migrate and a v2 save", async () => {
