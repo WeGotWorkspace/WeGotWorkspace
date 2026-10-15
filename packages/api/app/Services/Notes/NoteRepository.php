@@ -207,6 +207,7 @@ final class NoteRepository
                 $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $this->assertNewCategoriesAllowed($storedIcs, array_values($patch['categories']));
             }
+            $patch = $this->expandCategoryDelta($object, $patch);
 
             if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
                 $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
@@ -535,6 +536,40 @@ final class NoteRepository
         );
 
         return $note;
+    }
+
+    /**
+     * Apply categoriesAdd/categoriesRemove to the tags on the locked row, then
+     * hand mergeIntoIcs a full categories list. Remove runs before add.
+     *
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    private function expandCategoryDelta(CalendarObject $object, array $patch): array
+    {
+        $hasAdd = array_key_exists('categoriesAdd', $patch);
+        $hasRemove = array_key_exists('categoriesRemove', $patch);
+        if (! $hasAdd && ! $hasRemove) {
+            return $patch;
+        }
+        if (array_key_exists('categories', $patch)) {
+            throw new ApiHttpException(400, 'Send categories or a tag delta, not both.', 'bad_request');
+        }
+
+        $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $add = is_array($patch['categoriesAdd'] ?? null) ? array_values($patch['categoriesAdd']) : [];
+        $remove = is_array($patch['categoriesRemove'] ?? null) ? array_values($patch['categoriesRemove']) : [];
+        if ($hasAdd) {
+            $this->assertNewCategoriesAllowed($storedIcs, $add);
+        }
+        $patch['categories'] = NoteTag::applyDelta(
+            $this->converter->storedCategories($storedIcs),
+            $add,
+            $remove,
+        );
+        unset($patch['categoriesAdd'], $patch['categoriesRemove']);
+
+        return $patch;
     }
 
     /**

@@ -25,6 +25,7 @@ import {
   normalizeTag,
   noteAllowsTagAssignment,
   noteTagToggle,
+  tagDeltaOpts,
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
@@ -508,7 +509,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
               await waitForInFlightCreate(row.id);
               const persistId = resolveNoteId(row.id);
               return persistNoteKeepingSyncRace(
-                operations.upsertNote({ ...row, id: persistId }),
+                operations.upsertNote({ ...row, id: persistId }, { tagsAdd: [tag] }),
                 () => dropGoneNote(row.id),
                 persistId,
               );
@@ -634,7 +635,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             await waitForInFlightCreate(noteId);
             const persistId = resolveNoteId(noteId);
             await persistNoteKeepingSyncRace(
-              operations.upsertNote({ ...updated, id: persistId }, { signal }),
+              operations.upsertNote({ ...updated, id: persistId }, tagDeltaOpts(signal, toggled)),
               () => dropGoneNote(noteId),
               persistId,
             );
@@ -660,7 +661,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     (noteId: string, rawTag: string) => toggleNoteTag(noteId, rawTag, "add"),
     [toggleNoteTag],
   );
-
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) => {
       // Metadata only (title/tags/notebook/starred). Body is owned by the collab

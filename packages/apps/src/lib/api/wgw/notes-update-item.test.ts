@@ -161,6 +161,55 @@ describe("updateNoteItem metadata conflict retry", () => {
     expect(patchNote).toHaveBeenCalledTimes(2);
   });
 
+  it("sends a tag delta without categories", async () => {
+    await updateNoteItem("n-1", {
+      id: "n-1",
+      notebook: "General",
+      tagsAdd: ["focus"],
+      tagsRemove: ["v2"],
+      etag: '"etag-1"',
+    });
+
+    const patch = vi.mocked(patchNote).mock.calls[0]?.[1];
+    expect(patch).toEqual({
+      notebookId: "notes-general",
+      categoriesAdd: ["focus"],
+      categoriesRemove: ["v2"],
+    });
+    expect(patch).not.toHaveProperty("categories");
+    expect(getNote).not.toHaveBeenCalled();
+  });
+
+  it("resends the same tag delta with the fresh ETag after a 412", async () => {
+    vi.mocked(getNote).mockResolvedValue({ ...activeRow, etag: '"fresh"' });
+    vi.mocked(patchNote)
+      .mockRejectedValueOnce(preconditionFailed())
+      .mockResolvedValueOnce({ ...activeRow, categories: ["focus", "v2"], etag: '"fresh"' });
+
+    await updateNoteItem("n-1", {
+      id: "n-1",
+      notebook: "General",
+      title: "From A",
+      tags: ["focus", "stale-snapshot"],
+      tagsAdd: ["v2"],
+      etag: '"stale"',
+    });
+
+    expect(patchNote).toHaveBeenNthCalledWith(
+      1,
+      "n-1",
+      { notebookId: "notes-general", title: "From A", categoriesAdd: ["v2"] },
+      expect.objectContaining({ ifMatch: '"stale"' }),
+    );
+    expect(patchNote).toHaveBeenNthCalledWith(
+      2,
+      "n-1",
+      { notebookId: "notes-general", title: "From A", categoriesAdd: ["v2"] },
+      expect.objectContaining({ ifMatch: '"fresh"' }),
+    );
+    expect(vi.mocked(patchNote).mock.calls[1]?.[1]).not.toHaveProperty("categories");
+  });
+
   it("deletes a tag on a successful first attempt", async () => {
     vi.mocked(patchNote).mockResolvedValue({
       ...activeRow,

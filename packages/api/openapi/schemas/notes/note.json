@@ -91,9 +91,26 @@
         "type": "string"
       },
       "categories": {
+        "description": "Replace the whole tag set. Create uses this, and so does an explicit replace. Tag edits use categoriesAdd and categoriesRemove. Archive, star, and notebook move omit this field. Do not combine this field with either delta field.",
         "type": "array",
         "items": {
           "type": "string"
+        }
+      },
+      "categoriesAdd": {
+        "description": "Tags to add onto the set stored in the journal. Applied after categoriesRemove, on the locked row. A new tag uses the same rule as categories. Do not send with categories.",
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 255
+        }
+      },
+      "categoriesRemove": {
+        "description": "Tags to remove from the set stored in the journal, before categoriesAdd. An invalid or stale tag is allowed so it can always be removed. Do not send with categories.",
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 255
         }
       },
       "status": {

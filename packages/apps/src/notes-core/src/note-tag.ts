@@ -53,3 +53,12 @@ export function noteTagToggle(
   const label = added ? (nextTags[nextTags.length - 1] ?? rawTag.trim()) : rawTag.trim();
   return { tags: nextTags, added, label };
 }
+
+/** Wire shape for one tag edit: add or remove, never a full replacement. */
+export function tagDeltaOpts(
+  signal: AbortSignal,
+  toggled: { added: boolean; label: string },
+): { signal: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] } {
+  const tag = normalizeTag(toggled.label);
+  return toggled.added ? { signal, tagsAdd: [tag] } : { signal, tagsRemove: [tag] };
+}

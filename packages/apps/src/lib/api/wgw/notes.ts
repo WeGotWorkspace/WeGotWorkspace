@@ -195,20 +195,27 @@ export function wgwNoteUpsertFromNote(
 }
 
 /**
- * Metadata-only upsert (no `body`) for REST title/tags/moves.
+ * Metadata-only upsert (no `body`). A PATCH includes only the fields the
+ * action means to change. `tags` is an explicit categories replace; omit it
+ * for archive, star, and notebook move so a cached set cannot overwrite the
+ * server. `title` is the same for SUMMARY. Create uses `wgwNoteUpsertFromNote`.
  * `starred` is consumed by `POST|DELETE /notes/items/{id}/star`.
- * Body edits stay on `PATCH /notes/items/{id}` from the collab session.
  */
 export function wgwNoteMetadataFromNote(
   note: Note,
-  opts?: { starred?: boolean; archived?: boolean },
+  opts?: {
+    starred?: boolean;
+    archived?: boolean;
+    includeTitle?: boolean;
+    includeTags?: boolean;
+  },
 ): WgwNoteUpsertRequest {
   return {
     id: note.id,
     notebook: note.notebook,
     ...(note.notebookId ? { notebookId: note.notebookId } : {}),
-    ...(note.title !== undefined ? { title: note.title } : {}),
-    tags: note.tags,
+    ...(opts?.includeTitle && note.title !== undefined ? { title: note.title } : {}),
+    ...(opts?.includeTags ? { tags: note.tags } : {}),
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
     ...(note.scope === "group" && note.groupSlug?.trim()
@@ -276,19 +283,31 @@ type NoteMetadataPatch = {
   notebookId?: string;
   title?: string | null;
   categories?: string[];
+  categoriesAdd?: string[];
+  categoriesRemove?: string[];
 };
+
+function tagDeltaPatch(body: WgwNoteUpsertRequest): NoteMetadataPatch | undefined {
+  if (body.tagsAdd === undefined && body.tagsRemove === undefined) return undefined;
+  return {
+    ...(body.tagsAdd !== undefined ? { categoriesAdd: body.tagsAdd } : {}),
+    ...(body.tagsRemove !== undefined ? { categoriesRemove: body.tagsRemove } : {}),
+  };
+}
 
 function noteMetadataPatch(
   body: WgwNoteUpsertRequest,
   notebookId: string | undefined,
 ): NoteMetadataPatch {
+  const delta = tagDeltaPatch(body);
   return {
     ...(notebookId ? { notebookId } : {}),
     ...(body.title !== undefined ? { title: body.title } : {}),
     // Categories stay off the wire unless this write carried tags. Archive
     // STATUS is never part of this patch: a stale archived:false was PATCHing
-    // FINAL and un-archiving the note.
-    ...(body.tags !== undefined ? { categories: body.tags } : {}),
+    // FINAL and un-archiving the note. A delta omits categories; the server
+    // applies it to the stored set.
+    ...(delta ?? (body.tags !== undefined ? { categories: body.tags } : {})),
   };
 }
 
@@ -304,6 +323,10 @@ function unionNoteTags(serverTags: readonly string[], localTags: readonly string
   return merged;
 }
 
+function isTagDeltaPatch(patch: NoteMetadataPatch): boolean {
+  return patch.categoriesAdd !== undefined || patch.categoriesRemove !== undefined;
+}
+
 function noteMetadataPatchAfterConflict(
   first: NoteMetadataPatch,
   fresh: NotesVjournalNote,
@@ -311,6 +334,14 @@ function noteMetadataPatchAfterConflict(
 ): NoteMetadataPatch {
   const notebookStillMatches =
     first.notebookId !== undefined && fresh.notebookId === first.notebookId;
+  if (isTagDeltaPatch(first)) {
+    return {
+      ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+      ...(first.title !== undefined ? { title: first.title } : {}),
+      ...(first.categoriesAdd !== undefined ? { categoriesAdd: first.categoriesAdd } : {}),
+      ...(first.categoriesRemove !== undefined ? { categoriesRemove: first.categoriesRemove } : {}),
+    };
+  }
   return {
     ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
     ...(first.title !== undefined ? { title: first.title } : {}),
@@ -338,9 +369,10 @@ export async function updateNoteItem(
     patched = await apply(ifMatch, firstPatch);
   } catch (error) {
     if (!isNotePreconditionFailed(error)) throw error;
-    // Someone else wrote first. Replaying this payload would drop their tag
-    // additions. Union keeps both sets; a lost deletion stays on the note.
-    // A different notebook means they moved it, so this retry leaves that move.
+    // Someone else wrote first. A tag delta is applied on the server to
+    // whatever is stored, so the retry sends that same delta. A full tag
+    // list still unions with the fresh set. A different notebook means they
+    // moved it, so this retry leaves that move.
     const fresh = await getNote(id, opts);
     patched = await apply(fresh.etag, noteMetadataPatchAfterConflict(firstPatch, fresh, body.tags));
   }

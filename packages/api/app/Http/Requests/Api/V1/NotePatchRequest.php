@@ -32,6 +32,10 @@ final class NotePatchRequest extends FormRequest
             'body' => ['sometimes', 'nullable', 'string'],
             'categories' => ['sometimes', 'array'],
             'categories.*' => ['string', 'max:255'],
+            'categoriesAdd' => ['sometimes', 'array'],
+            'categoriesAdd.*' => ['string', 'max:255'],
+            'categoriesRemove' => ['sometimes', 'array'],
+            'categoriesRemove.*' => ['string', 'max:255'],
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],
             // Cap is YjsBytes::MAX_BYTES. The list is removed in prepareForValidation
             // before Laravel flattens it; a 5 MiB number[] dotted into keys exhausts memory.
@@ -64,29 +68,45 @@ final class NotePatchRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $categories = $this->input('categories');
-            if (! is_array($categories)) {
-                return;
-            }
-            $existing = null;
-            foreach ($categories as $index => $tag) {
-                if (! is_string($tag)) {
-                    continue;
-                }
-                if (preg_match(NoteTag::INPUT_PATTERN, $tag) === 1) {
-                    continue;
-                }
-                $existing ??= array_fill_keys($this->storedCategories(), true);
-                $normalized = strtolower(trim($tag));
-                if ($normalized !== '' && isset($existing[$normalized])) {
-                    continue;
-                }
+            if ($this->exists('categories') && ($this->exists('categoriesAdd') || $this->exists('categoriesRemove'))) {
                 $validator->errors()->add(
-                    'categories.'.$index,
-                    'A tag may only use letters a-z and hyphen.',
+                    'categories',
+                    'Send categories or a tag delta, not both.',
                 );
             }
+            $this->rejectInvalidNewTags($validator, 'categories');
+            $this->rejectInvalidNewTags($validator, 'categoriesAdd');
         });
+    }
+
+    /**
+     * A new tag must match {@see NoteTag::INPUT_PATTERN}. A tag already stored
+     * on the note may be sent back. Removals skip this check.
+     */
+    private function rejectInvalidNewTags(Validator $validator, string $field): void
+    {
+        $categories = $this->input($field);
+        if (! is_array($categories)) {
+            return;
+        }
+        $existing = null;
+        foreach ($categories as $index => $tag) {
+            if (! is_string($tag)) {
+                continue;
+            }
+            if (preg_match(NoteTag::INPUT_PATTERN, $tag) === 1) {
+                continue;
+            }
+            $existing ??= array_fill_keys($this->storedCategories(), true);
+            $normalized = strtolower(trim($tag));
+            if ($normalized !== '' && isset($existing[$normalized])) {
+                continue;
+            }
+            $validator->errors()->add(
+                $field.'.'.$index,
+                'A tag may only use letters a-z and hyphen.',
+            );
+        }
     }
 
     /**
