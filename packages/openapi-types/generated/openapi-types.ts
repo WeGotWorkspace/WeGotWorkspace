@@ -6417,8 +6417,14 @@ export interface paths {
         /** Fetch a note by VJOURNAL UID */
         get: {
             parameters: {
-                query?: never;
-                header?: never;
+                query?: {
+                    /** @description Pass yjs for the raw Yjs state. Omit it for the note JSON. The state is not a field on the note JSON. */
+                    format?: "yjs";
+                };
+                header?: {
+                    /** @description VJOURNAL entity tag from an earlier GET of this note, including GET ?format=yjs. The server answers 304 when that tag still matches. A 204 (no stored state) carries no tag. */
+                    "If-None-Match"?: string;
+                };
                 path: {
                     noteId: string;
                 };
@@ -6426,14 +6432,31 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Note */
+                /** @description Note JSON, or the raw Yjs bytes when format=yjs. Both representations use the VJOURNAL ETag. */
                 200: {
                     headers: {
+                        /** @description VJOURNAL entity tag. The same value an ordinary note GET returns. Present for format=yjs only when a state row exists. */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["Note"];
+                        "application/octet-stream": string;
                     };
+                };
+                /** @description format=yjs and this note has no stored Yjs state. The response has no ETag. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description format=yjs and If-None-Match matches the VJOURNAL ETag. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];

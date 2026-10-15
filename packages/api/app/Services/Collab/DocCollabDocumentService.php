@@ -26,8 +26,6 @@ final class DocCollabDocumentService
 
     private const MAX_MARKDOWN_BYTES = 2_097_152;
 
-    private const MAX_YJS_BYTES = 5_242_880;
-
     public function __construct(
         private CollabActorResolver $actors,
         private CollabRoomPolicy $rooms,
@@ -114,9 +112,10 @@ final class DocCollabDocumentService
 
         $yjsBytes = null;
         if ($hasYjs) {
-            $yjsBytes = $this->decodeYjsBytes($body['yjs']);
-            if (strlen($yjsBytes) > self::MAX_YJS_BYTES) {
-                $this->fail('yjs_too_large', 413);
+            try {
+                $yjsBytes = YjsBytes::decode($body['yjs']);
+            } catch (YjsPayloadException $e) {
+                $this->fail($e->error, $e->status);
             }
         }
 
@@ -330,26 +329,6 @@ final class DocCollabDocumentService
         }
 
         return $virtual;
-    }
-
-    /**
-     * @param  list<mixed>|mixed  $yjs
-     */
-    private function decodeYjsBytes(mixed $yjs): string
-    {
-        if (! is_array($yjs)) {
-            $this->fail('invalid_yjs');
-        }
-
-        $bytes = '';
-        foreach ($yjs as $byte) {
-            if (! is_int($byte) || $byte < 0 || $byte > 255) {
-                $this->fail('invalid_yjs');
-            }
-            $bytes .= chr($byte);
-        }
-
-        return $bytes;
     }
 
     private function assertFilesEnabled(): void
