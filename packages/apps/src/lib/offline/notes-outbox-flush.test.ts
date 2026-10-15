@@ -108,6 +108,21 @@ describe("flushNotesOutbox", () => {
     expect(result.stateMismatches).toEqual([]);
   });
 
+  it("flushes a coalesced tag delta without the full tag list", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsAdd: ["focus"],
+      tagsRemove: ["essay"],
+    });
+    updateNoteItem.mockResolvedValue({ ...note, tags: ["focus"] });
+
+    await flushNotesOutbox(username);
+
+    const request = updateNoteItem.mock.calls[0]?.[1];
+    expect(request).toMatchObject({ tagsAdd: ["focus"], tagsRemove: ["essay"] });
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("body");
+  });
+
   it("reports a conflict when the server rejects a stale If-Match", async () => {
     await enqueueCoalescedNoteUpdate(
       username,

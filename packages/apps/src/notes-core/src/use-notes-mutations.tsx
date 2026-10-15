@@ -25,6 +25,7 @@ import {
   normalizeTag,
   noteAllowsTagAssignment,
   noteTagToggle,
+  tagDeltaOpts,
   noteAfterNotebookMove,
   notesViewAfterNotebookMove,
   notesViewForCreate,
@@ -57,7 +58,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     notebooks,
     setNotebooks,
     notebookCollections,
-    tags,
     starred,
     applyStarToggle,
     batchToggleStarForIds,
@@ -509,7 +509,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
               await waitForInFlightCreate(row.id);
               const persistId = resolveNoteId(row.id);
               return persistNoteKeepingSyncRace(
-                operations.upsertNote({ ...row, id: persistId }),
+                operations.upsertNote({ ...row, id: persistId }, { tagsAdd: [tag] }),
                 () => dropGoneNote(row.id),
                 persistId,
               );
@@ -564,33 +564,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [notebooks, operations, setNotebooks, setNotes, setView, show, view],
   );
 
-  const renameTag = useCallback(
-    (oldName: string, newName: string) => {
-      const value = normalizeTag(newName);
-      if (!isValidNewTag(value) || (value !== oldName && tags.includes(value))) return;
-      const changedRows = notes
-        .filter((note) => note.tags.includes(oldName))
-        .map((note) => ({
-          ...note,
-          tags: note.tags.map((tag) => (tag === oldName ? value : tag)),
-        }));
-      setNotes((prev) =>
-        prev.map((note) => ({
-          ...note,
-          tags: note.tags.map((tag) => (tag === oldName ? value : tag)),
-        })),
-      );
-      if (view === `tag:${oldName}`) setView(`tag:${value}`);
-      if (operations) {
-        changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
-        );
-      }
-      show(`Renamed to ${value}`, { icon: <Tag className="size-4" /> });
-    },
-    [dropGoneNote, notes, operations, setNotes, setView, show, tags, view],
-  );
-
   const deleteNotebook = useCallback(
     (name: string, opts: { transferTo?: string; archive?: boolean }) => {
       if (opts.transferTo) {
@@ -640,28 +613,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     ],
   );
 
-  const deleteTag = useCallback(
-    (name: string) => {
-      const changedRows = notes
-        .filter((note) => note.tags.includes(name))
-        .map((note) => ({
-          ...note,
-          tags: note.tags.filter((tag) => tag !== name),
-        }));
-      setNotes((prev) =>
-        prev.map((note) => ({ ...note, tags: note.tags.filter((tag) => tag !== name) })),
-      );
-      if (view === `tag:${name}`) setView("all");
-      if (operations) {
-        changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
-        );
-      }
-      show(`Tag ${name} deleted`, { icon: <Trash2 className="size-4" /> });
-    },
-    [dropGoneNote, notes, operations, setNotes, setView, show, view],
-  );
-
   const toggleNoteTag = useCallback(
     (noteId: string, rawTag: string, mode: "toggle" | "add" = "toggle") => {
       const before = notes.find((note) => note.id === noteId);
@@ -684,7 +635,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             await waitForInFlightCreate(noteId);
             const persistId = resolveNoteId(noteId);
             await persistNoteKeepingSyncRace(
-              operations.upsertNote({ ...updated, id: persistId }, { signal }),
+              operations.upsertNote({ ...updated, id: persistId }, tagDeltaOpts(signal, toggled)),
               () => dropGoneNote(noteId),
               persistId,
             );
@@ -710,7 +661,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     (noteId: string, rawTag: string) => toggleNoteTag(noteId, rawTag, "add"),
     [toggleNoteTag],
   );
-
   const updateNote = useCallback(
     (id: string, patch: Partial<Note>) => {
       // Metadata only (title/tags/notebook/starred). Body is owned by the collab
@@ -971,9 +921,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     moveActiveNoteToNotebook,
     assignTagToNotes,
     renameNotebook,
-    renameTag,
     deleteNotebook,
-    deleteTag,
     toggleNoteTag,
     addNoteTag,
     updateNote,

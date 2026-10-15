@@ -315,6 +315,8 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         ->where('noteId', '[^/]+');
     Route::get('notes/items/{noteId}', [NotesController::class, 'show'])
         ->where('noteId', '[^/]+');
+    Route::put('notes/items/{noteId}', [NotesController::class, 'putCollaboration'])
+        ->where('noteId', '[^/]+');
     Route::patch('notes/items/{noteId}', [NotesController::class, 'patch'])
         ->where('noteId', '[^/]+');
     Route::delete('notes/items/{noteId}', [NotesController::class, 'destroy'])

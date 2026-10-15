@@ -190,13 +190,55 @@ async function resolveCachedNote(
   }
 }
 
+function sameTags(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((tag, index) => tag === right[index]);
+}
+
+/** Which snapshot fields this write is allowed to put on the PATCH. */
+function metadataSelection(
+  previous: Note | undefined,
+  note: Note,
+  hasDelta: boolean,
+): { includeTitle: boolean; includeTags: boolean } {
+  if (isLocalTempNoteId(note.id)) {
+    return { includeTitle: note.title !== undefined, includeTags: !hasDelta };
+  }
+  if (!previous) return { includeTitle: false, includeTags: false };
+  return {
+    includeTitle: note.title !== previous.title,
+    includeTags: !hasDelta && !sameTags(previous.tags, note.tags),
+  };
+}
+
+function tagDeltaFromOpts(opts?: {
+  tagsAdd?: string[];
+  tagsRemove?: string[];
+}): { tagsAdd?: string[]; tagsRemove?: string[] } | undefined {
+  if (!opts?.tagsAdd?.length && !opts?.tagsRemove?.length) return undefined;
+  return {
+    ...(opts.tagsAdd?.length ? { tagsAdd: opts.tagsAdd } : {}),
+    ...(opts.tagsRemove?.length ? { tagsRemove: opts.tagsRemove } : {}),
+  };
+}
+
 async function queueOfflineUpsert(
   username: string,
   note: Note,
   tempNoteId?: string,
+  tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] },
+  previous?: Note,
 ): Promise<Note> {
   await upsertNoteInCache(username, note, true);
-  await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), tempNoteId);
+  const delta = isLocalTempNoteId(note.id) ? undefined : tagDelta;
+  await enqueueCoalescedNoteUpdate(
+    username,
+    note.id,
+    note,
+    baseUpdatedAt(note),
+    tempNoteId,
+    delta,
+    metadataSelection(previous, note, !!delta),
+  );
   return note;
 }
 
@@ -336,17 +378,23 @@ async function upsertNoteOnline(
   username: string,
   note: Note,
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
-  opts?: { signal?: AbortSignal },
+  opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+  previous?: Note,
 ): Promise<Note> {
   if (isLocalTempNoteId(note.id)) {
     return createLocalTempNoteOnline(username, note, runner, opts);
   }
+  const delta = tagDeltaFromOpts(opts);
+  const selection = metadataSelection(previous, note, !!delta);
   const metadataRequest = wgwNoteMetadataFromNote(note, {
     starred: !!note.starred,
     archived: !!note.archived,
+    includeTitle: selection.includeTitle,
+    includeTags: selection.includeTags,
   });
+  const request = delta ? { ...metadataRequest, ...delta } : metadataRequest;
   try {
-    const saved = await updateNoteItem(note.id, metadataRequest, opts);
+    const saved = await updateNoteItem(note.id, request, opts);
     await upsertNoteInCache(username, saved, false);
     await runner.flush();
     return saved;
@@ -357,7 +405,13 @@ async function upsertNoteOnline(
     // fails belongs in the outbox (shouldQueueNotesUpsert).
     if (status !== 404) throw error;
     if (await isNeverSyncedPendingNote(username, note.id)) {
-      return queueOfflineUpsert(username, note, tempNoteIdForCreate(undefined, note));
+      return queueOfflineUpsert(
+        username,
+        note,
+        tempNoteIdForCreate(undefined, note),
+        delta,
+        previous,
+      );
     }
     await dropLocalNoteAfterServerGone(username, note.id);
     throw error;
@@ -373,14 +427,15 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         ? await resolveCachedNote(username, note.id, opts?.signal)
         : undefined;
       const merged = existing ? applyNoteUpdate(existing, note) : note;
+      const tagDelta = tagDeltaFromOpts(opts);
       if (!readBrowserOnline()) {
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId);
+        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
       }
       try {
         return await enqueueNoteMetadataWrite(merged.id, () =>
-          upsertNoteOnline(username, merged, runner, opts),
+          upsertNoteOnline(username, merged, runner, opts, existing),
         );
       } catch (error) {
         if (!shouldQueueNotesUpsert(error, merged, opts?.signal)) {
@@ -388,7 +443,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         }
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId);
+        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
       }
     },
     deleteNote: async (note, opts) => {

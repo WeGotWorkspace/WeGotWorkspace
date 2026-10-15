@@ -2,11 +2,10 @@ import { useCallback, useRef } from "react";
 import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
-import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
-import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import { persistCollabSave } from "./docs-collab-save-attempt";
 import {
   computeSaveDelayMs,
   computeShouldPersist,
@@ -16,14 +15,8 @@ import {
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
 import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
-import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import {
-  docSignature,
-  isCollabPayloadTooLarge,
-  isServerDivergenceError,
-  SERVER_ORIGIN,
-} from "./docs-collab-utils";
+import { collabErrorStatus, docSignature, isCollabPayloadTooLarge } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type UseDocsCollabSaveOptions = {
@@ -86,6 +79,9 @@ export function useDocsCollabSave({
   }, [refs, updatePendingState]);
 
   const persistToServer = useCallback(async (): Promise<void> => {
+    // First, before the offline pending mark. persistCollabSave checks it too.
+    if (urls.roomNotPersistent) return;
+    if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
     if (!getConnectivitySnapshot()) {
       await markPendingWhenUnsaved();
@@ -93,8 +89,9 @@ export function useDocsCollabSave({
     }
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
-    if (!ydoc || !getMd) return;
-    const markdown = markdownForSave(ydoc, getMd());
+    const override = refs.markdownOverrideRef.current;
+    if (!ydoc || (!getMd && override === null)) return;
+    const markdown = override ?? markdownForSave(ydoc, getMd ? getMd() : "");
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -112,62 +109,23 @@ export function useDocsCollabSave({
       return;
     }
     refs.saveInFlightRef.current = true;
+    let savedMarkdown = markdown;
     try {
-      const attemptSave = async () => {
-        if (urls.persistMarkdown) {
-          await urls.persistMarkdown(markdown, refs.authTokenRef.current);
-          return;
-        }
-        const etag = await saveDocument(
-          urls.documentUrl,
-          markdown,
-          ydoc,
-          refs.authTokenRef.current,
-          urls.documentSaveMethod === "PATCH" ? "PUT" : (urls.documentSaveMethod ?? "POST"),
-          sidecarPrecondition(room),
-        );
-        rememberSidecarEtag(room, etag);
-      };
-
-      try {
-        await attemptSave();
-      } catch (firstError) {
-        if (
-          isServerDivergenceError(firstError) &&
-          !conflictRemergeAttemptedRef.current &&
-          getConnectivitySnapshot()
-        ) {
-          conflictRemergeAttemptedRef.current = true;
-          const reload = await loadYjsSnapshot(
-            urls.yjsUrl,
-            ydoc,
-            refs.authTokenRef.current,
-            SERVER_ORIGIN,
-          );
-          rememberSidecarEtag(room, reload.etag);
-          if (reload.applied) {
-            const remergedMarkdown = markdownForSave(ydoc, getMd());
-            const etag = await saveDocument(
-              urls.documentUrl,
-              remergedMarkdown,
-              ydoc,
-              refs.authTokenRef.current,
-              urls.documentSaveMethod ?? "POST",
-              sidecarPrecondition(room),
-            );
-            rememberSidecarEtag(room, etag);
-          } else {
-            throw firstError;
-          }
-        } else {
-          throw firstError;
-        }
-      }
-
-      conflictRemergeAttemptedRef.current = false;
+      const persisted = await persistCollabSave({
+        urls,
+        room,
+        ydoc,
+        markdown,
+        authToken: refs.authTokenRef.current,
+        remergeAttempted: conflictRemergeAttemptedRef,
+        markdownAfterMerge: () => (getMd ? markdownForSave(ydoc, getMd()) : markdown),
+        markdownOverrideRef: refs.markdownOverrideRef,
+      });
+      if (persisted.status === "skipped") return;
+      savedMarkdown = persisted.markdown;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
-      const success = saveSuccessState(signature);
+      const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
       refs.localDirtySinceLastSaveRef.current = success.localDirtySinceLastSave ?? false;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
@@ -175,16 +133,11 @@ export function useDocsCollabSave({
       await updatePendingState(false, false);
       setLastSavedAt(new Date().toISOString());
       setDocStatus("");
+      urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
       refs.saveFailedRef.current = true;
-      if (
-        urls.onPersistForbidden &&
-        /\(403\)/.test(err instanceof Error ? err.message : String(err))
-      ) {
+      if (urls.onPersistForbidden && collabErrorStatus(err) === 403) {
         urls.onPersistForbidden();
-      }
-      if (isServerDivergenceError(err) && getConnectivitySnapshot()) {
-        reportDocsSyncConflicts([room]);
       }
       if (isCollabPayloadTooLarge(err)) {
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
@@ -232,8 +185,10 @@ export function useDocsCollabSave({
     (getMarkdown: () => string) => {
       refs.getMarkdownRef.current = getMarkdown;
       flushPendingSaveIfReady();
+      // A title edit can land before the editor binds its markdown getter.
+      if (refs.localDirtySinceLastSaveRef.current) scheduleSave();
     },
-    [flushPendingSaveIfReady, refs],
+    [flushPendingSaveIfReady, refs, scheduleSave],
   );
 
   const saveNow = useCallback(async () => {

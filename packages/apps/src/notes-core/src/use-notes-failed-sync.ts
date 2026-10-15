@@ -5,11 +5,14 @@ import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
 const POLL_INTERVAL_MS = 4000;
 
 /**
- * Count of outbox rows that failed to sync for a transient (non-conflict) reason.
+ * Transient outbox failures plus metadata sync conflicts the listener reported.
+ * Conflict ids are separate from `listFailedNotesOutbox`: a `stateMismatch` row
+ * is not retryable, and a JMAP collision never writes an outbox error.
  */
 export function useNotesFailedSync(
   username: string | null | undefined,
   refreshKey?: number,
+  conflictNoteIds?: readonly string[],
 ): number {
   const [failedCount, setFailedCount] = useState(0);
   const { online } = useConnectivity();
@@ -34,5 +37,5 @@ export function useNotesFailedSync(
     return () => window.clearInterval(intervalId);
   }, [refresh, online, refreshKey]);
 
-  return failedCount;
+  return failedCount + (conflictNoteIds?.length ?? 0);
 }

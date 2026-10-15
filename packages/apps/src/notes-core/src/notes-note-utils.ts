@@ -7,7 +7,6 @@ import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
-import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 import { normalizeTag } from "@/notes-core/src/note-tag";
 
 export {
@@ -16,6 +15,7 @@ export {
   noteTagToggle,
   noteTagsAfterAdd,
   noteTagsAfterToggle,
+  tagDeltaOpts,
 } from "@/notes-core/src/note-tag";
 
 export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {
@@ -153,7 +153,7 @@ export function noteListExcerpt(
   return excerpt;
 }
 
-/** List-row heading: SUMMARY when set, otherwise excerpt/body until autofill. */
+/** List-row heading: SUMMARY when set, otherwise the excerpt or body. */
 export function noteListTitle(
   note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
 ): string {
@@ -468,20 +468,15 @@ export function applyNoteBodyMarkdown(
   options?: { editedAt?: string; bumpDate?: boolean },
 ): Note {
   const normalized = normalizeNoteBodyMarkdown(markdown);
-  const autofilled = autofillNoteTitle(note.title, normalized);
-  const currentTitle = note.title === "" ? "" : note.title?.trim() || undefined;
-  const titleChanged = (autofilled ?? undefined) !== currentTitle;
   // Compare normalized forms so TipTap trailing newlines do not look like edits
   // (that retriggered hydrate → setNotes → “Maximum update depth exceeded”).
+  // The title lives in the Y.Doc and is not derived from the body here.
   const bodyUnchanged = normalizeNoteBodyMarkdown(noteBodyToMarkdown(note.body)) === normalized;
-  if (bodyUnchanged && !titleChanged) {
-    return note;
-  }
-  const bumpDate = options?.bumpDate !== false && !bodyUnchanged;
+  if (bodyUnchanged) return note;
+  const bumpDate = options?.bumpDate !== false;
   return enrichNote({
     ...note,
-    ...(bodyUnchanged ? {} : { body: markdownToNoteBody(normalized) }),
-    ...(titleChanged ? { title: autofilled ?? undefined } : {}),
+    body: markdownToNoteBody(normalized),
     ...(bumpDate ? { date: options?.editedAt ?? new Date().toISOString() } : {}),
   });
 }

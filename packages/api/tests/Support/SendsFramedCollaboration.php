@@ -16,8 +16,9 @@ trait SendsFramedCollaboration
         ?string $markdown,
         ?string $yjs = null,
         array $headers = [],
+        ?string $title = null,
     ): TestResponse {
-        $content = self::framedCollabBody($markdown, $yjs);
+        $content = self::framedCollabBody($markdown, $yjs, $title);
         $headers = array_merge([
             'CONTENT_LENGTH' => (string) strlen($content),
             'CONTENT_TYPE' => 'application/octet-stream',
@@ -52,12 +53,16 @@ trait SendsFramedCollaboration
         );
     }
 
-    protected static function framedCollabBody(?string $markdown, ?string $yjs): string
+    protected static function framedCollabBody(?string $markdown, ?string $yjs, ?string $title = null): string
     {
-        $header = json_encode([
+        $headerFields = [
             'documentLen' => $markdown === null ? null : strlen($markdown),
             'yjsLen' => $yjs === null ? null : strlen($yjs),
-        ], JSON_THROW_ON_ERROR);
+        ];
+        if ($title !== null) {
+            $headerFields['title'] = $title;
+        }
+        $header = json_encode($headerFields, JSON_THROW_ON_ERROR);
         $tail = '';
         if ($markdown !== null) {
             $tail .= $markdown;

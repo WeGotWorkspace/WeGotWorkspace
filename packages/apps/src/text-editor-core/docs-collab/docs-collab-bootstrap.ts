@@ -6,12 +6,12 @@ import type { YjsSnapshot } from "./docs-collab-server-io";
 export const SNAPSHOT_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
 
 export type SnapshotOutcome =
-  | { kind: "snapshot"; update: Uint8Array; etag: string | null }
+  | { kind: "snapshot"; update: Uint8Array; etag: string | null; externalWrite: boolean }
   /** The server answered 204: there is genuinely no sidecar. Seeding is safe. */
   | { kind: "absent" }
   /** Exhausted the retries. The caller must not seed — it would duplicate. */
   | { kind: "failed"; error: unknown }
-  /** The room has no sidecar endpoint (Notes bodies persist over REST). */
+  /** The caller did not supply a snapshot endpoint. */
   | { kind: "skipped" };
 
 export type BootstrapLoad = {
@@ -65,7 +65,12 @@ async function loadSnapshotWithRetry(
     try {
       const snapshot = await fetchSnapshot();
       if (!snapshot.update) return { kind: "absent" };
-      return { kind: "snapshot", update: snapshot.update, etag: snapshot.etag };
+      return {
+        kind: "snapshot",
+        update: snapshot.update,
+        etag: snapshot.etag,
+        externalWrite: snapshot.externalWrite === true,
+      };
     } catch (error) {
       lastError = error;
       onAttemptFailed(error);

@@ -118,10 +118,10 @@ This closes a false-conflict seam: the offline metadata flush uses the note's
 `updatedAt`-at-enqueue as its `ifInState` guard and raises a `stateMismatch`
 when the server looks newer. Without the marker, the sequence _edit body
 (bumps mtime) → later flush a queued metadata change with a now-stale
-`ifInState`_ would falsely look "server newer" and pop a spurious
-[`NotesConflictDialog`](../src/notes-core/src/notes-conflict-dialog.tsx). With
-the marker, a `stateMismatch` only ever reflects a genuine frontmatter
-divergence. (Consequence: body edits no longer re-sort the note list by
+`ifInState`_ would falsely look "server newer". Notes no longer shows a
+choice screen for that. The only prompt is an outside write
+([Decision 6](../../../docs/architecture/notes.md)). With the marker, a
+`stateMismatch` only ever reflects a genuine frontmatter divergence. (Consequence: body edits no longer re-sort the note list by
 modified time; body freshness is surfaced by the collab pending-sync dot,
 [`use-docs-collab-pending-sync.ts`](../src/text-editor-core/docs-collab/use-docs-collab-pending-sync.ts),
 not by `updatedAt`.) Legacy notes that predate the marker fall back to file

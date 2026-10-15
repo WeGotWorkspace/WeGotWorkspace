@@ -216,7 +216,7 @@ final class FilesController
     }
 
     /**
-     * The path query is the document. `put()` does not read the JSON body.
+     * The path query is the document. The body is the shared collaboration frame.
      *
      * A frame that does not parse is an HTTP 400: `error` is a sentence and
      * `code` is `invalid_body`, the same envelope as a missing path. Domain
@@ -226,49 +226,10 @@ final class FilesController
      */
     private function collaborationPayload(Request $request, string $path): array
     {
-        $framed = FramedPayload::decode($request->getContent());
-        $documentLen = $this->frameLength($framed['header'], 'documentLen');
-        $yjsLen = $this->frameLength($framed['header'], 'yjsLen');
-        $tail = $framed['tail'];
-        if (($documentLen ?? 0) + ($yjsLen ?? 0) !== strlen($tail)) {
-            $this->invalidFrame();
-        }
-
-        $payload = ['room' => $path];
-        $offset = 0;
-        if ($documentLen !== null) {
-            $payload['markdown'] = substr($tail, $offset, $documentLen);
-            $offset += $documentLen;
-        }
-        if ($yjsLen !== null) {
-            $payload['yjs'] = substr($tail, $offset, $yjsLen);
-        }
+        $payload = FramedPayload::collaborationFields($request->getContent());
+        $payload['room'] = $path;
 
         return $payload;
-    }
-
-    /**
-     * @param  array<string, mixed>  $header
-     */
-    private function frameLength(array $header, string $key): ?int
-    {
-        if (! array_key_exists($key, $header)) {
-            $this->invalidFrame();
-        }
-        $value = $header[$key];
-        if ($value === null) {
-            return null;
-        }
-        if (! is_int($value) || $value < 0) {
-            $this->invalidFrame();
-        }
-
-        return $value;
-    }
-
-    private function invalidFrame(): never
-    {
-        throw new ApiHttpException(400, FramedPayload::INVALID_BODY_MESSAGE, 'invalid_body');
     }
 
     public function star(Request $request): JsonResponse

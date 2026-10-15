@@ -1,9 +1,6 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import {
-  applyContentSeedToYDoc,
-  readContentFromYDoc,
-} from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
@@ -119,26 +116,6 @@ export async function hasNoteCollabPendingServerSave(
     existingDatabaseNames,
   );
   return Boolean(result);
-}
-
-/** Replace the UID-keyed Y.Doc with server markdown (Decision 6 “Use theirs”). */
-export async function writeNoteCollabOfflineContent(uid: string, markdown: string): Promise<void> {
-  const room = noteCollabRoomKey(uid);
-  if (!room) return;
-  await withIndexedDb(docsCollabIndexedDbKey(room), async (ydoc, persistence) => {
-    const fragment = ydoc.getXmlFragment("default");
-    ydoc.transact(() => {
-      if (fragment.length > 0) fragment.delete(0, fragment.length);
-    });
-    applyContentSeedToYDoc(ydoc, markdown, "markdown");
-    await persistence.del(PENDING_SERVER_SAVE_KEY);
-  });
-  const known = await listExistingNoteCollabDatabaseNames();
-  for (const name of legacyNamesToOpen(room, known)) {
-    await withIndexedDb(name, async (_ydoc, persistence) => {
-      await persistence.clearData();
-    });
-  }
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */

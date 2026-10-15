@@ -25,7 +25,6 @@ function collabStoryUrls(room: string) {
     authPassword: devPassword,
     documentUrl: `${liveApiOrigin}/api/v1/files/collaboration?path=${pathQuery}`,
     yjsUrl: `${liveApiOrigin}/api/v1/files/collaboration?path=${pathQuery}&format=yjs`,
-    documentSaveMethod: "PUT" as const,
     room,
   };
 }

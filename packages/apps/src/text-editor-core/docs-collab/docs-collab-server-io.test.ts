@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { decodeFramedPayload } from "@/lib/wire/framed-payload";
+import { writeNoteTitle } from "./docs-collab-document-title";
 import {
   fetchYjsSnapshot,
   loadMarkdown,
@@ -28,6 +29,34 @@ describe("docs-collab-server-io", () => {
       vi.fn(async () => new Response("# Hello", { status: 200 })),
     );
     await expect(loadMarkdown("/doc")).resolves.toBe("# Hello");
+  });
+
+  it("loadMarkdown reads a JSON note body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ body: "# From note" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    await expect(loadMarkdown("/notes/items/n1")).resolves.toBe("# From note");
+  });
+
+  it("loadMarkdown throws when JSON has neither markdown nor body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ title: "Only" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    await expect(loadMarkdown("/notes/items/n1")).rejects.toThrow(/unexpected JSON/);
   });
 
   it("loadMarkdown throws on non-ok response", async () => {
@@ -101,12 +130,34 @@ describe("docs-collab-server-io", () => {
     expect(Array.from(snapshot.update ?? [])).toEqual(Array.from(update));
   });
 
+  it("fetchYjsSnapshot reports an external write without treating it as a missing sidecar", async () => {
+    const update = snapshotBytes("stale");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(update as unknown as BodyInit, {
+            status: 200,
+            headers: { ETag: SIDECAR_ETAG, "X-Wgw-External-Write": "1" },
+          }),
+      ),
+    );
+    const snapshot = await fetchYjsSnapshot("/yjs");
+    expect(snapshot.externalWrite).toBe(true);
+    expect(snapshot.etag).toBe(SIDECAR_ETAG);
+    expect(snapshot.update).not.toBeNull();
+  });
+
   it("fetchYjsSnapshot reports a missing sidecar for 204", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response(null, { status: 204 })),
     );
-    await expect(fetchYjsSnapshot("/yjs")).resolves.toEqual({ update: null, etag: null });
+    await expect(fetchYjsSnapshot("/yjs")).resolves.toEqual({
+      update: null,
+      etag: null,
+      externalWrite: false,
+    });
   });
 
   it("saveDocument throws parsed error message from body", async () => {
@@ -124,7 +175,7 @@ describe("docs-collab-server-io", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
-    await saveDocument("/doc", "# x", ydoc, "token", "PUT");
+    await saveDocument("/doc", "# x", ydoc, "token");
     expect(fetchMock).toHaveBeenCalledWith(
       "/doc",
       expect.objectContaining({
@@ -151,7 +202,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    const nextEtag = await saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
+    const nextEtag = await saveDocument("/doc", "# x", ydoc, undefined, {
       name: "If-Match",
       value: SIDECAR_ETAG,
     });
@@ -170,7 +221,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
+    await saveDocument("/doc", "# x", ydoc, undefined, {
       name: "If-None-Match",
       value: "*",
     });
@@ -190,7 +241,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, undefined, "PUT", null);
+    await saveDocument("/doc", "# x", ydoc, undefined, null);
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers).not.toHaveProperty("If-Match");
@@ -209,10 +260,27 @@ describe("docs-collab-server-io", () => {
     const ydoc = new Y.Doc();
 
     await expect(
-      saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
+      saveDocument("/doc", "# x", ydoc, undefined, {
         name: "If-Match",
         value: SIDECAR_ETAG,
       }),
     ).rejects.toMatchObject({ status: 412 });
+  });
+
+  it("sends a title only when the document adopted one", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const titled = new Y.Doc();
+    writeNoteTitle(titled, "Event");
+    await saveDocument("/notes/items/n1", "# x", titled);
+    const titledFrame = decodeFramedPayload(fetchMock.mock.calls[0]![1]!.body as Uint8Array);
+    expect((titledFrame?.header as { title?: string }).title).toBe("Event");
+
+    await saveDocument("/doc", "# x", new Y.Doc());
+    const plainFrame = decodeFramedPayload(fetchMock.mock.calls[1]![1]!.body as Uint8Array);
+    expect((plainFrame?.header as { title?: string }).title).toBeUndefined();
   });
 });

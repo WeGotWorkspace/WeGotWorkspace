@@ -181,7 +181,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       authToken: collabAuthToken,
       documentUrl,
       yjsUrl,
-      documentSaveMethod: "PUT" as const,
       room,
     };
   }, [collabAuthToken, filePath, showCollab]);

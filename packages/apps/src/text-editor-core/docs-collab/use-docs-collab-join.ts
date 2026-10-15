@@ -7,7 +7,6 @@ import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/brow
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
-  clearDocsCollabPendingServerSave,
   docsCollabIndexedDbKey,
   migrateDocsCollabPendingSaveFromLegacy,
 } from "./docs-collab-persistence";
@@ -20,18 +19,14 @@ import {
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import {
-  fetchYjsSnapshot,
-  loadMarkdown,
-  loadYjsSnapshot,
-  saveDocument,
-} from "./docs-collab-server-io";
+import { fetchYjsSnapshot, loadCollabText } from "./docs-collab-server-io";
+import { decideExternalWrite, replaceDocumentWithExternalText } from "./docs-collab-external-write";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
   loadBootstrapInParallel,
 } from "./docs-collab-bootstrap";
-import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
+import { forgetSidecarEtag, rememberSidecarEtag } from "./docs-collab-etag";
 import {
   canSeedFromFile,
   markSeedDoneAfterSnapshot,
@@ -50,7 +45,6 @@ import {
   colorForName,
   docSignature,
   isRemoteUpdateOrigin,
-  isCollabPreconditionFailed,
   isYDocEmpty,
   MESH_ORIGIN,
   SERVER_ORIGIN,
@@ -126,6 +120,9 @@ export function useDocsCollabJoin({
     const ydoc = refs.ydocRef.current;
     const meshSession = refs.meshRef.current;
     const markdown = refs.pendingMarkdownRef.current;
+    // An outside write is waiting on the person. Seeding the server markdown
+    // here would overwrite the unsaved local document before they choose.
+    if (refs.externalWriteHoldRef.current) return;
     if (!ydoc || !markdown || refs.seedDoneRef.current) return;
     if (!isYDocEmpty(ydoc)) {
       markDocReady();
@@ -170,6 +167,8 @@ export function useDocsCollabJoin({
     refs.seedDoneRef.current = reset.seedDone;
     refs.localDirtySinceLastSaveRef.current = reset.localDirtySinceLastSave;
     refs.pendingServerSaveRef.current = reset.pendingServerSave;
+    refs.externalWriteHoldRef.current = false;
+    refs.markdownOverrideRef.current = null;
     refs.lastKnownMarkdownRef.current = reset.lastKnownMarkdown;
     refs.lastSuccessfulSaveSignatureRef.current = reset.lastSuccessfulSaveSignature;
     refs.saveFailedRef.current = reset.saveFailed;
@@ -228,13 +227,36 @@ export function useDocsCollabJoin({
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
-      if (urls.skipYjsSnapshot) return false;
-      const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
+      const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
       rememberSidecarEtag(room, snapshot.etag);
-      if (snapshot.applied) setSnapshotPreview(null);
-      return snapshot.applied;
+      if (!snapshot.update) return false;
+
+      const pendingLocalWork =
+        refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+      const action = decideExternalWrite(snapshot.externalWrite === true, pendingLocalWork);
+      if (action === "prompt") {
+        const text = await loadCollabText(urls.documentUrl, authToken);
+        refs.externalWriteHoldRef.current = true;
+        urls.onExternalWrite?.({ markdown: text.markdown, title: text.title });
+        return false;
+      }
+      if (action === "rebuild") {
+        const text = await loadCollabText(urls.documentUrl, authToken);
+        replaceDocumentWithExternalText(ydoc, text.markdown, text.title, documentFormat);
+        refs.markdownOverrideRef.current = text.markdown;
+        refs.externalWriteHoldRef.current = false;
+        refs.localDirtySinceLastSaveRef.current = true;
+        refs.lastSuccessfulSaveSignatureRef.current = null;
+        await updatePendingState(true, false);
+        setSnapshotPreview(null);
+        return true;
+      }
+
+      Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
+      setSnapshotPreview(null);
+      return true;
     },
-    [refs, room, urls.yjsUrl, urls.skipYjsSnapshot],
+    [documentFormat, refs, room, updatePendingState, urls],
   );
 
   const applyServerBootstrap = useCallback(
@@ -242,12 +264,14 @@ export function useDocsCollabJoin({
       const ydoc = refs.ydocRef.current;
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
+      let loadedTitle: string | null = null;
       const load = await loadBootstrapInParallel({
-        loadMarkdown: () =>
-          urls.loadDocumentMarkdown
-            ? urls.loadDocumentMarkdown(authToken)
-            : loadMarkdown(urls.documentUrl, authToken),
-        fetchSnapshot: urls.skipYjsSnapshot ? null : () => fetchYjsSnapshot(urls.yjsUrl, authToken),
+        loadMarkdown: async () => {
+          const text = await loadCollabText(urls.documentUrl, authToken);
+          loadedTitle = text.title;
+          return text.markdown;
+        },
+        fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, authToken),
         // Teardown drops the doc it is loading into; stop retrying then.
         isCurrent: () =>
           isJoinGenerationCurrent(generation, refs.joinGenerationRef) &&
@@ -257,10 +281,7 @@ export function useDocsCollabJoin({
       if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       if (load.markdownError) {
-        if (isCollabPreconditionFailed(load.markdownError)) {
-          urls.onReconnectConflict?.();
-          return;
-        }
+        // A stale text read is not a choice screen. The snapshot still merges.
         console.warn("[docs-collab] markdown load failed", load.markdownError);
       }
 
@@ -279,19 +300,36 @@ export function useDocsCollabJoin({
         return;
       }
 
+      let settlement: "adopted" | "rebuilt" | "prompted" | "other" = "other";
       if (snapshot.kind === "snapshot") {
-        const adoption = decideServerStateAdoption({
-          hasServerSnapshot: true,
-          pendingServerSave: refs.pendingServerSaveRef.current,
-        });
-        if (adoption === "adopt-server") {
-          adoptServerSnapshot(ydoc, snapshot.update, SERVER_ORIGIN);
-        } else {
-          Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
-        }
+        const pendingLocalWork =
+          refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
+        const action = decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
         rememberSidecarEtag(room, snapshot.etag);
-        if (markSeedDoneAfterSnapshot(ydoc)) {
+        if (action === "prompt") {
+          refs.externalWriteHoldRef.current = true;
+          urls.onExternalWrite?.({ markdown: load.markdown, title: loadedTitle });
+          settlement = "prompted";
+        } else if (action === "rebuild") {
+          replaceDocumentWithExternalText(ydoc, load.markdown, loadedTitle, documentFormat);
+          refs.markdownOverrideRef.current = load.markdown;
+          refs.externalWriteHoldRef.current = false;
           refs.seedDoneRef.current = true;
+          settlement = "rebuilt";
+        } else {
+          const adoption = decideServerStateAdoption({
+            hasServerSnapshot: true,
+            pendingServerSave: refs.pendingServerSaveRef.current,
+          });
+          if (adoption === "adopt-server") {
+            adoptServerSnapshot(ydoc, snapshot.update, SERVER_ORIGIN);
+          } else {
+            Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
+          }
+          if (markSeedDoneAfterSnapshot(ydoc)) {
+            refs.seedDoneRef.current = true;
+          }
+          settlement = "adopted";
         }
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
@@ -304,12 +342,20 @@ export function useDocsCollabJoin({
       }
 
       const seed = resolveBootstrapSeed(markdown, refs.seedContentRef.current);
-      refs.pendingMarkdownRef.current = seed;
-      refs.lastKnownMarkdownRef.current = markdown;
-      refs.lastSuccessfulSaveSignatureRef.current = docSignature(markdown, ydoc);
-      refs.localDirtySinceLastSaveRef.current = false;
+      // The prompt keeps the local document. Queueing the server markdown
+      // would let a later mesh seed replace that document.
+      refs.pendingMarkdownRef.current = settlement === "prompted" ? "" : seed;
+      refs.lastKnownMarkdownRef.current = settlement === "prompted" ? "" : markdown;
+      if (settlement === "rebuilt") {
+        refs.localDirtySinceLastSaveRef.current = true;
+        refs.lastSuccessfulSaveSignatureRef.current = null;
+        await updatePendingState(true, false);
+      } else if (settlement !== "prompted") {
+        refs.lastSuccessfulSaveSignatureRef.current = docSignature(markdown, ydoc);
+        refs.localDirtySinceLastSaveRef.current = false;
+      }
 
-      if (!refs.seedDoneRef.current && isYDocEmpty(ydoc)) {
+      if (settlement !== "prompted" && !refs.seedDoneRef.current && isYDocEmpty(ydoc)) {
         const meshSession = refs.meshRef.current;
         if (shouldApplyImmediateSeed(meshSession, ydoc, refs.seedDoneRef.current, seed)) {
           applyContentSeedToYDoc(ydoc, seed, documentFormat);
@@ -320,7 +366,9 @@ export function useDocsCollabJoin({
           refs.seedTimerRef.current = setTimeout(tick, 1000);
           setTimeout(tick, 3000);
         }
-      } else if (hadSnapshot) {
+      } else if (settlement === "rebuilt") {
+        setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
+      } else if (hadSnapshot && settlement === "adopted") {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
       }
 
@@ -331,6 +379,7 @@ export function useDocsCollabJoin({
       flushMeshSyncIfHydrated,
       markDocReady,
       refs,
+      updatePendingState,
       room,
       setDocStatus,
       trySeedFromFile,
@@ -551,38 +600,11 @@ export function useDocsCollabJoin({
     });
   }, [finishAuthenticatedJoin, joined, refs, room, urls.authToken, userName]);
 
-  const leave = useCallback(async () => {
-    const getMd = refs.getMarkdownRef.current;
-    const ydoc = refs.ydocRef.current;
-    let saved = false;
-    if (getMd && ydoc) {
-      try {
-        const etag = await saveDocument(
-          urls.documentUrl,
-          getMd(),
-          ydoc,
-          refs.authTokenRef.current,
-          urls.documentSaveMethod ?? "POST",
-          sidecarPrecondition(room),
-        );
-        rememberSidecarEtag(room, etag);
-        saved = true;
-      } catch {
-        // ignore
-      }
-    }
-    if (saved) {
-      await clearDocsCollabPendingServerSave(room);
-    }
-    await teardown();
-  }, [refs, room, teardown, urls.documentSaveMethod, urls.documentUrl]);
-
   return {
     session,
     joined,
     snapshotPreview,
     join,
-    leave,
     teardown,
     markDocReady,
     trySeedFromFile,
