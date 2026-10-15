@@ -131,20 +131,20 @@ describe("PWA icon artwork", () => {
     const inApp = readFileSync(join(sourceDir, "home.svg"), "utf8");
 
     expect(install).toContain('viewBox="0 0 60 60"');
-    expect(install).toContain('fill="var(--color-we-got-dark, #222222)"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
     expect(install).toContain('fill="url(#home-pwa-clover)"');
-    expect(install).toContain('stop-color="var(--color-we-got-soft, #eeeeee)"');
+    expect(install).toContain('stop-color="var(--color-we-got-soft, #fff5e9)"');
     expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
     expect(install).not.toContain("--wai-");
     expect(install).not.toContain("--app-icon-layer-");
     const raster = svgForRasterization(install);
     expect(raster).not.toContain("var(");
-    expect(raster).toContain("#222222");
-    expect(raster).toContain("#eeeeee");
+    expect(raster).toContain("#003311");
+    expect(raster).toContain("#fff5e9");
     expect(raster).toContain("#8ace00");
     expect(inApp).toContain('viewBox="0 0 60 60"');
     expect(inApp).toContain(
-      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #222222))"',
+      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #003311))"',
     );
     expect(inApp).not.toContain("linearGradient");
   });

@@ -1,6 +1,6 @@
 import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
 
-export type PrincipalLinkSend = (payload: unknown) => void;
+export type PrincipalLinkSend = (payload: unknown, bytes?: Uint8Array) => void;
 
 export type PrincipalLink = {
   username: string;
@@ -90,16 +90,16 @@ export class PrincipalLinkRegistry {
     this.connectingUsernames = new Set(usernames);
   }
 
-  sendToUsername(username: string, payload: unknown): number {
+  sendToUsername(username: string, payload: unknown, bytes?: Uint8Array): number {
     const links = this.linksForUsername(username);
-    for (const link of links) link.send(payload);
+    for (const link of links) link.send(payload, bytes);
     return links.length;
   }
 
-  sendToPrincipalPeer(principalPeerId: string, payload: unknown): boolean {
+  sendToPrincipalPeer(principalPeerId: string, payload: unknown, bytes?: Uint8Array): boolean {
     const link = this.links.get(principalPeerId);
     if (!link) return false;
-    link.send(payload);
+    link.send(payload, bytes);
     return true;
   }
 

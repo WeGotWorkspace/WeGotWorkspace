@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachReusePayload,
   parseCollabReuseEnvelope,
   serializeCollabReuseEnvelope,
 } from "@/lib/rtc/session/collab-reuse-envelope";
@@ -35,7 +36,7 @@ describe("collab-reuse envelope", () => {
       room: "/groups/administrators/team-notes.md",
       op: "data" as const,
       collabPeerId: "aaaaaaaaaaaaaaaa",
-      payload: { type: "sync", u: [1, 2, 3] },
+      payload: { type: "sync", bin: 1 },
     };
 
     expect(parseCollabReuseEnvelope(serializeCollabReuseEnvelope(open))).toEqual(open);
@@ -87,5 +88,25 @@ describe("collab-reuse envelope", () => {
         JSON.stringify({ v: 1, kind: "collab-reuse", room: "x", op: "data" }),
       ),
     ).toBeNull();
+  });
+
+  it("puts the frame tail on the nested payload and leaves the envelope unmarked", () => {
+    const envelope = parseCollabReuseEnvelope(
+      JSON.stringify({
+        v: 1,
+        kind: "collab-reuse",
+        room: "/doc.md",
+        op: "data",
+        payload: { type: "sync", bin: 1 },
+      }),
+    );
+    expect(envelope).not.toBeNull();
+    const attached = attachReusePayload(envelope!, Uint8Array.of(4, 5));
+    expect(attached).not.toHaveProperty("bin");
+    expect(attached.payload).toEqual({ type: "sync", u: Uint8Array.of(4, 5) });
+    expect(attachReusePayload(envelope!, null).payload).toEqual({
+      type: "sync",
+      u: new Uint8Array(0),
+    });
   });
 });

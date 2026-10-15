@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  encodeBinaryFrames,
+  encodeDataChannelMessage,
+} from "@/lib/rtc/session/data-channel-frames";
+import {
   MEET_DATA_CHANNEL_ID,
   MEET_DATA_CHANNEL_INIT,
   MEET_UNRELIABLE_DATA_CHANNEL_ID,
@@ -75,7 +79,15 @@ describe("openMeetDataChannel", () => {
     channel.onmessage?.({
       data: JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hi", ts: 1 }),
     } as MessageEvent);
+    expect(onText).not.toHaveBeenCalled();
+
+    const json = JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hi", ts: 1 });
+    const frame = encodeBinaryFrames(encodeDataChannelMessage(json), 1)[0];
+    if (!frame) throw new Error("expected a meet frame");
+    channel.onmessage?.({ data: frame } as MessageEvent);
     expect(onText).toHaveBeenCalledTimes(1);
+    expect(onText).toHaveBeenCalledWith(json);
+
     channel.onmessage?.({ data: new ArrayBuffer(4) } as MessageEvent);
     expect(onText).toHaveBeenCalledTimes(1);
   });

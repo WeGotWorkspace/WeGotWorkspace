@@ -29,9 +29,9 @@ export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   tasks: "#ffbdc2",
   drive: "#8ACE00",
   docs: "#0045ff",
-  settings: "#222222",
+  settings: "#003311",
   meet: "#ffc800",
-  admin: "#222222",
+  admin: "#003311",
 };
 
 const APPLE_TOUCH_SIZE = 180;

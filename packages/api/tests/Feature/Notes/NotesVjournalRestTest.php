@@ -9,6 +9,7 @@ use App\Models\NoteStar;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\Conversion\NoteJournalConverter;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -225,6 +226,106 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('title', 'Updated')
             ->assertJsonPath('body', 'hello');
+    }
+
+    public function test_patch_reloads_the_note_row_for_update(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Title',
+            'body' => 'hello',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+
+        $sql = [];
+        $capture = true;
+        DB::connection('wgw')->listen(function (QueryExecuted $query) use (&$sql, &$capture): void {
+            if ($capture && $query->connectionName === 'wgw') {
+                $sql[] = $query->sql;
+            }
+        });
+
+        try {
+            $this->asBob()->withHeaders(['If-Match' => $etag])
+                ->patchJson('/api/v1/notes/items/'.$id, ['title' => 'Locked'])
+                ->assertOk()
+                ->assertJsonPath('title', 'Locked');
+        } finally {
+            $capture = false;
+        }
+
+        if (DB::connection('wgw')->getDriverName() === 'sqlite') {
+            $this->markTestSkipped('SQLite lockForUpdate is a no-op and does not emit FOR UPDATE.');
+        }
+
+        $locked = array_values(array_filter(
+            $sql,
+            static fn (string $statement): bool => str_contains(strtolower($statement), 'calendarobjects')
+                && str_contains(strtolower($statement), 'for update'),
+        ));
+        $this->assertNotEmpty($locked, 'PATCH must reload calendarobjects with FOR UPDATE.');
+    }
+
+    public function test_patch_rolls_back_when_ics_merge_fails(): void
+    {
+        $dest = (string) $this->asBob()->postJson('/api/v1/notes/notebooks', ['name' => 'Elsewhere'])
+            ->assertCreated()
+            ->json('id');
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Keep me',
+            'body' => 'original',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+        $stored = CalendarObject::query()->where('uid', $id)->first();
+        $this->assertNotNull($stored);
+        $calendarData = (string) $stored->calendardata;
+        $storedEtag = (string) $stored->etag;
+        $calendarId = (int) $stored->calendarid;
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, [
+                'notebookId' => $dest,
+                'body' => str_repeat('x', NoteJournalConverter::MAX_MARKDOWN_BYTES + 1),
+            ])
+            ->assertStatus(413)
+            ->assertJsonPath('code', 'payload_too_large');
+
+        $stored->refresh();
+        $this->assertSame($calendarData, (string) $stored->calendardata);
+        $this->assertSame($storedEtag, (string) $stored->etag);
+        $this->assertSame($calendarId, (int) $stored->calendarid);
+        $this->asBob()->getJson('/api/v1/notes/items/'.$id)
+            ->assertOk()
+            ->assertJsonPath('notebookId', CalendarCollectionUris::NOTE_GENERAL)
+            ->assertJsonPath('title', 'Keep me')
+            ->assertJsonPath('body', 'original');
+    }
+
+    public function test_patch_move_and_field_change_apply_together(): void
+    {
+        $dest = (string) $this->asBob()->postJson('/api/v1/notes/notebooks', ['name' => 'Moved'])
+            ->assertCreated()
+            ->json('id');
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Before',
+            'body' => 'keep',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, [
+                'notebookId' => $dest,
+                'title' => 'After',
+            ])
+            ->assertOk()
+            ->assertJsonPath('notebookId', $dest)
+            ->assertJsonPath('title', 'After')
+            ->assertJsonPath('body', 'keep');
     }
 
     public function test_delete_succeeds_without_if_match_and_honors_it_when_sent(): void

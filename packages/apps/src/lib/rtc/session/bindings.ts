@@ -37,7 +37,7 @@ export function createMediaBinding(options: MediaBindingOptions) {
 export type DataBindingOptions = {
   label: string;
   onOpen?: (remoteId: string, channel: RTCDataChannel) => void;
-  onMessage?: (remoteId: string, data: string) => void;
+  onMessage?: (remoteId: string, json: string, payload: Uint8Array | null) => void;
   onClose?: (remoteId: string) => void;
 };
 
@@ -51,8 +51,8 @@ export function createDataBinding(options: DataBindingOptions) {
       options.onClose?.(remoteId);
     };
     channel.onmessage = (event) => {
-      const text = ingestDataChannelData(reassembler, remoteId, event.data);
-      if (text !== null) options.onMessage?.(remoteId, text);
+      const decoded = ingestDataChannelData(reassembler, remoteId, event.data);
+      if (decoded) options.onMessage?.(remoteId, decoded.json, decoded.payload);
     };
     return channel;
   };

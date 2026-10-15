@@ -196,7 +196,7 @@ export function useDocsCollabMesh({
       // so a refused update must not be relayed either.
       let mayRelayToTabs = true;
 
-      if (msg.type === "sync" && Array.isArray(msg.u)) {
+      if (msg.type === "sync" && msg.u instanceof Uint8Array) {
         const outcome = handleGuardedSyncMessage({
           bytes: msg.u,
           ydoc,
@@ -214,7 +214,7 @@ export function useDocsCollabMesh({
         // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
-      if (msg.type === "awareness" && Array.isArray(msg.u)) {
+      if (msg.type === "awareness" && msg.u instanceof Uint8Array) {
         applyAwarenessUpdate(msg.u, awareness, MESH_ORIGIN);
       }
       if ((msg.type === "dc-open" || msg.type === "resync") && msg.from) {

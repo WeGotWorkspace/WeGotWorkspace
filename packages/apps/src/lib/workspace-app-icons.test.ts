@@ -55,11 +55,11 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
 
     expect(notes).toContain('d="M28 43a2 2 0');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#eeeeee");
+    expect(notes).toContain("#fff5e9");
     expect(notes).not.toContain("44.868");
     expect(contacts).toContain("44.868");
     expect(contacts).toContain("#a3c4e8");
-    expect(contacts).toContain("#eeeeee");
+    expect(contacts).toContain("#fff5e9");
     expect(contacts).not.toContain('d="M28 43a2 2 0');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });
@@ -70,10 +70,10 @@ describe("WORKSPACE_HOME_ICON_INLINE", () => {
     expect(WORKSPACE_HOME_ICON_INLINE).toMatch(/^<svg[\s>]/);
     expect(WORKSPACE_HOME_ICON_INLINE).toContain('viewBox="0 0 60 60"');
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
-      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #222222))"',
+      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #003311))"',
     );
     expect(WORKSPACE_HOME_ICON_INLINE).toContain(
-      'fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))"',
+      'fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))"',
     );
     expect(WORKSPACE_HOME_ICON_INLINE).toContain('d="M40 30c5.523 0 10-4.477 10-10');
     expect(WORKSPACE_HOME_ICON_INLINE).not.toContain('viewBox="0 0 270 270"');

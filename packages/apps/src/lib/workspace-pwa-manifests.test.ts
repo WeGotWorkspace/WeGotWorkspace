@@ -100,16 +100,16 @@ describe("workspace PWA manifests", () => {
 
     expect(svg).toContain('viewBox="0 0 60 60"');
     expect(svg).toContain(
-      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #222222))"',
+      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #003311))"',
     );
     expect(svg).toContain(
-      'fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))"',
+      'fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))"',
     );
     expect(svg).not.toContain('viewBox="0 0 270 270"');
     expect(svg).not.toContain("linearGradient");
     expect(install).toContain('viewBox="0 0 60 60"');
-    expect(install).toContain('fill="var(--color-we-got-dark, #222222)"');
-    expect(install).toContain('stop-color="var(--color-we-got-soft, #eeeeee)"');
+    expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
+    expect(install).toContain('stop-color="var(--color-we-got-soft, #fff5e9)"');
     expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
     expect(install).not.toContain("--wai-");
     expect(raw).toContain(`"/pwa-icons/home-512.png?v=${version}"`);

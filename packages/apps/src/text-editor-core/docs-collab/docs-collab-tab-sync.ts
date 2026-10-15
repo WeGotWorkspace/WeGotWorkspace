@@ -19,16 +19,16 @@ export type TabMeshStateSnapshot = {
 };
 
 export type TabSyncMessage =
-  | { type: "sync"; u: number[]; fromTab: string }
-  | { type: "awareness"; u: number[]; fromTab: string }
+  | { type: "sync"; u: Uint8Array; fromTab: string }
+  | { type: "awareness"; u: Uint8Array; fromTab: string }
   | { type: "tab-ping"; tabId: string; visible: boolean; at: number; isLeader?: boolean }
   | { type: "tab-leave"; tabId: string; at: number }
   | { type: "leader-resign"; tabId: string; at: number }
   | ({ type: "mesh-state"; fromTab: string } & TabMeshStateSnapshot);
 
 export type TabSyncHandlers = {
-  onSyncFromTab: (updateBytes: number[]) => void;
-  onAwarenessFromTab: (updateBytes: number[]) => void;
+  onSyncFromTab: (updateBytes: Uint8Array) => void;
+  onAwarenessFromTab: (updateBytes: Uint8Array) => void;
   onMeshStateFromLeader: (state: TabMeshStateSnapshot) => void;
   onBecomeLeader: () => void;
   onResignLeader: () => void;
@@ -81,7 +81,7 @@ export function isTabSyncMessage(value: unknown): value is TabSyncMessage {
   if (!value || typeof value !== "object") return false;
   const msg = value as Partial<TabSyncMessage>;
   if (msg.type === "sync" || msg.type === "awareness") {
-    return typeof msg.fromTab === "string" && Array.isArray(msg.u);
+    return typeof msg.fromTab === "string" && msg.u instanceof Uint8Array;
   }
   if (msg.type === "tab-ping" || msg.type === "tab-leave" || msg.type === "leader-resign") {
     return typeof msg.tabId === "string";
@@ -176,7 +176,7 @@ export type MeshRelayMessage = Extract<DocsCollabMeshMessage, { type: "sync" | "
 
 export function meshMessageForTabRelay(msg: DocsCollabMeshMessage): MeshRelayMessage | null {
   if (msg.type !== "sync" && msg.type !== "awareness") return null;
-  if (!Array.isArray(msg.u)) return null;
+  if (!(msg.u instanceof Uint8Array)) return null;
   return msg;
 }
 
@@ -274,11 +274,11 @@ export class DocsCollabTabCoordinator {
     this.knownLeaderId = null;
   }
 
-  publishSync(encoded: number[]): void {
+  publishSync(encoded: Uint8Array): void {
     this.post({ type: "sync", u: encoded, fromTab: this.tabId });
   }
 
-  publishAwareness(encoded: number[]): void {
+  publishAwareness(encoded: Uint8Array): void {
     this.post({ type: "awareness", u: encoded, fromTab: this.tabId });
   }
 

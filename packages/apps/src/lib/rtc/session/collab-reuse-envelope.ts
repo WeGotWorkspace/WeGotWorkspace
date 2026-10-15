@@ -69,3 +69,21 @@ export function parseCollabReuseEnvelopeValue(data: unknown): CollabReuseEnvelop
   }
   return parsed;
 }
+
+/**
+ * A reuse `data` envelope carries Yjs bytes in the frame tail. `bin: 1` on
+ * the nested payload says the tail belongs there, not on the envelope.
+ */
+export function attachReusePayload(
+  envelope: CollabReuseEnvelope,
+  bytes: Uint8Array | null,
+): CollabReuseEnvelope {
+  if (envelope.op !== "data" || !envelope.payload || typeof envelope.payload !== "object") {
+    return envelope;
+  }
+  const nested = envelope.payload as Record<string, unknown>;
+  if (nested.bin !== 1) return envelope;
+  const payload: Record<string, unknown> = { ...nested, u: bytes ?? new Uint8Array(0) };
+  delete payload.bin;
+  return { ...envelope, payload };
+}
