@@ -6,6 +6,7 @@ namespace Tests\Feature\Search;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Search\UnifiedSearchService;
 use App\Storage\WgwStorage;
@@ -90,7 +91,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
             'size' => 140,
         ]);
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $token = $this->issueBearerToken();
         $response = $this->withBearer($token)
@@ -117,7 +118,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $storage->files()->put('users/alice/newer.md', '# Newer doc');
         $storage->files()->put('users/alice/newest.md', '# Newest doc');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $this->setModifiedTs('users/alice/older.md', 1000);
         $this->setModifiedTs('users/alice/newer.md', 2000);
@@ -154,7 +155,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $storage->files()->put('users/alice/b.md', '# B');
         $storage->files()->put('users/alice/c.md', '# C');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $this->setModifiedTs('users/alice/a.md', 3000);
         $this->setModifiedTs('users/alice/b.md', 2000);
@@ -204,7 +205,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $storage->files()->put('users/alice/my-drive-doc.md', '# My Drive doc');
         $storage->files()->put('groups/team/team-doc.md', '# Team doc');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $token = $this->issueBearerToken();
 
@@ -252,7 +253,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $storage = app(WgwStorage::class);
         $storage->files()->put('users/alice/private-alice.md', '# Alice private');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $bobToken = $this->issueBearerToken('bob');
         $response = $this->withBearer($bobToken)
@@ -270,7 +271,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
     {
         app(WgwStorage::class)->files()->put('users/alice/guide.markdown', '# Guide');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $indexed = DB::connection('wgw')->table('search_documents')
             ->where('source_type', 'file')
@@ -294,6 +295,16 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $this->assertContains('users/alice/guide.markdown', $keys);
     }
 
+    /**
+     * SearchIndexerService::reindexAllFromFileNodes() projects live file nodes.
+     * Backfill those nodes from disk first; SearchReindexRunner does the same.
+     */
+    private function reindexAll(): void
+    {
+        app(FileNodeIndexService::class)->reindexAll();
+        app(SearchIndexerService::class)->reindexAllFromFileNodes();
+    }
+
     private function setModifiedTs(string $sourceKey, int $ts): void
     {
         DB::connection('wgw')->table('search_documents')
@@ -308,7 +319,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         app(WgwStorage::class)->files()->put('users/alice/meeting-alpha.csv', "name,value\nalpha,1");
         app(WgwStorage::class)->files()->put('users/bob/secretbob.md', 'secretbob private for bob');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $token = $this->issueBearerToken();
         $filtered = $this->withBearer($token)
@@ -379,7 +390,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
             'uid' => 'grp-1',
         ]);
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $indexed = DB::connection('wgw')
             ->table('search_documents')
@@ -410,7 +421,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
             "---\ntitle: Sprint\naudience: team-alpha\n---\n# Sprint plan\n- [Release Notes](https://example.test/release)\n**Ship** the _feature_ with `command --flag`\n"
         );
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $indexed = DB::connection('wgw')->table('search_documents')
             ->where('source_type', 'file')
@@ -437,12 +448,17 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
     {
         app(WgwStorage::class)->files()->put('users/alice/.secret.md', 'hidden should not index');
         app(WgwStorage::class)->files()->put('users/alice/.hidden/folder.md', 'hidden folder should not index');
+        app(WgwStorage::class)->files()->put('users/alice/.Trash/trashed.md', 'trashed should not index');
+        app(WgwStorage::class)->files()->put('users/alice/.attachments/fn-1/pic.png', 'attachment should not index');
         app(WgwStorage::class)->files()->put(
             'users/alice/.notes/n-123.md',
             "---\ntitle: My Note Title\n---\nMy note body\nsecond line"
         );
+        app(WgwStorage::class)->files()->put('users/alice/.Trash/.notes/n-1.md', 'trash wins over a later note segment');
+        app(WgwStorage::class)->files()->put('users/alice/.attachments/.notes/n-2.md', 'attachment wins over a later note segment');
+        app(WgwStorage::class)->files()->put('users/alice/.notes/.Trash/n-3.md', 'trash wins over an earlier note segment');
 
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $hiddenFile = DB::connection('wgw')->table('search_documents')
             ->where('source_type', 'file')
@@ -456,9 +472,29 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
             ->where('source_type', 'note')
             ->where('source_key', 'users/alice/.notes/n-123.md')
             ->first();
+        $trashFile = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.Trash/trashed.md')
+            ->first();
+        $attachmentFile = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.attachments/fn-1/pic.png')
+            ->first();
+        $trashThenNote = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.Trash/.notes/n-1.md')
+            ->first();
+        $attachmentThenNote = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.attachments/.notes/n-2.md')
+            ->first();
+        $noteThenTrash = DB::connection('wgw')->table('search_documents')
+            ->where('source_key', 'users/alice/.notes/.Trash/n-3.md')
+            ->first();
 
         $this->assertNull($hiddenFile);
         $this->assertNull($hiddenFolderFile);
+        $this->assertNull($trashFile);
+        $this->assertNull($attachmentFile);
+        $this->assertNull($trashThenNote);
+        $this->assertNull($attachmentThenNote);
+        $this->assertNull($noteThenTrash);
         $this->assertNotNull($noteFile);
         $this->assertSame('note', $noteFile->category);
         $this->assertSame('note', $noteFile->source_subtype);
@@ -514,7 +550,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
         $storage = app(WgwStorage::class)->files();
         $storage->put('users/alice/early-token.md', 'aa01 appears here');
         $storage->put('users/alice/eleventh-token.md', 'zz99 appears here');
-        app(SearchIndexerService::class)->reindexAll();
+        $this->reindexAll();
 
         $tokens = [];
         for ($i = 1; $i <= 10; $i++) {

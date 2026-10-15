@@ -4,15 +4,29 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use Illuminate\Support\Facades\Cache;
 
 final class SearchReindexRunner
 {
-    private const STALE_PROGRESS_SECONDS = 120;
+    /**
+     * The reindex runs inside one HTTP request. This only has to outlive a
+     * request the worker is allowed to finish; a killed worker must not
+     * block the next attempt for hours.
+     */
+    private const LOCK_TTL_SECONDS = 900;
+
+    /**
+     * How long a phase may sit without a progress tick before a status poll
+     * treats the run as dead. The file listing before the first backfill tick
+     * can outlast a couple of minutes on a large disk.
+     */
+    private const STALE_PROGRESS_SECONDS = 600;
 
     public function __construct(
         private SearchReindexStateStore $store,
         private SearchIndexerService $indexer,
+        private FileNodeIndexService $fileNodes,
     ) {}
 
     /**
@@ -40,7 +54,7 @@ final class SearchReindexRunner
     public function run(): array
     {
         $this->store->ensureDirs();
-        $lock = Cache::lock('search-reindex-runner', 900);
+        $lock = Cache::lock('search-reindex-runner', self::LOCK_TTL_SECONDS);
         if (! $lock->get()) {
             throw new \RuntimeException('Another search reindex process is already running.');
         }
@@ -55,8 +69,19 @@ final class SearchReindexRunner
             $this->writePhase('starting');
             $this->store->appendLog('Search reindex started.');
 
+            $this->writePhase('indexing_file_nodes');
+            $this->fileNodes->reindexAll(progress: function (int $done, int $total): void {
+                if ($this->store->isCancelRequested()) {
+                    throw new \RuntimeException('Search reindex cancelled by user.');
+                }
+                $this->writeProgress('indexing_file_nodes', $done, $total);
+            });
+            if ($this->store->isCancelRequested()) {
+                throw new \RuntimeException('Search reindex cancelled by user.');
+            }
+
             $phaseMap = ['files' => 'indexing_files', 'caldav' => 'indexing_caldav', 'carddav' => 'indexing_carddav'];
-            $this->indexer->reindexAll(function (int $done, int $total, string $phase) use ($phaseMap): void {
+            $this->indexer->reindexAllFromFileNodes(function (int $done, int $total, string $phase) use ($phaseMap): void {
                 if ($this->store->isCancelRequested()) {
                     throw new \RuntimeException('Search reindex cancelled by user.');
                 }

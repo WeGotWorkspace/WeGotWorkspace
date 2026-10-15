@@ -55,6 +55,23 @@ describe("notes persist 404", () => {
     expect(isNotesPersistGone({ status: 404 }, "note-1")).toBe(true);
   });
 
+  it("warns with the note id when a 412 sync race is swallowed", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const onGone = vi.fn();
+    await expect(
+      persistNoteKeepingSyncRace(
+        Promise.reject(Object.assign(new Error("precondition"), { status: 412 })),
+        onGone,
+        "note-1",
+      ),
+    ).resolves.toBeUndefined();
+    expect(onGone).not.toHaveBeenCalled();
+    expect(warn.mock.calls.some((call) => call.map(String).join(" ").includes("note-1"))).toBe(
+      true,
+    );
+    warn.mockRestore();
+  });
+
   it("keeps optimistic tags on 412 or local-* 404 via persistNoteKeepingSyncRace", async () => {
     const onGone = vi.fn();
     await expect(
