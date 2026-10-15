@@ -13,6 +13,11 @@ final class DataDirInstallCoordinator
     public function __construct(private DataDirCandidateResolver $resolver) {}
 
     /**
+     * Reading installer state claims the directory. That reservation closes
+     * the race between two installs. The per-install candidate name means an
+     * abandoned claim does not take the only outside directory away from a
+     * later install under the same parent.
+     *
      * @param  array<string, mixed>  $state
      * @return array{path: string, reason: string, inside_web_root: bool}
      */
@@ -59,19 +64,5 @@ final class DataDirInstallCoordinator
         $state['data_dir_choice'] = $choice->toState();
 
         return [$state, $this->resolver->placeSqliteDatabase($db, $choice->path)];
-    }
-
-    /**
-     * @param  array<string, mixed>  $state
-     */
-    public function shouldRecordInsideWebRoot(array $state): bool
-    {
-        $stored = $state['data_dir_choice'] ?? null;
-        if (! is_array($stored)) {
-            return false;
-        }
-        $choice = DataDirChoice::fromState($stored);
-
-        return $choice !== null && $choice->isFallback();
     }
 }

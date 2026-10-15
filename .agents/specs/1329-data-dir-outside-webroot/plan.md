@@ -49,7 +49,7 @@ None.
 ## Invariants
 
 - An explicit `WGW_DATA_DIR` other than the stock default is not replaced, and no sibling directory is created. Proof: `path: packages/api/tests/Unit/Installer/DataDirCandidateResolverTest.php` assertion `test_explicit_data_dir_is_returned_unchanged`.
-- A second install that shares a parent does not write into the first install's data directory. Proof: `path: packages/api/tests/Unit/Installer/DataDirCandidateResolverTest.php` assertion `test_second_install_sharing_a_parent_falls_back_instead_of_sharing`.
+- A second install that shares a parent does not write into the first install's data directory, and its own directory stays outside the published tree. Proof: `path: packages/api/tests/Unit/Installer/DataDirCandidateResolverTest.php` assertion `test_second_install_sharing_a_parent_gets_its_own_directory_outside`.
 - A fresh wizard install whose parent is writable stores the database outside the document root and can read the admin user back. Proof: `path: packages/api/tests/Feature/Installer/DataDirInstallTest.php` assertion `test_fresh_install_puts_the_database_outside_the_document_root`.
 - Installer tests that pin `WGW_DATA_DIR` to the in-tree fixture still install there. Proof: `path: packages/api/tests/Feature/Installer/InstallerWizardTest.php` assertion `test_happy_path_creates_first_admin_and_sets_realm`.
 - After the resolver, the wizard, and the warning, a pinned in-tree install still completes. Proof: `cmd: composer --working-dir packages/api exec phpunit -- tests/Feature/Installer/InstallerWizardTest.php tests/Unit/Installer/WgwInstallEnvTest.php`.

@@ -117,7 +117,7 @@ final class DataDirCandidateResolverTest extends TestCase
         $this->assertFileDoesNotExist($this->root.'/wgw-content');
     }
 
-    public function test_second_install_sharing_a_parent_falls_back_instead_of_sharing(): void
+    public function test_second_install_sharing_a_parent_gets_its_own_directory_outside(): void
     {
         $first = $this->makeInstall($this->root.'/app-a');
         $second = $this->makeInstall($this->root.'/app-b');
@@ -126,9 +126,12 @@ final class DataDirCandidateResolverTest extends TestCase
         $other = $this->resolve($second, $second);
 
         $this->assertSame(DataDirChoice::REASON_OUTSIDE, $owned->reason);
-        $this->assertSame(DataDirChoice::REASON_FALLBACK_OWNED, $other->reason);
-        $this->assertSame(DataDirChoice::FALLBACK_PATH, $other->path);
+        $this->assertSame($this->real($this->root.'/wgw-content'), $owned->path);
+        $this->assertSame(DataDirChoice::REASON_OUTSIDE, $other->reason);
+        $this->assertSame($this->real($this->root.'/wgw-content-'.$this->suffix($second)), $other->path);
+        $this->assertFalse($other->insidePublishedTree);
         $this->assertSame($this->real($first), trim((string) file_get_contents($owned->path.'/.wgw-owner')));
+        $this->assertSame($this->real($second), trim((string) file_get_contents($other->path.'/.wgw-owner')));
         $this->assertFileDoesNotExist($second.'/wgw-content/db.sqlite');
     }
 
@@ -147,8 +150,27 @@ final class DataDirCandidateResolverTest extends TestCase
 
         $foreign = $this->resolve($otherInstall, $otherInstall);
 
-        $this->assertSame(DataDirChoice::REASON_FALLBACK_OWNED, $foreign->reason);
+        $this->assertSame(DataDirChoice::REASON_OUTSIDE, $foreign->reason);
+        $this->assertSame($this->real($otherHome.'/wgw-content-'.$this->suffix($otherInstall)), $foreign->path);
         $this->assertSame('keep', (string) file_get_contents($otherHome.'/wgw-content/db.sqlite'));
+    }
+
+    public function test_fallback_when_every_outside_candidate_holds_someone_elses_data(): void
+    {
+        $install = $this->makeInstall($this->root.'/public');
+        foreach (['wgw-content', 'wgw-content-'.$this->suffix($install)] as $name) {
+            $dir = $this->root.'/'.$name;
+            mkdir($dir, 0775, true);
+            file_put_contents($dir.'/db.sqlite', 'keep');
+        }
+
+        $choice = $this->resolve($install, $install);
+
+        $this->assertSame(DataDirChoice::REASON_FALLBACK_OWNED, $choice->reason);
+        $this->assertSame(DataDirChoice::FALLBACK_PATH, $choice->path);
+        $this->assertTrue($choice->insidePublishedTree);
+        $this->assertSame('keep', (string) file_get_contents($this->root.'/wgw-content/db.sqlite'));
+        $this->assertSame('keep', (string) file_get_contents($this->root.'/wgw-content-'.$this->suffix($install).'/db.sqlite'));
     }
 
     public function test_rerun_accepts_a_marker_for_this_install(): void
@@ -261,6 +283,11 @@ final class DataDirCandidateResolverTest extends TestCase
             return;
         }
         $this->clearDataDirEnv();
+    }
+
+    private function suffix(string $installRoot): string
+    {
+        return substr(hash('sha256', $this->real($installRoot)), 0, 8);
     }
 
     private function real(string $path): string

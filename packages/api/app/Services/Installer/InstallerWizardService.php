@@ -377,7 +377,6 @@ final class InstallerWizardService
                     SettingKeys::RTC_TURN_SECRET => $meetEnabled
                         ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
                         : '',
-                    SettingKeys::DATA_DIR_INSIDE_WEBROOT => $this->dataDirs->shouldRecordInsideWebRoot($state),
                 ],
             );
             $this->jwtKeys->ensureKeys();

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Installer;
 
 use App\Services\Installer\DataDirChoice;
-use App\Services\Settings\SettingKeys;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
@@ -98,7 +97,7 @@ final class DataDirInstallTest extends TestCase
         $this->assertSame('admin', (string) $db->query('SELECT username FROM users')->fetchColumn());
     }
 
-    public function test_invalid_override_is_rejected_and_a_collision_falls_back_with_a_warning(): void
+    public function test_invalid_override_is_rejected_and_a_taken_name_uses_another_outside_directory(): void
     {
         $install = $this->installRoot();
         $this->postAction('welcome_next')->assertOk();
@@ -121,22 +120,24 @@ final class DataDirInstallTest extends TestCase
         }
         mkdir($claimed, 0775, true);
         file_put_contents($claimed.'/.wgw-owner', "/some/other/install\n");
+        file_put_contents($claimed.'/db.sqlite', 'keep');
 
+        $suffix = substr(hash('sha256', $this->real($install)), 0, 8);
+        $outside = $this->root.'/wgw-content-'.$suffix;
         $this->postAction('database_next', [
             'db_driver' => 'sqlite',
             'sqlite_path' => './wgw-content/db.sqlite',
         ])->assertOk()
             ->assertJsonPath('ok', true)
-            ->assertJsonPath('state.data_dir.reason', DataDirChoice::REASON_FALLBACK_OWNED);
+            ->assertJsonPath('state.data_dir.reason', DataDirChoice::REASON_OUTSIDE)
+            ->assertJsonPath('state.data_dir.path', $this->real($outside));
 
         $this->postAction('site_next', $this->sitePayload())->assertOk()->assertJsonPath('ok', true);
         $this->postAction('install', $this->installPayload())->assertOk()->assertJsonPath('ok', true);
 
-        $db = new \PDO('sqlite:'.$install.'/wgw-content/db.sqlite');
-        $setting = $db->query(
-            "SELECT value FROM app_settings WHERE name = '".SettingKeys::DATA_DIR_INSIDE_WEBROOT."'",
-        )->fetchColumn();
-        $this->assertSame('true', (string) $setting);
+        $this->assertSame('keep', (string) file_get_contents($claimed.'/db.sqlite'));
+        $this->assertFileDoesNotExist($install.'/wgw-content/db.sqlite');
+        $db = new \PDO('sqlite:'.$outside.'/db.sqlite');
         $this->assertSame('admin', (string) $db->query('SELECT username FROM users')->fetchColumn());
     }
 

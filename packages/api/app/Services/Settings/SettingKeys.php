@@ -87,9 +87,6 @@ final class SettingKeys
 
     public const MAIL_DELIVERY_LAST_TEST_SEND = 'mail_delivery_last_test_send';
 
-    /** True when a fresh install had to keep its data directory inside the published tree. */
-    public const DATA_DIR_INSIDE_WEBROOT = 'data_dir_inside_webroot';
-
     /**
      * @return list<string>
      */
@@ -129,7 +126,6 @@ final class SettingKeys
             self::MAIL_DELIVERY_SMTP_PORT,
             self::MAIL_DELIVERY_SMTP_SECURITY,
             self::MAIL_DELIVERY_SMTP_USERNAME,
-            self::DATA_DIR_INSIDE_WEBROOT,
         ];
     }
 }

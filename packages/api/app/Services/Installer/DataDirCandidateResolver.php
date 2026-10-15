@@ -185,25 +185,29 @@ final class DataDirCandidateResolver
     }
 
     /**
+     * Plain `wgw-content` first, then a name that belongs to this install.
+     * An abandoned reservation of the plain name must not push the next
+     * install back inside the published tree.
+     *
      * @return list<string>
      */
     private function candidates(string $installRoot, ?string $documentRoot): array
     {
-        $candidates = [$this->normalize(dirname($installRoot)).'/wgw-content'];
-        if (! is_string($documentRoot) || $documentRoot === '') {
-            return $candidates;
+        $parents = [$this->normalize(dirname($installRoot))];
+        if (is_string($documentRoot) && $documentRoot !== '') {
+            $docReal = realpath($documentRoot);
+            $installReal = realpath($installRoot);
+            if ($docReal !== false && ($installReal === false || $this->normalize($docReal) !== $this->normalize($installReal))) {
+                $parents[] = $this->normalize(dirname($this->normalize($docReal)));
+            }
         }
 
-        $docReal = realpath($documentRoot);
-        $installReal = realpath($installRoot);
-        if ($docReal === false) {
-            return $candidates;
+        $suffix = substr(hash('sha256', $this->ownerId($installRoot)), 0, 8);
+        $candidates = [];
+        foreach (array_values(array_unique($parents)) as $parent) {
+            $candidates[] = $parent.'/wgw-content';
+            $candidates[] = $parent.'/wgw-content-'.$suffix;
         }
-        if ($installReal !== false && $this->normalize($docReal) === $this->normalize($installReal)) {
-            return $candidates;
-        }
-
-        $candidates[] = $this->normalize(dirname($this->normalize($docReal))).'/wgw-content';
 
         return array_values(array_unique($candidates));
     }

@@ -50,10 +50,4 @@ final class DataDirChoice
 
         return new self($path, $reason, (bool) ($state['inside_web_root'] ?? false));
     }
-
-    public function isFallback(): bool
-    {
-        return $this->reason === self::REASON_FALLBACK_OWNED
-            || $this->reason === self::REASON_FALLBACK_UNAVAILABLE;
-    }
 }
