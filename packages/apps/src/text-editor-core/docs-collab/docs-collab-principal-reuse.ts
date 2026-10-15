@@ -21,7 +21,11 @@ import type {
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
 
-/** Wait for an ack before a fresh collab ICE handshake. Ticket checks need the time. */
+/**
+ * Wait this long for an `ack` before falling back to a fresh collab ICE handshake.
+ * The responder verifies a ticket asynchronously, and the principal channel has
+ * often only just opened.
+ */
 export const COLLAB_REUSE_ACK_TIMEOUT_MS = 1500;
 
 /** Hold a signed ticket this long while the roster poll catches up. Stays under the ack timeout. */
@@ -94,29 +98,24 @@ export type DocsCollabPrincipalReusePorts = {
  * envelopes). Call `considerRoster` from the collab poll callback *before*
  * `shouldConnectToPeer` so reuse-hit peers skip ICE.
  *
- * The principal room lists every account, so an envelope there is not document
- * access. A C2 ticket is checked and tightened by the roster. No ticket still
- * requires a roster row. An unrostered open is dropped.
+ * The principal `workspace` room holds every signed-in account, so an envelope
+ * arriving on it says nothing about document access. A present C2 ticket is
+ * verified for identity. A rostered peer's right is the tighter of that ticket
+ * and the live roster row. An unrostered peer is dropped. An envelope with no
+ * ticket is still gated by the collab roster, so a mixed-version room keeps
+ * syncing. An unrostered `open` that also has no ticket is dropped without an
+ * `ack`.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
-
   private readonly registry: PrincipalLinkRegistry;
-
   private readonly ackTimeoutMs: number;
-
   private readonly principalConnectDeferMs: number;
-
   private readonly scheduleTimeout: typeof setTimeout;
-
   private readonly cancelTimeout: typeof clearTimeout;
-
   private readonly unsubscribe: () => void;
-
   private readonly unsubscribeLinks: () => void;
-
   private readonly unsubscribeLinkOpen: () => void;
-
   private readonly unsubscribeSendFailed: () => void;
 
   private readonly pending = new Map<string, PendingPeer>();
