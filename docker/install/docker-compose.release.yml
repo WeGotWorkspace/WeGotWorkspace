@@ -6,12 +6,14 @@
 name: wegotworkspace
 
 x-wgw-web-volumes: &wgw-web-volumes
-  - wgw-content:/var/www/html/wgw-content
-  - wgw-api-storage:/var/www/html/packages/api/storage
+  - wgw-content:/var/wgw/content
+  - wgw-api-storage:/var/wgw/storage
   - wgw-install-config:/wgw-config-vol
 
 x-wgw-web-environment: &wgw-web-environment
   WGW_APP_ROOT: /var/www/html
+  WGW_DATA_DIR: /var/wgw/content
+  WGW_STORAGE_PATH: /var/wgw/storage
   WGW_WAIT_FOR_DB: ${WGW_WAIT_FOR_DB:-1}
   WGW_DB_HOST: ${WGW_DB_HOST:-db}
   WGW_DB_PORT: ${WGW_DB_PORT:-3306}
@@ -24,8 +26,8 @@ services:
     restart: "no"
     environment: *wgw-web-environment
     volumes:
-      - wgw-content:/var/www/html/wgw-content
-      - wgw-api-storage:/var/www/html/packages/api/storage
+      - wgw-content:/var/wgw/content
+      - wgw-api-storage:/var/wgw/storage
       - wgw-install-config:/wgw-config-vol
     depends_on:
       db:

@@ -194,7 +194,7 @@ else
     fi
     IMAGE="wgw-install-e2e:local"
   fi
-  RUN_ARGS=(docker run -d --name "wgw-app-$$" -p "127.0.0.1:${PORT}:80" -e WGW_INSTALL_HEADLESS=0 -e WGW_DISABLE_LOGIN_THROTTLE=1 -e WGW_WAIT_FOR_DB=0)
+  RUN_ARGS=(docker run -d --name "wgw-app-$$" -p "127.0.0.1:${PORT}:80" -e WGW_INSTALL_HEADLESS=0 -e WGW_DISABLE_LOGIN_THROTTLE=1 -e WGW_WAIT_FOR_DB=0 -e WGW_DATA_DIR=/var/wgw/content -e WGW_STORAGE_PATH=/var/wgw/storage)
   if [[ "$DB" == "mariadb" ]]; then
     RUN_ARGS+=(--network "$DOCKER_NET")
   fi

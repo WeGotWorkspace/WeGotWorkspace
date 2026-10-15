@@ -14,6 +14,8 @@ final class WgwInstallEnvTest extends TestCase
 {
     private string $installRoot;
 
+    private string|false $previousDataDir = false;
+
     protected function setUp(): void
     {
         $this->installRoot = sys_get_temp_dir().'/wgw-install-env-test-'.uniqid('', true);
@@ -23,10 +25,16 @@ final class WgwInstallEnvTest extends TestCase
 
         putenv('WGW_APP_ROOT='.$this->installRoot);
         $_ENV['WGW_APP_ROOT'] = $this->installRoot;
+        $dataDir = getenv('WGW_DATA_DIR');
+        $this->previousDataDir = is_string($dataDir) ? $dataDir : false;
+        $pinned = $this->installRoot.'/wgw-content';
+        putenv('WGW_DATA_DIR='.$pinned);
+        $_ENV['WGW_DATA_DIR'] = $pinned;
+        $_SERVER['WGW_DATA_DIR'] = $pinned;
 
         parent::setUp();
 
-        config(['wgw.install_root' => $this->installRoot]);
+        config(['wgw.install_root' => $this->installRoot, 'wgw.data_dir' => $pinned]);
         WgwInstallFixture::ensureApiPackage($this->installRoot);
         WgwInstallFixture::forgetInstallBindings();
     }
@@ -36,6 +44,14 @@ final class WgwInstallEnvTest extends TestCase
         config(['wgw.install' => []]);
         putenv('WGW_APP_ROOT');
         unset($_ENV['WGW_APP_ROOT']);
+        if (is_string($this->previousDataDir) && $this->previousDataDir !== '') {
+            putenv('WGW_DATA_DIR='.$this->previousDataDir);
+            $_ENV['WGW_DATA_DIR'] = $this->previousDataDir;
+            $_SERVER['WGW_DATA_DIR'] = $this->previousDataDir;
+        } else {
+            putenv('WGW_DATA_DIR');
+            unset($_ENV['WGW_DATA_DIR'], $_SERVER['WGW_DATA_DIR']);
+        }
         WgwInstallFixture::forgetInstallBindings();
 
         if (is_dir($this->installRoot)) {

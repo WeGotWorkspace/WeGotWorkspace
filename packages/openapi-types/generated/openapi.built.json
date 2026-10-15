@@ -200,6 +200,32 @@
                     }
                 }
             },
+            "InstallerDataDir": {
+                "type": "object",
+                "description": "Where a fresh install will store the database, keys, and backups.",
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "enum": [
+                            "environment",
+                            "outside",
+                            "fallback_owned",
+                            "fallback_unavailable"
+                        ]
+                    },
+                    "inside_web_root": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "path",
+                    "reason",
+                    "inside_web_root"
+                ]
+            },
             "InstallerRuntimeState": {
                 "type": "object",
                 "properties": {
@@ -253,6 +279,9 @@
                     },
                     "admin_display_name": {
                         "type": "string"
+                    },
+                    "data_dir": {
+                        "$ref": "#/components/schemas/InstallerDataDir"
                     }
                 },
                 "required": [
@@ -320,6 +349,10 @@
                     },
                     "sqlite_path": {
                         "type": "string"
+                    },
+                    "data_dir": {
+                        "type": "string",
+                        "description": "Absolute data directory override. Empty accepts the installer's proposal."
                     },
                     "mysql_host": {
                         "type": "string"

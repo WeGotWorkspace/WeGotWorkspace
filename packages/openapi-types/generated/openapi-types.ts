@@ -8050,6 +8050,13 @@ export interface components {
             mysql_db?: string;
             mysql_user?: string;
         };
+        /** @description Where a fresh install will store the database, keys, and backups. */
+        InstallerDataDir: {
+            path: string;
+            /** @enum {string} */
+            reason: "environment" | "outside" | "fallback_owned" | "fallback_unavailable";
+            inside_web_root: boolean;
+        };
         InstallerRuntimeState: {
             step: components["schemas"]["InstallerStep"];
             flash: string | null;
@@ -8067,6 +8074,7 @@ export interface components {
             admin_username?: string;
             admin_email?: string;
             admin_display_name?: string;
+            data_dir?: components["schemas"]["InstallerDataDir"];
         };
         InstallerBootstrapResponse: {
             state: components["schemas"]["InstallerRuntimeState"];
@@ -8082,6 +8090,8 @@ export interface components {
         InstallerActionPayload: {
             db_driver?: components["schemas"]["InstallerDbDriver"];
             sqlite_path?: string;
+            /** @description Absolute data directory override. Empty accepts the installer's proposal. */
+            data_dir?: string;
             mysql_host?: string;
             mysql_port?: number;
             mysql_db?: string;

@@ -68,7 +68,9 @@ export function useInstallerController({
       const engine = values?.engine ?? defaultEngine;
       const mysql = values && values.engine === "mysql" ? values.mysql : undefined;
       await runAction(() =>
-        operations.databaseNext(buildInstallerDatabasePayload(engine, installerState, mysql)),
+        operations.databaseNext(
+          buildInstallerDatabasePayload(engine, installerState, mysql, values?.dataDir),
+        ),
       );
     },
     [defaultEngine, installerState, operations, runAction],
@@ -114,7 +116,7 @@ export function useInstallerController({
         if (values.engine === "mysql") {
           const test = await runAction(() =>
             operations.databaseTest(
-              buildInstallerDatabasePayload("mysql", installerState, values.mysql),
+              buildInstallerDatabasePayload("mysql", installerState, values.mysql, values.dataDir),
             ),
           );
           if (!test.ok) return;

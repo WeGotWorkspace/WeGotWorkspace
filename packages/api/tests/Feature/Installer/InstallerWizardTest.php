@@ -64,6 +64,7 @@ final class InstallerWizardTest extends TestCase
             'wgw.install_root' => $this->installRoot,
             'wgw.data_dir' => $this->installRoot.'/wgw-content',
         ]);
+        $this->pinDataDir();
     }
 
     protected function tearDown(): void
@@ -547,6 +548,10 @@ final class InstallerWizardTest extends TestCase
         );
         $this->assertSame($settingsBefore, $this->appSettings($db), 'Reinstall must not rewrite app_settings.');
 
+        // The refused install never rewrites WGW_DB_*. Drop the pinned data dir so
+        // sync leaves the connection the probe opened on the existing SQLite file.
+        putenv('WGW_DATA_DIR');
+        unset($_ENV['WGW_DATA_DIR'], $_SERVER['WGW_DATA_DIR']);
         WgwInstallFixture::syncDatabaseConnection();
         $this->postJson('/api/v1/auth/token', [
             'username' => 'intruder',
@@ -841,6 +846,15 @@ final class InstallerWizardTest extends TestCase
             ->assertJsonPath('state.step', 'account');
     }
 
+    private function pinDataDir(): void
+    {
+        $dataDir = $this->installRoot.'/wgw-content';
+        putenv('WGW_DATA_DIR='.$dataDir);
+        $_ENV['WGW_DATA_DIR'] = $dataDir;
+        $_SERVER['WGW_DATA_DIR'] = $dataDir;
+        config(['wgw.data_dir' => $dataDir]);
+    }
+
     private function sqlitePath(string $name = 'wizard.sqlite'): string
     {
         return './wgw-content/'.$name;
@@ -1067,6 +1081,7 @@ final class InstallerWizardTest extends TestCase
         putenv('WGW_DB_DATABASE=:memory:');
         $_ENV['WGW_DB_DATABASE'] = ':memory:';
         $_SERVER['WGW_DB_DATABASE'] = ':memory:';
+        $this->pinDataDir();
 
         config([
             'database.connections.wgw.driver' => 'sqlite',

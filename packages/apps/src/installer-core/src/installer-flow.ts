@@ -120,10 +120,12 @@ export function buildInstallerDatabasePayload(
     username: string;
     password: string;
   },
+  dataDir?: string,
 ): InstallerDatabasePayload {
   return {
     db_driver: engine,
     sqlite_path: state?.db.sqlite_path ?? DEFAULT_SQLITE_PATH,
+    ...(dataDir !== undefined && dataDir !== "" ? { data_dir: dataDir } : {}),
     mysql_host: mysql?.host ?? state?.db.mysql_host ?? "127.0.0.1",
     mysql_port: Number(mysql?.port || state?.db.mysql_port || 3306),
     mysql_db: mysql?.database ?? state?.db.mysql_db ?? "wgw",
@@ -157,7 +159,8 @@ export function formatInstallerDatabaseError(message: string): string {
   if (
     /^could not reach mysql/i.test(text) ||
     /^mysql rejected/i.test(text) ||
-    /^that database does not exist/i.test(text)
+    /^that database does not exist/i.test(text) ||
+    /data directory|published website|another installation/i.test(text)
   ) {
     return text.endsWith(".") ? text : `${text}.`;
   }

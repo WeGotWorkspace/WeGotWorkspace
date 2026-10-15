@@ -261,7 +261,13 @@ final class HighFindingsTest extends WgwDatabaseTestCase
 
     public function test_h4_admin_state_warns_when_debug_is_on_or_env_is_not_production(): void
     {
-        config(['app.debug' => false, 'app.url' => 'https://wgw.example.test']);
+        $outside = sys_get_temp_dir().'/wgw-quiet-data-'.uniqid('', true);
+        mkdir($outside, 0775, true);
+        config([
+            'app.debug' => false,
+            'app.url' => 'https://wgw.example.test',
+            'wgw.data_dir' => $outside,
+        ]);
         $this->app->make('url')->forceRootUrl('https://wgw.example.test');
         $this->app['env'] = 'production';
 

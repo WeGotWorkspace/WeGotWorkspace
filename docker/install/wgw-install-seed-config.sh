@@ -66,8 +66,13 @@ if [ "${WGW_WAIT_FOR_DB:-0}" = "1" ] && [ -n "${WGW_DB_HOST:-}" ]; then
   ensure_env_kv "${CONFIG_VOL}/api.env" "WGW_INSTALL_DB_USER" "${MARIADB_USER:-${WGW_DB_USERNAME:-wgw}}"
   ensure_env_kv "${CONFIG_VOL}/api.env" "WGW_INSTALL_DB_PASSWORD" "${MARIADB_PASSWORD:-${WGW_DB_PASSWORD:-wgw}}"
 elif [ "${COMPOSE_PROFILES:-mysql}" = "sqlite" ] || [ "${WGW_WAIT_FOR_DB:-1}" = "0" ]; then
+  DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"
+  case "$DATA_DIR" in
+    /*) ;;
+    *) DATA_DIR="${INSTALL_ROOT}/${DATA_DIR#./}" ;;
+  esac
   ensure_env_kv "${CONFIG_VOL}/api.env" "WGW_INSTALL_DB_DRIVER" "sqlite"
-  ensure_env_kv "${CONFIG_VOL}/api.env" "WGW_INSTALL_DB_SQLITE_PATH" "wgw-content/db.sqlite"
+  ensure_env_kv "${CONFIG_VOL}/api.env" "WGW_INSTALL_DB_SQLITE_PATH" "${DATA_DIR}/db.sqlite"
 fi
 
 # Remove mistaken copies from older entrypoints that copied into directory mounts.
