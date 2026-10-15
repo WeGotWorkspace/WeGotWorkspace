@@ -1,10 +1,11 @@
 import * as Y from "yjs";
 
 /**
- * Shared-type key for a note title.
+ * Shared-type key for a title stored in the collaborative document.
  *
- * Docs binds the body to the `default` XmlFragment and never reads this key,
- * so a title can travel in the same Y.Doc without a Docs change.
+ * The key string stays `note-title` so a document that already adopted it
+ * still reads. Docs binds the body to the `default` XmlFragment and does not
+ * create this type, so a Docs save omits the title.
  */
 export const NOTE_TITLE_YTEXT_KEY = "note-title";
 

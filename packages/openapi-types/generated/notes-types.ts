@@ -19,6 +19,7 @@ export type NotebookListResponse = components["schemas"]["NotebookListResponse"]
 export type NotebookMutationResponse = components["schemas"]["NotebookMutationResponse"];
 export type NotebookPatch = components["schemas"]["NotebookPatch"];
 export type NotebookRenameRequest = components["schemas"]["NotebookRenameRequest"];
+export type NoteCollaborativePut = components["schemas"]["NoteCollaborativePut"];
 export type NoteCreate = components["schemas"]["NoteCreate"];
 export type NoteDeleteRequest = components["schemas"]["NoteDeleteRequest"];
 export type NoteItem = components["schemas"]["NoteItem"];

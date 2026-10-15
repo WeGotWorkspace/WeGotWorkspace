@@ -19,6 +19,7 @@ import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
 import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import {
+  collabErrorStatus,
   docSignature,
   isCollabPayloadTooLarge,
   isServerDivergenceError,
@@ -86,6 +87,7 @@ export function useDocsCollabSave({
   }, [refs, updatePendingState]);
 
   const persistToServer = useCallback(async (): Promise<void> => {
+    if (urls.roomNotPersistent) return;
     if (refs.saveInFlightRef.current) return;
     if (!getConnectivitySnapshot()) {
       await markPendingWhenUnsaved();
@@ -112,26 +114,22 @@ export function useDocsCollabSave({
       return;
     }
     refs.saveInFlightRef.current = true;
+    let savedMarkdown = markdown;
     try {
-      const attemptSave = async () => {
-        if (urls.persistMarkdown) {
-          await urls.persistMarkdown(markdown, refs.authTokenRef.current, ydoc);
-          return;
-        }
+      const attemptSave = async (body: string) => {
         const etag = await saveDocument(
           urls.documentUrl,
-          markdown,
+          body,
           ydoc,
           urls.room,
           refs.authTokenRef.current,
-          urls.documentSaveMethod === "PATCH" ? "PUT" : (urls.documentSaveMethod ?? "POST"),
           sidecarPrecondition(room),
         );
         rememberSidecarEtag(room, etag);
       };
 
       try {
-        await attemptSave();
+        await attemptSave(markdown);
       } catch (firstError) {
         if (
           isServerDivergenceError(firstError) &&
@@ -147,17 +145,8 @@ export function useDocsCollabSave({
           );
           rememberSidecarEtag(room, reload.etag);
           if (reload.applied) {
-            const remergedMarkdown = markdownForSave(ydoc, getMd());
-            const etag = await saveDocument(
-              urls.documentUrl,
-              remergedMarkdown,
-              ydoc,
-              urls.room,
-              refs.authTokenRef.current,
-              urls.documentSaveMethod ?? "POST",
-              sidecarPrecondition(room),
-            );
-            rememberSidecarEtag(room, etag);
+            savedMarkdown = markdownForSave(ydoc, getMd());
+            await attemptSave(savedMarkdown);
           } else {
             throw firstError;
           }
@@ -169,7 +158,7 @@ export function useDocsCollabSave({
       conflictRemergeAttemptedRef.current = false;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
-      const success = saveSuccessState(signature);
+      const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
       refs.localDirtySinceLastSaveRef.current = success.localDirtySinceLastSave ?? false;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
@@ -177,12 +166,10 @@ export function useDocsCollabSave({
       await updatePendingState(false, false);
       setLastSavedAt(new Date().toISOString());
       setDocStatus("");
+      urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
       refs.saveFailedRef.current = true;
-      if (
-        urls.onPersistForbidden &&
-        /\(403\)/.test(err instanceof Error ? err.message : String(err))
-      ) {
+      if (urls.onPersistForbidden && collabErrorStatus(err) === 403) {
         urls.onPersistForbidden();
       }
       if (isServerDivergenceError(err) && getConnectivitySnapshot()) {

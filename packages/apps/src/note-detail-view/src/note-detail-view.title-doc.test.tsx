@@ -3,7 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import * as Y from "yjs";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
-import { noteTitleIsInDoc, readNoteTitle } from "@/notes-core/src/note-title-doc";
+import {
+  noteTitleIsInDoc,
+  readNoteTitle,
+} from "@/text-editor-core/docs-collab/docs-collab-document-title";
 
 function titleBox(): HTMLTextAreaElement {
   return screen.getByRole("textbox", { name: "Title" }) as HTMLTextAreaElement;

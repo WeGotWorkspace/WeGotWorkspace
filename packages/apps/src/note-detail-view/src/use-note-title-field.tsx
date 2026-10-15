@@ -7,7 +7,11 @@ import {
   type ReactNode,
 } from "react";
 import type * as Y from "yjs";
-import { noteTitleIsInDoc, readNoteTitle, writeNoteTitle } from "@/notes-core/src/note-title-doc";
+import {
+  noteTitleIsInDoc,
+  readNoteTitle,
+  writeNoteTitle,
+} from "@/text-editor-core/docs-collab/docs-collab-document-title";
 
 const NoteCollabYDocContext = createContext<Y.Doc | null>(null);
 const NoteCollabTitleSaveContext = createContext<(() => void) | null>(null);

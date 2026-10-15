@@ -54,16 +54,15 @@ export type DocsCollabUrls = {
   authTokenUrl?: string;
   authUser?: string;
   authPassword?: string;
-  documentSaveMethod?: "POST" | "PUT" | "PATCH";
   /**
-   * Notes: persist markdown via REST instead of `/files/collaboration`.
-   * When a Y.Doc is passed, its title text is the `title` field on that PATCH.
+   * The room has no server id yet (an offline-created note). The shared save
+   * does not write until this is false.
    */
-  persistMarkdown?: (markdown: string, authToken?: string, ydoc?: Y.Doc) => Promise<void>;
-  loadDocumentMarkdown?: (authToken?: string) => Promise<string>;
-  skipYjsSnapshot?: boolean;
+  roomNotPersistent?: boolean;
   onPersistForbidden?: () => void;
   onReconnectConflict?: () => void;
+  /** Called with the markdown the server accepted. */
+  onPersistSuccess?: (markdown: string) => void;
 };
 
 export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {
@@ -72,7 +71,6 @@ export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {
   collabRtcUrl: "/api/v1/rooms/f_ZG9jcy90ZXN0LXRvZ2V0aGVyLm1k/configuration",
   documentUrl: "/api/v1/files/collaboration?path=docs%2Ftest-together.md",
   yjsUrl: "/api/v1/files/collaboration?path=docs%2Ftest-together.md&format=yjs",
-  documentSaveMethod: "PUT",
   room: "docs/test-together.md",
 };
 

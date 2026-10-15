@@ -7,14 +7,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/ui/dialog";
-import type { DocsUILabels } from "@/docs-core/src/docs-labels";
 import "@/text-editor-core/docs-collab/docs-conflict-dialog.css";
+
+/** The four strings the dialog renders. Docs and Notes both supply them. */
+export type DocsConflictDialogLabels = {
+  conflictTitle: string;
+  conflictDescription: (title: string) => string;
+  conflictKeepMine: string;
+  conflictUseServer: string;
+};
 
 export type DocsConflictDialogProps = {
   open: boolean;
   documentTitle: string;
   busy?: boolean;
-  labels: DocsUILabels;
+  labels: DocsConflictDialogLabels;
   onKeepLocal: () => void;
   onUseServer: () => void;
   onOpenChange?: (open: boolean) => void;

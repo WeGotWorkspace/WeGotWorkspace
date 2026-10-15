@@ -12,6 +12,7 @@ use App\Models\CalendarObject;
 use App\Models\NoteStar;
 use App\Models\NoteYjsState;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\YjsBytes;
 use App\Services\Collab\YjsPayloadException;
 use App\Services\Notes\Conversion\NoteJournalConverter;
@@ -422,9 +423,12 @@ final class NoteRepository
             return null;
         }
 
+        $bytes = $this->binaryString($row->getAttributes()['state'] ?? $row->state);
+
         return [
-            'bytes' => $this->binaryString($row->getAttributes()['state'] ?? $row->state),
-            'etag' => $this->formattedEtag($located['object']),
+            'bytes' => $bytes,
+            // The state tag moves only when the bytes move. The journal ETag stays on the JSON GET.
+            'etag' => DocCollabDocumentService::sidecarEtag($bytes),
         ];
     }
 
@@ -682,7 +686,7 @@ final class NoteRepository
         return (int) $since;
     }
 
-    private function indexObject(string $username, CalendarInstance $instance, CalendarObject $object): void
+    public function indexObject(string $username, CalendarInstance $instance, CalendarObject $object): void
     {
         $path = $this->davPath($username, $instance, (string) $object->uri);
         $this->searchIndexSync->sync(
