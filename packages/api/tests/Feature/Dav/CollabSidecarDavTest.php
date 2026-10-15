@@ -110,6 +110,7 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
         $this->dav('DELETE', '/files/users/alice/together.md')->assertStatus(204);
 
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/together.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
     }
 
     public function test_move_of_a_document_with_a_sidecar_is_allowed(): void
@@ -122,6 +123,8 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
 
         $this->assertContains($response->getStatusCode(), [201, 204]);
         $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/renamed.md'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.renamed.md.yjs'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
     }
 
     public function test_put_on_a_document_with_a_sidecar_is_forbidden(): void
@@ -129,8 +132,10 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
         $this->seedDocumentAndSidecar();
 
         $this->dav('PUT', '/files/users/alice/together.md', 'external edit')->assertStatus(403);
+        $this->dav('PATCH', '/files/users/alice/together.md', 'external edit')->assertStatus(403);
 
         $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/together.md'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
     }
 
     public function test_put_on_a_document_without_a_sidecar_still_works(): void
@@ -141,6 +146,54 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
 
         $this->assertContains($response->getStatusCode(), [201, 204]);
         $this->assertSame('plain-body', Storage::disk('wgw_files')->get('users/alice/plain.md'));
+    }
+
+    public function test_move_into_another_folder_moves_the_sidecar(): void
+    {
+        $this->seedDocumentAndSidecar();
+        Storage::disk('wgw_files')->makeDirectory('users/alice/archive');
+
+        $response = $this->dav('MOVE', '/files/users/alice/together.md', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/archive/together.md',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204]);
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/archive/.together.md.yjs'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
+    }
+
+    public function test_copy_leaves_the_sidecar_on_the_source(): void
+    {
+        $this->seedDocumentAndSidecar();
+
+        $response = $this->dav('COPY', '/files/users/alice/together.md', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/copy.md',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204]);
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/copy.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.copy.md.yjs'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
+    }
+
+    public function test_directory_move_and_delete_carry_nested_sidecars(): void
+    {
+        $disk = Storage::disk('wgw_files');
+        $disk->makeDirectory('users/alice/notes');
+        $disk->put('users/alice/notes/together.md', '# doc');
+        $disk->put('users/alice/notes/.together.md.yjs', 'yjs-bytes');
+
+        $moved = $this->dav('MOVE', '/files/users/alice/notes', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/renamed-notes',
+        ]);
+
+        $this->assertContains($moved->getStatusCode(), [201, 204]);
+        $this->assertSame('yjs-bytes', $disk->get('users/alice/renamed-notes/.together.md.yjs'));
+        $this->assertFalse($disk->exists('users/alice/notes/.together.md.yjs'));
+
+        $this->dav('DELETE', '/files/users/alice/renamed-notes')->assertStatus(204);
+        $this->assertFalse($disk->exists('users/alice/renamed-notes/.together.md.yjs'));
+        $this->assertFalse($disk->exists('users/alice/renamed-notes/together.md'));
     }
 
     private function seedDocumentAndSidecar(): void
