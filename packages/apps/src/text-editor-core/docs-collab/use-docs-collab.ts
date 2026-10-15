@@ -105,7 +105,7 @@ export function useDocsCollab({
     tabSyncRef: refs.tabSyncRef,
   });
 
-  const { join, leave, teardown, session, joined, snapshotPreview } = joinHook;
+  const { join, teardown, session, joined, snapshotPreview } = joinHook;
   const { saveNow, registerMarkdownGetter, onMarkdownChange } = save;
 
   const joinRef = useRef(join);
@@ -165,7 +165,6 @@ export function useDocsCollab({
     failedSync,
     snapshotPreview,
     join,
-    leave,
     connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
     registerMarkdownGetter,

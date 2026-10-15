@@ -57,7 +57,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     notebooks,
     setNotebooks,
     notebookCollections,
-    tags,
     starred,
     applyStarToggle,
     batchToggleStarForIds,
@@ -564,33 +563,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [notebooks, operations, setNotebooks, setNotes, setView, show, view],
   );
 
-  const renameTag = useCallback(
-    (oldName: string, newName: string) => {
-      const value = normalizeTag(newName);
-      if (!isValidNewTag(value) || (value !== oldName && tags.includes(value))) return;
-      const changedRows = notes
-        .filter((note) => note.tags.includes(oldName))
-        .map((note) => ({
-          ...note,
-          tags: note.tags.map((tag) => (tag === oldName ? value : tag)),
-        }));
-      setNotes((prev) =>
-        prev.map((note) => ({
-          ...note,
-          tags: note.tags.map((tag) => (tag === oldName ? value : tag)),
-        })),
-      );
-      if (view === `tag:${oldName}`) setView(`tag:${value}`);
-      if (operations) {
-        changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
-        );
-      }
-      show(`Renamed to ${value}`, { icon: <Tag className="size-4" /> });
-    },
-    [dropGoneNote, notes, operations, setNotes, setView, show, tags, view],
-  );
-
   const deleteNotebook = useCallback(
     (name: string, opts: { transferTo?: string; archive?: boolean }) => {
       if (opts.transferTo) {
@@ -638,28 +610,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       show,
       view,
     ],
-  );
-
-  const deleteTag = useCallback(
-    (name: string) => {
-      const changedRows = notes
-        .filter((note) => note.tags.includes(name))
-        .map((note) => ({
-          ...note,
-          tags: note.tags.filter((tag) => tag !== name),
-        }));
-      setNotes((prev) =>
-        prev.map((note) => ({ ...note, tags: note.tags.filter((tag) => tag !== name) })),
-      );
-      if (view === `tag:${name}`) setView("all");
-      if (operations) {
-        changedRows.forEach((note) =>
-          persistBestEffort(operations.upsertNote(note), () => dropGoneNote(note.id), note.id),
-        );
-      }
-      show(`Tag ${name} deleted`, { icon: <Trash2 className="size-4" /> });
-    },
-    [dropGoneNote, notes, operations, setNotes, setView, show, view],
   );
 
   const toggleNoteTag = useCallback(
@@ -971,9 +921,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     moveActiveNoteToNotebook,
     assignTagToNotes,
     renameNotebook,
-    renameTag,
     deleteNotebook,
-    deleteTag,
     toggleNoteTag,
     addNoteTag,
     updateNote,
