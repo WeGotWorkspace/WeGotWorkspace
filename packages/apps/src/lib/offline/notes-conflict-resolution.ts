@@ -21,7 +21,8 @@ async function outboxRowsForNote(username: string, noteId: string) {
 }
 
 /**
- * "Keep mine": PATCH with the *new* server etag so local metadata overwrites.
+ * Rebase queued metadata onto the current server etag.
+ * Notes no longer opens a choice screen for this. Body edits merge in Yjs.
  */
 export async function resolveNotesConflictKeepLocal(
   username: string,

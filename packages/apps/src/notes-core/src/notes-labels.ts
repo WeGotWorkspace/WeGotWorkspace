@@ -82,11 +82,6 @@ export type NotesUILabels = {
   tagViewTitle: (tag: string) => string;
   newNoteCategory: string;
   pendingSync: string;
-  conflictTitle: string;
-  conflictDescription: (title: string) => string;
-  conflictRemaining: (count: number) => string;
-  conflictKeepMine: string;
-  conflictUseServer: string;
   externalWriteTitle: string;
   externalWriteDescription: (title: string) => string;
   externalWriteKeepMine: string;
@@ -193,13 +188,6 @@ export const defaultNotesLabels: NotesUILabels = {
   tagViewTitle: (tag) => tag,
   newNoteCategory: "Note",
   pendingSync: "Pending sync",
-  conflictTitle: "Sync conflict",
-  conflictDescription: (title) =>
-    `"${title}" was changed on the server while you were offline. Keep your version or use the server copy?`,
-  conflictRemaining: (count) =>
-    count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
-  conflictKeepMine: "Keep mine",
-  conflictUseServer: "Use server",
   externalWriteTitle: "Changed outside the app",
   externalWriteDescription: (title) =>
     `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,

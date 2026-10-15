@@ -1,9 +1,8 @@
 /** @vitest-environment jsdom */
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { applyTheirsNotesReconnect } from "@/notes-core/src/notes-reconnect-actions";
 import {
   hasNoteCollabPendingServerSave,
   noteCollabRoomKey,
@@ -20,12 +19,6 @@ import {
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
-
-const getNote = vi.hoisted(() => vi.fn());
-
-vi.mock("@/lib/api/wgw/notes-vjournal", () => ({
-  getNote: (...args: unknown[]) => getNote(...args),
-}));
 
 async function seedMarkdown(indexedDbName: string, markdown: string): Promise<void> {
   const ydoc = new Y.Doc();
@@ -71,10 +64,6 @@ async function roomIsEmpty(indexedDbName: string): Promise<boolean> {
 }
 
 describe("note collab rooms use the v2 IndexedDB name", () => {
-  beforeEach(() => {
-    getNote.mockReset();
-  });
-
   it("reads a body that exists only in the v2 database", async () => {
     const uid = "note-v2-only";
     const room = noteCollabRoomKey(uid);
@@ -113,36 +102,6 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(stored).not.toContain("mine");
     expect(stored).not.toContain("old");
     await expect(readNoteCollabOfflineContent(uid)).resolves.toContain(serverMarkdown);
-    expect(await roomIsEmpty(room)).toBe(true);
-  });
-
-  it("stores the server body from Use theirs in the v2 room", async () => {
-    const uid = "note-use-theirs";
-    const room = noteCollabRoomKey(uid);
-    await seedMarkdown(docsCollabIndexedDbKey(room), "mine");
-    await seedPendingFlag(docsCollabIndexedDbKey(room));
-    await seedMarkdown(room, "old");
-    getNote.mockResolvedValue({
-      id: uid,
-      notebookId: "nb-1",
-      title: "Draft",
-      body: "Server body",
-      categories: [],
-      status: null,
-      etag: '"fresh"',
-    });
-
-    const applied = await applyTheirsNotesReconnect({
-      noteId: uid,
-      applyServerBody: () => undefined,
-    });
-
-    expect(applied).toBe("Server body");
-    expect(getNote).toHaveBeenCalledWith(uid);
-    const stored = await readRoomMarkdown(docsCollabIndexedDbKey(room));
-    expect(stored).toContain("Server body");
-    expect(stored).not.toContain("mine");
-    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
     expect(await roomIsEmpty(room)).toBe(true);
   });
 

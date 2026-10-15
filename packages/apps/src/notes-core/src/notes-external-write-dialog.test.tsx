@@ -19,5 +19,8 @@ describe("NotesExternalWriteDialog", () => {
     expect(screen.getByText(/Nothing has been overwritten/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Keep my edits" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Use the outside version" })).toBeTruthy();
+    expect(screen.queryByText("Sync conflict")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Keep mine" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use server" })).toBeNull();
   });
 });

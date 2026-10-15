@@ -17,7 +17,6 @@ export async function buildNoteCollabUrls(
   noteId: string,
   hooks?: {
     onPersistForbidden?: () => void;
-    onReconnectConflict?: () => void;
     /** The shared save accepted this markdown. */
     onPersistSuccess?: (markdown: string) => void;
   },
@@ -37,7 +36,6 @@ export async function buildNoteCollabUrls(
     room: noteId,
     roomNotPersistent: isLocalTempNoteId(noteId),
     onPersistForbidden: hooks?.onPersistForbidden,
-    onReconnectConflict: hooks?.onReconnectConflict,
     onPersistSuccess: hooks?.onPersistSuccess,
   };
 }

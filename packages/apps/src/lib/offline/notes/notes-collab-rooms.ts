@@ -121,7 +121,11 @@ export async function hasNoteCollabPendingServerSave(
   return Boolean(result);
 }
 
-/** Replace the UID-keyed Y.Doc with server markdown (Decision 6 “Use theirs”). */
+/**
+ * Replace the UID-keyed Y.Doc with markdown and clear a pending save.
+ * The retired Keep mine / Use server dialog was the only Notes UI caller.
+ * The helper stays for offline room repair.
+ */
 export async function writeNoteCollabOfflineContent(uid: string, markdown: string): Promise<void> {
   const room = noteCollabRoomKey(uid);
   if (!room) return;
