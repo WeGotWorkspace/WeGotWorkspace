@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import {
   fetchYjsSnapshot,
   loadMarkdown,
@@ -118,7 +119,9 @@ describe("docs-collab-server-io", () => {
   });
 
   it("saveDocument succeeds on ok response", async () => {
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
     await saveDocument("/doc", "# x", ydoc, "docs/test.md", "token", "PUT");
@@ -126,9 +129,19 @@ describe("docs-collab-server-io", () => {
       "/doc",
       expect.objectContaining({
         method: "PUT",
-        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+          "Content-Type": "application/octet-stream",
+          Accept: "application/json",
+        }),
       }),
     );
+    const framed = decodeFramedPayload(
+      new Uint8Array(fetchMock.mock.calls[0]![1]!.body as ArrayBuffer),
+    );
+    const header = framed?.header as { documentLen: number; yjsLen: number };
+    expect(header.documentLen).toBe(new TextEncoder().encode("# x").byteLength);
+    expect(header.documentLen + header.yjsLen).toBe(framed?.tail.byteLength);
   });
 
   it("saveDocument sends If-Match when the client loaded a sidecar", async () => {

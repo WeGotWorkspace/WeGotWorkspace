@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { saveDocument } from "@/text-editor-core/docs-collab/docs-collab-server-io";
 import { buildDocsCollabUrls } from "./docs-collab-urls";
 
@@ -73,9 +74,14 @@ describe("buildDocsCollabUrls", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const requested = new URL(String(fetchMock.mock.calls[0]![0]), "http://localhost");
       expect(requested.searchParams.get("path")).toBe(room);
-      const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body));
-      expect(body.room).toBe(room);
-      expect(body.markdown).toBe("# Café & co (v2)\n");
+      const framed = decodeFramedPayload(
+        new Uint8Array(fetchMock.mock.calls[0]![1]!.body as ArrayBuffer),
+      );
+      const header = framed?.header as { documentLen: number; yjsLen: number };
+      expect(header.documentLen + header.yjsLen).toBe(framed?.tail.byteLength);
+      expect(new TextDecoder().decode(framed!.tail.subarray(0, header.documentLen))).toBe(
+        "# Café & co (v2)\n",
+      );
     },
   );
 });

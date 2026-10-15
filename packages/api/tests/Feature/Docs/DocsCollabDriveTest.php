@@ -7,11 +7,13 @@ namespace Tests\Feature\Docs;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\DocsTestFixtures;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class DocsCollabDriveTest extends WgwDatabaseTestCase
 {
     use DocsTestFixtures;
+    use SendsFramedCollaboration;
 
     private const GROUP_PLAN = '/groups/team/plan.md';
 
@@ -44,9 +46,10 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
 
         $this->withBearer($token)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => "# Plan\n\nShip docs tests.",
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                "# Plan\n\nShip docs tests.",
+            )
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -62,13 +65,13 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
     public function test_yjs_sidecar_round_trips_with_collaboration_put(): void
     {
         $token = $this->userBearerToken();
-        $yjsBytes = [1, 2, 3, 255];
 
         $this->withBearer($token)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => "# Plan\n\nWith Yjs.\n",
-                'yjs' => $yjsBytes,
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                "# Plan\n\nWith Yjs.\n",
+                "\x01\x02\x03\xff",
+            )
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -95,9 +98,10 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'forbidden');
 
         $this->withBearer($carolToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => 'blocked',
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                'blocked',
+            )
             ->assertForbidden()
             ->assertJsonPath('error', 'forbidden');
     }
@@ -107,9 +111,10 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
         $token = $this->adminBearerToken();
 
         $this->withBearer($token)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => "# Admin plan\n",
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                "# Admin plan\n",
+            )
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -125,9 +130,10 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
         $oversized = str_repeat('x', 2_097_153);
 
         $this->withBearer($token)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => $oversized,
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                $oversized,
+            )
             ->assertStatus(413)
             ->assertJsonPath('error', 'markdown_too_large');
     }
@@ -144,9 +150,10 @@ final class DocsCollabDriveTest extends WgwDatabaseTestCase
         $markdown = "# Roadmap\n\nMulti-tenancy voor {$precomposed} en ook {$decomposed} providers.\n";
 
         $this->withBearer($token)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN), [
-                'markdown' => $markdown,
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode(self::GROUP_PLAN),
+                $markdown,
+            )
             ->assertOk()
             ->assertJsonPath('ok', true);
 

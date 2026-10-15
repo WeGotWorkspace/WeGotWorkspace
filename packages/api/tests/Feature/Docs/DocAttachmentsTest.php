@@ -17,12 +17,14 @@ use Sabre\HTTP\Request as SabreRequest;
 use Sabre\HTTP\Response as SabreResponse;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\InteractsWithFileNodeJmap;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class DocAttachmentsTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
     use InteractsWithFileNodeJmap;
+    use SendsFramedCollaboration;
 
     protected function setUp(): void
     {
@@ -353,15 +355,18 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
         $foreignUser = '/users/bob/.attachments/'.$doc['id'].'/x.md';
         $foreignGroup = '/groups/outsiders/.attachments/'.$doc['id'].'/x.md';
 
-        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($foreignUser), [
-            'markdown' => 'nope',
-        ])->assertForbidden();
-        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($foreignGroup), [
-            'markdown' => 'nope',
-        ])->assertForbidden();
-        $this->withBearer($alice)->putJson('/api/v1/files/collaboration?path='.urlencode($own), [
-            'markdown' => '# ok',
-        ])->assertOk();
+        $this->withBearer($alice)->putCollaboration(
+            '/api/v1/files/collaboration?path='.urlencode($foreignUser),
+            'nope',
+        )->assertForbidden();
+        $this->withBearer($alice)->putCollaboration(
+            '/api/v1/files/collaboration?path='.urlencode($foreignGroup),
+            'nope',
+        )->assertForbidden();
+        $this->withBearer($alice)->putCollaboration(
+            '/api/v1/files/collaboration?path='.urlencode($own),
+            '# ok',
+        )->assertOk();
     }
 
     /**

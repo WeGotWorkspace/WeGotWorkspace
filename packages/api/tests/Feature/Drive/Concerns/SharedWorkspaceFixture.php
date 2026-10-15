@@ -7,12 +7,15 @@ namespace Tests\Feature\Drive\Concerns;
 use App\Models\User;
 use App\Storage\WgwStorage;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\SendsFramedCollaboration;
 
 /**
  * Alice's shared workspace used by the drive ACL matrix and grantee structure tests.
  */
 trait SharedWorkspaceFixture
 {
+    use SendsFramedCollaboration;
+
     protected const WORKSPACE = '/users/alice/workspace';
 
     protected const PLAN = '/users/alice/workspace/plan.md';
@@ -104,9 +107,7 @@ trait SharedWorkspaceFixture
     protected function writeCollab(string $path, string $role, string $markdown): TestResponse
     {
         return $this->withBearer($this->token($role))
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => $markdown,
-            ]);
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode($path), $markdown);
     }
 
     protected function shareUpdatedAt(): string

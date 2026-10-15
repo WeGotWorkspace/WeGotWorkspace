@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
+import { encodeFramedPayload } from "@/lib/wire/framed-payload";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
@@ -71,22 +72,27 @@ export async function saveDocument(
   method: "POST" | "PUT" | "PATCH" = "POST",
   precondition: CollabSidecarPrecondition = null,
 ): Promise<string | null> {
-  const body: { markdown: string; yjs: number[]; room?: string } = {
-    markdown,
-    yjs: Array.from(Y.encodeStateAsUpdate(ydoc)),
-  };
-  if (room) body.room = room;
+  // The query path on documentUrl selects the file. Callers still pass room.
+  void room;
+  const documentBytes = new TextEncoder().encode(markdown);
+  const yjsBytes = Y.encodeStateAsUpdate(ydoc);
+  const body = encodeFramedPayload(
+    { documentLen: documentBytes.byteLength, yjsLen: yjsBytes.byteLength },
+    [documentBytes, yjsBytes],
+  );
 
   const headers = withBearerAuth(
-    { "Content-Type": "application/json", Accept: "application/json" },
+    { "Content-Type": "application/octet-stream", Accept: "application/json" },
     authToken,
   );
   if (precondition) headers[precondition.name] = precondition.value;
 
+  const payload = new ArrayBuffer(body.byteLength);
+  new Uint8Array(payload).set(body);
   const res = await fetch(documentUrl, {
     method,
     headers,
-    body: JSON.stringify(body),
+    body: payload,
   });
   const text = await res.text();
   if (!res.ok) {

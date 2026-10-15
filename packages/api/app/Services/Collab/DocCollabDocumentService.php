@@ -114,7 +114,10 @@ final class DocCollabDocumentService
 
         $yjsBytes = null;
         if ($hasYjs) {
-            $yjsBytes = $this->decodeYjsBytes($body['yjs']);
+            if (! is_string($body['yjs'])) {
+                $this->fail('invalid_yjs');
+            }
+            $yjsBytes = $body['yjs'];
             if (strlen($yjsBytes) > self::MAX_YJS_BYTES) {
                 $this->fail('yjs_too_large', 413);
             }
@@ -173,7 +176,16 @@ final class DocCollabDocumentService
     private function acquireDocumentLock(string $sidecarKey)
     {
         try {
-            return ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
+            $waitStarted = microtime(true);
+            $handle = ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
+            if (getenv('WGW_SPIKE_PEAK') === '1') {
+                Log::info('spike_collab_lock', [
+                    'wait_ms' => round((microtime(true) - $waitStarted) * 1000, 1),
+                    'spike' => (string) request()->header('X-Spike-Id', ''),
+                ]);
+            }
+
+            return $handle;
         } catch (\RuntimeException) {
             $this->fail('lock_unavailable', 503);
         }
@@ -330,26 +342,6 @@ final class DocCollabDocumentService
         }
 
         return $virtual;
-    }
-
-    /**
-     * @param  list<mixed>|mixed  $yjs
-     */
-    private function decodeYjsBytes(mixed $yjs): string
-    {
-        if (! is_array($yjs)) {
-            $this->fail('invalid_yjs');
-        }
-
-        $bytes = '';
-        foreach ($yjs as $byte) {
-            if (! is_int($byte) || $byte < 0 || $byte > 255) {
-                $this->fail('invalid_yjs');
-            }
-            $bytes .= chr($byte);
-        }
-
-        return $bytes;
     }
 
     private function assertFilesEnabled(): void

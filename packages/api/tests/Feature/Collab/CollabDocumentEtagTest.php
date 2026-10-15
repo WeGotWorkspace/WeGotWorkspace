@@ -8,6 +8,7 @@ use App\Services\Collab\DocCollabDocumentService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
 
@@ -18,6 +19,8 @@ use Tests\Support\WgwTestDisks;
  */
 final class CollabDocumentEtagTest extends WgwDatabaseTestCase
 {
+    use SendsFramedCollaboration;
+
     private const ROOM = '/users/alice/docs/together.md';
 
     private const SIDECAR_STORAGE_PATH = 'users/alice/docs/.together.md.yjs';
@@ -53,10 +56,8 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     public function test_yjs_get_returns_the_etag_of_the_sidecar_bytes(): void
     {
         $token = $this->issueBearerToken();
-        $yjsBytes = [1, 2, 3, 255];
-
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# Doc\n", 'yjs' => $yjsBytes])
+            ->putCollaboration($this->collaborationUrl(), "# Doc\n", "\x01\x02\x03\xff")
             ->assertOk();
 
         $this->withBearer($token)
@@ -80,7 +81,7 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     public function test_successful_put_returns_the_new_etag(): void
     {
         $response = $this->withBearer($this->issueBearerToken())
-            ->putJson($this->collaborationUrl(), ['markdown' => "# Doc\n", 'yjs' => [1, 2, 3]]);
+            ->putCollaboration($this->collaborationUrl(), "# Doc\n", "\x01\x02\x03");
 
         $response->assertOk();
         $response->assertHeader('ETag', $this->expectedEtag("\x01\x02\x03"));
@@ -90,15 +91,16 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), "# One\n", "\x01")
             ->assertOk();
 
         $etag = $this->expectedEtag("\x01");
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Two\n", 'yjs' => [2]],
+                "# Two\n",
+                "\x02",
                 ['If-Match' => $etag],
             )
             ->assertOk()
@@ -109,13 +111,14 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), "# One\n", "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Overwritten\n", 'yjs' => [9]],
+                "# Overwritten\n",
+                "\x09",
                 ['If-Match' => self::STALE_ETAG],
             )
             ->assertStatus(412)
@@ -126,13 +129,14 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), "# One\n", "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Overwritten\n", 'yjs' => [9]],
+                "# Overwritten\n",
+                "\x09",
                 ['If-Match' => self::STALE_ETAG],
             )
             ->assertStatus(412);
@@ -147,9 +151,10 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     public function test_put_with_if_none_match_star_succeeds_when_there_is_no_sidecar(): void
     {
         $this->withBearer($this->issueBearerToken())
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# First\n", 'yjs' => [1]],
+                "# First\n",
+                "\x01",
                 ['If-None-Match' => '*'],
             )
             ->assertOk()
@@ -160,13 +165,14 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), "# One\n", "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Second seed\n", 'yjs' => [2]],
+                "# Second seed\n",
+                "\x02",
                 ['If-None-Match' => '*'],
             )
             ->assertStatus(412)
@@ -177,7 +183,7 @@ final class CollabDocumentEtagTest extends WgwDatabaseTestCase
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# Doc\n", 'yjs' => [1, 2, 3]])
+            ->putCollaboration($this->collaborationUrl(), "# Doc\n", "\x01\x02\x03")
             ->assertOk();
 
         $etag = $this->expectedEtag("\x01\x02\x03");
@@ -220,9 +226,10 @@ PHP);
         $token = $this->issueBearerToken();
         $started = microtime(true);
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# First\n", 'yjs' => [1]],
+                "# First\n",
+                "\x01",
                 ['If-None-Match' => '*'],
             )
             ->assertOk();
@@ -234,9 +241,10 @@ PHP);
         $process->wait();
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Second\n", 'yjs' => [2]],
+                "# Second\n",
+                "\x02",
                 ['If-None-Match' => '*'],
             )
             ->assertStatus(412);
@@ -245,7 +253,7 @@ PHP);
     public function test_a_first_put_without_a_precondition_is_accepted(): void
     {
         $this->withBearer($this->issueBearerToken())
-            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), null, "\x01")
             ->assertOk();
 
         $storage = app(WgwStorage::class)->files();
@@ -257,11 +265,11 @@ PHP);
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), null, "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['yjs' => [2]])
+            ->putCollaboration($this->collaborationUrl(), null, "\x02")
             ->assertStatus(428)
             ->assertJsonPath('error', 'precondition_required');
 
@@ -273,11 +281,11 @@ PHP);
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), null, "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# Two\n"])
+            ->putCollaboration($this->collaborationUrl(), "# Two\n")
             ->assertOk();
     }
 
@@ -285,13 +293,14 @@ PHP);
     {
         $token = $this->issueBearerToken();
         $this->withBearer($token)
-            ->putJson($this->collaborationUrl(), ['markdown' => "# One\n", 'yjs' => [1]])
+            ->putCollaboration($this->collaborationUrl(), "# One\n", "\x01")
             ->assertOk();
 
         $this->withBearer($token)
-            ->putJson(
+            ->putCollaboration(
                 $this->collaborationUrl(),
-                ['markdown' => "# Two\n"],
+                "# Two\n",
+                null,
                 ['If-Match' => $this->expectedEtag("\x01")],
             )
             ->assertOk();

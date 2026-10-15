@@ -7,12 +7,14 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveForbiddenException;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveService;
 use App\Services\Rtc\RoomIdCodec;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 final class FilesController
@@ -206,16 +208,73 @@ final class FilesController
 
     public function updateCollaboration(Request $request): JsonResponse
     {
+        $spike = getenv('WGW_SPIKE_PEAK') === '1';
+        if ($spike) {
+            memory_reset_peak_usage();
+        }
         $path = $this->requirePath($request);
-        $payload = $request->json()->all();
-        $payload['room'] = $path;
-        $request->json()->replace($payload);
 
-        $result = $this->collabDocuments->put($request, $payload);
-        $etag = $result['etag'];
-        $response = response()->json(['ok' => $result['ok']]);
+        try {
+            $result = $this->collabDocuments->put($request, $this->collaborationPayload($request, $path));
+            $etag = $result['etag'];
+            $response = response()->json(['ok' => $result['ok']]);
 
-        return $etag === null ? $response : $response->header('ETag', $etag);
+            return $etag === null ? $response : $response->header('ETag', $etag);
+        } finally {
+            if ($spike) {
+                Log::info('spike_collab_peak', [
+                    'peak' => memory_get_peak_usage(true),
+                    'spike' => (string) $request->header('X-Spike-Id', ''),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * The path query is the document. `put()` does not read the JSON body.
+     *
+     * @return array<string, mixed>
+     */
+    private function collaborationPayload(Request $request, string $path): array
+    {
+        $framed = FramedPayload::decode($request->getContent());
+        $documentLen = $this->frameLength($framed['header'], 'documentLen');
+        $yjsLen = $this->frameLength($framed['header'], 'yjsLen');
+        $tail = $framed['tail'];
+        if (($documentLen ?? 0) + ($yjsLen ?? 0) !== strlen($tail)) {
+            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+        }
+
+        $payload = ['room' => $path];
+        $offset = 0;
+        if ($documentLen !== null) {
+            $payload['markdown'] = substr($tail, $offset, $documentLen);
+            $offset += $documentLen;
+        }
+        if ($yjsLen !== null) {
+            $payload['yjs'] = substr($tail, $offset, $yjsLen);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $header
+     */
+    private function frameLength(array $header, string $key): ?int
+    {
+        if (! array_key_exists($key, $header)) {
+            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+        }
+        $value = $header[$key];
+        if ($value === null) {
+            return null;
+        }
+        if (! is_int($value) || $value < 0) {
+            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+        }
+
+        return $value;
     }
 
     public function star(Request $request): JsonResponse
