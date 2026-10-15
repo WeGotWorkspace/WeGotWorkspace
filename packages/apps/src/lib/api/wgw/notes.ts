@@ -195,20 +195,27 @@ export function wgwNoteUpsertFromNote(
 }
 
 /**
- * Metadata-only upsert (no `body`) for REST title/tags/moves.
+ * Metadata-only upsert (no `body`). A PATCH includes only the fields the
+ * action means to change. `tags` is an explicit categories replace; omit it
+ * for archive, star, and notebook move so a cached set cannot overwrite the
+ * server. `title` is the same for SUMMARY. Create uses `wgwNoteUpsertFromNote`.
  * `starred` is consumed by `POST|DELETE /notes/items/{id}/star`.
- * Body edits stay on `PATCH /notes/items/{id}` from the collab session.
  */
 export function wgwNoteMetadataFromNote(
   note: Note,
-  opts?: { starred?: boolean; archived?: boolean },
+  opts?: {
+    starred?: boolean;
+    archived?: boolean;
+    includeTitle?: boolean;
+    includeTags?: boolean;
+  },
 ): WgwNoteUpsertRequest {
   return {
     id: note.id,
     notebook: note.notebook,
     ...(note.notebookId ? { notebookId: note.notebookId } : {}),
-    ...(note.title !== undefined ? { title: note.title } : {}),
-    tags: note.tags,
+    ...(opts?.includeTitle && note.title !== undefined ? { title: note.title } : {}),
+    ...(opts?.includeTags ? { tags: note.tags } : {}),
     ...(opts?.starred !== undefined && { starred: opts.starred }),
     ...(opts?.archived !== undefined && { archived: opts.archived }),
     ...(note.scope === "group" && note.groupSlug?.trim()

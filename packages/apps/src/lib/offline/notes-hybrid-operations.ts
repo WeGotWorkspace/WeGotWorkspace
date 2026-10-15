@@ -190,6 +190,26 @@ async function resolveCachedNote(
   }
 }
 
+function sameTags(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((tag, index) => tag === right[index]);
+}
+
+/** Which snapshot fields this write is allowed to put on the PATCH. */
+function metadataSelection(
+  previous: Note | undefined,
+  note: Note,
+  hasDelta: boolean,
+): { includeTitle: boolean; includeTags: boolean } {
+  if (isLocalTempNoteId(note.id)) {
+    return { includeTitle: note.title !== undefined, includeTags: !hasDelta };
+  }
+  if (!previous) return { includeTitle: false, includeTags: false };
+  return {
+    includeTitle: note.title !== previous.title,
+    includeTags: !hasDelta && !sameTags(previous.tags, note.tags),
+  };
+}
+
 function tagDeltaFromOpts(opts?: {
   tagsAdd?: string[];
   tagsRemove?: string[];
@@ -206,15 +226,18 @@ async function queueOfflineUpsert(
   note: Note,
   tempNoteId?: string,
   tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] },
+  previous?: Note,
 ): Promise<Note> {
   await upsertNoteInCache(username, note, true);
+  const delta = isLocalTempNoteId(note.id) ? undefined : tagDelta;
   await enqueueCoalescedNoteUpdate(
     username,
     note.id,
     note,
     baseUpdatedAt(note),
     tempNoteId,
-    isLocalTempNoteId(note.id) ? undefined : tagDelta,
+    delta,
+    metadataSelection(previous, note, !!delta),
   );
   return note;
 }
@@ -356,17 +379,20 @@ async function upsertNoteOnline(
   note: Note,
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
   opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+  previous?: Note,
 ): Promise<Note> {
   if (isLocalTempNoteId(note.id)) {
     return createLocalTempNoteOnline(username, note, runner, opts);
   }
+  const delta = tagDeltaFromOpts(opts);
+  const selection = metadataSelection(previous, note, !!delta);
   const metadataRequest = wgwNoteMetadataFromNote(note, {
     starred: !!note.starred,
     archived: !!note.archived,
+    includeTitle: selection.includeTitle,
+    includeTags: selection.includeTags,
   });
-  const delta = tagDeltaFromOpts(opts);
-  const { tags: _tags, ...withoutTags } = metadataRequest;
-  const request = delta ? { ...withoutTags, ...delta } : metadataRequest;
+  const request = delta ? { ...metadataRequest, ...delta } : metadataRequest;
   try {
     const saved = await updateNoteItem(note.id, request, opts);
     await upsertNoteInCache(username, saved, false);
@@ -379,7 +405,13 @@ async function upsertNoteOnline(
     // fails belongs in the outbox (shouldQueueNotesUpsert).
     if (status !== 404) throw error;
     if (await isNeverSyncedPendingNote(username, note.id)) {
-      return queueOfflineUpsert(username, note, tempNoteIdForCreate(undefined, note));
+      return queueOfflineUpsert(
+        username,
+        note,
+        tempNoteIdForCreate(undefined, note),
+        delta,
+        previous,
+      );
     }
     await dropLocalNoteAfterServerGone(username, note.id);
     throw error;
@@ -399,11 +431,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       if (!readBrowserOnline()) {
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId, tagDelta);
+        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
       }
       try {
         return await enqueueNoteMetadataWrite(merged.id, () =>
-          upsertNoteOnline(username, merged, runner, opts),
+          upsertNoteOnline(username, merged, runner, opts, existing),
         );
       } catch (error) {
         if (!shouldQueueNotesUpsert(error, merged, opts?.signal)) {
@@ -411,7 +443,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         }
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId, tagDelta);
+        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
       }
     },
     deleteNote: async (note, opts) => {

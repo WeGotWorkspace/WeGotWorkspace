@@ -42,7 +42,7 @@ const META_GROUPS = "notes:groups";
 export type NoteUpsertMetadata = {
   notebook: string;
   title?: string;
-  /** Full replace. Absent when this write is a tag delta. */
+  /** Full replace. Absent when this write is a tag delta or leaves tags alone. */
   tags?: string[];
   tagsAdd?: string[];
   tagsRemove?: string[];
@@ -50,6 +50,12 @@ export type NoteUpsertMetadata = {
   archived?: boolean;
   /** Present when the note lives under a group notebook. */
   groupSlug?: string | null;
+};
+
+/** Which cached fields a metadata PATCH is allowed to send. */
+export type NoteMetadataSelection = {
+  includeTitle?: boolean;
+  includeTags?: boolean;
 };
 
 export type NoteTagDelta = {
@@ -64,11 +70,16 @@ export type NotesUpsertPayload = {
 };
 
 /** Pull only the outbox-tracked metadata fields off a note (drops body/excerpt). */
-export function extractNoteMetadata(note: Note): NoteUpsertMetadata {
+export function extractNoteMetadata(
+  note: Note,
+  selection?: NoteMetadataSelection,
+): NoteUpsertMetadata {
+  const includeTags = selection ? selection.includeTags === true : true;
+  const includeTitle = selection ? selection.includeTitle === true : note.title !== undefined;
   return {
     notebook: note.notebook,
-    ...(note.title !== undefined ? { title: note.title } : {}),
-    tags: note.tags,
+    ...(includeTitle && note.title !== undefined ? { title: note.title } : {}),
+    ...(includeTags ? { tags: note.tags } : {}),
     ...(note.starred !== undefined ? { starred: note.starred } : {}),
     ...(note.archived !== undefined ? { archived: note.archived } : {}),
     ...(note.scope === "group" && note.groupSlug?.trim()
@@ -528,10 +539,11 @@ export async function enqueueCoalescedNoteUpdate(
   baseUpdatedAt: string | undefined,
   tempNoteId?: string,
   tagDelta?: NoteTagDelta,
+  selection?: NoteMetadataSelection,
 ): Promise<void> {
   const metadata = tagDelta
-    ? metadataWithTagDelta(extractNoteMetadata(note), tagDelta)
-    : extractNoteMetadata(note);
+    ? metadataWithTagDelta(extractNoteMetadata(note, selection), tagDelta)
+    : extractNoteMetadata(note, selection);
   await enqueueCoalescedOutboxUpdate<NotesUpsertPayload>({
     username,
     domain: NOTES_DOMAIN,

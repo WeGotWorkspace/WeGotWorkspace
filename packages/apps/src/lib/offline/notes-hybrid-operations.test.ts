@@ -156,6 +156,45 @@ describe("createHybridNotesOperations", () => {
     expect(saved.title).toBe("Server title");
   });
 
+  it("sends categories when the caller replaces the tag set", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["focus"] });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, tags: ["focus"] });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.tags).toEqual(["focus"]);
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("sends a changed title without the cached tag set", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, title: "Renamed" });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, title: "Renamed" });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.title).toBe("Renamed");
+    expect(request).not.toHaveProperty("tags");
+  });
+
+  it("queues an offline star without the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...stale, starred: true });
+
+    const outbox = await listOutboxMutations(username);
+    const payload = JSON.parse(outbox[0]?.payload ?? "{}") as {
+      metadata: { starred?: boolean; tags?: string[]; title?: string };
+    };
+    expect(payload.metadata.starred).toBe(true);
+    expect(payload.metadata.tags).toBeUndefined();
+    expect(payload.metadata.title).toBeUndefined();
+  });
+
   it("sends a tag delta and leaves the full tag list off the request", async () => {
     vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["essay", "focus"] });
 
