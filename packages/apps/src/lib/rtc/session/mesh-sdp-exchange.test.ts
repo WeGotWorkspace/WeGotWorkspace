@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
+import type { IceMode } from "@/lib/rtc/types";
 import {
   acceptMeshAnswer,
   acceptMeshOffer,
@@ -27,6 +28,7 @@ function exchangeFor(
     sendSignal: async () => undefined,
     onSignalError: () => undefined,
     onSignaled: () => undefined,
+    dropPeer: () => undefined,
     needsRelayCredentials: () => false,
     prepareRelay: async () => undefined,
     log,
@@ -135,6 +137,9 @@ function offerExchange(mint: "ok" | "fail") {
     },
     onSignalError: () => undefined,
     onSignaled: () => undefined,
+    dropPeer: (id) => {
+      peers.close(id);
+    },
     log: (event, details) => logs.push({ event, details }),
   };
   return { exchange, peers, logs, answers };
@@ -157,5 +162,57 @@ describe("acceptMeshOffer", () => {
       event: "offer-dropped",
       details: { from: "peer-z", reason: "relay-credentials-missing" },
     });
+  });
+
+  it("applies an offer on a fresh connection when the stored peer is closed", async () => {
+    const { exchange, peers, answers } = offerExchange("ok");
+    const closed = answerablePc();
+    (closed as { signalingState: RTCSignalingState }).signalingState = "closed";
+    peers.add("peer-z", peerEntry(closed));
+    await acceptMeshOffer(exchange, "peer-z", "Ada", offer);
+    expect(peers.get("peer-z")?.pc).not.toBe(closed);
+    expect(peers.get("peer-z")?.pc.signalingState).toBe("stable");
+    expect(answers).toEqual(["answer"]);
+  });
+
+  it("arms the recovery timer when setRemoteDescription fails", async () => {
+    const { exchange, peers } = offerExchange("ok");
+    const signaled: string[] = [];
+    exchange.onSignaled = (id) => signaled.push(id);
+    const pc = answerablePc();
+    pc.setRemoteDescription = async () => {
+      throw new Error("invalid sdp line");
+    };
+    peers.add("peer-z", peerEntry(pc));
+    await expect(acceptMeshOffer(exchange, "peer-z", "Ada", offer)).rejects.toThrow(
+      /invalid sdp line/,
+    );
+    expect(signaled).toEqual(["peer-z"]);
+  });
+});
+
+function peerEntry(pc: RTCPeerConnection, mode: IceMode = "direct"): MeshPeerEntry {
+  return {
+    name: "Ada",
+    pc,
+    mode,
+    relayFallbackTried: false,
+    initiator: false,
+    pendingIce: [],
+    signalSent: false,
+  };
+}
+
+describe("acceptMeshAnswer closed peer", () => {
+  it("drops a closed peer instead of setting the remote description", async () => {
+    const { exchange, peers } = offerExchange("ok");
+    const closed = answerablePc();
+    (closed as { signalingState: RTCSignalingState }).signalingState = "closed";
+    const setRemoteDescription = vi.fn(async () => undefined);
+    closed.setRemoteDescription = setRemoteDescription;
+    peers.add("peer-z", peerEntry(closed));
+    await acceptMeshAnswer(exchange, "peer-z", answer);
+    expect(setRemoteDescription).not.toHaveBeenCalled();
+    expect(peers.get("peer-z")).toBeUndefined();
   });
 });
