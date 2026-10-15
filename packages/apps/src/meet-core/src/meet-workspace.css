@@ -904,7 +904,7 @@
   );
 }
 
-/** App switcher lockup: meet.svg literals (white tile and bars / `#ba9689` shape). */
+/** App switcher lockup: meet.svg literals (soft tile and bars / sand shape). */
 .meet-workspace--split
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {

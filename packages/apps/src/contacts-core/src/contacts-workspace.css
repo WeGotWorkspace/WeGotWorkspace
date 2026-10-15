@@ -46,7 +46,7 @@
   --contacts-detail-title-font-family: var(--font-serif);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
   --switch-on-bg: var(--workspace-accent);
@@ -64,7 +64,7 @@
 .contacts-workspace .workspace-detail-pane .action-bar,
 .contacts-workspace .workspace-detail-pane {
   --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 /*
@@ -76,7 +76,7 @@
 }
 
 /**
- * App switcher lockup: contacts.svg literals (`#a3c4e8` sky tile / white person).
+ * App switcher lockup: contacts.svg literals (sky tile / soft person).
  */
 .contacts-workspace
   .app-sidebar__header
@@ -89,7 +89,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .contacts-list-panel__loading {
@@ -462,7 +462,7 @@
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

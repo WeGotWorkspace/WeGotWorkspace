@@ -6,7 +6,7 @@
  * Admin product shell: paper main pane + soft sidebar.
  * `--workspace-accent` is We Got Dark (`#222222` — same hex as
  * WORKSPACE_APP_ACCENT.admin). The lockup is a
- * white tile with Dark marks. Primary fills use accent with white fg. The rail
+ * soft tile with Dark marks. Primary fills use accent with white fg. The rail
  * is the shared recipe in `workspace-color.css`.
  * Import only from {@link AdminWorkspace}.
  */
@@ -46,21 +46,21 @@
     var(--workspace-foreground) 80%,
     var(--workspace-surface)
   );
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --segmented-control-track-active-bg: var(--workspace-accent);
 }
 
 .admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-foreground);
+  background-color: var(--workspace-icon-surface);
 }
 
 .admin-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .admin-workspace .app-sidebar__footer {
@@ -88,8 +88,8 @@
  */
 .admin-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
   --segmented-control-track-active-bg: var(--workspace-accent);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

@@ -1,16 +1,28 @@
 #!/usr/bin/env node
 /**
- * Publish vector app icons for in-app UI and rasterize install PNGs.
+ * Publish vector app icons for in-app UI and the supplied install PNGs.
  *
- * Canonical source: `src/assets/app-icons/{app}.svg` — real vector SVG only.
+ * Canonical vector source: `src/assets/app-icons/{app}.svg` — real vector SVG only.
  * Rejects SVG files that embed raster data (`<image`, `data:image`, `base64`).
+ * Fills use CSS brand tokens (`var(--color-we-got-*)`) nested in
+ * `--app-icon-layer-*` so in-app tiles can recolor. Cream is `--color-we-got-soft`.
+ * White has no brand token and stays `#ffffff`.
+ *
+ * Canonical install artwork: `src/assets/app-icons/raster/{app}.png`.
+ * Use these tiles as-is. Do not redraw them from the SVGs. Resize only when a
+ * published size is not already that pixel size.
  *
  * Output:
  *   - `public/app-icons/{app}.svg` — copied verbatim for in-app UI
  *   - `public/app-icons/home-pwa.svg` — `/` favicon only; not the in-app suite mark
- *   - `public/pwa-icons/{app}-{180,192,512}.png` — opaque PNG-24
- *   - `public/pwa-icons/{app}-512-maskable.png` — artwork on the inscribed square, padded with the SVG background
+ *   - `public/pwa-icons/{app}-{180,192,512}.png` — opaque PNG-24 from the raster master
+ *   - `public/pwa-icons/{app}-512-maskable.png` — the same full-bleed 512 PNG
  *   - `public/manifests/{app}.webmanifest` — PNG icons only, when the file exists
+ *
+ * Maskable used to scale artwork onto the inscribed safe square. Edge-bleed
+ * tiles and already-inset glyphs then landed at different scales, so some
+ * launcher icons looked smaller than others. Every install size now uses the
+ * supplied PNG.
  *
  * WebKit uses `<link rel="apple-touch-icon">` when that link is in the document
  * head, and only then falls back to manifest icons. This shell injects both
@@ -22,19 +34,13 @@
  * Icon query strings come from `src/lib/pwa-icon-cache-version.json`. Bump
  * `version` there and re-run this script. Do not parse the TypeScript module.
  *
- * Switch-trigger inversion maps `--workspace-icon-*` onto `--app-icon-layer-*`
- * (see workspace-app-icon.css). Brand fills nest a `--color-we-got-*` token
- * inside that fallback. Rasterization peels both layers down to the hex
- * (see pwa-icon-raster.mjs). Cream is `--color-we-got-soft`. White has no brand
- * token and stays `#ffffff`.
- * `home-pwa.svg` is the `/` install tile and favicon. It is never inlined, so
- * its fills are brand tokens with a hex fallback and no `--app-icon-layer-*` layer.
- * `home.svg` stays the in-app suite mark.
+ * `home-pwa.svg` is the `/` favicon. It is never inlined, so its fills are
+ * brand tokens with a hex fallback and no `--app-icon-layer-*` layer.
+ * `home.svg` stays the in-app suite mark. Install PNGs for `/` come from
+ * `raster/home.png`, not from either SVG.
  *
- * SVG rasterization uses `rsvg-convert` (librsvg). ImageMagick 6's SVG renderer
- * drops `clip-path` glyphs. ImageMagick 7 (`magick`) only flattens to opaque
- * PNG-24 and builds the maskable canvas. Do not call `convert`: on Windows that
- * name is the filesystem tool.
+ * ImageMagick 7 (`magick`) flattens to opaque PNG-24 and resizes. Do not call
+ * `convert`: on Windows that name is the filesystem tool.
  */
 import { execFileSync } from "node:child_process";
 import {
@@ -49,12 +55,12 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertFullBleedSquare } from "./pwa-icon-full-bleed.mjs";
-import { svgForRasterization } from "./pwa-icon-raster.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageDir = join(__dirname, "..");
 const publicDir = join(packageDir, "public");
 const sourceDir = join(packageDir, "src", "assets", "app-icons");
+const rasterDir = join(sourceDir, "raster");
 const uiDir = join(publicDir, "app-icons");
 const pwaDir = join(publicDir, "pwa-icons");
 const manifestsDir = join(publicDir, "manifests");
@@ -72,7 +78,7 @@ const WORKSPACE_APPS = [
   "settings",
   "tasks",
 ];
-const FUTURE_APPS = ["reminders"];
+const FUTURE_APPS = ["reminders", "sheets", "ai"];
 /** Shell / suite PWA manifest (home.webmanifest) — full-bleed launcher tile, not a home-grid app. */
 const SHELL_APPS = ["home"];
 /**
@@ -81,17 +87,9 @@ const SHELL_APPS = ["home"];
 const HOME_INSTALL_SOURCE = "home-pwa.svg";
 const ALL_APPS = [...WORKSPACE_APPS, ...FUTURE_APPS, ...SHELL_APPS];
 const INSTALL_APPS = [...WORKSPACE_APPS, ...SHELL_APPS];
+/** Install PNGs that have a supplied master. Reminders stays vector-only. */
+const RASTER_APPS = [...INSTALL_APPS, "sheets", "ai"];
 const RASTER_SIZES = [180, 192, 512];
-/**
- * Android's maskable safe zone is a circle with diameter 80% of the icon.
- * Header bands and edge-cut glyphs (calendar, mail, contacts, drive, meet)
- * leave that circle if the tile is only scaled to 80%. The largest square
- * inside the circle is `diameter / sqrt(2)` (~289px). That square floats on
- * the tile background. A larger maskable icon needs its own source; this
- * generator keeps the one full-bleed SVG and accepts the float.
- */
-const MASKABLE_CANVAS = 512;
-const MASKABLE_ART_SIZE = Math.floor((MASKABLE_CANVAS * 0.8) / Math.SQRT2);
 
 const RASTER_EMBED_RE =
   /<image\b|data:image|xlink:href\s*=\s*["']data:|href\s*=\s*["']data:image|base64/i;
@@ -130,15 +128,7 @@ function resolveMagick() {
   );
 }
 
-function resolveRsvg() {
-  return resolveBinary(
-    ["rsvg-convert"],
-    "librsvg is required (`rsvg-convert`) to rasterize install icons. ImageMagick 6 drops clip-path glyphs.",
-  );
-}
-
 const magick = resolveMagick();
-const rsvg = resolveRsvg();
 
 function assertVectorSvg(app, svgPath) {
   const markup = readFileSync(svgPath, "utf8");
@@ -151,50 +141,32 @@ function assertVectorSvg(app, svgPath) {
   return markup;
 }
 
-function rasterizePng(rasterSvg, size, dest) {
-  const raw = `${dest}.raw.png`;
-  execFileSync(rsvg, ["-w", String(size), "-h", String(size), rasterSvg, "-o", raw], {
-    stdio: "inherit",
+function imageSize(file) {
+  const out = execFileSync(magick, ["identify", "-format", "%w %h", file], {
+    encoding: "utf8",
   });
-  execFileSync(
-    magick,
-    [raw, "-background", "white", "-alpha", "remove", "-alpha", "off", `PNG24:${dest}`],
-    { stdio: "inherit" },
-  );
-  rmSync(raw, { force: true });
-}
-
-function maskablePad(app, peeledMarkup) {
-  const fill = assertFullBleedSquare(app, peeledMarkup);
-  if (!/^#[0-9a-fA-F]{6}$/.test(fill)) {
-    throw new Error(
-      `${app}: maskable pad must be a 6-digit hex fill after rasterization (got ${fill})`,
-    );
+  const [width, height] = out.trim().split(/\s+/).map(Number);
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    throw new Error(`Could not read PNG size: ${file}`);
   }
-  return fill;
+  return { width, height };
 }
 
-function writeMaskable(sourcePng, dest, background) {
-  execFileSync(
-    magick,
-    [
-      sourcePng,
-      "-filter",
-      "Lanczos",
-      "-resize",
-      `${MASKABLE_ART_SIZE}x${MASKABLE_ART_SIZE}`,
-      "-background",
-      background,
-      "-gravity",
-      "center",
-      "-extent",
-      `${MASKABLE_CANVAS}x${MASKABLE_CANVAS}`,
-      "-alpha",
-      "off",
-      `PNG24:${dest}`,
-    ],
-    { stdio: "inherit" },
-  );
+function writeOpaquePng(src, size, dest) {
+  const { width, height } = imageSize(src);
+  const args = [src];
+  // A one-pixel export sliver (mail is 512×513) is cropped. Resampling would
+  // squash the artwork. Semi-transparent fringe rows keep their stored RGB;
+  // compositing them onto white shifts the tile color.
+  if (width === size && height === size + 1) {
+    args.push("-gravity", "north", "-crop", `${size}x${size}+0+0`, "+repage");
+  } else if (height === size && width === size + 1) {
+    args.push("-gravity", "west", "-crop", `${size}x${size}+0+0`, "+repage");
+  } else if (width !== size || height !== size) {
+    args.push("-filter", "Lanczos", "-resize", `${size}x${size}!`);
+  }
+  args.push("-alpha", "off", `PNG24:${dest}`);
+  execFileSync(magick, args, { stdio: "inherit" });
 }
 
 function manifestIcons(app) {
@@ -251,7 +223,6 @@ for (const app of ALL_APPS) {
   const destSvg = join(uiDir, `${app}.svg`);
   copyFileSync(srcSvg, destSvg);
 
-  let rasterMarkup = markup;
   if (app === "home") {
     const installSrc = join(sourceDir, HOME_INSTALL_SOURCE);
     if (!existsSync(installSrc)) {
@@ -260,8 +231,8 @@ for (const app of ALL_APPS) {
       continue;
     }
     try {
-      rasterMarkup = assertVectorSvg("home-pwa", installSrc);
-      assertFullBleedSquare("home-pwa", rasterMarkup);
+      const installMarkup = assertVectorSvg("home-pwa", installSrc);
+      assertFullBleedSquare("home-pwa", installMarkup);
     } catch (err) {
       console.error(err.message);
       failed = true;
@@ -270,16 +241,20 @@ for (const app of ALL_APPS) {
     copyFileSync(installSrc, join(uiDir, HOME_INSTALL_SOURCE));
   }
 
-  if (INSTALL_APPS.includes(app)) {
-    const peeled = svgForRasterization(rasterMarkup);
-    const pad = maskablePad(app, peeled);
-    const rasterSvg = join(pwaDir, `.${app}-raster.svg`);
-    writeFileSync(rasterSvg, peeled);
-    for (const size of RASTER_SIZES) {
-      rasterizePng(rasterSvg, size, join(pwaDir, `${app}-${size}.png`));
+  if (RASTER_APPS.includes(app)) {
+    const master = join(rasterDir, `${app}.png`);
+    if (!existsSync(master)) {
+      console.error(`Missing install PNG: ${master}`);
+      failed = true;
+      continue;
     }
-    writeMaskable(join(pwaDir, `${app}-512.png`), join(pwaDir, `${app}-512-maskable.png`), pad);
-    rmSync(rasterSvg, { force: true });
+    const png512 = join(pwaDir, `${app}-512.png`);
+    writeOpaquePng(master, 512, png512);
+    for (const size of RASTER_SIZES) {
+      if (size === 512) continue;
+      writeOpaquePng(png512, size, join(pwaDir, `${app}-${size}.png`));
+    }
+    copyFileSync(png512, join(pwaDir, `${app}-512-maskable.png`));
     writeManifestIcons(app);
   }
 
@@ -287,7 +262,7 @@ for (const app of ALL_APPS) {
     rmSync(join(uiDir, legacy), { force: true });
   }
 
-  const install = INSTALL_APPS.includes(app) ? " + install PNGs" : "";
+  const install = RASTER_APPS.includes(app) ? " + install PNGs" : "";
   console.log(`Published vector icon${install} for ${app}`);
 }
 
