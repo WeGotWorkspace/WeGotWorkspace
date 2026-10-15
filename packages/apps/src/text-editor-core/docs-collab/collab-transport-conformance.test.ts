@@ -53,6 +53,17 @@ function pseudoRandom(length: number, seed: number): Uint8Array {
   return out;
 }
 
+function expectSameBytes(actual: Uint8Array | null | undefined, expected: Uint8Array): void {
+  expect(actual).toBeInstanceOf(Uint8Array);
+  const bytes = actual as Uint8Array;
+  expect(bytes.byteLength).toBe(expected.byteLength);
+  for (let index = 0; index < expected.byteLength; index += 1) {
+    if (bytes[index] !== expected[index]) {
+      throw new Error(`byte ${index}: ${bytes[index]} !== ${expected[index]}`);
+    }
+  }
+}
+
 function dataChannelRoundTrip(bytes: Uint8Array): Uint8Array {
   const message = encodeDataChannelMessage(JSON.stringify({ bin: 1 }), bytes);
   const frames = encodeBinaryFrames(message, 7);
@@ -67,13 +78,13 @@ function dataChannelRoundTrip(bytes: Uint8Array): Uint8Array {
   }
   expect(merged).not.toBeNull();
   const decoded = decodeDataChannelMessage(merged!);
-  expect(decoded?.payload).toEqual(bytes);
+  expectSameBytes(decoded?.payload, bytes);
   return decoded!.payload!;
 }
 
 function httpRoundTrip(bytes: Uint8Array): Uint8Array {
   const decoded = bytesFromBase64(bytesToBase64(bytes));
-  expect(decoded).toEqual(bytes);
+  expectSameBytes(decoded, bytes);
   return decoded!;
 }
 
@@ -113,7 +124,7 @@ function exchange(codec: TransportCodec, source: Y.Doc, target: Y.Doc): void {
 }
 
 function expectSameState(left: Y.Doc, right: Y.Doc): void {
-  expect(Y.encodeStateAsUpdate(left)).toEqual(Y.encodeStateAsUpdate(right));
+  expectSameBytes(Y.encodeStateAsUpdate(left), Y.encodeStateAsUpdate(right));
 }
 
 function fillSheet(doc: Y.Doc): void {
@@ -176,7 +187,7 @@ describe("collab transport conformance", () => {
 
     it.each(cases)("round-trips $name on every transport", ({ bytes }) => {
       for (const codec of codecs) {
-        expect(codec.roundTrip(bytes)).toEqual(bytes);
+        expectSameBytes(codec.roundTrip(bytes), bytes);
       }
     });
   });
