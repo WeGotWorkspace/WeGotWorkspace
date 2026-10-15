@@ -78,18 +78,6 @@ These rules are enforced in product code and covered by unit tests under `sessio
 | Poll cursor    | `MeshSignalInbox` acks **every** delivered row — chat, control, and while RTC signals are off                    |
 | Poll timeout   | `AbortSignal.timeout(10_000)`; an aborted poll reschedules like any other poll failure                           |
 
-## Release notes
-
-History is kept. The sidecar on disk is already raw Yjs. The raw data-channel payload change touches only the data channel, not storage and not the collaboration PUT body.
-
-During rollout, an already-open tab runs the old JS and a tab loaded after the upgrade runs the new JS. Live collaboration between them stops with no error. Old-to-new sends a JSON string, and `ingestDataChannelData` returns null. New-to-old makes the old `FrameReassembler` UTF-8-decode the frame, `JSON.parse` fails, and the old session swallows it.
-
-No data loss: each client still saves its own state, and the next save merges through the ETag precondition and the remerge loop.
-
-Open tabs need a hard reload after the upgrade. That is enough for a demo environment. This change does not add a "syncing through server" status.
-
-## Tests
-
 Run kernel tests:
 
 ```bash
