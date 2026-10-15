@@ -16,12 +16,12 @@ export type BrandingCsspropsMap = Record<string, BrandingCsspropEntry>;
 export function sharedBrandingCssprops(): BrandingCsspropsMap {
   return {
     "color-we-got-soft": {
-      value: "#eeeeee",
+      value: "#fff5e9",
       description: "We Got Soft",
       category: "Primitives",
     },
     "color-we-got-dark": {
-      value: "#222222",
+      value: "#003311",
       description: "We Got Dark",
       category: "Primitives",
     },
@@ -103,7 +103,7 @@ export const BRANDING_APP_SIDEBAR_DEFAULT = "var(--workspace-sidebar-surface)";
 
 /** Production `--app-sidebar-color` (ink on the soft rail). */
 export function brandingAppSidebarColorDefault(_appId: WorkspaceAppId): string {
-  return "#222222";
+  return "#003311";
 }
 
 /**
