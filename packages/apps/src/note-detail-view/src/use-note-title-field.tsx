@@ -1,12 +1,13 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import type * as Y from "yjs";
 import {
-  noteTitleIsInDoc,
-  readNoteTitle,
-  seedNoteTitleOnOpen,
-  writeNoteTitle,
-} from "@/notes-core/src/note-title-doc";
-import { SEED_ORIGIN } from "@/text-editor-core/docs-collab/docs-collab-utils";
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+import type * as Y from "yjs";
+import { noteTitleIsInDoc, readNoteTitle, writeNoteTitle } from "@/notes-core/src/note-title-doc";
 
 const NoteCollabYDocContext = createContext<Y.Doc | null>(null);
 const NoteCollabTitleSaveContext = createContext<(() => void) | null>(null);
@@ -37,16 +38,14 @@ type UseNoteTitleFieldOptions = {
   title: string;
   /** Stored SUMMARY. Null means never set; "" means the user blanked it. */
   storedTitle?: string | null;
-  /** Create only: seed once from the first heading when SUMMARY was never set. */
-  seedTitleFromHeading?: boolean;
-  markdown: string;
   readOnly: boolean;
   onTitleChange?: (title: string) => void;
 };
 
 /**
  * Bind the title textarea to the note's Y.Text when a collab document is open.
- * Without one, the field stays a controlled input.
+ * Until that type exists, the field shows the stored SUMMARY and does not write it.
+ * Without a document, the field stays a controlled input.
  */
 export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
   value: string;
@@ -56,54 +55,41 @@ export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
   const onLocalTitleEdit = useContext(NoteCollabTitleSaveContext);
   const onTitleChangeRef = useRef(options.onTitleChange);
   onTitleChangeRef.current = options.onTitleChange;
-  const storedTitleRef = useRef(options.storedTitle);
-  storedTitleRef.current = options.storedTitle;
-  const seedHeadingRef = useRef(options.seedTitleFromHeading === true);
-  seedHeadingRef.current = options.seedTitleFromHeading === true;
-  const markdownRef = useRef(options.markdown);
-  markdownRef.current = options.markdown;
-  const [live, setLive] = useState<string | null>(null);
+  const fallback = options.storedTitle ?? options.title;
 
-  useEffect(() => {
-    if (!ydoc) {
-      setLive(null);
-      return;
-    }
-    const notified = { current: null as string | null };
-    seedNoteTitleOnOpen(
-      ydoc,
-      {
-        summary: storedTitleRef.current,
-        headingMarkdown: seedHeadingRef.current ? markdownRef.current : undefined,
-      },
-      SEED_ORIGIN,
-    );
-    const publish = () => {
-      if (!noteTitleIsInDoc(ydoc)) return;
-      const next = readNoteTitle(ydoc);
-      setLive((current) => (current === next ? current : next));
-      if (notified.current === next) return;
-      notified.current = next;
-      onTitleChangeRef.current?.(next);
-    };
-    publish();
-    ydoc.on("update", publish);
-    return () => {
-      ydoc.off("update", publish);
-    };
-  }, [ydoc]);
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      if (!ydoc) return () => {};
+      const onUpdate = () => {
+        notify();
+        if (!noteTitleIsInDoc(ydoc)) return;
+        onTitleChangeRef.current?.(readNoteTitle(ydoc));
+      };
+      ydoc.on("update", onUpdate);
+      return () => {
+        ydoc.off("update", onUpdate);
+      };
+    },
+    [ydoc],
+  );
+  const getSnapshot = useCallback(
+    () => (ydoc ? readNoteTitle(ydoc, fallback) : options.title),
+    [fallback, options.title, ydoc],
+  );
+
+  const value = useSyncExternalStore(subscribe, getSnapshot, () => options.title);
 
   const editable = !options.readOnly && (ydoc != null || options.onTitleChange != null);
   const onChange = editable
-    ? (value: string) => {
+    ? (next: string) => {
         if (ydoc) {
-          writeNoteTitle(ydoc, value);
+          writeNoteTitle(ydoc, next);
           onLocalTitleEdit?.();
           return;
         }
-        options.onTitleChange?.(value);
+        options.onTitleChange?.(next);
       }
     : undefined;
 
-  return { value: live ?? options.title, onChange };
+  return { value, onChange };
 }

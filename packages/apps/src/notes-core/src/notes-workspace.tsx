@@ -654,7 +654,6 @@ export function NotesWorkspace({
                 contentRevision={formatNoteDateForList(active.date)}
                 title={active.title ?? ""}
                 storedTitle={active.title ?? null}
-                seedTitleFromHeading={focusTitleAfterCreate}
                 titlePlaceholder={L.titlePlaceholder}
                 autoFocusTitle={focusTitleAfterCreate && !noteReadOnly}
                 onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}

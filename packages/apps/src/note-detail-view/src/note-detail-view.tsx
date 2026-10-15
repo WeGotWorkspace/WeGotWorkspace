@@ -46,15 +46,13 @@ export type NoteDetailViewProps = {
    * Default `true`.
    */
   showTags?: boolean;
-  /** Display title. The collab field replaces this with the Y.Text once bound. */
+  /** Display title. The collab field replaces this once the document has a title type. */
   title?: string;
   /**
-   * Stored SUMMARY used to seed a doc that has no title yet.
+   * Stored SUMMARY shown while the document has no title type.
    * Null means never set; "" means the user blanked it. Omit outside collab.
    */
   storedTitle?: string | null;
-  /** Create only: seed the title once from the first heading when SUMMARY was never set. */
-  seedTitleFromHeading?: boolean;
   onTitleChange?: (title: string) => void;
   titlePlaceholder?: string;
   /**
@@ -91,7 +89,6 @@ export function NoteDetailView({
   showTags = true,
   title = "",
   storedTitle,
-  seedTitleFromHeading = false,
   onTitleChange,
   titlePlaceholder = "Title",
   autoFocusTitle = false,
@@ -110,8 +107,6 @@ export function NoteDetailView({
   const titleField = useNoteTitleField({
     title,
     storedTitle,
-    seedTitleFromHeading,
-    markdown,
     readOnly,
     onTitleChange,
   });

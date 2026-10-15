@@ -9,7 +9,7 @@ import { NoteCollabYDocProvider } from "../src/use-note-title-field";
 import "@/notes-core/src/notes-workspace.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
 
-/** Title bound to the note document, seeded from stored SUMMARY. */
+/** Title field showing stored SUMMARY. The document has no title type yet. */
 function TitleBoundToDoc() {
   const [ydoc] = useState(() => {
     const doc = new Y.Doc();
@@ -52,7 +52,7 @@ const meta: Meta<typeof TitleBoundToDoc> = {
 export default meta;
 type Story = StoryObj<typeof TitleBoundToDoc>;
 
-/** A note without a document title opens with its stored SUMMARY. */
+/** A note without a document title still shows its stored SUMMARY. */
 export const SeededFromSummary: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
