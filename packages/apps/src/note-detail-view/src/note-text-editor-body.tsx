@@ -22,6 +22,7 @@ import {
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
 
+import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 import "@/text-editor-core/src/text-editor.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
 
@@ -174,7 +175,14 @@ export function NoteCollabSession({
     [collab, localDisplayName, onMarkdownChange, registerMarkdownGetter],
   );
 
-  return <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>;
+  return (
+    <NoteCollabYDocProvider
+      ydoc={collab.session?.ydoc ?? null}
+      onLocalTitleEdit={collab.scheduleSave}
+    >
+      <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>
+    </NoteCollabYDocProvider>
+  );
 }
 
 /**

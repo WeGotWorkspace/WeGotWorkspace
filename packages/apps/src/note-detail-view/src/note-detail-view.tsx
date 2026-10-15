@@ -7,6 +7,7 @@ import {
   NoteTextEditorBody,
   type NoteCollabConfig,
 } from "@/note-detail-view/src/note-text-editor-body";
+import { useNoteTitleField } from "@/note-detail-view/src/use-note-title-field";
 import { TextareaAutosize } from "@/ui/textarea-autosize";
 import "@/note-detail-view/src/note-detail-view.css";
 
@@ -45,8 +46,15 @@ export type NoteDetailViewProps = {
    * Default `true`.
    */
   showTags?: boolean;
-  /** VJOURNAL SUMMARY. Required in the product; empty until autofill or the user types. */
+  /** Display title. The collab field replaces this with the Y.Text once bound. */
   title?: string;
+  /**
+   * Stored SUMMARY used to seed a doc that has no title yet.
+   * Null means never set; "" means the user blanked it. Omit outside collab.
+   */
+  storedTitle?: string | null;
+  /** Create only: seed the title once from the first heading when SUMMARY was never set. */
+  seedTitleFromHeading?: boolean;
   onTitleChange?: (title: string) => void;
   titlePlaceholder?: string;
   /**
@@ -82,6 +90,8 @@ export function NoteDetailView({
   onTagRemove,
   showTags = true,
   title = "",
+  storedTitle,
+  seedTitleFromHeading = false,
   onTitleChange,
   titlePlaceholder = "Title",
   autoFocusTitle = false,
@@ -97,8 +107,15 @@ export function NoteDetailView({
   // `editable` enforces read-only. Solo editor is for Storybook / no collab.
   const useCollabSurface = collab != null;
   const tagsReadOnly = readOnly || onTagAdd == null;
-
-  const titleReadOnly = readOnly || onTitleChange == null;
+  const titleField = useNoteTitleField({
+    title,
+    storedTitle,
+    seedTitleFromHeading,
+    markdown,
+    readOnly,
+    onTitleChange,
+  });
+  const titleReadOnly = titleField.onChange == null;
   const titleFieldId = useId();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const leftTitleRef = useRef(false);
@@ -123,14 +140,14 @@ export function NoteDetailView({
         ref={titleRef}
         id={titleFieldId}
         className="note-detail-view__title"
-        value={title}
+        value={titleField.value}
         placeholder={titlePlaceholder}
         readOnly={titleReadOnly}
         autoFocus={autoFocusTitle && !titleReadOnly}
         minRows={1}
         maxRows={12}
         wrap="soft"
-        onChange={titleReadOnly ? undefined : (event) => onTitleChange(event.target.value)}
+        onChange={titleReadOnly ? undefined : (event) => titleField.onChange?.(event.target.value)}
         onKeyDown={titleReadOnly ? undefined : handleTitleKeyDown}
         onBlur={titleReadOnly ? undefined : handleTitleBlur}
       />

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import { NOTES_TOO_LARGE_MESSAGE } from "@/notes-core/src/notes-collab-errors";
 import { encodeNoteRoomId } from "@/notes-core/src/note-collab-path";
+import { writeNoteTitle } from "@/notes-core/src/note-title-doc";
 
 const getNote = vi.fn();
 const persistNoteMarkdown = vi.fn();
@@ -46,6 +48,36 @@ describe("buildNoteCollabUrls reconnect + persist", () => {
     await expect(urls.loadDocumentMarkdown?.()).rejects.toThrow(/precondition failed \(412\)/);
     expect(getLocalDirty).toHaveBeenCalled();
     expect(onReconnectConflict).toHaveBeenCalledOnce();
+  });
+
+  it("sends the doc title as SUMMARY and retries that same title after 412", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    const ydoc = new Y.Doc();
+    writeNoteTitle(ydoc, "Event");
+    getNote.mockResolvedValue({ id: "n1", body: "", etag: '"fresh"' });
+    persistNoteMarkdown
+      .mockRejectedValueOnce(Object.assign(new Error("PATCH failed (412)"), { status: 412 }))
+      .mockResolvedValueOnce({ id: "n1", etag: '"saved"' });
+
+    const urls = await buildNoteCollabUrls("n1", '"etag"');
+    await urls.persistMarkdown?.("# Other\n\nNotes", undefined, ydoc);
+
+    expect(persistNoteMarkdown).toHaveBeenNthCalledWith(1, "n1", "# Other\n\nNotes", '"etag"', {
+      title: "Event",
+    });
+    expect(persistNoteMarkdown).toHaveBeenNthCalledWith(2, "n1", "# Other\n\nNotes", '"fresh"', {
+      title: "Event",
+    });
+  });
+
+  it("omits title when the doc has not adopted one, so SUMMARY is not cleared", async () => {
+    const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
+    persistNoteMarkdown.mockResolvedValueOnce({ id: "n1", etag: '"saved"' });
+    const urls = await buildNoteCollabUrls("n1", '"etag"');
+
+    await urls.persistMarkdown?.("# Meeting\n\nNotes", undefined, new Y.Doc());
+
+    expect(persistNoteMarkdown).toHaveBeenCalledWith("n1", "# Meeting\n\nNotes", '"etag"');
   });
 
   it("notifies persist success only when the server accepts the body", async () => {

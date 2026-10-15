@@ -37,6 +37,7 @@ import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/no
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
+import { projectNoteTitle } from "@/notes-core/src/note-title-projection";
 import {
   noteAllowsTagAssignment,
   noteListTitle,
@@ -209,7 +210,7 @@ export function NotesWorkspace({
     toggleNoteTag,
     addNoteTag,
     applyLocalBodyMarkdown,
-    updateNote,
+    setNotes,
     groups,
     canManageNotebooks,
     notebookDialog,
@@ -652,11 +653,13 @@ export function NotesWorkspace({
                 noteId={active.id}
                 contentRevision={formatNoteDateForList(active.date)}
                 title={active.title ?? ""}
+                storedTitle={active.title ?? null}
+                seedTitleFromHeading={focusTitleAfterCreate}
                 titlePlaceholder={L.titlePlaceholder}
                 autoFocusTitle={focusTitleAfterCreate && !noteReadOnly}
                 onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}
                 onTitleChange={
-                  noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
+                  noteReadOnly ? undefined : (title) => projectNoteTitle(setNotes, active.id, title)
                 }
                 tags={active.tags}
                 availableTags={tags.filter(isValidNewTag)}

@@ -64,6 +64,7 @@ export function useNotesReconnectConflict(options: {
       await keepMineNotesReconnect({
         noteId: note.id,
         markdown: noteBodyToMarkdown(note.body),
+        title: note.title,
       });
       editorDirtyRef.current = false;
     } finally {

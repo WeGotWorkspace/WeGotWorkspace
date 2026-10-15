@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { noteListTitle } from "@/notes-core/src/notes-note-utils";
 import { noteFromVjournal, type NotesVjournalNotebook } from "@/lib/api/wgw/notes-vjournal";
 
 const wgwFetch = vi.fn();
@@ -80,6 +81,73 @@ describe("noteFromVjournal", () => {
     );
     expect(cancelled.archived).toBe(true);
     expect(restored.archived).toBe(false);
+  });
+
+  it("lists the stored SUMMARY instead of a heading in the body", () => {
+    const mapped = noteFromVjournal(
+      {
+        id: "n-5",
+        notebookId: "notes-general",
+        title: "Event",
+        body: "# Other\n\nNotes",
+        categories: [],
+        status: null,
+        etag: '"1"',
+      },
+      notebooks,
+    );
+
+    expect(mapped.title).toBe("Event");
+    expect(noteListTitle(mapped)).toBe("Event");
+  });
+
+  it("does not invent a title from the body when SUMMARY was never set", () => {
+    const mapped = noteFromVjournal(
+      {
+        id: "n-6",
+        notebookId: "notes-general",
+        title: null,
+        body: "# Meeting\n\nNotes",
+        categories: [],
+        status: null,
+        etag: '"1"',
+      },
+      notebooks,
+    );
+
+    expect(mapped.title).toBeUndefined();
+  });
+});
+
+describe("persistNoteMarkdown", () => {
+  beforeEach(() => {
+    wgwFetch.mockReset();
+    wgwFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    });
+  });
+
+  it("writes SUMMARY from the doc title and does not derive it from the body", async () => {
+    const { persistNoteMarkdown } = await import("@/lib/api/wgw/notes-vjournal");
+    await persistNoteMarkdown("n-1", "# Other\n\nNotes", '"1"', { title: "Event" });
+
+    expect(wgwFetch).toHaveBeenCalledWith(
+      "/notes/items/n-1",
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    const init = wgwFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({ body: "# Other\n\nNotes", title: "Event" });
+    expect((init.headers as Headers).get("If-Match")).toBe('"1"');
+  });
+
+  it("omits title when the doc has no title yet", async () => {
+    const { persistNoteMarkdown } = await import("@/lib/api/wgw/notes-vjournal");
+    await persistNoteMarkdown("n-1", "# Meeting\n\nNotes", '"1"');
+
+    const init = wgwFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({ body: "# Meeting\n\nNotes" });
   });
 });
 

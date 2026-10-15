@@ -106,7 +106,7 @@ export function useDocsCollab({
   });
 
   const { join, teardown, session, joined, snapshotPreview } = joinHook;
-  const { saveNow, registerMarkdownGetter, onMarkdownChange } = save;
+  const { saveNow, registerMarkdownGetter, onMarkdownChange, scheduleSave } = save;
 
   const joinRef = useRef(join);
   const teardownRef = useRef(teardown);
@@ -167,6 +167,7 @@ export function useDocsCollab({
     join,
     connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
+    scheduleSave,
     registerMarkdownGetter,
     onMarkdownChange,
   };

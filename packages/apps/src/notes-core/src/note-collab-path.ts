@@ -1,5 +1,7 @@
+import type * as Y from "yjs";
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getNote, persistNoteMarkdown } from "@/lib/api/wgw/notes-vjournal";
+import { noteTitleForSave } from "@/notes-core/src/note-title-doc";
 import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 import {
   isNotesPayloadTooLargeError,
@@ -36,15 +38,21 @@ export async function buildNoteCollabUrls(
   const authToken = (await wgwEnsureFreshAccessToken()) ?? undefined;
   let etag = initialEtag;
 
-  const persistMarkdown = async (markdown: string) => {
+  const persistMarkdown = async (markdown: string, _authToken?: string, ydoc?: Y.Doc) => {
     if (isLocalTempNoteId(noteId)) return;
+    const saveMarkdown = (currentEtag: string) => {
+      const title = ydoc ? noteTitleForSave(ydoc) : undefined;
+      return title !== undefined
+        ? persistNoteMarkdown(noteId, markdown, currentEtag, { title })
+        : persistNoteMarkdown(noteId, markdown, currentEtag);
+    };
     try {
-      const updated = await persistNoteMarkdown(noteId, markdown, etag).catch(async (error) => {
+      const updated = await saveMarkdown(etag).catch(async (error) => {
         if (persistHttpStatus(error) !== 412) throw error;
         const fresh = await getNote(noteId);
         etag = fresh.etag;
         hooks?.onEtag?.(etag);
-        return persistNoteMarkdown(noteId, markdown, etag);
+        return saveMarkdown(etag);
       });
       etag = updated.etag;
       hooks?.onEtag?.(etag);
