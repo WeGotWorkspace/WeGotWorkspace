@@ -2,6 +2,7 @@ import * as Y from "yjs";
 import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { noteTitleForSave } from "./docs-collab-document-title";
+import { externalWriteFromHeader } from "./docs-collab-external-write";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 function withBearerAuth(
@@ -12,25 +13,41 @@ function withBearerAuth(
   return headers;
 }
 
-export async function loadMarkdown(documentUrl: string, authToken?: string): Promise<string> {
+export type CollabText = {
+  markdown: string;
+  /** Set when the JSON note carries a title. A markdown file leaves it null. */
+  title: string | null;
+};
+
+export async function loadCollabText(documentUrl: string, authToken?: string): Promise<CollabText> {
   const res = await fetch(documentUrl, {
     headers: withBearerAuth({ Accept: "text/markdown, application/json" }, authToken),
   });
   if (!res.ok) throw new CollabHttpError(`Could not load document (${res.status})`, res.status);
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
-    const data = (await res.json()) as { body?: unknown; markdown?: unknown };
-    if (typeof data.markdown === "string") return data.markdown;
-    if (typeof data.body === "string") return data.body;
+    const data = (await res.json()) as { body?: unknown; markdown?: unknown; title?: unknown };
+    const title = typeof data.title === "string" ? data.title : null;
+    if (typeof data.markdown === "string") return { markdown: data.markdown, title };
+    if (typeof data.body === "string") return { markdown: data.body, title };
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
-  return res.text();
+  return { markdown: await res.text(), title: null };
 }
 
-/** `update: null` means the server has no sidecar — nothing else does. */
+export async function loadMarkdown(documentUrl: string, authToken?: string): Promise<string> {
+  const loaded = await loadCollabText(documentUrl, authToken);
+  return loaded.markdown;
+}
+
+/**
+ * `update: null` means the server has no sidecar — nothing else does.
+ * `externalWrite` means those bytes are not an ancestor of the current text.
+ */
 export type YjsSnapshot = {
   update: Uint8Array | null;
   etag: string | null;
+  externalWrite?: boolean;
 };
 
 export type YjsSnapshotLoad = {
@@ -47,14 +64,18 @@ export async function fetchYjsSnapshot(yjsUrl: string, authToken?: string): Prom
   const res = await fetch(yjsUrl, {
     headers: withBearerAuth({}, authToken),
   });
-  if (res.status === 204) return { update: null, etag: null };
+  if (res.status === 204) return { update: null, etag: null, externalWrite: false };
   if (!res.ok) {
     throw new CollabHttpError(`Could not load snapshot (${res.status})`, res.status);
   }
 
   const update = new Uint8Array(await res.arrayBuffer());
-  if (update.length === 0) return { update: null, etag: null };
-  return { update, etag: res.headers.get("ETag") };
+  if (update.length === 0) return { update: null, etag: null, externalWrite: false };
+  return {
+    update,
+    etag: res.headers.get("ETag"),
+    externalWrite: externalWriteFromHeader(res.headers),
+  };
 }
 
 export async function loadYjsSnapshot(

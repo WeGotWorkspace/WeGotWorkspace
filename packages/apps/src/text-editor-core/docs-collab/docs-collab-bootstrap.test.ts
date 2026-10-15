@@ -64,7 +64,12 @@ describe("loadBootstrapInParallel", () => {
       sleep: deferred,
     });
 
-    expect(load.snapshot).toEqual({ kind: "snapshot", update, etag: '"sidecar-rev-1"' });
+    expect(load.snapshot).toEqual({
+      kind: "snapshot",
+      update,
+      etag: '"sidecar-rev-1"',
+      externalWrite: false,
+    });
   });
 
   // C7: a 5xx or a token race must never be read as "there is no snapshot",

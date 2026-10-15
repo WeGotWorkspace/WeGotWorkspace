@@ -106,7 +106,18 @@ export function useDocsCollab({
   });
 
   const { join, teardown, session, joined, snapshotPreview } = joinHook;
-  const { saveNow, registerMarkdownGetter, onMarkdownChange, scheduleSave } = save;
+  const { saveNow, registerMarkdownGetter, onMarkdownChange, scheduleSave, persistToServer } = save;
+
+  const resolveExternalWrite = useCallback(
+    async (suppliedMarkdown: string | null) => {
+      refs.externalWriteHoldRef.current = false;
+      if (suppliedMarkdown !== null) refs.markdownOverrideRef.current = suppliedMarkdown;
+      refs.localDirtySinceLastSaveRef.current = true;
+      refs.lastSuccessfulSaveSignatureRef.current = null;
+      await persistToServer();
+    },
+    [persistToServer, refs],
+  );
 
   const joinRef = useRef(join);
   const teardownRef = useRef(teardown);
@@ -167,6 +178,7 @@ export function useDocsCollab({
     join,
     connectMeshInBackground: joinHook.connectMeshInBackground,
     saveNow,
+    resolveExternalWrite,
     scheduleSave,
     registerMarkdownGetter,
     onMarkdownChange,

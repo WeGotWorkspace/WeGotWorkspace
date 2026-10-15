@@ -12,6 +12,10 @@ import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { roomServerAllowed } from "./docs-collab-room-backoff";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
+import { IndexeddbPersistence } from "y-indexeddb";
+import { docsCollabIndexedDbKey } from "./docs-collab-persistence";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import {
   useDocsCollab,
   DEFAULT_DOCS_COLLAB_URLS,
@@ -895,4 +899,158 @@ describe("useDocsCollab offline lifecycle", () => {
     });
     expect(authorizedCollabFetches.length).toBeGreaterThan(0);
   });
+
+  it("rebuilds from the outside text when the state is not an ancestor and nothing is unsaved", async () => {
+    const stale = reconnectMarkerUpdate("stale-marker");
+    const puts: string[] = [];
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(stale, {
+            status: 200,
+            headers: { ETag: '"stale"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if (method === "PUT" || method === "POST") {
+          puts.push(String(init?.body ?? ""));
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "from outside", title: "Outside" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room: "note-external-rebuild",
+          documentUrl: "/api/v1/notes/items/note-external-rebuild",
+          yjsUrl: "/api/v1/notes/items/note-external-rebuild?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() => {
+      const ydoc = result.current.session?.ydoc;
+      expect(ydoc && readContentFromYDoc(ydoc)).toContain("from outside");
+    });
+    const ydoc = result.current.session?.ydoc;
+    expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("stale-marker");
+    await waitFor(() => expect(puts.length).toBeGreaterThan(0));
+    expect(JSON.parse(puts[0] ?? "{}")).toMatchObject({ markdown: "from outside" });
+    expect(onExternalWrite).not.toHaveBeenCalled();
+  }, 15_000);
+
+  it("asks before overwriting when an outside edit meets unsaved local work", async () => {
+    const room = "note-external-prompt";
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), new Y.Doc());
+    await persistence.whenSynced;
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+
+    const stale = reconnectMarkerUpdate("stale-marker");
+    const puts: string[] = [];
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(stale, {
+            status: 200,
+            headers: { ETag: '"stale"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if (method === "PUT" || method === "POST") {
+          puts.push(String(init?.body ?? ""));
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "from outside", title: "Outside" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room,
+          documentUrl: "/api/v1/notes/items/note-external-prompt",
+          yjsUrl: "/api/v1/notes/items/note-external-prompt?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() =>
+      expect(onExternalWrite).toHaveBeenCalledWith({
+        markdown: "from outside",
+        title: "Outside",
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(puts).toEqual([]);
+    const ydoc = result.current.session?.ydoc;
+    expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("from outside");
+  }, 15_000);
+
+  it("builds a note with no stored state from the markdown and does not ask", async () => {
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) return new Response(null, { status: 204 });
+        if (method === "PUT" || method === "POST") {
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "created outside", title: "New" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room: "note-external-absent",
+          documentUrl: "/api/v1/notes/items/note-external-absent",
+          yjsUrl: "/api/v1/notes/items/note-external-absent?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() => {
+      const ydoc = result.current.session?.ydoc;
+      expect(ydoc && readContentFromYDoc(ydoc)).toContain("created outside");
+    });
+    expect(onExternalWrite).not.toHaveBeenCalled();
+  }, 15_000);
 });

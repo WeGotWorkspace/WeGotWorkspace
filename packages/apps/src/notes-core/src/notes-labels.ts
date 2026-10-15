@@ -87,6 +87,10 @@ export type NotesUILabels = {
   conflictRemaining: (count: number) => string;
   conflictKeepMine: string;
   conflictUseServer: string;
+  externalWriteTitle: string;
+  externalWriteDescription: (title: string) => string;
+  externalWriteKeepMine: string;
+  externalWriteUseOutside: string;
   syncFailedTitle: string;
   syncFailedMessage: string;
   retrySync: string;
@@ -196,6 +200,11 @@ export const defaultNotesLabels: NotesUILabels = {
     count === 1 ? "1 more conflict waiting" : `${count} more conflicts waiting`,
   conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
+  externalWriteTitle: "Changed outside the app",
+  externalWriteDescription: (title) =>
+    `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
+  externalWriteKeepMine: "Keep my edits",
+  externalWriteUseOutside: "Use the outside version",
   syncFailedTitle: "Some changes could not sync",
   syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
   retrySync: "Retry",

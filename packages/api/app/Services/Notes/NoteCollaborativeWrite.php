@@ -27,6 +27,7 @@ final class NoteCollaborativeWrite
         private readonly NoteRepository $notes,
         private readonly NoteJournalConverter $converter,
         private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly NoteYjsProjection $yjsProjection,
     ) {}
 
     /**
@@ -97,14 +98,7 @@ final class NoteCollaborativeWrite
                 throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
             }
 
-            NoteYjsState::query()->updateOrCreate(
-                ['calendar_object_id' => (int) $object->id],
-                [
-                    'note_uid' => (string) $object->uid,
-                    'state' => $bytes,
-                    'object_etag' => OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag,
-                ],
-            );
+            $this->yjsProjection->store($object, $bytes);
 
             return [
                 'instance' => $instance,

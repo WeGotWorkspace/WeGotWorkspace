@@ -88,6 +88,7 @@ export function useDocsCollabSave({
 
   const persistToServer = useCallback(async (): Promise<void> => {
     if (urls.roomNotPersistent) return;
+    if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
     if (!getConnectivitySnapshot()) {
       await markPendingWhenUnsaved();
@@ -95,8 +96,9 @@ export function useDocsCollabSave({
     }
     const ydoc = refs.ydocRef.current;
     const getMd = refs.getMarkdownRef.current;
-    if (!ydoc || !getMd) return;
-    const markdown = markdownForSave(ydoc, getMd());
+    const override = refs.markdownOverrideRef.current;
+    if (!ydoc || (!getMd && override === null)) return;
+    const markdown = override ?? markdownForSave(ydoc, getMd ? getMd() : "");
     const signature = docSignature(markdown, ydoc);
     const decision = computeShouldPersist(markdown, signature, {
       localDirtySinceLastSave: refs.localDirtySinceLastSaveRef.current,
@@ -113,6 +115,7 @@ export function useDocsCollabSave({
       }
       return;
     }
+    refs.markdownOverrideRef.current = null;
     refs.saveInFlightRef.current = true;
     let savedMarkdown = markdown;
     try {
@@ -145,7 +148,7 @@ export function useDocsCollabSave({
           );
           rememberSidecarEtag(room, reload.etag);
           if (reload.applied) {
-            savedMarkdown = markdownForSave(ydoc, getMd());
+            savedMarkdown = getMd ? markdownForSave(ydoc, getMd()) : markdown;
             await attemptSave(savedMarkdown);
           } else {
             throw firstError;
@@ -168,6 +171,7 @@ export function useDocsCollabSave({
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
+      if (override !== null) refs.markdownOverrideRef.current = override;
       refs.saveFailedRef.current = true;
       if (urls.onPersistForbidden && collabErrorStatus(err) === 403) {
         urls.onPersistForbidden();
