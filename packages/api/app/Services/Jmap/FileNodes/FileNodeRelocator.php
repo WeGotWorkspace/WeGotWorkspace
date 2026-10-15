@@ -11,22 +11,19 @@ use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveShareService;
 use App\Services\Drive\DriveStarService;
 use App\Services\Drive\DriveTrashNames;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Disk move plus the bookkeeping DriveService already does on REST rename:
- * search, attachments, stars, share paths, and docs threads (#990 D6).
+ * attachments, stars, share paths, and docs threads (#990 D6).
+ * Search follows FileNodeIndexService::recordMove.
  */
 final class FileNodeRelocator
 {
     public function __construct(
         private readonly WgwStorage $storage,
         private readonly FileNodeIndexService $index,
-        private readonly SearchIndexerService $search,
-        private readonly BestEffortSearchIndexSync $searchSync,
         private readonly DocAttachmentsService $docAttachments,
         private readonly DriveStarService $stars,
         private readonly DriveShareService $shares,
@@ -46,7 +43,6 @@ final class FileNodeRelocator
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
         }
         $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
-        $this->syncSearchMove($fromKey, $toKey);
         $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
         $this->stars->rewritePathPrefix($fromKey, $toKey);
         $this->shares->rewritePathPrefix('/'.$fromKey, '/'.$toKey);
@@ -98,27 +94,5 @@ final class FileNodeRelocator
         } catch (\Throwable $e) {
             Log::warning('docs_thread_path_sync_failed', ['error' => $e->getMessage()]);
         }
-    }
-
-    private function syncSearchMove(string $fromKey, string $toKey): void
-    {
-        $this->searchSync->sync(
-            'filenode',
-            function () use ($fromKey, $toKey): void {
-                $this->search->deleteDavPath('files/'.$fromKey);
-                $this->search->indexFileStorageKey($toKey);
-                $disk = $this->storage->files();
-                if (! $disk->directoryExists($toKey)) {
-                    return;
-                }
-                foreach ($disk->allDirectories($toKey) as $dirKey) {
-                    $this->search->indexFileStorageKey($dirKey);
-                }
-                foreach ($disk->allFiles($toKey) as $fileKey) {
-                    $this->search->indexFileStorageKey($fileKey);
-                }
-            },
-            'files/'.$toKey,
-        );
     }
 }

@@ -10,6 +10,7 @@ import {
   tighterDocsCollabAccess,
   type DocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
+import { collabChannelParts } from "@/text-editor-core/docs-collab/docs-collab-channel";
 import {
   collabRoomKey,
   verifyCollabTicket,
@@ -107,23 +108,14 @@ export type DocsCollabPrincipalReusePorts = {
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
-
   private readonly registry: PrincipalLinkRegistry;
-
   private readonly ackTimeoutMs: number;
-
   private readonly principalConnectDeferMs: number;
-
   private readonly scheduleTimeout: typeof setTimeout;
-
   private readonly cancelTimeout: typeof clearTimeout;
-
   private readonly unsubscribe: () => void;
-
   private readonly unsubscribeLinks: () => void;
-
   private readonly unsubscribeLinkOpen: () => void;
-
   private readonly unsubscribeSendFailed: () => void;
 
   private readonly pending = new Map<string, PendingPeer>();
@@ -233,13 +225,19 @@ export class DocsCollabPrincipalReuse {
   sendTo(collabPeerId: string, msg: unknown): boolean {
     const entry = this.reused.get(collabPeerId);
     if (!entry) return false;
-    return this.registry.sendToPrincipalPeer(entry.principalPeerId, this.dataEnvelope(msg));
+    const wire = collabChannelParts(msg);
+    return this.registry.sendToPrincipalPeer(
+      entry.principalPeerId,
+      this.dataEnvelope(wire.header),
+      wire.bytes,
+    );
   }
 
   broadcast(msg: unknown): void {
-    const envelope = this.dataEnvelope(msg);
+    const wire = collabChannelParts(msg);
+    const envelope = this.dataEnvelope(wire.header);
     for (const entry of this.reused.values()) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope);
+      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope, wire.bytes);
     }
   }
 

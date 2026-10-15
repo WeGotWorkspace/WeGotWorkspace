@@ -1,5 +1,4 @@
 import type { RtcSessionBinding } from "@/lib/rtc/session/bindings";
-import { peerAdvertisesBin } from "@/lib/rtc/session/data-channel-frames";
 import { DataChannelOutbound } from "@/lib/rtc/session/data-channel-outbound";
 import type { IceMode, RtcLinkState } from "@/lib/rtc/types";
 
@@ -15,7 +14,7 @@ export type MeshPeerEntry = {
   offeredAtMs?: number;
   remoteStream?: MediaStream;
   dataChannel?: RTCDataChannel | null;
-  /** Roster capabilities. `bin` selects binary framing on the data channel. */
+  /** Roster capabilities. `yjs-http` selects the HTTP fallback. */
   caps?: readonly string[];
 };
 
@@ -127,15 +126,15 @@ export class MeshPeerRegistry {
     if (entry) entry.caps = caps;
   }
 
-  broadcastJson(message: unknown): void {
-    for (const remoteId of this.entries.keys()) this.sendJsonTo(remoteId, message);
+  broadcastJson(message: unknown, payload?: Uint8Array): void {
+    for (const remoteId of this.entries.keys()) this.sendJsonTo(remoteId, message, payload);
   }
 
-  sendJsonTo(remoteId: string, message: unknown): void {
+  sendJsonTo(remoteId: string, message: unknown, payload?: Uint8Array): void {
     const entry = this.entries.get(remoteId);
     const channel = entry?.dataChannel;
     if (!channel || channel.readyState !== "open") return;
-    this.sender(remoteId, channel).sendJson(message, peerAdvertisesBin(entry.caps));
+    this.sender(remoteId, channel).send(message, payload);
   }
 
   private sender(remoteId: string, channel: RTCDataChannel): DataChannelOutbound {

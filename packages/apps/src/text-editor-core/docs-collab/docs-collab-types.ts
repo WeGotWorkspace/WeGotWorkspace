@@ -24,8 +24,8 @@ export type DocsCollabSenderTrust = {
 };
 
 export type DocsCollabMeshMessage =
-  | { type: "sync"; u: number[]; from?: string; trust?: DocsCollabSenderTrust }
-  | { type: "awareness"; u: number[]; from?: string }
+  | { type: "sync"; u: Uint8Array; from?: string; trust?: DocsCollabSenderTrust }
+  | { type: "awareness"; u: Uint8Array; from?: string }
   /** Gossip discovery: a connected peer forwards newly joined room peers. */
   | { type: "peer-hint"; peers: DocsCollabMeshPeer[]; from?: string }
   | { type: "dc-open"; from: string }
@@ -36,8 +36,8 @@ export type DocsCollabMeshMessage =
   | { type: "link" };
 
 export type DocsCollabTabSyncApi = {
-  onLocalSync: (encoded: number[]) => void;
-  onLocalAwareness: (encoded: number[]) => void;
+  onLocalSync: (encoded: Uint8Array) => void;
+  onLocalAwareness: (encoded: Uint8Array) => void;
   relayMeshMessage: (msg: DocsCollabMeshMessage) => void;
   publishMeshState: (state: import("./docs-collab-tab-sync").TabMeshStateSnapshot) => void;
   isMeshLeader: () => boolean;

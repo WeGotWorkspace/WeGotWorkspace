@@ -6,7 +6,7 @@ import type { PresenceMeshEvent } from "@/presence-core/src/presence-types";
 
 type CapturedBinding = {
   onOpen: (remoteId: string) => void;
-  onMessage: (remoteId: string, data: string) => void;
+  onMessage: (remoteId: string, json: string, payload: Uint8Array | null) => void;
   onClose: () => void;
 };
 
@@ -93,8 +93,13 @@ describe("PresenceRtcSession principal link publishing", () => {
         op: "open",
         collabPeerId: "bbbbbbbbbbbbbbbb",
       }),
+      null,
     );
-    captured.bindingOptions?.onMessage("prin-wouter", JSON.stringify({ v: 1, kind: "typing" }));
+    captured.bindingOptions?.onMessage(
+      "prin-wouter",
+      JSON.stringify({ v: 1, kind: "typing" }),
+      null,
+    );
 
     expect(reuseEvents).toEqual(["wouter:prin-wouter:open"]);
     expect(presenceEvents).toEqual([
