@@ -7,12 +7,14 @@ namespace Tests\Feature\Notes;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\NotesTestFixtures;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 #[Group('MySQLParity')]
 final class NotesPathShareTest extends WgwDatabaseTestCase
 {
     use NotesTestFixtures;
+    use SendsFramedCollaboration;
 
     protected function setUp(): void
     {
@@ -182,9 +184,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
 
         // Owner retains write after granting view-only to a teammate.
         $this->withBearer($ownerToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => 'owner still writes',
-            ])
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode($path), 'owner still writes')
             ->assertOk();
 
         $this->withBearer($aliceToken)
@@ -192,9 +192,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => 'blocked',
-            ])
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode($path), 'blocked')
             ->assertForbidden();
 
         $this->withBearer($aliceToken)
@@ -218,9 +216,7 @@ final class NotesPathShareTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode($path), [
-                'markdown' => 'edited body',
-            ])
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode($path), 'edited body')
             ->assertOk();
 
         $this->withBearer($aliceToken)

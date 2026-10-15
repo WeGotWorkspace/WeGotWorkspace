@@ -6,12 +6,14 @@ namespace Tests\Feature\Docs;
 
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DocsTestFixtures;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 #[Group('MySQLParity')]
 final class DocsShareCollabTest extends WgwDatabaseTestCase
 {
     use DocsTestFixtures;
+    use SendsFramedCollaboration;
 
     protected function setUp(): void
     {
@@ -42,9 +44,10 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'), [
-                'markdown' => 'blocked',
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'),
+                'blocked',
+            )
             ->assertForbidden();
 
         $this->withBearer($aliceToken)
@@ -72,9 +75,10 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'), [
-                'markdown' => 'blocked',
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'),
+                'blocked',
+            )
             ->assertForbidden();
 
         $this->withBearer($aliceToken)
@@ -103,9 +107,10 @@ final class DocsShareCollabTest extends WgwDatabaseTestCase
             ->assertOk();
 
         $this->withBearer($aliceToken)
-            ->putJson('/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'), [
-                'markdown' => 'edited via legacy review grant',
-            ])
+            ->putCollaboration(
+                '/api/v1/files/collaboration?path='.urlencode('/users/bob/docs/plan.md'),
+                'edited via legacy review grant',
+            )
             ->assertOk();
 
         $this->withBearer($aliceToken)

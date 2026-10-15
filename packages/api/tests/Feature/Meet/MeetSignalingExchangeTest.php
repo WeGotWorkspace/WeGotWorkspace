@@ -131,6 +131,25 @@ final class MeetSignalingExchangeTest extends WgwDatabaseTestCase
         $poll->assertJsonPath('messages.0.payload', $answerPayload);
     }
 
+    public function test_offer_sdp_trailing_crlf_is_unchanged_on_the_events_poll(): void
+    {
+        $host = $this->guestJoin('host-peer', 'Host');
+        $guest = $this->guestJoin('guest-peer', 'Guest');
+        $sdp = "v=0\r\no=-\r\n";
+
+        $this->postJson($this->meetRoomPath('/events'), [
+            'from' => 'guest-peer',
+            'to' => 'host-peer',
+            'type' => 'offer',
+            'payload' => ['type' => 'offer', 'sdp' => $sdp],
+            'sessionKey' => $guest['sessionKey'],
+        ])->assertOk();
+
+        $poll = $this->getJson($this->meetRoomPath('/events?peerId=host-peer&sessionKey='.$host['sessionKey']));
+        $poll->assertOk();
+        $this->assertSame($sdp, $poll->json('messages.0.payload.sdp'));
+    }
+
     public function test_delete_participant_me_resolves_peer_from_body(): void
     {
         $guest = $this->guestJoin('solo-peer', 'Solo');

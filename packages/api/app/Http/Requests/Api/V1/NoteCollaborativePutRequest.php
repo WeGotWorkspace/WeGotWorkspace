@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Collab\FramedPayload;
 use App\Services\Collab\YjsBytes;
-use App\Services\Collab\YjsPayloadException;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class NoteCollaborativePutRequest extends FormRequest
 {
-    /** Decoded Yjs bytes stashed before validation flattens the number list. */
+    /** Decoded Yjs bytes. The frame tail is binary, so it never enters validation. */
     public const YJS_BYTES = 'note_yjs_bytes';
 
     public function authorize(): bool
@@ -25,32 +25,28 @@ final class NoteCollaborativePutRequest extends FormRequest
         return [
             'markdown' => ['required', 'string'],
             'title' => ['sometimes', 'string', 'max:1024'],
-            // The shared save sends the room id. Notes addresses the note by the path.
-            'room' => ['sometimes', 'string'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if (! $this->exists('yjs')) {
+        $fields = FramedPayload::collaborationFields($this->getContent());
+        if (! array_key_exists('markdown', $fields)) {
+            throw new ApiHttpException(400, 'Markdown is required.', 'bad_request');
+        }
+        if (! array_key_exists('yjs', $fields)) {
             throw new ApiHttpException(400, 'Yjs state is required.', 'bad_request');
         }
-
-        try {
-            $bytes = YjsBytes::decode($this->input('yjs'));
-        } catch (YjsPayloadException $e) {
-            throw new ApiHttpException(
-                $e->status,
-                $e->status === 413
-                    ? 'Yjs state exceeds the 5 MiB limit.'
-                    : 'Yjs state must be a list of bytes from 0 to 255.',
-                $e->status === 413 ? 'payload_too_large' : 'bad_request',
-            );
+        if (strlen($fields['yjs']) > YjsBytes::MAX_BYTES) {
+            throw new ApiHttpException(413, 'Yjs state exceeds the 5 MiB limit.', 'payload_too_large');
         }
 
-        $this->attributes->set(self::YJS_BYTES, $bytes);
-        $this->json()->remove('yjs');
-        $this->request->remove('yjs');
+        $this->attributes->set(self::YJS_BYTES, $fields['yjs']);
+        $input = ['markdown' => $fields['markdown']];
+        if (array_key_exists('title', $fields)) {
+            $input['title'] = $fields['title'];
+        }
+        $this->merge($input);
     }
 
     public function yjsBytes(): string

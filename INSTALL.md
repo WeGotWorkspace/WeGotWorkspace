@@ -120,3 +120,21 @@ php -S localhost:8080 -t . index.php
 `WGW_RTC_TURN_TTL_SECONDS` in `packages/api/.env` is how long a minted TURN credential stays valid. The default is 3600 seconds. Values below 300 are raised to 300, and values above 86400 are lowered to 86400. An empty or non-numeric value uses the default.
 
 `WGW_RTC_RELAY_REQUESTS_PER_MINUTE` caps relay credential requests for one signed-in actor. The default is 6.
+
+## Move an existing data directory out of the web root
+
+A fresh install puts the database, signing keys, and backups in a `wgw-content` directory next to the published folder when that parent is writable. Installs created before that change keep their data inside the published folder. Nothing moves them automatically. Administration shows a standing warning until you move the directory yourself.
+
+Do these steps in this order:
+
+1. Turn on maintenance mode. SQLite must not be moved while a connection is open.
+2. Create the target directory outside the published folder and confirm the web-server user can write to it. Two installs that share a parent must not share one `wgw-content` directory; pick a separate target for the second install.
+3. Copy the directory. Do not move it yet. Check that the copy is complete. A rename is atomic only on the same filesystem. Across filesystems the copy needs room for both copies at once.
+4. Update **both** of these keys in `packages/api/.env`:
+   - `WGW_DATA_DIR` — the new directory.
+   - `WGW_DB_DATABASE` — for SQLite installs. This path is resolved from the install root, not from `WGW_DATA_DIR`. Changing only `WGW_DATA_DIR` leaves the app pointed at the old database file.
+5. Boot the site, confirm you can sign in and open a file, and only then delete the old directory.
+
+### Docker
+
+New Docker installs mount content at `/var/wgw/content` (`WGW_DATA_DIR`) and Laravel storage at `/var/wgw/storage` (`WGW_STORAGE_PATH`). An existing stack keeps its current mounts until you change the compose file. Use the same five steps: maintenance mode, a writable target, copy and verify, then set both `WGW_DATA_DIR` and `WGW_DB_DATABASE` (and point the storage volume at `/var/wgw/storage`) before deleting the old directory. Do not expect the new image to move the volumes for you.

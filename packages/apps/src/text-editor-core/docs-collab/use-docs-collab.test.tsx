@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -902,7 +903,7 @@ describe("useDocsCollab offline lifecycle", () => {
 
   it("rebuilds from the outside text when the state is not an ancestor and nothing is unsaved", async () => {
     const stale = reconnectMarkerUpdate("stale-marker");
-    const puts: string[] = [];
+    const puts: Array<BodyInit | null | undefined> = [];
     const onExternalWrite = vi.fn();
     vi.stubGlobal(
       "fetch",
@@ -916,7 +917,7 @@ describe("useDocsCollab offline lifecycle", () => {
           });
         }
         if (method === "PUT" || method === "POST") {
-          puts.push(String(init?.body ?? ""));
+          puts.push(init?.body);
           return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
         }
         return new Response(JSON.stringify({ body: "from outside", title: "Outside" }), {
@@ -949,7 +950,7 @@ describe("useDocsCollab offline lifecycle", () => {
     const ydoc = result.current.session?.ydoc;
     expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("stale-marker");
     await waitFor(() => expect(puts.length).toBeGreaterThan(0));
-    expect(JSON.parse(puts[0] ?? "{}")).toMatchObject({ markdown: "from outside" });
+    expect(markdownFromFramedSave(puts[0])).toBe("from outside");
     expect(onExternalWrite).not.toHaveBeenCalled();
   }, 15_000);
 
@@ -1109,3 +1110,20 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(onExternalWrite).not.toHaveBeenCalled();
   }, 15_000);
 });
+
+function markdownFromFramedSave(body: BodyInit | null | undefined): string {
+  const bytes = body instanceof Uint8Array ? body : null;
+  if (!bytes) return "";
+  const framed = decodeFramedPayload(bytes);
+  if (
+    !framed ||
+    typeof framed.header !== "object" ||
+    framed.header === null ||
+    Array.isArray(framed.header)
+  ) {
+    return "";
+  }
+  const documentLen = (framed.header as { documentLen?: unknown }).documentLen;
+  if (typeof documentLen !== "number") return "";
+  return new TextDecoder().decode(framed.tail.subarray(0, documentLen));
+}

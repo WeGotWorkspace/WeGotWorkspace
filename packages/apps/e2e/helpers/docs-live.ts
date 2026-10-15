@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { encodeFramedPayload } from "../../src/lib/wire/framed-payload";
 import { E2E_PASSWORD, E2E_USERNAME } from "./notes-live";
 
 export { E2E_PASSWORD, E2E_USERNAME };
@@ -130,8 +131,14 @@ export async function saveCollabDocument(
   yjs: number[],
 ): Promise<void> {
   const path = apiPath.replace(/^\/+/, "");
+  const documentBytes = new TextEncoder().encode(markdown);
+  const yjsBytes = Uint8Array.from(yjs);
+  const framed = encodeFramedPayload(
+    { documentLen: documentBytes.byteLength, yjsLen: yjsBytes.byteLength },
+    [documentBytes, yjsBytes],
+  );
   await page.evaluate(
-    async ({ collabPath, body, sidecar }) => {
+    async ({ collabPath, bytes }) => {
       const accessToken = localStorage.getItem("wgw.api.access_token");
       const response = await fetch(
         `/api/v1/files/collaboration?path=${encodeURIComponent(collabPath)}`,
@@ -139,9 +146,10 @@ export async function saveCollabDocument(
           method: "PUT",
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Content-Type": "application/octet-stream",
           },
-          body: JSON.stringify({ markdown: body, yjs: sidecar, room: collabPath }),
+          body: new Uint8Array(bytes),
         },
       );
       if (!response.ok) {
@@ -149,7 +157,7 @@ export async function saveCollabDocument(
         throw new Error(`saveCollabDocument failed (${response.status}): ${text}`);
       }
     },
-    { collabPath: path, body: markdown, sidecar: yjs },
+    { collabPath: path, bytes: Array.from(framed) },
   );
 }
 

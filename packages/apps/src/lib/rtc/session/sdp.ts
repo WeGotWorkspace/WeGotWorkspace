@@ -19,76 +19,20 @@ export function toSessionDescriptionPayload(
     type === "offer" || type === "answer" || type === "pranswer" || type === "rollback"
       ? type
       : fallbackType;
-  return { type: normalizedType, sdp: raw.sdp };
+  return { type: normalizedType, sdp: normalizeSdpTerminator(raw.sdp) };
 }
 
-export function sanitizeSdpForInterop(desc: RTCSessionDescriptionInit): RTCSessionDescriptionInit {
-  const sdp = typeof desc.sdp === "string" ? desc.sdp : "";
-  if (!sdp.includes("a=max-message-size:")) return desc;
-  const filtered = sdp
-    .split(/\r?\n/)
-    .filter((line) => !line.startsWith("a=max-message-size:"))
-    .join("\r\n")
-    .replace(/\r?\n?$/, "\r\n");
-  return { ...desc, sdp: filtered };
-}
-
-export function rewriteSctpPortToLegacy(
-  desc: RTCSessionDescriptionInit,
-): RTCSessionDescriptionInit {
-  const sdp = typeof desc.sdp === "string" ? desc.sdp : "";
-  if (!sdp.includes("a=sctp-port:")) return desc;
-
-  const lines = sdp.split(/\r?\n/);
-  const out: string[] = [];
-  let injectedSctpMap = false;
-
-  for (const line of lines) {
-    if (line.startsWith("a=sctp-port:")) {
-      const port = line.split(":")[1] || "5000";
-      out.push(`a=sctpmap:${port} webrtc-datachannel 1024`);
-      injectedSctpMap = true;
-      continue;
-    }
-    if (line.startsWith("m=application ") && line.includes(" webrtc-datachannel")) {
-      const parts = line.trim().split(/\s+/);
-      if (parts.length >= 4) {
-        const maybePort = injectedSctpMap
-          ? (out[out.length - 1]?.match(/^a:sctpmap:(\d+)/)?.[1] ?? "5000")
-          : "5000";
-        out.push(`m=application ${parts[1]} DTLS/SCTP ${maybePort}`);
-        continue;
-      }
-    }
-    out.push(line);
-  }
-
-  const rebuilt = out.join("\r\n").replace(/\r?\n?$/, "\r\n");
-  return { ...desc, sdp: rebuilt };
+/** CRLF endings and a trailing CRLF. Chrome rejects a Firefox offer that lacks the terminator. */
+export function normalizeSdpTerminator(sdp: string): string {
+  const crlf = sdp.replace(/\r\n|\r|\n/g, "\r\n");
+  return crlf.endsWith("\r\n") ? crlf : `${crlf}\r\n`;
 }
 
 export async function safeSetRemoteDescription(
   pc: RTCPeerConnection,
   desc: RTCSessionDescriptionInit,
 ): Promise<void> {
-  try {
-    await pc.setRemoteDescription(desc);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.toLowerCase().includes("invalid sdp line")) throw error;
-    const sanitized = sanitizeSdpForInterop(desc);
-    if (sanitized.sdp !== desc.sdp) {
-      try {
-        await pc.setRemoteDescription(sanitized);
-        return;
-      } catch {
-        // Continue to legacy fallback below.
-      }
-    }
-    const legacy = rewriteSctpPortToLegacy(sanitized);
-    if (legacy.sdp === desc.sdp) throw error;
-    await pc.setRemoteDescription(legacy);
-  }
+  await pc.setRemoteDescription(desc);
 }
 
 export async function flushPendingIce(

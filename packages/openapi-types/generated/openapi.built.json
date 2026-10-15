@@ -200,6 +200,32 @@
                     }
                 }
             },
+            "InstallerDataDir": {
+                "type": "object",
+                "description": "Where a fresh install will store the database, keys, and backups.",
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    },
+                    "reason": {
+                        "type": "string",
+                        "enum": [
+                            "environment",
+                            "outside",
+                            "fallback_owned",
+                            "fallback_unavailable"
+                        ]
+                    },
+                    "inside_web_root": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "path",
+                    "reason",
+                    "inside_web_root"
+                ]
+            },
             "InstallerRuntimeState": {
                 "type": "object",
                 "properties": {
@@ -253,6 +279,9 @@
                     },
                     "admin_display_name": {
                         "type": "string"
+                    },
+                    "data_dir": {
+                        "$ref": "#/components/schemas/InstallerDataDir"
                     }
                 },
                 "required": [
@@ -320,6 +349,10 @@
                     },
                     "sqlite_path": {
                         "type": "string"
+                    },
+                    "data_dir": {
+                        "type": "string",
+                        "description": "Absolute data directory override. Empty accepts the installer's proposal."
                     },
                     "mysql_host": {
                         "type": "string"
@@ -12455,33 +12488,33 @@
             },
             "NoteCollaborativePut": {
                 "type": "object",
+                "description": "JSON header inside the framed collaborative save. The HTTP body is application/octet-stream: a uint16 big-endian header length, this JSON object, then the markdown bytes, then the Yjs bytes. A null length omits that block. Notes require both blocks.",
                 "additionalProperties": false,
                 "required": [
-                    "markdown",
-                    "yjs"
+                    "documentLen",
+                    "yjsLen"
                 ],
                 "properties": {
-                    "markdown": {
-                        "type": "string",
-                        "description": "DESCRIPTION projection of the Yjs document."
+                    "documentLen": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0,
+                        "description": "Byte length of the markdown block. Null omits it."
+                    },
+                    "yjsLen": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "minimum": 0,
+                        "description": "Byte length of the Yjs block. Null omits it. Rejected with 413 above 5 MiB."
                     },
                     "title": {
                         "type": "string",
+                        "maxLength": 1024,
                         "description": "SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY."
-                    },
-                    "yjs": {
-                        "type": "array",
-                        "description": "Full Yjs document state as a list of bytes (0-255). Rejected with 413 above 5 MiB.",
-                        "maxItems": 5242880,
-                        "items": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "maximum": 255
-                        }
-                    },
-                    "room": {
-                        "type": "string",
-                        "description": "Room id the shared save includes. The note is addressed by the path, so this field is ignored."
                     }
                 }
             }
@@ -18738,7 +18771,7 @@
                     "Notes"
                 ],
                 "summary": "Save a note's collaborative state",
-                "description": "Writes DESCRIPTION from markdown and the Yjs state in one transaction. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title updates SUMMARY when the document has adopted a title.",
+                "description": "Writes DESCRIPTION from the markdown block and the Yjs block in one transaction. The body is the shared collaboration frame (application/octet-stream): a uint16 big-endian header length, a JSON header, then the markdown bytes, then the Yjs bytes. The header is NoteCollaborativePut. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title in the header updates SUMMARY when the document has adopted a title.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18775,10 +18808,12 @@
                 ],
                 "requestBody": {
                     "required": true,
+                    "description": "Framed collaboration body. The JSON header is NoteCollaborativePut.",
                     "content": {
-                        "application/json": {
+                        "application/octet-stream": {
                             "schema": {
-                                "$ref": "#/components/schemas/NoteCollaborativePut"
+                                "type": "string",
+                                "format": "binary"
                             }
                         }
                     }

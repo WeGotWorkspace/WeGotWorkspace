@@ -14,6 +14,7 @@ use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\DriveTestFixtures;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
@@ -23,6 +24,7 @@ use Tests\Support\WgwDatabaseTestCase;
 final class DriveSearchParityTest extends WgwDatabaseTestCase
 {
     use DriveTestFixtures;
+    use SendsFramedCollaboration;
 
     protected function setUp(): void
     {
@@ -278,9 +280,7 @@ final class DriveSearchParityTest extends WgwDatabaseTestCase
     {
         $key = 'users/bob/collab-new.md';
         $this->withBearer($this->userBearerToken())
-            ->putJson('/api/v1/files/collaboration?path='.urlencode('/'.$key), [
-                'markdown' => "# Collab\n",
-            ])
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode('/'.$key), "# Collab\n")
             ->assertOk()
             ->assertJsonPath('ok', true);
 

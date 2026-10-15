@@ -6466,7 +6466,7 @@ export interface paths {
         };
         /**
          * Save a note's collaborative state
-         * @description Writes DESCRIPTION from markdown and the Yjs state in one transaction. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title updates SUMMARY when the document has adopted a title.
+         * @description Writes DESCRIPTION from the markdown block and the Yjs block in one transaction. The body is the shared collaboration frame (application/octet-stream): a uint16 big-endian header length, a JSON header, then the markdown bytes, then the Yjs bytes. The header is NoteCollaborativePut. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title in the header updates SUMMARY when the document has adopted a title.
          */
         put: {
             parameters: {
@@ -6482,9 +6482,10 @@ export interface paths {
                 };
                 cookie?: never;
             };
+            /** @description Framed collaboration body. The JSON header is NoteCollaborativePut. */
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["NoteCollaborativePut"];
+                    "application/octet-stream": string;
                 };
             };
             responses: {
@@ -8127,6 +8128,13 @@ export interface components {
             mysql_db?: string;
             mysql_user?: string;
         };
+        /** @description Where a fresh install will store the database, keys, and backups. */
+        InstallerDataDir: {
+            path: string;
+            /** @enum {string} */
+            reason: "environment" | "outside" | "fallback_owned" | "fallback_unavailable";
+            inside_web_root: boolean;
+        };
         InstallerRuntimeState: {
             step: components["schemas"]["InstallerStep"];
             flash: string | null;
@@ -8144,6 +8152,7 @@ export interface components {
             admin_username?: string;
             admin_email?: string;
             admin_display_name?: string;
+            data_dir?: components["schemas"]["InstallerDataDir"];
         };
         InstallerBootstrapResponse: {
             state: components["schemas"]["InstallerRuntimeState"];
@@ -8159,6 +8168,8 @@ export interface components {
         InstallerActionPayload: {
             db_driver?: components["schemas"]["InstallerDbDriver"];
             sqlite_path?: string;
+            /** @description Absolute data directory override. Empty accepts the installer's proposal. */
+            data_dir?: string;
             mysql_host?: string;
             mysql_port?: number;
             mysql_db?: string;
@@ -12204,15 +12215,14 @@ export interface components {
             createdAt: string;
             target?: string | null;
         };
+        /** @description JSON header inside the framed collaborative save. The HTTP body is application/octet-stream: a uint16 big-endian header length, this JSON object, then the markdown bytes, then the Yjs bytes. A null length omits that block. Notes require both blocks. */
         NoteCollaborativePut: {
-            /** @description DESCRIPTION projection of the Yjs document. */
-            markdown: string;
+            /** @description Byte length of the markdown block. Null omits it. */
+            documentLen: number | null;
+            /** @description Byte length of the Yjs block. Null omits it. Rejected with 413 above 5 MiB. */
+            yjsLen: number | null;
             /** @description SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY. */
             title?: string;
-            /** @description Full Yjs document state as a list of bytes (0-255). Rejected with 413 above 5 MiB. */
-            yjs: number[];
-            /** @description Room id the shared save includes. The note is addressed by the path, so this field is ignored. */
-            room?: string;
         };
     };
     responses: {

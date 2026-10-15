@@ -14,6 +14,7 @@ import {
 import type { DocsCollabAccess } from "@/text-editor-core/docs-collab/docs-collab-access";
 import {
   COLLAB_REUSE_ACK_TIMEOUT_MS,
+  COLLAB_REUSE_PRINCIPAL_CONNECT_DEADLINE_MS,
   COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS,
   COLLAB_REUSE_ROSTER_WAIT_MS,
   DocsCollabPrincipalReuse,
@@ -683,6 +684,29 @@ describe("DocsCollabPrincipalReuse", () => {
     timers[2]!.fn();
     expect(onReuseFallback).toHaveBeenCalledTimes(1);
     expect(reuse.shouldSkipIce(peer)).toBe(false);
+  });
+
+  it("opens a collab connection when the principal stays connecting past the deadline", () => {
+    const onReuseFallback = vi.fn();
+    const { reuse, registry, timers } = createHarness({ onReuseFallback });
+    registry.setConnectingUsernames(new Set(["wouter"]));
+    const peer = { id: "bbbbbbbbbbbbbbbb", name: "Wouter", user: "wouter" };
+
+    reuse.considerRoster([peer], "aaaaaaaaaaaaaaaa");
+    const ticks =
+      COLLAB_REUSE_PRINCIPAL_CONNECT_DEADLINE_MS / COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS;
+    for (let i = 0; i < ticks - 1; i += 1) timers[i]!.fn();
+    expect(onReuseFallback).not.toHaveBeenCalled();
+    expect(reuse.shouldSkipIce(peer)).toBe(true);
+
+    timers[ticks - 1]!.fn();
+    expect(onReuseFallback).toHaveBeenCalledWith(peer.id);
+    expect(reuse.shouldSkipIce(peer)).toBe(false);
+    expect(vi.mocked(rtcLog)).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: "collab" }),
+      "reuse-miss",
+      expect.objectContaining({ reason: "principal-connecting-timeout", username: "wouter" }),
+    );
   });
 
   it("aborts in-flight fresh ICE when reuse attaches", () => {

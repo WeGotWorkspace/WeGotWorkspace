@@ -18,12 +18,14 @@ use Illuminate\Testing\TestResponse;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\SeedsWgwIdentity;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class NotesYjsStateTest extends WgwDatabaseTestCase
 {
     use OptimisticConcurrencyTestHelpers;
     use SeedsWgwIdentity;
+    use SendsFramedCollaboration;
 
     /** @var list<int> */
     private const YJS = [0, 1, 2, 255];
@@ -514,10 +516,12 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         ])->assertCreated();
         $id = (string) $created->json('id');
 
-        $this->asUser('alice')
-            ->withHeaders(['If-None-Match' => '*'])
-            ->putJson('/api/v1/notes/items/'.$id, ['markdown' => 'nope', 'yjs' => self::YJS])
-            ->assertForbidden();
+        $this->asUser('alice')->putCollaboration(
+            '/api/v1/notes/items/'.$id,
+            'nope',
+            self::BINARY,
+            ['If-None-Match' => '*'],
+        )->assertForbidden();
         $this->asUser('alice')
             ->get('/api/v1/notes/items/'.$id.'?format=yjs')
             ->assertNoContent();
@@ -639,6 +643,39 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->assertJsonPath('body', 'Created outside');
     }
 
+    public function test_put_rejects_a_json_body(): void
+    {
+        $note = $this->createNote();
+
+        $this->asUser('bob')->putJson('/api/v1/notes/items/'.$note['id'], [
+            'markdown' => 'Body',
+            'yjs' => self::YJS,
+        ], ['If-None-Match' => '*'])
+            ->assertStatus(400)
+            ->assertJsonPath('code', 'invalid_body');
+
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertNoContent();
+    }
+
+    public function test_put_rejects_yjs_one_byte_over_the_cap(): void
+    {
+        $note = $this->createNote();
+        $over = str_repeat("\xab", YjsBytes::MAX_BYTES + 1);
+
+        $this->asUser('bob')->putCollaboration(
+            '/api/v1/notes/items/'.$note['id'],
+            'over',
+            $over,
+            ['If-None-Match' => '*'],
+        )->assertStatus(413)->assertJsonPath('code', 'payload_too_large');
+
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertNoContent();
+    }
+
     /**
      * @param  array<string, mixed>  $patch
      */
@@ -685,7 +722,16 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         // into a 412.
         $previous = $this->defaultHeaders;
         try {
-            return $this->asUser('bob')->withHeaders($headers)->putJson('/api/v1/notes/items/'.$id, $payload);
+            $yjs = $payload['yjs'] ?? null;
+            $title = $payload['title'] ?? null;
+
+            return $this->asUser('bob')->putCollaboration(
+                '/api/v1/notes/items/'.$id,
+                is_string($payload['markdown'] ?? null) ? $payload['markdown'] : null,
+                is_array($yjs) ? YjsBytes::decode($yjs) : null,
+                $headers,
+                is_string($title) ? $title : null,
+            );
         } finally {
             $this->defaultHeaders = $previous;
         }

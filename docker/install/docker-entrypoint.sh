@@ -30,18 +30,25 @@ if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
   php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
 fi
 
+DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"
+case "$DATA_DIR" in
+  /*) ;;
+  *) DATA_DIR="${INSTALL_ROOT}/${DATA_DIR#./}" ;;
+esac
+STORAGE_DIR="${WGW_STORAGE_PATH:-${API_ROOT}/storage}"
+
 mkdir -p \
-  "${INSTALL_ROOT}/wgw-content" \
-  "${API_ROOT}/storage/framework/cache/data" \
-  "${API_ROOT}/storage/framework/sessions" \
-  "${API_ROOT}/storage/framework/views" \
-  "${API_ROOT}/storage/logs" \
+  "$DATA_DIR" \
+  "${STORAGE_DIR}/framework/cache/data" \
+  "${STORAGE_DIR}/framework/sessions" \
+  "${STORAGE_DIR}/framework/views" \
+  "${STORAGE_DIR}/logs" \
   "${API_ROOT}/bootstrap/cache"
 
 if [ "$(id -u)" = "0" ]; then
   chown -R www-data:www-data \
-    "${INSTALL_ROOT}/wgw-content" \
-    "${API_ROOT}/storage" \
+    "$DATA_DIR" \
+    "$STORAGE_DIR" \
     "${API_ROOT}/bootstrap/cache"
 
   for path in \

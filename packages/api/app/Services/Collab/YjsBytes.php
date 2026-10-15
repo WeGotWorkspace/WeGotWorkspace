@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Collab;
 
 /**
- * JSON `number[]` Yjs body shared by Docs collaboration PUT and Notes PATCH.
+ * JSON `number[]` Yjs body for Notes PATCH. Collaboration PUTs send raw bytes in the frame.
  *
  * The cap is per request. It is the same 5 MiB Docs already enforces.
  */

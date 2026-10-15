@@ -18,6 +18,8 @@ final class InstallerEndpointsTest extends TestCase
 
     private string|false $previousInstallChannel = false;
 
+    private string|false $previousDataDir = false;
+
     protected function setUp(): void
     {
         $this->installRoot = sys_get_temp_dir().'/wgw-installer-test-'.uniqid('', true);
@@ -31,6 +33,8 @@ final class InstallerEndpointsTest extends TestCase
         $_ENV['WGW_DISABLE_INSTALL_THROTTLE'] = '1';
         $channel = getenv('WGW_INSTALL_CHANNEL');
         $this->previousInstallChannel = is_string($channel) ? $channel : false;
+        $dataDir = getenv('WGW_DATA_DIR');
+        $this->previousDataDir = is_string($dataDir) ? $dataDir : false;
 
         parent::setUp();
 
@@ -40,6 +44,10 @@ final class InstallerEndpointsTest extends TestCase
             'wgw.data_dir' => $this->installRoot.'/wgw-content',
             'wgw.install_channel' => null,
         ]);
+        $pinned = $this->installRoot.'/wgw-content';
+        putenv('WGW_DATA_DIR='.$pinned);
+        $_ENV['WGW_DATA_DIR'] = $pinned;
+        $_SERVER['WGW_DATA_DIR'] = $pinned;
     }
 
     protected function tearDown(): void
@@ -59,6 +67,7 @@ final class InstallerEndpointsTest extends TestCase
 
         config(['wgw.install' => []]);
         $this->restoreInstallChannel();
+        $this->restoreDataDir();
         WgwInstallFixture::forgetInstallBindings();
 
         parent::tearDown();
@@ -76,6 +85,20 @@ final class InstallerEndpointsTest extends TestCase
 
         putenv('WGW_INSTALL_CHANNEL');
         unset($_ENV['WGW_INSTALL_CHANNEL'], $_SERVER['WGW_INSTALL_CHANNEL']);
+    }
+
+    private function restoreDataDir(): void
+    {
+        if (is_string($this->previousDataDir) && $this->previousDataDir !== '') {
+            putenv('WGW_DATA_DIR='.$this->previousDataDir);
+            $_ENV['WGW_DATA_DIR'] = $this->previousDataDir;
+            $_SERVER['WGW_DATA_DIR'] = $this->previousDataDir;
+
+            return;
+        }
+
+        putenv('WGW_DATA_DIR');
+        unset($_ENV['WGW_DATA_DIR'], $_SERVER['WGW_DATA_DIR']);
     }
 
     public function test_bootstrap_exposes_welcome_step(): void

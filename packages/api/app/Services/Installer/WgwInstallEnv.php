@@ -14,7 +14,10 @@ use App\Support\AppPaths;
  */
 final class WgwInstallEnv
 {
-    public function __construct(private AppPaths $paths) {}
+    public function __construct(
+        private AppPaths $paths,
+        private DataDirInstallCoordinator $dataDirs,
+    ) {}
 
     public function isHeadlessEnabled(): bool
     {
@@ -110,6 +113,7 @@ final class WgwInstallEnv
                 'enable_calendars' => $this->configBool('enable_calendars', true),
                 'enable_contacts' => $this->configBool('enable_contacts', true),
                 'show_browser_ui' => $this->configBool('show_browser_ui', false),
+                'data_dir_choice' => $this->dataDirs->proposeForHeadless(),
             ],
             'payload' => [
                 'username' => $username,

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { loadBootstrapInParallel } from "./docs-collab-bootstrap";
 import {
   rememberSidecarEtag,
@@ -50,6 +51,36 @@ function etagFor(document: ServerDocument): string | null {
   return document.yjs ? `"rev-${document.revision}"` : null;
 }
 
+function readFramedSave(body: BodyInit | null | undefined): {
+  markdown?: string;
+  yjs?: Uint8Array;
+} {
+  const bytes =
+    body instanceof Uint8Array ? body : body instanceof ArrayBuffer ? new Uint8Array(body) : null;
+  if (!bytes) return {};
+  const framed = decodeFramedPayload(bytes);
+  if (
+    !framed ||
+    !framed.header ||
+    typeof framed.header !== "object" ||
+    Array.isArray(framed.header)
+  ) {
+    return {};
+  }
+  const lengths = framed.header as { documentLen?: number | null; yjsLen?: number | null };
+  let offset = 0;
+  let markdown: string | undefined;
+  if (typeof lengths.documentLen === "number") {
+    markdown = new TextDecoder().decode(framed.tail.subarray(offset, offset + lengths.documentLen));
+    offset += lengths.documentLen;
+  }
+  const yjs =
+    typeof lengths.yjsLen === "number"
+      ? framed.tail.subarray(offset, offset + lengths.yjsLen)
+      : undefined;
+  return { markdown, yjs };
+}
+
 function header(init: RequestInit | undefined, name: string): string | undefined {
   const headers = init?.headers;
   if (!headers || headers instanceof Headers || Array.isArray(headers)) return undefined;
@@ -83,7 +114,7 @@ function createCollabFakeServer(options: {
     if (method === "GET") return options.markdownResponse(document.markdown);
     if (method !== "PUT") return new Response("method not allowed", { status: 405 });
 
-    const body = JSON.parse(String(init?.body ?? "{}")) as { markdown?: string; yjs?: number[] };
+    const body = readFramedSave(init?.body);
     const ifMatch = header(init, "If-Match");
     const ifNoneMatch = header(init, "If-None-Match");
     const current = etagFor(document);
@@ -97,7 +128,7 @@ function createCollabFakeServer(options: {
     }
 
     if (body.yjs) {
-      document.yjs = new Uint8Array(body.yjs);
+      document.yjs = body.yjs.slice();
       document.revision += 1;
     }
     if (typeof body.markdown === "string") document.markdown = body.markdown;
@@ -359,7 +390,6 @@ const scenarios: Scenario[] = [
           urls.documentUrl,
           "blind overwrite",
           blind,
-          room,
           undefined,
           sidecarPrecondition(room),
         ),

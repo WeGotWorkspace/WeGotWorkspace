@@ -38,7 +38,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -79,6 +79,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('api', [
             WgwSecurityHeaders::class,
+        ]);
+        // SDP must keep its trailing CRLF. TrimStrings would strip it on the way in,
+        // and Chrome then refuses the Firefox offer (`invalid sdp line`).
+        $middleware->trimStrings(except: [
+            'payload.sdp',
         ]);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
@@ -192,3 +197,15 @@ return Application::configure(basePath: dirname(__DIR__))
         WgwApiRateLimiters::register();
     })
     ->create();
+
+$storagePath = getenv('WGW_STORAGE_PATH');
+if (! is_string($storagePath) || $storagePath === '') {
+    $fromEnv = $_ENV['WGW_STORAGE_PATH'] ?? null;
+    $storagePath = is_string($fromEnv) ? $fromEnv : '';
+}
+$storagePath = trim($storagePath);
+if ($storagePath !== '') {
+    $app->useStoragePath($storagePath);
+}
+
+return $app;

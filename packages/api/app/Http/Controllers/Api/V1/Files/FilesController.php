@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveForbiddenException;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveService;
@@ -207,15 +208,28 @@ final class FilesController
     public function updateCollaboration(Request $request): JsonResponse
     {
         $path = $this->requirePath($request);
-        $payload = $request->json()->all();
-        $payload['room'] = $path;
-        $request->json()->replace($payload);
-
-        $result = $this->collabDocuments->put($request, $payload);
+        $result = $this->collabDocuments->put($request, $this->collaborationPayload($request, $path));
         $etag = $result['etag'];
         $response = response()->json(['ok' => $result['ok']]);
 
         return $etag === null ? $response : $response->header('ETag', $etag);
+    }
+
+    /**
+     * The path query is the document. The body is the shared collaboration frame.
+     *
+     * A frame that does not parse is an HTTP 400: `error` is a sentence and
+     * `code` is `invalid_body`, the same envelope as a missing path. Domain
+     * refusals from `put()` stay `{error: code}` (`nothing_to_save`, `yjs_too_large`).
+     *
+     * @return array<string, mixed>
+     */
+    private function collaborationPayload(Request $request, string $path): array
+    {
+        $payload = FramedPayload::collaborationFields($request->getContent());
+        $payload['room'] = $path;
+
+        return $payload;
     }
 
     public function star(Request $request): JsonResponse

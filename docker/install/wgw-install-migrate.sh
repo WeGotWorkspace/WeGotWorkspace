@@ -3,7 +3,12 @@ set -eu
 
 INSTALL_ROOT="${WGW_APP_ROOT:-/var/www/html}"
 API_ROOT="${INSTALL_ROOT}/packages/api"
-INSTALLED_LOCK="${INSTALL_ROOT}/wgw-content/.installed"
+DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"
+case "$DATA_DIR" in
+  /*) ;;
+  *) DATA_DIR="${INSTALL_ROOT}/${DATA_DIR#./}" ;;
+esac
+INSTALLED_LOCK="${DATA_DIR}/.installed"
 
 # shellcheck source=/dev/null
 . /usr/local/bin/wgw-install-wait-db.sh

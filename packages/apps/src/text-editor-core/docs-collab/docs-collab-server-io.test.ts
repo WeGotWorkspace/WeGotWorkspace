@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { writeNoteTitle } from "./docs-collab-document-title";
 import {
   fetchYjsSnapshot,
@@ -165,21 +166,33 @@ describe("docs-collab-server-io", () => {
       vi.fn(async () => new Response(JSON.stringify({ error: "network down" }), { status: 503 })),
     );
     const ydoc = new Y.Doc();
-    await expect(saveDocument("/doc", "# x", ydoc, undefined)).rejects.toThrow("network down");
+    await expect(saveDocument("/doc", "# x", ydoc)).rejects.toThrow("network down");
   });
 
   it("saveDocument succeeds on ok response", async () => {
-    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", "token");
+    await saveDocument("/doc", "# x", ydoc, "token");
     expect(fetchMock).toHaveBeenCalledWith(
       "/doc",
       expect.objectContaining({
         method: "PUT",
-        headers: expect.objectContaining({ Authorization: "Bearer token" }),
+        headers: expect.objectContaining({
+          Authorization: "Bearer token",
+          "Content-Type": "application/octet-stream",
+          Accept: "application/json",
+        }),
       }),
     );
+    const raw = fetchMock.mock.calls[0]![1]!.body;
+    expect(raw).toBeInstanceOf(Uint8Array);
+    const framed = decodeFramedPayload(raw as Uint8Array);
+    const header = framed?.header as { documentLen: number; yjsLen: number };
+    expect(header.documentLen).toBe(new TextEncoder().encode("# x").byteLength);
+    expect(header.documentLen + header.yjsLen).toBe(framed?.tail.byteLength);
   });
 
   it("saveDocument sends If-Match when the client loaded a sidecar", async () => {
@@ -189,7 +202,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    const nextEtag = await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
+    const nextEtag = await saveDocument("/doc", "# x", ydoc, undefined, {
       name: "If-Match",
       value: SIDECAR_ETAG,
     });
@@ -208,7 +221,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
+    await saveDocument("/doc", "# x", ydoc, undefined, {
       name: "If-None-Match",
       value: "*",
     });
@@ -228,7 +241,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, null);
+    await saveDocument("/doc", "# x", ydoc, undefined, null);
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers).not.toHaveProperty("If-Match");
@@ -247,7 +260,7 @@ describe("docs-collab-server-io", () => {
     const ydoc = new Y.Doc();
 
     await expect(
-      saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
+      saveDocument("/doc", "# x", ydoc, undefined, {
         name: "If-Match",
         value: SIDECAR_ETAG,
       }),
@@ -262,16 +275,12 @@ describe("docs-collab-server-io", () => {
 
     const titled = new Y.Doc();
     writeNoteTitle(titled, "Event");
-    await saveDocument("/notes/items/n1", "# x", titled, "n1");
-    const titledBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
-      title?: string;
-    };
-    expect(titledBody.title).toBe("Event");
+    await saveDocument("/notes/items/n1", "# x", titled);
+    const titledFrame = decodeFramedPayload(fetchMock.mock.calls[0]![1]!.body as Uint8Array);
+    expect((titledFrame?.header as { title?: string }).title).toBe("Event");
 
-    await saveDocument("/doc", "# x", new Y.Doc(), "docs/test.md");
-    const plainBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as {
-      title?: string;
-    };
-    expect(plainBody.title).toBeUndefined();
+    await saveDocument("/doc", "# x", new Y.Doc());
+    const plainFrame = decodeFramedPayload(fetchMock.mock.calls[1]![1]!.body as Uint8Array);
+    expect((plainFrame?.header as { title?: string }).title).toBeUndefined();
   });
 });

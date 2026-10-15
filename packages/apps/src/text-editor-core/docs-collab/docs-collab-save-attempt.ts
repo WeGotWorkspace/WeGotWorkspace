@@ -46,7 +46,6 @@ export async function persistCollabSave(
       input.urls.documentUrl,
       body,
       input.ydoc,
-      input.urls.room,
       input.authToken,
       sidecarPrecondition(input.room),
     );

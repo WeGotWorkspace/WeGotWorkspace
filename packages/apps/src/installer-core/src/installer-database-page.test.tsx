@@ -60,6 +60,28 @@ describe("InstallerDatabasePage", () => {
     expect(screen.getByRole("alert").textContent).toContain("Could not reach MySQL");
   });
 
+  it("shows the proposed data folder and submits an override", () => {
+    const onContinue = vi.fn();
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        dataDirReason="outside"
+        onContinue={onContinue}
+      />,
+    );
+    expect(screen.getByText("/home/user/wgw-content")).toBeTruthy();
+    expect(screen.getByText(/outside the published website/i)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Different folder"), {
+      target: { value: "/srv/wgw-data" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenCalledWith({
+      engine: "sqlite",
+      dataDir: "/srv/wgw-data",
+    });
+  });
+
   it("submits sqlite without credentials", () => {
     const onContinue = vi.fn();
     render(<InstallerDatabasePage initialEngine="sqlite" onContinue={onContinue} />);
