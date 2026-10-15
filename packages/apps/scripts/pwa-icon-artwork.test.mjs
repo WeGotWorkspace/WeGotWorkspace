@@ -10,13 +10,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const sourceDir = join(here, "../src/assets/app-icons");
 const pwaDir = join(here, "../public/pwa-icons");
 
-/** Anti-aliased glyph edges stay under this per-channel distance from the pad color. */
-const GLYPH_CHANNEL_DELTA = 8;
-/** Extra radius so a glyph pixel on the circle boundary is not a flake. */
-const CIRCLE_RADIUS_SLACK = 2;
-const MASKABLE_CANVAS = 512;
-const SAFE_DIAMETER_RATIO = 0.8;
-
 function paeth(a, b, c) {
   const p = a + b - c;
   const pa = Math.abs(p - a);
@@ -87,13 +80,6 @@ function decodePng(path) {
   return { width, height, rgba };
 }
 
-function isGlyphPixel(rgba, index, background) {
-  for (let channel = 0; channel < 3; channel += 1) {
-    if (Math.abs(rgba[index + channel] - background[channel]) > GLYPH_CHANNEL_DELTA) return true;
-  }
-  return false;
-}
-
 const BRAND_ICON_TOKEN = {
   admin: "--color-we-got-dark",
   calendar: "--color-we-got-prince",
@@ -104,7 +90,9 @@ const BRAND_ICON_TOKEN = {
   meet: "--color-we-got-sand",
   notes: "--color-we-got-yellow",
   settings: "--color-we-got-dark",
+  sheets: "--color-we-got-brat",
   tasks: "--color-we-got-pink",
+  ai: "--color-we-got-prince",
 };
 
 describe("svgForRasterization", () => {
@@ -145,15 +133,19 @@ describe("PWA icon artwork", () => {
     expect(install).toContain('viewBox="0 0 60 60"');
     expect(install).toContain('fill="var(--color-we-got-dark, #003311)"');
     expect(install).toContain('fill="url(#home-pwa-clover)"');
-    expect(install).toContain('stop-color="var(--color-we-got-blue, #0045ff)"');
+    expect(install).toContain('stop-color="var(--color-we-got-soft, #fff5e9)"');
     expect(install).toContain('stop-color="var(--color-we-got-brat, #8ace00)"');
     expect(install).not.toContain("--wai-");
+    expect(install).not.toContain("--app-icon-layer-");
     const raster = svgForRasterization(install);
     expect(raster).not.toContain("var(");
     expect(raster).toContain("#003311");
-    expect(raster).toContain("#0045ff");
+    expect(raster).toContain("#fff5e9");
     expect(raster).toContain("#8ace00");
-    expect(inApp).toContain('viewBox="0 0 270 270"');
+    expect(inApp).toContain('viewBox="0 0 60 60"');
+    expect(inApp).toContain(
+      'fill="var(--app-icon-layer-surface, var(--color-we-got-dark, #003311))"',
+    );
     expect(inApp).not.toContain("linearGradient");
   });
 
@@ -166,39 +158,15 @@ describe("PWA icon artwork", () => {
     }
   });
 
-  it("pads maskable icons with the SVG background and keeps glyphs inside the safe circle", () => {
+  it("keeps maskable icons the same full-bleed tile as the 512 PNG", () => {
     const maskable = readdirSync(pwaDir).filter((name) => name.endsWith("-512-maskable.png"));
     expect(maskable.length).toBeGreaterThan(0);
-    const radius = (MASKABLE_CANVAS * SAFE_DIAMETER_RATIO) / 2 + CIRCLE_RADIUS_SLACK;
-    const center = (MASKABLE_CANVAS - 1) / 2;
 
     for (const name of maskable) {
       const app = name.slice(0, -"-512-maskable.png".length);
-      const sourceName = app === "home" ? "home-pwa.svg" : `${app}.svg`;
-      const markup = readFileSync(join(sourceDir, sourceName), "utf8");
-      const fill = assertFullBleedSquare(app, svgForRasterization(markup));
-      const hex = /^#([0-9a-fA-F]{6})$/.exec(fill);
-      expect(hex, `${app} background fill`).not.toBeNull();
-      const background = [0, 2, 4].map((offset) =>
-        Number.parseInt(hex[1].slice(offset, offset + 2), 16),
-      );
-
-      const { width, height, rgba } = decodePng(join(pwaDir, name));
-      expect(width).toBe(MASKABLE_CANVAS);
-      expect(height).toBe(MASKABLE_CANVAS);
-      expect([rgba[0], rgba[1], rgba[2]], `${name} pixel (0,0)`).toEqual(background);
-
-      const outside = [];
-      for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-          const index = (y * width + x) * 4;
-          if (!isGlyphPixel(rgba, index, background)) continue;
-          const dx = x - center;
-          const dy = y - center;
-          if (Math.hypot(dx, dy) > radius) outside.push(`${x},${y}`);
-        }
-      }
-      expect(outside, `${name} glyph pixels outside the safe circle`).toEqual([]);
+      const anyIcon = readFileSync(join(pwaDir, `${app}-512.png`));
+      const mask = readFileSync(join(pwaDir, name));
+      expect(mask.equals(anyIcon), `${name} must match ${app}-512.png`).toBe(true);
     }
   });
 
@@ -216,38 +184,23 @@ describe("PWA icon artwork", () => {
     }
   });
 
-  it("matches a 192 PNG corner pixel to the SVG surface fill after raster peel", () => {
-    // Header bands / edge glyphs can cover top-left; any of the four corners
-    // must still show the full-bleed surface (catches stale cream Soft pads).
+  it("keeps resized install PNGs on the same corner color as the 512 tile", () => {
     const apps = readdirSync(pwaDir)
       .filter((name) => name.endsWith("-192.png"))
       .map((name) => name.slice(0, -"-192.png".length));
     expect(apps.length).toBeGreaterThan(0);
     for (const app of apps) {
-      const sourceName = app === "home" ? "home-pwa.svg" : `${app}.svg`;
-      const markup = readFileSync(join(sourceDir, sourceName), "utf8");
-      const fill = assertFullBleedSquare(app, svgForRasterization(markup));
-      const hex = /^#([0-9a-fA-F]{6})$/.exec(fill);
-      expect(hex, `${app} surface fill`).not.toBeNull();
-      const expected = [0, 2, 4].map((offset) =>
-        Number.parseInt(hex[1].slice(offset, offset + 2), 16),
-      );
-      const { width, height, rgba } = decodePng(join(pwaDir, `${app}-192.png`));
-      const corners = [
-        [0, 0],
-        [width - 1, 0],
-        [0, height - 1],
-        [width - 1, height - 1],
-      ];
-      const matched = corners.some(([x, y]) => {
-        const index = (y * width + x) * 4;
-        return (
-          rgba[index] === expected[0] &&
-          rgba[index + 1] === expected[1] &&
-          rgba[index + 2] === expected[2]
-        );
-      });
-      expect(matched, `${app}-192.png: no corner matches surface ${fill}`).toBe(true);
+      const full = decodePng(join(pwaDir, `${app}-512.png`));
+      for (const size of [180, 192]) {
+        const scaled = decodePng(join(pwaDir, `${app}-${size}.png`));
+        const scaledCorner = [scaled.rgba[0], scaled.rgba[1], scaled.rgba[2]];
+        const fullCorner = [full.rgba[0], full.rgba[1], full.rgba[2]];
+        const drift = scaledCorner.map((channel, index) => Math.abs(channel - fullCorner[index]));
+        expect(
+          Math.max(...drift),
+          `${app}-${size} corner ${scaledCorner} vs ${fullCorner}`,
+        ).toBeLessThanOrEqual(8);
+      }
     }
   });
 });

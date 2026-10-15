@@ -37,9 +37,9 @@
 }
 
 /**
- * Workspace home lockup: soft tile behind the solid `#003311` suite mark.
- * `home.svg` is the in-app mark (navy + soft fallbacks). The `/` install icons
- * and favicon use `home-pwa.svg` and are not inlined here.
+ * Workspace home lockup: soft tile behind the suite mark.
+ * `home.svg` is the in-app mark (dark + soft fallbacks). The `/` install icons
+ * use the raster PNG; the favicon uses `home-pwa.svg` and is not inlined here.
  * This override clears the in-app tile through the shared transparent brand
  * fill and pins the mark so it does not pick up `--app-switch-icon-fg`.
  */

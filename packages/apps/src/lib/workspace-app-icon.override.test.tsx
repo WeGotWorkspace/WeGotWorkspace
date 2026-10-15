@@ -78,7 +78,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     expect(trigger?.innerHTML).toContain(
       "var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))",
     );
-    expect(trigger?.innerHTML).toContain('d="M28 45a2 2 0');
+    expect(trigger?.innerHTML).toContain('d="M28 43a2 2 0');
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
 

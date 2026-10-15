@@ -7,7 +7,7 @@
  * Settings product shell: paper main pane + soft sidebar.
  * `--workspace-accent` is We Got Dark (`#003311` — same hex as
  * WORKSPACE_APP_ACCENT.settings). The lockup is a
- * white tile with Dark marks. Primary fills use accent with white fg. The rail
+ * soft tile with Dark marks. Primary fills use accent with white fg. The rail
  * is the shared recipe in `workspace-color.css`.
  * Import only from {@link SettingsWorkspace}.
  */
@@ -42,22 +42,22 @@
     var(--workspace-surface)
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-foreground);
+  background-color: var(--workspace-icon-surface);
 }
 
 .settings-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .settings-workspace .app-sidebar__footer {

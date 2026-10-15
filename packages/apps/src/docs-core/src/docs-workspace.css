@@ -56,7 +56,7 @@
   --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
 
@@ -99,7 +99,7 @@
   --workspace-accent: inherit;
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   /* Menu/select washes: shared `workspace-derive.css`. */
 }
 
@@ -125,7 +125,7 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-/** Sidebar lockup: blue tile + white marks. UI accent is Dark. */
+/** Sidebar lockup: blue tile + soft marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--workspace-icon-surface);
   --app-switch-icon-fg: var(--workspace-icon-foreground);
@@ -137,7 +137,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .docs-workspace__header-actions {
@@ -259,7 +259,7 @@
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

@@ -39,33 +39,33 @@ html:has(.apps-home-screen) {
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="admin"],
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="settings"] {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="calendar"] {
   --workspace-icon-surface: var(--color-we-got-prince);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="contacts"] {
   --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="docs"] {
   --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="drive"] {
-  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="mail"] {
   --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="meet"] {
@@ -75,12 +75,12 @@ html:has(.apps-home-screen) {
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="notes"] {
   --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="tasks"] {
   --workspace-icon-surface: var(--color-we-got-pink);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 /** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */

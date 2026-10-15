@@ -185,16 +185,16 @@ export function createAppBrandingCssprops(
 
 /** Per-app icon-pair defaults sampled from `*-workspace.css` switch-trigger rules. */
 export const BRANDING_APP_ICON_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
-  mail: { bg: "#de4b0e", fg: "#ffffff" },
-  notes: { bg: "#ffc800", fg: "#ffffff" },
-  docs: { bg: "#0045ff", fg: "#ffffff" },
-  drive: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-brat)" },
-  tasks: { bg: "#ffbdc2", fg: "var(--color-we-got-dark)" },
-  calendar: { bg: "#962fa8", fg: "#ffffff" },
-  contacts: { bg: "#a3c4e8", fg: "var(--color-we-got-dark)" },
+  mail: { bg: "#de4b0e", fg: "var(--color-we-got-soft)" },
+  notes: { bg: "#ffc800", fg: "var(--color-we-got-soft)" },
+  docs: { bg: "#0045ff", fg: "var(--color-we-got-soft)" },
+  drive: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-brat)" },
+  tasks: { bg: "#ffbdc2", fg: "var(--color-we-got-soft)" },
+  calendar: { bg: "#962fa8", fg: "var(--color-we-got-soft)" },
+  contacts: { bg: "#a3c4e8", fg: "var(--color-we-got-soft)" },
   meet: { bg: "var(--color-we-got-soft)", fg: "#ba9689" },
-  admin: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
-  settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-soft)" },
+  admin: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-dark)" },
+  settings: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-dark)" },
 };
 
 /**

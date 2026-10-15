@@ -7,7 +7,9 @@ import driveIcon from "@/assets/app-icons/drive.svg?raw";
 import mailIcon from "@/assets/app-icons/mail.svg?raw";
 import meetIcon from "@/assets/app-icons/meet.svg?raw";
 import notesIcon from "@/assets/app-icons/notes.svg?raw";
+import aiIcon from "@/assets/app-icons/ai.svg?raw";
 import remindersIcon from "@/assets/app-icons/reminders.svg?raw";
+import sheetsIcon from "@/assets/app-icons/sheets.svg?raw";
 import settingsIcon from "@/assets/app-icons/settings.svg?raw";
 import tasksIcon from "@/assets/app-icons/tasks.svg?raw";
 import type { WorkspaceAppId } from "@/lib/workspace-app-icons";
@@ -35,5 +37,7 @@ export const WORKSPACE_HOME_ICON_INLINE = homeIcon;
 
 /** Future icons — same source files, not wired in the home grid yet. */
 export const WORKSPACE_FUTURE_APP_ICON_INLINE = {
+  ai: aiIcon,
   reminders: remindersIcon,
+  sheets: sheetsIcon,
 } as const;
