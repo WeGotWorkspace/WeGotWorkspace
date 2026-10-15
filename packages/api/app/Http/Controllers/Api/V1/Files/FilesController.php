@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveForbiddenException;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveService;
@@ -207,15 +208,67 @@ final class FilesController
     public function updateCollaboration(Request $request): JsonResponse
     {
         $path = $this->requirePath($request);
-        $payload = $request->json()->all();
-        $payload['room'] = $path;
-        $request->json()->replace($payload);
-
-        $result = $this->collabDocuments->put($request, $payload);
+        $result = $this->collabDocuments->put($request, $this->collaborationPayload($request, $path));
         $etag = $result['etag'];
         $response = response()->json(['ok' => $result['ok']]);
 
         return $etag === null ? $response : $response->header('ETag', $etag);
+    }
+
+    /**
+     * The path query is the document. `put()` does not read the JSON body.
+     *
+     * A frame that does not parse is an HTTP 400: `error` is a sentence and
+     * `code` is `invalid_body`, the same envelope as a missing path. Domain
+     * refusals from `put()` stay `{error: code}` (`nothing_to_save`, `yjs_too_large`).
+     *
+     * @return array<string, mixed>
+     */
+    private function collaborationPayload(Request $request, string $path): array
+    {
+        $framed = FramedPayload::decode($request->getContent());
+        $documentLen = $this->frameLength($framed['header'], 'documentLen');
+        $yjsLen = $this->frameLength($framed['header'], 'yjsLen');
+        $tail = $framed['tail'];
+        if (($documentLen ?? 0) + ($yjsLen ?? 0) !== strlen($tail)) {
+            $this->invalidFrame();
+        }
+
+        $payload = ['room' => $path];
+        $offset = 0;
+        if ($documentLen !== null) {
+            $payload['markdown'] = substr($tail, $offset, $documentLen);
+            $offset += $documentLen;
+        }
+        if ($yjsLen !== null) {
+            $payload['yjs'] = substr($tail, $offset, $yjsLen);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $header
+     */
+    private function frameLength(array $header, string $key): ?int
+    {
+        if (! array_key_exists($key, $header)) {
+            $this->invalidFrame();
+        }
+        $value = $header[$key];
+        if ($value === null) {
+            return null;
+        }
+        if (! is_int($value) || $value < 0) {
+            $this->invalidFrame();
+        }
+
+        return $value;
+    }
+
+    private function invalidFrame(): never
+    {
+        throw new ApiHttpException(400, FramedPayload::INVALID_BODY_MESSAGE, 'invalid_body');
     }
 
     public function star(Request $request): JsonResponse

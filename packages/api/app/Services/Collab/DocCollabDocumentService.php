@@ -114,7 +114,10 @@ final class DocCollabDocumentService
 
         $yjsBytes = null;
         if ($hasYjs) {
-            $yjsBytes = $this->decodeYjsBytes($body['yjs']);
+            if (! is_string($body['yjs'])) {
+                $this->fail('invalid_yjs');
+            }
+            $yjsBytes = $body['yjs'];
             if (strlen($yjsBytes) > self::MAX_YJS_BYTES) {
                 $this->fail('yjs_too_large', 413);
             }
@@ -330,26 +333,6 @@ final class DocCollabDocumentService
         }
 
         return $virtual;
-    }
-
-    /**
-     * @param  list<mixed>|mixed  $yjs
-     */
-    private function decodeYjsBytes(mixed $yjs): string
-    {
-        if (! is_array($yjs)) {
-            $this->fail('invalid_yjs');
-        }
-
-        $bytes = '';
-        foreach ($yjs as $byte) {
-            if (! is_int($byte) || $byte < 0 || $byte > 255) {
-                $this->fail('invalid_yjs');
-            }
-            $bytes .= chr($byte);
-        }
-
-        return $bytes;
     }
 
     private function assertFilesEnabled(): void

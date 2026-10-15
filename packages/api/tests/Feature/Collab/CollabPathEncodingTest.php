@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RoomTestHelper;
+use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
 
@@ -22,6 +23,8 @@ use Tests\Support\WgwTestDisks;
  */
 final class CollabPathEncodingTest extends WgwDatabaseTestCase
 {
+    use SendsFramedCollaboration;
+
     private const PARENTHESES = '/users/alice/docs/Offerte (v2).md';
 
     private const ACCENTS = '/users/alice/docs/Café notities.md';
@@ -80,11 +83,7 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
             ->assertHeader('Content-Type', 'text/markdown; charset=utf-8');
 
         $this->withBearer($token)
-            ->putJson($url, [
-                // No trailing newline: Laravel's TrimStrings middleware strips it.
-                'markdown' => '# Café & co (v2)',
-                'yjs' => [1, 2, 3, 255],
-            ])
+            ->putCollaboration($url, '# Café & co (v2)', "\x01\x02\x03\xff")
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -206,9 +205,7 @@ final class CollabPathEncodingTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'forbidden');
 
         $this->withBearer($this->issueBearerTokenFor('bob'))
-            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ACCENTS), [
-                'markdown' => 'nope',
-            ])
+            ->putCollaboration('/api/v1/files/collaboration?path='.urlencode(self::ACCENTS), 'nope')
             ->assertForbidden()
             ->assertJsonPath('error', 'forbidden');
 

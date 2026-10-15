@@ -561,7 +561,6 @@ export function useDocsCollabJoin({
           urls.documentUrl,
           getMd(),
           ydoc,
-          urls.room,
           refs.authTokenRef.current,
           urls.documentSaveMethod ?? "POST",
           sidecarPrecondition(room),
@@ -576,7 +575,7 @@ export function useDocsCollabJoin({
       await clearDocsCollabPendingServerSave(room);
     }
     await teardown();
-  }, [refs, room, teardown, urls.documentSaveMethod, urls.documentUrl, urls.room]);
+  }, [refs, room, teardown, urls.documentSaveMethod, urls.documentUrl]);
 
   return {
     session,

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
 import {
   rememberSidecarEtag,
@@ -30,11 +31,11 @@ function createCollabServer() {
       });
     }
 
-    const body = JSON.parse(String(init?.body ?? "{}")) as { yjs?: number[] };
+    const yjs = readFramedYjs(init?.body);
     const ifMatch = headers["If-Match"];
     const ifNoneMatch = headers["If-None-Match"];
     const current = etag();
-    if (body.yjs && ifMatch === undefined && ifNoneMatch === undefined && current !== null) {
+    if (yjs && ifMatch === undefined && ifNoneMatch === undefined && current !== null) {
       return new Response(JSON.stringify({ error: "precondition_required" }), { status: 428 });
     }
     const refused =
@@ -43,14 +44,33 @@ function createCollabServer() {
       return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
     }
 
-    if (body.yjs) {
-      sidecar = new Uint8Array(body.yjs);
+    if (yjs) {
+      sidecar = yjs;
       revision += 1;
     }
     return new Response("{}", { status: 200, headers: { ETag: etag()! } });
   });
 
   return { fetchStub, getRevision: () => revision };
+}
+
+function readFramedYjs(body: BodyInit | null | undefined): Uint8Array | null {
+  const bytes =
+    body instanceof Uint8Array ? body : body instanceof ArrayBuffer ? new Uint8Array(body) : null;
+  if (!bytes) return null;
+  const framed = decodeFramedPayload(bytes);
+  if (
+    !framed ||
+    !framed.header ||
+    typeof framed.header !== "object" ||
+    Array.isArray(framed.header)
+  ) {
+    return null;
+  }
+  const header = framed.header as { documentLen?: number | null; yjsLen?: number | null };
+  if (typeof header.yjsLen !== "number") return null;
+  const documentLen = typeof header.documentLen === "number" ? header.documentLen : 0;
+  return framed.tail.subarray(documentLen, documentLen + header.yjsLen);
 }
 
 function paragraph(text: string): Y.XmlElement {
@@ -75,7 +95,6 @@ async function saveWithRemerge(ydoc: Y.Doc, markdown: string): Promise<void> {
       DOCUMENT_URL,
       markdown,
       ydoc,
-      ROOM,
       undefined,
       "PUT",
       sidecarPrecondition(ROOM),
@@ -92,7 +111,6 @@ async function saveWithRemerge(ydoc: Y.Doc, markdown: string): Promise<void> {
     DOCUMENT_URL,
     markdown,
     ydoc,
-    ROOM,
     undefined,
     "PUT",
     sidecarPrecondition(ROOM),
@@ -150,7 +168,7 @@ describe("two clients saving in turn without a live mesh", () => {
     edit(second, "second client edit");
 
     await expect(
-      saveDocument(DOCUMENT_URL, "second client edit", second, ROOM, undefined, "PUT", {
+      saveDocument(DOCUMENT_URL, "second client edit", second, undefined, "PUT", {
         name: "If-None-Match",
         value: "*",
       }),
