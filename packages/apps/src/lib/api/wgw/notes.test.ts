@@ -62,6 +62,17 @@ describe("wgwNoteMetadataFromNote", () => {
     expect(request).not.toHaveProperty("starred");
     expect(request).not.toHaveProperty("archived");
   });
+
+  it("omits cached tags and title so an archive cannot overwrite a newer tag", () => {
+    const request = wgwNoteMetadataFromNote(
+      { ...note, title: "Stale title", tags: ["essay"] },
+      { archived: true },
+    );
+
+    expect(request.archived).toBe(true);
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
+  });
 });
 
 describe("wgwNoteUpsertFromNote", () => {

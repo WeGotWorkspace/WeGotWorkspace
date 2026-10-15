@@ -102,6 +102,60 @@ describe("createHybridNotesOperations", () => {
     vi.restoreAllMocks();
   });
 
+  it("stars without sending the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...stale, starred: true });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...stale, starred: true });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.starred).toBe(true);
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("moves a notebook without sending the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(updateNoteItem).mockResolvedValue({
+      ...stale,
+      notebook: "Work",
+      notebookId: "notes-work",
+    });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({
+      ...stale,
+      notebook: "Work",
+      notebookId: "notes-work",
+    });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ notebook: "Work", notebookId: "notes-work" });
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("archives without a metadata patch, so a newer server tag is left alone", async () => {
+    await upsertNoteInCache(username, { ...note, title: "Cached title", tags: ["essay"] }, false);
+    vi.mocked(archiveNoteItem).mockResolvedValue({
+      ...note,
+      archived: true,
+      title: "Server title",
+      tags: ["essay", "newer"],
+    });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.archiveNote(note.id);
+
+    expect(updateNoteItem).not.toHaveBeenCalled();
+    expect(archiveNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.tags).toEqual(["essay", "newer"]);
+    expect(saved.title).toBe("Server title");
+  });
+
   it("sends a tag delta and leaves the full tag list off the request", async () => {
     vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["essay", "focus"] });
 
