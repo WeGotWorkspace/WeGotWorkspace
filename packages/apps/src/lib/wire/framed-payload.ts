@@ -8,14 +8,17 @@
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-export function encodeFramedPayload(header: object, parts: readonly Uint8Array[]): Uint8Array {
+export function encodeFramedPayload(
+  header: object,
+  parts: readonly Uint8Array[],
+): Uint8Array<ArrayBuffer> {
   const json = textEncoder.encode(JSON.stringify(header));
   if (json.byteLength > 0xffff) {
     throw new Error("framed header exceeds uint16");
   }
   let tailLength = 0;
   for (const part of parts) tailLength += part.byteLength;
-  const out = new Uint8Array(2 + json.byteLength + tailLength);
+  const out: Uint8Array<ArrayBuffer> = new Uint8Array(2 + json.byteLength + tailLength);
   const view = new DataView(out.buffer);
   view.setUint16(0, json.byteLength);
   out.set(json, 2);

@@ -14,7 +14,6 @@ use App\Services\Drive\DriveService;
 use App\Services\Rtc\RoomIdCodec;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 final class FilesController
@@ -208,30 +207,20 @@ final class FilesController
 
     public function updateCollaboration(Request $request): JsonResponse
     {
-        $spike = getenv('WGW_SPIKE_PEAK') === '1';
-        if ($spike) {
-            memory_reset_peak_usage();
-        }
         $path = $this->requirePath($request);
+        $result = $this->collabDocuments->put($request, $this->collaborationPayload($request, $path));
+        $etag = $result['etag'];
+        $response = response()->json(['ok' => $result['ok']]);
 
-        try {
-            $result = $this->collabDocuments->put($request, $this->collaborationPayload($request, $path));
-            $etag = $result['etag'];
-            $response = response()->json(['ok' => $result['ok']]);
-
-            return $etag === null ? $response : $response->header('ETag', $etag);
-        } finally {
-            if ($spike) {
-                Log::info('spike_collab_peak', [
-                    'peak' => memory_get_peak_usage(true),
-                    'spike' => (string) $request->header('X-Spike-Id', ''),
-                ]);
-            }
-        }
+        return $etag === null ? $response : $response->header('ETag', $etag);
     }
 
     /**
      * The path query is the document. `put()` does not read the JSON body.
+     *
+     * A frame that does not parse is an HTTP 400: `error` is a sentence and
+     * `code` is `invalid_body`, the same envelope as a missing path. Domain
+     * refusals from `put()` stay `{error: code}` (`nothing_to_save`, `yjs_too_large`).
      *
      * @return array<string, mixed>
      */
@@ -242,7 +231,7 @@ final class FilesController
         $yjsLen = $this->frameLength($framed['header'], 'yjsLen');
         $tail = $framed['tail'];
         if (($documentLen ?? 0) + ($yjsLen ?? 0) !== strlen($tail)) {
-            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+            $this->invalidFrame();
         }
 
         $payload = ['room' => $path];
@@ -264,17 +253,22 @@ final class FilesController
     private function frameLength(array $header, string $key): ?int
     {
         if (! array_key_exists($key, $header)) {
-            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+            $this->invalidFrame();
         }
         $value = $header[$key];
         if ($value === null) {
             return null;
         }
         if (! is_int($value) || $value < 0) {
-            throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+            $this->invalidFrame();
         }
 
         return $value;
+    }
+
+    private function invalidFrame(): never
+    {
+        throw new ApiHttpException(400, FramedPayload::INVALID_BODY_MESSAGE, 'invalid_body');
     }
 
     public function star(Request $request): JsonResponse

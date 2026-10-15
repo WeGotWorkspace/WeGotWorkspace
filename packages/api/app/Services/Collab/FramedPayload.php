@@ -13,6 +13,8 @@ use App\Exceptions\ApiHttpException;
  */
 final class FramedPayload
 {
+    public const INVALID_BODY_MESSAGE = 'Malformed collaboration request body.';
+
     /**
      * @return array{header: array<string, mixed>, tail: string}
      */
@@ -49,6 +51,6 @@ final class FramedPayload
 
     private static function invalid(): never
     {
-        throw new ApiHttpException(400, 'invalid_body', 'invalid_body');
+        throw new ApiHttpException(400, self::INVALID_BODY_MESSAGE, 'invalid_body');
     }
 }

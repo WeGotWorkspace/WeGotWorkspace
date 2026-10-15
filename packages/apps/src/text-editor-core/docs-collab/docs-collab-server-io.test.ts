@@ -115,7 +115,7 @@ describe("docs-collab-server-io", () => {
       vi.fn(async () => new Response(JSON.stringify({ error: "network down" }), { status: 503 })),
     );
     const ydoc = new Y.Doc();
-    await expect(saveDocument("/doc", "# x", ydoc, undefined)).rejects.toThrow("network down");
+    await expect(saveDocument("/doc", "# x", ydoc)).rejects.toThrow("network down");
   });
 
   it("saveDocument succeeds on ok response", async () => {
@@ -124,7 +124,7 @@ describe("docs-collab-server-io", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", "token", "PUT");
+    await saveDocument("/doc", "# x", ydoc, "token", "PUT");
     expect(fetchMock).toHaveBeenCalledWith(
       "/doc",
       expect.objectContaining({
@@ -136,9 +136,9 @@ describe("docs-collab-server-io", () => {
         }),
       }),
     );
-    const framed = decodeFramedPayload(
-      new Uint8Array(fetchMock.mock.calls[0]![1]!.body as ArrayBuffer),
-    );
+    const raw = fetchMock.mock.calls[0]![1]!.body;
+    expect(raw).toBeInstanceOf(Uint8Array);
+    const framed = decodeFramedPayload(raw as Uint8Array);
     const header = framed?.header as { documentLen: number; yjsLen: number };
     expect(header.documentLen).toBe(new TextEncoder().encode("# x").byteLength);
     expect(header.documentLen + header.yjsLen).toBe(framed?.tail.byteLength);
@@ -151,7 +151,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    const nextEtag = await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+    const nextEtag = await saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
       name: "If-Match",
       value: SIDECAR_ETAG,
     });
@@ -170,7 +170,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+    await saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
       name: "If-None-Match",
       value: "*",
     });
@@ -190,7 +190,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", null);
+    await saveDocument("/doc", "# x", ydoc, undefined, "PUT", null);
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers).not.toHaveProperty("If-Match");
@@ -209,7 +209,7 @@ describe("docs-collab-server-io", () => {
     const ydoc = new Y.Doc();
 
     await expect(
-      saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+      saveDocument("/doc", "# x", ydoc, undefined, "PUT", {
         name: "If-Match",
         value: SIDECAR_ETAG,
       }),

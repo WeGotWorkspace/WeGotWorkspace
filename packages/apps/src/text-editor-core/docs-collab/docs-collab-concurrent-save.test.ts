@@ -95,7 +95,6 @@ async function saveWithRemerge(ydoc: Y.Doc, markdown: string): Promise<void> {
       DOCUMENT_URL,
       markdown,
       ydoc,
-      ROOM,
       undefined,
       "PUT",
       sidecarPrecondition(ROOM),
@@ -112,7 +111,6 @@ async function saveWithRemerge(ydoc: Y.Doc, markdown: string): Promise<void> {
     DOCUMENT_URL,
     markdown,
     ydoc,
-    ROOM,
     undefined,
     "PUT",
     sidecarPrecondition(ROOM),
@@ -170,7 +168,7 @@ describe("two clients saving in turn without a live mesh", () => {
     edit(second, "second client edit");
 
     await expect(
-      saveDocument(DOCUMENT_URL, "second client edit", second, ROOM, undefined, "PUT", {
+      saveDocument(DOCUMENT_URL, "second client edit", second, undefined, "PUT", {
         name: "If-None-Match",
         value: "*",
       }),

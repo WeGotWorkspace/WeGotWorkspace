@@ -59,14 +59,7 @@ describe("buildDocsCollabUrls", () => {
       vi.stubGlobal("fetch", fetchMock);
 
       try {
-        await saveDocument(
-          urls.documentUrl,
-          "# Café & co (v2)\n",
-          new Y.Doc(),
-          room,
-          "token",
-          "PUT",
-        );
+        await saveDocument(urls.documentUrl, "# Café & co (v2)\n", new Y.Doc(), "token", "PUT");
       } finally {
         vi.unstubAllGlobals();
       }
@@ -74,9 +67,9 @@ describe("buildDocsCollabUrls", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const requested = new URL(String(fetchMock.mock.calls[0]![0]), "http://localhost");
       expect(requested.searchParams.get("path")).toBe(room);
-      const framed = decodeFramedPayload(
-        new Uint8Array(fetchMock.mock.calls[0]![1]!.body as ArrayBuffer),
-      );
+      const raw = fetchMock.mock.calls[0]![1]!.body;
+      expect(raw).toBeInstanceOf(Uint8Array);
+      const framed = decodeFramedPayload(raw as Uint8Array);
       const header = framed?.header as { documentLen: number; yjsLen: number };
       expect(header.documentLen + header.yjsLen).toBe(framed?.tail.byteLength);
       expect(new TextDecoder().decode(framed!.tail.subarray(0, header.documentLen))).toBe(

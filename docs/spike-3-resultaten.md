@@ -61,7 +61,7 @@ The 3.3× estimate lands at 3.09×. Base64 lands at 1.33×.
 
 ## M1–M3 — single save
 
-Five tries, median. Peak is `memory_get_peak_usage(true)` after `memory_reset_peak_usage()` at the start of `updateCollaboration`, logged only when `WGW_SPIKE_PEAK=1`.
+Five tries, median. Peak and lock wait were read with temporary probes that are not in the tree; see [How peak memory was measured](#how-peak-memory-was-measured).
 
 ### Tight
 
@@ -207,4 +207,8 @@ Sustained, one writer, 30 saves of the 4.4 MB state starting every 2 s on the ti
 - 14,400 rows encode to 5,263,763 bytes, just over the cap, not a round 6 MB.
 - Peak for the roomy number-array 413s was not in the five-try log. One later 6 MB sample peaked at 155.5 MiB.
 - M4b's 1-writer paths collided with M4 and are omitted.
-- `WGW_SPIKE_PEAK=1` logs peak memory and lock wait. It is off unless set.
+- The peak and lock-wait probes were removed before merge. The numbers above are from that run.
+
+## How peak memory was measured
+
+Peak memory was measured with a temporary probe that is not in the tree. `memory_reset_peak_usage()` ran at the start of `updateCollaboration` and `memory_get_peak_usage(true)` was read at the end, and only while an environment flag was set. Lock wait used the same flag, timing `ExclusiveFileLock::acquire` with `microtime(true)`. Both probes were removed after the measurement.

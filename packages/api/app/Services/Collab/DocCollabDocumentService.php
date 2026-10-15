@@ -176,16 +176,7 @@ final class DocCollabDocumentService
     private function acquireDocumentLock(string $sidecarKey)
     {
         try {
-            $waitStarted = microtime(true);
-            $handle = ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
-            if (getenv('WGW_SPIKE_PEAK') === '1') {
-                Log::info('spike_collab_lock', [
-                    'wait_ms' => round((microtime(true) - $waitStarted) * 1000, 1),
-                    'spike' => (string) request()->header('X-Spike-Id', ''),
-                ]);
-            }
-
-            return $handle;
+            return ExclusiveFileLock::acquire(self::documentLockPath($sidecarKey));
         } catch (\RuntimeException) {
             $this->fail('lock_unavailable', 503);
         }

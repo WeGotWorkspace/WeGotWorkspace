@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Collab;
 
+use App\Services\Collab\FramedPayload;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\SendsFramedCollaboration;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDisks;
@@ -95,66 +97,66 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
             ->assertContent("\x01\x02\x03\xff");
     }
 
-    public function test_framed_save_cases(): void
+    public function test_framed_collab_body_matches_the_golden_header(): void
     {
-        $token = $this->issueBearerToken();
-        $url = '/api/v1/files/collaboration?path='.urlencode(self::ROOM);
-        $storage = app(WgwStorage::class)->files();
-
-        $this->withBearer($token)
-            ->putCollaboration($url, "# Only markdown\n")
-            ->assertOk();
-        $this->assertStringContainsString('# Only markdown', (string) $storage->get('users/alice/docs/together.md'));
-        $this->assertFalse($storage->fileExists('users/alice/docs/.together.md.yjs'));
-
-        $storage->delete('users/alice/docs/together.md');
-        $this->withBearer($token)
-            ->putCollaboration($url, null, "\x01\x02")
-            ->assertOk();
-        $this->assertFalse($storage->fileExists('users/alice/docs/together.md'));
-        $this->assertSame("\x01\x02", $storage->get('users/alice/docs/.together.md.yjs'));
-
-        $this->withBearer($token)
-            ->putCollaboration($url, null, null)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'nothing_to_save');
-
-        $storage->delete('users/alice/docs/.together.md.yjs');
-        $this->withBearer($token)
-            ->putCollaboration($url, "# Kept\n", '')
-            ->assertOk();
-        $this->assertTrue($storage->fileExists('users/alice/docs/.together.md.yjs'));
-        $this->assertSame('', $storage->get('users/alice/docs/.together.md.yjs'));
-
         $header = '{"documentLen":4,"yjsLen":4}';
         $this->assertSame(
             pack('n', strlen($header)).$header.'abcdefgh',
             self::framedCollabBody('abcd', 'efgh'),
         );
+    }
 
-        $allBytes = '';
+    /**
+     * @return iterable<string, array{0: ?string, 1: ?string, 2: string}>
+     */
+    public static function framedSaveProvider(): iterable
+    {
+        $everyByte = '';
         for ($byte = 0; $byte <= 255; $byte++) {
-            $allBytes .= chr($byte);
+            $everyByte .= chr($byte);
         }
-        $storage->delete('users/alice/docs/.together.md.yjs');
-        $this->withBearer($token)
-            ->putCollaboration($url, "# Bytes\n", $allBytes)
-            ->assertOk();
-        $this->assertSame($allBytes, $storage->get('users/alice/docs/.together.md.yjs'));
 
-        $invalidUtf8 = "\x80\xbf\xff\xc3\x28";
-        $storage->delete('users/alice/docs/.together.md.yjs');
-        $this->withBearer($token)
-            ->putCollaboration($url, $invalidUtf8, "\x01")
-            ->assertOk();
-        $this->assertSame($invalidUtf8, $storage->get('users/alice/docs/together.md'));
+        yield 'markdown only' => ["# Only markdown\n", null, 'markdown-only.md'];
+        yield 'yjs only' => [null, "\x01\x02", 'yjs-only.md'];
+        yield 'nothing to save' => [null, null, 'nothing.md'];
+        yield 'empty sidecar' => ["# Kept\n", '', 'empty-sidecar.md'];
+        yield 'every byte' => ["# Bytes\n", $everyByte, 'every-byte.md'];
+        yield 'invalid utf-8' => ["\x80\xbf\xff\xc3\x28", "\x01", 'invalid-utf8.md'];
+        yield 'csv quotes' => ["\"a\",\"b\"\n\"c\",\"d\"\n", "\x02", 'quotes.csv'];
+    }
 
-        $csv = "\"a\",\"b\"\n\"c\",\"d\"\n";
-        $storage->delete('users/alice/docs/.together.md.yjs');
-        $this->withBearer($token)
-            ->putCollaboration($url, $csv, "\x02")
-            ->assertOk();
-        $this->assertSame($csv, $storage->get('users/alice/docs/together.md'));
+    #[DataProvider('framedSaveProvider')]
+    public function test_framed_save_cases(?string $markdown, ?string $yjs, string $name): void
+    {
+        $token = $this->issueBearerToken();
+        $path = '/users/alice/docs/'.$name;
+        $url = '/api/v1/files/collaboration?path='.urlencode($path);
+        $storage = app(WgwStorage::class)->files();
+        $documentKey = 'users/alice/docs/'.$name;
+        $sidecarKey = 'users/alice/docs/.'.$name.'.yjs';
+
+        $response = $this->withBearer($token)->putCollaboration($url, $markdown, $yjs);
+
+        if ($markdown === null && $yjs === null) {
+            $response->assertStatus(400)->assertJsonPath('error', 'nothing_to_save');
+            $this->assertFalse($storage->fileExists($documentKey));
+            $this->assertFalse($storage->fileExists($sidecarKey));
+
+            return;
+        }
+
+        $response->assertOk();
+        if ($markdown === null) {
+            $this->assertFalse($storage->fileExists($documentKey));
+        } else {
+            $this->assertSame($markdown, (string) $storage->get($documentKey));
+        }
+        if ($yjs === null) {
+            $this->assertFalse($storage->fileExists($sidecarKey));
+        } else {
+            $this->assertTrue($storage->fileExists($sidecarKey));
+            $this->assertSame($yjs, (string) $storage->get($sidecarKey));
+        }
     }
 
     public function test_markdown_save_indexes_current_size_without_rename(): void
@@ -361,24 +363,28 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $this->withBearer($token)
             ->putCollaborationRaw($url, pack('n', 40).'short')
             ->assertStatus(400)
+            ->assertJsonPath('error', FramedPayload::INVALID_BODY_MESSAGE)
             ->assertJsonPath('code', 'invalid_body');
 
         $json = '{"documentLen":1,"yjsLen":1}';
         $this->withBearer($token)
             ->putCollaborationRaw($url, pack('n', strlen($json)).$json.'x')
             ->assertStatus(400)
+            ->assertJsonPath('error', FramedPayload::INVALID_BODY_MESSAGE)
             ->assertJsonPath('code', 'invalid_body');
 
         $notJson = 'not-json';
         $this->withBearer($token)
             ->putCollaborationRaw($url, pack('n', strlen($notJson)).$notJson)
             ->assertStatus(400)
+            ->assertJsonPath('error', FramedPayload::INVALID_BODY_MESSAGE)
             ->assertJsonPath('code', 'invalid_body');
 
         $array = '[1,2]';
         $this->withBearer($token)
             ->putCollaborationRaw($url, pack('n', strlen($array)).$array)
             ->assertStatus(400)
+            ->assertJsonPath('error', FramedPayload::INVALID_BODY_MESSAGE)
             ->assertJsonPath('code', 'invalid_body');
     }
 

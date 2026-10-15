@@ -4,6 +4,8 @@ import { encodeFramedPayload } from "@/lib/wire/framed-payload";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
+const textEncoder = new TextEncoder();
+
 function withBearerAuth(
   headers: Record<string, string>,
   authToken?: string,
@@ -67,14 +69,11 @@ export async function saveDocument(
   documentUrl: string,
   markdown: string,
   ydoc: Y.Doc,
-  room: string | undefined,
   authToken?: string,
   method: "POST" | "PUT" | "PATCH" = "POST",
   precondition: CollabSidecarPrecondition = null,
 ): Promise<string | null> {
-  // The query path on documentUrl selects the file. Callers still pass room.
-  void room;
-  const documentBytes = new TextEncoder().encode(markdown);
+  const documentBytes = textEncoder.encode(markdown);
   const yjsBytes = Y.encodeStateAsUpdate(ydoc);
   const body = encodeFramedPayload(
     { documentLen: documentBytes.byteLength, yjsLen: yjsBytes.byteLength },
@@ -87,12 +86,10 @@ export async function saveDocument(
   );
   if (precondition) headers[precondition.name] = precondition.value;
 
-  const payload = new ArrayBuffer(body.byteLength);
-  new Uint8Array(payload).set(body);
   const res = await fetch(documentUrl, {
     method,
     headers,
-    body: payload,
+    body,
   });
   const text = await res.text();
   if (!res.ok) {
