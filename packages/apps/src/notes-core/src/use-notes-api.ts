@@ -17,7 +17,6 @@ import {
   notifyNotesBootstrapUpdated,
   subscribeNotesBootstrapUpdated,
 } from "@/lib/offline/notes-bootstrap-sync";
-import { syncNotesBodiesForOffline } from "@/lib/offline/notes/notes-body-sync";
 import {
   ingestRemoteNote,
   ingestRemoteNoteDestroyed,
@@ -160,10 +159,6 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       if (!offlineUsername) return;
       await getNotesSyncRunner(offlineUsername).flush();
       await applyInboundRefresh();
-      const next = await readNotesBootstrapFromCache(offlineUsername);
-      if (next) {
-        await syncNotesBodiesForOffline(offlineUsername, next.data.notes).catch(() => undefined);
-      }
       notifyNotesBootstrapUpdated(offlineUsername);
     },
   });
@@ -178,12 +173,6 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       });
     });
   }, [applyInboundRefresh, listRefreshing, offlineUsername, reconnectSyncing]);
-
-  useEffect(() => {
-    const notes = data?.data.notes ?? [];
-    if (phase !== "ready" || !offlineUsername || notes.length === 0) return;
-    void syncNotesBodiesForOffline(offlineUsername, notes).catch(() => undefined);
-  }, [data?.data.notes, offlineUsername, phase]);
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];

@@ -45,7 +45,7 @@ A before B. D after B. G after D. V after G. No parallel delivery PRs.
 - **id:** `notes-filenode-api`
 - **Skill:** api
 - **Package:** packages/api
-- **Inputs:** A, [`NoteMarkdownCodec`](../../../packages/api/app/Services/Notes/NoteMarkdownCodec.php), [`FileNodeMapper`](../../../packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php), [`NoteStoragePaths`](../../../packages/api/app/Storage/NoteStoragePaths.php), Drive `GET /files/shared-with-me` (today excludes `isNotePath`)
+- **Inputs:** A, [`NoteMarkdownCodec`](../../../packages/api/app/Services/Notes/NoteMarkdownCodec.php), [`FileNodeMapper`](../../../packages/api/app/Services/Jmap/FileNodes/FileNodeMapper.php), `NoteStoragePaths`, Drive `GET /files/shared-with-me` (today excludes `isNotePath`)
 - **Done when:**
   - `FileNode/query` + `get` returns a `note` projection: codec = title/tags/excerpt; `notebook`/`archived` from `storage_key`; `starred` from `drive_starred_items` for the caller
   - non-note files have no `note` prop
@@ -111,3 +111,12 @@ Files and identity only — not stars.
 - [`jmap-filenode-design.md`](../../../packages/api/docs/files/jmap-filenode-design.md) decision 4
 - [`docs/architecture/tasks.md`](../../../docs/architecture/tasks.md) Notes row
 - Changelog / release note on D
+
+## Open decisions
+
+None — every choice for this work is made.
+
+## Invariants
+
+- FileNode listings do not include a `note` object. A wrong change puts note fields back on `FileNode/get`. Proof: `path: packages/api/tests/Feature/Jmap/JmapFileNodeNotesTest.php`
+- Personal and group `.notes` keys stay `users/{username}/.notes/…` and `groups/{slug}/.notes/…`. A wrong change hides on-disk notes from the migrator. Proof: `path: packages/api/tests/Storage/WgwStorageTest.php`

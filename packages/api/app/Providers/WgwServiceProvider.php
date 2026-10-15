@@ -13,7 +13,6 @@ use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapMethodDispatcher;
-use App\Storage\NoteStoragePaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -30,7 +29,6 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(InstallerIpv4Resolver::class, DnsInstallerIpv4Resolver::class);
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
-        $this->app->singleton(NoteStoragePaths::class);
         $this->app->singleton(WgwStorage::class);
 
         // JMAP envelope: the method-handler and capability-provider lists are

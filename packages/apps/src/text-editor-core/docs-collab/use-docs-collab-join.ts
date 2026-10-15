@@ -7,7 +7,6 @@ import { getConnectivitySnapshot, isFetchNetworkError } from "@/lib/offline/brow
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { clearDocsCollabSyncState } from "./docs-collab-sync-registry";
 import {
-  clearDocsCollabPendingServerSave,
   docsCollabIndexedDbKey,
   migrateDocsCollabPendingSaveFromLegacy,
 } from "./docs-collab-persistence";
@@ -20,18 +19,13 @@ import {
   markRoomServerSuccess,
   roomServerAllowed,
 } from "./docs-collab-room-backoff";
-import {
-  fetchYjsSnapshot,
-  loadMarkdown,
-  loadYjsSnapshot,
-  saveDocument,
-} from "./docs-collab-server-io";
+import { fetchYjsSnapshot, loadMarkdown, loadYjsSnapshot } from "./docs-collab-server-io";
 import {
   adoptServerSnapshot,
   decideServerStateAdoption,
   loadBootstrapInParallel,
 } from "./docs-collab-bootstrap";
-import { forgetSidecarEtag, rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
+import { forgetSidecarEtag, rememberSidecarEtag } from "./docs-collab-etag";
 import {
   canSeedFromFile,
   markSeedDoneAfterSnapshot,
@@ -551,39 +545,11 @@ export function useDocsCollabJoin({
     });
   }, [finishAuthenticatedJoin, joined, refs, room, urls.authToken, userName]);
 
-  const leave = useCallback(async () => {
-    const getMd = refs.getMarkdownRef.current;
-    const ydoc = refs.ydocRef.current;
-    let saved = false;
-    if (getMd && ydoc) {
-      try {
-        const etag = await saveDocument(
-          urls.documentUrl,
-          getMd(),
-          ydoc,
-          urls.room,
-          refs.authTokenRef.current,
-          urls.documentSaveMethod ?? "POST",
-          sidecarPrecondition(room),
-        );
-        rememberSidecarEtag(room, etag);
-        saved = true;
-      } catch {
-        // ignore
-      }
-    }
-    if (saved) {
-      await clearDocsCollabPendingServerSave(room);
-    }
-    await teardown();
-  }, [refs, room, teardown, urls.documentSaveMethod, urls.documentUrl, urls.room]);
-
   return {
     session,
     joined,
     snapshotPreview,
     join,
-    leave,
     teardown,
     markDocReady,
     trySeedFromFile,
