@@ -27,12 +27,16 @@ final class WgwInstallEnvTest extends TestCase
         $_ENV['WGW_APP_ROOT'] = $this->installRoot;
         $dataDir = getenv('WGW_DATA_DIR');
         $this->previousDataDir = is_string($dataDir) ? $dataDir : false;
+
+        parent::setUp();
+
+        // A later boot reloads .env and puts WGW_DATA_DIR back to ./wgw-content.
+        // That shipped default is not an operator choice, so the installer would
+        // write the lock outside this fixture.
         $pinned = $this->installRoot.'/wgw-content';
         putenv('WGW_DATA_DIR='.$pinned);
         $_ENV['WGW_DATA_DIR'] = $pinned;
         $_SERVER['WGW_DATA_DIR'] = $pinned;
-
-        parent::setUp();
 
         config(['wgw.install_root' => $this->installRoot, 'wgw.data_dir' => $pinned]);
         WgwInstallFixture::ensureApiPackage($this->installRoot);
