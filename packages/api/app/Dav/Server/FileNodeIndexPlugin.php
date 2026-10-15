@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Collab\CollabSidecarFiles;
 use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +26,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
     public function __construct(
         private readonly FileNodeIndexService $index,
         private readonly DocAttachmentsService $attachments,
+        private readonly CollabSidecarFiles $sidecars,
     ) {}
 
     public function initialize(Server $server): void
@@ -95,11 +97,15 @@ final class FileNodeIndexPlugin extends ServerPlugin
         }
 
         if ($method === 'DELETE') {
+            $this->sidecars->deleteWithDocument($key);
             $this->attachments->destroyDocsBestEffort($docIds);
 
             return;
         }
         if ($method === 'MOVE' && $destKey !== null) {
+            // Same-principal renames still move the sidecar. Attachment
+            // folders do not; that early return stays in DocAttachmentsService.
+            $this->sidecars->moveWithDocument($key, $destKey);
             $this->attachments->relocateAfterMoveBestEffort($key, $destKey);
         }
     }

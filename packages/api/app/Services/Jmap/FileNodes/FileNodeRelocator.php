@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
+use App\Services\Collab\CollabSidecarFiles;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveShareAuthorizer;
@@ -30,6 +31,7 @@ final class FileNodeRelocator
         private readonly DocsThreadRepository $docsThreads,
         private readonly DriveTrashNames $trashNames,
         private readonly DriveShareAuthorizer $authorizer,
+        private readonly CollabSidecarFiles $sidecars,
     ) {}
 
     /**
@@ -43,7 +45,7 @@ final class FileNodeRelocator
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
         }
         $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
-        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+        $this->onDocumentMoved($fromKey, $toKey);
         $this->stars->rewritePathPrefix($fromKey, $toKey);
         $this->shares->rewritePathPrefix('/'.$fromKey, '/'.$toKey);
         $this->bestEffortThreads(fn () => $this->docsThreads->retargetPath('/'.$fromKey, '/'.$toKey));
@@ -79,6 +81,25 @@ final class FileNodeRelocator
         $name = $this->trashNames->unique($disk, $trashKey, (string) $node->name);
 
         return $this->move($node, $trashKey.'/'.$name);
+    }
+
+    /**
+     * Sidecar first, then attachment folders. The sidecar moves on a
+     * same-principal rename. Attachment relocation still returns early then.
+     */
+    public function onDocumentMoved(string $fromKey, string $toKey): void
+    {
+        $this->sidecars->moveWithDocument($fromKey, $toKey);
+        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+    }
+
+    /**
+     * @param  list<string>  $docNodeIds
+     */
+    public function onDocumentDeleted(string $key, array $docNodeIds): void
+    {
+        $this->sidecars->deleteWithDocument($key);
+        $this->docAttachments->destroyDocsBestEffort($docNodeIds);
     }
 
     /** Bookkeeping after a hard delete: docs threads (D6). */

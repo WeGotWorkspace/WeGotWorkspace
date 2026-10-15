@@ -7,6 +7,7 @@ namespace Tests\Feature\Docs;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
 use App\Models\Principal;
+use App\Services\Collab\CollabSidecarFiles;
 use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
@@ -393,6 +394,7 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
         return new FileNodeIndexPlugin(
             app(FileNodeIndexService::class),
             app(DocAttachmentsService::class),
+            app(CollabSidecarFiles::class),
         );
     }
 }

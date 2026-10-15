@@ -219,7 +219,7 @@ final class DriveService
         $this->stars->rewritePathPrefix($fromPath, $toPath);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
         $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
-        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+        $this->relocator->onDocumentMoved($fromKey, $toKey);
 
         return 'Renamed';
     }
@@ -253,7 +253,7 @@ final class DriveService
                 $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
                 $this->stars->deletePathPrefix($path);
             }
-            $this->docAttachments->destroyDocsBestEffort($docIds);
+            $this->relocator->onDocumentDeleted($key, $docIds);
         }
 
         return 'Deleted';

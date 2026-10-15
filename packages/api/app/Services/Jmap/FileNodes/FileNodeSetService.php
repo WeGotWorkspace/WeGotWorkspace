@@ -205,7 +205,7 @@ final class FileNodeSetService
         }
         $this->index->recordDelete($key);
         $this->stars->deletePathPrefix($key);
-        $this->docAttachments->destroyDocsBestEffort($docIds);
+        $this->relocator->onDocumentDeleted($key, $docIds);
         $this->relocator->afterHardDelete($key);
     }
 

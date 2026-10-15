@@ -6,6 +6,7 @@ namespace Tests\Feature\Jmap;
 
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
+use App\Services\Collab\CollabSidecarFiles;
 use App\Services\Drive\DocAttachmentsService;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
@@ -613,6 +614,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $plugin = new FileNodeIndexPlugin(
             app(FileNodeIndexService::class),
             app(DocAttachmentsService::class),
+            app(CollabSidecarFiles::class),
         );
         $plugin->afterWriteMethod(
             new SabreRequest('PUT', '/files/users/bob/dav-upload.bin'),

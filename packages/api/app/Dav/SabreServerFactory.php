@@ -25,6 +25,7 @@ use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
+use App\Services\Collab\CollabSidecarFiles;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Drive\DocAttachmentsService;
@@ -112,7 +113,11 @@ final class SabreServerFactory
         $server->addPlugin($authPlugin);
         $server->addPlugin(app(WebdavWriteGuardPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
-        $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
+        $server->addPlugin(new FileNodeIndexPlugin(
+            $this->fileNodeIndex,
+            $this->docAttachments,
+            app(CollabSidecarFiles::class),
+        ));
         $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));
         $server->addPlugin(new EventDispatchPlugin($this->eventDispatch));
         $server->addPlugin(new DriveShareMovePlugin($this->driveShares));
