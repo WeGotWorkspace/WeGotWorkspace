@@ -2,11 +2,10 @@ import { useCallback, useRef } from "react";
 import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
-import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
-import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
+import { persistCollabSave } from "./docs-collab-save-attempt";
 import {
   computeSaveDelayMs,
   computeShouldPersist,
@@ -16,15 +15,8 @@ import {
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
 import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
-import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import {
-  collabErrorStatus,
-  docSignature,
-  isCollabPayloadTooLarge,
-  isServerDivergenceError,
-  SERVER_ORIGIN,
-} from "./docs-collab-utils";
+import { collabErrorStatus, docSignature, isCollabPayloadTooLarge } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type UseDocsCollabSaveOptions = {
@@ -87,6 +79,7 @@ export function useDocsCollabSave({
   }, [refs, updatePendingState]);
 
   const persistToServer = useCallback(async (): Promise<void> => {
+    // First, before the offline pending mark. persistCollabSave checks it too.
     if (urls.roomNotPersistent) return;
     if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
@@ -115,50 +108,21 @@ export function useDocsCollabSave({
       }
       return;
     }
-    refs.markdownOverrideRef.current = null;
     refs.saveInFlightRef.current = true;
     let savedMarkdown = markdown;
     try {
-      const attemptSave = async (body: string) => {
-        const etag = await saveDocument(
-          urls.documentUrl,
-          body,
-          ydoc,
-          urls.room,
-          refs.authTokenRef.current,
-          sidecarPrecondition(room),
-        );
-        rememberSidecarEtag(room, etag);
-      };
-
-      try {
-        await attemptSave(markdown);
-      } catch (firstError) {
-        if (
-          isServerDivergenceError(firstError) &&
-          !conflictRemergeAttemptedRef.current &&
-          getConnectivitySnapshot()
-        ) {
-          conflictRemergeAttemptedRef.current = true;
-          const reload = await loadYjsSnapshot(
-            urls.yjsUrl,
-            ydoc,
-            refs.authTokenRef.current,
-            SERVER_ORIGIN,
-          );
-          rememberSidecarEtag(room, reload.etag);
-          if (reload.applied) {
-            savedMarkdown = getMd ? markdownForSave(ydoc, getMd()) : markdown;
-            await attemptSave(savedMarkdown);
-          } else {
-            throw firstError;
-          }
-        } else {
-          throw firstError;
-        }
-      }
-
-      conflictRemergeAttemptedRef.current = false;
+      const persisted = await persistCollabSave({
+        urls,
+        room,
+        ydoc,
+        markdown,
+        authToken: refs.authTokenRef.current,
+        remergeAttempted: conflictRemergeAttemptedRef,
+        markdownAfterMerge: () => (getMd ? markdownForSave(ydoc, getMd()) : markdown),
+        markdownOverrideRef: refs.markdownOverrideRef,
+      });
+      if (persisted.status === "skipped") return;
+      savedMarkdown = persisted.markdown;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
@@ -171,13 +135,9 @@ export function useDocsCollabSave({
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
-      if (override !== null) refs.markdownOverrideRef.current = override;
       refs.saveFailedRef.current = true;
       if (urls.onPersistForbidden && collabErrorStatus(err) === 403) {
         urls.onPersistForbidden();
-      }
-      if (isServerDivergenceError(err) && getConnectivitySnapshot()) {
-        reportDocsSyncConflicts([room]);
       }
       if (isCollabPayloadTooLarge(err)) {
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
