@@ -81,4 +81,29 @@ final class NoteTag
 
         return array_keys($out);
     }
+
+    /**
+     * Stored tags first, then additions. Removals apply first, so a tag that
+     * is in both lists stays. Normalization matches {@see normalizeStored}.
+     *
+     * @param  list<string>  $stored
+     * @param  list<string>  $add
+     * @param  list<string>  $remove
+     * @return list<string>
+     */
+    public static function applyDelta(array $stored, array $add, array $remove): array
+    {
+        $removeSet = array_fill_keys(self::normalizeStored($remove), true);
+        $out = [];
+        foreach (self::normalizeStored($stored) as $tag) {
+            if (! isset($removeSet[$tag])) {
+                $out[$tag] = true;
+            }
+        }
+        foreach (self::normalizeStored($add) as $tag) {
+            $out[$tag] = true;
+        }
+
+        return array_keys($out);
+    }
 }

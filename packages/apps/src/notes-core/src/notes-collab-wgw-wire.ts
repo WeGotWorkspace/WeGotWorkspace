@@ -4,8 +4,9 @@ import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/do
 
 /**
  * Live Notes body-collab wire — RTC mesh auth, same as Docs.
- * Persist is `PATCH /notes/items/{uid}` via `buildNoteCollabUrls`, not
- * `/files/collaboration`.
+ * The body is saved by the shared collab path (`PUT /notes/items/{uid}`),
+ * not `/files/collaboration`. Title, tags, notebook, and archive stay on the
+ * Notes metadata outbox.
  */
 export function createWgwNotesCollabWire(): DocsCollabWireOperations {
   return {

@@ -102,6 +102,110 @@ describe("createHybridNotesOperations", () => {
     vi.restoreAllMocks();
   });
 
+  it("stars without sending the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...stale, starred: true });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...stale, starred: true });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.starred).toBe(true);
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("moves a notebook without sending the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(updateNoteItem).mockResolvedValue({
+      ...stale,
+      notebook: "Work",
+      notebookId: "notes-work",
+    });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({
+      ...stale,
+      notebook: "Work",
+      notebookId: "notes-work",
+    });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ notebook: "Work", notebookId: "notes-work" });
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("archives without a metadata patch, so a newer server tag is left alone", async () => {
+    await upsertNoteInCache(username, { ...note, title: "Cached title", tags: ["essay"] }, false);
+    vi.mocked(archiveNoteItem).mockResolvedValue({
+      ...note,
+      archived: true,
+      title: "Server title",
+      tags: ["essay", "newer"],
+    });
+
+    const operations = createHybridNotesOperations(username);
+    const saved = await operations.archiveNote(note.id);
+
+    expect(updateNoteItem).not.toHaveBeenCalled();
+    expect(archiveNoteItem).toHaveBeenCalledWith(note.id, undefined);
+    expect(saved.tags).toEqual(["essay", "newer"]);
+    expect(saved.title).toBe("Server title");
+  });
+
+  it("sends categories when the caller replaces the tag set", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["focus"] });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, tags: ["focus"] });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.tags).toEqual(["focus"]);
+    expect(request).not.toHaveProperty("title");
+  });
+
+  it("sends a changed title without the cached tag set", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, title: "Renamed" });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, title: "Renamed" });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request?.title).toBe("Renamed");
+    expect(request).not.toHaveProperty("tags");
+  });
+
+  it("queues an offline star without the cached tag set or title", async () => {
+    const stale = { ...note, title: "Cached title", tags: ["essay"] };
+    await upsertNoteInCache(username, stale, false);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...stale, starred: true });
+
+    const outbox = await listOutboxMutations(username);
+    const payload = JSON.parse(outbox[0]?.payload ?? "{}") as {
+      metadata: { starred?: boolean; tags?: string[]; title?: string };
+    };
+    expect(payload.metadata.starred).toBe(true);
+    expect(payload.metadata.tags).toBeUndefined();
+    expect(payload.metadata.title).toBeUndefined();
+  });
+
+  it("sends a tag delta and leaves the full tag list off the request", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["essay", "focus"] });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, tags: ["essay", "focus"] }, { tagsAdd: ["focus"] });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ tagsAdd: ["focus"] });
+    expect(request).not.toHaveProperty("tags");
+  });
+
   it("queues upsert offline and updates IndexedDB when navigator.onLine is false", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 

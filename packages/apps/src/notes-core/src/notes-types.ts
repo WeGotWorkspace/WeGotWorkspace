@@ -57,7 +57,10 @@ export type DeleteNotebookAction =
  * Implement this for any provider (WGW, custom API, local-only, etc).
  */
 export type NotesAPIOperations = {
-  upsertNote: (note: Note, opts?: { signal?: AbortSignal }) => Promise<Note>;
+  upsertNote: (
+    note: Note,
+    opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+  ) => Promise<Note>;
   deleteNote: (
     note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
     opts?: { signal?: AbortSignal },

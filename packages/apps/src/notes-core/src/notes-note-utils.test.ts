@@ -598,12 +598,12 @@ describe("notes-note-utils", () => {
     expect(applyNoteBodyMarkdown(note, "Hello world\r\n")).toBe(note);
   });
 
-  it("autofills empty SUMMARY from the first heading; later edits stick", () => {
+  it("does not copy the body into the title", () => {
     const untitled = { ...sampleNote, title: undefined, body: [""], excerpt: "" };
-    const filled = applyNoteBodyMarkdown(untitled, "# Meeting\n\nNotes");
-    expect(filled.title).toBe("Meeting");
-    const stuck = applyNoteBodyMarkdown({ ...filled, title: "Kept" }, "# Other\n\nNotes");
-    expect(stuck.title).toBe("Kept");
+    expect(applyNoteBodyMarkdown(untitled, "# Meeting\n\nNotes").title).toBeUndefined();
+    expect(applyNoteBodyMarkdown(untitled, "Hello\n\nworld").title).toBeUndefined();
+    const kept = applyNoteBodyMarkdown({ ...untitled, title: "Kept" }, "# Other\n\nNotes");
+    expect(kept.title).toBe("Kept");
   });
 
   it("does not copy an in-progress body line into SUMMARY", () => {
@@ -612,7 +612,7 @@ describe("notes-note-utils", () => {
     expect(applyNoteBodyMarkdown(untitled, "Hello").title).toBeUndefined();
     expect(applyNoteBodyMarkdown(untitled, "Hello\n").title).toBeUndefined();
     expect(applyNoteBodyMarkdown(untitled, "Hello").title).not.toBe("H");
-    expect(applyNoteBodyMarkdown(untitled, "Hello\n\nworld").title).toBe("Hello");
+    expect(applyNoteBodyMarkdown(untitled, "Hello\n\nworld").title).toBeUndefined();
   });
 
   it("does not overwrite a user-typed title when the body changes", () => {

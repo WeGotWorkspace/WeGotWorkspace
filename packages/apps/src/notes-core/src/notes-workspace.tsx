@@ -37,6 +37,7 @@ import { formatNoteDateForList, formatNoteLastEdited } from "@/notes-core/src/no
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { useNotesController } from "@/notes-core/src/use-notes-controller";
+import { projectNoteTitle } from "@/notes-core/src/note-title-projection";
 import {
   noteAllowsTagAssignment,
   noteListTitle,
@@ -76,8 +77,6 @@ import {
   pendingMoveAfterNotebookCreate,
   type NotesNotebookSelectItem,
 } from "@/notes-core/src/notes-notebook-select";
-import { NotesConflictDialog } from "@/notes-core/src/notes-conflict-dialog";
-import { useNotesReconnectConflict } from "@/notes-core/src/use-notes-reconnect-conflict";
 import { TaskProjectDialog } from "@/tasks-core/src/task-project-dialog";
 import { personalOwnerLabel } from "@/tasks-core/src/tasks-workspace-props";
 import { Callout } from "@/callout/src/callout";
@@ -159,6 +158,8 @@ export function NotesWorkspace({
   initialNoteId,
   onViewChange,
   onNoteChange,
+  syncConflictNoteIds,
+  onClearSyncConflicts,
 }: NotesWorkspaceProps) {
   const closeSidebarOnMobile = (closeSidebar: () => void) => {
     if (!isSidebarOverlayViewport()) return;
@@ -209,7 +210,7 @@ export function NotesWorkspace({
     toggleNoteTag,
     addNoteTag,
     applyLocalBodyMarkdown,
-    updateNote,
+    setNotes,
     groups,
     canManageNotebooks,
     notebookDialog,
@@ -316,29 +317,16 @@ export function NotesWorkspace({
 
   const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
-  const failedSyncCount = useNotesFailedSync(offlineUsername, bootstrapRevision);
-  const {
-    getLocalDirty,
-    markEditorDirty,
-    markEditorSaved,
-    reconnectConflict,
-    setReconnectConflict,
-    keepMine,
-    applyTheirs,
-    resolving: resolvingReconnect,
-    collabEpoch,
-  } = useNotesReconnectConflict({
-    active: active ?? null,
-    applyLocalBodyMarkdown,
-    onRefreshList,
-  });
+  const failedSyncCount = useNotesFailedSync(
+    offlineUsername,
+    bootstrapRevision,
+    syncConflictNoteIds,
+  );
   const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
     undefined,
   );
 
   const activeNoteId = active?.id;
-  const collabEtagRef = useRef(active?.etag ?? "");
-  if (active?.etag) collabEtagRef.current = active.etag;
 
   useEffect(() => {
     if (!wgwLiveApiEnabled() || !activeNoteId) {
@@ -356,16 +344,10 @@ export function NotesWorkspace({
     }
     setAccessLost(false);
     let cancelled = false;
-    void buildNoteCollabUrls(activeNoteId, collabEtagRef.current, {
+    void buildNoteCollabUrls(activeNoteId, {
       onPersistForbidden: () => {
         setAccessLost(true);
         setNoteCollabUrls(undefined);
-      },
-      onReconnectConflict: () => setReconnectConflict(true),
-      getLocalDirty,
-      onPersistSuccess: markEditorSaved,
-      onEtag: (etag) => {
-        collabEtagRef.current = etag;
       },
     })
       .then((urls) => {
@@ -382,7 +364,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [activeNoteId, getLocalDirty, markEditorSaved, setReconnectConflict]);
+  }, [activeNoteId, session.user.username]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -416,14 +398,14 @@ export function NotesWorkspace({
       if (!collabSessionActive || !active || !noteBodyCollab) return children;
       return (
         <NoteCollabSession
-          key={`${noteBodyCollab.urls.room ?? active.id}:${collabEpoch}`}
+          key={noteBodyCollab.urls.room ?? active.id}
           initialMarkdown={noteBodyToMarkdown(active.body)}
           userName={noteBodyCollab.userName}
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
+          documentTitle={active.title?.trim() || L.titlePlaceholder}
           onBodyMarkdownChange={(markdown, source) => {
-            markEditorDirty(source !== "hydrate");
             applyLocalBodyMarkdown(active.id, markdown, {
               bumpDate: source !== "hydrate",
             });
@@ -433,22 +415,16 @@ export function NotesWorkspace({
         </NoteCollabSession>
       );
     },
-    [
-      active,
-      applyLocalBodyMarkdown,
-      collabEpoch,
-      collabSessionActive,
-      markEditorDirty,
-      noteBodyCollab,
-    ],
+    [active, applyLocalBodyMarkdown, collabSessionActive, L.titlePlaceholder, noteBodyCollab],
   );
 
   const handleRetrySync = useCallback(() => {
+    onClearSyncConflicts?.();
     if (!offlineUsername) return;
     void getNotesSyncRunner(offlineUsername)
       .flush()
       .finally(() => onRefreshList?.());
-  }, [offlineUsername, onRefreshList]);
+  }, [offlineUsername, onClearSyncConflicts, onRefreshList]);
 
   useSyncRetryToast({
     active: failedSyncCount > 0,
@@ -652,11 +628,12 @@ export function NotesWorkspace({
                 noteId={active.id}
                 contentRevision={formatNoteDateForList(active.date)}
                 title={active.title ?? ""}
+                storedTitle={active.title ?? null}
                 titlePlaceholder={L.titlePlaceholder}
                 autoFocusTitle={focusTitleAfterCreate && !noteReadOnly}
                 onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}
                 onTitleChange={
-                  noteReadOnly ? undefined : (title) => updateNote(active.id, { title })
+                  noteReadOnly ? undefined : (title) => projectNoteTitle(setNotes, active.id, title)
                 }
                 tags={active.tags}
                 availableTags={tags.filter(isValidNewTag)}
@@ -766,15 +743,6 @@ export function NotesWorkspace({
         }
         labels={notesNotebookDialogLabelsFrom(L)}
         contentClassName="notes-dialog-surface"
-      />
-
-      <NotesConflictDialog
-        open={reconnectConflict}
-        noteTitle={active ? noteListTitle(active) : ""}
-        busy={resolvingReconnect}
-        labels={L}
-        onKeepLocal={() => void keepMine()}
-        onUseServer={() => void applyTheirs()}
       />
 
       {confirmDialog}

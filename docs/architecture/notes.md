@@ -14,12 +14,12 @@ This replaces YAML-frontmatter `.md` files, FileNode `note` projection, `PUT /fi
 
 WeGotWorkspace assigns each datatype the most suitable **open protocol**, not one uniform format across the suite.
 
-| Domain | Sync protocol | On-disk / wire format | REST shape |
-|--------|---------------|----------------------|------------|
-| Calendar | CalDAV | VEVENT (RFC 5545) | JMAP-shaped `Calendar` / `CalendarEvent` |
-| Tasks | CalDAV | VTODO (RFC 5545) | JMAP-shaped `TaskList` / `Task` |
-| Contacts | CardDAV | vCard | JMAP-shaped JSContact |
-| **Notes** | **CalDAV** | **VJOURNAL (RFC 5545)** | JMAP-shaped `Notebook` / `Note` (`id` = `UID`) |
+| Domain    | Sync protocol | On-disk / wire format   | REST shape                                     |
+| --------- | ------------- | ----------------------- | ---------------------------------------------- |
+| Calendar  | CalDAV        | VEVENT (RFC 5545)       | JMAP-shaped `Calendar` / `CalendarEvent`       |
+| Tasks     | CalDAV        | VTODO (RFC 5545)        | JMAP-shaped `TaskList` / `Task`                |
+| Contacts  | CardDAV       | vCard                   | JMAP-shaped JSContact                          |
+| **Notes** | **CalDAV**    | **VJOURNAL (RFC 5545)** | JMAP-shaped `Notebook` / `Note` (`id` = `UID`) |
 
 **Product:** Notes stay a **document** app (TipTap, All / Starred / Archive, tags). Notebooks are **collections** — same chrome as Calendar calendars and Tasks lists. Notes **leave Drive**.
 
@@ -94,22 +94,13 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 ---
 
-## Decision 6 — Concurrency: If-Match (not last-write-wins)
+## Decision 6 — Ask only when an outside writer changed the note
 
-**Decision:** Every persist uses `If-Match` ([tasks optimistic concurrency](../../packages/api/docs/tasks/optimistic-concurrency.md)). 412 `precondition_failed` on stale etag.
+**Earlier decision, retired:** Reconnect used a four-quadrant matrix on the note etag. A clean client with an unchanged etag continued. A clean client whose etag had changed silently reseeded from `DESCRIPTION`. A dirty client with an unchanged etag sent `PATCH` with `If-Match`. A dirty client whose etag had changed opened a Keep mine / Use server dialog, and that dialog also covered offline sync. The rule existed so two writers would not silently overwrite each other before the note had a shared CRDT. It was retired because the dialog appeared in the middle of typing, and a person could not tell why: the other writer was usually a second WeGotWorkspace device, which is a merge, not a conflict.
 
-**Why:** Required for two WGW writers (tabs, offline, second device). Not an investment in Thunderbird Journals.
+**Decision:** The client always merges locally. A person is asked only when the stored Yjs state is not an ancestor of the journal, which means the note was changed outside the app. That prompt is a different message from the retired choice screen. A person with no CalDAV client never sees it. Two devices that edited offline merge, and no prompt appears.
 
-**Reconnect / focus matrix** (also applies to **offline reconnect**, not only a live mesh vs another tab):
-
-| Local | Server etag | Action |
-|-------|-------------|--------|
-| Clean | Unchanged | Continue |
-| Clean | Changed | Silent reseed from `DESCRIPTION` |
-| Dirty | Unchanged | `PATCH` with `If-Match` |
-| Dirty | Changed | **Conflict dialog.** Never discard the dirty Y.Doc by reseeding first. Keep mine = `PUT`/`PATCH` with the *new* etag (overwrite). Use theirs = then reseed. |
-
-IndexedDB may hold the session (`pendingServerSave` / local-dirty flag, same as Docs). **Never silent-reseed a dirty Y.Doc.** No server Yjs cache in v1 — that does **not** mean “throw away IDB on etag mismatch.”
+IndexedDB may still hold the session (`pendingServerSave`). Do not throw that buffer away on an etag mismatch, and do not reseed a dirty document from `DESCRIPTION` to resolve it. Metadata writes (tags, notebook, archive, star) stay their own operations.
 
 ---
 
@@ -217,7 +208,7 @@ IndexedDB may hold the session (`pendingServerSave` / local-dirty flag, same as 
 
 ## Decision 16 — Sidebar / collection UX
 
-**Decision:** Reuse **`@/collection-sidebar`** — the same package Calendar and Tasks already use. Do **not** invent a third pattern. Do **not** copy Calendar *or* Tasks privately.
+**Decision:** Reuse **`@/collection-sidebar`** — the same package Calendar and Tasks already use. Do **not** invent a third pattern. Do **not** copy Calendar _or_ Tasks privately.
 
 **Why:** Notebooks are the same kind of object as calendars and task lists (CalDAV collections with ACL).
 
@@ -243,15 +234,15 @@ IndexedDB may hold the session (`pendingServerSave` / local-dirty flag, same as 
 
 ## Property mapping (VJOURNAL ↔ REST Note)
 
-| VJOURNAL (RFC 5545) | REST `Note` field | Notes |
-|---------------------|-------------------|-------|
-| `UID` | `id` | Canonical; never object-uri |
-| `SUMMARY` | `title` | Auto-fill once from first heading/line |
-| `DESCRIPTION` | `body` | Markdown; soft 2 MiB cap → 413 |
-| `CATEGORIES` | `categories` | Tags |
-| `STATUS` | `status` | `CANCELLED` = archived; active = `FINAL` or omitted |
-| collection | `notebookId` | Exactly one notebook per note |
-| object etag | `etag` | `If-Match` on writes |
+| VJOURNAL (RFC 5545) | REST `Note` field | Notes                                                                               |
+| ------------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| `UID`               | `id`              | Canonical; never object-uri                                                         |
+| `SUMMARY`           | `title`           | Title comes from the collaborative document; `SUMMARY` is derived                   |
+| `DESCRIPTION`       | `body`            | Markdown; soft 2 MiB cap → 413                                                      |
+| `CATEGORIES`        | `categories`      | Tags                                                                                |
+| `STATUS`            | `status`          | `CANCELLED` = archived; active = `FINAL` or omitted                                 |
+| collection          | `notebookId`      | Exactly one notebook per note                                                       |
+| object etag         | `etag`            | Metadata PATCH sends this `If-Match`; the collaborative write checks the state ETag |
 
 Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for notes).
 
@@ -275,15 +266,15 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 
 ## Offline and collaboration
 
-| | v1 Notes |
-|---|----------|
-| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive) |
-| Offline path | Dexie working set + UID-keyed y-indexeddb crash buffer; dirty+stale → conflict dialog |
-| Transport | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
-| Stars | Notes stars table (not Drive `/files/star`) |
-| Collab | Yjs + RTC mesh; room = `UID`; no server sidecar |
+|                  | v1 Notes                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive)             |
+| Offline path     | Dexie working set + UID-keyed y-indexeddb crash buffer; two devices merge; an outside write is the only prompt  |
+| Transport        | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
+| Stars            | Notes stars table (not Drive `/files/star`)                                                                     |
+| Collab           | Yjs + RTC mesh; room = `UID`; no server sidecar                                                                 |
 
-See Decision 6 (reconnect matrix) and Decision 8 (mid-session ACL).
+See Decision 6 (outside write) and Decision 8 (mid-session ACL).
 
 ---
 
@@ -320,18 +311,18 @@ Old tree stays **read-only one release**; no dual-write. Drain FileNode Dexie ou
 
 ## GitHub cross-reference
 
-| Topic | Issue |
-|-------|-------|
-| Product Goal | [#661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661) |
-| Delivery Epic | [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) |
-| Isolation + provisioner | [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663) |
-| REST + UID + stars + move | [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664) |
-| Notebook ACL | [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665) |
-| Collection-sidebar | [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666) |
-| Apps + collab | [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) |
-| One-way migration | [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) |
-| FileNode teardown | [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669) |
-| JMAP + Dexie inbound | [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671) |
+| Topic                                    | Issue                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------- |
+| Product Goal                             | [#661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661)       |
+| Delivery Epic                            | [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662)       |
+| Isolation + provisioner                  | [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663)       |
+| REST + UID + stars + move                | [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664)       |
+| Notebook ACL                             | [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665)       |
+| Collection-sidebar                       | [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666)       |
+| Apps + collab                            | [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667)       |
+| One-way migration                        | [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668)       |
+| FileNode teardown                        | [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669)       |
+| JMAP + Dexie inbound                     | [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671)       |
 | Former FileNode notes (superseded store) | [000-notes-filenode spec](../../.agents/specs/000-notes-filenode/spec.md) |
 
 **Execution order:** 0 → 1 → 2 → 3; 3b after 0 and before 4 (may overlap 2/3); 4 after 2+3b; 5 after 2; 6 after 5.

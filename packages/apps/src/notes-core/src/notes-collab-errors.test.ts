@@ -13,7 +13,7 @@ describe("notes collab persist errors", () => {
     expect(NOTES_TOO_LARGE_MESSAGE).toMatch(/too large/i);
   });
 
-  it("detects 412 so initial join does not empty-seed", () => {
+  it("detects a 412 precondition failure", () => {
     expect(isNotesPreconditionFailedError(new Error("precondition failed (412)"))).toBe(true);
   });
 });

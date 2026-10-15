@@ -10,7 +10,11 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\NoteStar;
+use App\Models\NoteYjsState;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Collab\DocCollabDocumentService;
+use App\Services\Collab\YjsBytes;
+use App\Services\Collab\YjsPayloadException;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
@@ -29,6 +33,7 @@ final class NoteRepository
         private readonly NoteMoveHelper $moveHelper,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly SearchIndexerService $searchIndexer,
+        private readonly NoteYjsProjection $yjsProjection,
         private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
@@ -169,6 +174,7 @@ final class NoteRepository
             throw new ApiHttpException(404, 'Note not found.', 'not_found');
         }
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This notebook is read-only.');
+        $yjsBytes = $this->yjsBytesFromPatch($patch);
 
         // Lock the row for the precondition check and the write. A concurrent
         // PATCH then waits instead of both passing the same ETag.
@@ -181,6 +187,7 @@ final class NoteRepository
             $ifMatch,
             $ifUnmodifiedSince,
             $requirePrecondition,
+            $yjsBytes,
         ): array {
             $object = CalendarObject::query()
                 ->whereKey($located['object']->getKey())
@@ -202,6 +209,7 @@ final class NoteRepository
                 $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $this->assertNewCategoriesAllowed($storedIcs, array_values($patch['categories']));
             }
+            $patch = $this->expandCategoryDelta($object, $patch);
 
             if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
                 $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
@@ -218,7 +226,7 @@ final class NoteRepository
             }
 
             $fieldPatch = $patch;
-            unset($fieldPatch['notebookId']);
+            unset($fieldPatch['notebookId'], $fieldPatch['yjs']);
             if ($fieldPatch !== []) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
@@ -236,6 +244,10 @@ final class NoteRepository
                 if ($object === null) {
                     throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
                 }
+            }
+
+            if ($yjsBytes !== null) {
+                $this->storeYjsState($object, $yjsBytes);
             }
 
             return ['instance' => $instance, 'object' => $object];
@@ -393,6 +405,36 @@ final class NoteRepository
     }
 
     /**
+     * Raw Yjs bytes for one note, or null when the note exists and has no row.
+     * List and ordinary detail reads do not call this.
+     *
+     * @return array{bytes: string, etag: string, externalWrite: bool}|null
+     */
+    public function yjsSnapshot(string $username, string $noteId): ?array
+    {
+        $located = $this->findAccessibleNote($username, $noteId);
+        if ($located === null) {
+            throw new ApiHttpException(404, 'Note not found.', 'not_found');
+        }
+
+        $row = NoteYjsState::query()
+            ->where('calendar_object_id', (int) $located['object']->id)
+            ->first();
+        if ($row === null) {
+            return null;
+        }
+
+        $bytes = $this->binaryString($row->getAttributes()['state'] ?? $row->state);
+
+        return [
+            'bytes' => $bytes,
+            // The state tag moves only when the bytes move. The journal ETag stays on the JSON GET.
+            'etag' => DocCollabDocumentService::sidecarEtag($bytes),
+            'externalWrite' => $this->yjsProjection->isExternalContentWrite($row, $located['object']),
+        ];
+    }
+
+    /**
      * @return array{object: CalendarObject, instance: CalendarInstance}|null
      */
     public function findAccessibleNote(string $username, string $noteId): ?array
@@ -500,6 +542,40 @@ final class NoteRepository
         );
 
         return $note;
+    }
+
+    /**
+     * Apply categoriesAdd/categoriesRemove to the tags on the locked row, then
+     * hand mergeIntoIcs a full categories list. Remove runs before add.
+     *
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    private function expandCategoryDelta(CalendarObject $object, array $patch): array
+    {
+        $hasAdd = array_key_exists('categoriesAdd', $patch);
+        $hasRemove = array_key_exists('categoriesRemove', $patch);
+        if (! $hasAdd && ! $hasRemove) {
+            return $patch;
+        }
+        if (array_key_exists('categories', $patch)) {
+            throw new ApiHttpException(400, 'Send categories or a tag delta, not both.', 'bad_request');
+        }
+
+        $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $add = is_array($patch['categoriesAdd'] ?? null) ? array_values($patch['categoriesAdd']) : [];
+        $remove = is_array($patch['categoriesRemove'] ?? null) ? array_values($patch['categoriesRemove']) : [];
+        if ($hasAdd) {
+            $this->assertNewCategoriesAllowed($storedIcs, $add);
+        }
+        $patch['categories'] = NoteTag::applyDelta(
+            $this->converter->storedCategories($storedIcs),
+            $add,
+            $remove,
+        );
+        unset($patch['categoriesAdd'], $patch['categoriesRemove']);
+
+        return $patch;
     }
 
     /**
@@ -612,7 +688,7 @@ final class NoteRepository
         return (int) $since;
     }
 
-    private function indexObject(string $username, CalendarInstance $instance, CalendarObject $object): void
+    public function indexObject(string $username, CalendarInstance $instance, CalendarObject $object): void
     {
         $path = $this->davPath($username, $instance, (string) $object->uri);
         $this->searchIndexSync->sync(
@@ -648,5 +724,52 @@ final class NoteRepository
     private function calBackend(): CalPDO
     {
         return new CalPDO(DB::connection('wgw')->getPdo());
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private function yjsBytesFromPatch(array $patch): ?string
+    {
+        if (! array_key_exists('yjs', $patch)) {
+            return null;
+        }
+
+        $yjs = $patch['yjs'];
+        if (is_string($yjs)) {
+            if (strlen($yjs) > YjsBytes::MAX_BYTES) {
+                throw new ApiHttpException(413, 'Yjs state exceeds the 5 MiB limit.', 'payload_too_large');
+            }
+
+            return $yjs;
+        }
+
+        try {
+            return YjsBytes::decode($yjs);
+        } catch (YjsPayloadException $e) {
+            throw new ApiHttpException(
+                $e->status,
+                $e->status === 413
+                    ? 'Yjs state exceeds the 5 MiB limit.'
+                    : 'Yjs state must be a list of bytes from 0 to 255.',
+                $e->status === 413 ? 'payload_too_large' : 'bad_request',
+            );
+        }
+    }
+
+    private function storeYjsState(CalendarObject $object, string $bytes): void
+    {
+        $this->yjsProjection->store($object, $bytes);
+    }
+
+    private function binaryString(mixed $value): string
+    {
+        if (is_resource($value)) {
+            $contents = stream_get_contents($value);
+
+            return is_string($contents) ? $contents : '';
+        }
+
+        return is_string($value) ? $value : '';
     }
 }

@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
+import { decodeFramedPayload } from "@/lib/wire/framed-payload";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -11,6 +13,10 @@ import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { roomServerAllowed } from "./docs-collab-room-backoff";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
+import { IndexeddbPersistence } from "y-indexeddb";
+import { docsCollabIndexedDbKey } from "./docs-collab-persistence";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import {
   useDocsCollab,
   DEFAULT_DOCS_COLLAB_URLS,
@@ -511,50 +517,32 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitFor(() => expect(result.current.pendingSync).toBe(false), { timeout: 7000 });
   }, 15_000);
 
-  it("skips the yjs snapshot merge on reconnect when skipYjsSnapshot is set", async () => {
-    let online = false;
-    vi.spyOn(navigator, "onLine", "get").mockImplementation(() => online);
-    const yjsRequests: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("format=yjs")) {
-          yjsRequests.push(url);
-          throw new Error("yjs snapshot must not be fetched when skipYjsSnapshot is set");
-        }
-        return new Response("# Hello", { status: 200 });
-      }),
-    );
+  it("does not save a room that is not persistent yet", async () => {
+    const fetchMock = mockFetchResponses({ markdown: "# Hello" });
+    vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() =>
       useDocsCollab({
         userName: "Alex",
         autoJoin: true,
-        urls: { ...testUrls, skipYjsSnapshot: true },
+        urls: { ...testUrls, roomNotPersistent: true },
         wire,
       }),
     );
 
     await waitForCollabSession(result);
-    expect(yjsRequests).toEqual([]);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    act(() => {
+      result.current.onMarkdownChange(() => "# edited before the note exists");
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    });
 
-    online = true;
-    window.dispatchEvent(new Event("online"));
-    window.dispatchEvent(new Event("focus"));
-
-    await waitFor(
-      () => {
-        expect(mockJoin).toHaveBeenCalled();
-        expect(result.current.docStatus).not.toBe("Editing offline");
-        expect(result.current.docStatus).not.toBe("Reconnecting…");
-      },
-      { timeout: 7000 },
-    );
-
-    expect(yjsRequests).toEqual([]);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    const saves = fetchMock.mock.calls.filter(([, init]) => {
+      const method = init?.method ?? "GET";
+      return method === "PUT" || method === "POST" || method === "PATCH";
+    });
+    expect(saves).toEqual([]);
   }, 15_000);
 
   it("fetches and applies the yjs snapshot on reconnect", async () => {
@@ -604,25 +592,42 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(roomServerAllowed(testUrls.room)).toBe(true);
   }, 15_000);
 
-  it("flushes a pending save on reconnect when skipYjsSnapshot is set", async () => {
-    let online = false;
-    vi.spyOn(navigator, "onLine", "get").mockImplementation(() => online);
-    const yjsRequests: string[] = [];
-    const saveRequests: string[] = [];
+  it("remerges a 412 and does not open the conflict dialog", async () => {
+    const update = reconnectMarkerUpdate("server-snapshot");
+    let puts = 0;
+    const listener = vi.fn();
+    setDocsSyncConflictListener(listener);
+    const noteUrls = {
+      ...testUrls,
+      documentUrl: "/api/v1/notes/items/note-1",
+      yjsUrl: "/api/v1/notes/items/note-1?format=yjs",
+      room: "note-1",
+    };
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.deleteDatabase("note-1:v2");
+      request.onblocked = () => resolve();
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+    });
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         const method = init?.method ?? "GET";
         if (url.includes("format=yjs")) {
-          yjsRequests.push(url);
-          throw new Error("yjs snapshot must not be fetched when skipYjsSnapshot is set");
+          return new Response(update, { status: 200, headers: { ETag: '"snap"' } });
         }
         if (method === "PUT" || method === "POST" || method === "PATCH") {
-          saveRequests.push(url);
-          return new Response("{}", { status: 200 });
+          puts += 1;
+          if (puts === 1) {
+            return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
+          }
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
         }
-        return new Response("# Hello", { status: 200 });
+        return new Response("# Hello", {
+          status: 200,
+          headers: { "Content-Type": "text/markdown" },
+        });
       }),
     );
 
@@ -630,31 +635,26 @@ describe("useDocsCollab offline lifecycle", () => {
       useDocsCollab({
         userName: "Alex",
         autoJoin: true,
-        urls: { ...testUrls, skipYjsSnapshot: true },
+        urls: noteUrls,
         wire,
       }),
     );
 
     await waitForCollabSession(result);
-
     act(() => {
-      result.current.onMarkdownChange(() => "# reconnect edit");
+      result.current.onMarkdownChange(() => "# Hello");
     });
-    await waitFor(() => expect(result.current.pendingSync).toBe(true), { timeout: 5000 });
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     });
-    expect(result.current.pendingSync).toBe(true);
-    expect(saveRequests).toEqual([]);
+    act(() => {
+      result.current.onMarkdownChange(() => "# Hello\n\nedited");
+    });
 
-    online = true;
-    window.dispatchEvent(new Event("online"));
-    window.dispatchEvent(new Event("focus"));
-
+    await waitFor(() => expect(puts).toBe(2), { timeout: 7000 });
+    expect(listener).not.toHaveBeenCalled();
     await waitFor(() => expect(result.current.pendingSync).toBe(false), { timeout: 7000 });
-    expect(yjsRequests).toEqual([]);
-    expect(saveRequests.length).toBeGreaterThan(0);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    setDocsSyncConflictListener(undefined);
   }, 20_000);
 
   it("rejoins mesh after offline refresh reconnect", async () => {
@@ -900,4 +900,230 @@ describe("useDocsCollab offline lifecycle", () => {
     });
     expect(authorizedCollabFetches.length).toBeGreaterThan(0);
   });
+
+  it("rebuilds from the outside text when the state is not an ancestor and nothing is unsaved", async () => {
+    const stale = reconnectMarkerUpdate("stale-marker");
+    const puts: Array<BodyInit | null | undefined> = [];
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(stale, {
+            status: 200,
+            headers: { ETag: '"stale"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if (method === "PUT" || method === "POST") {
+          puts.push(init?.body);
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "from outside", title: "Outside" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room: "note-external-rebuild",
+          documentUrl: "/api/v1/notes/items/note-external-rebuild",
+          yjsUrl: "/api/v1/notes/items/note-external-rebuild?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() => {
+      const ydoc = result.current.session?.ydoc;
+      expect(ydoc && readContentFromYDoc(ydoc)).toContain("from outside");
+    });
+    const ydoc = result.current.session?.ydoc;
+    expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("stale-marker");
+    await waitFor(() => expect(puts.length).toBeGreaterThan(0));
+    expect(markdownFromFramedSave(puts[0])).toBe("from outside");
+    expect(onExternalWrite).not.toHaveBeenCalled();
+  }, 15_000);
+
+  it("asks before overwriting when an outside edit meets unsaved local work", async () => {
+    const room = "note-external-prompt";
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), new Y.Doc());
+    await persistence.whenSynced;
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+
+    const stale = reconnectMarkerUpdate("stale-marker");
+    const puts: string[] = [];
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(stale, {
+            status: 200,
+            headers: { ETag: '"stale"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if (method === "PUT" || method === "POST") {
+          puts.push(String(init?.body ?? ""));
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "from outside", title: "Outside" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room,
+          documentUrl: "/api/v1/notes/items/note-external-prompt",
+          yjsUrl: "/api/v1/notes/items/note-external-prompt?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() =>
+      expect(onExternalWrite).toHaveBeenCalledWith({
+        markdown: "from outside",
+        title: "Outside",
+      }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(puts).toEqual([]);
+    const ydoc = result.current.session?.ydoc;
+    expect(ydoc && readContentFromYDoc(ydoc)).not.toContain("from outside");
+  }, 15_000);
+
+  it("merges two offline edits and does not ask", async () => {
+    const room = "note-offline-merge";
+    const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), new Y.Doc());
+    await persistence.whenSynced;
+    await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await persistence.destroy();
+
+    const update = reconnectMarkerUpdate("other-device");
+    const listener = vi.fn();
+    setDocsSyncConflictListener(listener);
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(update, { status: 200, headers: { ETag: '"snap"' } });
+        }
+        if (method === "PUT" || method === "POST" || method === "PATCH") {
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response("# from the other device", { status: 200 });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room,
+          documentUrl: "/api/v1/notes/items/note-offline-merge",
+          yjsUrl: "/api/v1/notes/items/note-offline-merge?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(
+      () => {
+        expect(result.current.session?.ydoc.getText("reconnect-marker").toString()).toBe(
+          "other-device",
+        );
+      },
+      { timeout: 7000 },
+    );
+    expect(onExternalWrite).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+    setDocsSyncConflictListener(undefined);
+  }, 15_000);
+
+  it("builds a note with no stored state from the markdown and does not ask", async () => {
+    const onExternalWrite = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) return new Response(null, { status: 204 });
+        if (method === "PUT" || method === "POST") {
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "created outside", title: "New" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useDocsCollab({
+        userName: "Alex",
+        autoJoin: true,
+        urls: {
+          ...testUrls,
+          room: "note-external-absent",
+          documentUrl: "/api/v1/notes/items/note-external-absent",
+          yjsUrl: "/api/v1/notes/items/note-external-absent?format=yjs",
+          onExternalWrite,
+        },
+        wire,
+      }),
+    );
+
+    await waitForCollabSession(result);
+    await waitFor(() => {
+      const ydoc = result.current.session?.ydoc;
+      expect(ydoc && readContentFromYDoc(ydoc)).toContain("created outside");
+    });
+    expect(onExternalWrite).not.toHaveBeenCalled();
+  }, 15_000);
 });
+
+function markdownFromFramedSave(body: BodyInit | null | undefined): string {
+  const bytes = body instanceof Uint8Array ? body : null;
+  if (!bytes) return "";
+  const framed = decodeFramedPayload(bytes);
+  if (
+    !framed ||
+    typeof framed.header !== "object" ||
+    framed.header === null ||
+    Array.isArray(framed.header)
+  ) {
+    return "";
+  }
+  const documentLen = (framed.header as { documentLen?: unknown }).documentLen;
+  if (typeof documentLen !== "number") return "";
+  return new TextDecoder().decode(framed.tail.subarray(0, documentLen));
+}

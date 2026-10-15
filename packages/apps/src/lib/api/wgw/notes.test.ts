@@ -32,17 +32,24 @@ describe("wgwNoteMetadataFromNote", () => {
     expect(request).toMatchObject({
       id: "note-1",
       notebook: "Drafts",
-      tags: ["essay"],
       starred: true,
       archived: false,
     });
+    expect(request).not.toHaveProperty("tags");
     expect(request).not.toHaveProperty("notebookId");
     expect(request).not.toHaveProperty("title");
   });
 
-  it("includes SUMMARY when the note has a title", () => {
-    const request = wgwNoteMetadataFromNote({ ...note, title: "Event" });
-    expect(request.title).toBe("Event");
+  it("includes SUMMARY only when the action sets the title", () => {
+    expect(wgwNoteMetadataFromNote({ ...note, title: "Event" })).not.toHaveProperty("title");
+    expect(wgwNoteMetadataFromNote({ ...note, title: "Event" }, { includeTitle: true }).title).toBe(
+      "Event",
+    );
+  });
+
+  it("includes tags only for an explicit replace", () => {
+    expect(wgwNoteMetadataFromNote(note)).not.toHaveProperty("tags");
+    expect(wgwNoteMetadataFromNote(note, { includeTags: true }).tags).toEqual(["essay"]);
   });
 
   it("includes notebookId so a move can resolve dest by collection id", () => {
@@ -61,6 +68,17 @@ describe("wgwNoteMetadataFromNote", () => {
     expect(request).not.toHaveProperty("body");
     expect(request).not.toHaveProperty("starred");
     expect(request).not.toHaveProperty("archived");
+  });
+
+  it("omits cached tags and title so an archive cannot overwrite a newer tag", () => {
+    const request = wgwNoteMetadataFromNote(
+      { ...note, title: "Stale title", tags: ["essay"] },
+      { archived: true },
+    );
+
+    expect(request.archived).toBe(true);
+    expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("title");
   });
 });
 

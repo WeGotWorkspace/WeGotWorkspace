@@ -256,6 +256,56 @@ describe("notes offline store", () => {
     expect(payload.metadata).not.toHaveProperty("body");
   });
 
+  it("unions queued tag deltas and lets a later remove win", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsAdd: ["focus"],
+    });
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsAdd: ["v2"],
+      tagsRemove: ["focus"],
+    });
+
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    const payload = JSON.parse(rows[0]?.payload ?? "{}") as {
+      metadata: { tags?: string[]; tagsAdd?: string[]; tagsRemove?: string[] };
+    };
+    expect(payload.metadata.tagsAdd).toEqual(["v2"]);
+    expect(payload.metadata.tagsRemove).toEqual(["focus"]);
+    expect(payload.metadata.tags).toBeUndefined();
+  });
+
+  it("keeps an add idempotent when the same tag is queued twice", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsAdd: ["focus"],
+    });
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsAdd: ["Focus"],
+    });
+
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    const payload = JSON.parse(rows[0]?.payload ?? "{}") as { metadata: { tagsAdd?: string[] } };
+    expect(payload.metadata.tagsAdd).toEqual(["focus"]);
+  });
+
+  it("keeps a remove idempotent when the same tag is queued twice", async () => {
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsRemove: ["focus"],
+    });
+    await enqueueCoalescedNoteUpdate(username, note.id, note, note.date, undefined, {
+      tagsRemove: ["focus"],
+    });
+
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    const payload = JSON.parse(rows[0]?.payload ?? "{}") as {
+      metadata: { tagsRemove?: string[]; tagsAdd?: string[] };
+    };
+    expect(payload.metadata.tagsRemove).toEqual(["focus"]);
+    expect(payload.metadata.tagsAdd).toBeUndefined();
+  });
+
   it("preserves pendingSync when updating a body preview", async () => {
     await upsertNoteInCache(username, note, false);
     await upsertNoteBodyPreviewInCache(username, {

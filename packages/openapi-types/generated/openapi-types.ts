@@ -6417,8 +6417,14 @@ export interface paths {
         /** Fetch a note by VJOURNAL UID */
         get: {
             parameters: {
-                query?: never;
-                header?: never;
+                query?: {
+                    /** @description Pass yjs for the raw Yjs state. Omit it for the note JSON. The state is not a field on the note JSON. */
+                    format?: "yjs";
+                };
+                header?: {
+                    /** @description State entity tag from an earlier GET ?format=yjs (sha1 of the Yjs bytes). The JSON note's VJOURNAL ETag is a different representation and does not match here. The server answers 304 when the state tag still matches and the stored state is still an ancestor of the journal. A journal whose SUMMARY or DESCRIPTION changed outside the collab path answers 200 with X-Wgw-External-Write instead of 304, so the signal is not hidden. A 204 (no stored state) carries no tag. */
+                    "If-None-Match"?: string;
+                };
                 path: {
                     noteId: string;
                 };
@@ -6426,20 +6432,92 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Note */
+                /** @description Note JSON, or the raw Yjs bytes when format=yjs. The JSON representation uses the VJOURNAL ETag. format=yjs uses the sha1 of the stored state. */
                 200: {
                     headers: {
+                        /** @description VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable. */
+                        ETag?: string;
+                        /** @description Present with value 1 on format=yjs when the journal ETag moved on and SUMMARY or DESCRIPTION is no longer the text the stored Yjs state was written from. Absent when there is no state row, when the journal ETag still matches, and when only tags, a move, or archive changed the journal. The body is still the stored Yjs bytes. The read does not rewrite them. */
+                        "X-Wgw-External-Write"?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["Note"];
+                        "application/octet-stream": string;
                     };
+                };
+                /** @description format=yjs and this note has no stored Yjs state. The response has no ETag. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description format=yjs and If-None-Match matches the state ETag (sha1 of the bytes). */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
             };
         };
-        put?: never;
+        /**
+         * Save a note's collaborative state
+         * @description Writes DESCRIPTION from the markdown block and the Yjs block in one transaction. The body is the shared collaboration frame (application/octet-stream): a uint16 big-endian header length, a JSON header, then the markdown bytes, then the Yjs bytes. The header is NoteCollaborativePut. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title in the header updates SUMMARY when the document has adopted a title.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description State entity tag from GET ?format=yjs (sha1 of the state). Refused with 412 when the stored state moved on. */
+                    "If-Match"?: string;
+                    /** @description Send * to write the state only when none exists. Refused with 412 when a state is already stored. */
+                    "If-None-Match"?: string;
+                };
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            /** @description Framed collaboration body. The JSON header is NoteCollaborativePut. */
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            responses: {
+                /** @description Saved. ETag is the sha1 of the stored Yjs state. */
+                200: {
+                    headers: {
+                        /** @description State entity tag (sha1 of the Yjs bytes). This is the tag If-Match checks on the next collaborative save. */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                412: components["responses"]["JmapPreconditionFailed"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description A yjs write over an existing state carried neither If-Match nor If-None-Match */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         post?: never;
         /** Delete a note */
         delete: {
@@ -11576,7 +11654,12 @@ export interface components {
             notebookId?: string;
             title?: string | null;
             body?: string;
+            /** @description Replace the whole tag set. Create uses this, and so does an explicit replace. Tag edits use categoriesAdd and categoriesRemove. Archive, star, and notebook move omit this field. Do not combine this field with either delta field. */
             categories?: string[];
+            /** @description Tags to add onto the set stored in the journal. Applied after categoriesRemove, on the locked row. A new tag uses the same rule as categories. Do not send with categories. */
+            categoriesAdd?: string[];
+            /** @description Tags to remove from the set stored in the journal, before categoriesAdd. An invalid or stale tag is allowed so it can always be removed. Do not send with categories. */
+            categoriesRemove?: string[];
             /** @enum {string|null} */
             status?: "FINAL" | "CANCELLED" | null;
         };
@@ -12131,6 +12214,15 @@ export interface components {
             outcome: string;
             createdAt: string;
             target?: string | null;
+        };
+        /** @description JSON header inside the framed collaborative save. The HTTP body is application/octet-stream: a uint16 big-endian header length, this JSON object, then the markdown bytes, then the Yjs bytes. A null length omits that block. Notes require both blocks. */
+        NoteCollaborativePut: {
+            /** @description Byte length of the markdown block. Null omits it. */
+            documentLen: number | null;
+            /** @description Byte length of the Yjs block. Null omits it. Rejected with 413 above 5 MiB. */
+            yjsLen: number | null;
+            /** @description SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY. */
+            title?: string;
         };
     };
     responses: {
