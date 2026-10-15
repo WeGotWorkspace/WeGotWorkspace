@@ -110,6 +110,7 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
         $this->dav('DELETE', '/files/users/alice/together.md')->assertStatus(204);
 
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/together.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
     }
 
     public function test_move_of_a_document_with_a_sidecar_is_allowed(): void
@@ -122,6 +123,88 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
 
         $this->assertContains($response->getStatusCode(), [201, 204]);
         $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/renamed.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.renamed.md.yjs'));
+    }
+
+    public function test_move_into_another_folder_of_the_same_principal_moves_the_sidecar(): void
+    {
+        $this->seedDocumentAndSidecar();
+        Storage::disk('wgw_files')->makeDirectory('users/alice/nested');
+
+        $response = $this->dav('MOVE', '/files/users/alice/together.md', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/nested/together.md',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204]);
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/nested/together.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/nested/.together.md.yjs'));
+    }
+
+    public function test_directory_move_keeps_the_sidecar_beside_the_document(): void
+    {
+        Storage::disk('wgw_files')->put('users/alice/docs/together.md', '# doc');
+        Storage::disk('wgw_files')->put('users/alice/docs/.together.md.yjs', 'yjs-bytes');
+
+        $response = $this->dav('MOVE', '/files/users/alice/docs', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/archive',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204]);
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/archive/together.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/docs/.together.md.yjs'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/archive/.together.md.yjs'));
+    }
+
+    public function test_copy_of_a_document_with_a_sidecar_leaves_the_copy_without_one(): void
+    {
+        $this->seedDocumentAndSidecar();
+
+        $response = $this->dav('COPY', '/files/users/alice/together.md', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/together-copy.md',
+            'HTTP_DEPTH' => '0',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204]);
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/together-copy.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together-copy.md.yjs'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
+    }
+
+    public function test_copy_onto_a_document_with_a_sidecar_is_forbidden(): void
+    {
+        $this->seedDocumentAndSidecar();
+        Storage::disk('wgw_files')->put('users/alice/scratch.md', 'scratch');
+
+        $this->dav('COPY', '/files/users/alice/scratch.md', server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/together.md',
+        ])->assertStatus(403);
+
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/together.md'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
+        $this->assertTrue(Storage::disk('wgw_files')->exists('users/alice/scratch.md'));
+    }
+
+    public function test_patch_on_a_document_with_a_sidecar_is_forbidden(): void
+    {
+        $this->seedDocumentAndSidecar();
+
+        $this->dav('PATCH', '/files/users/alice/together.md', 'external edit')->assertStatus(403);
+
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/together.md'));
+        $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
+    }
+
+    public function test_delete_of_a_directory_removes_sidecars_inside_it(): void
+    {
+        Storage::disk('wgw_files')->put('users/alice/docs/together.md', '# doc');
+        Storage::disk('wgw_files')->put('users/alice/docs/.together.md.yjs', 'yjs-bytes');
+
+        $this->dav('DELETE', '/files/users/alice/docs')->assertStatus(204);
+
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/docs/together.md'));
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/docs/.together.md.yjs'));
     }
 
     public function test_put_on_a_document_with_a_sidecar_is_forbidden(): void
