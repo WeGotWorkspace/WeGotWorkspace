@@ -413,6 +413,7 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $token = $this->issueBearerToken();
         $url = '/api/v1/files/collaboration?path='.urlencode(self::ROOM);
         $yjs = dirname(base_path(), 2).'/packages/apps/node_modules/yjs/dist/yjs.mjs';
+        $this->assertFileExists($yjs);
         $script = <<<'JS'
 import * as Y from process.env.YJS_MODULE;
 const doc = new Y.Doc();
