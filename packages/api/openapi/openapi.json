@@ -2336,6 +2336,16 @@
               "CANCELLED",
               null
             ]
+          },
+          "yjs": {
+            "type": "array",
+            "description": "Yjs document state as a list of bytes (0-255). Omitted leaves the stored state unchanged. Rejected with 413 above 5 MiB.",
+            "maxItems": 5242880,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
           }
         }
       }
@@ -7011,18 +7021,59 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "description": "Pass yjs for the raw Yjs state. Omit it for the note JSON. The state is not a field on the note JSON.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "yjs"
+              ]
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "required": false,
+            "description": "VJOURNAL entity tag from an earlier GET of this note, including GET ?format=yjs. The server answers 304 when that tag still matches. A 204 (no stored state) carries no tag.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Note",
+            "description": "Note JSON, or the raw Yjs bytes when format=yjs. Both representations use the VJOURNAL ETag.",
+            "headers": {
+              "ETag": {
+                "description": "VJOURNAL entity tag. The same value an ordinary note GET returns. Present for format=yjs only when a state row exists.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Note"
                 }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
+          },
+          "204": {
+            "description": "format=yjs and this note has no stored Yjs state. The response has no ETag."
+          },
+          "304": {
+            "description": "format=yjs and If-None-Match matches the VJOURNAL ETag."
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"

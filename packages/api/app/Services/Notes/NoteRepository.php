@@ -10,7 +10,10 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\NoteStar;
+use App\Models\NoteYjsState;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Collab\YjsBytes;
+use App\Services\Collab\YjsPayloadException;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
@@ -169,6 +172,7 @@ final class NoteRepository
             throw new ApiHttpException(404, 'Note not found.', 'not_found');
         }
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This notebook is read-only.');
+        $yjsBytes = $this->yjsBytesFromPatch($patch);
 
         // Lock the row for the precondition check and the write. A concurrent
         // PATCH then waits instead of both passing the same ETag.
@@ -181,6 +185,7 @@ final class NoteRepository
             $ifMatch,
             $ifUnmodifiedSince,
             $requirePrecondition,
+            $yjsBytes,
         ): array {
             $object = CalendarObject::query()
                 ->whereKey($located['object']->getKey())
@@ -218,7 +223,7 @@ final class NoteRepository
             }
 
             $fieldPatch = $patch;
-            unset($fieldPatch['notebookId']);
+            unset($fieldPatch['notebookId'], $fieldPatch['yjs']);
             if ($fieldPatch !== []) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
                 $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
@@ -236,6 +241,10 @@ final class NoteRepository
                 if ($object === null) {
                     throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
                 }
+            }
+
+            if ($yjsBytes !== null) {
+                $this->storeYjsState($object, $yjsBytes);
             }
 
             return ['instance' => $instance, 'object' => $object];
@@ -390,6 +399,32 @@ final class NoteRepository
         }
 
         return $ids;
+    }
+
+    /**
+     * Raw Yjs bytes for one note, or null when the note exists and has no row.
+     * List and ordinary detail reads do not call this.
+     *
+     * @return array{bytes: string, etag: string}|null
+     */
+    public function yjsSnapshot(string $username, string $noteId): ?array
+    {
+        $located = $this->findAccessibleNote($username, $noteId);
+        if ($located === null) {
+            throw new ApiHttpException(404, 'Note not found.', 'not_found');
+        }
+
+        $row = NoteYjsState::query()
+            ->where('calendar_object_id', (int) $located['object']->id)
+            ->first();
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'bytes' => $this->binaryString($row->getAttributes()['state'] ?? $row->state),
+            'etag' => $this->formattedEtag($located['object']),
+        ];
     }
 
     /**
@@ -648,5 +683,64 @@ final class NoteRepository
     private function calBackend(): CalPDO
     {
         return new CalPDO(DB::connection('wgw')->getPdo());
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private function yjsBytesFromPatch(array $patch): ?string
+    {
+        if (! array_key_exists('yjs', $patch)) {
+            return null;
+        }
+
+        $yjs = $patch['yjs'];
+        if (is_string($yjs)) {
+            if (strlen($yjs) > YjsBytes::MAX_BYTES) {
+                throw new ApiHttpException(413, 'Yjs state exceeds the 5 MiB limit.', 'payload_too_large');
+            }
+
+            return $yjs;
+        }
+
+        try {
+            return YjsBytes::decode($yjs);
+        } catch (YjsPayloadException $e) {
+            throw new ApiHttpException(
+                $e->status,
+                $e->status === 413
+                    ? 'Yjs state exceeds the 5 MiB limit.'
+                    : 'Yjs state must be a list of bytes from 0 to 255.',
+                $e->status === 413 ? 'payload_too_large' : 'bad_request',
+            );
+        }
+    }
+
+    private function storeYjsState(CalendarObject $object, string $bytes): void
+    {
+        NoteYjsState::query()->updateOrCreate(
+            ['calendar_object_id' => (int) $object->id],
+            [
+                'note_uid' => (string) $object->uid,
+                'state' => $bytes,
+                'object_etag' => $this->formattedEtag($object),
+            ],
+        );
+    }
+
+    private function formattedEtag(CalendarObject $object): string
+    {
+        return OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;
+    }
+
+    private function binaryString(mixed $value): string
+    {
+        if (is_resource($value)) {
+            $contents = stream_get_contents($value);
+
+            return is_string($contents) ? $contents : '';
+        }
+
+        return is_string($value) ? $value : '';
     }
 }
