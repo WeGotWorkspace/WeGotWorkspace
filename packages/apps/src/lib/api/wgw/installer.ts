@@ -14,6 +14,7 @@ export type InstallerRequirementsPayload = {
 export type InstallerDatabasePayload = {
   db_driver: WgwInstallerDbDriver;
   sqlite_path: string;
+  data_dir?: string;
   mysql_host: string;
   mysql_port: number;
   mysql_db: string;

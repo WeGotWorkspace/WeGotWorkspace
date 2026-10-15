@@ -131,6 +131,11 @@ build_current_image() {
   TO_IMAGE="$LOCAL_TAG"
 }
 
+# Mount the content and storage volumes at the historical in-tree paths and at
+# /var/wgw. The published baseline image writes WGW_DATA_DIR=./wgw-content, and
+# this script does not set WGW_DATA_DIR, so an upgraded install keeps reading
+# that path until an operator follows the move in INSTALL.md. Fresh installs
+# use only /var/wgw via docker-compose.yml.
 run_migrator() {
   local image="$1"
   echo "=== migrator ${image} ==="
@@ -145,7 +150,9 @@ run_migrator() {
     -e WGW_INSTALL_ADMIN_PASSWORD="$ADMIN_PASS" \
     -e WGW_DISABLE_LOGIN_THROTTLE=1 \
     -v "${VOL_CONTENT}:/var/www/html/wgw-content" \
+    -v "${VOL_CONTENT}:/var/wgw/content" \
     -v "${VOL_STORAGE}:/var/www/html/packages/api/storage" \
+    -v "${VOL_STORAGE}:/var/wgw/storage" \
     -v "${VOL_CONFIG}:/wgw-config-vol" \
     "$image" -c '
       set -eu
@@ -166,7 +173,9 @@ start_web() {
     -e WGW_INSTALL_HEADLESS=0 \
     -e WGW_DISABLE_LOGIN_THROTTLE=1 \
     -v "${VOL_CONTENT}:/var/www/html/wgw-content" \
+    -v "${VOL_CONTENT}:/var/wgw/content" \
     -v "${VOL_STORAGE}:/var/www/html/packages/api/storage" \
+    -v "${VOL_STORAGE}:/var/wgw/storage" \
     -v "${VOL_CONFIG}:/wgw-config-vol" \
     "$image" >/dev/null
 }

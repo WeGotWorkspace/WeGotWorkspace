@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from "react";
 import { Button } from "@/button/src/button";
-import { installerCopy as copy } from "@/installer-core/src/installer-copy";
+import { dataDirReasonText, installerCopy as copy } from "@/installer-core/src/installer-copy";
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";
@@ -17,12 +17,15 @@ export type InstallerMysqlDraft = {
   password: string;
 };
 
-export type InstallerDatabaseValues =
-  { engine: "sqlite" } | { engine: "mysql"; mysql: InstallerMysqlDraft };
+export type InstallerDatabaseValues = (
+  { engine: "sqlite" } | { engine: "mysql"; mysql: InstallerMysqlDraft }
+) & { dataDir?: string };
 
 export type InstallerDatabasePageProps = {
   initialEngine?: InstallerDatabaseEngine;
   initialMysql?: Partial<InstallerMysqlDraft>;
+  dataDirPath?: string;
+  dataDirReason?: string;
   onContinue?: (values: InstallerDatabaseValues) => void;
   connectionError?: string | null;
 };
@@ -72,10 +75,14 @@ function enginePanelProps(active: boolean) {
 export function InstallerDatabasePage({
   initialEngine = "mysql",
   initialMysql,
+  dataDirPath,
+  dataDirReason,
   onContinue,
   connectionError,
 }: InstallerDatabasePageProps) {
   const mysqlHostId = useId();
+  const dataDirId = useId();
+  const dataDirReasonId = useId();
   const mysqlPortId = useId();
   const mysqlDatabaseId = useId();
   const mysqlUserId = useId();
@@ -85,6 +92,7 @@ export function InstallerDatabasePage({
   const [mysql, setMysql] = useState<InstallerMysqlDraft>(() =>
     mysqlDraftFromInitial(initialMysql),
   );
+  const [dataDirOverride, setDataDirOverride] = useState("");
 
   const mysqlReady =
     mysql.host.trim().length > 0 &&
@@ -96,7 +104,11 @@ export function InstallerDatabasePage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSubmit) return;
-    onContinue?.(engine === "sqlite" ? { engine: "sqlite" } : { engine: "mysql", mysql });
+    const chosenDataDir = dataDirOverride.trim() || dataDirPath;
+    onContinue?.({
+      ...(engine === "sqlite" ? { engine: "sqlite" } : { engine: "mysql", mysql }),
+      ...(chosenDataDir ? { dataDir: chosenDataDir } : {}),
+    });
   };
 
   return (
@@ -184,7 +196,28 @@ export function InstallerDatabasePage({
           </div>
         </div>
 
-        {engine === "mysql" && connectionError ? (
+        {dataDirPath ? (
+          <div className="installer__field">
+            <FieldLabelRow label={copy.dataDirLabel}>
+              <p className="installer__hint">{dataDirPath}</p>
+            </FieldLabelRow>
+            <p className="installer__hint" id={dataDirReasonId}>
+              {dataDirReasonText(dataDirReason)}
+            </p>
+            <FieldLabelRow htmlFor={dataDirId} label={copy.dataDirOverride}>
+              <Input
+                id={dataDirId}
+                name="dataDir"
+                value={dataDirOverride}
+                aria-describedby={dataDirReasonId}
+                placeholder={copy.dataDirOverrideHint}
+                onChange={(event) => setDataDirOverride(event.target.value)}
+              />
+            </FieldLabelRow>
+          </div>
+        ) : null}
+
+        {connectionError ? (
           <p className="installer__hint installer__hint--error" role="alert">
             {connectionError}
           </p>

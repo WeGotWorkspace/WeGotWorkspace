@@ -38,7 +38,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -192,3 +192,15 @@ return Application::configure(basePath: dirname(__DIR__))
         WgwApiRateLimiters::register();
     })
     ->create();
+
+$storagePath = getenv('WGW_STORAGE_PATH');
+if (! is_string($storagePath) || $storagePath === '') {
+    $fromEnv = $_ENV['WGW_STORAGE_PATH'] ?? null;
+    $storagePath = is_string($fromEnv) ? $fromEnv : '';
+}
+$storagePath = trim($storagePath);
+if ($storagePath !== '') {
+    $app->useStoragePath($storagePath);
+}
+
+return $app;

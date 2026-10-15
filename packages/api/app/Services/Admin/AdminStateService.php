@@ -6,6 +6,7 @@ namespace App\Services\Admin;
 
 use App\Models\AppSetting;
 use App\Services\Calendars\CalendarImipService;
+use App\Services\Installer\DataDirCandidateResolver;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Rtc\MeetVideoProfile;
@@ -27,6 +28,7 @@ final class AdminStateService
         private MailDeliveryService $mailDelivery,
         private ApiUrlBuilder $urls,
         private RtcSettingsService $rtcSettings,
+        private DataDirCandidateResolver $dataDirs,
     ) {}
 
     /**
@@ -100,6 +102,9 @@ final class AdminStateService
         }
         if (! PublicAppUrl::isConfigured()) {
             $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
+        }
+        if ($this->dataDirs->configuredDirectoryIsPublished()) {
+            $warnings[] = 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.';
         }
 
         return $warnings;

@@ -27,6 +27,7 @@ final class InstallerWizardService
         private WgwInstallConfig $installConfig,
         private InstallerWindow $window,
         private InstallerDatabaseHostGuard $hosts,
+        private DataDirInstallCoordinator $dataDirs,
     ) {}
 
     /**
@@ -142,7 +143,11 @@ final class InstallerWizardService
      */
     private function actionDatabaseTest(string $webBase, array $payload): array
     {
-        $db = $this->readDbFromPayload($payload);
+        try {
+            [$state, $db] = $this->dataDirs->bind($this->wizardState(), $this->readDbFromPayload($payload), $payload);
+        } catch (\RuntimeException $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'state' => $this->runtimeState($webBase)];
+        }
         $blocked = $this->blockedDatabaseHost($webBase, $db);
         if ($blocked !== null) {
             return $blocked;
@@ -161,7 +166,6 @@ final class InstallerWizardService
             ];
         }
 
-        $state = $this->wizardState();
         $state['step'] = 'database';
         $state['db_driver'] = (string) $db['driver'];
         $state['db'] = $db;
@@ -177,7 +181,11 @@ final class InstallerWizardService
      */
     private function actionDatabaseNext(string $webBase, array $payload): array
     {
-        $db = $this->readDbFromPayload($payload);
+        try {
+            [$state, $db] = $this->dataDirs->bind($this->wizardState(), $this->readDbFromPayload($payload), $payload);
+        } catch (\RuntimeException $e) {
+            return ['ok' => false, 'error' => $e->getMessage(), 'state' => $this->runtimeState($webBase)];
+        }
         $blocked = $this->blockedDatabaseHost($webBase, $db);
         if ($blocked !== null) {
             return $blocked;
@@ -196,7 +204,6 @@ final class InstallerWizardService
             ];
         }
 
-        $state = $this->wizardState();
         $state['step'] = 'site';
         $state['db'] = $db;
         $state['db_driver'] = (string) $db['driver'];
@@ -317,10 +324,11 @@ final class InstallerWizardService
         $appUrl = $this->resolveAppUrlForInstall($payload, (string) ($state['base_uri'] ?? '/'));
 
         /** @var array<string, mixed> $db */
-        $db = $state['db'] ?? [];
+        $db = is_array($state['db'] ?? null) ? $state['db'] : [];
         if ($db === []) {
             throw new \RuntimeException('Your session expired before installation finished. Please start again.');
         }
+        [$state, $db] = $this->dataDirs->bind($state, $db, []);
 
         $enableCalendars = (bool) ($state['enable_calendars'] ?? true);
         $enableContacts = (bool) ($state['enable_contacts'] ?? true);
@@ -369,6 +377,7 @@ final class InstallerWizardService
                     SettingKeys::RTC_TURN_SECRET => $meetEnabled
                         ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
                         : '',
+                    SettingKeys::DATA_DIR_INSIDE_WEBROOT => $this->dataDirs->shouldRecordInsideWebRoot($state),
                 ],
             );
             $this->jwtKeys->ensureKeys();
@@ -439,6 +448,7 @@ final class InstallerWizardService
                 'already_installed' => true,
                 'admin_updates_url' => InstallerWebBase::url($webBase, '/admin/updates'),
                 'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
+                'data_dir' => $this->dataDirs->describe($this->wizardState()),
             ];
         }
 
@@ -465,6 +475,7 @@ final class InstallerWizardService
             'show_browser_ui' => (bool) ($state['show_browser_ui'] ?? false),
             'checks' => $this->env->checkAll($driver),
             'db_from_env' => $this->installEnv->hasDatabaseFromEnv(),
+            'data_dir' => $this->dataDirs->describe($state),
         ];
 
         foreach (['admin_username', 'admin_email', 'admin_display_name'] as $adminKey) {

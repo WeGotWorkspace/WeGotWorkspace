@@ -22,6 +22,16 @@ export const installerCopy = {
   sqlite: "SQLite",
   mysql: "MySQL / MariaDB",
   sqliteHint: "Uses the default SQLite file.",
+  dataDirLabel: "Data folder",
+  dataDirOutside:
+    "This folder sits outside the published website, so the web server cannot serve the database or keys.",
+  dataDirEnvironment: "Using the data folder set on the server.",
+  dataDirFallbackOwned:
+    "Another installation already uses the folder outside this website. This install keeps its data inside the website folder until you choose a different absolute path.",
+  dataDirFallbackUnavailable:
+    "No writable folder outside the published website was available. This install keeps its data inside the website folder until you choose a different absolute path.",
+  dataDirOverride: "Different folder",
+  dataDirOverrideHint: "Absolute path. Leave empty to use the folder above.",
   mysqlHost: "Host",
   mysqlPort: "Port",
   mysqlDatabase: "Database",
@@ -37,3 +47,16 @@ export const installerCopy = {
   rerunChecks: "Re-run checks",
   rerunChecksBusy: "Checking...",
 } as const;
+
+export function dataDirReasonText(reason: string | undefined): string {
+  switch (reason) {
+    case "environment":
+      return installerCopy.dataDirEnvironment;
+    case "fallback_owned":
+      return installerCopy.dataDirFallbackOwned;
+    case "fallback_unavailable":
+      return installerCopy.dataDirFallbackUnavailable;
+    default:
+      return installerCopy.dataDirOutside;
+  }
+}
