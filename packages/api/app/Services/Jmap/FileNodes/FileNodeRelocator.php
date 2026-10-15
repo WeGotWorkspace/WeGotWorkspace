@@ -42,7 +42,7 @@ final class FileNodeRelocator
         if (! $this->storage->files()->move($fromKey, $toKey)) {
             throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'Move failed.']);
         }
-        $node = $this->index->recordMove($fromKey, $toKey) ?? $node;
+        $node = $this->index->recordMoveWithSidecar($fromKey, $toKey) ?? $node;
         $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
         $this->stars->rewritePathPrefix($fromKey, $toKey);
         $this->shares->rewritePathPrefix('/'.$fromKey, '/'.$toKey);
