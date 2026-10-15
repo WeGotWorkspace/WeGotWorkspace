@@ -16,9 +16,9 @@ export type WorkspaceAppId = (typeof WORKSPACE_APP_IDS)[number];
 
 /**
  * Future app icons stored under `/app-icons/` but not wired in the home grid or switcher yet.
- * Source artwork: reminders (vector SVG in `src/assets/app-icons/`).
+ * Source artwork: reminders, sheets, and ai (vector SVG in `src/assets/app-icons/`).
  */
-export const WORKSPACE_FUTURE_APP_ICON_IDS = ["reminders"] as const;
+export const WORKSPACE_FUTURE_APP_ICON_IDS = ["reminders", "sheets", "ai"] as const;
 
 /** Sampled from launcher tile artwork. PWA window chrome uses `WORKSPACE_PWA_THEME_COLOR`. */
 export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
@@ -29,9 +29,9 @@ export const WORKSPACE_APP_ACCENT: Record<WorkspaceAppId, string> = {
   tasks: "#ffbdc2",
   drive: "#8ACE00",
   docs: "#0045ff",
-  settings: "#222222",
+  settings: "#003311",
   meet: "#ffc800",
-  admin: "#222222",
+  admin: "#003311",
 };
 
 const APPLE_TOUCH_SIZE = 180;
@@ -47,7 +47,7 @@ export function workspaceAppIconUiSrc(appId: WorkspaceAppId): string {
 }
 
 /**
- * 180×180 PNG for `<link rel="apple-touch-icon">`, from `generate-pwa-icons.mjs`.
+ * 180×180 PNG for `<link rel="apple-touch-icon">`, resized from the raster master by `generate-pwa-icons.mjs`.
  * WebKit uses that link when it is in the document head. This shell injects it
  * from the router, so a client that only reads the raw HTML still depends on
  * the manifest PNGs.

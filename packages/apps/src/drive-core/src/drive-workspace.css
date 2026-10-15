@@ -47,7 +47,7 @@
    * Outline language for segmented / tile chrome outside the sidebar.
    * Sidebar row states are the shared rail ladder in `workspace-color.css`.
    */
-  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);
   /* Section titles on the accent rail — slate muted fails AA; ink mix clears. */
 }
@@ -70,21 +70,21 @@
 }
 
 /**
- * App switcher lockup: drive.svg literals (white tile / `#8ACE00` folder).
+ * App switcher lockup: drive.svg literals (soft tile / brat folder).
  * Pin both the lockup variables and `--workspace-icon-surface*` so artwork stays distinct from
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-foreground);
+  --app-switch-icon-bg: var(--workspace-icon-surface);
   --app-switch-icon-fg: var(--workspace-icon-foreground);
-  background-color: var(--workspace-foreground);
+  background-color: var(--workspace-icon-surface);
 }
 
 .drive-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);
 }
 
@@ -169,7 +169,7 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

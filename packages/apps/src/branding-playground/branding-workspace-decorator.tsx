@@ -72,7 +72,7 @@ export function resolveBrandingIconMarkup(
   return undefined;
 }
 
-/** Switch-trigger SVG keeps the sheet pair. Docs is a blue tile with white marks. */
+/** Switch-trigger SVG keeps the sheet pair. Docs is a blue tile with soft marks. */
 function sidebarSwitchTriggerIconDecls(
   _workspaceClass: string,
   values: Record<string, string>,

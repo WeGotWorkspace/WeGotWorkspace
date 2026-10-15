@@ -80,11 +80,11 @@ Docs also has **`fullAccentSidebar`**: full `--workspace-accent` rail vs the Sof
 
 | Category    | Tokens                                                                                                                                                                 | Purpose                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | Soft `#eeeeee`, Dark `#222222`                                                       |
+| Primitives  | `--color-we-got-soft`, `--color-we-got-dark`                                                                                                                           | Soft `#fff5e9`, Dark `#003311`                                                       |
 | App chrome  | `--workspace-surface` / `-foreground`, `--workspace-accent` / `-foreground`, `--workspace-sidebar-surface` / `-foreground`, `--workspace-icon-surface` / `-foreground` | Four surface/foreground pairs. Products assign primitives; state washes derive once. |
 | Icon layers | `--workspace-icon-surface`, `--workspace-icon-foreground`                                                                                                              | Remappable pair; switch-trigger / home tiles map it onto `--app-icon-layer-*`        |
 
-**Brand lockup:** Soft is `#eeeeee`, Dark is `#222222`. The suite lockup (Home AppSwitch, Login/Installer BrandLockup) uses the SVG wordmark — the Bebas text stack is retired.
+**Brand lockup:** Soft is `#fff5e9`, Dark is `#003311`. The suite lockup (Home AppSwitch, Login/Installer BrandLockup) uses the SVG wordmark — the Bebas text stack is retired.
 
 **Pairs:** `--workspace-accent` is We Got Dark (checks, badges, outline glyphs, primary buttons). `--workspace-icon-surface` is the per-app tile hue only. `--workspace-surface` is `color-mix(in oklch, var(--color-we-got-soft) 40%, #fff)`. `--workspace-sidebar-surface` is `var(--color-we-got-soft)` — Soft, not an icon tint. Row hover and selected mix sidebar foreground into that fill (4 / 8 / 12%). A CSS custom property in the panel overrides a token only after you change it. Do not set a token to `var(--itself)` — the addon writes the value onto `body` and a self-reference makes the token invalid.
 
@@ -96,10 +96,10 @@ Text ≥4.5:1; UI icons ≥3:1. Measured on sRGB brand hexes.
 
 | Pair                                                             | Ratio   | AA        |
 | ---------------------------------------------------------------- | ------- | --------- |
-| `--color-we-got-dark` on `--color-we-got-soft` (Soft)            | 13.71:1 | text PASS |
+| `--color-we-got-dark` on `--color-we-got-soft` (Soft)            | 13.15:1 | text PASS |
 | white on Docs `--workspace-accent` (blue)                        | 6.37:1  | text PASS |
 | Docs `--workspace-icon-foreground` on `--workspace-icon-surface` | 6.37:1  | text PASS |
-| Admin / Settings Dark on white                                   | 15.91:1 | text PASS |
+| Admin / Settings Dark on white                                   | 14.17:1 | text PASS |
 | Calendar white on Prince                                         | 6.42:1  | text PASS |
 | Docs white on blue                                               | 6.37:1  | text PASS |
 | Mail white on Red                                                | 4.10:1  | UI PASS   |

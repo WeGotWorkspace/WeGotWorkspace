@@ -54,7 +54,7 @@
   );
   --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   --workspace-icon-surface: var(--color-we-got-prince);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
@@ -77,7 +77,7 @@
   --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
-/** App switcher lockup: calendar.svg literals (`#962fa8` tile / white marks). */
+/** App switcher lockup: calendar.svg literals (prince tile / soft marks). */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -89,7 +89,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --workspace-icon-surface: var(--color-we-got-prince);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */

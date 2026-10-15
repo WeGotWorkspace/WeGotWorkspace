@@ -16,7 +16,8 @@ use Sabre\HTTP\ResponseInterface;
  * Keeps the FileNode node-identity index (#450) in sync with WebDAV writes —
  * the SearchIndexPlugin pattern. MOVE re-keys the index subtree while
  * keeping every node id: this is where rename-stability comes from on the
- * DAV path. Best-effort: index failures log and never fail the DAV request.
+ * DAV path. MOVE also takes the Yjs sidecar with the document; COPY does
+ * not. Best-effort: index failures log and never fail the DAV request.
  */
 final class FileNodeIndexPlugin extends ServerPlugin
 {
@@ -66,7 +67,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
         try {
             switch ($method) {
                 case 'DELETE':
-                    $this->index->recordDelete($key);
+                    $this->index->recordDeleteWithSidecar($key);
                     break;
                 case 'MOVE':
                 case 'COPY':
@@ -74,7 +75,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
                         break;
                     }
                     if ($method === 'MOVE') {
-                        $this->index->recordMove($key, $destKey);
+                        $this->index->recordMoveWithSidecar($key, $destKey);
                     } else {
                         $this->index->recordCreate($destKey);
                     }

@@ -217,7 +217,7 @@ final class DriveService
         }
         $this->shares->rewritePathPrefix($fromPath, $toPath);
         $this->stars->rewritePathPrefix($fromPath, $toPath);
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMoveWithSidecar($fromKey, $toKey));
         $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
         $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
 
@@ -249,7 +249,7 @@ final class DriveService
                 } else {
                     $disk->delete($key);
                 }
-                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDeleteWithSidecar($key));
                 $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
                 $this->stars->deletePathPrefix($path);
             }

@@ -22,7 +22,7 @@
   );
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-prince);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --card-title-icon-color: var(--workspace-accent);
   --card-panel-border-color: var(--border);
   --card-row-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);

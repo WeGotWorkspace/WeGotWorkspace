@@ -24,7 +24,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
       "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
     );
     expect(trigger?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))",
     );
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
@@ -53,7 +53,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
       "var(--app-icon-layer-surface, var(--color-we-got-red, #de4b0e))",
     );
     expect(tile?.innerHTML).toContain(
-      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #eeeeee))",
+      "var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))",
     );
   });
 
@@ -78,7 +78,7 @@ describe("WorkspaceAppIconOverrideProvider", () => {
     expect(trigger?.innerHTML).toContain(
       "var(--app-icon-layer-surface, var(--color-we-got-yellow, #ffc800))",
     );
-    expect(trigger?.innerHTML).toContain('d="M28 45a2 2 0');
+    expect(trigger?.innerHTML).toContain('d="M28 43a2 2 0');
     expect(container.querySelector("[data-branding-override]")).toBeNull();
   });
 

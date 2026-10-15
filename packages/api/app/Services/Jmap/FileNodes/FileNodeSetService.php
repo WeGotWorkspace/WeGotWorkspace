@@ -203,7 +203,7 @@ final class FileNodeSetService
         } elseif ($disk->fileExists($key)) {
             $disk->delete($key);
         }
-        $this->index->recordDelete($key);
+        $this->index->recordDeleteWithSidecar($key);
         $this->stars->deletePathPrefix($key);
         $this->docAttachments->destroyDocsBestEffort($docIds);
         $this->relocator->afterHardDelete($key);
