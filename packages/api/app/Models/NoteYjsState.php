@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $note_uid
  * @property string $state
  * @property string $object_etag
+ * @property string|null $content_etag
  */
 final class NoteYjsState extends Model
 {
@@ -31,6 +32,7 @@ final class NoteYjsState extends Model
         'note_uid',
         'state',
         'object_etag',
+        'content_etag',
     ];
 
     /** @return BelongsTo<CalendarObject, $this> */

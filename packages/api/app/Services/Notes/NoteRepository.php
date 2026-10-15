@@ -33,6 +33,7 @@ final class NoteRepository
         private readonly NoteMoveHelper $moveHelper,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly SearchIndexerService $searchIndexer,
+        private readonly NoteYjsProjection $yjsProjection,
         private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
@@ -407,7 +408,7 @@ final class NoteRepository
      * Raw Yjs bytes for one note, or null when the note exists and has no row.
      * List and ordinary detail reads do not call this.
      *
-     * @return array{bytes: string, etag: string}|null
+     * @return array{bytes: string, etag: string, externalWrite: bool}|null
      */
     public function yjsSnapshot(string $username, string $noteId): ?array
     {
@@ -429,6 +430,7 @@ final class NoteRepository
             'bytes' => $bytes,
             // The state tag moves only when the bytes move. The journal ETag stays on the JSON GET.
             'etag' => DocCollabDocumentService::sidecarEtag($bytes),
+            'externalWrite' => $this->yjsProjection->isExternalContentWrite($row, $located['object']),
         ];
     }
 
@@ -757,19 +759,7 @@ final class NoteRepository
 
     private function storeYjsState(CalendarObject $object, string $bytes): void
     {
-        NoteYjsState::query()->updateOrCreate(
-            ['calendar_object_id' => (int) $object->id],
-            [
-                'note_uid' => (string) $object->uid,
-                'state' => $bytes,
-                'object_etag' => $this->formattedEtag($object),
-            ],
-        );
-    }
-
-    private function formattedEtag(CalendarObject $object): string
-    {
-        return OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;
+        $this->yjsProjection->store($object, $bytes);
     }
 
     private function binaryString(mixed $value): string

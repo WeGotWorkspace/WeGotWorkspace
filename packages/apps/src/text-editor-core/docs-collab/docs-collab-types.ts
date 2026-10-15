@@ -61,6 +61,11 @@ export type DocsCollabUrls = {
   roomNotPersistent?: boolean;
   onPersistForbidden?: () => void;
   onReconnectConflict?: () => void;
+  /**
+   * The stored state is not an ancestor of the journal, and this client has
+   * unsaved work. Nothing is written until the person chooses.
+   */
+  onExternalWrite?: (detail: { markdown: string; title: string | null }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;
 };
@@ -119,6 +124,10 @@ export type DocsCollabSessionRefs = {
   nextSaveAttemptAtRef: MutableRefObject<number>;
   localDirtySinceLastSaveRef: MutableRefObject<boolean>;
   pendingServerSaveRef: MutableRefObject<boolean>;
+  /** While set, a save must not replace an outside edit the person has not chosen. */
+  externalWriteHoldRef: MutableRefObject<boolean>;
+  /** Markdown to store instead of the editor view, for one save. */
+  markdownOverrideRef: MutableRefObject<string | null>;
   lastKnownMarkdownRef: MutableRefObject<string>;
   lastSuccessfulSaveSignatureRef: MutableRefObject<string | null>;
   sessionRef: MutableRefObject<DocsCollabSession | null>;

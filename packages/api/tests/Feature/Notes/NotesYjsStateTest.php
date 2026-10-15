@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notes;
 
+use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\NoteYjsState;
 use App\Services\Auth\JwtTokenService;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Collab\YjsBytes;
+use App\Services\Notes\Conversion\NoteJournalConverter;
+use App\Services\Notes\NoteYjsProjection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
@@ -517,6 +521,157 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $this->asUser('alice')
             ->get('/api/v1/notes/items/'.$id.'?format=yjs')
             ->assertNoContent();
+    }
+
+    public function test_external_description_is_flagged_on_the_next_read_without_rewriting_state(): void
+    {
+        $note = $this->createNote(body: 'original');
+        $this->putState($note['id'], ['markdown' => 'original', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+        $before = $this->storedState($note['id']);
+
+        $this->rewriteViaCalDav($note['id'], ['body' => 'from outside']);
+
+        $stateEtag = '"'.sha1(self::BINARY).'"';
+        $state = $this->asUser('bob')
+            ->withHeaders(['If-None-Match' => $stateEtag])
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertHeader('ETag', $stateEtag)
+            ->assertHeader(NoteYjsProjection::EXTERNAL_WRITE_HEADER, '1');
+        $this->assertSame(self::BINARY, $state->getContent());
+        $this->assertSame($before['bytes'], $this->storedState($note['id'])['bytes']);
+
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('body', 'from outside');
+
+        $this->putState($note['id'], [
+            'markdown' => 'from outside',
+            'yjs' => [4, 5, 6],
+        ], ['If-Match' => $stateEtag])->assertOk();
+
+        $again = $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertContent("\x04\x05\x06");
+        $this->assertFalse($again->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+    }
+
+    public function test_external_summary_is_flagged_on_the_next_read(): void
+    {
+        $note = $this->createNote(title: 'Inside', body: 'Body');
+        $this->putState($note['id'], [
+            'markdown' => 'Body',
+            'title' => 'Inside',
+            'yjs' => self::YJS,
+        ], ['If-None-Match' => '*'])->assertOk();
+
+        $this->rewriteViaCalDav($note['id'], ['title' => 'Outside']);
+
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertHeader(NoteYjsProjection::EXTERNAL_WRITE_HEADER, '1')
+            ->assertContent(self::BINARY);
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('title', 'Outside')
+            ->assertJsonPath('body', 'Body');
+    }
+
+    public function test_external_tag_move_archive_and_delete_are_not_content_writes(): void
+    {
+        $note = $this->createNote(body: 'Body');
+        $this->putState($note['id'], ['markdown' => 'Body', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+
+        $this->rewriteViaCalDav($note['id'], ['categories' => ['outside']]);
+        $tagged = $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertContent(self::BINARY);
+        $this->assertFalse($tagged->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('body', 'Body')
+            ->assertJsonPath('categories', ['outside']);
+
+        $this->rewriteViaCalDav($note['id'], ['status' => 'CANCELLED']);
+        $archived = $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk();
+        $this->assertFalse($archived->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('status', 'CANCELLED')
+            ->assertJsonPath('body', 'Body');
+
+        $dest = (string) $this->asUser('bob')->postJson('/api/v1/notes/notebooks', ['name' => 'Moved'])
+            ->assertCreated()
+            ->json('id');
+        $journal = (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->headers->get('ETag');
+        $this->patchNote($note['id'], $journal, ['notebookId' => $dest])->assertOk();
+        $moved = $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertContent(self::BINARY);
+        $this->assertFalse($moved->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+
+        $this->deleteViaCalDav($note['id']);
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertNotFound();
+        $this->assertSame(0, NoteYjsState::query()->where('note_uid', $note['id'])->count());
+    }
+
+    public function test_missing_yjs_row_stays_a_normal_empty_read(): void
+    {
+        $note = $this->createNote(body: 'Created outside');
+
+        $response = $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertNoContent();
+        $this->assertFalse($response->headers->has('ETag'));
+        $this->assertFalse($response->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('body', 'Created outside');
+    }
+
+    /**
+     * @param  array<string, mixed>  $patch
+     */
+    private function rewriteViaCalDav(string $noteId, array $patch): void
+    {
+        $object = CalendarObject::query()->where('uid', $noteId)->where('componenttype', 'VJOURNAL')->first();
+        $this->assertNotNull($object);
+        $instance = CalendarInstance::query()->where('calendarid', (int) $object->calendarid)->first();
+        $this->assertNotNull($instance);
+        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+        $ics = app(NoteJournalConverter::class)->mergeIntoIcs($raw, $patch);
+        $this->calDav()->updateCalendarObject(
+            [(int) $instance->calendarid, (int) $instance->id],
+            (string) $object->uri,
+            $ics,
+        );
+    }
+
+    private function deleteViaCalDav(string $noteId): void
+    {
+        $object = CalendarObject::query()->where('uid', $noteId)->where('componenttype', 'VJOURNAL')->first();
+        $this->assertNotNull($object);
+        $instance = CalendarInstance::query()->where('calendarid', (int) $object->calendarid)->first();
+        $this->assertNotNull($instance);
+        $this->calDav()->deleteCalendarObject(
+            [(int) $instance->calendarid, (int) $instance->id],
+            (string) $object->uri,
+        );
+    }
+
+    private function calDav(): CalPDO
+    {
+        return new CalPDO(DB::connection('wgw')->getPdo());
     }
 
     /**

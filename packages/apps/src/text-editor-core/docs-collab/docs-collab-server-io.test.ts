@@ -129,12 +129,34 @@ describe("docs-collab-server-io", () => {
     expect(Array.from(snapshot.update ?? [])).toEqual(Array.from(update));
   });
 
+  it("fetchYjsSnapshot reports an external write without treating it as a missing sidecar", async () => {
+    const update = snapshotBytes("stale");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(update as unknown as BodyInit, {
+            status: 200,
+            headers: { ETag: SIDECAR_ETAG, "X-Wgw-External-Write": "1" },
+          }),
+      ),
+    );
+    const snapshot = await fetchYjsSnapshot("/yjs");
+    expect(snapshot.externalWrite).toBe(true);
+    expect(snapshot.etag).toBe(SIDECAR_ETAG);
+    expect(snapshot.update).not.toBeNull();
+  });
+
   it("fetchYjsSnapshot reports a missing sidecar for 204", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response(null, { status: 204 })),
     );
-    await expect(fetchYjsSnapshot("/yjs")).resolves.toEqual({ update: null, etag: null });
+    await expect(fetchYjsSnapshot("/yjs")).resolves.toEqual({
+      update: null,
+      etag: null,
+      externalWrite: false,
+    });
   });
 
   it("saveDocument throws parsed error message from body", async () => {

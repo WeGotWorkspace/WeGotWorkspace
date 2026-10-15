@@ -6422,7 +6422,7 @@ export interface paths {
                     format?: "yjs";
                 };
                 header?: {
-                    /** @description State entity tag from an earlier GET ?format=yjs (sha1 of the Yjs bytes). The JSON note's VJOURNAL ETag is a different representation and does not match here. The server answers 304 when the state tag still matches. A 204 (no stored state) carries no tag. */
+                    /** @description State entity tag from an earlier GET ?format=yjs (sha1 of the Yjs bytes). The JSON note's VJOURNAL ETag is a different representation and does not match here. The server answers 304 when the state tag still matches and the stored state is still an ancestor of the journal. A journal whose SUMMARY or DESCRIPTION changed outside the collab path answers 200 with X-Wgw-External-Write instead of 304, so the signal is not hidden. A 204 (no stored state) carries no tag. */
                     "If-None-Match"?: string;
                 };
                 path: {
@@ -6437,6 +6437,8 @@ export interface paths {
                     headers: {
                         /** @description VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable. */
                         ETag?: string;
+                        /** @description Present with value 1 on format=yjs when the journal ETag moved on and SUMMARY or DESCRIPTION is no longer the text the stored Yjs state was written from. Absent when there is no state row, when the journal ETag still matches, and when only tags, a move, or archive changed the journal. The body is still the stored Yjs bytes. The read does not rewrite them. */
+                        "X-Wgw-External-Write"?: string;
                         [name: string]: unknown;
                     };
                     content: {

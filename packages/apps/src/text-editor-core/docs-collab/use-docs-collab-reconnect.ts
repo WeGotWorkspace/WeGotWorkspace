@@ -137,6 +137,10 @@ export function useDocsCollabReconnect({
         await mergeServerState(authToken);
         markRoomServerSuccess(room);
         if (!isReconnectGenerationCurrent(generation, refs.reconnectGenerationRef)) return;
+        if (refs.externalWriteHoldRef.current) {
+          setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
+          return;
+        }
 
         const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
         if (pendingSave || refs.pendingServerSaveRef.current) {

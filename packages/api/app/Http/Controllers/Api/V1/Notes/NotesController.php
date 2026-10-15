@@ -13,6 +13,7 @@ use App\Http\Support\JmapResourceResponse;
 use App\Http\Support\OptimisticConcurrency;
 use App\Services\Notes\NoteCollaborativeWrite;
 use App\Services\Notes\NoteRepository;
+use App\Services\Notes\NoteYjsProjection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -156,16 +157,27 @@ final class NotesController
             return response('', 204);
         }
 
-        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
-        if ($ifNoneMatch !== '' && OptimisticConcurrency::ifMatchSatisfied($ifNoneMatch, $snapshot['etag'])) {
-            return response('', 304, ['ETag' => $snapshot['etag']]);
-        }
-
-        return response($snapshot['bytes'], 200, [
+        $headers = [
             'Content-Type' => 'application/octet-stream',
             'ETag' => $snapshot['etag'],
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ];
+        if ($snapshot['externalWrite']) {
+            // A 304 would hide the signal. The state bytes are unchanged, and
+            // the client must still see that they are not an ancestor.
+            $headers[NoteYjsProjection::EXTERNAL_WRITE_HEADER] = '1';
+        }
+
+        $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+        if (
+            ! $snapshot['externalWrite']
+            && $ifNoneMatch !== ''
+            && OptimisticConcurrency::ifMatchSatisfied($ifNoneMatch, $snapshot['etag'])
+        ) {
+            return response('', 304, ['ETag' => $snapshot['etag']]);
+        }
+
+        return response($snapshot['bytes'], 200, $headers);
     }
 
     private function header(Request $request, string $name): ?string
