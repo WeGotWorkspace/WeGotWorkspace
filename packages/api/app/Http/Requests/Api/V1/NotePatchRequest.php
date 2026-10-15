@@ -35,7 +35,6 @@ final class NotePatchRequest extends FormRequest
             'status' => ['sometimes', 'nullable', 'in:FINAL,CANCELLED'],
             // Cap is YjsBytes::MAX_BYTES. The list is removed in prepareForValidation
             // before Laravel flattens it; a 5 MiB number[] dotted into keys exhausts memory.
-            'yjs' => ['sometimes', 'array', 'max:'.YjsBytes::MAX_BYTES],
         ];
     }
 
