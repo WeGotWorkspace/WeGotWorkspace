@@ -53,7 +53,7 @@ describe("docs-collab-mesh-sync", () => {
     const docB = new Y.Doc();
     const awarenessB = new awarenessProtocol.Awareness(docB);
     const changed = awarenessProtocol.encodeAwarenessUpdate(awarenessA, [awarenessA.clientID]);
-    applyAwarenessUpdate(Array.from(changed), awarenessB);
+    applyAwarenessUpdate(changed, awarenessB);
     expect(awarenessB.getStates().size).toBeGreaterThan(0);
   });
 
@@ -129,7 +129,7 @@ describe("handleGuardedSyncMessage", () => {
     syncProtocol.writeSyncStep2(encoder, editedDoc("smuggled body"), Y.encodeStateVector(local));
 
     const outcome = handleGuardedSyncMessage({
-      bytes: Array.from(encoding.toUint8Array(encoder)),
+      bytes: encoding.toUint8Array(encoder),
       ydoc: local,
       trust: { user: "carol", access: "comment" },
     });

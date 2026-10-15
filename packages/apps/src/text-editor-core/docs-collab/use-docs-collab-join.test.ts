@@ -360,7 +360,7 @@ describe("useDocsCollabJoin teardown", () => {
     expect(awarenessMessages).toHaveLength(1);
     const message = awarenessMessages[0];
     if (!message || message.type !== "awareness") throw new Error("missing awareness broadcast");
-    expect(decodeAwarenessStates(Uint8Array.from(message.u))).toContainEqual({
+    expect(decodeAwarenessStates(message.u)).toContainEqual({
       clientID: clientId,
       state: null,
     });

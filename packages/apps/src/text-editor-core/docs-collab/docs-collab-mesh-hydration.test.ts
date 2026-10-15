@@ -92,10 +92,10 @@ describe("docs-collab-mesh-hydration", () => {
       const fragment = refresher.getXmlFragment("default");
       if (fragment.length > 0) fragment.delete(0, fragment.length);
     }, "local");
-    const bytes = Array.from(Y.encodeStateAsUpdate(refresher, Y.encodeStateVector(full)));
+    const bytes = Y.encodeStateAsUpdate(refresher, Y.encodeStateVector(full));
 
     const outcome = handleGuardedSyncMessage({
-      bytes: encodeUpdateBroadcast(new Uint8Array(bytes)),
+      bytes: encodeUpdateBroadcast(bytes),
       ydoc: full,
       trust: { user: "refreshed", access: "write" },
     });

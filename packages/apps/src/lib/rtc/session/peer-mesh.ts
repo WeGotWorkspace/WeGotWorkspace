@@ -261,12 +261,12 @@ export class RtcPeerMesh {
     return this.peers.linkCount();
   }
 
-  broadcastJson(message: unknown): void {
-    this.peers.broadcastJson(message);
+  broadcastJson(message: unknown, payload?: Uint8Array): void {
+    this.peers.broadcastJson(message, payload);
   }
 
-  sendJsonTo(remoteId: string, message: unknown): void {
-    this.peers.sendJsonTo(remoteId, message);
+  sendJsonTo(remoteId: string, message: unknown, payload?: Uint8Array): void {
+    this.peers.sendJsonTo(remoteId, message, payload);
   }
 
   private handleRemoteSignalError(remoteId: string, error: unknown): void {

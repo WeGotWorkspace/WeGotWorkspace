@@ -17,7 +17,7 @@ export type MeetRoomChatDataPath = {
 export type MeetRoomChatMesh = {
   getPeerIds(): readonly string[];
   getDataChannel(remoteId: string): RTCDataChannel | null;
-  sendJsonTo(remoteId: string, message: unknown): void;
+  sendJsonTo(remoteId: string, message: unknown, payload?: Uint8Array): void;
 };
 
 /** Fan a chat frame out to every peer whose Meet data channel is open. */
