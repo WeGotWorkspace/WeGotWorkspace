@@ -17,8 +17,34 @@ export type MeshSdpExchange = {
   sendSignal: (to: string, type: string, payload: unknown) => Promise<void>;
   onSignalError: (remoteId: string, error: unknown) => void;
   onSignaled: (remoteId: string) => void;
+  /** Close listeners and drop the map slot. Used when the pc is already `closed`. */
+  dropPeer: (remoteId: string) => void;
   log: (event: string, details?: unknown) => void;
 };
+
+function replaceIfClosed(exchange: MeshSdpExchange, remoteId: string): void {
+  const entry = exchange.getPeer(remoteId);
+  if (entry?.pc.signalingState !== "closed") return;
+  exchange.dropPeer(remoteId);
+}
+
+async function applyRemoteDescription(
+  exchange: MeshSdpExchange,
+  remoteId: string,
+  pc: RTCPeerConnection,
+  desc: RTCSessionDescriptionInit,
+): Promise<void> {
+  try {
+    await safeSetRemoteDescription(pc, desc);
+  } catch (error) {
+    exchange.onSignaled(remoteId);
+    exchange.log("remote-description-failed", {
+      remoteId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+}
 
 async function rollBackIfUnstable(pc: RTCPeerConnection): Promise<void> {
   if (pc.signalingState === "stable") return;
@@ -38,6 +64,7 @@ export async function acceptMeshOffer(
   exchange.log("offer-received", { from, ...rtcSdpMeta(payload) });
   const sdp = exchange.formatInbound(payload, "offer");
   if (!sdp) return;
+  replaceIfClosed(exchange, from);
   if (!exchange.getPeer(from) && exchange.needsRelayCredentials()) {
     await exchange.prepareRelay();
     if (exchange.needsRelayCredentials()) {
@@ -47,7 +74,7 @@ export async function acceptMeshOffer(
   }
   const entry = exchange.getPeer(from) ?? exchange.createEntry(from, peerName, false);
   await rollBackIfUnstable(entry.pc);
-  await safeSetRemoteDescription(entry.pc, sdp);
+  await applyRemoteDescription(exchange, from, entry.pc, sdp);
   await flushPendingIce(entry.pc, entry.pendingIce);
   const answer = await entry.pc.createAnswer();
   const formatted = exchange.formatOutbound(answer);
@@ -73,6 +100,11 @@ export async function acceptMeshAnswer(
   if (!entry) return;
   const sdp = exchange.formatInbound(payload, "answer");
   if (!sdp) return;
+  if (entry.pc.signalingState === "closed") {
+    exchange.dropPeer(from);
+    exchange.log("answer-ignored", { remoteId: from, signalingState: "closed" });
+    return;
+  }
   if (entry.pc.signalingState !== "have-local-offer") {
     exchange.log("answer-ignored", {
       remoteId: from,
@@ -80,7 +112,7 @@ export async function acceptMeshAnswer(
     });
     return;
   }
-  await safeSetRemoteDescription(entry.pc, sdp);
+  await applyRemoteDescription(exchange, from, entry.pc, sdp);
   await flushPendingIce(entry.pc, entry.pendingIce);
 }
 

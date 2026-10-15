@@ -1,10 +1,24 @@
+import { useEffect, useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+import { pushWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { registerBuiltinSettings } from "@/settings-core/src/register-builtin-settings";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 
 registerBuiltinSettings();
+
+/** This file is a mock session. A dev `.env.local` live flag must not swap in real notebooks. */
+function MockApiStory({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const pop = pushWgwApiRuntime({ baseUrl: "/api/v1", useLiveApi: false });
+    setReady(true);
+    return pop;
+  }, []);
+  if (!ready) return null;
+  return children;
+}
 
 const namedSession = {
   ...mockWorkspaceSession,
@@ -21,6 +35,13 @@ const meta: Meta<typeof WorkspaceAppSettingsFooter> = {
   parameters: {
     layout: "padded",
   },
+  decorators: [
+    (Story) => (
+      <MockApiStory>
+        <Story />
+      </MockApiStory>
+    ),
+  ],
   tags: ["vitest-ci"],
 };
 

@@ -80,6 +80,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', [
             WgwSecurityHeaders::class,
         ]);
+        // SDP must keep its trailing CRLF. TrimStrings would strip it on the way in,
+        // and Chrome then refuses the Firefox offer (`invalid sdp line`).
+        $middleware->trimStrings(except: [
+            'payload.sdp',
+        ]);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
         $middleware->append(BindMcpPublicOrigin::class);

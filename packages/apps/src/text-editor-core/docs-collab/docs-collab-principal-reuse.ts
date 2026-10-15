@@ -21,11 +21,7 @@ import type {
   DocsCollabMeshPeerStatus,
 } from "@/text-editor-core/docs-collab/docs-collab-types";
 
-/**
- * Wait this long for an `ack` before falling back to a fresh collab ICE handshake.
- * The responder verifies a ticket asynchronously, and the principal channel has
- * often only just opened.
- */
+/** Wait for an `ack` before falling back to a fresh collab ICE handshake. */
 export const COLLAB_REUSE_ACK_TIMEOUT_MS = 1500;
 
 /** Hold a signed ticket this long while the roster poll catches up. Stays under the ack timeout. */
@@ -33,8 +29,9 @@ export const COLLAB_REUSE_ROSTER_WAIT_MS = 1_000;
 
 const MAX_ROSTER_WAITERS = 8;
 
-/** Brief hold before fresh ICE when the principal mesh is still connecting. */
+/** Defer fresh ICE while a principal is connecting, then open collab after this deadline. */
 export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS = 400;
+export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEADLINE_MS = 8_000;
 
 /** At most one re-open per peer in this window when its ICE offers are ignored. */
 export const COLLAB_REUSE_REOPEN_GAP_MS = 5_000;
@@ -94,17 +91,11 @@ export type DocsCollabPrincipalReusePorts = {
 };
 
 /**
- * Attaches a collab room onto live principal data channels (`collab-reuse`
- * envelopes). Call `considerRoster` from the collab poll callback *before*
- * `shouldConnectToPeer` so reuse-hit peers skip ICE.
- *
- * The principal `workspace` room holds every signed-in account, so an envelope
- * arriving on it says nothing about document access. A present C2 ticket is
- * verified for identity. A rostered peer's right is the tighter of that ticket
- * and the live roster row. An unrostered peer is dropped. An envelope with no
- * ticket is still gated by the collab roster, so a mixed-version room keeps
- * syncing. An unrostered `open` that also has no ticket is dropped without an
- * `ack`.
+ * Attaches a collab room onto live principal data channels. Call `considerRoster`
+ * before `shouldConnectToPeer` so a reuse hit skips ICE. The workspace room is
+ * not a document ACL: a present ticket is checked for identity, a rostered peer
+ * keeps the tighter of that ticket and the roster row, and an envelope with no
+ * ticket still has to be on the collab roster.
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
@@ -652,16 +643,25 @@ export class DocsCollabPrincipalReuse {
       return;
     }
     this.log("reuse-defer", { remoteId: peer.id, username, reason: "principal-connecting" });
+    let waits = 0;
     const tick = (): void => {
       const deferred = this.deferredFreshIce.get(username);
       if (!deferred) return;
-      if (this.registry.isConnectingTo(username)) {
+      waits += 1;
+      const stillConnecting = this.registry.isConnectingTo(username);
+      const withinDeadline =
+        waits * this.principalConnectDeferMs < COLLAB_REUSE_PRINCIPAL_CONNECT_DEADLINE_MS;
+      if (stillConnecting && withinDeadline) {
         deferred.timer = this.scheduleTimeout(tick, this.principalConnectDeferMs);
         return;
       }
       this.deferredFreshIce.delete(username);
       if (this.registry.hasOpenLink(username)) return;
-      this.logMiss(deferred.collabPeerId, "no-principal-pc", username);
+      this.logMiss(
+        deferred.collabPeerId,
+        stillConnecting ? "principal-connecting-timeout" : "no-principal-pc",
+        username,
+      );
       this.ports.onReuseFallback?.(deferred.collabPeerId);
       this.ports.onLinkChange();
     };
