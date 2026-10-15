@@ -438,6 +438,13 @@ jobs:
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install yjs for collab round-trip tests
+        run: bash tools/install-api-test-yjs.sh
+
       # PR/push runs only the MySQL parity subset (DB-dialect-relevant tests),
       # split into round-robin shards. The full MySQL suite runs on main +
       # nightly via ci-mysql-full.yml.
@@ -483,6 +490,13 @@ jobs:
         run: |
           cp packages/api/.env.example packages/api/.env
           php packages/api/artisan key:generate --force --no-interaction
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install yjs for collab round-trip tests
+        run: bash tools/install-api-test-yjs.sh
 
       - name: PHPUnit clover
         working-directory: packages/api
