@@ -4,7 +4,6 @@ import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 import { mapTaskProjectGroups } from "@/lib/api/wgw/tasks";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
-import { autofillNoteTitle } from "@/notes-core/src/notes-title-autofill";
 
 export class NotesVjournalRequestError extends Error {
   status: number;
@@ -336,7 +335,7 @@ export function noteFromVjournal(
   const notebook = notebooks.find((item) => item.id === row.notebookId);
   const body = splitBodyParagraphs(row.body ?? "");
   const flat = body.join("\n\n");
-  const title = row.title ?? autofillNoteTitle(row.title, row.body ?? "");
+  const title = row.title == null ? undefined : row.title;
   const metadataUpdatedAt = row.updatedAt;
   // Same display rule as noteFromWgwItem: content mtime, else LAST-MODIFIED/DTSTAMP.
   const displayDate = row.contentUpdatedAt ?? metadataUpdatedAt ?? "—";
@@ -404,13 +403,9 @@ export async function persistNoteMarkdown(
   noteId: string,
   markdown: string,
   etag: string,
-  opts?: { signal?: AbortSignal },
+  opts?: { signal?: AbortSignal; title?: string },
 ): Promise<NotesVjournalNote> {
-  const current = await getNote(noteId, opts);
-  const title = autofillNoteTitle(current.title, markdown);
-  return patchNote(
-    noteId,
-    { body: markdown, ...(title !== current.title ? { title } : {}) },
-    { ...opts, ifMatch: etag },
-  );
+  const patch: { body: string; title?: string } = { body: markdown };
+  if (opts?.title !== undefined) patch.title = opts.title;
+  return patchNote(noteId, patch, { signal: opts?.signal, ifMatch: etag });
 }

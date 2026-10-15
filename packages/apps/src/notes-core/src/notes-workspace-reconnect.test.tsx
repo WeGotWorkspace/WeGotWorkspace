@@ -93,7 +93,9 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     });
 
     expect(getNote).toHaveBeenCalledWith(note.id);
-    expect(persistNoteMarkdown).toHaveBeenCalledWith(note.id, "Local body", '"fresh"');
+    expect(persistNoteMarkdown).toHaveBeenCalledWith(note.id, "Local body", '"fresh"', {
+      title: "Draft",
+    });
     expect(writeNoteCollabOfflineContent).not.toHaveBeenCalled();
     expect(onRefreshList).not.toHaveBeenCalled();
     expect(result.current.getLocalDirty()).toBe(false);

@@ -55,8 +55,11 @@ export type DocsCollabUrls = {
   authUser?: string;
   authPassword?: string;
   documentSaveMethod?: "POST" | "PUT" | "PATCH";
-  /** Notes: persist markdown via REST instead of `/files/collaboration`. */
-  persistMarkdown?: (markdown: string, authToken?: string) => Promise<void>;
+  /**
+   * Notes: persist markdown via REST instead of `/files/collaboration`.
+   * When a Y.Doc is passed, its title text is the `title` field on that PATCH.
+   */
+  persistMarkdown?: (markdown: string, authToken?: string, ydoc?: Y.Doc) => Promise<void>;
   loadDocumentMarkdown?: (authToken?: string) => Promise<string>;
   skipYjsSnapshot?: boolean;
   onPersistForbidden?: () => void;

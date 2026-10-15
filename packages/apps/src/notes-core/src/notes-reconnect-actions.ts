@@ -24,9 +24,16 @@ export function isNotesLocalDirty(input: NotesLocalDirtyInput): boolean {
 export async function keepMineNotesReconnect(input: {
   noteId: string;
   markdown: string;
+  /** Title currently in the doc, when the note is open. Omitted when never set. */
+  title?: string;
 }): Promise<void> {
   const fresh = await getNote(input.noteId);
-  await persistNoteMarkdown(input.noteId, input.markdown, fresh.etag);
+  await persistNoteMarkdown(
+    input.noteId,
+    input.markdown,
+    fresh.etag,
+    input.title !== undefined ? { title: input.title } : undefined,
+  );
 }
 
 /**

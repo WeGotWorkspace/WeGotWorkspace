@@ -115,7 +115,7 @@ export function useDocsCollabSave({
     try {
       const attemptSave = async () => {
         if (urls.persistMarkdown) {
-          await urls.persistMarkdown(markdown, refs.authTokenRef.current);
+          await urls.persistMarkdown(markdown, refs.authTokenRef.current, ydoc);
           return;
         }
         const etag = await saveDocument(
@@ -234,8 +234,10 @@ export function useDocsCollabSave({
     (getMarkdown: () => string) => {
       refs.getMarkdownRef.current = getMarkdown;
       flushPendingSaveIfReady();
+      // A title edit can land before the editor binds its markdown getter.
+      if (refs.localDirtySinceLastSaveRef.current) scheduleSave();
     },
-    [flushPendingSaveIfReady, refs],
+    [flushPendingSaveIfReady, refs, scheduleSave],
   );
 
   const saveNow = useCallback(async () => {

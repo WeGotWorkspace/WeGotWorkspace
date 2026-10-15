@@ -411,7 +411,7 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.visibleNotes.map((note) => note.id)).toContain(createdId);
   });
 
-  it("does not refill SUMMARY after the user blanks the title", () => {
+  it("does not copy the body into the title, and a blank title stays blank", () => {
     const data: NotesUIData = {
       notes: [],
       notebooks: ["Drafts"],
@@ -427,7 +427,7 @@ describe("useNotesController bootstrap sync", () => {
     act(() => {
       result.current.applyLocalBodyMarkdown(createdId, "# Meeting\n\nNotes");
     });
-    expect(result.current.active?.title).toBe("Meeting");
+    expect(result.current.active?.title).toBeUndefined();
 
     act(() => {
       result.current.updateNote(createdId, { title: "" });
