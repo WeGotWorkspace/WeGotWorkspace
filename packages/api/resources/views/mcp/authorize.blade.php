@@ -75,7 +75,7 @@
                                         role="switch"
                                         name="scope[]"
                                         value="{{ $scopeId }}"
-                                        checked
+                                        @checked(! in_array($scopeId, \App\Services\Mcp\McpScopes::consentUncheckedByDefault(), true))
                                         aria-labelledby="{{ $descId }}"
                                     >
                                     <span class="mcp-switch__track" aria-hidden="true"></span>

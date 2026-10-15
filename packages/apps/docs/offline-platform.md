@@ -278,6 +278,29 @@ const username = resolveOfflineUsername("notes", session?.user.username);
 
 Contacts keeps a thin wrapper ([`offline-session.ts`](../src/lib/offline/offline-session.ts)) for back-compat; new apps can call the core helpers directly.
 
+## Where user content lives
+
+A change to what sign-out clears, or to where offline content is stored, starts from this list. The Dexie account database is one of the stores. Note and document bodies live in their own y-indexeddb databases, and an unsaved collab body is not an outbox row.
+
+| Store             | Holds                                                                                                                   | Name                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Account database  | Domain tables, `meta`, and the `outbox`                                                                                 | `wgw-offline-*` ([`offline-db.ts`](../src/lib/offline/core/offline-db.ts))                                                                                                                                                                                                                                                                             |
+| Collab room       | Note and document bodies. Text that has not reached the server is `pendingServerSave` in the y-indexeddb `custom` store | `<room>:v2`, plus the pre-v2 names `<room>` and `/<room>` ([`docsCollabIndexedDbKey`](../src/text-editor-core/docs-collab/docs-collab-persistence.ts), [`docsCollabLegacyIndexedDbKeys`](../src/text-editor-core/docs-collab/docs-collab-persistence.ts), [`PENDING_SERVER_SAVE_KEY`](../src/text-editor-core/docs-collab/pending-server-save-key.ts)) |
+| Offline settings  | Remembered usernames and device content settings                                                                        | `localStorage` keys `wgw.offline.*`                                                                                                                                                                                                                                                                                                                    |
+| Push subscription | The browser `PushSubscription` and its server row                                                                       | one per browser profile                                                                                                                                                                                                                                                                                                                                |
+
+`wgw.ui.*` is interface preference. The Docs outbox records file operations (`create`, `rename`, `trash`, `star`). A collab edit still waiting on the server is only the `pendingServerSave` flag in the room database.
+
+### Member sign-out
+
+[`wgwLogout`](../src/lib/api/wgw/http.ts) clears the stores above on a user-initiated member sign-out. [`/logout`](../src/wegotworkspace/src/wegotworkspace-logout.tsx) counts outbox rows plus collab rooms that still hold `pendingServerSave` on the databases the wipe will delete, and asks before discarding them. The total is device-wide when `indexedDB.databases()` can list every account. When that count cannot be read, the dialog still appears. [`countDiscardedUnsyncedChanges`](../src/lib/offline/core/offline-wipe.ts) opens a collab database only when that listing already contains it, because opening a missing name creates one.
+
+The same sign-out deletes the server push row, then unsubscribes in the browser. A failed step is recorded on the session debug ring and the rest of sign-out continues.
+
+A guest-share sign-out revokes the guest token and leaves the member's databases, collab rooms, and push subscription in place. Refresh failure and refresh expiry clear the session and leave the offline stores in place.
+
+When `indexedDB.databases()` is missing or rejects, the wipe reaches only accounts whose usernames are still in `wgw.offline.*.username`. Collab rooms then come from the notes and docs tables in those databases, so a `:v2` room with no row there survives. On that path the count still opens the derived room names. `deleteDatabase` of a name that does not exist does nothing, so the wipe passes the full derived list.
+
 ## Definition of "ready to ship"
 
 A new offline app is ready when it:
@@ -286,5 +309,6 @@ A new offline app is ready when it:
 2. Implements store / flush / hybrid operations following the closest reference domain (Contacts for patch-merge entities, Notes for entity-list bootstrap, Docs for file-path content).
 3. Uses `satisfies OfflineDomainStore` / `OfflineDomainOperations` adapters for compile-time contract checks (not runtime-enforced).
 4. Reuses core connectivity, hybrid bootstrap, `ConnectivitySyncRunnerRegistry`, outbox coalescing, the conflict channel, and the shell offline indicator — with **no cross-domain coupling**.
+5. Adds any new store of user content to [Where user content lives](#where-user-content-lives), including the member sign-out wipe. A body that lives outside the Dexie account database has to be named there or sign-out will leave it behind.
 
 **Examples:** Notes (app #2) ships with bootstrap sync, reconnect UX, hook tests, and live e2e. Docs (app #3) ships editable text offline via Yjs + y-indexeddb with reconnect flush and pending-sync indicators in the collab workspace.

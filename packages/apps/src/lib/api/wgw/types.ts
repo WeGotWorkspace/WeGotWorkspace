@@ -83,7 +83,6 @@ import type {
   InstallerDbDriver,
   InstallerDbState,
   InstallerRuntimeState,
-  InstallerStateResponse,
   InstallerStep,
 } from "@wgw/openapi-types/installer-types";
 
@@ -305,57 +304,8 @@ export type WgwInstallerDbDriver = InstallerDbDriver;
 export type WgwInstallerDbState = InstallerDbState;
 export type WgwInstallerCheck = InstallerCheck;
 export type WgwInstallerRuntimeState = InstallerRuntimeState;
-export type WgwInstallerStateResponse = InstallerStateResponse;
 export type WgwInstallerBootstrapResponse = InstallerBootstrapResponse;
 export type WgwInstallerAction = InstallerAction;
 export type WgwInstallerActionPayload = InstallerActionPayload;
 export type WgwInstallerActionRequest = InstallerActionRequest;
 export type WgwInstallerActionResponse = InstallerActionResponse;
-
-export type WgwPluginIntegrationConfig = {
-  configGlobal?: string;
-  sessionApiPath?: string;
-  saveTransport?: string;
-  editorPaths?: string[];
-};
-
-export type WgwPluginRuntime = {
-  indexReady: boolean;
-  editorReady: boolean;
-};
-
-export type WgwPluginDriveNewFileTemplate = {
-  id: string;
-  label: string;
-  kind: "doc" | "sheet" | "slides";
-  queryValue: string;
-};
-
-export type WgwPluginDriveConfig = {
-  openFileExtensions?: string[];
-  openFileRoute?: string;
-  openFileQueryParam?: string;
-  newFileTemplates?: WgwPluginDriveNewFileTemplate[];
-};
-
-export type WgwPluginAppTile = {
-  id: string;
-  label: string;
-  route: string;
-  icon?: string;
-};
-
-export type WgwPluginDescriptor = {
-  id: string;
-  name: string;
-  active: boolean;
-  source?: string;
-  drive?: WgwPluginDriveConfig;
-  appTile?: WgwPluginAppTile;
-  integration?: WgwPluginIntegrationConfig;
-  runtime?: WgwPluginRuntime;
-};
-
-export type WgwPluginsResponse = {
-  plugins: WgwPluginDescriptor[];
-};

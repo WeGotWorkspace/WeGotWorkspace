@@ -37,7 +37,6 @@
                 "type": "object",
                 "required": [
                     "access_token",
-                    "refresh_token",
                     "token_type",
                     "expires_in",
                     "refresh_expires_in",
@@ -46,9 +45,6 @@
                 ],
                 "properties": {
                     "access_token": {
-                        "type": "string"
-                    },
-                    "refresh_token": {
                         "type": "string"
                     },
                     "token_type": {
@@ -281,25 +277,6 @@
                     }
                 },
                 "required": [
-                    "state"
-                ]
-            },
-            "InstallerStateResponse": {
-                "type": "object",
-                "properties": {
-                    "installed": {
-                        "type": "boolean"
-                    },
-                    "maintenance": {
-                        "type": "boolean"
-                    },
-                    "state": {
-                        "$ref": "#/components/schemas/InstallerRuntimeState"
-                    }
-                },
-                "required": [
-                    "installed",
-                    "maintenance",
                     "state"
                 ]
             },
@@ -763,6 +740,14 @@
                             "audio"
                         ],
                         "description": "Highest camera profile a sender may use while its selected candidate pair is relayed. Clamped to maxVideoProfile."
+                    },
+                    "debugLogging": {
+                        "type": "boolean",
+                        "description": "Browsers write detailed RTC logs to their console after a reload."
+                    },
+                    "forceRelay": {
+                        "type": "boolean",
+                        "description": "Stored switch. Served to clients only while a TURN relay is configured."
                     }
                 },
                 "required": [
@@ -771,7 +756,9 @@
                     "turnSecretSet",
                     "turnStaticCredentialsPresent",
                     "maxVideoProfile",
-                    "maxVideoProfileRelay"
+                    "maxVideoProfileRelay",
+                    "debugLogging",
+                    "forceRelay"
                 ]
             },
             "AdminAppsSettings": {
@@ -782,11 +769,33 @@
                     },
                     "contacts": {
                         "type": "boolean"
+                    },
+                    "tasks": {
+                        "type": "boolean",
+                        "description": "When false, Tasks is disabled for this instance."
+                    },
+                    "imipExternalEnabled": {
+                        "type": "boolean",
+                        "description": "When false, Calendar does not email new invitations to people outside this instance. Updates to people already invited, cancellation notices, and RSVP replies still send."
+                    },
+                    "imipHourlyLimit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum outbound invitation emails per user per hour. Clamped to the daily limit."
+                    },
+                    "imipDailyLimit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Maximum outbound invitation emails per user per day. Defaults to 300."
                     }
                 },
                 "required": [
                     "calendars",
-                    "contacts"
+                    "contacts",
+                    "tasks",
+                    "imipExternalEnabled",
+                    "imipHourlyLimit",
+                    "imipDailyLimit"
                 ]
             },
             "AdminWebdavSettings": {
@@ -1399,6 +1408,11 @@
                     },
                     "password": {
                         "type": "string"
+                    },
+                    "currentPassword": {
+                        "type": "string",
+                        "maxLength": 4096,
+                        "description": "Current password. Required when password or email is changed."
                     }
                 },
                 "example": {
@@ -3090,94 +3104,6 @@
                 "required": [
                     "ok",
                     "delivered"
-                ]
-            },
-            "PluginRuntime": {
-                "type": "object",
-                "properties": {
-                    "indexReady": {
-                        "type": "boolean"
-                    },
-                    "editorReady": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "indexReady",
-                    "editorReady"
-                ]
-            },
-            "PluginIntegration": {
-                "type": "object",
-                "properties": {
-                    "configGlobal": {
-                        "type": "string"
-                    },
-                    "sessionApiPath": {
-                        "type": "string"
-                    },
-                    "saveTransport": {
-                        "type": "string"
-                    },
-                    "editorPaths": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "PluginDescriptor": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "active": {
-                        "type": "boolean"
-                    },
-                    "source": {
-                        "type": "string"
-                    },
-                    "runtime": {
-                        "$ref": "#/components/schemas/PluginRuntime"
-                    },
-                    "integration": {
-                        "$ref": "#/components/schemas/PluginIntegration"
-                    }
-                },
-                "required": [
-                    "id",
-                    "name",
-                    "active"
-                ]
-            },
-            "PluginsResponse": {
-                "type": "object",
-                "properties": {
-                    "plugins": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/PluginDescriptor"
-                        }
-                    }
-                },
-                "required": [
-                    "plugins"
-                ]
-            },
-            "PluginSessionResponse": {
-                "type": "object",
-                "properties": {
-                    "ok": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "ok"
                 ]
             },
             "HomeStateResponse": {
@@ -10218,7 +10144,8 @@
                 "type": "object",
                 "required": [
                     "httpsUrl",
-                    "webcalUrl"
+                    "webcalUrl",
+                    "mode"
                 ],
                 "additionalProperties": false,
                 "description": "Owner-visible published ICS/webcal feed URLs for an owned personal calendar.",
@@ -10231,6 +10158,14 @@
                     "webcalUrl": {
                         "type": "string",
                         "description": "Same feed advertised as webcal:// for calendar clients."
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "full",
+                            "busy"
+                        ],
+                        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
                     }
                 }
             },
@@ -11295,7 +11230,8 @@
                     "clientName",
                     "clientOrigin",
                     "connectedAt",
-                    "scopes"
+                    "scopes",
+                    "shareCalls"
                 ],
                 "properties": {
                     "clientId": {
@@ -11321,6 +11257,13 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "shareCalls": {
+                        "type": "array",
+                        "description": "Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first.",
+                        "items": {
+                            "$ref": "#/components/schemas/SettingsMcpShareCall"
+                        }
                     }
                 }
             },
@@ -11961,7 +11904,9 @@
                         "type": "object",
                         "required": [
                             "stunUrls",
-                            "turnAvailable"
+                            "turnAvailable",
+                            "forceRelay",
+                            "debug"
                         ],
                         "properties": {
                             "stunUrls": {
@@ -11971,6 +11916,14 @@
                             "turnAvailable": {
                                 "type": "boolean",
                                 "description": "True when a relay secret is configured. Credentials are never part of this response."
+                            },
+                            "forceRelay": {
+                                "type": "boolean",
+                                "description": "Every peer connection uses the relay only. Never true without a configured relay."
+                            },
+                            "debug": {
+                                "type": "boolean",
+                                "description": "Write detailed RTC logs to the browser console."
                             }
                         }
                     },
@@ -12429,6 +12382,59 @@
                         "$ref": "#/components/schemas/RtcPollResponse"
                     }
                 ]
+            },
+            "AdminAppUrlSaveRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "url"
+                ],
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "Public http or https address. The path may be empty or the install base. No user info or query."
+                    }
+                }
+            },
+            "CalendarFeedPublishRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "Optional publish mode. Omitted mode leaves an existing feed unchanged and creates a new feed as full.",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            "full",
+                            "busy"
+                        ],
+                        "description": "full strips people, alarms, and private details. busy publishes every event as a Busy placeholder."
+                    }
+                }
+            },
+            "SettingsMcpShareCall": {
+                "type": "object",
+                "required": [
+                    "tool",
+                    "outcome",
+                    "createdAt"
+                ],
+                "properties": {
+                    "tool": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "target": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                }
             }
         },
         "responses": {
@@ -12574,7 +12580,15 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Token issued",
+                        "description": "Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12604,28 +12618,18 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Refresh access token using refresh token",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "refresh_token"
-                                ],
-                                "properties": {
-                                    "refresh_token": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                "summary": "Refresh access token using the HttpOnly refresh cookie",
                 "responses": {
                     "200": {
-                        "description": "Refreshed token pair",
+                        "description": "Refreshed token pair. The JSON body has no refresh_token; the rotated token is Set-Cookie.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12638,7 +12642,15 @@
                         "description": "Invalid request"
                     },
                     "401": {
-                        "description": "Unauthorized"
+                        "description": "Unauthorized. The response expires wgw_refresh so a dead token is not presented again.",
+                        "headers": {
+                            "Set-Cookie": {
+                                "description": "Clears the wgw_refresh cookie (expired, empty value, same path and SameSite=Strict).",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -12649,27 +12661,12 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Revoke current access token and/or refresh token",
+                "summary": "Revoke current access token and the HttpOnly refresh cookie",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "refresh_token": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "Revocation result"
@@ -12936,6 +12933,16 @@
                         "bearerAuth": []
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SettingsProfileRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Updated settings state",
@@ -13883,119 +13890,6 @@
                 }
             }
         },
-        "/plugins": {
-            "get": {
-                "tags": [
-                    "Plugins"
-                ],
-                "summary": "List discovered plugins and capabilities",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Plugin registry snapshot"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/plugins/{id}/activate": {
-            "post": {
-                "tags": [
-                    "Plugins"
-                ],
-                "summary": "Activate a plugin",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Plugin activated"
-                    },
-                    "404": {
-                        "description": "Plugin not found"
-                    }
-                }
-            }
-        },
-        "/plugins/{id}/deactivate": {
-            "post": {
-                "tags": [
-                    "Plugins"
-                ],
-                "summary": "Deactivate a plugin",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Plugin deactivated"
-                    },
-                    "404": {
-                        "description": "Plugin not found"
-                    }
-                }
-            }
-        },
-        "/plugins/{id}/session": {
-            "post": {
-                "tags": [
-                    "Plugins"
-                ],
-                "summary": "Establish browser UI session cookie for a plugin surface",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Session established"
-                    },
-                    "404": {
-                        "description": "Plugin not found"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/meet/join": {
             "post": {
                 "tags": [
@@ -14144,20 +14038,6 @@
                         }
                     }
                 }
-            }
-        },
-        "/installer/state": {
-            "get": {
-                "tags": [
-                    "Installer"
-                ],
-                "summary": "Installer summary and current state snapshot",
-                "responses": {
-                    "200": {
-                        "description": "Installer state"
-                    }
-                },
-                "x-wgw-access": "guest"
             }
         },
         "/installer/bootstrap": {
@@ -14510,25 +14390,6 @@
                     },
                     "404": {
                         "description": "Group not found"
-                    }
-                },
-                "x-wgw-access": "admin"
-            }
-        },
-        "/admin/plugins": {
-            "post": {
-                "tags": [
-                    "Admin"
-                ],
-                "summary": "Install plugin",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Installed"
                     }
                 },
                 "x-wgw-access": "admin"
@@ -14926,7 +14787,7 @@
                         "name": "If-Match",
                         "in": "header",
                         "required": false,
-                        "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on.",
+                        "description": "Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. A yjs write that sends neither this header nor `If-None-Match` is refused with 428 when a sidecar already exists.",
                         "schema": {
                             "type": "string"
                         }
@@ -14985,6 +14846,16 @@
                     },
                     "413": {
                         "description": "`payload_too_large`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "428": {
+                        "description": "A yjs write over an existing sidecar carried neither If-Match nor If-None-Match",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -15438,35 +15309,6 @@
                     },
                     "404": {
                         "description": "Not reserved"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/plugins/{id}/activation": {
-            "put": {
-                "tags": [
-                    "Plugins"
-                ],
-                "summary": "Set plugin activation",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated"
                     }
                 },
                 "x-wgw-access": "user"
@@ -18297,7 +18139,7 @@
                     "Calendars"
                 ],
                 "summary": "Publish a calendar as an ICS / webcal feed",
-                "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.",
+                "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18313,6 +18155,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CalendarFeedPublishRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Existing published feed URLs",
@@ -20512,39 +20364,90 @@
                 "x-wgw-access": "admin"
             }
         },
-        "/admin/plugins/{id}/activation": {
+        "/admin/settings/app-url": {
             "put": {
                 "tags": [
                     "Admin"
                 ],
-                "summary": "Set plugin activation",
+                "summary": "Set APP_URL from an admin-confirmed address",
                 "security": [
                     {
                         "bearerAuth": []
                     }
                 ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminAppUrlSaveRequest"
+                            }
                         }
                     }
-                ],
+                },
                 "responses": {
                     "200": {
-                        "description": "Updated"
+                        "description": "APP_URL saved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminAppUrlSaveRequest"
+                                }
+                            }
+                        }
                     },
-                    "403": {
-                        "description": "Admin role required"
+                    "409": {
+                        "description": "Environment file is not writable"
                     },
-                    "404": {
-                        "description": "Plugin not found"
+                    "422": {
+                        "description": "Address is not http or https, or includes user info, a query, or a path other than the install base"
                     }
                 },
                 "x-wgw-access": "admin"
+            }
+        },
+        "/csp-reports": {
+            "post": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Accept a Content-Security-Policy report",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/csp-report": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Report accepted"
+                    },
+                    "413": {
+                        "description": "Report larger than 8 KiB",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many reports from this address"
+                    }
+                },
+                "x-wgw-access": "guest"
             }
         }
     }

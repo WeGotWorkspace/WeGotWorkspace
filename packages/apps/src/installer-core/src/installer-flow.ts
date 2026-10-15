@@ -61,10 +61,33 @@ export function buildInstallerSitePayload(
   };
 }
 
+/** True when the address is http(s), has a host, and its path is empty or the install base. */
+export function isInstallerAppUrlAcceptable(value: string, installBase = "/"): boolean {
+  const trimmed = value.trim();
+  if (trimmed === "" || /[\s\\@?#]/.test(trimmed)) return false;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  if (url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
+    return false;
+  }
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const base =
+    installBase.trim() === "" || installBase.trim() === "/"
+      ? "/"
+      : `/${installBase.trim().replace(/^\/+|\/+$/g, "")}`;
+  return path === "/" || path === base;
+}
+
 export function buildInstallerInstallPayload(
   username: string,
   password: string,
   email: string,
+  appUrl: string,
 ): InstallerInstallPayload {
   return {
     username,
@@ -72,6 +95,7 @@ export function buildInstallerInstallPayload(
     email: email.trim(),
     password,
     password_confirm: password,
+    app_url: appUrl.trim(),
     mail_enabled: false,
     mail_imap_host: "",
     mail_imap_port: "993",
@@ -109,7 +133,7 @@ export function buildInstallerDatabasePayload(
 }
 
 export function isUsernameTakenError(message: string): boolean {
-  return /taken|already exists/i.test(message);
+  return /username/i.test(message) && /taken|already exists/i.test(message);
 }
 
 /** Turn a raw installer/PDO failure into a short line for the Database screen. */

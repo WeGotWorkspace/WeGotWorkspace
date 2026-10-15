@@ -131,7 +131,7 @@ final class DriveShareByPrincipalTest extends WgwDatabaseTestCase
         $this->assertNotNull($grant);
 
         $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
-            'inviteToken' => (string) $grant->invite_token,
+            'inviteToken' => (string) $grant->invite_token_cipher,
         ])->assertOk();
 
         $response = $this->withBearer($this->ownerToken)->getJson(
@@ -166,7 +166,7 @@ final class DriveShareByPrincipalTest extends WgwDatabaseTestCase
         $this->assertNotNull($grant);
 
         $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
-            'inviteToken' => (string) $grant->invite_token,
+            'inviteToken' => (string) $grant->invite_token_cipher,
         ])->assertOk();
 
         $response = $this->withBearer($this->ownerToken)->getJson(

@@ -1,5 +1,4 @@
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
-import { fetchWgwPlugins } from "@/lib/api/wgw/plugins";
 import type { WgwSettingsStateResponse } from "@/lib/api/wgw/types";
 
 /** Same principal URI the API uses for admin role (`AdminRoleResolver::ADMIN_GROUP_URI`). */
@@ -19,13 +18,6 @@ export type WeGotWorkspaceHomeState = {
   showTasks: boolean;
   userDisplayName: string;
   showUserMenu: boolean;
-  pluginAppTiles: {
-    id: string;
-    label: string;
-    route: string;
-    icon?: string;
-    sessionApiPath?: string;
-  }[];
 };
 
 export const MOCK_HOME_STATE: WeGotWorkspaceHomeState = {
@@ -35,7 +27,6 @@ export const MOCK_HOME_STATE: WeGotWorkspaceHomeState = {
   showTasks: true,
   userDisplayName: "Demo User",
   showUserMenu: true,
-  pluginAppTiles: [],
 };
 
 export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHomeState> {
@@ -44,17 +35,7 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
   }
 
   try {
-    const [settingsRes, plugins] = await Promise.all([
-      wgwFetch("/settings/state"),
-      fetchWgwPlugins().catch(() => []),
-    ]);
-    const pluginAppTiles = plugins
-      .filter((plugin) => plugin.active && plugin.appTile)
-      .map((plugin) => ({
-        ...plugin.appTile!,
-        sessionApiPath: plugin.integration?.sessionApiPath,
-      }));
-    const res = settingsRes;
+    const res = await wgwFetch("/settings/state");
     if (!res.ok) {
       return {
         showAdmin: false,
@@ -63,7 +44,6 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
         showTasks: true,
         userDisplayName: "User",
         showUserMenu: false,
-        pluginAppTiles,
       };
     }
     const state = (await wgwReadJson(res)) as WgwSettingsStateResponse & {
@@ -78,7 +58,6 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
       showTasks: state.apps?.tasks !== false,
       userDisplayName,
       showUserMenu,
-      pluginAppTiles,
     };
   } catch {
     return {
@@ -88,7 +67,6 @@ export async function fetchWeGotWorkspaceHomeState(): Promise<WeGotWorkspaceHome
       showTasks: true,
       userDisplayName: "User",
       showUserMenu: false,
-      pluginAppTiles: [],
     };
   }
 }

@@ -1,16 +1,16 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/use-docs-collab-save";
+import {
+  applyContentSeedToYDoc,
+  readContentFromYDoc,
+} from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import {
-  applyContentSeedToYDoc,
-  readContentFromYDoc,
-} from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
+import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
 export function noteCollabRoomKey(uid: string): string {

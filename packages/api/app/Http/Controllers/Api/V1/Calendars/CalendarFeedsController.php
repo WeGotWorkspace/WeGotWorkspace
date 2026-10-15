@@ -28,7 +28,7 @@ final class CalendarFeedsController
     public function store(Request $request, string $calendarId): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $result = $this->feeds->publish($principal['username'], $calendarId);
+        $result = $this->feeds->publish($principal['username'], $calendarId, $request->json()->all());
 
         return (new CalendarFeedResource($result['feed']))
             ->response()

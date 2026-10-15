@@ -1,4 +1,4 @@
-import { applyRtcDebugOverrides } from "@/lib/rtc/force-relay";
+import { MeshRtcSettings } from "@/lib/rtc/session/mesh-rtc-settings";
 import { rtcLog } from "@/lib/rtc/log";
 import { applyTurnOnPeerConnection } from "@/lib/rtc/session/apply-turn";
 import type { NetClass } from "@/lib/rtc/net-probe";
@@ -17,6 +17,7 @@ import { piggybackPoll } from "@/lib/rtc/session/send-piggyback";
 import {
   applyPeerHint as applyIncomingPeerHint,
   dialRoomPeers as dialListedRoomPeers,
+  PRINCIPAL_FAILED_RETRY_MS,
   retryRoomPeer,
   retryRoomPeerConnections as retryUnconnectedRoomPeers,
 } from "@/lib/rtc/session/mesh-room-dial";
@@ -37,6 +38,7 @@ import {
   type MeshSdpExchange,
 } from "@/lib/rtc/session/mesh-sdp-exchange";
 import { MeshSignalInbox } from "@/lib/rtc/session/mesh-signal-inbox";
+import { isInvalidPeerError, isUnknownPeerError } from "@/lib/rtc/session/mesh-signal-errors";
 import { wirePeerConnectionListeners } from "@/lib/rtc/session/peer-connection-listeners";
 import {
   defaultVisibilityPort,
@@ -87,6 +89,8 @@ export class RtcPeerMesh {
    */
   private sessionEpoch = 0;
 
+  private leaveEpoch = 0;
+
   private activeEpoch = 0;
 
   private localNet: NetClass | undefined;
@@ -105,16 +109,18 @@ export class RtcPeerMesh {
 
   private readonly metrics: SessionMetricsReporter;
 
+  private readonly settings: MeshRtcSettings;
   private readonly options: RtcPeerMeshOptions;
 
   constructor(options: RtcPeerMeshOptions) {
-    // Meet, collab, and principal all honor `?rtcForceRelay=1`. Principal used
-    // to clear the flag, so its peer connection stayed on `iceTransportPolicy: all`.
-    const rtcSettings =
-      options.channel === "meet" || options.channel === "collab" || options.channel === "principal"
-        ? applyRtcDebugOverrides(options.rtcSettings)
-        : options.rtcSettings;
-    this.options = { ...options, rtcSettings };
+    this.options = options;
+    this.settings = new MeshRtcSettings({
+      channel: options.channel,
+      initial: options.rtcSettings,
+      refresh: options.refreshRtcSettings,
+      onApplied: options.onRtcSettings,
+      log: (event, details) => this.log(event, details),
+    });
     this.peers = new MeshPeerRegistry(options.binding, (remoteId, error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.log("send-failed", { remoteId, message });
@@ -122,7 +128,7 @@ export class RtcPeerMesh {
     });
     this.dialer = new MeshPeerDialer({
       channel: options.channel,
-      rtcSettings: this.options.rtcSettings,
+      rtcSettings: () => this.settings.current(),
       binding: options.binding,
       iceCandidatePoolSize: options.iceCandidatePoolSize,
       peers: this.peers,
@@ -178,8 +184,7 @@ export class RtcPeerMesh {
       onPoll: (data) => this.onPoll(data),
       pollIntervals: () => this.pollIntervals(),
       cadence: () => this.pollCadenceSnapshot(),
-      shouldRecover: (error) =>
-        Boolean(options.recoverOnUnknownPeer && this.isUnknownPeerError(error)),
+      shouldRecover: (error) => Boolean(options.recoverOnUnknownPeer && isUnknownPeerError(error)),
       recover: () => this.recoverUnknownPeer(),
       onPollError: options.onPollError,
       onPollRoundTrip: (elapsedMs) => this.metrics.notePollRtt(elapsedMs),
@@ -256,34 +261,23 @@ export class RtcPeerMesh {
     return this.peers.linkCount();
   }
 
-  broadcastJson(message: unknown): void {
-    this.peers.broadcastJson(message);
+  broadcastJson(message: unknown, payload?: Uint8Array): void {
+    this.peers.broadcastJson(message, payload);
   }
 
-  sendJsonTo(remoteId: string, message: unknown): void {
-    this.peers.sendJsonTo(remoteId, message);
-  }
-
-  private isUnknownPeerError(error: unknown): boolean {
-    if (!(error instanceof Error)) return false;
-    return error.message.includes("unknown_peer");
-  }
-
-  private isInvalidPeerError(error: unknown): boolean {
-    if (!(error instanceof Error)) return false;
-    return error.message.includes("invalid_peer");
+  sendJsonTo(remoteId: string, message: unknown, payload?: Uint8Array): void {
+    this.peers.sendJsonTo(remoteId, message, payload);
   }
 
   private handleRemoteSignalError(remoteId: string, error: unknown): void {
-    if (this.options.recoverOnUnknownPeer && this.isUnknownPeerError(error)) {
+    if (this.options.recoverOnUnknownPeer && isUnknownPeerError(error)) {
       void this.recoverUnknownPeer();
       return;
     }
-    if (this.isInvalidPeerError(error)) {
-      this.droppedGhostIds.add(remoteId);
-      this.removePeer(remoteId, "roster");
-      this.log("peer-skipped", { remoteId, reason: "invalid-peer-signal" });
-    }
+    if (!isInvalidPeerError(error)) return;
+    this.droppedGhostIds.add(remoteId);
+    this.removePeer(remoteId, "roster");
+    this.log("peer-skipped", { remoteId, reason: "invalid-peer-signal" });
   }
 
   private notifyLinkChange(): void {
@@ -307,7 +301,7 @@ export class RtcPeerMesh {
   }
 
   kickPoll(): void {
-    this.schedulePoll(false);
+    this.pollLoop.kick();
   }
 
   /** Collab mailbox send (`yjs` / `yjs-sv`). Piggybacked rows still hit the poll. */
@@ -328,7 +322,7 @@ export class RtcPeerMesh {
     if (pc) {
       applyTurnOnPeerConnection(
         pc,
-        this.options.rtcSettings,
+        this.settings.current(),
         turn,
         this.options.iceCandidatePoolSize,
       );
@@ -421,20 +415,19 @@ export class RtcPeerMesh {
     this.metrics.noteFailedPair();
     if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
-      this.droppedGhostIds.add(remoteId);
       this.removePeer(remoteId, "roster");
       this.log("peer-skipped", { remoteId, reason: "connect-failed" });
+      this.scheduleTimeout(() => this.retryPeerConnection(remoteId), PRINCIPAL_FAILED_RETRY_MS);
     }
     this.options.onConnectionFailed?.(remoteId, entry.name);
   }
 
   /**
-   * Principal still collapses a reloaded tab into one peer. Collab does not:
-   * two devices of the same user are both live, and a same-browser reload is
-   * evicted by `browserId` on the server.
+   * No channel collapses peers by user any more. The server evicts a reloaded
+   * tab by browser id, and two browsers of one user are both live.
    */
   private collapseIdentityOnPoll(): boolean {
-    return this.options.channel === "principal";
+    return false;
   }
 
   private async onPoll(data: HttpSignalingPollResult): Promise<void> {
@@ -577,7 +570,7 @@ export class RtcPeerMesh {
       this.lastRosterSig = null;
       const joined = await this.signalingJoin(previousPeerId ?? undefined);
       this.myId = joined.peerId ?? previousPeerId ?? null;
-      if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+      await this.adoptSessionKey(joined.sessionKey);
       await this.prepareRelay();
       await this.onPoll({ peers: joined.peers, messages: [], ticket: joined.ticket });
       this.log("peer-recover-success", { previousPeerId, peerId: this.myId });
@@ -595,18 +588,25 @@ export class RtcPeerMesh {
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
     ticket?: string;
+    superseded?: true;
   }> {
     const key = `${this.options.channel}\0${this.options.room}`;
-    return enqueueMeshJoin(key, () => this.joinSerialized(input));
+    const queuedLeaveEpoch = this.leaveEpoch;
+    return enqueueMeshJoin(key, () => this.joinSerialized(input, queuedLeaveEpoch));
   }
 
-  private async joinSerialized(input: { name: string; peerId?: string }): Promise<{
+  private async joinSerialized(
+    input: { name: string; peerId?: string },
+    queuedLeaveEpoch: number,
+  ): Promise<{
     peerId: string;
     peers: RtcPeerDescriptor[];
     sessionKey?: string | null;
     limits?: HttpSignalingJoinResult["rtc"];
     ticket?: string;
+    superseded?: true;
   }> {
+    if (queuedLeaveEpoch !== this.leaveEpoch) return { peerId: "", peers: [], superseded: true };
     this.myName = input.name.trim();
     if (!this.myName) throw new Error("Display name is required");
     const epoch = ++this.sessionEpoch;
@@ -627,13 +627,13 @@ export class RtcPeerMesh {
           // The next join must not overlap a peer this attempt already created.
         }
       }
-      return { peerId: peerId ?? "", peers: [] };
+      return { peerId: peerId ?? "", peers: [], superseded: true };
     }
     this.myId = joined.peerId ?? input.peerId ?? null;
     if (!this.myId) throw new Error("Signaling join did not return peerId");
-    if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    await this.adoptSessionKey(joined.sessionKey);
     await this.prepareRelay();
-    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [] };
+    if (epoch !== this.sessionEpoch) return { peerId: this.myId, peers: [], superseded: true };
     this.lastRosterSig = null;
     this.log("join-response", {
       peerId: this.myId,
@@ -657,7 +657,7 @@ export class RtcPeerMesh {
     this.ensureConnectivity();
     const net =
       this.options.channel === "meet" || this.options.channel === "collab"
-        ? await netClassForJoin(this.options.rtcSettings)
+        ? await netClassForJoin(this.settings.current())
         : undefined;
     if (net) this.localNet = net;
     return this.options.signaling.join({
@@ -698,6 +698,7 @@ export class RtcPeerMesh {
       kickPoll: () => this.schedulePoll(false),
       log: (event, details) => this.log(event, details),
       sessionKey: () => this.sessionKey,
+      rtcSettings: () => this.settings.current(),
       onIceRestart: () => this.metrics.noteIceRestart(),
     };
   }
@@ -715,6 +716,12 @@ export class RtcPeerMesh {
     this.networkUnsubscribe = bindNetworkRecovery(hostFromSurface(this.surface()), this.recovery);
   }
 
+  private async adoptSessionKey(sessionKey: string | null | undefined): Promise<void> {
+    if (typeof sessionKey !== "string") return;
+    this.sessionKey = sessionKey;
+    await this.settings.adoptSessionKey(sessionKey);
+  }
+
   getSessionKey(): string | null {
     return this.sessionKey;
   }
@@ -728,7 +735,7 @@ export class RtcPeerMesh {
     if (!trimmed || !this.myId) return;
     this.myName = trimmed;
     const joined = await this.signalingJoin(this.myId);
-    if (typeof joined.sessionKey === "string") this.sessionKey = joined.sessionKey;
+    await this.adoptSessionKey(joined.sessionKey);
     // Admit drops the knocker name. Mint force-relay TURN now, before this
     // poll creates the first peer connection. A lobby precheck was denied.
     await this.prepareRelay();
@@ -754,6 +761,7 @@ export class RtcPeerMesh {
   }
 
   async leave(): Promise<void> {
+    this.leaveEpoch += 1;
     this.sessionEpoch += 1;
     this.metrics.flush();
     this.stopPolling();

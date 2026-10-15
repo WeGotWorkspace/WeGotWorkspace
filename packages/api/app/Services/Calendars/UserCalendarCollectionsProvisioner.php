@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
@@ -18,7 +19,10 @@ use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
  */
 final class UserCalendarCollectionsProvisioner
 {
-    public function __construct(private readonly InboxTaskListProvisioner $inboxProvisioner) {}
+    public function __construct(
+        private readonly InboxTaskListProvisioner $inboxProvisioner,
+        private readonly WgwCalendarBackendFactory $backends,
+    ) {}
 
     /**
      * @return array{scanned: int, created: int, skipped: int}
@@ -73,7 +77,7 @@ final class UserCalendarCollectionsProvisioner
         ];
 
         foreach ($eventCollections as [$uri, $displayName]) {
-            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VEVENT'], $existingUris)) {
+            if ($this->ensureCalendar(CollectionKind::EventCalendar, $principalUri, $uri, $displayName, ['VEVENT'], $existingUris)) {
                 $created++;
             }
         }
@@ -91,13 +95,13 @@ final class UserCalendarCollectionsProvisioner
         ];
 
         foreach ($taskCollections as [$uri, $displayName]) {
-            if ($this->ensureCalendar($caldav, $principalUri, $uri, $displayName, ['VTODO'], $existingUris)) {
+            if ($this->ensureCalendar(CollectionKind::TaskList, $principalUri, $uri, $displayName, ['VTODO'], $existingUris)) {
                 $created++;
             }
         }
 
         if ($this->ensureCalendar(
-            $caldav,
+            CollectionKind::Notebook,
             $principalUri,
             CalendarCollectionUris::NOTE_GENERAL,
             'General',
@@ -155,11 +159,11 @@ final class UserCalendarCollectionsProvisioner
         $name = trim($displayName) !== '' ? trim($displayName) : $slug;
 
         $created = false;
-        if ($this->ensureCalendar($caldav, $groupPrincipalUri, $slug, $name, ['VEVENT'], $existingUris)) {
+        if ($this->ensureCalendar(CollectionKind::EventCalendar, $groupPrincipalUri, $slug, $name, ['VEVENT'], $existingUris)) {
             $created = true;
         }
         if ($this->ensureCalendar(
-            $caldav,
+            CollectionKind::TaskList,
             $groupPrincipalUri,
             CalendarCollectionUris::groupTaskListCalDavUri($slug),
             $name,
@@ -169,7 +173,7 @@ final class UserCalendarCollectionsProvisioner
             $created = true;
         }
         if ($this->ensureCalendar(
-            $caldav,
+            CollectionKind::Notebook,
             $groupPrincipalUri,
             CalendarCollectionUris::groupNotebookCalDavUri($slug),
             $name,
@@ -187,7 +191,7 @@ final class UserCalendarCollectionsProvisioner
      * @param  array<string, true>  $existingUris
      */
     private function ensureCalendar(
-        CalPDO $caldav,
+        CollectionKind $kind,
         string $principalUri,
         string $uri,
         string $displayName,
@@ -198,7 +202,7 @@ final class UserCalendarCollectionsProvisioner
             return false;
         }
 
-        $caldav->createCalendar($principalUri, $uri, [
+        $this->backends->make()->createCollection($kind, $principalUri, $uri, [
             '{DAV:}displayname' => $displayName,
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet($components),
             CalendarColorPalette::PROPERTY => CalendarColorPalette::forUri($uri),

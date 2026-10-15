@@ -29,7 +29,6 @@ export function useAdminController({
     users: shell.users,
     currentUser: shell.currentUser,
     groups: shell.groups,
-    plugins: shell.plugins,
     updates: shell.updates,
     searchReindex: shell.searchReindex,
     updateLogLines: shell.updateLogLines,

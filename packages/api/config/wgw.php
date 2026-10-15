@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Services\Installer\WgwInstallEnv;
 use App\Support\ApiUrlBuilder;
 use App\Support\UpdateFeedDefaults;
@@ -10,6 +9,8 @@ use App\Support\UpdateFeedDefaults;
 return [
     'install_root' => env('WGW_APP_ROOT'),
     'data_dir' => env('WGW_DATA_DIR'),
+    /** True while the current wgw connection came from an installer probe, not runtime env. */
+    'installer_db_applied' => false,
     'update_feed_url' => env('WGW_UPDATE_FEED_URL', UpdateFeedDefaults::MANIFEST_URL),
 
     /**
@@ -56,15 +57,6 @@ return [
 
     'auth_realm' => env('WGW_AUTH_REALM', 'SabreDAV'),
 
-    'chat' => [
-        /**
-         * CalDAV collection URI prefixes hidden from DAV enumeration and direct
-         * DAV access (see {@see ChatHiddenCalendarBackend}).
-         * Chat collections are API-only surfaces; notes stay DAV-visible by design.
-         */
-        'dav_hidden_prefixes' => ['chat-', 'dm-', 'docs-threads'],
-    ],
-
     'jwt' => [
         'issuer' => env('WGW_API_JWT_ISSUER', 'wegotworkspace-api'),
         'audience' => env('WGW_API_JWT_AUDIENCE', 'wegotworkspace-clients'),
@@ -95,6 +87,17 @@ return [
          * A cached config or route file ignores this env (see WithMailClientEnabled).
          */
         'client_enabled' => filter_var(env('WGW_MAIL_CLIENT_ENABLED', false), FILTER_VALIDATE_BOOL),
+    ],
+
+    'plugins' => [
+        /**
+         * Unsupported in v0.9 (beta). Installable UI plugins: registry, ZIP install,
+         * activation, and plugin HTML/asset serving under the manifest appTile.route.
+         * Default off: those routes are absent from OpenAPI, the front controller does not
+         * match plugin paths, and the UI does not mount a Plugins pane.
+         * A cached config or route file ignores this env (see WithPluginsEnabled).
+         */
+        'enabled' => filter_var(env('WGW_PLUGINS_ENABLED', false), FILTER_VALIDATE_BOOL),
     ],
 
     /**
@@ -135,7 +138,7 @@ return [
      */
     'rtc' => [
         'prune_one_in' => (int) env('WGW_RTC_PRUNE_ONE_IN', 20),
-        'turn_ttl_seconds' => (int) env('WGW_RTC_TURN_TTL_SECONDS', 3600),
+        'turn_ttl_seconds' => env('WGW_RTC_TURN_TTL_SECONDS', 3600),
         // Per signed-in actor. The relay e2e suite shares one admin across
         // Meet, Docs, and refresh inside a minute, so that process raises this.
         'relay_requests_per_minute' => (int) env('WGW_RTC_RELAY_REQUESTS_PER_MINUTE', 6),

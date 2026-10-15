@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import {
+  BINARY_FRAME_BYTES,
+  BINARY_FRAME_HEADER_BYTES,
   DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES,
   decodeBinaryFrame,
+  encodeBinaryFrames,
+  FrameReassembler,
+  MAX_MESSAGE_FRAMES,
+  MAX_PENDING_BYTES_PER_REMOTE,
+  PENDING_MESSAGE_TTL_MS,
 } from "@/lib/rtc/session/data-channel-frames";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 
@@ -75,26 +82,27 @@ function messageByteLength(data: string | Uint8Array | ArrayBuffer): number {
   return data.byteLength;
 }
 
-/** JSON number-array of a Yjs update, about 300 KB — over the 256 KiB cap. */
-function largeSyncMessage(): { message: { type: "sync"; u: number[] }; json: string } {
-  const u = new Array(75_000).fill(200);
-  const message = { type: "sync" as const, u };
-  return { message, json: JSON.stringify(message) };
+type ReceivedMessage = { json: string; payload: Uint8Array | null };
+
+/** Raw tail about 300 KB — over the 256 KiB SCTP cap when sent as one message. */
+function largeSyncPayload(): Uint8Array {
+  const payload = new Uint8Array(300_000);
+  payload.fill(200);
+  return payload;
 }
 
 describe("large Yjs state over a capped data channel", () => {
   it("delivers a ~300 KB update to the second peer in frames of 16 KiB or less", async () => {
-    const { message, json } = largeSyncMessage();
-    expect(json.length).toBeGreaterThan(MAX_SCTP_MESSAGE_BYTES);
-    expect(json.length).toBeGreaterThan(290_000);
-    expect(json.length).toBeLessThan(310_000);
+    const payload = largeSyncPayload();
+    const header = { type: "sync", bin: 1 };
+    expect(payload.byteLength).toBeGreaterThan(MAX_SCTP_MESSAGE_BYTES);
 
-    const received: string[] = [];
+    const received: ReceivedMessage[] = [];
     const channel = createCappedChannel();
     const binding = createDataBinding({
       label: "collab",
-      onMessage: (_remoteId, data) => {
-        received.push(data);
+      onMessage: (_remoteId, json, tail) => {
+        received.push({ json, payload: tail });
       },
     });
     const pc = {
@@ -113,14 +121,13 @@ describe("large Yjs state over a capped data channel", () => {
       signalSent: true,
       dataChannel: attached,
     };
-    entry.caps = ["bin"];
     registry.add("peer-b", entry);
 
-    registry.sendJsonTo("peer-b", message);
+    registry.sendJsonTo("peer-b", header, payload);
 
     await vi.waitFor(
       () => {
-        expect(received).toEqual([json]);
+        expect(received).toEqual([{ json: JSON.stringify(header), payload }]);
       },
       { timeout: 200 },
     );
@@ -138,45 +145,48 @@ describe("large Yjs state over a capped data channel", () => {
     });
   });
 
-  it("frames a collab-reuse data envelope the same way", async () => {
-    const { message, json } = largeSyncMessage();
+  it("frames a collab-reuse data envelope with the tail outside the JSON", async () => {
+    const payload = largeSyncPayload();
     const envelope = {
       v: 1 as const,
       kind: "collab-reuse" as const,
       room: "docs/notes.md",
       op: "data" as const,
       collabPeerId: "aaaaaaaaaaaaaaaa",
-      payload: message,
+      payload: { type: "sync", bin: 1 },
     };
-    const wire = JSON.stringify(envelope);
-    expect(wire.length).toBeGreaterThan(json.length);
 
-    const received: string[] = [];
-    const { registry, channel } = openPeer(received, ["bin"]);
-    registry.sendJsonTo("peer-b", envelope);
+    const received: ReceivedMessage[] = [];
+    const { registry, channel } = openPeer(received);
+    registry.sendJsonTo("peer-b", envelope, payload);
 
-    await vi.waitFor(() => expect(received).toEqual([wire]), { timeout: 200 });
+    await vi.waitFor(
+      () => expect(received).toEqual([{ json: JSON.stringify(envelope), payload }]),
+      { timeout: 200 },
+    );
     expect(channel.frames.length).toBeGreaterThan(1);
     expect(channel.frames.every((frame) => frame instanceof Uint8Array)).toBe(true);
+    expect(JSON.stringify(envelope)).not.toContain('"u"');
   });
 
-  it("still sends one JSON string to a peer that does not advertise bin", () => {
-    const received: string[] = [];
+  it("frames a message for a peer that does not advertise bin", () => {
+    const received: ReceivedMessage[] = [];
     const { registry, channel } = openPeer(received);
-    const message = { type: "sync", u: [1, 2, 3] };
-    registry.sendJsonTo("peer-b", message);
+    const payload = Uint8Array.of(1, 2, 3);
+    const header = { type: "sync", bin: 1 };
+    registry.sendJsonTo("peer-b", header, payload);
 
-    expect(channel.frames).toEqual([JSON.stringify(message)]);
-    expect(received).toEqual([JSON.stringify(message)]);
+    expect(channel.frames.every((frame) => frame instanceof Uint8Array)).toBe(true);
+    expect(received).toEqual([{ json: JSON.stringify(header), payload }]);
   });
 
-  it("frames the first sync when bin was announced before the peer entry existed", () => {
-    const received: string[] = [];
+  it("frames the first sync when caps were stored before the peer entry existed", () => {
+    const received: ReceivedMessage[] = [];
     const channel = createCappedChannel();
     const binding = createDataBinding({
       label: "collab",
-      onMessage: (_remoteId, data) => {
-        received.push(data);
+      onMessage: (_remoteId, json, tail) => {
+        received.push({ json, payload: tail });
       },
     });
     const pc = {
@@ -184,22 +194,26 @@ describe("large Yjs state over a capped data channel", () => {
     } as unknown as RTCPeerConnection;
     const attached = binding.attachInitiator(pc, "peer-b");
     const registry = new MeshPeerRegistry(binding);
-    const message = { type: "sync", u: [1, 2, 3] };
+    const header = { type: "sync", bin: 1 };
+    const payload = Uint8Array.of(1, 2, 3);
 
-    registry.rememberCaps("peer-b", ["bin"]);
+    registry.rememberCaps("peer-b", ["yjs-http"]);
     registry.add("peer-b", peerEntry(pc, attached));
-    registry.sendJsonTo("peer-b", message);
+    registry.sendJsonTo("peer-b", header, payload);
 
     expect(channel.frames[0]).toBeInstanceOf(Uint8Array);
-    expect(received).toEqual([JSON.stringify(message)]);
+    expect(registry.get("peer-b")?.caps).toEqual(["yjs-http"]);
+    expect(received).toEqual([{ json: JSON.stringify(header), payload }]);
   });
 
   it("pauses above 1 MiB buffered and resumes on bufferedamountlow", () => {
-    const received: string[] = [];
-    const { registry, channel } = openPeer(received, ["bin"]);
+    const received: ReceivedMessage[] = [];
+    const { registry, channel } = openPeer(received);
     channel.bufferedAmount = DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES + 1;
+    const header = { type: "sync", bin: 1 };
+    const payload = Uint8Array.of(1, 2, 3);
 
-    registry.sendJsonTo("peer-b", { type: "sync", u: [1, 2, 3] });
+    registry.sendJsonTo("peer-b", header, payload);
 
     expect(channel.frames).toEqual([]);
     expect(channel.bufferedAmountLowThreshold).toBe(DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES);
@@ -208,20 +222,20 @@ describe("large Yjs state over a capped data channel", () => {
     channel.bufferedAmount = 0;
     for (const listener of channel.lowListeners) listener();
 
-    expect(received).toEqual([JSON.stringify({ type: "sync", u: [1, 2, 3] })]);
+    expect(received).toEqual([{ json: JSON.stringify(header), payload }]);
     expect(channel.frames.every((frame) => frame instanceof Uint8Array)).toBe(true);
   });
 
   it("logs a send failure and reports the peer for resync", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const onSendFailed = vi.fn();
-    const received: string[] = [];
-    const { registry, channel } = openPeer(received, ["bin"], onSendFailed);
+    const received: ReceivedMessage[] = [];
+    const { registry, channel } = openPeer(received, undefined, onSendFailed);
     channel.send = () => {
       throw new Error("send failed");
     };
 
-    registry.sendJsonTo("peer-b", { type: "sync", u: [1] });
+    registry.sendJsonTo("peer-b", { type: "sync", bin: 1 }, Uint8Array.of(1));
 
     expect(received).toEqual([]);
     expect(onSendFailed).toHaveBeenCalledWith("peer-b", expect.any(Error));
@@ -229,6 +243,167 @@ describe("large Yjs state over a capped data channel", () => {
       "[rtc] datachannel-send-failed",
       expect.objectContaining({ remoteId: "peer-b", message: "send failed" }),
     );
+  });
+});
+
+function binaryFrame(
+  messageId: number,
+  index: number,
+  count: number,
+  payload: string | Uint8Array,
+): Uint8Array {
+  const body = typeof payload === "string" ? new TextEncoder().encode(payload) : payload;
+  const frame = new Uint8Array(BINARY_FRAME_HEADER_BYTES + body.byteLength);
+  const view = new DataView(frame.buffer);
+  view.setUint32(0, messageId >>> 0);
+  view.setUint16(4, index);
+  view.setUint16(6, count);
+  frame.set(body, BINARY_FRAME_HEADER_BYTES);
+  return frame;
+}
+
+function manualClock(start = 0): { now: () => number; set: (value: number) => void } {
+  let current = start;
+  return {
+    now: () => current,
+    set(value: number) {
+      current = value;
+    },
+  };
+}
+
+describe("FrameReassembler pending bounds", () => {
+  it("drops an incomplete message after the ttl on the next push for that remote", () => {
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "aa"))).toBeNull();
+
+    clock.set(1_000 + PENDING_MESSAGE_TTL_MS + 1_000);
+    expect(reassembler.push("remote-a", binaryFrame(2, 0, 1, "zz"))).toEqual(textBytes("zz"));
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "bb"))).toBeNull();
+  });
+
+  it("drops the oldest incomplete message when a remote exceeds the pending cap", () => {
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    for (let messageId = 1; messageId <= 5; messageId += 1) {
+      clock.set(1_000 + messageId);
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 0, 2, "p"))).toBeNull();
+    }
+
+    // Finish the survivor first. Probing the evicted id opens a new message and would drop the next oldest.
+    expect(reassembler.push("remote-a", binaryFrame(2, 1, 2, "q"))).toEqual(textBytes("pq"));
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "q"))).toBeNull();
+  });
+
+  it("rejects a frame count above the ceiling and does not open a pending entry", () => {
+    const count = MAX_MESSAGE_FRAMES + 1;
+    const illegal = binaryFrame(1, 0, count, "x");
+    expect(decodeBinaryFrame(illegal)).toBeNull();
+
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    expect(encodeBinaryFrames(new Uint8Array(MAX_MESSAGE_FRAMES * payloadBytes), 4)).toHaveLength(
+      MAX_MESSAGE_FRAMES,
+    );
+    expect(() => encodeBinaryFrames(new Uint8Array(count * payloadBytes), 4)).toThrow(
+      /frame count/,
+    );
+
+    const reassembler = new FrameReassembler(() => 0);
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 0, 2, "a"))).toBeNull();
+    }
+    expect(reassembler.push("remote-a", illegal)).toBeNull();
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(messageId, 1, 2, "b"))).toEqual(
+        textBytes("ab"),
+      );
+    }
+  });
+
+  it("drops the oldest incomplete message when a remote exceeds the pending byte budget", () => {
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    const chunk = new Uint8Array(payloadBytes);
+    const perMessage = 400;
+    const count = perMessage + 1;
+    expect(perMessage * payloadBytes * 2).toBeLessThan(MAX_PENDING_BYTES_PER_REMOTE);
+    expect(perMessage * payloadBytes * 4).toBeGreaterThan(MAX_PENDING_BYTES_PER_REMOTE);
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    for (let messageId = 1; messageId <= 4; messageId += 1) {
+      clock.set(1_000 + messageId);
+      for (let index = 0; index < perMessage; index += 1) {
+        expect(
+          reassembler.push("remote-a", binaryFrame(messageId, index, count, chunk)),
+        ).toBeNull();
+      }
+    }
+
+    expectZeroPayload(
+      reassembler.push("remote-a", binaryFrame(4, perMessage, count, chunk)),
+      payloadBytes * count,
+    );
+    expect(reassembler.push("remote-a", binaryFrame(1, perMessage, count, chunk))).toBeNull();
+  });
+
+  it("finishes a message larger than the byte budget and drops the other one", () => {
+    const payloadBytes = BINARY_FRAME_BYTES - BINARY_FRAME_HEADER_BYTES;
+    const chunk = new Uint8Array(payloadBytes);
+    const framesOverBudget = Math.floor(MAX_PENDING_BYTES_PER_REMOTE / payloadBytes) + 1;
+    const count = framesOverBudget + 1;
+    expect(framesOverBudget * payloadBytes).toBeGreaterThan(MAX_PENDING_BYTES_PER_REMOTE);
+    expect(count).toBeLessThanOrEqual(MAX_MESSAGE_FRAMES);
+    const clock = manualClock(1_000);
+    const reassembler = new FrameReassembler(clock.now);
+
+    for (let index = 0; index < framesOverBudget; index += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(1, index, count, chunk))).toBeNull();
+    }
+
+    clock.set(2_000);
+    for (let index = 0; index < framesOverBudget; index += 1) {
+      expect(reassembler.push("remote-a", binaryFrame(2, index, count, chunk))).toBeNull();
+    }
+    expectZeroPayload(
+      reassembler.push("remote-a", binaryFrame(2, framesOverBudget, count, chunk)),
+      payloadBytes * count,
+    );
+    expect(reassembler.push("remote-a", binaryFrame(1, framesOverBudget, count, chunk))).toBeNull();
+  });
+
+  it("reassembles a three-frame message when chunks arrive out of order", () => {
+    const frames = ["one", "two", "three"].map((part, index) => binaryFrame(9, index, 3, part));
+    const reassembler = new FrameReassembler();
+
+    expect(reassembler.push("remote-a", frames[2]!)).toBeNull();
+    expect(reassembler.push("remote-a", frames[0]!)).toBeNull();
+    expect(reassembler.push("remote-a", frames[1]!)).toEqual(textBytes("onetwothree"));
+  });
+
+  it("does not expire another remote's incomplete message", () => {
+    const clock = manualClock(0);
+    const reassembler = new FrameReassembler(clock.now);
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "a"))).toBeNull();
+    clock.set(1);
+    expect(reassembler.push("remote-b", binaryFrame(1, 0, 2, "b"))).toBeNull();
+
+    clock.set(PENDING_MESSAGE_TTL_MS + 2);
+    expect(reassembler.push("remote-b", binaryFrame(2, 0, 1, "z"))).toEqual(textBytes("z"));
+
+    clock.set(0);
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "c"))).toEqual(textBytes("ac"));
+  });
+
+  it("uses the latest bytes when the same chunk index arrives twice", () => {
+    const reassembler = new FrameReassembler();
+
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "aa"))).toBeNull();
+    expect(reassembler.push("remote-a", binaryFrame(1, 0, 2, "b"))).toBeNull();
+    expect(reassembler.push("remote-a", binaryFrame(1, 1, 2, "c"))).toEqual(textBytes("bc"));
   });
 });
 
@@ -245,16 +420,26 @@ function peerEntry(pc: RTCPeerConnection, dataChannel: RTCDataChannel): MeshPeer
   };
 }
 
+function textBytes(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
+function expectZeroPayload(actual: Uint8Array | null, byteLength: number): void {
+  expect(actual).toBeInstanceOf(Uint8Array);
+  expect(actual?.byteLength).toBe(byteLength);
+  expect(actual?.every((byte) => byte === 0)).toBe(true);
+}
+
 function openPeer(
-  received: string[],
+  received: ReceivedMessage[],
   caps?: readonly string[],
   onSendFailed?: (remoteId: string, error: unknown) => void,
 ): { registry: MeshPeerRegistry; channel: CappedChannel } {
   const channel = createCappedChannel();
   const binding = createDataBinding({
     label: "collab",
-    onMessage: (_remoteId, data) => {
-      received.push(data);
+    onMessage: (_remoteId, json, payload) => {
+      received.push({ json, payload });
     },
   });
   const pc = {

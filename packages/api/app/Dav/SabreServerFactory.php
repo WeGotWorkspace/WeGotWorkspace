@@ -12,18 +12,19 @@ use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
-use App\Dav\Server\ChatHiddenCalendarBackend;
 use App\Dav\Server\DriveShareMovePlugin;
 use App\Dav\Server\DriveStarPathPlugin;
 use App\Dav\Server\EventDispatchPlugin;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Dav\Server\GroupFilesPrincipalCollection;
 use App\Dav\Server\PropIdEnsuringPlugin;
+use App\Dav\Server\RecurrenceCapExceptionPlugin;
+use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
+use App\Dav\Server\WgwCalendarBackend;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
-use App\Services\Chat\ChatCollectionUris;
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Drive\DocAttachmentsService;
@@ -82,9 +83,9 @@ final class SabreServerFactory
             $nodes[] = new AppCalDAVPrincipalCollection($principalBackend, $authPlugin);
         }
         if ($cal) {
-            // Chat/DM collections are API-only: hidden from home-set enumeration
-            // and direct DAV access on this server-side backend instance only.
-            $caldavBackend = new ChatHiddenCalendarBackend($pdo, ChatCollectionUris::hiddenDavPrefixes());
+            // Collections whose kind is davHidden() are API-only: hidden from
+            // home-set enumeration and from direct DAV access.
+            $caldavBackend = new WgwCalendarBackend($pdo);
             $nodes[] = new AppCalendarRoot($principalBackend, $caldavBackend, $authPlugin);
         }
         if ($card) {
@@ -109,7 +110,7 @@ final class SabreServerFactory
         $server->setLogger(new NullLogger);
 
         $server->addPlugin($authPlugin);
-        $server->addPlugin(new WebdavWriteGuardPlugin);
+        $server->addPlugin(app(WebdavWriteGuardPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
         $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));
@@ -132,10 +133,12 @@ final class SabreServerFactory
         if ($cal) {
             $server->addPlugin(new CalendarPropfindReadPlugin);
             $server->addPlugin(new CalDAV\Plugin);
+            $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(new CalDAV\Schedule\Plugin);
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
+            $server->addPlugin(new RecurrenceGuardPlugin);
         }
 
         if ($card) {

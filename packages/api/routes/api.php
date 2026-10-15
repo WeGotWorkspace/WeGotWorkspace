@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\Admin\AppUrlController as AdminAppUrlController;
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
@@ -38,7 +39,6 @@ use App\Http\Controllers\Api\V1\Files\FilesController;
 use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
-use App\Http\Controllers\Api\V1\Installer\StateController as InstallerStateController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
@@ -56,6 +56,7 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Rtc\MetricsController as RtcMetricsController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
+use App\Http\Controllers\Api\V1\Security\CspReportController;
 use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
@@ -65,6 +66,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitiesController;
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
+use App\Http\Middleware\CspReportBodyLimit;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -79,6 +81,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class);
 Route::get('capabilities', CapabilitiesController::class);
+Route::post('csp-reports', CspReportController::class)
+    ->middleware(['throttle:60,1', CspReportBodyLimit::class]);
 
 Route::get('.well-known/jwks.json', JwksController::class);
 
@@ -97,11 +101,14 @@ Route::get('calendars/feeds/{token}', [CalendarFeedsController::class, 'publicSh
     ->where('token', '[A-Za-z0-9]+(?:\\.ics)?');
 
 Route::post('meetings/rooms', [MeetingsController::class, 'store'])
-    ->middleware('wgw.auth');
+    ->middleware(['wgw.auth', 'throttle:wgw-api']);
+// Guests read room status before they join, so this stays unauthenticated.
+// It is not on the account bucket, and not on the room limiter: that limiter
+// resolves the actor with the same Basic check, which would consume a login attempt.
 Route::get('meetings/rooms/{roomId}', [MeetingsController::class, 'show'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 Route::patch('meetings/rooms/{roomId}', [MeetingsController::class, 'update'])
-    ->middleware('wgw.auth')
+    ->middleware(['wgw.auth', 'throttle:wgw-api'])
     ->where('roomId', '[A-Za-z0-9_-]+');
 
 // Signaling is unauthenticated by design (guests join meetings with a session
@@ -135,7 +142,6 @@ Route::middleware([
     AddQueuedCookiesToResponse::class,
     StartSession::class,
 ])->group(function (): void {
-    Route::get('installer/state', InstallerStateController::class);
     Route::get('installer/bootstrap', InstallerBootstrapController::class);
     Route::post('installer/action', InstallerActionController::class);
 });
@@ -146,7 +152,7 @@ $filesSession = [
     StartSession::class,
 ];
 
-Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(function () use ($filesSession): void {
     Route::get('me', MeController::class);
     Route::get('workspace/state', HomeStateController::class);
     Route::get('dav/capabilities', DavCapabilitiesController::class);
@@ -205,9 +211,12 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('search/results/{resultId}/content', [UnifiedSearchDownloadController::class, 'contentByResultId'])
         ->where('resultId', '.+');
 
-    Route::get('plugins', PluginsIndexController::class);
-    Route::post('plugins/{id}/session', PluginsSessionController::class)
-        ->where('id', '[a-z0-9_-]+');
+    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
+    if (config('wgw.plugins.enabled')) {
+        Route::get('plugins', PluginsIndexController::class);
+        Route::post('plugins/{id}/session', PluginsSessionController::class)
+            ->where('id', '[a-z0-9_-]+');
+    }
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
@@ -312,7 +321,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
         ->where('noteId', '[^/]+');
 
     // Chat channels (Epic #701, chunk B): CalDAV VJOURNAL collections with
-    // chat-/dm- URI prefixes, API-only (hidden from DAV by ChatHiddenCalendarBackend).
+    // chat-/dm- URI prefixes, API-only (hidden from DAV by WgwCalendarBackend).
     Route::get('chat/channels/changes', [ChatChannelsController::class, 'changes']);
     Route::get('chat/channels', [ChatChannelsController::class, 'index']);
     Route::post('chat/channels', [ChatChannelsController::class, 'store']);
@@ -356,7 +365,7 @@ Route::middleware(['wgw.auth', 'wgw.role:user'])->group(function () use ($filesS
     Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
 });
 
-Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {
     Route::middleware($filesSession)->group(function (): void {
         Route::get('files/children', [FilesController::class, 'children']);
         Route::match(['GET', 'HEAD'], 'files/content', [FilesController::class, 'content']);
@@ -367,7 +376,7 @@ Route::middleware(['wgw.auth'])->group(function () use ($filesSession): void {
 
 Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store']);
 
-Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
     Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);
@@ -380,6 +389,7 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
         ->where('group', '[a-z0-9_-]+');
     Route::delete('groups/{group}', [AdminGroupsController::class, 'destroy'])
         ->where('group', '[a-z0-9_-]+');
+    Route::put('settings/app-url', AdminAppUrlController::class);
     Route::put('settings', AdminSettingsController::class);
     Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);
@@ -392,9 +402,12 @@ Route::middleware(['wgw.auth', 'wgw.role:admin'])->prefix('admin')->group(functi
     Route::get('search/jobs/current', [AdminSearchJobController::class, 'showCurrent']);
     Route::delete('search/jobs/{jobId}', [AdminSearchJobController::class, 'destroy'])
         ->where('jobId', '[a-z0-9_-]+');
-    Route::post('plugins', AdminPluginInstallController::class);
-    Route::put('plugins/{id}/activation', PluginsActivationController::class)
-        ->where('id', '[a-z0-9_-]+');
+    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
+    if (config('wgw.plugins.enabled')) {
+        Route::post('plugins', AdminPluginInstallController::class);
+        Route::put('plugins/{id}/activation', PluginsActivationController::class)
+            ->where('id', '[a-z0-9_-]+');
+    }
     Route::get('backups/{name}', [AdminUpdateBackupController::class, 'show']);
     Route::delete('backups/{name}', [AdminUpdateBackupController::class, 'destroy']);
     Route::put('groups/{group}/members/{username}', [AdminGroupMemberController::class, 'store']);

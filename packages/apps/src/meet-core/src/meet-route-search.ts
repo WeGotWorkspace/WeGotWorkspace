@@ -1,24 +1,14 @@
 import { isMeetRoomCode } from "@/calendar-core/src/calendar-meet-link";
-import { parseRtcDebugFlag } from "@/lib/rtc/debug";
-import { isRtcForceRelayEnabledFromQuery, parseRtcForceRelayFlag } from "@/lib/rtc/force-relay";
 import { meetCollectionIdFromPublic, meetPublicChannelId } from "@/meet-core/src/meet-public-id";
 
 export type MeetRouteSearch = {
   room?: string;
-  /** Number `1` so the serializer emits `rtcDebug=1`, not `rtcDebug="1"`. */
-  rtcDebug?: 1;
-  /** Number `1` so the serializer emits `rtcForceRelay=1`. Debug-only. */
-  rtcForceRelay?: 1;
 };
 
 export function parseMeetRouteSearch(search: Record<string, unknown>): MeetRouteSearch {
   const room = typeof search.room === "string" ? search.room : undefined;
-  const rtcDebug = parseRtcDebugFlag(search.rtcDebug);
-  const rtcForceRelay = parseRtcForceRelayFlag(search.rtcForceRelay);
   return {
     ...(room !== undefined ? { room } : {}),
-    ...(rtcDebug !== undefined ? { rtcDebug } : {}),
-    ...(rtcForceRelay !== undefined ? { rtcForceRelay } : {}),
   };
 }
 
@@ -33,30 +23,15 @@ export function meetRoomFromSearch(search: MeetRouteSearch): string | null {
 }
 
 /** Search params to keep when the room moves into `/meet/meetings/{id}`. */
-export function meetSearchWithoutRoom(search: MeetRouteSearch): MeetRouteSearch {
-  return {
-    ...(search.rtcDebug !== undefined ? { rtcDebug: search.rtcDebug } : {}),
-    ...(search.rtcForceRelay !== undefined ? { rtcForceRelay: search.rtcForceRelay } : {}),
-  };
+export function meetSearchWithoutRoom(_search: MeetRouteSearch): MeetRouteSearch {
+  return {};
 }
 
 /** Serialize active room for the current meet route search params. */
 export function meetSearchFromRoom(roomCode: string | null): MeetRouteSearch {
   const room = roomCode?.trim();
-  const rtcDebug = parseRtcDebugFlag(
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("rtcDebug")
-      : undefined,
-  );
-  const rtcForceRelay: 1 | undefined =
-    typeof window !== "undefined" && isRtcForceRelayEnabledFromQuery(window.location.search)
-      ? 1
-      : undefined;
-  const debug: MeetRouteSearch = {};
-  if (rtcDebug === 1) debug.rtcDebug = 1;
-  if (rtcForceRelay === 1) debug.rtcForceRelay = 1;
-  if (!room) return debug;
-  return { room, ...debug };
+  if (!room) return {};
+  return { room };
 }
 
 export type MeetCallExitMode = "end" | "leave";

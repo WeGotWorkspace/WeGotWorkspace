@@ -1,6 +1,9 @@
+const previousTimeZone = process.env.TZ;
+process.env.TZ = "Europe/Amsterdam";
+
 import type { ReactElement } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { TooltipProvider } from "@/ui/tooltip";
 import {
   SETTINGS_GRANTED_PERMISSIONS_HINT,
@@ -18,6 +21,14 @@ import {
 import { STORY_MCP_ENDPOINT_URL } from "@/settings-core/src/mcp-endpoint";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import { shareLabels } from "@/share-ui/share-labels";
+
+afterAll(() => {
+  if (previousTimeZone === undefined) {
+    delete process.env.TZ;
+  } else {
+    process.env.TZ = previousTimeZone;
+  }
+});
 
 function renderPane(ui: ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
@@ -74,6 +85,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -129,6 +141,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["mail.read", "mail.send"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -148,6 +161,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read", "offline_access", "settings"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });
@@ -156,6 +170,60 @@ describe("SettingsAssistantsPane", () => {
     expect(screen.queryByText("offline_access")).toBeNull();
     expect(screen.queryByText("Stay connected")).toBeNull();
     expect(screen.queryByText("Connection")).toBeNull();
+  });
+
+  it("lists share-creating tool calls under the grant", () => {
+    renderAssistantsPane({
+      grants: [
+        {
+          clientId: "abc",
+          clientName: "Claude",
+          clientOrigin: "https://claude.ai",
+          connectedAt: "2026-09-08T10:00:00Z",
+          scopes: ["drive.write"],
+          lastUsedAt: null,
+          shareCalls: [
+            {
+              tool: "drive_share",
+              outcome: "denied",
+              createdAt: "2026-10-02T12:00:00+00:00",
+              target: '{"action":"set","path":"/users/bob/shared.txt"}',
+            },
+            {
+              tool: "drive_share",
+              outcome: "denied",
+              createdAt: "2026-10-02T12:00:00+00:00",
+              target: '{"action":"set","path":"/users/bob/shared.txt"}',
+            },
+            {
+              tool: "calendar_share",
+              outcome: "ok",
+              createdAt: "2026-10-04T12:19:00+00:00",
+              target: "cal-19",
+            },
+            {
+              tool: "docs_share",
+              outcome: "error",
+              createdAt: "2026-10-04T13:00:00+00:00",
+              target: "/users/bob/notes.md",
+            },
+          ],
+        },
+      ],
+    });
+    expect(screen.getByRole("heading", { name: "Share activity" })).toBeTruthy();
+    expect(screen.getAllByText("drive_share")).toHaveLength(2);
+    expect(screen.getAllByText("/users/bob/shared.txt")).toHaveLength(2);
+    expect(screen.queryByText('{"action":"set","path":"/users/bob/shared.txt"}')).toBeNull();
+    expect(screen.getAllByText("Denied — external share")).toHaveLength(2);
+    expect(screen.getAllByText("2026-10-02 14:00")).toHaveLength(2);
+    expect(screen.getByText("cal-19")).toBeTruthy();
+    expect(screen.queryByText("ok")).toBeNull();
+    expect(screen.getByText("2026-10-04 14:19")).toBeTruthy();
+    expect(screen.getByText("Failed")).toBeTruthy();
+    const times = document.querySelectorAll("time");
+    expect(times[0]?.getAttribute("dateTime")).toBe("2026-10-02T12:00:00+00:00");
+    expect(times[0]?.textContent).toBe("2026-10-02 14:00");
   });
 
   it("uses a generic revoke label when the grant has no client name", () => {
@@ -168,6 +236,7 @@ describe("SettingsAssistantsPane", () => {
           connectedAt: "2026-09-08T10:00:00Z",
           scopes: ["drive.read"],
           lastUsedAt: null,
+          shareCalls: [],
         },
       ],
     });

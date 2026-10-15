@@ -67,6 +67,10 @@ export const Instant: Story = {
     expect(
       body.queryAllByText(defaultCalendarLabels.eventStartLabel, { exact: true }),
     ).toHaveLength(0);
+    await expect(body.getByText(defaultCalendarLabels.eventAttendeesLabel)).toBeInTheDocument();
+    await expect(
+      body.queryByLabelText(defaultCalendarLabels.eventNotesLabel),
+    ).not.toBeInTheDocument();
     await expect(body.getByRole("button", { name: /Calendar: Personal/i })).toBeInTheDocument();
     await userEvent.click(body.getByRole("button", { name: /Calendar: Personal/i }));
     await expect(body.getByRole("menuitem", { name: "Work" })).toBeInTheDocument();

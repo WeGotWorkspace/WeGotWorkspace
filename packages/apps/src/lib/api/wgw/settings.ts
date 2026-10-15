@@ -3,7 +3,12 @@ import type {
   SettingsProfileRequest,
 } from "@wgw/openapi-types/settings-types";
 import type { SettingsAppBootstrap } from "@/lib/api/mock/settings-bootstrap";
-import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
+import {
+  wgwEnsureFreshAccessToken,
+  wgwFetch,
+  wgwFetchPrincipal,
+  wgwReadJson,
+} from "@/lib/api/wgw/http";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
   WgwSettingsStateResponse,
@@ -99,6 +104,7 @@ export async function saveSettingsProfile(
   input: SettingsProfileRequest,
   opts?: { signal?: AbortSignal },
 ): Promise<SettingsUIData> {
+  await wgwEnsureFreshAccessToken();
   const state = await requestSettings("/settings/profile", input, opts);
   return mapWgwSettingsStateToUI(state);
 }

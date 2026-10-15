@@ -47,13 +47,6 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
     mockDomApis();
   });
 
-  it("restores the Plugins pane from /admin/plugins", async () => {
-    const { history } = await renderAdminApp("/admin/plugins");
-    expect(history.location.pathname).toBe("/admin/plugins");
-    expect(await screen.findByText("Plugin lifecycle")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "New user" })).toBeNull();
-  });
-
   it("restores the Updates pane from /admin/updates", async () => {
     const { history } = await renderAdminApp("/admin/updates");
     expect(history.location.pathname).toBe("/admin/updates");
@@ -67,31 +60,6 @@ describe("AdminApp sidebar → URL", { timeout: 15_000 }, () => {
       expect(history.location.pathname).toBe("/admin/mail");
     });
     expect(await screen.findByText("IMAP (incoming)")).toBeTruthy();
-  });
-
-  it("writes /admin/plugins when the user picks Plugins and back/forward restore the pane", async () => {
-    const { history } = await renderAdminApp("/admin");
-    expect(await screen.findByRole("button", { name: "New user" })).toBeTruthy();
-
-    clickSidebarSection("Plugins");
-
-    await waitFor(() => {
-      expect(history.location.pathname).toBe("/admin/plugins");
-    });
-    expect(await screen.findByText("Plugin lifecycle")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "New user" })).toBeNull();
-
-    history.back();
-    await waitFor(() => {
-      expect(history.location.pathname).toBe("/admin");
-    });
-    expect(await screen.findByRole("button", { name: "New user" })).toBeTruthy();
-
-    history.forward();
-    await waitFor(() => {
-      expect(history.location.pathname).toBe("/admin/plugins");
-    });
-    expect(await screen.findByText("Plugin lifecycle")).toBeTruthy();
   });
 
   it("writes /admin/mail when the user picks Mail", async () => {

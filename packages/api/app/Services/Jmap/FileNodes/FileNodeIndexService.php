@@ -6,7 +6,10 @@ namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
-use App\Services\Drive\DocAttachmentPaths;
+use App\Services\Collab\CollabSidecarMover;
+use App\Services\Search\BestEffortSearchIndexSync;
+use App\Services\Search\SearchIndexerService;
+use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,19 +26,12 @@ use Illuminate\Support\Str;
  */
 final class FileNodeIndexService
 {
-    /** Dot-prefixed segments are internal (collab sidecars, AppleDouble) unless product-excepted. */
-    private const HIDDEN_SEGMENT_PREFIX = '.';
-
-    /** Product trash is hidden from browse listings but is a FileNode. */
-    private const PRODUCT_TRASH_DIR = '.Trash';
-
-    /** Product notes tree is hidden from Drive browse but is a FileNode. */
-    private const PRODUCT_NOTES_DIR = '.notes';
-
-    /** `.archive` is a FileNode only when it lives under `.notes`. */
-    private const PRODUCT_NOTES_ARCHIVE_DIR = '.archive';
-
-    public function __construct(private readonly WgwStorage $storage) {}
+    public function __construct(
+        private readonly WgwStorage $storage,
+        private readonly SearchIndexerService $search,
+        private readonly BestEffortSearchIndexSync $searchSync,
+        private readonly CollabSidecarMover $sidecars,
+    ) {}
 
     // ---------------------------------------------------------------
     // Sequence + state
@@ -108,32 +104,18 @@ final class FileNodeIndexService
 
     private function isHiddenKey(string $key): bool
     {
-        $underNotes = false;
-        foreach (explode('/', $key) as $segment) {
-            if ($segment === '') {
-                continue;
-            }
-            if ($this->isIndexedDotSegment($segment, $underNotes)) {
-                if ($segment === self::PRODUCT_NOTES_DIR) {
-                    $underNotes = true;
-                }
-
-                continue;
-            }
-            if (str_starts_with($segment, self::HIDDEN_SEGMENT_PREFIX)) {
-                return true;
-            }
-        }
-
-        return false;
+        return ! StorageKeyClass::classify($key)->isFileIndexed();
     }
 
-    private function isIndexedDotSegment(string $segment, bool $underNotes): bool
+    private function syncSearch(string $key, bool $deleted = false): void
     {
-        return $segment === self::PRODUCT_TRASH_DIR
-            || $segment === DocAttachmentPaths::DIR
-            || $segment === self::PRODUCT_NOTES_DIR
-            || ($segment === self::PRODUCT_NOTES_ARCHIVE_DIR && $underNotes);
+        $this->searchSync->sync(
+            'filenode',
+            fn () => $deleted
+                ? $this->search->deleteDavPath('files/'.$key)
+                : $this->search->indexFileStorageKey($key),
+            'files/'.$key,
+        );
     }
 
     // ---------------------------------------------------------------
@@ -240,7 +222,7 @@ final class FileNodeIndexService
 
         $seq = $this->nextSeq();
 
-        return JmapFileNode::query()->create([
+        $node = JmapFileNode::query()->create([
             'node_id' => $this->mintNodeId(),
             'storage_key' => $key,
             'parent_node_id' => $parent?->node_id,
@@ -251,6 +233,9 @@ final class FileNodeIndexService
             'created_seq' => $seq,
             'change_seq' => $seq,
         ]);
+        $this->syncSearch($key);
+
+        return $node;
     }
 
     public function recordContentWrite(string $key, ?string $sha256 = null): ?JmapFileNode
@@ -276,6 +261,7 @@ final class FileNodeIndexService
         $row->content_sha256 = $row->is_dir ? null : $sha256;
         $row->change_seq = $this->nextSeq();
         $row->save();
+        $this->syncSearch($key);
 
         return $row;
     }
@@ -288,11 +274,20 @@ final class FileNodeIndexService
      */
     public function recordMove(string $fromKey, string $toKey): ?JmapFileNode
     {
-        if ($this->isHiddenKey($fromKey) || $this->isHiddenKey($toKey)) {
+        if ($this->isHiddenKey($fromKey)) {
+            $this->syncSearch($fromKey, deleted: true);
+
+            return $this->isHiddenKey($toKey) ? null : $this->recordCreate($toKey);
+        }
+        if ($this->isHiddenKey($toKey)) {
+            $this->recordDelete($fromKey);
+
             return null;
         }
         $row = $this->liveByKey($fromKey);
         if ($row === null) {
+            $this->syncSearch($fromKey, deleted: true);
+
             return $this->recordCreate($toKey);
         }
 
@@ -308,11 +303,23 @@ final class FileNodeIndexService
             $descendant->save();
         }
 
+        $isDir = (bool) $row->is_dir;
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
         $row->change_seq = $this->nextSeq();
         $row->save();
+
+        $this->syncSearch($fromKey, deleted: true);
+        $this->syncSearch($toKey);
+        if ($isDir) {
+            foreach ($this->liveSelfAndDescendants($toKey) as $descendant) {
+                $key = (string) $descendant->storage_key;
+                if ($key !== $toKey) {
+                    $this->syncSearch($key);
+                }
+            }
+        }
 
         return $row;
     }
@@ -321,6 +328,8 @@ final class FileNodeIndexService
     {
         $row = $this->liveByKey($key);
         if ($row === null) {
+            $this->syncSearch($key, deleted: true);
+
             return;
         }
 
@@ -336,6 +345,29 @@ final class FileNodeIndexService
             $node->change_seq = $this->nextSeq();
             $node->save();
         }
+        $this->syncSearch($key, deleted: true);
+    }
+
+    /**
+     * Document move on a write route: the Yjs sidecar follows the bytes,
+     * including a rename inside the same principal. Reindex and attachment
+     * folder moves stay on {@see recordMove} so they do not touch sidecars.
+     */
+    public function recordMoveWithSidecar(string $fromKey, string $toKey): ?JmapFileNode
+    {
+        $this->sidecars->moveWithDocument($fromKey, $toKey);
+
+        return $this->recordMove($fromKey, $toKey);
+    }
+
+    /**
+     * Document delete on a write route. {@see recordDelete} stays sidecar-free
+     * so a reindex of an already-missing file leaves an orphan sidecar in place.
+     */
+    public function recordDeleteWithSidecar(string $key): void
+    {
+        $this->sidecars->deleteWithDocument($key);
+        $this->recordDelete($key);
     }
 
     // ---------------------------------------------------------------
@@ -411,35 +443,53 @@ final class FileNodeIndexService
     }
 
     /**
+     * How often the optional progress callback runs during the mint walk.
+     * Often enough that a caller's phase timestamp stays inside the reindex
+     * stale window, without a state write per key.
+     */
+    private const REINDEX_PROGRESS_STRIDE = 100;
+
+    /**
      * Full-tree backfill/reconcile (the reindexAll pattern). Existing keys
      * keep their node ids; new keys are minted; vanished keys tombstoned.
      * Also prunes tombstones older than the retention window.
      *
+     * `$progress` is `function (int $done, int $total): void`. SearchReindexRunner
+     * uses it to refresh the phase and to cancel between batches. A throw
+     * aborts the walk.
+     *
+     * @param  callable(int, int): void|null  $progress
      * @return array{indexed: int, tombstoned: int, pruned: int}
      */
-    public function reindexAll(int $tombstoneRetentionDays = 30): array
+    public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
     {
         $disk = $this->storage->files();
+        $directoryKeys = $disk->allDirectories();
+        $fileKeys = $disk->allFiles();
+        $total = count($directoryKeys) + count($fileKeys);
         $indexed = 0;
-
         $seen = [];
-        foreach ($disk->allDirectories() as $key) {
-            if ($this->isHiddenKey($key) || ! $this->isRootedKey($key)) {
-                continue;
+        $done = 0;
+
+        foreach ($directoryKeys as $key) {
+            $done++;
+            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
+                $seen[$key] = true;
+                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
+                    $indexed++;
+                }
             }
-            $seen[$key] = true;
-            if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                $indexed++;
-            }
+            $this->reportReindexProgress($progress, $done, $total, $done === count($directoryKeys));
         }
-        foreach ($disk->allFiles() as $key) {
-            if ($this->isHiddenKey($key) || ! $this->isRootedKey($key)) {
-                continue;
+        foreach ($fileKeys as $key) {
+            $done++;
+            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
+                $seen[$key] = true;
+                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
+                    $indexed++;
+                }
             }
-            $seen[$key] = true;
-            if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                $indexed++;
-            }
+            $this->reportReindexProgress($progress, $done, $total, $done === $total);
         }
 
         $tombstoned = 0;
@@ -461,6 +511,20 @@ final class FileNodeIndexService
         $pruned = $this->pruneTombstones($tombstoneRetentionDays);
 
         return ['indexed' => $indexed, 'tombstoned' => $tombstoned, 'pruned' => $pruned];
+    }
+
+    /**
+     * @param  callable(int, int): void|null  $progress
+     */
+    private function reportReindexProgress(?callable $progress, int $done, int $total, bool $boundary): void
+    {
+        if ($progress === null || $total === 0) {
+            return;
+        }
+        if (! $boundary && $done % self::REINDEX_PROGRESS_STRIDE !== 0) {
+            return;
+        }
+        $progress($done, $total);
     }
 
     public function pruneTombstones(int $retentionDays): int

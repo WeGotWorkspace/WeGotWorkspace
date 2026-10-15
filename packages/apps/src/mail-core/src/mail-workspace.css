@@ -52,15 +52,15 @@
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --mail-swipe-star-color: var(--color-emerald);
   --mail-swipe-archive-color: var(--workspace-foreground);
-  /* Switch mark stays the mail icon (red + white). */
+  /* Switch mark stays the mail icon (red + soft). */
   --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   /* Selected nav count pills match the primary CTA (darkened red + white). */
   --sidebar-badge-bg: var(--workspace-accent);
   --sidebar-badge-fg: var(--workspace-accent-foreground);
 }
 
-/** App switcher lockup: mail.svg literals (`#de4b0e` tile / white flap). */
+/** App switcher lockup: mail.svg literals (red tile / soft flap). */
 .mail-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   background-color: var(--workspace-icon-surface);
 }
@@ -70,7 +70,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .mail-workspace .mail-state-accent {
@@ -150,9 +150,9 @@
   --workspace-accent: var(--color-we-got-dark);
   --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
-  /* Switch mark stays the mail icon (red + white). */
+  /* Switch mark stays the mail icon (red + soft). */
   --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

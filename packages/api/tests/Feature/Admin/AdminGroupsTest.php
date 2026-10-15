@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ApiRefreshToken;
+use App\Models\Principal;
+use App\Services\Auth\AdminRoleResolver;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -87,6 +90,33 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'The administrators group cannot be deleted.');
     }
 
+    public function test_patch_administrators_members_revokes_removed_member_refresh_token(): void
+    {
+        $bobPrincipal = Principal::forUsername('bob');
+        $this->assertNotNull($bobPrincipal);
+        $admins = Principal::query()->where('uri', AdminRoleResolver::ADMIN_GROUP_URI)->firstOrFail();
+        $this->addPrincipalToGroup($admins, $bobPrincipal);
+
+        $alice = $this->login('alice');
+        $bob = $this->login('bob');
+
+        $this->withBearer($bob['access_token'])
+            ->patchJson('/api/v1/admin/groups/administrators', [
+                'members' => ['bob'],
+            ])
+            ->assertOk();
+
+        $aliceHash = hash('sha256', $alice['refresh_token']);
+        $bobHash = hash('sha256', $bob['refresh_token']);
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $aliceHash)->value('revoked'));
+        $this->assertSame(0, (int) ApiRefreshToken::query()->where('token_hash', $bobHash)->value('revoked'));
+
+        $this->postRefresh($alice['refresh_token'])
+            ->assertUnauthorized();
+        $this->postRefresh($bob['refresh_token'])
+            ->assertOk();
+    }
+
     public function test_admin_cannot_remove_self_from_administrators(): void
     {
         $token = $this->adminBearerToken();
@@ -152,5 +182,21 @@ final class AdminGroupsTest extends WgwDatabaseTestCase
         } finally {
             chmod($files, 0775);
         }
+    }
+
+    /**
+     * @return array{access_token: string, refresh_token: string}
+     */
+    private function login(string $username): array
+    {
+        $response = $this->postJson('/api/v1/auth/token', [
+            'username' => $username,
+            'password' => 'secret',
+        ])->assertOk();
+
+        return [
+            'access_token' => (string) $response->json('access_token'),
+            'refresh_token' => $this->refreshCookieValue($response),
+        ];
     }
 }

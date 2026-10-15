@@ -463,11 +463,16 @@ export class PresenceStore {
   private async joinNow(): Promise<void> {
     if (!this.session || this.joined || this.joinInFlight) return;
     if (this.crossWindowLeader && !this.isMeshLeader) return;
+    const session = this.session;
     this.joinInFlight = true;
     this.update({ status: "joining" });
     try {
-      const joined = await this.session.join(this.selfDisplayName);
-      if (this.stopped) return;
+      const joined = await session.join(this.selfDisplayName);
+      if (this.stopped || this.session !== session) return;
+      if (joined.superseded) {
+        this.update({ status: "waiting" });
+        return;
+      }
       this.selfPeerId = joined.peerId;
       this.joined = true;
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
@@ -475,14 +480,14 @@ export class PresenceStore {
       this.publishRoster();
       this.relayRosterToFollowers();
     } catch {
-      if (this.stopped) return;
+      if (this.stopped || this.session !== session) return;
       // Collab waits PRINCIPAL_JOIN_WAIT_MS on this flag before dialing its own
       // mesh. A failed join is still an attempt, or every document stalls 8s.
       getPrincipalLinkRegistry().markPrincipalJoinAttempted();
       // Lazy mode retries on the next visibility resume; eager sessions surface the error.
       this.update({ status: this.options.joinMode === "lazy" ? "waiting" : "error" });
     } finally {
-      this.joinInFlight = false;
+      if (this.session === session) this.joinInFlight = false;
     }
   }
 

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Drive\DocAttachmentPaths;
+use App\Storage\StoragePaths;
+use App\Storage\WgwStorage;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
@@ -25,6 +28,11 @@ use Sabre\HTTP\ResponseInterface;
 final class WebdavWriteGuardPlugin extends ServerPlugin
 {
     private Server $server;
+
+    public function __construct(
+        private WgwStorage $storage,
+        private StoragePaths $paths,
+    ) {}
 
     public function initialize(Server $server): void
     {
@@ -50,6 +58,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         if (DocAttachmentPaths::davIsProtected($path)) {
             throw new Forbidden('The .attachments tree is server-owned.');
+        }
+        if (CollabSidecarPaths::davIsProtected($path)) {
+            throw new Forbidden('The Yjs sidecar is server-owned.');
         }
     }
 
@@ -77,6 +88,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         if (DocAttachmentPaths::davIsProtected($p)) {
             throw new Forbidden('The .attachments tree is server-owned.');
         }
+        if (CollabSidecarPaths::davIsProtected($p)) {
+            throw new Forbidden('The Yjs sidecar is server-owned.');
+        }
     }
 
     public function beforeMethod(RequestInterface $request, ResponseInterface $response): void
@@ -96,6 +110,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
         }
         if (DocAttachmentPaths::davIsProtected($path)) {
             throw new Forbidden('The .attachments tree is server-owned.');
+        }
+        if (CollabSidecarPaths::davIsProtected($path)) {
+            throw new Forbidden('The Yjs sidecar is server-owned.');
         }
 
         if ($method === 'DELETE') {
@@ -126,6 +143,12 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             if (DocAttachmentPaths::davIsProtected($destPath)) {
                 throw new Forbidden('The .attachments tree is server-owned.');
             }
+            if (CollabSidecarPaths::davIsProtected($destPath)) {
+                throw new Forbidden('The Yjs sidecar is server-owned.');
+            }
+            if ($this->hasCollabSidecar($destPath)) {
+                throw new Forbidden('This document is edited collaboratively; write it through the app.');
+            }
             if (self::isCalendarFolderPath($path) || self::isCalendarFolderPath($destPath)) {
                 throw new Forbidden('Moving or copying calendar homes or calendar collections is not allowed.');
             }
@@ -137,13 +160,43 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             if ($zSrc === 0 || $zDst === 0 || $zSrc !== $zDst) {
                 throw new Forbidden(self::message());
             }
-
-            return;
-        }
-
-        if (self::mutationZone($path) === 0) {
+        } elseif (self::mutationZone($path) === 0) {
             throw new Forbidden(self::message());
         }
+
+        // Refuse a write that replaces the bytes of a collaborative document.
+        // Moving, copying, or deleting the document itself stays allowed:
+        // those are explicit, and a renamed file rebuilds its Yjs state from
+        // the markdown. A move or copy onto the document is rejected above.
+        if (in_array($method, ['PUT', 'PATCH'], true)
+            && $this->hasCollabSidecar($path)) {
+            throw new Forbidden('This document is edited collaboratively; write it through the app.');
+        }
+    }
+
+    /**
+     * True when a Yjs sidecar sits beside this DAV path.
+     * Sidecar names themselves are ignored; {@see CollabSidecarPaths::davIsProtected} handles those.
+     */
+    private function hasCollabSidecar(string $davPath): bool
+    {
+        $davPath = trim($davPath, '/');
+        if (! str_starts_with($davPath, 'files/')) {
+            return false;
+        }
+        $key = substr($davPath, strlen('files/'));
+        if ($key === '') {
+            return false;
+        }
+        if (CollabSidecarPaths::isSidecarName(basename($key))) {
+            return false;
+        }
+
+        $sidecarKey = $this->paths->virtualToStorageKey(
+            CollabSidecarPaths::sidecarVirtualPath($this->paths, $key),
+        );
+
+        return $this->storage->files()->fileExists($sidecarKey);
     }
 
     private static function normalizePath(string $path): string

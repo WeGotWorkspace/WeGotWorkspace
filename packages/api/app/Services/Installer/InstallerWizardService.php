@@ -25,21 +25,9 @@ final class InstallerWizardService
         private ApiRuntimeEnvService $apiEnv,
         private WgwInstallEnv $installEnv,
         private WgwInstallConfig $installConfig,
+        private InstallerWindow $window,
+        private InstallerDatabaseHostGuard $hosts,
     ) {}
-
-    /**
-     * @return array{installed: bool, maintenance: bool, state: array<string, mixed>}
-     */
-    public function summary(string $webBase): array
-    {
-        $this->paths->clearStaleInstallLock();
-
-        return [
-            'installed' => $this->paths->isInstalled(),
-            'maintenance' => $this->paths->isMaintenance(),
-            'state' => $this->runtimeState($webBase),
-        ];
-    }
 
     /**
      * @return array{state: array<string, mixed>}
@@ -47,6 +35,9 @@ final class InstallerWizardService
     public function bootstrap(string $webBase): array
     {
         $this->paths->clearStaleInstallLock();
+        if (! $this->paths->isInstalled()) {
+            $this->window->assertNotExpired();
+        }
 
         return [
             'state' => $this->runtimeState($webBase),
@@ -67,6 +58,8 @@ final class InstallerWizardService
                 'state' => $this->runtimeState($webBase, true),
             ];
         }
+
+        $this->window->open();
 
         return match ($action) {
             'welcome_next' => $this->actionWelcomeNext($webBase),
@@ -150,6 +143,11 @@ final class InstallerWizardService
     private function actionDatabaseTest(string $webBase, array $payload): array
     {
         $db = $this->readDbFromPayload($payload);
+        $blocked = $this->blockedDatabaseHost($webBase, $db);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
         try {
             $this->database->testConnection($db);
         } catch (\Throwable $e) {
@@ -180,6 +178,11 @@ final class InstallerWizardService
     private function actionDatabaseNext(string $webBase, array $payload): array
     {
         $db = $this->readDbFromPayload($payload);
+        $blocked = $this->blockedDatabaseHost($webBase, $db);
+        if ($blocked !== null) {
+            return $blocked;
+        }
+
         try {
             $this->database->testConnection($db);
         } catch (\Throwable $e) {
@@ -311,6 +314,8 @@ final class InstallerWizardService
             throw new \RuntimeException('Passwords do not match.');
         }
 
+        $appUrl = $this->resolveAppUrlForInstall($payload, (string) ($state['base_uri'] ?? '/'));
+
         /** @var array<string, mixed> $db */
         $db = $state['db'] ?? [];
         if ($db === []) {
@@ -331,42 +336,42 @@ final class InstallerWizardService
         $this->paths->clearStaleInstallLock();
         $this->removeEmptySqliteDatabase($db);
 
+        if ($this->database->hasUsers($db)) {
+            throw new \RuntimeException('An account already exists in this database. Sign in instead, or point the installer at an empty database.');
+        }
+
         try {
-            if ($this->database->hasUsers($db)) {
-                $this->jwtKeys->ensureKeys();
-            } else {
-                $this->database->installFresh(
-                    $db,
-                    $username,
-                    $pass,
-                    $display,
-                    $email,
-                    $enableCalendars,
-                    $enableContacts,
-                    [
-                        SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
-                        SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
-                        SettingKeys::AUTH_REALM => 'SabreDAV',
-                        SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
-                        SettingKeys::FILES_ENABLED => $enableFiles,
-                        SettingKeys::CALENDAR_ENABLED => $enableCalendars,
-                        SettingKeys::CONTACTS_ENABLED => $enableContacts,
-                        SettingKeys::MAIL_ENABLED => $mailEnabled,
-                        SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
-                        SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
-                        SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
-                        SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
-                        SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
-                        SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
-                        SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
-                        SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
-                        SettingKeys::RTC_TURN_SECRET => $meetEnabled
-                            ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
-                            : '',
-                    ],
-                );
-                $this->jwtKeys->ensureKeys();
-            }
+            $this->database->installFresh(
+                $db,
+                $username,
+                $pass,
+                $display,
+                $email,
+                $enableCalendars,
+                $enableContacts,
+                [
+                    SettingKeys::TIMEZONE => (string) ($state['timezone'] ?? 'UTC'),
+                    SettingKeys::BASE_URI => (string) ($state['base_uri'] ?? '/'),
+                    SettingKeys::AUTH_REALM => 'SabreDAV',
+                    SettingKeys::BROWSER_PLUGIN => (bool) ($state['show_browser_ui'] ?? false),
+                    SettingKeys::FILES_ENABLED => $enableFiles,
+                    SettingKeys::CALENDAR_ENABLED => $enableCalendars,
+                    SettingKeys::CONTACTS_ENABLED => $enableContacts,
+                    SettingKeys::MAIL_ENABLED => $mailEnabled,
+                    SettingKeys::MAIL_IMAP_HOST => $mailEnabled ? trim((string) ($payload['mail_imap_host'] ?? '')) : '',
+                    SettingKeys::MAIL_IMAP_PORT => $mailEnabled ? (int) ($payload['mail_imap_port'] ?? 993) : 993,
+                    SettingKeys::MAIL_IMAP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_imap_security'] ?? 'ssl'), 'ssl') : '',
+                    SettingKeys::MAIL_SMTP_HOST => $mailEnabled ? trim((string) ($payload['mail_smtp_host'] ?? '')) : '',
+                    SettingKeys::MAIL_SMTP_PORT => $mailEnabled ? (int) ($payload['mail_smtp_port'] ?? 587) : 587,
+                    SettingKeys::MAIL_SMTP_SECURITY => $mailEnabled ? $this->normalizeMailSecurity((string) ($payload['mail_smtp_security'] ?? 'starttls'), 'starttls') : '',
+                    SettingKeys::RTC_STUN_URL => $meetEnabled ? trim((string) ($payload['rtc_stun_url'] ?? '')) : '',
+                    SettingKeys::RTC_TURN_URL => $meetEnabled ? trim((string) ($payload['rtc_turn_url'] ?? '')) : '',
+                    SettingKeys::RTC_TURN_SECRET => $meetEnabled
+                        ? app(RtcSettingsService::class)->sealTurnSecret((string) ($payload['rtc_turn_secret'] ?? ''))
+                        : '',
+                ],
+            );
+            $this->jwtKeys->ensureKeys();
         } catch (\Throwable $e) {
             throw new \RuntimeException('Installation failed: '.$e->getMessage(), 0, $e);
         }
@@ -394,7 +399,7 @@ final class InstallerWizardService
             throw new \RuntimeException('Database was set up but the install lock file could not be written.');
         }
 
-        $this->apiEnv->ensure($this->paths->installRoot(), $this->resolveAppUrlForInstall());
+        $this->apiEnv->ensure($this->paths->installRoot(), $appUrl);
         @chmod($this->paths->lockFile(), 0600);
 
         $this->saveWizardState([
@@ -405,6 +410,8 @@ final class InstallerWizardService
             'enable_calendars' => $enableCalendars,
             'enable_contacts' => $enableContacts,
         ]);
+
+        $this->window->clear();
 
         $adminPath = InstallerWebBase::url($webBase, '/admin/');
 
@@ -538,6 +545,24 @@ final class InstallerWizardService
     private function saveWizardState(array $state): void
     {
         session([self::SESSION_KEY => $state]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $db
+     * @return array<string, mixed>|null
+     */
+    private function blockedDatabaseHost(string $webBase, array $db): ?array
+    {
+        $message = $this->hosts->blockMessage($db);
+        if ($message === null) {
+            return null;
+        }
+
+        return [
+            'ok' => false,
+            'error' => $message,
+            'state' => $this->runtimeState($webBase),
+        ];
     }
 
     /**
@@ -709,11 +734,19 @@ final class InstallerWizardService
         }
     }
 
-    private function resolveAppUrlForInstall(): ?string
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolveAppUrlForInstall(array $payload, string $baseUri): ?string
     {
-        $fromRequest = ApiRuntimeEnvService::guessRequestAppUrl();
-        if ($fromRequest !== null) {
-            return $fromRequest;
+        $fromField = trim((string) ($payload['app_url'] ?? ''));
+        if ($fromField !== '') {
+            $normalized = AppUrlCandidate::normalize($fromField, $baseUri);
+            if ($normalized === null) {
+                throw new \RuntimeException('Enter a public http or https address for this site, with no user info, query, or extra path.');
+            }
+
+            return $normalized;
         }
 
         $fromEnv = getenv('APP_URL');

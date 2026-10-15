@@ -24,6 +24,10 @@ import {
   type DocsHttpMailboxMessage,
 } from "@/text-editor-core/docs-collab/docs-collab-http-sync";
 import {
+  collabChannelParts,
+  collabMessageFromChannel,
+} from "@/text-editor-core/docs-collab/docs-collab-channel";
+import {
   encodeSyncStep1,
   isDocumentBearingSyncMessage,
 } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
@@ -43,7 +47,7 @@ import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-ut
 
 const DC_LABEL = "collab";
 
-function hexBytes(bytes: readonly number[], start: number, end: number): string {
+function hexBytes(bytes: Uint8Array, start: number, end: number): string {
   let out = "";
   for (let i = start; i < end; i += 1) {
     out += (bytes[i]! & 0xff).toString(16).padStart(2, "0");
@@ -52,18 +56,19 @@ function hexBytes(bytes: readonly number[], start: number, end: number): string 
 }
 
 /**
- * First and last 8 bytes of a collab payload, so a send and its receive match
+ * First and last 8 bytes of the raw tail, so a send and its receive match
  * without putting anything new on the wire. Shorter payloads are hexed once.
  */
-export function tagOf(msg: DocsCollabMeshMessage | { u?: readonly number[] }): string {
-  const bytes = "u" in msg ? msg.u : undefined;
+export function tagOf(msg: object): string {
+  const raw = "u" in msg ? (msg as { u?: unknown }).u : undefined;
+  const bytes = raw instanceof Uint8Array ? raw : undefined;
   if (!bytes || bytes.length === 0) return "";
   if (bytes.length < 16) return hexBytes(bytes, 0, bytes.length);
   return hexBytes(bytes, 0, 8) + hexBytes(bytes, bytes.length - 8, bytes.length);
 }
 
 function payloadBytes(msg: DocsCollabMeshMessage): number {
-  return msg.type === "sync" || msg.type === "awareness" ? msg.u.length : 0;
+  return msg.type === "sync" || msg.type === "awareness" ? msg.u.byteLength : 0;
 }
 
 const liveCollabSessions = new Map<string, Set<DocsRtcSession>>();
@@ -187,10 +192,11 @@ export class DocsRtcSession {
         this.emit({ type: "dc-open", from: remoteId });
         this.http?.evaluate();
       },
-      onMessage: (remoteId, data) => {
+      onMessage: (remoteId, json, payload) => {
         try {
-          const msg = JSON.parse(data) as DocsCollabMeshMessage;
-          if (!msg || typeof msg !== "object") return;
+          const parsed = collabMessageFromChannel(json, payload);
+          if (!parsed || typeof parsed.type !== "string") return;
+          const msg = parsed as DocsCollabMeshMessage;
           rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "dc-recv", {
             from: remoteId,
             type: msg.type,
@@ -205,7 +211,7 @@ export class DocsRtcSession {
             this.loggedFirstSync = true;
             rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-sync", {
               from: remoteId,
-              bytes: Array.isArray(msg.u) ? msg.u.length : 0,
+              bytes: msg.u.byteLength,
             });
           }
           if (msg.type === "awareness" && !this.loggedFirstAwareness) {
@@ -277,8 +283,11 @@ export class DocsRtcSession {
         if (this.httpOnlyUntilRelay && !this.relayReady.has(peer.id)) return false;
         return !this.reuse.shouldSkipIce(peer);
       },
-      shouldAcceptOffer: (from) =>
-        this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from),
+      shouldAcceptOffer: (from) => {
+        if (this.forceRelayTransport() || !this.reuse.shouldIgnoreOffer(from)) return true;
+        this.reuse.reopenAfterIgnoredOffer(from);
+        return false;
+      },
       // A stale collab offer must not rejoin: that drops the peer id the relay
       // precheck just minted and the next offer is unknown_peer forever.
       recoverOnUnknownPeer: !this.forceRelayTransport(),
@@ -312,7 +321,8 @@ export class DocsRtcSession {
           webrtcUnavailable: () => this.webrtcUnavailable(),
           send: (to, type, payload) => {
             void this.mesh.sendMailbox(to, type, payload).catch(() => {
-              // A refused mailbox post must not surface as an unhandled rejection.
+              // A refused post usually means a stale roster. Poll now instead of failing loudly.
+              this.mesh.kickPoll();
             });
           },
           sendStateVectorOnChannel: (peerId) => this.sendChannelStateVector(peerId),
@@ -446,7 +456,7 @@ export class DocsRtcSession {
       this.loggedFirstSync = true;
       rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "first-remote-sync", {
         from: msg.from,
-        bytes: Array.isArray(msg.u) ? msg.u.length : 0,
+        bytes: msg.u.byteLength,
         reused: true,
       });
     }
@@ -553,7 +563,10 @@ export class DocsRtcSession {
       tag: tagOf(msg),
     });
     this.reuse.broadcast(msg);
-    this.mesh.broadcastJson(msg);
+    this.sendOnMesh(msg, (header, bytes) => {
+      if (bytes) this.mesh.broadcastJson(header, bytes);
+      else this.mesh.broadcastJson(header);
+    });
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
@@ -564,7 +577,19 @@ export class DocsRtcSession {
       tag: tagOf(msg),
     });
     if (this.reuse.sendTo(remoteId, msg)) return;
-    this.mesh.sendJsonTo(remoteId, msg);
+    this.sendOnMesh(msg, (header, bytes) => {
+      if (bytes) this.mesh.sendJsonTo(remoteId, header, bytes);
+      else this.mesh.sendJsonTo(remoteId, header);
+    });
+  }
+
+  private sendOnMesh(
+    msg: DocsCollabMeshMessage,
+    send: (header: unknown, bytes?: Uint8Array) => void,
+  ): void {
+    const wire = collabChannelParts(msg);
+    if (wire.bytes) send(wire.header, wire.bytes);
+    else send(wire.header);
   }
 
   /**
@@ -593,6 +618,7 @@ export class DocsRtcSession {
   async join(name: string): Promise<{ peerId: string; peers: DocsCollabMeshPeer[] }> {
     this.myName = name.trim();
     const joined = await this.mesh.join({ name: this.myName });
+    if (joined.superseded) return { peerId: "", peers: [] };
     this.noteOwnAccessFromPoll(joined);
     const live = liveCollabSessions.get(this.room) ?? new Set<DocsRtcSession>();
     live.add(this);

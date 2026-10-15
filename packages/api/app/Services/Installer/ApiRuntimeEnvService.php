@@ -154,18 +154,4 @@ final class ApiRuntimeEnvService
     {
         return $this->envFiles->update($envPath, $mutator);
     }
-
-    public static function guessRequestAppUrl(): ?string
-    {
-        $host = $_SERVER['HTTP_HOST'] ?? null;
-        if (! is_string($host) || trim($host) === '') {
-            return null;
-        }
-        $https = (! empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['SERVER_PORT']) && (string) $_SERVER['SERVER_PORT'] === '443')
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string) $_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
-        $scheme = $https ? 'https' : 'http';
-
-        return $scheme.'://'.trim($host);
-    }
 }

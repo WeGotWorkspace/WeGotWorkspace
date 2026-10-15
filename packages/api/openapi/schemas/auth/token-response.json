@@ -1,0 +1,38 @@
+{
+  "AuthTokenResponse": {
+    "type": "object",
+    "required": [
+      "access_token",
+      "token_type",
+      "expires_in",
+      "refresh_expires_in",
+      "role",
+      "username"
+    ],
+    "properties": {
+      "access_token": {
+        "type": "string"
+      },
+      "token_type": {
+        "type": "string"
+      },
+      "expires_in": {
+        "type": "integer"
+      },
+      "refresh_expires_in": {
+        "type": "integer"
+      },
+      "role": {
+        "type": "string",
+        "enum": [
+          "guest",
+          "user",
+          "admin"
+        ]
+      },
+      "username": {
+        "type": "string"
+      }
+    }
+  }
+}

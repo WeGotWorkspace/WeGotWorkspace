@@ -51,6 +51,7 @@ final class AuthTokenService
 
         $realm = (string) AppSetting::getValue('auth_realm', (string) config('wgw.auth_realm'));
         if (! $this->credentials->validate($username, $password, $realm)) {
+            $this->rateLimiter->hit($username, $ip);
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
@@ -167,10 +168,16 @@ final class AuthTokenService
     private function issueTokenPair(string $username, string $role): array
     {
         $ttl = $this->jwtConfig->accessTtl();
+        $uid = 0;
+        if ($role !== 'guest') {
+            $user = User::query()->where('username', $username)->first(['id']);
+            $uid = $user === null ? 0 : (int) $user->id;
+        }
         $access = $this->jwtTokens->issue([
             'sub' => $username,
             'role' => $role,
             'exp' => time() + $ttl,
+            'uid' => $uid,
         ]);
         $refresh = $this->refreshTokens->issue($username, $role);
 

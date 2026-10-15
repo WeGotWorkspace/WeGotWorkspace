@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Services\Auth\RefreshCookie;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 trait InteractsWithWgwBearerTokens
@@ -40,5 +42,21 @@ trait InteractsWithWgwBearerTokens
         }
 
         return ['Authorization' => 'Bearer '.$token];
+    }
+
+    protected function refreshCookieValue(TestResponse $response): string
+    {
+        $cookie = $response->getCookie(RefreshCookie::NAME, false);
+        $this->assertNotNull($cookie, 'Expected a refresh cookie on the response.');
+
+        return (string) $cookie->getValue();
+    }
+
+    protected function postRefresh(string $refreshToken): TestResponse
+    {
+        // postJson sends cookies only after the test client opts into credentials.
+        return $this->withUnencryptedCookie(RefreshCookie::NAME, $refreshToken)
+            ->withCredentials()
+            ->postJson('/api/v1/auth/refresh');
     }
 }

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import { DocsCollabHttpSync } from "./docs-collab-http-sync";
 import {
   PrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
@@ -15,13 +17,19 @@ vi.mock("@/lib/rtc/log", () => ({
 
 type CapturedBinding = {
   onOpen: (remoteId: string) => void;
-  onMessage: (remoteId: string, data: string) => void;
+  onMessage: (remoteId: string, json: string, payload: Uint8Array | null) => void;
   onClose: () => void;
 };
 
 type CapturedMeshOptions = {
   onPollData?: (data: {
-    peers: Array<{ id: string; name: string; user?: string; access?: string }>;
+    peers: Array<{
+      id: string;
+      name: string;
+      user?: string;
+      access?: string;
+      caps?: readonly string[];
+    }>;
     messages: [];
     ticket?: string;
   }) => void;
@@ -51,6 +59,9 @@ const captured = vi.hoisted(() => ({
     retryRoomPeerConnections: vi.fn(),
     retryPeerConnection: vi.fn(),
     abortPeerConnection: vi.fn(),
+    sendMailbox: vi.fn(async () => undefined),
+    kickPoll: vi.fn(),
+    localNetClass: vi.fn((): string | undefined => undefined),
   },
 }));
 
@@ -112,6 +123,34 @@ describe("DocsRtcSession send failure", () => {
     captured.meshOptions?.onSendFailed?.("p1");
 
     expect(seen).toEqual([{ type: "resync", from: "p1" }]);
+  });
+
+  it("polls again when a mailbox post is refused", async () => {
+    const doc = new Y.Doc();
+    captured.mesh.sendMailbox.mockRejectedValue(new Error("mailbox_refused"));
+    captured.mesh.getPeerLinkStates.mockReturnValue([
+      { id: "peer-b", name: "Bea", link: "connecting" },
+    ]);
+
+    new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "docs/mailbox-refused.md",
+      rtcSettings: { ...DEFAULT_RTC_SETTINGS, forceRelay: true, turnAvailable: false },
+      getYDoc: () => doc,
+    });
+
+    captured.mesh.kickPoll.mockClear();
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "peer-b", name: "Bea", caps: ["yjs-http"] }],
+      messages: [],
+    });
+    const kicksBeforeRejection = captured.mesh.kickPoll.mock.calls.length;
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(captured.mesh.sendMailbox).toHaveBeenCalled();
+    expect(captured.mesh.kickPoll.mock.calls.length).toBe(kicksBeforeRejection + 1);
   });
 });
 
@@ -176,6 +215,7 @@ describe("DocsRtcSession gossip discovery", () => {
         type: "peer-hint",
         peers: [{ id: "p2", name: "Bob" }, { id: 42, name: "bad" }, "junk"],
       }),
+      null,
     );
 
     expect(captured.mesh.applyPeerHint).toHaveBeenCalledWith([{ id: "p2", name: "Bob" }]);
@@ -185,8 +225,8 @@ describe("DocsRtcSession gossip discovery", () => {
   it("does not treat unknown message types or malformed payloads as hints", () => {
     createSession();
 
-    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "mystery", peers: [] }));
-    captured.bindingOptions?.onMessage("p1", "not json at all");
+    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "mystery", peers: [] }), null);
+    captured.bindingOptions?.onMessage("p1", "not json at all", null);
 
     expect(captured.mesh.applyPeerHint).not.toHaveBeenCalled();
   });
@@ -196,10 +236,19 @@ describe("DocsRtcSession gossip discovery", () => {
     const seen: DocsCollabMeshMessage[] = [];
     session.onMessage((msg) => seen.push(msg));
 
-    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u: [1, 2] }));
+    captured.bindingOptions?.onMessage(
+      "p1",
+      JSON.stringify({ type: "sync", bin: 1 }),
+      Uint8Array.of(1, 2),
+    );
 
     expect(seen).toEqual([
-      { type: "sync", u: [1, 2], from: "p1", trust: { user: "", access: "read" } },
+      {
+        type: "sync",
+        u: Uint8Array.of(1, 2),
+        from: "p1",
+        trust: { user: "", access: "read" },
+      },
     ]);
   });
 
@@ -214,7 +263,8 @@ describe("DocsRtcSession gossip discovery", () => {
 
     captured.bindingOptions?.onMessage(
       "p1",
-      JSON.stringify({ type: "sync", u: [2, 1], trust: { user: "bob", access: "write" } }),
+      JSON.stringify({ type: "sync", bin: 1, trust: { user: "bob", access: "write" } }),
+      Uint8Array.of(2, 1),
     );
 
     expect(seen.at(-1)).toMatchObject({ trust: { user: "carol", access: "comment" } });
@@ -231,22 +281,26 @@ describe("DocsRtcSession gossip discovery", () => {
     });
     expect(session.myAccess()).toBe("read");
 
-    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
-    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_2, 1, 2] });
-    expect(captured.mesh.broadcastJson).not.toHaveBeenCalledWith({
-      type: "sync",
-      u: [SYNC_UPDATE, 1, 2],
-    });
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 1, 2) });
+    session.sendTo("p1", { type: "sync", u: Uint8Array.of(SYNC_STEP_2, 1, 2) });
+    expect(captured.mesh.broadcastJson).not.toHaveBeenCalledWith(
+      { type: "sync", bin: 1 },
+      Uint8Array.of(SYNC_UPDATE, 1, 2),
+    );
     expect(captured.mesh.sendJsonTo).not.toHaveBeenCalled();
 
     // A step 1 only asks for state, which is the whole point of a viewer.
-    session.sendTo("p1", { type: "sync", u: [SYNC_STEP_1, 0] });
-    session.broadcast({ type: "awareness", u: [1] });
-    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith("p1", {
-      type: "sync",
-      u: [SYNC_STEP_1, 0],
-    });
-    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({ type: "awareness", u: [1] });
+    session.sendTo("p1", { type: "sync", u: Uint8Array.of(SYNC_STEP_1, 0) });
+    session.broadcast({ type: "awareness", u: Uint8Array.of(1) });
+    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(
+      "p1",
+      { type: "sync", bin: 1 },
+      Uint8Array.of(SYNC_STEP_1, 0),
+    );
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith(
+      { type: "awareness", bin: 1 },
+      Uint8Array.of(1),
+    );
   });
 
   it("ends the session and drops the reuse links when a poll comes back 403", () => {
@@ -289,11 +343,11 @@ describe("DocsRtcSession gossip discovery", () => {
     });
 
     expect(session.myAccess()).toBe("write");
-    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
-    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
-      type: "sync",
-      u: [SYNC_UPDATE, 1, 2],
-    });
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 1, 2) });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith(
+      { type: "sync", bin: 1 },
+      Uint8Array.of(SYNC_UPDATE, 1, 2),
+    );
   });
 
   it("lets an editor broadcast document updates", () => {
@@ -303,12 +357,12 @@ describe("DocsRtcSession gossip discovery", () => {
       messages: [],
     });
 
-    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2] });
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 1, 2) });
 
-    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith({
-      type: "sync",
-      u: [SYNC_UPDATE, 1, 2],
-    });
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledWith(
+      { type: "sync", bin: 1 },
+      Uint8Array.of(SYNC_UPDATE, 1, 2),
+    );
   });
 
   it("drops all listeners on clearMessageListeners", () => {
@@ -317,7 +371,11 @@ describe("DocsRtcSession gossip discovery", () => {
     session.onMessage((msg) => seen.push(msg));
 
     session.clearMessageListeners();
-    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u: [1] }));
+    captured.bindingOptions?.onMessage(
+      "p1",
+      JSON.stringify({ type: "sync", bin: 1 }),
+      Uint8Array.of(1),
+    );
 
     expect(seen).toEqual([]);
   });
@@ -434,11 +492,21 @@ describe("DocsRtcSession principal reuse wiring", () => {
       { id: peer.id, name: peer.name, link: "connecting" },
     ]);
 
-    session.sendTo(peer.id, { type: "sync", u: [7] });
-    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(peer.id, { type: "sync", u: [7] });
+    session.sendTo(peer.id, { type: "sync", u: Uint8Array.of(7) });
+    expect(captured.mesh.sendJsonTo).toHaveBeenCalledWith(
+      peer.id,
+      { type: "sync", bin: 1 },
+      Uint8Array.of(7),
+    );
 
-    captured.bindingOptions?.onMessage(peer.id, JSON.stringify({ type: "sync", u: [8] }));
-    expect(seen).toContainEqual(expect.objectContaining({ type: "sync", u: [8], from: peer.id }));
+    captured.bindingOptions?.onMessage(
+      peer.id,
+      JSON.stringify({ type: "sync", bin: 1 }),
+      Uint8Array.of(8),
+    );
+    expect(seen).toContainEqual(
+      expect.objectContaining({ type: "sync", u: Uint8Array.of(8), from: peer.id }),
+    );
   });
 
   it("retries fresh ICE immediately when a reused principal link drops without a poll", () => {
@@ -668,6 +736,48 @@ describe("DocsRtcSession join access and single session", () => {
     );
     await third.leave();
   });
+
+  it("does not start http sync or register a superseded join", async () => {
+    const start = vi.spyOn(DocsCollabHttpSync.prototype, "start");
+    const doc = new Y.Doc();
+    const room = "docs/superseded-join.md";
+    const superseded = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    captured.mesh.join.mockResolvedValueOnce({
+      peerId: "",
+      peers: [],
+      superseded: true,
+    } as { peerId: string; peers: []; ticket?: string });
+
+    const result = await superseded.join("Self");
+
+    expect(result).toEqual({ peerId: "", peers: [] });
+    expect(start).not.toHaveBeenCalled();
+
+    const follower = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room,
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    captured.mesh.join.mockResolvedValueOnce({ peerId: "me", peers: [] });
+    vi.mocked(rtcLog).mockClear();
+    await follower.join("Other");
+    expect(rtcLog).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "duplicate-session",
+      expect.anything(),
+    );
+
+    await superseded.leave();
+    await follower.leave();
+    start.mockRestore();
+    doc.destroy();
+  });
 });
 
 describe("DocsRtcSession data-channel debug tags", () => {
@@ -685,7 +795,7 @@ describe("DocsRtcSession data-channel debug tags", () => {
       peers: [{ id: "me", name: "Self", user: "carol", access: "write" }],
       messages: [],
     });
-    const u = Array.from({ length: 20 }, (_, index) => index + 1);
+    const u = Uint8Array.from({ length: 20 }, (_, index) => index + 1);
     const tag = "01020304050607080d0e0f1011121314";
 
     session.broadcast({ type: "sync", u });
@@ -696,7 +806,7 @@ describe("DocsRtcSession data-channel debug tags", () => {
       tag,
     });
 
-    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", u }));
+    captured.bindingOptions?.onMessage("p1", JSON.stringify({ type: "sync", bin: 1 }), u);
     expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-recv", {
       from: "p1",
       type: "sync",
@@ -705,7 +815,7 @@ describe("DocsRtcSession data-channel debug tags", () => {
     });
 
     vi.mocked(rtcLog).mockClear();
-    session.sendTo("p1", { type: "awareness", u: [1, 2, 3] });
+    session.sendTo("p1", { type: "awareness", u: Uint8Array.of(1, 2, 3) });
     expect(rtcLog).toHaveBeenCalledWith({ channel: "collab", peerId: "me" }, "dc-send", {
       type: "awareness",
       bytes: 3,
@@ -720,7 +830,7 @@ describe("DocsRtcSession data-channel debug tags", () => {
       messages: [],
     });
 
-    session.broadcast({ type: "sync", u: [SYNC_UPDATE, 1, 2, 3] });
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 1, 2, 3) });
     expect(rtcLog).not.toHaveBeenCalledWith(expect.anything(), "dc-send", expect.anything());
     expect(rtcLog).toHaveBeenCalledWith(
       { channel: "collab", peerId: "me" },

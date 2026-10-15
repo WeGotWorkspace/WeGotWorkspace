@@ -18,8 +18,6 @@ describe("DriveNewMenu", () => {
         onCreateFolder={onCreateFolder}
         onUploadFiles={vi.fn()}
         onCreateMarkdown={vi.fn()}
-        newFileTemplates={[{ id: "blank-doc", label: L.newDocument, kind: "doc" }]}
-        onCreateTemplate={vi.fn()}
       />,
     );
 
@@ -29,16 +27,15 @@ describe("DriveNewMenu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("opens upload and templates from the chevron", () => {
+  it("opens upload and New document from the chevron", () => {
     const onUploadFiles = vi.fn();
-    const onCreateTemplate = vi.fn();
+    const onCreateMarkdown = vi.fn();
     render(
       <DriveNewMenu
         labels={L}
         onCreateFolder={vi.fn()}
         onUploadFiles={onUploadFiles}
-        newFileTemplates={[{ id: "blank-doc", label: L.newDocument, kind: "doc" }]}
-        onCreateTemplate={onCreateTemplate}
+        onCreateMarkdown={onCreateMarkdown}
       />,
     );
 
@@ -50,8 +47,8 @@ describe("DriveNewMenu", () => {
 
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.newDocument }));
-    expect(onCreateTemplate).toHaveBeenCalledWith("blank-doc");
+    fireEvent.click(screen.getByRole("button", { name: L.newMarkdown }));
+    expect(onCreateMarkdown).toHaveBeenCalledOnce();
   });
 
   it("keeps the chevron when only upload is available", () => {

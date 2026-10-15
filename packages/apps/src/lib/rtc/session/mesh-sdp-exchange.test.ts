@@ -103,11 +103,11 @@ function offerExchange(mint: "ok" | "fail") {
   const answers: string[] = [];
   const dialer = new MeshPeerDialer({
     channel: "collab",
-    rtcSettings: {
+    rtcSettings: () => ({
       stunUrls: "stun:stun.example:3478",
       turnAvailable: true,
       forceRelay: true,
-    },
+    }),
     peers,
     createPeerConnection: () => answerablePc(),
     localPeerId: () => "peer-a",

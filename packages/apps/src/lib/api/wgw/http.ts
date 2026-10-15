@@ -3,7 +3,10 @@ import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
+import { readLoggedOutMarker, setLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
+import { appendSessionDebugRecord } from "@/lib/api/wgw/session-debug";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
+import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -23,10 +26,7 @@ function parseEnvBoolean(value: string | undefined): boolean | null {
   return null;
 }
 
-/**
- * API root including `/api/v1`. In dev, keep the default so requests hit the Vite proxy
- * (see `vite.config.ts`) and avoid CORS against `wegotworkspace.localhost`.
- */
+/** API root including `/api/v1`. Dev uses the Vite proxy default to avoid CORS. */
 export function wgwApiBaseUrl(): string {
   const runtime = activeWgwApiRuntime();
   if (runtime?.baseUrl) return runtime.baseUrl;
@@ -36,13 +36,14 @@ export function wgwApiBaseUrl(): string {
 
 type TokenResponse = {
   access_token: string;
-  refresh_token: string;
   expires_in?: number;
   refresh_expires_in?: number;
 };
 
+export type WgwSessionKind = "member" | "guest";
+
 let accessToken: string | null = null;
-let refreshToken: string | null = null;
+let sessionKind: WgwSessionKind | null = null;
 let accessExpiresAt: number | null = null;
 let refreshExpiresAt: number | null = null;
 let refreshPromise: Promise<boolean> | null = null;
@@ -50,19 +51,16 @@ let storageWriteFailed = false;
 let refreshFailureCount = 0;
 let refreshFailureWindowStartedAt: number | null = null;
 let refreshRejectedByAuth = false;
-
-/** Sentinel refresh token for public share guest JWTs (no refresh endpoint in v1). */
-export const WGW_GUEST_REFRESH_TOKEN = "__guest__";
+let legacySwept = false;
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
-const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+const SESSION_KIND_KEY = "wgw.api.session_kind";
+/** Legacy key from before #1175 — removed on boot, never written. */
+const LEGACY_REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
-const LOGGED_OUT_KEY = "wgw.api.logged_out";
 const GUEST_SHARE_TOKEN_KEY = "wgw.api.guest_share_token";
 const GUEST_SHARE_PATH_KEY = "wgw.api.guest_share_path";
-const SESSION_DEBUG_RING_KEY = "wgw.api.session_debug";
-const SESSION_DEBUG_RING_MAX = 20;
 const REFRESH_RETRY_CAP = 3;
 const REFRESH_RETRY_WINDOW_MS = 15 * 60 * 1_000;
 const RETRY_CAP_MARGIN_SEC = 0;
@@ -88,11 +86,23 @@ function hasSessionStorage(): boolean {
   return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
 }
 
+function sweepLegacyRefreshToken(): void {
+  if (legacySwept || !hasWindowStorage()) return;
+  legacySwept = true;
+  try {
+    window.localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+  } catch {
+    // Storage unavailable; nothing to sweep.
+  }
+}
+
 function readTokensFromStorage(): void {
+  sweepLegacyRefreshToken();
   if (!hasWindowStorage() || storageWriteFailed) return;
   try {
     accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-    refreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+    const storedKind = window.localStorage.getItem(SESSION_KIND_KEY);
+    sessionKind = storedKind === "member" || storedKind === "guest" ? storedKind : null;
     const accessExpRaw = window.localStorage.getItem(ACCESS_EXPIRES_AT_KEY);
     const refreshExpRaw = window.localStorage.getItem(REFRESH_EXPIRES_AT_KEY);
     accessExpiresAt = parseTimestamp(accessExpRaw);
@@ -110,8 +120,8 @@ function persistTokens(): void {
   try {
     if (accessToken) window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     else window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-    if (refreshToken) window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-    else window.localStorage.removeItem(REFRESH_TOKEN_KEY);
+    if (sessionKind) window.localStorage.setItem(SESSION_KIND_KEY, sessionKind);
+    else window.localStorage.removeItem(SESSION_KIND_KEY);
     if (accessExpiresAt !== null)
       window.localStorage.setItem(ACCESS_EXPIRES_AT_KEY, String(accessExpiresAt));
     else window.localStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
@@ -123,33 +133,6 @@ function persistTokens(): void {
     storageWriteFailed = false;
   } catch {
     storageWriteFailed = true;
-    try {
-      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-    } catch {
-      // A failed removal still leaves memory authoritative for this tab.
-    }
-  }
-}
-
-function readLoggedOutMarker(): boolean {
-  if (!hasWindowStorage()) return false;
-  try {
-    return window.localStorage.getItem(LOGGED_OUT_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function setLoggedOutMarker(value: boolean): void {
-  if (!hasWindowStorage()) return;
-  try {
-    if (value) {
-      window.localStorage.setItem(LOGGED_OUT_KEY, "1");
-    } else {
-      window.localStorage.removeItem(LOGGED_OUT_KEY);
-    }
-  } catch {
-    // Ignore storage failures and keep in-memory fallback.
   }
 }
 
@@ -212,32 +195,19 @@ function noteRefreshFailure(): void {
 }
 
 function appendSessionDebugEvent(reason: WgwSessionClearReason): void {
-  const payload = {
+  appendSessionDebugRecord({
     event: "wgw.session.cleared",
     reason,
     online: readBrowserOnline(),
     hadRefreshExpiry: refreshExpiresAt !== null,
     timestamp: new Date().toISOString(),
-  };
-  if (import.meta.env.DEV) {
-    console.debug(payload.event, payload);
-  }
-  if (!hasWindowStorage()) return;
-  try {
-    const raw = window.localStorage.getItem(SESSION_DEBUG_RING_KEY);
-    const parsed = raw ? (JSON.parse(raw) as unknown[]) : [];
-    const ring = Array.isArray(parsed) ? parsed.slice(-(SESSION_DEBUG_RING_MAX - 1)) : [];
-    ring.push(payload);
-    window.localStorage.setItem(SESSION_DEBUG_RING_KEY, JSON.stringify(ring));
-  } catch {
-    // Ignore localStorage debug write failures.
-  }
+  });
 }
 
 export function clearWgwSession(reason: WgwSessionClearReason): void {
   appendSessionDebugEvent(reason);
   accessToken = null;
-  refreshToken = null;
+  sessionKind = null;
   accessExpiresAt = null;
   refreshExpiresAt = null;
   resetRefreshFailures();
@@ -250,7 +220,12 @@ async function postJson(path: string, body: unknown, auth?: string): Promise<Res
   const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) headers.Authorization = `Bearer ${auth}`;
-  return fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  return fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    credentials: "same-origin",
+  });
 }
 
 async function readTokenResponse(res: Response): Promise<TokenResponse> {
@@ -268,44 +243,40 @@ async function readTokenResponse(res: Response): Promise<TokenResponse> {
   }
   const o = j as Record<string, unknown>;
   const at = o.access_token;
-  const rt = o.refresh_token;
-  if (typeof at !== "string" || typeof rt !== "string") {
-    throw new Error("Auth response missing access_token or refresh_token");
+  if (typeof at !== "string") {
+    throw new Error("Auth response missing access_token");
   }
   const expiresIn = Number(o.expires_in);
   const refreshExpiresIn = Number(o.refresh_expires_in);
   return {
     access_token: at,
-    refresh_token: rt,
     expires_in: Number.isFinite(expiresIn) ? expiresIn : undefined,
     refresh_expires_in: Number.isFinite(refreshExpiresIn) ? refreshExpiresIn : undefined,
   };
 }
 
-function applyTokens(tokens: TokenResponse): void {
+function applyTokens(tokens: TokenResponse, kind: WgwSessionKind): void {
   accessToken = tokens.access_token;
-  refreshToken = tokens.refresh_token;
+  sessionKind = kind;
   accessExpiresAt = resolveAccessExpiresAt(tokens);
   refreshExpiresAt = resolveRefreshExpiresAt(tokens);
   persistTokens();
   resetRefreshFailures();
   refreshRejectedByAuth = false;
   setLoggedOutMarker(false);
-  if (tokens.refresh_token !== WGW_GUEST_REFRESH_TOKEN) {
-    wgwClearGuestShareContext();
-  }
+  if (kind !== "guest") wgwClearGuestShareContext();
 }
 
-/** True when the stored refresh token marks a public share guest session. */
+/** True when the stored session is a public share guest. */
 export function wgwIsGuestSession(): boolean {
   readTokensFromStorage();
-  return refreshToken === WGW_GUEST_REFRESH_TOKEN;
+  return sessionKind === "guest";
 }
 
 /** True when access + refresh tokens are present (localStorage or memory). */
 export function wgwHasAuthenticatedSession(): boolean {
   readTokensFromStorage();
-  return Boolean(accessToken && refreshToken);
+  return Boolean(accessToken && sessionKind);
 }
 
 /** Remember the public share token for guest sign-out return navigation. */
@@ -421,12 +392,10 @@ export function wgwEstablishGuestShareSession(
   if (sharePath?.trim()) {
     wgwPersistGuestSharePath(sharePath);
   }
-  applyTokens({
-    access_token: response.access_token,
-    refresh_token: WGW_GUEST_REFRESH_TOKEN,
-    expires_in: expiresIn,
-    refresh_expires_in: expiresIn,
-  });
+  applyTokens(
+    { access_token: response.access_token, expires_in: expiresIn, refresh_expires_in: expiresIn },
+    "guest",
+  );
 }
 
 export type WgwLogoutNavigation = "guest_share" | "guest_reload" | "member_login";
@@ -468,7 +437,7 @@ export function isAccessTokenExpired(marginSec = 180): boolean {
 
 export function isRefreshTokenExpired(): boolean {
   readTokensFromStorage();
-  if (!refreshToken) return true;
+  if (sessionKind !== "member") return true;
   if (refreshExpiresAt === null) return false;
   return isExpiredAt(refreshExpiresAt, 0);
 }
@@ -484,7 +453,7 @@ export function wgwSessionAvailable(): boolean {
 
 /** Offline / Storybook: accept any credentials without calling `/auth/token`. */
 export function wgwEstablishMockSession(): void {
-  applyTokens({ access_token: "mock", refresh_token: "mock" });
+  applyTokens({ access_token: "mock" }, "member");
 }
 
 export async function wgwLoginWithCredentials(username: string, password: string): Promise<void> {
@@ -498,7 +467,7 @@ export async function wgwLoginWithCredentials(username: string, password: string
   }
   const res = await postJson("/auth/token", { username: normalized, password });
   const tokens = await readTokenResponse(res);
-  applyTokens(tokens);
+  applyTokens(tokens, "member");
 }
 
 /** Origin-root Passport login. Relative `/api/v1` stays same-origin (Vite proxy). */
@@ -618,20 +587,21 @@ async function assertOkResponse(res: Response): Promise<void> {
 
 export async function wgwLogout(): Promise<void> {
   readTokensFromStorage();
+  const guest = wgwIsGuestSession();
   setLoggedOutMarker(true);
-  try {
-    if (refreshToken || accessToken) {
-      await postJson(
-        "/auth/revoke",
-        refreshToken ? { refresh_token: refreshToken } : {},
-        accessToken ?? undefined,
-      );
-    }
-  } catch {
-    // Best effort: local token cleanup always runs.
-  } finally {
-    clearWgwSession("user_initiated");
+  if (!guest) {
+    await offlineWipe.runLogoutStep(() => offlineWipe.releasePushOnLogout(wgwFetch), "push");
   }
+  await offlineWipe.runLogoutStep(async () => {
+    if (sessionKind || accessToken) {
+      await postJson("/auth/revoke", {}, accessToken ?? undefined);
+    }
+  }, "revoke");
+  setLoggedOutMarker(true);
+  if (!guest) {
+    await offlineWipe.runLogoutStep(offlineWipe.wipeOfflineAccountData, "wipe");
+  }
+  clearWgwSession("user_initiated");
 }
 
 /** Obtain tokens using `VITE_WGW_DEV_USERNAME` / `VITE_WGW_DEV_PASSWORD` (local `.env.local` only). */
@@ -645,7 +615,7 @@ export async function wgwEnsureSession(): Promise<void> {
     throw new Error("Share session expired. Open the link again.");
   }
 
-  if (refreshToken) {
+  if (sessionKind === "member") {
     if (readBrowserOnline() && isRefreshTokenExpired()) {
       clearWgwSession("refresh_expired");
       throw new Error("Missing auth session. Sign in to continue.");
@@ -670,24 +640,23 @@ export async function wgwEnsureSession(): Promise<void> {
 }
 
 async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
-  if (!refreshToken || wgwIsGuestSession()) return false;
+  if (sessionKind !== "member") return false;
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = withAuthRefreshLock(async () => {
     readTokensFromStorage();
     if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
-    if (!refreshToken || wgwIsGuestSession()) return false;
+    if (sessionKind !== "member") return false;
     if (!readBrowserOnline()) return false;
     if (isRefreshTokenExpired()) {
       clearWgwSession("refresh_expired");
       return false;
     }
 
-    const presented = refreshToken;
     try {
-      const res = await postJson("/auth/refresh", { refresh_token: presented });
+      const res = await postJson("/auth/refresh", {});
       const tokens = await readTokenResponse(res);
-      applyTokens(tokens);
+      applyTokens(tokens, "member");
       return true;
     } catch (error) {
       if (error instanceof AuthHttpError && (error.status === 401 || error.status === 403)) {
@@ -738,7 +707,7 @@ export async function wgwEnsureFreshAccessToken(): Promise<string | null> {
   await wgwEnsureSession();
   if (accessToken && !isAccessTokenExpired()) return accessToken;
 
-  if (refreshToken) {
+  if (sessionKind === "member") {
     if (readBrowserOnline()) {
       const refreshed = await wgwTryRefresh();
       if (refreshed && accessToken) return accessToken;
@@ -971,30 +940,12 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   return { user, viewerInboxLabel: "me" };
 }
 
-export async function wgwEnsurePluginSession(sessionApiPath: string): Promise<void> {
-  if (!wgwLiveApiEnabled()) return;
-  let path = sessionApiPath.trim();
-  if (path.startsWith("/api/v1")) {
-    path = path.slice("/api/v1".length);
-  }
-  if (!path.startsWith("/")) {
-    path = `/${path}`;
-  }
-  const res = await wgwFetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!res.ok) {
-    throw new Error(`POST ${path} failed (${res.status})`);
-  }
-}
-
 export function resetWgwSessionStateForTests(keepTokens = false): void {
   refreshPromise = null;
+  legacySwept = false;
   if (keepTokens) return;
   accessToken = null;
-  refreshToken = null;
+  sessionKind = null;
   accessExpiresAt = null;
   refreshExpiresAt = null;
   storageWriteFailed = false;

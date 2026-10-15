@@ -38,4 +38,20 @@ final class SearchTokenServiceTest extends TestCase
         $this->assertContains('2026', $tokens);
         $this->assertSame('string', gettype($tokens[array_search('2026', $tokens, true)]));
     }
+
+    public function test_query_tokenization_stops_after_ten_tokens(): void
+    {
+        $service = new SearchTokenService;
+        $words = [];
+        for ($i = 1; $i <= 11; $i++) {
+            $words[] = sprintf('token%02d', $i);
+        }
+        $text = implode(' ', $words);
+
+        $capped = $service->tokenize($text, SearchTokenService::MAX_QUERY_TOKENS);
+
+        $this->assertSame(array_slice($words, 0, 10), $capped);
+        $this->assertNotContains('token11', $capped);
+        $this->assertCount(11, $service->tokenize($text));
+    }
 }

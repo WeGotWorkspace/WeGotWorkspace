@@ -15,6 +15,7 @@ use App\Services\Mcp\McpScopes;
 use App\Services\Mcp\PassportKeyStore;
 use App\Services\Notify\MinishlinkWebPushSender;
 use App\Services\Notify\WebPushSender;
+use App\Support\CspNonce;
 use App\Support\SqliteTextLobStatement;
 use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(CspNonce::class);
         $this->app->singleton(EventDispatch::class, function ($app): EventDispatch {
             return new EventDispatch([
                 $app->make(NotifyListener::class),

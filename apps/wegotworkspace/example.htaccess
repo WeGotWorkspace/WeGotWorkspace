@@ -3,8 +3,10 @@ Options -Indexes -MultiViews
 # Deny private trees and known sensitive dotfiles even when mod_rewrite is off.
 # mod_alias is effectively always present. Other "/." segments stay reachable
 # so WebDAV can serve .attachments, .notes, .Trash, and AppleDouble files.
-RedirectMatch 404 ^/(?:wgw-content|wgw-private|wgw-modules|packages)(?:/|$)
-RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+# BEGIN wgw-deny
+RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
+RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+# END wgw-deny
 
 # Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
 # see .user.ini. Must stay in sync with docker/php/uploads.ini.
@@ -29,19 +31,46 @@ RedirectMatch 404 /\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
 # ships Alias /icons/ -> /usr/share/apache2/icons/ in alias.conf, which shadows app assets.
 
 # WebAssembly assets: ensure correct Content-Type when host mime.types omits .wasm.
+# script-src includes 'wasm-unsafe-eval' because plugin bundles compile these
+# files in the page. Chromium blocks WebAssembly.compile/instantiate without it.
 <IfModule mod_mime.c>
     AddType application/wasm .wasm
 </IfModule>
+
+# BEGIN wgw-headers
+# Apache serves /index.html, /sw.js, /assets/*, and fonts without PHP, so HSTS and
+# the CSP for those files have to be set here. Middleware still sets both when
+# mod_headers is off. env=HTTPS is mod_ssl, when Apache itself terminates TLS. Behind
+# a proxy that sends X-Forwarded-Proto, WGW_HTTPS covers the same header. Do not copy
+# that proto into the HTTPS variable: PHP Request::isSecure() reads it and would ignore
+# trustProxies. Browsers ignore HSTS on plain HTTP, so a spoofed proto does not stick.
+# The served shell has no inline script, so the policy needs no hash and no nonce.
+# Managed by WebRootDeny::managedHeadersBlock(); edits inside this block are overwritten on upgrade.
+<IfModule mod_headers.c>
+    <IfModule mod_setenvif.c>
+        SetEnvIf X-Forwarded-Proto "^https$" WGW_HTTPS=on
+    </IfModule>
+    Header always set Strict-Transport-Security "max-age=15552000" env=HTTPS
+    Header always set Strict-Transport-Security "max-age=15552000" env=WGW_HTTPS
+    <Files "index.html">
+        Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; report-uri /api/v1/csp-reports"
+    </Files>
+</IfModule>
+# END wgw-headers
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
 
+    # RFC 6764 — CalDAV/CardDAV service discovery.
+    # Hand the probe to Laravel, which redirects to the installed DAV root.
+    RewriteRule ^\.well-known/(caldav|carddav)$ index.php [L]
+
     # Origin-root MCP OAuth discovery (/.well-known/oauth-*) falls through to
     # index.php with other unknown paths. Do not require /api for those URLs.
 
     # Never expose runtime internals, config, or source trees directly.
-    RewriteRule ^(?:wgw-modules|wgw-private|wgw-content)(?:/|$) - [F,L,NC]
+    RewriteRule ^(?:wgw-plugins|wgw-content)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:wgw-src|src|resources|vendor|scripts|patches|config|public|packages)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php|\.env)$ - [F,L,NC]
 

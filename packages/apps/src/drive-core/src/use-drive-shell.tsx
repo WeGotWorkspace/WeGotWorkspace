@@ -9,11 +9,10 @@ import {
   mergeDriveGroupRoots,
   type DriveGroupRoot,
 } from "@/drive-core/src/drive-group-roots";
-import { driveLabels, driveOfficeNewFileLabel } from "@/drive-core/src/drive-labels";
+import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { mergeDriveFolderListing } from "@/drive-core/src/drive-batch-utils";
-import { findDrivePluginWithTemplates } from "@/drive-core/src/drive-plugin-utils";
 import {
   apiPathFromUiPath,
   DRIVE_TRASH_UI_PATH,
@@ -32,7 +31,6 @@ import type {
   DriveShareOperations,
   DriveUIData,
   DriveUnifiedSearchResult,
-  WgwPluginDescriptor,
 } from "@/drive-core/src/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
@@ -51,7 +49,6 @@ export type UseDriveShellArgs = {
   listLoading?: boolean;
   view?: ViewKey;
   onViewChange?: (view: ViewKey) => void;
-  onNavigate?: (href: string) => void;
 };
 
 export type DriveShellOpenFileHandler = (file: DriveFile) => void;
@@ -70,51 +67,8 @@ export function useDriveShell({
   listLoading = false,
   view: controlledView,
   onViewChange,
-  onNavigate,
 }: UseDriveShellArgs) {
   const { showError } = useAppToast();
-
-  const ensurePluginSessionBeforeNavigate = useCallback(
-    (sessionPath: string | undefined, navigate: () => void) => {
-      const ensureSession =
-        sessionPath && operations?.ensurePluginSession
-          ? operations.ensurePluginSession(sessionPath)
-          : Promise.resolve();
-      void ensureSession
-        .then(() => {
-          navigate();
-        })
-        .catch((error: unknown) => {
-          const detail = error instanceof Error ? error.message : undefined;
-          showError("Could not open app", { description: detail });
-        });
-    },
-    [operations, showError],
-  );
-
-  const launchPluginEditor = useCallback(
-    (plugin: WgwPluginDescriptor, route: string, params: URLSearchParams) => {
-      const target = `${route}?${params.toString()}`;
-      ensurePluginSessionBeforeNavigate(plugin.integration?.sessionApiPath, () => {
-        onNavigate?.(target);
-      });
-    },
-    [ensurePluginSessionBeforeNavigate, onNavigate],
-  );
-
-  const templatePlugin = useMemo(() => findDrivePluginWithTemplates(data.plugins), [data.plugins]);
-  const newFileTemplates = useMemo(() => {
-    if (!templatePlugin?.drive?.newFileTemplates) return [];
-    return templatePlugin.drive.newFileTemplates
-      .filter((template) => ["doc", "sheet", "slides"].includes(template.kind))
-      .map((template) => ({
-        id: template.id,
-        label: driveOfficeNewFileLabel(template.kind),
-        kind: template.kind,
-        queryValue: template.queryValue,
-      }));
-  }, [templatePlugin]);
-
   const currentUsername = data.user.username || session.user.username || "";
   const [files, setFiles] = useState<DriveFile[]>(() => {
     if (!operations) return DRIVE_MOCK_FILES;
@@ -507,10 +461,6 @@ export function useDriveShell({
     listLoading,
     operations,
     data,
-    templatePlugin,
-    newFileTemplates,
-    launchPluginEditor,
-    ensurePluginSessionBeforeNavigate,
     reloadStarredFromServer,
     createUnifiedSearchSelectHandler,
   };

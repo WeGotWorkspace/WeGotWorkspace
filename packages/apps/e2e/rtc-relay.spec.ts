@@ -22,13 +22,13 @@ import {
   postRelay,
   remoteVideoAdvances,
   selectedLocalTypes,
-  withForceRelay,
   type RtcConsoleEvent,
 } from "./helpers/rtc-relay";
+import { setRtcTestOverrides } from "./helpers/rtc-test-overrides";
 
 /**
  * Local coturn relay tier. N4, N5, and N13–N15 stay manual.
- * Every Meet and Docs URL in this file carries `rtcDebug=1`.
+ * RTC debug logging and forced relay use `setRtcTestOverrides` per context.
  */
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
@@ -82,7 +82,12 @@ test("forced relay — Docs", async ({ browser }) => {
   const rightLog = collectRtcEvents(right.page);
   try {
     await uploadMarkdown(apiPath, "# Relay\n");
-    const url = withForceRelay(`${docsUrlForFile(apiPath)}&rtcDebug=1`);
+    await Promise.all(
+      sessions.map((session) =>
+        setRtcTestOverrides(session.context, { debug: true, forceRelay: true }),
+      ),
+    );
+    const url = docsUrlForFile(apiPath);
     await Promise.all([left.page.goto(url), right.page.goto(url)]);
     await expect(left.page.locator(".ProseMirror")).toBeVisible();
     await expect(right.page.locator(".ProseMirror")).toBeVisible();
@@ -109,7 +114,12 @@ test("forced relay — Docs principal and collab stay on TURN", async ({ browser
   const rightLog = collectRtcEvents(right.page);
   try {
     await uploadMarkdown(apiPath, "# Relay hold\n");
-    const url = withForceRelay(`${docsUrlForFile(apiPath)}&rtcDebug=1`);
+    await Promise.all(
+      sessions.map((session) =>
+        setRtcTestOverrides(session.context, { debug: true, forceRelay: true }),
+      ),
+    );
+    const url = docsUrlForFile(apiPath);
     await Promise.all([left.page.goto(url), right.page.goto(url)]);
     await expect(left.page.locator(".ProseMirror")).toBeVisible();
     await expect(right.page.locator(".ProseMirror")).toBeVisible();
@@ -318,6 +328,7 @@ async function startAdHocCall(
 }
 
 async function joinMeet(page: Page, room: string, forceRelay: boolean): Promise<void> {
+  await setRtcTestOverrides(page.context(), { debug: true, forceRelay });
   if (!forceRelay) {
     await joinMeetRoom(page, room);
     return;
@@ -326,7 +337,7 @@ async function joinMeet(page: Page, room: string, forceRelay: boolean): Promise<
     (request) =>
       request.method() === "POST" && request.url().includes(`/api/v1/rooms/${room}/participants`),
   );
-  await page.goto(withForceRelay(`/meet/meetings/${room}?rtcDebug=1`));
+  await page.goto(`/meet/meetings/${room}`);
   const meetButton = page
     .locator(".meet-workspace__header-actions")
     .getByRole("button", { name: "Meet", exact: true });
@@ -359,12 +370,14 @@ async function openBlankGuest(browser: Parameters<typeof openUsers>[0]): Promise
     permissions: ["camera", "microphone"],
     ignoreHTTPSErrors: process.env.WGW_APPS_E2E_IGNORE_HTTPS === "1",
   });
+  await setRtcTestOverrides(context, { debug: true, forceRelay: false });
   const page = await context.newPage();
   return { context, page, accessToken: "", username: "guest" };
 }
 
 async function knockGuest(page: Page, room: string, name: string): Promise<void> {
-  await page.goto(withForceRelay(`/meet/meetings/${room}?rtcDebug=1`));
+  await setRtcTestOverrides(page.context(), { debug: true, forceRelay: true });
+  await page.goto(`/meet/meetings/${room}`);
   await page.getByLabel("Your name").fill(name);
   const join = page.waitForRequest(
     (request) =>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\AppSetting;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -99,6 +100,110 @@ final class AdminSettingsTest extends WgwDatabaseTestCase
             ->assertJsonPath('webdav.timezone', 'Europe/Amsterdam')
             ->assertJsonPath('apps.calendars', false)
             ->assertJsonPath('apps.contacts', true);
+    }
+
+    public function test_imip_caps_persist_in_admin_state(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipExternalEnabled', true)
+            ->assertJsonPath('apps.imipHourlyLimit', 100)
+            ->assertJsonPath('apps.imipDailyLimit', 300);
+
+        $saved = $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_EXTERNAL_ENABLED => false,
+                    SettingKeys::IMIP_HOURLY_LIMIT => 25,
+                    SettingKeys::IMIP_DAILY_LIMIT => 400,
+                ],
+            ])
+            ->assertOk()
+            ->json('saved');
+        $this->assertContains(SettingKeys::IMIP_EXTERNAL_ENABLED, $saved);
+        $this->assertContains(SettingKeys::IMIP_HOURLY_LIMIT, $saved);
+        $this->assertContains(SettingKeys::IMIP_DAILY_LIMIT, $saved);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipExternalEnabled', false)
+            ->assertJsonPath('apps.imipHourlyLimit', 25)
+            ->assertJsonPath('apps.imipDailyLimit', 400);
+    }
+
+    public function test_hourly_invite_limit_is_clamped_to_the_daily_cap(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_HOURLY_LIMIT => 500,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 300)
+            ->assertJsonPath('apps.imipDailyLimit', 300);
+
+        $this->setAppSetting(SettingKeys::IMIP_HOURLY_LIMIT, 500);
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 300);
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_HOURLY_LIMIT => 500,
+                    SettingKeys::IMIP_DAILY_LIMIT => 600,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 500)
+            ->assertJsonPath('apps.imipDailyLimit', 600);
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::IMIP_DAILY_LIMIT => 200,
+                ],
+            ])
+            ->assertOk();
+
+        $this->withBearer($token)
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->assertJsonPath('apps.imipHourlyLimit', 200)
+            ->assertJsonPath('apps.imipDailyLimit', 200);
+    }
+
+    public function test_admin_save_of_browser_plugin_sets_the_marker(): void
+    {
+        $token = $this->adminBearerToken();
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/admin/settings', [
+                'values' => [
+                    SettingKeys::BROWSER_PLUGIN => true,
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertTrue(AppSetting::getValue('browser_plugin_admin_set'));
+        $this->assertTrue(AppSetting::getValue(SettingKeys::BROWSER_PLUGIN));
     }
 
     public function test_mcp_kill_switch_persists_in_admin_state(): void

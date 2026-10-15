@@ -11,6 +11,8 @@ use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
+use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 final class CalendarEventQuerySupport
 {
@@ -113,7 +115,16 @@ final class CalendarEventQuerySupport
     public function eventIntersectsWindow(array $event, string $raw, string $calendarUri, array $window): bool
     {
         if ($this->expansion->isRecurring($event)) {
-            return $this->expansion->expandInWindow($event, $raw, $calendarUri, $window['afterRaw'], $window['beforeRaw']) !== [];
+            try {
+                return $this->expansion->expandInWindow($event, $raw, $calendarUri, $window['afterRaw'], $window['beforeRaw']) !== [];
+            } catch (MaxInstancesExceededException) {
+                Log::warning('calendar.recurrence_limit', [
+                    'uid' => $event['uid'] ?? null,
+                    'calendarUri' => $calendarUri,
+                ]);
+
+                return false;
+            }
         }
 
         $start = $this->parseEventDate($event['start'] ?? null, $event);

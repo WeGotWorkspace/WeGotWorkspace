@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Models\JmapFileNode;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Search\SearchReindexRunner;
+use App\Services\Search\SearchReindexStateStore;
 use App\Storage\WgwStorage;
+use Illuminate\Support\Facades\Cache;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -40,6 +45,50 @@ final class AdminSearchTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('inProgress', false)
             ->assertJsonPath('lastResult.ok', true);
+    }
+
+    public function test_stale_reindex_state_clears_without_taking_the_lock(): void
+    {
+        $store = app(SearchReindexStateStore::class);
+        $store->ensureDirs();
+        $store->write([
+            'phase' => 'indexing_file_nodes',
+            'phase_updated_at' => date('c', time() - 700),
+        ]);
+
+        $lock = Cache::lock('search-reindex-runner', 900);
+        $this->assertTrue($lock->get());
+        try {
+            $state = app(SearchReindexRunner::class)->getState();
+            $this->assertFalse($state['inProgress']);
+            $this->assertNull($state['phase']);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    public function test_backfill_progress_callback_can_stop_the_walk_before_files_are_minted(): void
+    {
+        $ticked = false;
+        try {
+            app(FileNodeIndexService::class)->reindexAll(progress: function (int $done, int $total) use (&$ticked): void {
+                $this->assertGreaterThan(0, $done);
+                $this->assertGreaterThanOrEqual($done, $total);
+                $ticked = true;
+                throw new \RuntimeException('Search reindex cancelled by user.');
+            });
+            $this->fail('Expected the progress callback to abort the backfill.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Search reindex cancelled by user.', $e->getMessage());
+        }
+
+        $this->assertTrue($ticked);
+        $this->assertNull(
+            JmapFileNode::query()
+                ->where('storage_key', 'users/alice/admin-search.txt')
+                ->whereNull('deleted_at')
+                ->first(),
+        );
     }
 
     public function test_cancel_search_reindex_when_idle_returns_bad_request(): void

@@ -11,7 +11,7 @@ import {
 import { getProfileFormDefaults, getProfileStoryUsername } from "./settings-panes.stories.fixtures";
 import { SettingsStoryScope } from "./settings-story-scope";
 
-type ProfileStoryVariant = "default" | "dirtyIdentity" | "passwordFilled";
+type ProfileStoryVariant = "default" | "dirtyIdentity" | "passwordFilled" | "emailChange";
 
 function ProfileStoryHarness({ variant = "default" }: { variant?: ProfileStoryVariant }) {
   const defaults = useMemo(() => getProfileFormDefaults(), []);
@@ -29,6 +29,9 @@ function ProfileStoryHarness({ variant = "default" }: { variant?: ProfileStoryVa
       form.setValue("newPassword", "hunter2hunter", { shouldDirty: true });
       form.setValue("confirmPassword", "hunter2hunter", { shouldDirty: true });
     }
+    if (variant === "emailChange") {
+      form.setValue("email", "edited@example.test", { shouldDirty: true });
+    }
   }, [variant, form]);
 
   const profile = useMemo(
@@ -36,6 +39,7 @@ function ProfileStoryHarness({ variant = "default" }: { variant?: ProfileStoryVa
       username: getProfileStoryUsername(),
       form,
       saveProfile: form.handleSubmit(async () => {}),
+      unsyncedDiscard: null,
     }),
     [form],
   );
@@ -78,4 +82,14 @@ export const DirtyIdentity: Story = {
 
 export const PasswordFilled: Story = {
   render: () => <ProfileStoryHarness variant="passwordFilled" />,
+};
+
+export const EmailChange: Story = {
+  tags: ["vitest-ci"],
+  render: () => <ProfileStoryHarness variant="emailChange" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const currentPassword = await canvas.findByLabelText("Current password");
+    await expect(currentPassword).toHaveAttribute("autocomplete", "current-password");
+  },
 };

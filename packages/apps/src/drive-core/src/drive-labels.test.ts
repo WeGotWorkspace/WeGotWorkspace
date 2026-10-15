@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driveLabels, driveOfficeNewFileLabel } from "@/drive-core/src/drive-labels";
-
-describe("driveOfficeNewFileLabel", () => {
-  it("uses extension-style labels for Office blanks", () => {
-    expect(driveOfficeNewFileLabel("doc")).toBe("New docx");
-    expect(driveOfficeNewFileLabel("sheet")).toBe("New xlsx");
-    expect(driveOfficeNewFileLabel("slides")).toBe("New pptx");
-  });
-});
+import { driveLabels } from "@/drive-core/src/drive-labels";
 
 describe("driveLabels", () => {
   it("reserves document wording for the Docs editor", () => {

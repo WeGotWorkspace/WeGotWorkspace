@@ -53,7 +53,8 @@ final class AppPaths
 
     public function ensureDataDirWebDeny(): void
     {
-        WebRootDeny::ensure($this->dataDir());
+        WebRootDeny::ensureAll($this->installRoot(), $this->dataDir());
+        WebRootDeny::ensureRootRules($this->installRoot());
     }
 
     public function ensureInstallLock(): void
@@ -111,6 +112,10 @@ final class AppPaths
 
     public function clearStaleInstallLock(): void
     {
+        if (config('wgw.installer_db_applied') === true) {
+            return;
+        }
+
         if (is_file($this->lockFile()) && ! $this->runtimeInstallReady()) {
             @unlink($this->lockFile());
         }

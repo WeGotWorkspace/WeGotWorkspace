@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliverySettingsStore;
 use App\Services\Mcp\McpAuditLogger;
 use App\Services\Mcp\McpEnabled;
@@ -33,6 +34,7 @@ final class AdminSettingsService
         $values = $this->resolveTurnSecret($values, $clearTurnSecret);
 
         $wasMcpOn = $this->mcp->isOn();
+        $values = $this->normalizeImipLimits($values);
         $allowed = array_flip(SettingKeys::all());
         $saved = [];
         foreach ($values as $key => $value) {
@@ -51,7 +53,17 @@ final class AdminSettingsService
             if ($key === SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY) {
                 $value = MeetVideoProfile::normalize($value, RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY);
             }
+            if (
+                $key === SettingKeys::RTC_DEBUG_LOGGING
+                || $key === SettingKeys::RTC_FORCE_RELAY
+                || $key === SettingKeys::IMIP_EXTERNAL_ENABLED
+            ) {
+                $value = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === true;
+            }
             AppSetting::setValue($key, $value);
+            if ($key === SettingKeys::BROWSER_PLUGIN) {
+                AppSetting::setValue('browser_plugin_admin_set', true);
+            }
             $saved[] = $key;
         }
 
@@ -97,6 +109,38 @@ final class AdminSettingsService
 
         $values[SettingKeys::RTC_TURN_SECRET] = $this->rtcSettings->sealTurnSecret($secret);
         $this->rtcSettings->forgetLegacyStaticCredentials();
+
+        return $values;
+    }
+
+    /**
+     * Hourly is clamped to the daily value in this save, so key order cannot
+     * leave an hourly limit above the daily limit being stored alongside it.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function normalizeImipLimits(array $values): array
+    {
+        $dailyProvided = array_key_exists(SettingKeys::IMIP_DAILY_LIMIT, $values);
+        if ($dailyProvided) {
+            $values[SettingKeys::IMIP_DAILY_LIMIT] = CalendarImipService::normalizeDailyLimit(
+                $values[SettingKeys::IMIP_DAILY_LIMIT],
+            );
+        }
+        if (! array_key_exists(SettingKeys::IMIP_HOURLY_LIMIT, $values)) {
+            return $values;
+        }
+
+        $daily = $dailyProvided
+            ? (int) $values[SettingKeys::IMIP_DAILY_LIMIT]
+            : CalendarImipService::normalizeDailyLimit(
+                AppSetting::getValue(SettingKeys::IMIP_DAILY_LIMIT, CalendarImipService::DAILY_LIMIT_DEFAULT),
+            );
+        $values[SettingKeys::IMIP_HOURLY_LIMIT] = CalendarImipService::normalizeHourlyLimit(
+            $values[SettingKeys::IMIP_HOURLY_LIMIT],
+            $daily,
+        );
 
         return $values;
     }

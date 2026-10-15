@@ -5,7 +5,6 @@ export type AdminSection =
   | "collaboration"
   | "realtime-health"
   | "webdav"
-  | "plugins"
   | "backups"
   | "updates"
   | "search"
@@ -90,11 +89,21 @@ export type AdminRtcSettings = {
   maxVideoProfile: string;
   /** Highest video profile a sender may use while its pair is relayed. */
   maxVideoProfileRelay: string;
+  /** Browsers write detailed RTC logs after a reload. */
+  debugLogging: boolean;
+  /** Stored switch; served only while a TURN relay is configured. */
+  forceRelay: boolean;
 };
 
 export type AdminAppsSettings = {
   calendars: boolean;
   contacts: boolean;
+  /** When false, Calendar must not email new invitations outside this instance. */
+  imipExternalEnabled: boolean;
+  /** Maximum outbound invitation emails one user can send per hour. */
+  imipHourlyLimit: number;
+  /** Maximum outbound invitation emails one user can send per day. */
+  imipDailyLimit: number;
 };
 
 export type AdminWebdavSettings = {
@@ -214,12 +223,6 @@ export type AdminUIData = {
   apps: AdminAppsSettings;
   webdav: AdminWebdavSettings;
   mcp: AdminMcpSettings;
-  plugins: {
-    id: string;
-    name: string;
-    active: boolean;
-    source?: string;
-  }[];
   updates: AdminUpdateState;
   searchReindex: AdminSearchReindexState;
   currentUser: string;
@@ -234,6 +237,7 @@ export type AdminAPIOperations = {
     values: Record<string, string | number | boolean | null>,
     opts?: { signal?: AbortSignal; clearSmtpPassword?: boolean; clearTurnSecret?: boolean },
   ) => Promise<AdminUIData>;
+  setAppUrl: (url: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
@@ -279,7 +283,4 @@ export type AdminAPIOperations = {
     opts?: { signal?: AbortSignal },
   ) => Promise<AdminUIData>;
   deleteGroup: (groupSlug: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  activatePlugin: (pluginId: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  deactivatePlugin: (pluginId: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
-  installPluginZip: (file: File, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
 };

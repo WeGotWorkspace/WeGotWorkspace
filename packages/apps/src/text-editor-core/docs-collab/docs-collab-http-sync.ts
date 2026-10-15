@@ -12,6 +12,8 @@ import {
   encodeYjsHttpPayload,
   splitYjsUpdate,
   YJS_HTTP_BATCH_MS,
+  YJS_HTTP_FALLBACK_AFTER_MS,
+  YJS_HTTP_RELAY_AFTER_MS,
   YJS_HTTP_RESYNC_MS,
   type YjsHttpPayload,
 } from "./docs-collab-http-wire";
@@ -73,6 +75,8 @@ export class DocsCollabHttpSync {
 
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private evaluateTimer: ReturnType<typeof setTimeout> | null = null;
+
   private resyncTimer: ReturnType<typeof setInterval> | null = null;
 
   private seq = 0;
@@ -89,8 +93,10 @@ export class DocsCollabHttpSync {
 
   stop(): void {
     if (this.flushTimer) clearTimeout(this.flushTimer);
+    if (this.evaluateTimer) clearTimeout(this.evaluateTimer);
     if (this.resyncTimer) clearInterval(this.resyncTimer);
     this.flushTimer = null;
+    this.evaluateTimer = null;
     this.resyncTimer = null;
     this.pending = [];
     if (this.fastPoll) {
@@ -136,6 +142,31 @@ export class DocsCollabHttpSync {
         this.ports.onRelay(peer.id, peer.name, outcome);
       });
     }
+    this.scheduleNextEvaluate(peers, now, immediate);
+  }
+
+  /** Re-run `evaluate` when the next peer becomes due for the mailbox or a relay. */
+  private scheduleNextEvaluate(
+    peers: readonly HttpFallbackPeer[],
+    now: number,
+    immediate: boolean,
+  ): void {
+    if (this.evaluateTimer) clearTimeout(this.evaluateTimer);
+    this.evaluateTimer = null;
+    if (immediate) return;
+    let nextAt = Number.POSITIVE_INFINITY;
+    for (const peer of peers) {
+      if (peer.connected || !peer.caps?.includes("yjs-http")) continue;
+      for (const after of [YJS_HTTP_FALLBACK_AFTER_MS, YJS_HTTP_RELAY_AFTER_MS]) {
+        const dueAt = peer.seenAt + after;
+        if (dueAt > now && dueAt < nextAt) nextAt = dueAt;
+      }
+    }
+    if (!Number.isFinite(nextAt)) return;
+    this.evaluateTimer = setTimeout(() => {
+      this.evaluateTimer = null;
+      this.evaluate();
+    }, nextAt - now);
   }
 
   /**

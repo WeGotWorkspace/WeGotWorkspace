@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\NoteStar;
 use App\Models\User;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use DateTimeImmutable;
@@ -32,6 +34,7 @@ final class DevNoteSeeder
         private readonly NoteJournalConverter $converter,
         private readonly UserCalendarCollectionsProvisioner $collections,
         private readonly DevSeedGuard $guard,
+        private readonly WgwCalendarBackendFactory $backends,
     ) {}
 
     public function isAllowed(): bool
@@ -127,7 +130,7 @@ final class DevNoteSeeder
                 continue;
             }
 
-            $caldav->createCalendar($principalUri, $uri, [
+            $this->backends->make()->createCollection(CollectionKind::Notebook, $principalUri, $uri, [
                 '{DAV:}displayname' => $meta['name'],
                 '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
                 self::COLOR_PROPERTY => $meta['color'],

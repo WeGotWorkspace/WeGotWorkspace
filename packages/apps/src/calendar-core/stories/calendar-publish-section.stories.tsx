@@ -7,6 +7,7 @@ import "@/calendar-core/src/calendar-workspace.css";
 const publishedFeed = {
   httpsUrl: "https://example.test/api/v1/calendars/feeds/persontoken",
   webcalUrl: "webcal://example.test/api/v1/calendars/feeds/persontoken",
+  mode: "full" as const,
 };
 
 const meta: Meta<typeof CalendarPublishSection> = {

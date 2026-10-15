@@ -106,7 +106,7 @@ async function renderWorkspace(
       operations={operations}
       onLogout={() => {}}
       initialChannelId="channel-design"
-      initialCallLayout="compact"
+      initialCallLayout="side-by-side"
       callStageRoom={storyRoom()}
       {...props}
     />,
@@ -152,7 +152,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
   it("does not paint the live call's chrome on a different open conversation", async () => {
     const { leaveCall } = await renderWorkspace({
       initialChannelId: "channel-random",
-      initialCallLayout: "compact",
+      initialCallLayout: "side-by-side",
       routeChannelId: "channel-random",
       liveCallChannelId: "channel-design",
     });
@@ -196,7 +196,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
             operations={operations}
             onLogout={() => {}}
             initialChannelId="channel-design"
-            initialCallLayout="compact"
+            initialCallLayout="side-by-side"
             routeChannelId={routeChannelId}
             liveCallChannelId="channel-design"
             callStageRoom={storyRoom()}
@@ -213,5 +213,27 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
     expect(leaveCall).not.toHaveBeenCalled();
+  });
+
+  it("shows knock-wait chrome for an unmatched ad-hoc visit", async () => {
+    const controller = createMeetStoryController(createRef<HTMLVideoElement | null>(), {
+      inCall: false,
+      status: "waiting",
+      waitingForAdmission: true,
+      peers: [],
+    });
+    const room = storyRoom();
+    await renderWorkspace({
+      unmatchedAdHocRoom: "aaaa-bbbb-cccc",
+      callStageRoom: { ...room, controller },
+    });
+
+    expect(screen.getAllByText(meetLabels.knockWaitHint).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: meetLabels.cancelRequest })).toBeTruthy();
+    expect(screen.queryByText(meetLabels.emptyChannelMain)).toBeNull();
+    expect(document.querySelector(".meet-call-stage__dock")).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.shareScreen })).toBeNull();
+    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
   });
 });

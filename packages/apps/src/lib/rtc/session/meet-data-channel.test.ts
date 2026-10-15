@@ -1,8 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  encodeBinaryFrames,
+  encodeDataChannelMessage,
+} from "@/lib/rtc/session/data-channel-frames";
+import {
   MEET_DATA_CHANNEL_ID,
   MEET_DATA_CHANNEL_INIT,
   MEET_UNRELIABLE_DATA_CHANNEL_ID,
+  isMeetDcPoke,
+  meetDcPokeFrame,
   openMeetDataChannel,
   parseMeetDcMessage,
 } from "@/lib/rtc/session/meet-data-channel";
@@ -32,6 +38,26 @@ describe("parseMeetDcMessage", () => {
     expect(parseMeetDcMessage("not-json")).toBeNull();
     expect(parseMeetDcMessage(JSON.stringify({ t: "chat", id: "", text: "x", ts: 1 }))).toBeNull();
   });
+
+  it("does not treat a poke frame as chat", () => {
+    expect(parseMeetDcMessage(JSON.stringify(meetDcPokeFrame()))).toBeNull();
+  });
+});
+
+describe("isMeetDcPoke", () => {
+  it("accepts only t=poke with v=1", () => {
+    expect(isMeetDcPoke(JSON.stringify({ t: "poke", v: 1 }))).toBe(true);
+    expect(isMeetDcPoke(JSON.stringify(meetDcPokeFrame()))).toBe(true);
+  });
+
+  it("rejects chat frames, poke without v, non-JSON, and arrays", () => {
+    expect(isMeetDcPoke(JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hello", ts: 10 }))).toBe(
+      false,
+    );
+    expect(isMeetDcPoke(JSON.stringify({ t: "poke" }))).toBe(false);
+    expect(isMeetDcPoke("not-json")).toBe(false);
+    expect(isMeetDcPoke(JSON.stringify(["poke"]))).toBe(false);
+  });
 });
 
 describe("openMeetDataChannel", () => {
@@ -53,7 +79,15 @@ describe("openMeetDataChannel", () => {
     channel.onmessage?.({
       data: JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hi", ts: 1 }),
     } as MessageEvent);
+    expect(onText).not.toHaveBeenCalled();
+
+    const json = JSON.stringify({ t: "chat", id: CLIENT_ID, text: "hi", ts: 1 });
+    const frame = encodeBinaryFrames(encodeDataChannelMessage(json), 1)[0];
+    if (!frame) throw new Error("expected a meet frame");
+    channel.onmessage?.({ data: frame } as MessageEvent);
     expect(onText).toHaveBeenCalledTimes(1);
+    expect(onText).toHaveBeenCalledWith(json);
+
     channel.onmessage?.({ data: new ArrayBuffer(4) } as MessageEvent);
     expect(onText).toHaveBeenCalledTimes(1);
   });

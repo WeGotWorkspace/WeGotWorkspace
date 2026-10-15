@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Chat;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\CalendarInstance;
 use App\Models\ChatChannelMeta;
 use App\Models\Principal;
 use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CollectionKind;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -44,6 +46,10 @@ use Sabre\DAV\PropPatch;
  */
 final class ChatGroupDefaultChannelProvisioner
 {
+    public function __construct(
+        private readonly WgwCalendarBackendFactory $backends,
+    ) {}
+
     /**
      * Ensure the default channel exists (and carries the group's current
      * display name) for each of the given group slugs.
@@ -118,7 +124,7 @@ final class ChatGroupDefaultChannelProvisioner
                     return;
                 }
 
-                $this->calBackend()->createCalendar($groupPrincipalUri, $uri, [
+                $this->backends->make()->createCollection(CollectionKind::ChatChannel, $groupPrincipalUri, $uri, [
                     '{DAV:}displayname' => $displayName,
                     '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
                 ]);

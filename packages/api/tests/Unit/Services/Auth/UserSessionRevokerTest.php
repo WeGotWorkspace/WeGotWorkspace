@@ -59,33 +59,19 @@ final class UserSessionRevokerTest extends WgwDatabaseTestCase
         $this->assertSame(1, PushSubscription::query()->where('principal', 'bob')->count());
     }
 
-    public function test_excepted_refresh_token_stays_usable_and_a_revoked_exception_stays_revoked(): void
+    public function test_revoke_all_revokes_every_refresh_token(): void
     {
         $this->seedWgwUser('alice', displayName: 'Alice');
         $tokens = app(RefreshTokenRepository::class);
-        $keep = $tokens->issue('alice', 'user');
-        $other = $tokens->issue('alice', 'user');
-        $rotated = $tokens->issue('alice', 'user');
-        $keepHash = hash('sha256', $keep);
-        $rotatedHash = hash('sha256', $rotated);
-        ApiRefreshToken::query()->where('token_hash', $rotatedHash)->update(['revoked' => 1]);
+        $first = $tokens->issue('alice', 'user');
+        $second = $tokens->issue('alice', 'user');
 
-        app(UserSessionRevoker::class)->revokeAll('alice', $keepHash);
+        app(UserSessionRevoker::class)->revokeAll('alice');
 
-        $this->assertSame(0, (int) ApiRefreshToken::query()->where('token_hash', $keepHash)->value('revoked'));
-        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', hash('sha256', $other))->value('revoked'));
-        $consumed = $tokens->consume($keep);
-        $this->assertNotNull($consumed);
-        $this->assertSame('alice', $consumed['username']);
-
-        app(UserSessionRevoker::class)->revokeAll('alice', $rotatedHash);
-
-        $this->assertSame(
-            1,
-            (int) ApiRefreshToken::query()->where('token_hash', $rotatedHash)->value('revoked'),
-            'An already rotated refresh token must not be restored by the exception.',
-        );
-        $this->assertNull($tokens->consume($rotated));
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', hash('sha256', $first))->value('revoked'));
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', hash('sha256', $second))->value('revoked'));
+        $this->assertNull($tokens->consume($first));
+        $this->assertNull($tokens->consume($second));
     }
 
     private function seedPush(string $username): void

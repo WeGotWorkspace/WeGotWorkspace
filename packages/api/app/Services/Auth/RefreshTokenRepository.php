@@ -81,14 +81,10 @@ final class RefreshTokenRepository
         ApiRefreshToken::query()->where('token_hash', $hash)->update(['revoked' => 1]);
     }
 
-    public function revokeAllForUsername(string $username, ?string $exceptHash = null): void
+    public function revokeAllForUsername(string $username): void
     {
         $this->cleanupExpired();
-        $query = ApiRefreshToken::query()->where('username', $username);
-        if ($exceptHash !== null) {
-            $query->where('token_hash', '!=', $exceptHash);
-        }
-        $query->update(['revoked' => 1]);
+        ApiRefreshToken::query()->where('username', $username)->update(['revoked' => 1]);
     }
 
     private function cleanupExpired(): void

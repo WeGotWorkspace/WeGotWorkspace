@@ -18,9 +18,10 @@ import type {
   WgwMeetSendRequest,
   WgwMeetSendResponse,
 } from "@/lib/api/wgw/types";
+import type { RtcSettingsSource } from "@/lib/api/wgw/rtc";
 import type { RtcSettings } from "@/lib/rtc/types";
 
-export type MeetRtcSettings = RtcSettings;
+export type MeetRtcSettings = RtcSettings & { source?: RtcSettingsSource };
 
 export type MeetChannelKind = "channel" | "meeting";
 
@@ -197,4 +198,9 @@ export type MeetAPIOperations = {
   chat: (input: WgwMeetChatRequest, opts?: MeetRequestOptions) => Promise<WgwMeetChatResponse>;
   /** Guest RTC signaling when the session has no auth token (wired in meet-api-source). */
   guestSignalingFetch?: () => HttpSignalingFetch;
+  /**
+   * Room ICE configuration for a session that could not read it at bootstrap.
+   * Guest ops only: a signed-in bootstrap already carries the bearer.
+   */
+  rtcSettings?: (input: { room: string; sessionKey: string }) => Promise<MeetRtcSettings>;
 };

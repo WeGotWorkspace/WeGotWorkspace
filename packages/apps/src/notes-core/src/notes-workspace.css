@@ -80,7 +80,7 @@
   --notes-list-star-color: var(--workspace-accent);
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
   --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
   /*
    * Open / selected list row: same wash as Drive and Docs tiles
    * (`--drive-item-selected-background` in workspace-color.css).
@@ -270,7 +270,7 @@
 }
 
 /**
- * App switcher lockup: notes.svg literals (`#ffc800` tile / white marks).
+ * App switcher lockup: notes.svg literals (yellow tile / soft marks).
  * Default switch-trigger remaps `--workspace-icon-surface*`; pin them back to those hexes.
  */
 .notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -283,7 +283,7 @@
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
   --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: #ffffff;
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 /**
@@ -298,7 +298,7 @@
   --workspace-accent: var(--color-we-got-dark);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
   --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }

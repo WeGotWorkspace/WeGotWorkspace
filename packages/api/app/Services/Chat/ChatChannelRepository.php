@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Chat;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Models\ChatChannelMeta;
@@ -14,6 +15,7 @@ use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\Calendars\CalendarShareInvites;
 use App\Services\Calendars\CalendarShareVisibility;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Support\Collection;
@@ -26,18 +28,15 @@ use Sabre\DAV\PropPatch;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
- * Chat channels are CalDAV VJOURNAL-only collections with `chat-`/`dm-` URI
- * prefixes — the same collection model, sharing matrix, and changes feed that
- * NotebookRepository runs in production for Notes (known pattern, new payload).
+ * Chat channels are CalDAV VJOURNAL collections stored as CollectionKind::ChatChannel.
+ * They share the collection model, sharing matrix, and changes feed Notes already uses.
  *
  * Differences from notebooks, by design:
- * - URI prefix is the notebook/chat discriminator; both repositories filter on
- *   it (regression tests: ChatNotebookIsolationTest).
- * - Sharee instances are re-pointed at the owner's `chat-`/`dm-` uri right
- *   after invite writes (Sabre mints a random UUID) so channel ids are stable
- *   across members and prefix discrimination holds for sharees too.
+ * - The stored kind separates chat from notebooks and docs thread pools. Sharee
+ *   instances keep the owner's `chat-`/`dm-` uri so channel ids stay stable
+ *   (Sabre mints a random UUID). Regression: ChatNotebookIsolationTest.
  * - kind/topic/room_code live in the chat_channel_meta side table.
- * - Channels are never DAV-visible (ChatHiddenCalendarBackend).
+ * - Channels are never DAV-visible (WgwCalendarBackend).
  */
 final class ChatChannelRepository
 {
@@ -51,6 +50,7 @@ final class ChatChannelRepository
         private readonly UserCalendarCollectionsProvisioner $calendarCollectionsProvisioner,
         private readonly ChatUnreadCounter $unreadCounter,
         private readonly ChatGroupDefaultChannelProvisioner $groupDefaults,
+        private readonly WgwCalendarBackendFactory $backends,
     ) {}
 
     /**
@@ -144,7 +144,7 @@ final class ChatChannelRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::ChatChannel, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -215,7 +215,7 @@ final class ChatChannelRepository
             }
 
             $callerPrincipalUri = $this->principalUri($caller);
-            $this->calBackend()->createCalendar($callerPrincipalUri, $uri, [
+            $this->backends->make()->createCollection(CollectionKind::ChatChannel, $callerPrincipalUri, $uri, [
                 '{DAV:}displayname' => trim((string) ($peerPrincipal->displayname ?? '')) ?: $peer,
                 '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VJOURNAL']),
             ]);
@@ -318,9 +318,9 @@ final class ChatChannelRepository
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
 
-        // Deleting a channel deletes its messages — chat_channel_meta cascades
-        // away with the calendars row.
+        // Channel delete removes messages; chat_channel_meta cascades with it.
         $this->calBackend()->deleteCalendar([(int) $instance->calendarid, (int) $instance->id]);
 
         return ['ok' => true];
@@ -457,9 +457,9 @@ final class ChatChannelRepository
         $kind = $meta->kind ?? ChatChannelMeta::KIND_CHANNEL;
         $isDefault = $meta?->default_for_group !== null;
         if ($isDefault) {
-            // Immutable like DMs (assertNotGroupDefault): surface that in the
-            // rights so clients hide the share/delete affordances.
             $rights['mayShare'] = false;
+            $rights['mayDelete'] = false;
+        } elseif (! $this->collectionAccess->mayDeleteGroupOwned($username, $instance)) {
             $rights['mayDelete'] = false;
         }
         $roster = $this->rosterUsernames($instance, $groupSlug);
@@ -513,8 +513,7 @@ final class ChatChannelRepository
         $this->groupDefaults->ensureForGroupSlugs($this->groups->allowedGroupSlugs($username));
 
         return $this->collectionAccess
-            ->accessibleInstances($username, fn ($query) => $query->vjournalOnly())
-            ->filter(fn (CalendarInstance $instance): bool => ChatCollectionUris::isChatUri((string) $instance->uri))
+            ->accessibleInstances($username, CollectionKind::ChatChannel)
             ->values();
     }
 
@@ -687,7 +686,7 @@ final class ChatChannelRepository
             ->with('calendar')
             ->where('principaluri', $principalUri)
             ->where('uri', $channelUri)
-            ->whereHas('calendar', fn ($query) => $query->vjournalOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::ChatChannel))
             ->first();
     }
 

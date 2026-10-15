@@ -77,7 +77,7 @@ describe("sanitizeWgwReturnPath", () => {
     expect(sanitizeWgwReturnPath(nested)).toBe("/mail");
   });
 
-  it("preserves plugin app return paths after unwrap", () => {
+  it("preserves nested app return paths after unwrap", () => {
     const nested =
       "/login?return=" + encodeURIComponent("/login?return=" + encodeURIComponent("/apps/office"));
     expect(sanitizeWgwReturnPath(nested)).toBe("/apps/office");

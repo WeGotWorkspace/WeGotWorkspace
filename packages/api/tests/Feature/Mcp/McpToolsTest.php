@@ -309,6 +309,15 @@ final class McpToolsTest extends WgwDatabaseTestCase
         sort($expectedNames);
         sort($catalogNames);
         $this->assertSame($expectedNames, $catalogNames);
+
+        $catalogShareTools = array_values(array_filter(
+            $catalogNames,
+            static fn (string $name): bool => str_ends_with($name, '_share'),
+        ));
+        $pinnedShareTools = McpScopes::shareToolNames();
+        sort($catalogShareTools);
+        sort($pinnedShareTools);
+        $this->assertSame($catalogShareTools, $pinnedShareTools);
     }
 
     public function test_capabilities_lists_mcp_tool_names_not_php_classes(): void
@@ -371,12 +380,12 @@ final class McpToolsTest extends WgwDatabaseTestCase
             'contacts_search' => McpScopes::CONTACTS_READ,
             'docs_read' => McpScopes::DOCS_READ,
             'docs_search' => McpScopes::DOCS_READ,
-            'docs_share' => McpScopes::DOCS_WRITE,
+            'docs_share' => McpScopes::DRIVE_SHARE,
             'docs_write' => McpScopes::DOCS_WRITE,
             'drive_list' => McpScopes::DRIVE_READ,
             'drive_read' => McpScopes::DRIVE_READ,
             'drive_search' => McpScopes::DRIVE_READ,
-            'drive_share' => McpScopes::DRIVE_WRITE,
+            'drive_share' => McpScopes::DRIVE_SHARE,
             'drive_write' => McpScopes::DRIVE_WRITE,
             'mail_send' => McpScopes::MAIL_SEND,
             'mail_status' => McpScopes::MAIL_READ,

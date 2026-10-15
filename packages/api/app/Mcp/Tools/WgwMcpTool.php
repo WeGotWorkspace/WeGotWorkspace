@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpAuditLogger;
+use App\Services\Mcp\McpExternalShareRefused;
 use App\Services\Mcp\McpScopes;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Mcp\Request;
@@ -65,6 +66,10 @@ abstract class WgwMcpTool extends Tool
             $msg = (string) ($e->payload['error'] ?? $e->getMessage());
 
             return Response::error($msg !== '' ? $msg : 'Mail operation failed.');
+        } catch (McpExternalShareRefused $e) {
+            $this->record('denied', $request);
+
+            return Response::error($e->getMessage());
         } catch (\InvalidArgumentException $e) {
             $this->record('error', $request);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
@@ -12,6 +13,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
@@ -33,6 +35,7 @@ final class TaskListRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -42,11 +45,11 @@ final class TaskListRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
         $lists = $this->collectionAccess
-            ->accessibleInstances($username, fn ($query) => $query->vtodoOnly())
-            ->map(function (CalendarInstance $instance): array {
+            ->accessibleInstances($username, CollectionKind::TaskList)
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapTaskList($instance, $groupSlug);
+                return $this->mapTaskList($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -65,7 +68,7 @@ final class TaskListRepository
         $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -120,7 +123,7 @@ final class TaskListRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::TaskList, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -130,7 +133,7 @@ final class TaskListRepository
             throw new ApiHttpException(500, 'Could not load created task list.', 'server_error');
         }
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -185,7 +188,7 @@ final class TaskListRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapTaskList($instance, $groupSlug);
+        return $this->mapTaskList($username, $instance, $groupSlug);
     }
 
     /**
@@ -208,6 +211,7 @@ final class TaskListRepository
         if ($this->isProvisionedGroupTaskList($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group task list cannot be deleted.', 'forbidden');
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         if ($instance->objects()->where('componenttype', 'VTODO')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Task list contains tasks.', 'taskListHasContents');
         }
@@ -223,7 +227,7 @@ final class TaskListRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
         $instances = $this->collectionAccess->accessibleInstances(
             $username,
-            fn ($query) => $query->vtodoOnly(),
+            CollectionKind::TaskList,
         );
 
         $currentState = $this->computeInstancesState($instances);
@@ -499,7 +503,7 @@ final class TaskListRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapTaskList($instance, $groupSlug);
+        $mapped = $this->mapTaskList($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'task list');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -523,7 +527,7 @@ final class TaskListRepository
     }
 
     /** @return array<mixed> */
-    private function mapTaskList(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapTaskList(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? '')) ?: $uri;
@@ -533,7 +537,7 @@ final class TaskListRepository
         $isOwnedInbox = ! $isSharee && ! $isGroup && $uri === InboxTaskListProvisioner::URI;
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
         $mayWrite = ! $this->shareInvites->isReadOnly($instance);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => [
                 'mayReadItems' => true,
@@ -562,7 +566,7 @@ final class TaskListRepository
                 'mayUpdatePrivate' => $mayWrite,
                 'mayRSVP' => $mayWrite,
                 'mayAdmin' => false,
-                'mayDelete' => ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
+                'mayDelete' => $groupMayDelete && ! $isSharedGroupList && $uri !== InboxTaskListProvisioner::URI,
                 'mayShare' => $mayShare,
             ],
         };
@@ -610,7 +614,7 @@ final class TaskListRepository
         return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::TaskList))
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
@@ -623,7 +627,7 @@ final class TaskListRepository
             ->with('calendar')
             ->where('principaluri', $principalUri)
             ->where('uri', $taskListUri)
-            ->whereHas('calendar', fn ($query) => $query->vtodoOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::TaskList))
             ->first();
     }
 

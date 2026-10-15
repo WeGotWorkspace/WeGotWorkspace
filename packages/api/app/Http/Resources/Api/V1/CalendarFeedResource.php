@@ -20,6 +20,7 @@ final class CalendarFeedResource extends JsonResource
         return [
             'httpsUrl' => $this->resource['httpsUrl'],
             'webcalUrl' => $this->resource['webcalUrl'],
+            'mode' => $this->resource['mode'],
         ];
     }
 }

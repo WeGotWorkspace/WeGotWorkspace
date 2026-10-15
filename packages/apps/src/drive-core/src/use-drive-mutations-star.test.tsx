@@ -50,9 +50,6 @@ function buildShell(overrides: Partial<DriveShellState> = {}): DriveShellState {
     reloadStarredFromServer: vi.fn(),
     inTrashView: false,
     isUnderTrash: vi.fn(() => false),
-    templatePlugin: null,
-    newFileTemplates: [],
-    launchPluginEditor: vi.fn(),
     ...overrides,
   } as DriveShellState;
 }

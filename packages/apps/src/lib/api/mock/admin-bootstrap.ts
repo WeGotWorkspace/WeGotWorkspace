@@ -80,10 +80,15 @@ const DEFAULT_DATA: AdminUIData = {
     turnStaticCredentialsPresent: false,
     maxVideoProfile: "p720",
     maxVideoProfileRelay: "p360",
+    debugLogging: false,
+    forceRelay: false,
   },
   apps: {
     calendars: true,
     contacts: true,
+    imipExternalEnabled: true,
+    imipHourlyLimit: 100,
+    imipDailyLimit: 300,
   },
   webdav: {
     sabreUi: true,
@@ -95,7 +100,6 @@ const DEFAULT_DATA: AdminUIData = {
     enabled: false,
     endpointUrl: STORY_MCP_ENDPOINT_URL,
   },
-  plugins: [],
   updates: {
     installChannel: null,
     installedVersion: "0.0.0",

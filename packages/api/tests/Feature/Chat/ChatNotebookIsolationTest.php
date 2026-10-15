@@ -8,10 +8,11 @@ use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
 /**
- * Chat channels and notebooks are both VJOURNAL-only CalDAV collections;
- * the `chat-`/`dm-` URI prefix is the only discriminator. These regressions
- * pin both directions: notebook queries must never pick up chat collections
- * and chat queries must never pick up notebooks.
+ * Chat channels and notebooks are both VJOURNAL-only CalDAV collections.
+ * The stored CollectionKind is the discriminator — a sharee instance does not
+ * carry the owner's uri. These regressions pin both directions: notebook
+ * queries must never pick up chat collections and chat queries must never
+ * pick up notebooks.
  */
 final class ChatNotebookIsolationTest extends WgwDatabaseTestCase
 {
@@ -83,20 +84,46 @@ final class ChatNotebookIsolationTest extends WgwDatabaseTestCase
         $this->asUser('alice')->getJson('/api/v1/chat/channels/notes-general')->assertNotFound();
     }
 
-    public function test_notebook_ids_cannot_squat_chat_prefixes(): void
+    public function test_notebook_ids_collide_with_any_existing_collection_uri(): void
     {
         $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
-            'name' => 'Evil', 'id' => 'chat-evil',
-        ])->assertStatus(409);
+            'name' => 'Not a channel', 'id' => 'chat-evil',
+        ])->assertStatus(409)->assertJsonPath('error', 'This notebook id is reserved for chat channels.');
         $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
-            'name' => 'Evil dm', 'id' => 'dm-evil',
+            'name' => 'Not a DM', 'id' => 'dm-evil',
+        ])->assertStatus(409)->assertJsonPath('error', 'This notebook id is reserved for chat channels.');
+
+        $channelId = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Real', 'kind' => 'channel',
+        ])->assertCreated()->json('id');
+        $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Squat', 'id' => $channelId,
         ])->assertStatus(409);
 
-        // Name-derived slugs shift to a notebook- prefix instead of colliding.
-        $created = $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+        $slug = (string) $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
             'name' => 'chat-adjacent notes',
-        ])->assertCreated()->json();
-        $this->assertStringStartsWith('notebook-', $created['id']);
+        ])->assertCreated()->json('id');
+        $this->assertSame('notebook-chat-adjacent-notes', $slug);
+
+        $docsSlug = (string) $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Docs threads',
+        ])->assertCreated()->json('id');
+        $this->assertSame('notebook-docs-threads', $docsSlug);
+    }
+
+    public function test_shared_notebook_resolves_by_kind_through_its_sharee_uri(): void
+    {
+        $notebookId = (string) $this->asUser('alice')->postJson('/api/v1/notes/notebooks', [
+            'name' => 'Shared journal',
+        ])->assertCreated()->json('id');
+        $this->asUser('alice')->patchJson('/api/v1/notes/notebooks/'.$notebookId, [
+            'shareWith' => ['bob' => ['mayWriteAll' => true]],
+        ])->assertOk();
+
+        $shared = collect($this->asUser('bob')->getJson('/api/v1/notes/notebooks')->assertOk()->json('list'))
+            ->first(fn (array $row): bool => ($row['name'] ?? '') === 'Shared journal');
+        $this->assertIsArray($shared);
+        $this->assertNotSame($notebookId, $shared['id']);
     }
 
     private function asUser(string $username)

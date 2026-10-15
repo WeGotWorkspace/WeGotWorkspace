@@ -62,20 +62,22 @@ final class JmapEventToVEventConverter
     {
         $document = $this->guard->readICalendar($ics);
 
-        $removed = false;
-        foreach (CalendarConversionSupport::veventsFromCalendar($document) as $vevent) {
+        // remove() drops that exact child. When every VEVENT matched, none remain.
+        $vevents = CalendarConversionSupport::veventsFromCalendar($document);
+        $removed = 0;
+        foreach ($vevents as $vevent) {
             $uid = isset($vevent->UID) ? trim((string) $vevent->UID->getValue()) : '';
             if ($uid === $targetUid) {
                 $document->remove($vevent);
-                $removed = true;
+                $removed++;
             }
         }
 
-        if (! $removed) {
+        if ($removed === 0) {
             throw new \InvalidArgumentException('VEVENT with UID '.$targetUid.' not found.');
         }
 
-        if (CalendarConversionSupport::veventsFromCalendar($document) === []) {
+        if ($removed === count($vevents)) {
             return null;
         }
 

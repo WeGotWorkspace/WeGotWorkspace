@@ -29,10 +29,6 @@ export const driveLabels = {
   newFolder: "New folder",
   uploadFiles: "Upload files",
   newMarkdown: "New document",
-  /** Office plugin blank templates (Drive overrides plugin manifest labels). */
-  newDocument: "New docx",
-  newSpreadsheet: "New xlsx",
-  newPresentation: "New pptx",
   gridView: "Grid view",
   listView: "List view",
   detailPanelToggle: "Details panel",
@@ -114,17 +110,3 @@ export type DriveUILabels = {
     ? string
     : (typeof driveLabels)[K];
 };
-
-export type DriveOfficeBlankKind = "doc" | "sheet" | "slides";
-
-/** Product labels for Office plugin new-file menu items (not the Docs editor). */
-export function driveOfficeNewFileLabel(kind: DriveOfficeBlankKind): string {
-  switch (kind) {
-    case "doc":
-      return driveLabels.newDocument;
-    case "sheet":
-      return driveLabels.newSpreadsheet;
-    case "slides":
-      return driveLabels.newPresentation;
-  }
-}

@@ -3,3 +3,20 @@
 .calendar-publish-section {
   @apply mt-4;
 }
+
+.calendar-publish-section__mode {
+  @apply mt-3 flex items-center justify-between gap-3;
+}
+
+.calendar-publish-section__mode-copy {
+  @apply flex min-w-0 flex-col gap-0.5;
+}
+
+.calendar-publish-section__mode-title {
+  @apply text-sm font-medium;
+}
+
+.calendar-publish-section__mode-hint {
+  @apply text-xs;
+  color: var(--share-dialog-muted);
+}

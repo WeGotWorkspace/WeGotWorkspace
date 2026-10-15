@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Collab;
 
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
@@ -126,6 +127,77 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
         $storedSize = (int) (app(WgwStorage::class)->files()->size('users/alice/docs/together.md') ?? 0);
         $this->assertGreaterThan(0, $storedSize);
         $this->assertSame($storedSize, (int) ($match['size'] ?? 0));
+    }
+
+    public function test_markdown_save_updates_the_file_node_index(): void
+    {
+        $token = $this->issueBearerToken();
+        $key = 'users/alice/docs/together.md';
+        $index = app(FileNodeIndexService::class);
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ROOM), [
+                'markdown' => "# Together\n",
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        if ($index->liveByKey($key) === null) {
+            $this->assertNotNull($index->recordCreate($key));
+        }
+
+        $seq = $index->currentSeq();
+        // TrimStrings drops leading and trailing whitespace on the JSON body,
+        // so the saved bytes are this string with no trailing newline.
+        $markdown = "# Together\n\nHello collab indexing.";
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ROOM), [
+                'markdown' => $markdown,
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $row = $index->liveByKey($key);
+        $this->assertNotNull($row);
+        $storedSize = (int) (app(WgwStorage::class)->files()->size($key) ?? 0);
+        $this->assertGreaterThan(0, $storedSize);
+        $this->assertSame($storedSize, (int) $row->size_bytes);
+        $this->assertSame(hash('sha256', $markdown), $row->content_sha256);
+        $this->assertGreaterThan($seq, (int) $row->change_seq);
+    }
+
+    public function test_a_yjs_only_save_does_not_touch_the_file_node_index(): void
+    {
+        $token = $this->issueBearerToken();
+        $key = 'users/alice/docs/together.md';
+        $index = app(FileNodeIndexService::class);
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ROOM), [
+                'markdown' => "# Together\n",
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        if ($index->liveByKey($key) === null) {
+            $this->assertNotNull($index->recordCreate($key));
+        }
+
+        $before = $index->liveByKey($key);
+        $this->assertNotNull($before);
+        $changeSeq = (int) $before->change_seq;
+
+        $this->withBearer($token)
+            ->putJson('/api/v1/files/collaboration?path='.urlencode(self::ROOM), [
+                'yjs' => [1, 2, 3, 255],
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $after = $index->liveByKey($key);
+        $this->assertNotNull($after);
+        $this->assertSame($changeSeq, (int) $after->change_seq);
     }
 
     public function test_other_user_cannot_write_alice_document(): void

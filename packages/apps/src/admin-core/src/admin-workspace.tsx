@@ -6,6 +6,7 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
+import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
@@ -18,25 +19,66 @@ import { AdminUpdatesPane } from "@/admin-core/src/admin-updates-pane";
 import { AdminUsersPane } from "@/admin-core/src/admin-users-pane";
 import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-collaboration-pane";
 import { AdminRealtimeHealthPane } from "@/admin-core/src/admin-realtime-health-pane";
-import { AdminPluginsPane } from "@/admin-core/src/admin-plugins-pane";
 import { AdminSearchPane } from "@/admin-core/src/admin-search-pane";
 import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
 import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
+import { appUrlFromBrowserLocation } from "@/admin-core/src/admin-workspace-utils";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
 
-function AdminSecurityWarnings({ warnings }: { warnings: readonly string[] }) {
-  if (warnings.length === 0) {
+export function AdminSecurityWarnings({
+  warnings,
+  baseUri,
+  onUseThisAddress,
+}: {
+  warnings: readonly string[];
+  baseUri: string;
+  onUseThisAddress?: (url: string) => Promise<boolean | void> | boolean | void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [appUrlSaved, setAppUrlSaved] = useState(false);
+  const visibleWarnings = appUrlSaved
+    ? warnings.filter((warning) => !warning.startsWith("APP_URL is not set"))
+    : warnings;
+  if (visibleWarnings.length === 0) {
     return null;
   }
 
   return (
     <div className="admin-security-warnings">
-      {warnings.map((warning) => (
-        <Callout key={warning} severity="error" title="Security warning" message={warning} />
-      ))}
+      {visibleWarnings.map((warning) => {
+        const isAppUrl = warning.startsWith("APP_URL is not set");
+        return (
+          <Callout
+            key={warning}
+            severity="error"
+            title="Security warning"
+            message={warning}
+            action={
+              isAppUrl ? (
+                <Button
+                  label="Use this address"
+                  variant="outline"
+                  size="sm"
+                  disabled={pending || onUseThisAddress == null}
+                  onClick={() => {
+                    if (onUseThisAddress == null) return;
+                    const url = appUrlFromBrowserLocation(window.location.origin, baseUri);
+                    setPending(true);
+                    void Promise.resolve(onUseThisAddress(url))
+                      .then((saved) => {
+                        if (saved === true) setAppUrlSaved(true);
+                      })
+                      .finally(() => setPending(false));
+                  }}
+                />
+              ) : undefined
+            }
+          />
+        );
+      })}
     </div>
   );
 }
@@ -123,7 +165,11 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
         main={
           <>
             <AdminWebRootProbe />
-            <AdminSecurityWarnings warnings={data.securityWarnings} />
+            <AdminSecurityWarnings
+              warnings={data.securityWarnings}
+              baseUri={data.webdav.baseUri}
+              onUseThisAddress={(url) => controller.actions.useThisAddress(url)}
+            />
             {controller.section === "users" ? (
               <AdminUsersPane
                 controller={controller}
@@ -149,7 +195,6 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
               />
             ) : null}
             {controller.section === "webdav" ? <AdminWebdavPane controller={controller} /> : null}
-            {controller.section === "plugins" ? <AdminPluginsPane controller={controller} /> : null}
             {controller.section === "backups" ? <AdminBackupsPane controller={controller} /> : null}
             {controller.section === "updates" ? (
               <AdminUpdatesPane

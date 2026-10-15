@@ -12,6 +12,7 @@ describe("useSettingsMcpGrants", () => {
         connectedAt: "2026-09-08T10:00:00Z",
         scopes: ["drive"],
         lastUsedAt: null,
+        shareCalls: [],
       },
     ]);
 
@@ -40,6 +41,7 @@ describe("useSettingsMcpGrants", () => {
         connectedAt: "2026-09-08T10:00:00Z",
         scopes: ["drive"],
         lastUsedAt: null,
+        shareCalls: [],
       },
     ]);
     const revokeMcpGrant = vi.fn().mockResolvedValue(undefined);

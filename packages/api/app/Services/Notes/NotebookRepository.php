@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
@@ -12,8 +13,10 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareInvites;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatCollectionUris;
+use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\CollectionSharedNotify;
 use Illuminate\Support\Collection;
@@ -35,6 +38,7 @@ final class NotebookRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -44,10 +48,10 @@ final class NotebookRepository
         $this->calendarCollectionsProvisioner->ensureForPrincipal($this->principalUri($username));
 
         $lists = $this->accessibleNotebookInstances($username)
-            ->map(function (CalendarInstance $instance): array {
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapNotebook($instance, $groupSlug);
+                return $this->mapNotebook($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -66,7 +70,7 @@ final class NotebookRepository
         $groupSlug = CalendarCollectionUris::parseGroupNotebookApiId($notebookId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -121,7 +125,7 @@ final class NotebookRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::Notebook, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -131,7 +135,7 @@ final class NotebookRepository
             throw new ApiHttpException(500, 'Could not load created notebook.', 'server_error');
         }
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -186,7 +190,7 @@ final class NotebookRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapNotebook($instance, $groupSlug);
+        return $this->mapNotebook($username, $instance, $groupSlug);
     }
 
     /**
@@ -209,6 +213,7 @@ final class NotebookRepository
         if ($this->isProvisionedGroupNotebook($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group notebook cannot be deleted.', 'forbidden');
         }
+        $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
         if ($instance->objects()->where('componenttype', 'VJOURNAL')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Notebook contains notes.', 'notebookHasContents');
         }
@@ -339,17 +344,17 @@ final class NotebookRepository
     }
 
     /**
-     * Accessible VJOURNAL collections minus chat channels: chat collections are
-     * VJOURNAL-only too, so the `chat-`/`dm-` URI prefix is the discriminator
-     * (regression: ChatNotebookIsolationTest).
+     * Accessible notebooks. Chat channels and docs thread pools are VJOURNAL-only
+     * too, so the stored CollectionKind is the discriminator — never the uri
+     * prefix, which sharee instances do not carry (regression:
+     * ChatNotebookIsolationTest, DocsThreadNotebookIsolationTest).
      *
      * @return Collection<int, CalendarInstance>
      */
     private function accessibleNotebookInstances(string $username)
     {
         return $this->collectionAccess
-            ->accessibleInstances($username, fn ($query) => $query->vjournalOnly())
-            ->filter(fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
+            ->accessibleInstances($username, CollectionKind::Notebook)
             ->values();
     }
 
@@ -471,13 +476,6 @@ final class NotebookRepository
     private function allocateNotebookUri(string $principalUri, ?string $requestedId, string $name): string
     {
         if ($requestedId !== null && $requestedId !== '') {
-            if (ChatCollectionUris::isChatUri($requestedId)) {
-                throw new ApiHttpException(
-                    409,
-                    'This notebook id is reserved for chat channels.',
-                    'alreadyExists',
-                );
-            }
             if (in_array($requestedId, CalendarCollectionUris::reservedNoteViewSlugs(), true)) {
                 throw new ApiHttpException(
                     409,
@@ -485,9 +483,24 @@ final class NotebookRepository
                     'alreadyExists',
                 );
             }
+            $reserved = $this->reservedPrefixOwner($requestedId);
+            if ($reserved === CollectionKind::ChatChannel) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for chat channels.',
+                    'alreadyExists',
+                );
+            }
+            if ($reserved === CollectionKind::DocsThreadPool) {
+                throw new ApiHttpException(
+                    409,
+                    'This notebook id is reserved for docs threads.',
+                    'alreadyExists',
+                );
+            }
             if (
                 in_array($requestedId, CalendarCollectionUris::reservedNoteUriSlugs(), true)
-                || $this->findNotebookInstance($principalUri, $requestedId) !== null
+                || $this->collectionUriTaken($principalUri, $requestedId)
             ) {
                 throw new ApiHttpException(409, 'Notebook id already exists.', 'alreadyExists');
             }
@@ -498,7 +511,7 @@ final class NotebookRepository
         if (str_starts_with($base, 'group-')) {
             $base = 'notebook-'.substr($base, strlen('group-'));
         }
-        if (ChatCollectionUris::isChatUri($base)) {
+        if ($this->reservedPrefixOwner($base) !== null) {
             $base = 'notebook-'.$base;
         }
         if (in_array($base, CalendarCollectionUris::reservedNoteUriSlugs(), true)) {
@@ -506,7 +519,7 @@ final class NotebookRepository
         }
         $candidate = $base;
         $suffix = 2;
-        while ($this->findNotebookInstance($principalUri, $candidate) !== null) {
+        while ($this->collectionUriTaken($principalUri, $candidate)) {
             $candidate = $base.'-'.$suffix;
             $suffix++;
         }
@@ -572,7 +585,7 @@ final class NotebookRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapNotebook($instance, $groupSlug);
+        $mapped = $this->mapNotebook($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'notebook');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -596,7 +609,7 @@ final class NotebookRepository
     }
 
     /** @return array<mixed> */
-    private function mapNotebook(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapNotebook(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? '')) ?: $uri;
@@ -606,7 +619,7 @@ final class NotebookRepository
         $isOwnedGeneral = ! $isSharee && ! $isGroup && $uri === CalendarCollectionUris::NOTE_GENERAL;
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
         $mayWrite = ! $this->shareInvites->isReadOnly($instance);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => [
                 'mayReadItems' => true,
@@ -635,7 +648,7 @@ final class NotebookRepository
                 'mayUpdatePrivate' => $mayWrite,
                 'mayRSVP' => $mayWrite,
                 'mayAdmin' => false,
-                'mayDelete' => ! $isSharedGroupList && $uri !== CalendarCollectionUris::NOTE_GENERAL,
+                'mayDelete' => $groupMayDelete && ! $isSharedGroupList && $uri !== CalendarCollectionUris::NOTE_GENERAL,
                 'mayShare' => $mayShare,
             ],
         };
@@ -681,26 +694,51 @@ final class NotebookRepository
         return array_values(CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $groupUri)
-            ->whereHas('calendar', fn ($query) => $query->vjournalOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::Notebook))
             ->orderBy('calendarorder')
             ->orderBy('id')
             ->get()
-            ->filter(static fn (CalendarInstance $instance): bool => ! ChatCollectionUris::isChatUri((string) $instance->uri))
             ->all());
     }
 
     private function findNotebookInstance(string $principalUri, string $notebookUri): ?CalendarInstance
     {
-        if (ChatCollectionUris::isChatUri($notebookUri)) {
-            return null;
-        }
-
         return CalendarInstance::query()
             ->with('calendar')
             ->where('principaluri', $principalUri)
             ->where('uri', $notebookUri)
-            ->whereHas('calendar', fn ($query) => $query->vjournalOnly())
+            ->whereHas('calendar', fn ($query) => $query->ofKind(CollectionKind::Notebook))
             ->first();
+    }
+
+    /**
+     * Prefixes that belong to another app. A notebook must not be created on
+     * them: chat-/dm- would shadow Meet rooms, and docs-threads would block
+     * the thread pool for that principal.
+     */
+    private function reservedPrefixOwner(string $uri): ?CollectionKind
+    {
+        if (ChatCollectionUris::isChatUri($uri)) {
+            return CollectionKind::ChatChannel;
+        }
+        if (str_starts_with($uri, DocsThreadCollectionUris::POOL_URI)) {
+            return CollectionKind::DocsThreadPool;
+        }
+
+        return null;
+    }
+
+    /**
+     * Any collection on this principal under this uri, whatever app owns it.
+     * A notebook may not be minted on top of a chat channel or a docs thread
+     * pool, and the kind-scoped finders deliberately cannot see those.
+     */
+    private function collectionUriTaken(string $principalUri, string $uri): bool
+    {
+        return CalendarInstance::query()
+            ->where('principaluri', $principalUri)
+            ->where('uri', $uri)
+            ->exists();
     }
 
     private function ensureGroupNotebookInstance(string $groupSlug): ?CalendarInstance

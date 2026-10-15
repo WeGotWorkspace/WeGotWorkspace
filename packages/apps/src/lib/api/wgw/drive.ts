@@ -2,19 +2,16 @@ import {
   wgwErrorMessageFromBody,
   wgwFetch,
   wgwFetchPrincipal,
-  wgwEnsurePluginSession,
   wgwGuestSharePath,
   wgwIsGuestSession,
   wgwReadJson,
 } from "@/lib/api/wgw/http";
 import { downloadWgwUnifiedSearchRecord } from "@/lib/api/wgw/search";
-import { fetchWgwPlugins } from "@/lib/api/wgw/plugins";
 import type {
   WgwDriveDirectoryEntry,
   WgwDriveListingResponse,
   WgwDriveStarsResponse,
   WgwDriveUserData,
-  WgwPluginDescriptor,
 } from "@/lib/api/wgw/types";
 import type {
   DriveAPIOperations,
@@ -103,16 +100,12 @@ function guestShareListingPath(sharePath: string): string {
   return destination === "/" ? normalized : destination;
 }
 
-async function fetchGuestState(
-  dir: string,
-  opts?: { signal?: AbortSignal },
-  plugins: WgwPluginDescriptor[] = [],
-): Promise<DriveUIData> {
+async function fetchGuestState(dir: string, opts?: { signal?: AbortSignal }): Promise<DriveUIData> {
   const sharePath = wgwGuestSharePath();
   const requested = normalizePath(dir);
   const listingRoot = sharePath ? guestShareListingPath(sharePath) : requested;
   const targetDir = requested === "/" || requested === "/users" ? listingRoot : requested;
-  return fetchGuestDriveState(sharePath ?? targetDir, opts, plugins, targetDir);
+  return fetchGuestDriveState(sharePath ?? targetDir, opts, targetDir);
 }
 
 /**
@@ -132,7 +125,6 @@ function guestDriveUser(username: string, rootPath: string): WgwDriveUserData {
 async function fetchGuestDriveState(
   sharePath: string,
   opts?: { signal?: AbortSignal },
-  plugins: WgwPluginDescriptor[] = [],
   listingOverride?: string,
 ): Promise<DriveUIData> {
   const normalized = normalizePath(sharePath);
@@ -145,7 +137,6 @@ async function fetchGuestDriveState(
       user: guestDriveUser(ownerUsername, listingPath),
       cwd: directory.location,
       directory,
-      plugins,
     };
   } catch (error) {
     const { destination, from } = parentAndName(normalized);
@@ -187,7 +178,6 @@ async function fetchGuestDriveState(
           },
         ],
       },
-      plugins,
     };
   }
 }
@@ -204,17 +194,8 @@ export async function fetchDriveLiveBootstrap(): Promise<DriveAppBootstrap> {
     return { session, data: driveState };
   }
 
-  const [driveState, plugins] = await Promise.all([
-    fetchSignedInDriveState("/"),
-    fetchWgwPlugins().catch(() => []),
-  ]);
-  return {
-    session,
-    data: {
-      ...driveState,
-      plugins,
-    },
-  };
+  const driveState = await fetchSignedInDriveState("/");
+  return { session, data: driveState };
 }
 
 function isDuplicateItemError(message: string | undefined): boolean {
@@ -265,18 +246,17 @@ async function deleteJson(path: string, body: object, opts?: { signal?: AbortSig
   if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status})`);
 }
 
-function emptyState(cwd: string, plugins: WgwPluginDescriptor[]): DriveUIData {
+function emptyState(cwd: string): DriveUIData {
   return {
     user: { username: "", name: "", role: "user", roots: [] },
     cwd,
     directory: { location: cwd, files: [] },
-    plugins,
   };
 }
 
 function createSharedDriveOperations(): Pick<
   DriveAPIOperations,
-  "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord" | "ensurePluginSession"
+  "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord"
 > {
   return {
     async search(query, opts) {
@@ -300,19 +280,11 @@ function createSharedDriveOperations(): Pick<
     async downloadUnifiedSearchRecord(input, opts) {
       await downloadWgwUnifiedSearchRecord({ ...input, signal: opts?.signal });
     },
-    async ensurePluginSession(sessionApiPath, opts) {
-      void opts;
-      await wgwEnsurePluginSession(sessionApiPath);
-    },
   };
 }
 
-function createGuestWgwDriveOperations(
-  initialCwd: string,
-  initialPlugins: WgwPluginDescriptor[],
-): DriveAPIOperations {
+function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
   let cwd = normalizePath(initialCwd);
-  const plugins: WgwPluginDescriptor[] = initialPlugins;
   const shared = createSharedDriveOperations();
 
   return {
@@ -327,16 +299,16 @@ function createGuestWgwDriveOperations(
       // Stars are signed-in only (`wgw.role:user`).
     },
     async refreshState(opts) {
-      const state = await fetchGuestState(cwd, opts, plugins);
+      const state = await fetchGuestState(cwd, opts);
       cwd = state.cwd;
       return state;
     },
     async changeDir(to, opts) {
       cwd = normalizePath(to);
-      return fetchGuestState(cwd, opts, plugins);
+      return fetchGuestState(cwd, opts);
     },
     async listDirectory(at, opts) {
-      return fetchGuestState(normalizePath(at), opts, plugins);
+      return fetchGuestState(normalizePath(at), opts);
     },
     async listAllDirectoryEntries(at, opts) {
       return fetchAllDirectoryEntries(normalizePath(at), opts);
@@ -345,15 +317,15 @@ function createGuestWgwDriveOperations(
       const parent = normalizePath(input.cwd);
       const name = input.name.trim();
       await postJson(`/files/directories?${pathQuery(parent)}`, { name }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd, plugins);
-      return fetchGuestState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd);
+      return fetchGuestState(cwd, opts);
     },
     async createFile(input, opts) {
       const parent = normalizePath(input.cwd);
       const name = input.name.trim();
       await postJson(`/files/directories?${pathQuery(parent)}`, { name, type: "file" }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd, plugins);
-      return fetchGuestState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd);
+      return fetchGuestState(cwd, opts);
     },
     async renameItem(input, opts) {
       const fromPath = input.from.includes("/")
@@ -368,8 +340,8 @@ function createGuestWgwDriveOperations(
         body.destination = destination;
       }
       await patchJson(`/files?${pathQuery(fromPath)}`, body, opts);
-      if (opts?.refreshState === false) return emptyState(cwd, plugins);
-      return fetchGuestState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd);
+      return fetchGuestState(cwd, opts);
     },
     async deleteItems(paths, opts) {
       const normalized = paths.map((path) => normalizePath(path));
@@ -383,8 +355,8 @@ function createGuestWgwDriveOperations(
       } else {
         await deleteJson("/files", { paths: normalized }, opts);
       }
-      if (opts?.refreshState === false) return emptyState(cwd, plugins);
-      return fetchGuestState(cwd, opts, plugins);
+      if (opts?.refreshState === false) return emptyState(cwd);
+      return fetchGuestState(cwd, opts);
     },
     async downloadFile(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
@@ -486,7 +458,7 @@ function createGuestWgwDriveOperations(
         filesCompleted += 1;
         publishProgress(file.name);
       }
-      const state = await fetchGuestState(targetCwd, opts, plugins);
+      const state = await fetchGuestState(targetCwd, opts);
       cwd = normalizePath(state.cwd);
       return state;
     },
@@ -508,27 +480,23 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
   }
 }
 
-function createSignedInWgwDriveOperations(
-  initialCwd: string,
-  initialPlugins: WgwPluginDescriptor[],
-): DriveAPIOperations {
+function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperations {
   let cwd = normalizePath(initialCwd);
-  const plugins: WgwPluginDescriptor[] = initialPlugins;
   const shared = createSharedDriveOperations();
 
   return {
     ...shared,
     async refreshState(opts) {
-      const state = await fetchSignedInDriveState(cwd, opts, plugins);
+      const state = await fetchSignedInDriveState(cwd, opts);
       cwd = state.cwd;
       return state;
     },
     async changeDir(to, opts) {
       cwd = normalizePath(to);
-      return fetchSignedInDriveState(cwd, opts, plugins);
+      return fetchSignedInDriveState(cwd, opts);
     },
     async listDirectory(at, opts) {
-      return fetchSignedInDriveState(normalizePath(at), opts, plugins);
+      return fetchSignedInDriveState(normalizePath(at), opts);
     },
     async listAllDirectoryEntries(at, opts) {
       const session = await driveJmapSession();
@@ -539,10 +507,10 @@ function createSignedInWgwDriveOperations(
       });
     },
     async createFolder(input, opts) {
-      return createFileNodeFolder(normalizePath(input.cwd), input.name.trim(), opts, cwd, plugins);
+      return createFileNodeFolder(normalizePath(input.cwd), input.name.trim(), opts, cwd);
     },
     async createFile(input, opts) {
-      return createFileNodeFile(normalizePath(input.cwd), input.name.trim(), opts, cwd, plugins);
+      return createFileNodeFile(normalizePath(input.cwd), input.name.trim(), opts, cwd);
     },
     async renameItem(input, opts) {
       const fromPath = input.from.includes("/")
@@ -551,21 +519,13 @@ function createSignedInWgwDriveOperations(
             const parent = normalizePath(input.destination);
             return parent === "/" ? `/${input.from}` : `${parent}/${input.from}`;
           })();
-      return renameFileNode(
-        fromPath,
-        normalizePath(input.destination),
-        input.to,
-        opts,
-        cwd,
-        plugins,
-      );
+      return renameFileNode(fromPath, normalizePath(input.destination), input.to, opts, cwd);
     },
     async deleteItems(paths, opts) {
       return destroyFileNodes(
         paths.map((path) => normalizePath(path)),
         opts,
         cwd,
-        plugins,
       );
     },
     async downloadFile(path, opts) {
@@ -591,21 +551,18 @@ function createSignedInWgwDriveOperations(
       return listFileNodeEntriesByPaths(paths, opts);
     },
     async uploadFiles(input, opts) {
-      const state = await uploadFileNodes(normalizePath(input.cwd), input.files, opts, plugins);
+      const state = await uploadFileNodes(normalizePath(input.cwd), input.files, opts);
       cwd = normalizePath(state.cwd);
       return state;
     },
   };
 }
 
-export function createWgwDriveOperations(
-  initialCwd = "/",
-  initialPlugins: WgwPluginDescriptor[] = [],
-): DriveAPIOperations {
+export function createWgwDriveOperations(initialCwd = "/"): DriveAPIOperations {
   if (wgwIsGuestSession()) {
-    return createGuestWgwDriveOperations(initialCwd, initialPlugins);
+    return createGuestWgwDriveOperations(initialCwd);
   }
-  return createSignedInWgwDriveOperations(initialCwd, initialPlugins);
+  return createSignedInWgwDriveOperations(initialCwd);
 }
 
 export { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";

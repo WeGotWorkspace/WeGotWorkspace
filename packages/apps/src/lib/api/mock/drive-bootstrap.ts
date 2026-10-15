@@ -46,7 +46,6 @@ const DEFAULT_DATA: DriveUIData = {
       },
     ],
   },
-  plugins: [],
 };
 
 export function createDriveAppBootstrap(overrides?: {

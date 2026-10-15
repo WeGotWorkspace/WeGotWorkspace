@@ -169,66 +169,88 @@ final class NoteRepository
             throw new ApiHttpException(404, 'Note not found.', 'not_found');
         }
         $this->collectionAccess->assertCollectionWritable($located['instance'], 'This notebook is read-only.');
-        OptimisticConcurrency::assertPreconditions(
+
+        // Lock the row for the precondition check and the write. A concurrent
+        // PATCH then waits instead of both passing the same ETag.
+        /** @var array{instance: CalendarInstance, object: CalendarObject} $updated */
+        $updated = DB::connection('wgw')->transaction(function () use (
+            $located,
+            $username,
+            $noteId,
+            $patch,
             $ifMatch,
             $ifUnmodifiedSince,
-            (string) $located['object']->etag,
-            is_numeric($located['object']->lastmodified) ? (int) $located['object']->lastmodified : null,
             $requirePrecondition,
-        );
-
-        $instance = $located['instance'];
-        $object = $located['object'];
-        if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
-            $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            $this->assertNewCategoriesAllowed($storedIcs, array_values($patch['categories']));
-        }
-
-        if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
-            $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
-            if ($destination === null) {
-                throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
-            }
-            $this->collectionAccess->assertCollectionWritable($destination, 'This notebook is read-only.');
-            if ((int) $destination->calendarid !== (int) $object->calendarid) {
-                $this->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
-                $this->moveHelper->move($object, (int) $destination->calendarid);
-                $object->refresh();
-                $instance = $destination;
-            }
-        }
-
-        $fieldPatch = $patch;
-        unset($fieldPatch['notebookId']);
-        if ($fieldPatch !== []) {
-            $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-            $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
-            try {
-                $this->calBackend()->updateCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                    $ics,
-                );
-            } catch (QueryException|PDOException $exception) {
-                NoteUidConflict::throwIf($exception);
-                throw $exception;
-            }
-            $object = $this->findObjectByUid((int) $instance->calendarid, $noteId);
+        ): array {
+            $object = CalendarObject::query()
+                ->whereKey($located['object']->getKey())
+                ->lockForUpdate()
+                ->first();
             if ($object === null) {
-                throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
+                throw new ApiHttpException(404, 'Note not found.', 'not_found');
             }
-        }
+            OptimisticConcurrency::assertPreconditions(
+                $ifMatch,
+                $ifUnmodifiedSince,
+                (string) $object->etag,
+                is_numeric($object->lastmodified) ? (int) $object->lastmodified : null,
+                $requirePrecondition,
+            );
 
-        $this->indexObject($username, $instance, $object);
+            $instance = $located['instance'];
+            if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
+                $storedIcs = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $this->assertNewCategoriesAllowed($storedIcs, array_values($patch['categories']));
+            }
+
+            if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
+                $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
+                if ($destination === null) {
+                    throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
+                }
+                $this->collectionAccess->assertCollectionWritable($destination, 'This notebook is read-only.');
+                if ((int) $destination->calendarid !== (int) $object->calendarid) {
+                    $this->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
+                    $this->moveHelper->move($object, (int) $destination->calendarid);
+                    $object->refresh();
+                    $instance = $destination;
+                }
+            }
+
+            $fieldPatch = $patch;
+            unset($fieldPatch['notebookId']);
+            if ($fieldPatch !== []) {
+                $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
+                $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
+                try {
+                    $this->calBackend()->updateCalendarObject(
+                        [(int) $instance->calendarid, (int) $instance->id],
+                        (string) $object->uri,
+                        $ics,
+                    );
+                } catch (QueryException|PDOException $exception) {
+                    NoteUidConflict::throwIf($exception);
+                    throw $exception;
+                }
+                $object = $this->findObjectByUid((int) $instance->calendarid, $noteId);
+                if ($object === null) {
+                    throw new ApiHttpException(500, 'Could not load updated note.', 'server_error');
+                }
+            }
+
+            return ['instance' => $instance, 'object' => $object];
+        });
+
+        $this->indexObject($username, $updated['instance'], $updated['object']);
         $starred = NoteStar::query()
             ->where('username', $username)
-            ->where('calendar_object_id', (int) $object->id)
+            ->where('calendar_object_id', (int) $updated['object']->id)
             ->exists();
 
         return $this->rememberedNote(
             $username,
-            $object,
-            $this->notebooks->apiIdForInstance($instance),
+            $updated['object'],
+            $this->notebooks->apiIdForInstance($updated['instance']),
             $starred,
         );
     }

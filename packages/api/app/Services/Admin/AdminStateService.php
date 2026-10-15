@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\AppSetting;
+use App\Services\Calendars\CalendarImipService;
 use App\Services\MailDelivery\MailDeliveryService;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Rtc\MeetVideoProfile;
 use App\Services\Rtc\RtcSettingsService;
 use App\Services\Settings\GroupDirectoryService;
 use App\Services\Settings\SettingKeys;
+use App\Services\Update\ShippedInstallEnvHardening;
 use App\Services\Update\UpdateStateService;
 use App\Support\ApiUrlBuilder;
 use App\Support\PublicAppUrl;
@@ -51,6 +53,9 @@ final class AdminStateService
                 'calendars' => (bool) ($cfg[SettingKeys::CALENDAR_ENABLED] ?? true),
                 'contacts' => (bool) ($cfg[SettingKeys::CONTACTS_ENABLED] ?? true),
                 'tasks' => (bool) ($cfg[SettingKeys::TASKS_ENABLED] ?? true),
+                'imipExternalEnabled' => $this->imipExternalEnabled(),
+                'imipHourlyLimit' => $this->imipHourlyLimit(),
+                'imipDailyLimit' => $this->imipDailyLimit(),
             ],
             'webdav' => [
                 'sabreUi' => (bool) ($cfg[SettingKeys::BROWSER_PLUGIN] ?? false),
@@ -75,6 +80,18 @@ final class AdminStateService
     private function securityWarnings(): array
     {
         $warnings = [];
+        if (AppSetting::getValue('shipped_env_hardened') !== true
+            && (config('app.env') !== 'production' || config('app.debug') === true)) {
+            try {
+                $applied = app(ShippedInstallEnvHardening::class)->apply();
+            } catch (\Throwable) {
+                $applied = false;
+            }
+            if ($applied) {
+                AppSetting::setValue('shipped_env_hardened', true);
+                $warnings[] = 'Production settings were applied; reload the page';
+            }
+        }
         if (config('app.debug') === true) {
             $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
         }
@@ -88,12 +105,35 @@ final class AdminStateService
         return $warnings;
     }
 
+    private function imipExternalEnabled(): bool
+    {
+        return filter_var(
+            AppSetting::getValue(SettingKeys::IMIP_EXTERNAL_ENABLED, true),
+            FILTER_VALIDATE_BOOLEAN,
+        );
+    }
+
+    private function imipDailyLimit(): int
+    {
+        return CalendarImipService::normalizeDailyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_DAILY_LIMIT, CalendarImipService::DAILY_LIMIT_DEFAULT),
+        );
+    }
+
+    private function imipHourlyLimit(): int
+    {
+        return CalendarImipService::normalizeHourlyLimit(
+            AppSetting::getValue(SettingKeys::IMIP_HOURLY_LIMIT, CalendarImipService::HOURLY_LIMIT_DEFAULT),
+            $this->imipDailyLimit(),
+        );
+    }
+
     /**
      * The relay secret is write-only: admin only ever learns whether one is
      * set. Leftover static credentials from an older install no longer relay
      * anything, so they are reported as a warning instead.
      *
-     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool, maxVideoProfile: string, maxVideoProfileRelay: string}
+     * @return array{stunUrls: string, turnUrls: string, turnSecretSet: bool, turnStaticCredentialsPresent: bool, maxVideoProfile: string, maxVideoProfileRelay: string, debugLogging: bool, forceRelay: bool}
      */
     private function rtcSettings(): array
     {
@@ -124,6 +164,9 @@ final class AdminStateService
                 AppSetting::getValue(SettingKeys::MEET_MAX_VIDEO_PROFILE_RELAY, ''),
                 RtcSettingsService::DEFAULT_MAX_VIDEO_PROFILE_RELAY
             ),
+            'debugLogging' => $this->rtcSettings->storedFlag(SettingKeys::RTC_DEBUG_LOGGING),
+            // The stored switch, not the served one: admin edits what it set.
+            'forceRelay' => $this->rtcSettings->storedFlag(SettingKeys::RTC_FORCE_RELAY),
         ];
     }
 }

@@ -199,6 +199,31 @@ final class UpdateRunnerPackageIoTest extends TestCase
         }
     }
 
+    public function test_apply_paths_leaves_an_empty_app_url_unchanged(): void
+    {
+        $_SERVER['HTTP_HOST'] = 'attacker.example';
+        $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
+        $_SERVER['HTTPS'] = '';
+
+        $source = $this->scratch.'/source';
+        $target = $this->scratch.'/target';
+        $env = "APP_KEY=base64:YWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWJjYWI=\nAPP_URL=\n";
+        foreach ([$source, $target] as $root) {
+            mkdir($root.'/packages/api/vendor', 0775, true);
+            touch($root.'/packages/api/vendor/autoload.php');
+            file_put_contents($root.'/packages/api/.env', $env);
+        }
+
+        try {
+            $this->packages()->applyPaths($source, $target, ['packages/api']);
+            $written = (string) file_get_contents($target.'/packages/api/.env');
+            $this->assertStringNotContainsString('attacker.example', $written);
+            $this->assertMatchesRegularExpression('/^APP_URL=$/m', $written);
+        } finally {
+            unset($_SERVER['HTTP_HOST'], $_SERVER['HTTP_X_FORWARDED_PROTO'], $_SERVER['HTTPS']);
+        }
+    }
+
     public function test_latest_from_state_requires_a_prior_check(): void
     {
         try {

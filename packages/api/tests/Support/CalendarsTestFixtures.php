@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Calendars\CollectionKind;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -53,16 +55,16 @@ trait CalendarsTestFixtures
 
     protected function seedDefaultCalendarFor(string $username): void
     {
-        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $backend = app(WgwCalendarBackendFactory::class)->make();
         $principalUri = 'principals/'.$username;
 
-        foreach ($caldav->getCalendarsForUser($principalUri) as $cal) {
+        foreach ($backend->getCalendarsForUser($principalUri) as $cal) {
             if (($cal['uri'] ?? '') === 'default') {
                 return;
             }
         }
 
-        $caldav->createCalendar($principalUri, 'default', [
+        $backend->createCollection(CollectionKind::EventCalendar, $principalUri, 'default', [
             '{DAV:}displayname' => 'Calendar',
             '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
         ]);
@@ -70,11 +72,15 @@ trait CalendarsTestFixtures
 
     protected function seedNamedCalendarFor(string $username, string $uri, string $displayName): void
     {
-        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
-        $caldav->createCalendar('principals/'.$username, $uri, [
-            '{DAV:}displayname' => $displayName,
-            '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
-        ]);
+        app(WgwCalendarBackendFactory::class)->make()->createCollection(
+            CollectionKind::EventCalendar,
+            'principals/'.$username,
+            $uri,
+            [
+                '{DAV:}displayname' => $displayName,
+                '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VEVENT', 'VJOURNAL']),
+            ],
+        );
     }
 
     protected function seedEventViaPdo(

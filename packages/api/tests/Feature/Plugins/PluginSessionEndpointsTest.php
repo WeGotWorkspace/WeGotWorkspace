@@ -7,9 +7,12 @@ namespace Tests\Feature\Plugins;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
+use Tests\Support\WithPluginsEnabled;
 
 final class PluginSessionEndpointsTest extends WgwDatabaseTestCase
 {
+    use WithPluginsEnabled;
+
     private string $dataDir = '';
 
     protected function setUp(): void

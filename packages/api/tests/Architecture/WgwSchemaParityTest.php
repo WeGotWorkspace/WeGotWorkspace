@@ -69,9 +69,11 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_rsvp_tokens', 'token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token_hash'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('collab_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));

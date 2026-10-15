@@ -31,6 +31,8 @@
   --meet-error: #fda4af;
   --meet-link: #93c5fd;
   --meet-live: #34d399;
+  /* Ink on the speaking tag. Assigned here so paint can stay off the brand primitive. */
+  --meet-live-foreground: var(--color-we-got-dark);
   --meet-mark: var(--color-we-got-brat);
   --meet-mic-off: #e5484d;
   --meet-overlay: rgba(8, 9, 18, 0.6);
@@ -64,7 +66,6 @@
   .meet-workspace--split,
   .meet-call-dialog,
   .meet-device-popover,
-  .meet-knock-badge__popover,
   .meet-guest-channel__lobby,
   .meet-call-bar,
   .meet-call-stage,
@@ -357,7 +358,7 @@
 
 .meet-call-stage__relay {
   @apply flex flex-wrap items-center gap-3 px-4 py-2 text-sm;
-  background-color: color-mix(in oklab, var(--color-we-got-dark) 8%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
 }
 
 .meet-call-stage__relay-link {
@@ -406,8 +407,7 @@
   color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface, .meet-knock-badge__popover)
-  .user-avatar__mark {
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .user-avatar__mark {
   font-weight: 600;
 }
 
@@ -456,13 +456,14 @@
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__speaking {
-  @apply inline-flex items-center gap-1.5 text-sm font-medium;
-  color: var(--meet-live);
+  @apply absolute left-2 top-2 z-10 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium;
+  background-color: var(--meet-live);
+  color: var(--meet-live-foreground, #111);
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__speaking-dot {
-  @apply size-2 rounded-full;
-  background-color: var(--meet-live);
+  @apply size-1.5 rounded-full;
+  background-color: currentColor;
 }
 
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__caption {
@@ -481,6 +482,11 @@
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__fill {
   @apply absolute inset-0 z-[1] flex items-center justify-center;
   background-color: var(--workspace-accent);
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--workspace-accent-foreground) 18%, var(--workspace-accent)),
+    color-mix(in oklch, var(--workspace-accent) 62%, var(--meet-surface, var(--workspace-surface)))
+  );
 }
 
 .meet-stream-video {
@@ -498,35 +504,55 @@
   @apply pointer-events-none opacity-0;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name--mic-muted {
-  outline: 1px solid rgba(248, 113, 113, 0.95);
-  outline-offset: 0;
-  background-color: color-mix(in oklch, rgb(127 29 29) 55%, rgb(0 0 0));
-  color: #fff;
-}
-
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__name {
-  @apply absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-full border-0 bg-black/70 px-2.5 py-1 text-left text-[11px] text-white backdrop-blur;
+  @apply pointer-events-none absolute bottom-2 left-2 z-10 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-black/70 px-2.5 py-1 text-[11px] text-white backdrop-blur;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) button.meet-peer-tile__name {
-  @apply appearance-none cursor-pointer;
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__control {
+  @apply absolute z-10;
+  --button-outline-color: #fff;
+  --button-outline-hover-color: #fff;
+  --button-outline-border-color: rgb(255 255 255 / 0.28);
+  --button-outline-hover-background: rgb(255 255 255 / 0.16);
+  --button-outline-active-background: rgb(255 255 255 / 0.16);
+  --button-active-color: #fff;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
-  button.meet-peer-tile__name:hover {
-  background-color: rgb(0 0 0 / 0.62);
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mute,
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state {
+  @apply bottom-2 right-2;
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
-  button.meet-peer-tile__name:focus-visible {
-  outline: 2px solid var(--meet-live, #fff);
-  outline-offset: 2px;
+/* Read-only mic. Same slot as the mute button, without being a control. */
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state {
+  @apply inline-flex size-7 items-center justify-center rounded-md border;
+  color: var(--button-outline-color, #fff);
+  border-color: var(--button-outline-border-color, rgb(255 255 255 / 0.28));
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
-  button.meet-peer-tile__name--mic-muted:hover {
-  background-color: color-mix(in oklch, rgb(127 29 29) 70%, rgb(0 0 0));
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__mic-state svg {
+  @apply size-3.5;
+}
+
+:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-peer-tile__pin {
+  @apply right-2 top-2;
+}
+
+/* Fine pointers: idle pin/mute appear on hover. Pinned or muted stays visible. */
+@media (hover: hover) and (pointer: fine) {
+  :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+    .meet-peer-tile__control:not(.meet-peer-tile__control--persistent) {
+    @apply pointer-events-none opacity-0;
+  }
+
+  :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+    .meet-peer-tile:hover
+    .meet-peer-tile__control,
+  :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface)
+    .meet-peer-tile:focus-within
+    .meet-peer-tile__control {
+    @apply pointer-events-auto opacity-100;
+  }
 }
 
 @media (min-width: 768px) {
@@ -621,73 +647,48 @@
   background-color: var(--meet-panel-soft);
 }
 
-.meet-knock-badge {
-  @apply relative;
-}
-
-.meet-knock-badge::after {
-  content: attr(data-count);
-  @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--workspace-accent);
-  color: #ffffff;
-}
-
-/*
- * Host admit queue — main-area paper, not lobby dark.
- * Portaled to document.body: do not reuse `.meet-popover-surface` (`#171826`).
- * Pin the same 40% Soft mix as `--workspace-surface` so the card stays opaque.
- * `!important` beats PopoverContent `bg-popover`.
- */
-.meet-knock-badge__popover {
-  --workspace-icon-surface: var(--color-we-got-sand);
-  --workspace-icon-foreground: var(--color-we-got-dark);
-  --meet-call-ink-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  --meet-call-border: color-mix(in oklch, var(--workspace-accent) 22%, transparent);
-  --meet-call-empty: color-mix(in oklch, var(--workspace-accent) 6%, var(--workspace-surface));
-  --meet-call-surface: color-mix(in oklch, var(--workspace-accent) 12%, var(--workspace-surface));
-  --meet-panel: var(--meet-call-surface);
-  --meet-panel-soft: var(--meet-call-empty);
-  --popover: var(--workspace-surface);
-  --popover-foreground: var(--workspace-foreground);
-  --color-popover: var(--workspace-surface);
-  --color-popover-foreground: var(--workspace-foreground);
-  --foreground: var(--workspace-foreground);
-  --color-foreground: var(--workspace-foreground);
-  @apply w-80 rounded-xl p-2;
-  background-color: var(--workspace-surface) !important;
-  color: var(--workspace-foreground) !important;
-  border-color: var(--meet-call-border);
-}
-
-.meet-knock-list {
-  @apply flex flex-col gap-1;
-}
-
-.meet-knock-row {
-  @apply flex items-center gap-3 rounded-lg p-2;
-  background-color: var(--meet-call-empty);
-}
-
-.meet-knock-row__copy {
-  @apply min-w-0 flex-1;
-}
-
-.meet-knock-row__name {
-  @apply truncate text-sm font-medium;
+.meet-lobby-banner {
+  @apply mx-4 mb-3 flex flex-col gap-3 border px-4 py-3 md:mx-6;
+  border-radius: var(--radius-lg);
+  background-color: var(--workspace-surface);
+  border-color: var(--meet-call-border, var(--control-border-color));
   color: var(--workspace-foreground);
 }
 
-.meet-knock-row__hint {
-  @apply text-[11px];
-  color: var(--meet-call-ink-muted);
+.meet-lobby-banner__header {
+  @apply flex items-center justify-between gap-3;
 }
 
-.meet-knock-row__deny,
-.meet-knock-row__admit {
-  @apply shrink-0;
+.meet-lobby-banner__title {
+  @apply text-sm font-semibold;
 }
 
-/* Knocker-side wait state (guest / non-member). Host admit lives on the action row. */
+.meet-lobby-banner__list {
+  @apply m-0 flex list-none flex-col gap-2 p-0;
+}
+
+.meet-lobby-banner__row {
+  @apply flex items-center gap-3;
+}
+
+.meet-lobby-banner__copy {
+  @apply min-w-0 flex-1;
+}
+
+.meet-lobby-banner__name {
+  @apply truncate text-sm font-medium;
+}
+
+.meet-lobby-banner__hint {
+  @apply truncate text-xs;
+  color: var(--meet-muted, var(--meet-call-ink-muted));
+}
+
+.meet-lobby-banner__actions {
+  @apply flex shrink-0 items-center gap-2;
+}
+
+/* Knocker-side wait state (guest / non-member). Host admit lives on the lobby banner. */
 .meet-call-knock-wait {
   @apply flex shrink-0 items-center gap-3 rounded-sm border px-4 py-2.5;
   background-color: var(--meet-panel);
@@ -903,7 +904,7 @@
   );
 }
 
-/** App switcher lockup: meet.svg literals (white tile and bars / `#ba9689` shape). */
+/** App switcher lockup: meet.svg literals (soft tile and bars / sand shape). */
 .meet-workspace--split
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -996,6 +997,9 @@
   @apply shrink-0 border-b;
   container: meet-call-bar / inline-size;
   border-color: var(--meet-call-border);
+  /* Same fill and ink as the app sidebar, not the light call-stage wash. */
+  background-color: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
+  color: var(--app-sidebar-color, var(--workspace-sidebar-foreground));
 }
 
 .meet-call-bar__row {
@@ -1017,12 +1021,12 @@
 
 .meet-call-bar__title {
   @apply truncate text-sm font-semibold;
-  color: var(--workspace-foreground);
+  color: inherit;
 }
 
 .meet-call-bar__meta {
   @apply truncate text-xs tabular-nums;
-  color: var(--meet-call-ink-muted);
+  color: color-mix(in oklch, currentColor 72%, transparent);
 }
 
 .meet-call-bar__avatars {
@@ -1051,9 +1055,21 @@
   color: var(--workspace-foreground);
 }
 
-/* Camera-off initial: Brat letter and stroke, no disc fill. */
+/* Camera-off initial: neutral disc, not the Brat mark or a saturated hue. */
 .meet-workspace .meet-peer-tile__fill .user-avatar__mark,
-.meet-workspace .meet-peer-tile__fill .user-avatar--colored .user-avatar__mark,
+.meet-workspace .meet-peer-tile__fill .user-avatar--colored .user-avatar__mark {
+  --user-avatar-fg: var(--workspace-accent-foreground);
+  --user-avatar-bg: color-mix(
+    in oklch,
+    var(--workspace-accent-foreground) 16%,
+    var(--workspace-accent)
+  );
+  --user-avatar-border: color-mix(in oklch, var(--workspace-accent-foreground) 28%, transparent);
+  color: var(--user-avatar-fg);
+  background-color: var(--user-avatar-bg);
+  border-color: var(--user-avatar-border);
+}
+
 .meet-mini-player__preview .user-avatar__mark {
   --user-avatar-fg: var(--meet-mark);
   --user-avatar-bg: transparent;
@@ -1117,18 +1133,18 @@
 
 .meet-workspace :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded) .meet-peer-tile__fill {
   background-color: var(--workspace-accent);
-}
-
-.meet-workspace
-  :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
-  .meet-peer-tile__display-name {
-  color: var(--meet-mark);
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--workspace-accent-foreground) 18%, var(--workspace-accent)),
+    color-mix(in oklch, var(--workspace-accent) 62%, var(--meet-surface, var(--workspace-surface)))
+  );
 }
 
 .meet-workspace
   :is(.meet-call-bar, .meet-call-stage, .meet-call-expanded)
   .meet-peer-tile__speaking {
-  color: var(--meet-live);
+  background-color: var(--meet-live);
+  color: var(--meet-live-foreground, #111);
 }
 
 .meet-workspace
@@ -1144,6 +1160,16 @@
 
 .meet-workspace__members-icon {
   @apply size-4;
+}
+
+.meet-workspace .meet-direct-message-row {
+  @apply gap-4;
+}
+
+.meet-workspace .meet-direct-message-row .collection-sidebar-row__leading {
+  width: var(--control-height-xs, 1.75rem);
+  min-width: var(--control-height-xs, 1.75rem);
+  height: var(--control-height-xs, 1.75rem);
 }
 
 .meet-workspace .collection-sidebar-row__title {
@@ -1269,9 +1295,12 @@
 
 .meet-call-stage--expanded,
 .meet-call-expanded {
-  @apply relative flex-row overflow-hidden;
+  @apply relative h-full min-h-0 flex-col overflow-hidden;
   container: meet-call-expanded / inline-size;
-  --meet-call-dock-safe: 5.75rem;
+  /* Shared by the dock offset and the body clearance so a safe-area inset
+     moves both. 4.75rem is the toolbar (padding + control) above that inset. */
+  --meet-call-dock-inset: max(1rem, env(safe-area-inset-bottom, 0px));
+  --meet-call-dock-clearance: calc(4.75rem + var(--meet-call-dock-inset));
 }
 
 .meet-call-stage__chrome {
@@ -1319,41 +1348,81 @@
 }
 
 .meet-call-stage__body {
-  /* Inline inset matches `.meet-call-stage__header` (`p-4 md:p-6`). */
-  @apply flex min-h-0 min-w-0 flex-1 gap-3 px-4 md:px-6;
-  padding-bottom: var(--meet-call-dock-safe, 5.75rem);
+  /* Inline inset matches `.meet-call-stage__header` (`p-4 md:p-6`).
+     Bottom padding clears the dock, using the same inset the dock positions with. */
+  @apply flex min-h-0 min-w-0 flex-1 overflow-hidden gap-3 px-4 md:px-6;
+  padding-bottom: var(--meet-call-dock-clearance);
+}
+
+.meet-call-stage__body--waiting {
+  @apply pb-4 md:pb-6;
 }
 
 .meet-call-stage__grid {
-  @apply grid h-full min-h-0 min-w-0 flex-1 list-none;
+  @apply m-0 flex h-full min-h-0 min-w-0 flex-1 list-none flex-wrap content-center justify-center overflow-y-auto p-0;
   gap: 0.75rem;
-  grid-template-columns: repeat(var(--meet-call-grid-columns, 1), minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
 }
 
-.meet-call-stage__grid[data-columns="1"] {
-  grid-template-columns: minmax(0, 1fr);
+/* One local participant: a meeting tile, centered, not a full-bleed stage.
+   Screen share and pin use `.meet-call-stage__share`, not this grid. */
+.meet-call-stage__grid[data-count="1"] {
+  @apply items-center content-center;
 }
 
-.meet-call-stage__grid[data-columns="2"] {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.meet-call-stage__grid[data-count="1"] > .meet-call-stage__grid-item {
+  width: min(100%, 40rem);
+  max-height: min(60vh, 25rem);
+  height: auto;
+  aspect-ratio: 16 / 10;
 }
 
-.meet-call-stage__grid[data-columns="3"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.meet-call-stage__grid[data-columns="4"] {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.meet-call-stage__grid-item {
+/* Column count comes from peer count (`data-columns`). A short last row stays centered. */
+.meet-call-stage__grid > .meet-call-stage__grid-item {
   @apply min-h-0 min-w-0;
+  --meet-call-grid-used-columns: min(
+    var(--meet-call-grid-columns, 1),
+    var(--meet-call-grid-columns-cap, var(--meet-call-grid-columns, 1))
+  );
+  aspect-ratio: 16 / 10;
+  flex: 0 0 auto;
+  width: calc(
+    (100% - 0.75rem * (var(--meet-call-grid-used-columns) - 1)) / var(--meet-call-grid-used-columns)
+  );
 }
 
-/* Screen share keeps a full row; other tiles stay in the count-based columns. */
-.meet-call-stage__grid-item--screen {
-  grid-column: 1 / -1;
+/* Screen share or a pinned peer: featured stage plus a filmstrip. Wide stage = column on the right; narrow stage = row underneath. */
+.meet-call-stage__share {
+  @apply flex h-full min-h-0 min-w-0 flex-1 flex-row gap-3;
+}
+
+.meet-call-stage__share-main {
+  @apply flex min-h-0 min-w-0 flex-1;
+}
+
+.meet-call-stage__share-main .meet-call-stage__screen,
+.meet-call-stage__share-main .meet-call-stage__screen-fallback,
+.meet-call-stage__share-main .meet-peer-tile {
+  @apply h-full w-full min-h-0 flex-1;
+}
+
+.meet-call-stage__share-peers {
+  @apply m-0 flex h-full min-h-0 list-none flex-col gap-2 overflow-y-auto p-0;
+  width: clamp(7.5rem, 18vw, 13rem);
+}
+
+@supports (container-type: inline-size) {
+  .meet-call-stage__share-peers {
+    width: clamp(7.5rem, 18cqi, 13rem);
+  }
+}
+
+.meet-call-stage__share-peers > .meet-call-stage__grid-item {
+  @apply w-full shrink-0;
+  aspect-ratio: 16 / 10;
+}
+
+.meet-call-stage__share-peers .meet-peer-tile {
+  @apply h-full w-full min-h-0;
 }
 
 .meet-call-stage__grid .meet-peer-tile,
@@ -1366,22 +1435,44 @@
   container: meet-peer-tile / size;
 }
 
-/* Narrow stage: 16/10 tiles, centered. Wide stages still fill the grid. */
+/* Narrow stage: cap at two columns (one person stays full width). Wide stages use the peer-count columns. */
+/* Narrow stage, not the viewport: a side-by-side column in a landscape window stacks the filmstrip. */
 @container meet-call-expanded (max-width: 40rem) {
+  .meet-call-expanded .meet-call-stage__share {
+    @apply flex-col;
+  }
+
+  .meet-call-expanded .meet-call-stage__share-peers {
+    @apply h-auto w-full shrink-0 flex-row overflow-x-auto overflow-y-hidden;
+    height: 6.5rem;
+  }
+
+  .meet-call-expanded .meet-call-stage__share-peers > .meet-call-stage__grid-item {
+    @apply h-full w-auto;
+    aspect-ratio: 16 / 10;
+  }
+
+  .meet-call-expanded .meet-call-stage__body:has(.meet-call-stage__share) {
+    align-items: stretch;
+  }
+
   .meet-call-expanded .meet-call-stage__body {
     align-items: center;
   }
 
+  .meet-call-expanded .meet-call-stage__grid:not([data-count="1"]) {
+    --meet-call-grid-columns-cap: 2;
+  }
+
   .meet-call-expanded .meet-call-stage__grid {
     width: 100%;
-    height: auto;
-    align-self: center;
-    grid-auto-rows: auto;
+    height: 100%;
+    max-height: 100%;
+    align-self: stretch;
     overflow-y: auto;
   }
 
-  .meet-call-expanded .meet-call-stage__grid-item {
-    aspect-ratio: 16 / 10;
+  .meet-call-expanded .meet-call-stage__grid > .meet-call-stage__grid-item {
     height: auto;
     align-self: center;
   }
@@ -1389,31 +1480,53 @@
 
 @supports not (container-type: inline-size) {
   @media (max-width: 40rem) {
+    .meet-call-expanded .meet-call-stage__share {
+      @apply flex-col;
+    }
+
+    .meet-call-expanded .meet-call-stage__share-peers {
+      @apply h-auto w-full shrink-0 flex-row overflow-x-auto overflow-y-hidden;
+      width: auto;
+      height: 6.5rem;
+    }
+
+    .meet-call-expanded .meet-call-stage__share-peers > .meet-call-stage__grid-item {
+      @apply h-full w-auto;
+      aspect-ratio: 16 / 10;
+    }
+
+    .meet-call-expanded .meet-call-stage__body:has(.meet-call-stage__share) {
+      align-items: stretch;
+    }
+
     .meet-call-expanded .meet-call-stage__body {
       align-items: center;
     }
 
+    .meet-call-expanded .meet-call-stage__grid:not([data-count="1"]) {
+      --meet-call-grid-columns-cap: 2;
+    }
+
     .meet-call-expanded .meet-call-stage__grid {
       width: 100%;
-      height: auto;
-      align-self: center;
-      grid-auto-rows: auto;
+      height: 100%;
+      max-height: 100%;
+      align-self: stretch;
       overflow-y: auto;
     }
 
-    .meet-call-expanded .meet-call-stage__grid-item {
-      aspect-ratio: 16 / 10;
+    .meet-call-expanded .meet-call-stage__grid > .meet-call-stage__grid-item {
       height: auto;
       align-self: center;
     }
   }
 }
 
-/* Camera-off initial scales with the tile, similar to the mini-player preview. */
+/* Camera-off initial stays smaller than the tile, including spotlight. */
 .meet-call-stage .meet-peer-tile__fill .user-avatar__mark {
-  width: clamp(4.5rem, 42cqmin, 16rem);
-  height: clamp(4.5rem, 42cqmin, 16rem);
-  font-size: clamp(1.75rem, 15cqmin, 6rem);
+  width: clamp(2.5rem, 18cqmin, 5rem);
+  height: clamp(2.5rem, 18cqmin, 5rem);
+  font-size: clamp(0.875rem, 6cqmin, 1.75rem);
 }
 
 .meet-call-stage__screen,
@@ -1432,7 +1545,11 @@
 }
 
 .meet-call-stage__dock {
-  @apply pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center;
+  /* Absolute in the stage chrome. The tile grid scrolls inside the body, so
+     the controls stay at the bottom of the stage and do not cover the sidebar
+     or the chat rail. Viewport-fixed would, once container containment is absent. */
+  @apply pointer-events-none absolute inset-x-0 z-30 flex justify-center;
+  bottom: var(--meet-call-dock-inset);
 }
 
 .meet-call-stage__dock .meet-workspace__toolbar.floating-action-bar {

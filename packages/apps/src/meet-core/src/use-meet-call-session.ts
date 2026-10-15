@@ -13,6 +13,7 @@ import type { MeetRemotePeer } from "@/meet-core/src/meet-call-types";
 import { acceptMeetDataChat } from "@/meet-core/src/meet-data-chat";
 import { buildMeetControlMessage } from "@/meet-core/src/meet-control-messages";
 import { meetLabels } from "@/meet-core/src/meet-labels";
+import { createMeetPokeGate, handleMeetDataFrame } from "@/meet-core/src/meet-poll-poke";
 import { shouldAcceptMeetOffer, shouldConnectMeetPeer } from "@/meet-core/src/meet-rtc-peers";
 import type { MeetCallStore } from "@/meet-core/src/meet-call-store";
 import type { MeetAPIOperations, MeetRtcSettings } from "@/meet-core/src/meet-types";
@@ -47,11 +48,11 @@ export function useMeetCallSession({
   const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
   const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
   const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
-  const rtcDebugEnabledRef = useRef(isRtcDebugEnabled());
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
 
   const meetRtcRef = useRef<ReturnType<typeof useMeetRtc> | null>(null);
+  const pokeGateRef = useRef(createMeetPokeGate());
   const muteMicRef = useRef<null | (() => boolean)>(null);
   const getLocalStreamRef = useRef<() => MediaStream | null>(() => null);
   const announceMediaPresenceRef = useRef<
@@ -94,8 +95,25 @@ export function useMeetCallSession({
     [isGuestSession, operations],
   );
 
+  // Settings in force. The bootstrap value is a guest's fallback until the join
+  // session key lets the mesh read the real room configuration (#1219).
+  const [effectiveRtc, setEffectiveRtc] = useState<MeetRtcSettings>(rtc);
+  useEffect(() => {
+    setEffectiveRtc(rtc);
+  }, [rtc]);
+
   const meetRtc = useMeetRtc({
-    rtcSettings: rtc,
+    rtcSettings: effectiveRtc,
+    refreshRtcSettings: async ({ sessionKey }) => {
+      const roomCode = room.roomCodeRef.current;
+      const read = operationsRef.current?.rtcSettings;
+      if (!roomCode || !read) return null;
+      // `fetchRtcSettings` answers a non-OK response with fallback defaults
+      // rather than throwing; that is "no answer", not "no STUN configured".
+      const next = await read({ room: roomCode, sessionKey });
+      return next.source === "fallback" ? null : next;
+    },
+    onRtcSettings: (settings) => setEffectiveRtc({ ...settings, source: "server" }),
     persistentSessionRef: callStore?.rtcSessionRef,
     signalingFetch: guestSignalingFetch,
     getLocalStream: () => getLocalStreamRef.current(),
@@ -134,12 +152,18 @@ export function useMeetCallSession({
       void announceMediaPresenceRef.current(room.micOnRef.current, room.videoOnRef.current);
     },
     onMeetData: (remoteId, raw) => {
-      acceptMeetDataChat({
-        remoteId,
+      handleMeetDataFrame({
         raw,
-        selfPeerId: room.selfIdRef.current,
-        peerNames: room.peerNamesRef.current,
-        setChatMessages: room.setChatMessages,
+        gate: pokeGateRef.current,
+        onKick: () => meetRtcRef.current?.kickPoll(),
+        onChat: (chatRaw) =>
+          acceptMeetDataChat({
+            remoteId,
+            raw: chatRaw,
+            selfPeerId: room.selfIdRef.current,
+            peerNames: room.peerNamesRef.current,
+            setChatMessages: room.setChatMessages,
+          }),
       });
     },
     onRelayOutcome: (remoteId, name, outcome) => {
@@ -179,12 +203,13 @@ export function useMeetCallSession({
 
   useEffect(() => {
     debugRtc("controller-init", {
-      rtcDebugEnabled: rtcDebugEnabledRef.current,
-      stunCount: parseUrlList(rtc.stunUrls, "stun").length,
-      forceRelay: rtc.forceRelay,
-      turnAvailable: rtc.turnAvailable,
+      rtcDebugEnabled: isRtcDebugEnabled(),
+      stunCount: parseUrlList(effectiveRtc.stunUrls, "stun").length,
+      forceRelay: effectiveRtc.forceRelay,
+      turnAvailable: effectiveRtc.turnAvailable,
+      rtcSource: effectiveRtc.source ?? "unknown",
     });
-  }, [debugRtc, rtc]);
+  }, [debugRtc, effectiveRtc]);
 
   const refreshPeers = useCallback(() => {
     const next: MeetRemotePeer[] = [];

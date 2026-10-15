@@ -19,7 +19,9 @@ final class SearchDocumentStore
      */
     public function upsert(string $sourceType, string $sourceKey, array $document, array $tokensByField): void
     {
-        $now = date('c');
+        // UTC so updated_at stays in lexicographic order across a DST change.
+        // deleteStaleRows() compares this string against a gmdate('c') cutoff.
+        $now = gmdate('c');
         $payload = [
             'source_type' => $sourceType,
             'source_subtype' => $this->nullableString($document['source_subtype'] ?? null),
@@ -69,10 +71,36 @@ final class SearchDocumentStore
             ->delete();
     }
 
-    public function clearAll(): void
+    /**
+     * Drop file and note rows whose storage key is no longer a live file node.
+     * Terms go with the document via the foreign key. The key is the storage
+     * key, so this can be exact. Calendar and contact rows cannot: their
+     * source keys are decoded in PHP, and deleteStaleRows() drops whatever
+     * the phase did not refresh.
+     */
+    public function deleteFileLikeOrphans(): void
     {
-        SearchTerm::query()->delete();
-        SearchDocument::query()->delete();
+        SearchDocument::query()
+            ->whereIn('source_type', ['file', 'note'])
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('jmap_file_nodes')
+                    ->whereColumn('jmap_file_nodes.storage_key', 'search_documents.source_key')
+                    ->whereNull('jmap_file_nodes.deleted_at');
+            })
+            ->delete();
+    }
+
+    /**
+     * Drop rows of one source that this phase did not refresh. `$cutoff` is
+     * gmdate('c'), captured before the phase. upsert() writes that same clock.
+     */
+    public function deleteStaleRows(string $sourceType, string $cutoff): void
+    {
+        SearchDocument::query()
+            ->where('source_type', $sourceType)
+            ->where('updated_at', '<', $cutoff)
+            ->delete();
     }
 
     /**

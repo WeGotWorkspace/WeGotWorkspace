@@ -1008,7 +1008,55 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     vi.useRealTimers();
   });
 
-  it("drops a same-user ghost on the principal channel", async () => {
+  it("retries a failed principal peer instead of ghosting it", async () => {
+    const signaling = createMockSignaling({
+      peerId: "AAAAAAAAAA",
+      peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
+    });
+    const { mesh, pcs } = meshWithStubPc(signaling.client, {
+      channel: "principal",
+      initiatorRule: "lowerId",
+    });
+
+    await mesh.join({ name: "Host", peerId: "AAAAAAAAAA" });
+    await flushAsyncWork();
+
+    const failedPc = mesh.getPeerConnection("BBBBBBBBBB");
+    expect(failedPc).toBeTruthy();
+    const pcsBeforeFailure = pcs.size;
+
+    const stub = asStubPeerConnection(failedPc!);
+    stub.connectionState = "failed";
+    const onStateChange = stub.onconnectionstatechange as ((ev: Event) => void) | null;
+    onStateChange?.(new Event("connectionstatechange"));
+    await flushAsyncWork();
+
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
+    signaling.setPollHandler(async () => ({ unchanged: true }));
+
+    await vi.advanceTimersByTimeAsync(9_999);
+    await flushAsyncWork();
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1);
+    await flushAsyncWork();
+    expect(mesh.getPeerConnection("BBBBBBBBBB")).toBeTruthy();
+    expect(pcs.size).toBeGreaterThan(pcsBeforeFailure);
+
+    signaling.setPollHandler(async () => ({
+      peers: [{ id: "BBBBBBBBBB", name: "Remote", user: "remote" }],
+      messages: [],
+    }));
+    await vi.advanceTimersByTimeAsync(400);
+    await flushAsyncWork();
+    expect(mesh.getRoomPeers().map((peer) => peer.id)).toContain("BBBBBBBBBB");
+
+    await mesh.leave();
+  });
+
+  it("keeps two same-user principal peers from different browsers", async () => {
+    const { rtcLog } = await import("@/lib/rtc/log");
+    vi.mocked(rtcLog).mockClear();
     const signaling = createMockSignaling({
       peerId: "admin-abc123",
       peers: [{ id: "wouter-old123456", name: "Wouter", user: "wouter" }],
@@ -1020,7 +1068,6 @@ describe("RtcPeerMesh principal roster cleanup", () => {
 
     await mesh.join({ name: "Admin", peerId: "admin-abc123" });
     await flushAsyncWork();
-    const offersBeforeReload = signaling.sends.filter((s) => s.type === "offer").length;
 
     signaling.setPollHandler(async () => ({
       peers: [
@@ -1032,12 +1079,14 @@ describe("RtcPeerMesh principal roster cleanup", () => {
     await vi.advanceTimersByTimeAsync(400);
     await flushAsyncWork();
 
-    expect(mesh.getRoomPeers().map((peer) => peer.id)).toEqual(["wouter-new789012"]);
-    expect(signaling.sends.some((s) => s.type === "offer" && s.to === "wouter-new789012")).toBe(
-      true,
-    );
-    expect(signaling.sends.filter((s) => s.type === "offer").length).toBeGreaterThan(
-      offersBeforeReload,
+    expect(
+      mesh
+        .getRoomPeers()
+        .map((peer) => peer.id)
+        .sort(),
+    ).toEqual(["wouter-new789012", "wouter-old123456"]);
+    expect(vi.mocked(rtcLog).mock.calls.some((call) => call[1] === "roster-ghost-dropped")).toBe(
+      false,
     );
     await mesh.leave();
   });
@@ -1317,5 +1366,142 @@ describe("RtcPeerMesh delivery cursor", () => {
     expect(answerPc?.createDataChannel).toHaveBeenCalledTimes(1);
     expect(answerPc?.createDataChannel).toHaveBeenCalledWith("meet", init);
     await guest.mesh.leave();
+  });
+});
+
+describe("RtcPeerMesh join queue", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("drops a join that was still queued when leave ran", async () => {
+    const signaling = createMockSignaling({ peerId: "peer-a" });
+    let releaseFirst: () => void = () => undefined;
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let markStarted: () => void = () => undefined;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    signaling.client.join.mockImplementationOnce(async () => {
+      markStarted();
+      await firstHeld;
+      return { peerId: "peer-a", peers: [], sessionKey: null };
+    });
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const { mesh } = meshWithStubPc(signaling.client);
+
+    const firstJoined = mesh.join({ name: "Host", peerId: "peer-a" });
+    await started;
+    const secondJoined = mesh.join({ name: "Host", peerId: "peer-b" });
+    await mesh.leave();
+    const joinsAtLeave = signaling.client.join.mock.calls.length;
+    releaseFirst();
+    const secondResult = await secondJoined;
+    await firstJoined;
+
+    expect(signaling.client.join.mock.calls.length).toBe(joinsAtLeave);
+    expect((secondResult as { superseded?: true }).superseded).toBe(true);
+    expect(setTimeoutSpy).not.toHaveBeenCalledWith(expect.any(Function), 400);
+    setTimeoutSpy.mockRestore();
+  });
+});
+
+describe("RtcPeerMesh guest rtc settings", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reads room configuration after the session key and before the first peer connection", async () => {
+    const order: string[] = [];
+    const configs: RTCConfiguration[] = [];
+    const refreshRtcSettings = vi.fn(async () => {
+      order.push("refresh");
+      return {
+        stunUrls: "stun:stun.example.test:3478",
+        turnAvailable: true,
+        forceRelay: false,
+      };
+    });
+    const signaling = createMockSignaling({
+      peerId: "peer-b",
+      peers: [{ id: "peer-a", name: "Ada" }],
+      sessionKey: "sk-1",
+    });
+    const mesh = new RtcPeerMesh({
+      channel: "meet",
+      room: "test-room",
+      signaling: signaling.client as unknown as HttpSignalingClient,
+      rtcSettings: RTC_SETTINGS,
+      initiatorRule: "higherId",
+      pollIntervals: { connectingMs: 400, steadyMs: 1200 },
+      refreshRtcSettings,
+      ports: {
+        createPeerConnection: (config) => {
+          order.push("pc");
+          configs.push(config);
+          return createStubPeerConnection();
+        },
+      },
+    });
+
+    await mesh.join({ name: "Host", peerId: "peer-b" });
+
+    expect(refreshRtcSettings).toHaveBeenCalledTimes(1);
+    expect(refreshRtcSettings).toHaveBeenCalledWith({ sessionKey: "sk-1" });
+    expect(order.indexOf("refresh")).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf("refresh")).toBeLessThan(order.indexOf("pc"));
+    expect(configs[0]?.iceServers).toEqual([
+      expect.objectContaining({ urls: ["stun:stun.example.test:3478"] }),
+    ]);
+    await mesh.leave();
+  });
+
+  it("completes the join on the original settings when the refresh rejects", async () => {
+    const configs: RTCConfiguration[] = [];
+    const signaling = createMockSignaling({
+      peerId: "peer-b",
+      peers: [{ id: "peer-a", name: "Ada" }],
+      sessionKey: "sk-1",
+    });
+    const mesh = new RtcPeerMesh({
+      channel: "meet",
+      room: "test-room",
+      signaling: signaling.client as unknown as HttpSignalingClient,
+      rtcSettings: {
+        stunUrls: "stun:original.example:3478",
+        turnAvailable: false,
+        forceRelay: false,
+      },
+      initiatorRule: "higherId",
+      pollIntervals: { connectingMs: 400, steadyMs: 1200 },
+      refreshRtcSettings: vi.fn(async () => {
+        throw new Error("configuration down");
+      }),
+      ports: {
+        createPeerConnection: (config) => {
+          configs.push(config);
+          return createStubPeerConnection();
+        },
+      },
+    });
+
+    const joined = await mesh.join({ name: "Host", peerId: "peer-b" });
+
+    expect(joined.peerId).toBe("peer-b");
+    expect(joined.superseded).toBeUndefined();
+    expect(configs[0]?.iceServers).toEqual([
+      expect.objectContaining({ urls: ["stun:original.example:3478"] }),
+    ]);
+    await mesh.leave();
   });
 });

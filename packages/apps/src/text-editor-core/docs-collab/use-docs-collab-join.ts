@@ -56,7 +56,7 @@ import {
   SERVER_ORIGIN,
 } from "./docs-collab-utils";
 import { trackChangesAuthorIdFromName } from "@/text-editor-core/src/text-editor-track-changes";
-import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type MeshApi = Pick<
   ReturnType<typeof import("./use-docs-collab-mesh").useDocsCollabMesh>,
@@ -228,12 +228,13 @@ export function useDocsCollabJoin({
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
+      if (urls.skipYjsSnapshot) return false;
       const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
       rememberSidecarEtag(room, snapshot.etag);
       if (snapshot.applied) setSnapshotPreview(null);
       return snapshot.applied;
     },
-    [refs, room, urls.yjsUrl],
+    [refs, room, urls.yjsUrl, urls.skipYjsSnapshot],
   );
 
   const applyServerBootstrap = useCallback(

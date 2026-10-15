@@ -97,6 +97,19 @@ describe("calendar ICS/webcal REST client", () => {
     });
     const published = await publishCalendarFeedLive("default");
     expect(wgwFetch).toHaveBeenCalledWith("/calendars/default/feed", { method: "POST" });
+
+    wgwFetch.mockResolvedValueOnce(jsonResponse(200));
+    wgwReadJson.mockResolvedValueOnce({
+      httpsUrl: "https://example.test/api/v1/calendars/feeds/abc",
+      webcalUrl: "webcal://example.test/api/v1/calendars/feeds/abc",
+      mode: "busy",
+    });
+    await publishCalendarFeedLive("default", "busy");
+    expect(wgwFetch).toHaveBeenCalledWith("/calendars/default/feed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "busy" }),
+    });
     expect(published.webcalUrl.startsWith("webcal://")).toBe(true);
 
     wgwFetch.mockResolvedValueOnce(jsonResponse(204));

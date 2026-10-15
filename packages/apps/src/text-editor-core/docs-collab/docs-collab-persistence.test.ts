@@ -1,8 +1,8 @@
 import "fake-indexeddb/auto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import { PENDING_SERVER_SAVE_KEY } from "./use-docs-collab-save";
+import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 import {
   clearDocsCollabPendingServerSave,
   captureDocsCollabOfflinePersistence,
@@ -137,6 +137,49 @@ describe("docs-collab pending server save persistence", () => {
     expect(Y.encodeStateAsUpdate(v2Doc)).toEqual(before);
     await v2Persistence.destroy();
     v2Doc.destroy();
+  });
+
+  it("keeps a legacy body and pending flag when v2 already has a different body", async () => {
+    const room = "users/alice/legacy-unsynced-pending.md";
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const legacyDoc = new Y.Doc();
+    const legacyParagraph = new Y.XmlElement("paragraph");
+    const legacyText = new Y.XmlText();
+    legacyText.insert(0, "unsynced legacy");
+    legacyParagraph.insert(0, [legacyText]);
+    legacyDoc.getXmlFragment("default").insert(0, [legacyParagraph]);
+    const legacyPersistence = new IndexeddbPersistence(room, legacyDoc);
+    await legacyPersistence.whenSynced;
+    await legacyPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
+    await legacyPersistence.destroy();
+    legacyDoc.destroy();
+
+    const v2Doc = new Y.Doc();
+    const v2Paragraph = new Y.XmlElement("paragraph");
+    const v2Text = new Y.XmlText();
+    v2Text.insert(0, "v2 body");
+    v2Paragraph.insert(0, [v2Text]);
+    v2Doc.getXmlFragment("default").insert(0, [v2Paragraph]);
+    const v2Persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), v2Doc);
+    await v2Persistence.whenSynced;
+    const v2Before = Y.encodeStateAsUpdate(v2Doc);
+    await migrateDocsCollabPendingSaveFromLegacy(room, v2Persistence);
+
+    expect(Y.encodeStateAsUpdate(v2Doc)).toEqual(v2Before);
+    expect(v2Doc.getXmlFragment("default").toString()).toContain("v2 body");
+    expect(v2Doc.getXmlFragment("default").toString()).not.toContain("unsynced legacy");
+    await expect(v2Persistence.get(PENDING_SERVER_SAVE_KEY)).resolves.toBeFalsy();
+
+    const keptDoc = new Y.Doc();
+    const kept = new IndexeddbPersistence(room, keptDoc);
+    await kept.whenSynced;
+    expect(keptDoc.getXmlFragment("default").toString()).toContain("unsynced legacy");
+    await expect(kept.get(PENDING_SERVER_SAVE_KEY)).resolves.toBeTruthy();
+    await kept.destroy();
+    keptDoc.destroy();
+    await v2Persistence.destroy();
+    v2Doc.destroy();
+    warn.mockRestore();
   });
 
   it("clears legacy pending save keys stored with a leading slash", async () => {

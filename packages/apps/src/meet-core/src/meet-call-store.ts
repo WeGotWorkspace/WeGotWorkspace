@@ -56,9 +56,8 @@ export type MeetCallSnapshot = {
   /** Channel kind for `liveCallChannelId` (meeting vs channel). Unused for DMs. */
   liveCallChannelKind: string | null;
   /**
-   * Compact vs expanded chrome for the live call. Survives Meet remounts so
-   * returning from another app does not force the split stage. Null until the
-   * user joins; cleared on hang-up.
+   * Stage chrome for the live call. Survives Meet remounts, including a
+   * deliberate collapse. Null until the user joins; cleared on hang-up.
    */
   callUiLayout: MeetCallStageLayout | null;
   /**

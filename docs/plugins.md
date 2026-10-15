@@ -1,5 +1,10 @@
 # Plugins
 
+> **Not available in the beta.** The plugin subsystem is disabled by default
+> (`WGW_PLUGINS_ENABLED`, default `false`). The REST endpoints are not registered, no plugin
+> HTML is served, and there is no Admin → Plugins pane. `GET /apps` and `GET /apps/*` answer
+> **302** to `/` (never 301). This document describes the contract as it will return after the beta.
+
 Optional product features ship as **plugins**. They are always installed separately from the core WeGotWorkspace release — never bundled in the deploy ZIP.
 
 ## First-party and third-party
@@ -30,6 +35,8 @@ wgw-plugins/my-plugin/
     index.html          # required for runtime.indexReady
     editor.html         # optional; editor.html or editor/index.html for runtime.editorReady
 ```
+
+> **No inline scripts.** Plugin HTML is served under an enforcing Content-Security-Policy (`script-src 'self' 'wasm-unsafe-eval'`). WeGotWorkspace injects its own config script with a per-response nonce; a `<script>` without `src` in your `index.html` or `editor.html` carries no nonce and will not run. Load your bundle from a file in the plugin's `assets/` directory. Violations are reported to `/api/v1/csp-reports`.
 
 ### Admin ZIP layout
 

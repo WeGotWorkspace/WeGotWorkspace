@@ -1,5 +1,6 @@
 import { createMediaBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
+import { meetDcPokeFrame } from "@/lib/rtc/session/meet-data-channel";
 import { createMeshMeetRoomChat, type MeetRoomChatMessage } from "@/lib/rtc/session/meet-room-chat";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
@@ -56,6 +57,9 @@ export type MeetRtcSessionOptions = {
   onVideoLimits?: (limits: VideoLimits) => void;
   /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
   onMeetData?: (remoteId: string, data: string) => void;
+  /** Guest path: read room ICE settings once the join returns a session key. */
+  refreshRtcSettings?: (input: { sessionKey: string }) => Promise<RtcSettings | null>;
+  onRtcSettings?: (settings: RtcSettings) => void;
 };
 
 export class MeetRtcSession {
@@ -81,6 +85,8 @@ export class MeetRtcSession {
       channel: "meet",
       room,
       rtcSettings: this.options.rtcSettings,
+      refreshRtcSettings: this.options.refreshRtcSettings,
+      onRtcSettings: this.options.onRtcSettings,
       binding,
       signaling: {
         apiBase: this.options.apiBase,
@@ -217,6 +223,16 @@ export class MeetRtcSession {
     this.mesh?.kickPoll();
   }
 
+  /** Ask one peer to poll now. No command travels here — authority stays on HTTP. */
+  sendPollPoke(remoteId: string): void {
+    this.mesh?.sendJsonTo(remoteId, meetDcPokeFrame());
+  }
+
+  /** Same poke to every connected peer. */
+  broadcastPollPoke(): void {
+    this.mesh?.broadcastJson(meetDcPokeFrame());
+  }
+
   /** Chat on every open Meet data channel. HTTP stays with the caller. */
   sendRoomChat(message: MeetRoomChatMessage): void {
     const mesh = this.mesh;
@@ -232,6 +248,7 @@ export class MeetRtcSession {
     if (this.mesh) await this.leave();
     this.mesh = this.createMesh(input.room);
     const joined = await this.mesh.join({ name: input.name, peerId: input.peerId });
+    if (joined.superseded) return { peerId: "", peers: [] };
     this.limits = videoLimitsFromJoin(joined.limits);
     this.disableLocalCameraIfRequired();
     this.options.onVideoLimits?.(this.limits);

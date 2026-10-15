@@ -1,3 +1,5 @@
+import { FrameReassembler, ingestDataChannelData } from "@/lib/rtc/session/data-channel-frames";
+
 /**
  * Negotiated Meet chat channel. Both sides open it when the peer connection
  * is created. Id 2 is reserved for a future unreliable channel and is not opened.
@@ -34,6 +36,25 @@ export function meetDcChatFrame(message: MeetDcChat): {
   return { t: "chat", id: message.id, text: message.text, ts: message.ts };
 }
 
+/** A poke asks the receiver to poll sooner. It carries no command and no authority. */
+export const MEET_DC_POKE_TYPE = "poke";
+
+export function meetDcPokeFrame(): { t: "poke"; v: 1 } {
+  return { t: MEET_DC_POKE_TYPE, v: 1 };
+}
+
+export function isMeetDcPoke(raw: string): boolean {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return record.t === MEET_DC_POKE_TYPE && record.v === 1;
+}
+
 /**
  * Parse one data-channel payload. The sender is the connection the bytes
  * arrived on — a `from` or `name` field in the JSON is never returned.
@@ -62,10 +83,12 @@ export function openMeetDataChannel(
   onText: (data: string) => void,
 ): RTCDataChannel {
   const channel = pc.createDataChannel(MEET_DATA_CHANNEL_LABEL, MEET_DATA_CHANNEL_INIT);
+  const reassembler = new FrameReassembler();
   channel.binaryType = "arraybuffer";
   channel.onmessage = (event) => {
-    if (typeof event.data !== "string") return;
-    onText(event.data);
+    const decoded = ingestDataChannelData(reassembler, MEET_DATA_CHANNEL_LABEL, event.data);
+    if (!decoded) return;
+    onText(decoded.json);
   };
   return channel;
 }

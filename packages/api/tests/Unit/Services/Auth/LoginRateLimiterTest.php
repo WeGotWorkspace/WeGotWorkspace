@@ -27,6 +27,7 @@ final class LoginRateLimiterTest extends TestCase
 
         for ($i = 0; $i < 8; $i++) {
             $this->assertTrue($limiter->allow('alice', '203.0.113.1'), "attempt {$i} should be allowed");
+            $limiter->hit('alice', '203.0.113.1');
         }
 
         $this->assertFalse($limiter->allow('alice', '203.0.113.1'));
@@ -38,6 +39,7 @@ final class LoginRateLimiterTest extends TestCase
 
         for ($i = 0; $i < 8; $i++) {
             $limiter->allow('alice', '203.0.113.1');
+            $limiter->hit('alice', '203.0.113.1');
         }
         $this->assertFalse($limiter->allow('alice', '203.0.113.1'));
 
@@ -50,6 +52,7 @@ final class LoginRateLimiterTest extends TestCase
 
         for ($i = 0; $i < 8; $i++) {
             $limiter->allow('alice', '203.0.113.1');
+            $limiter->hit('alice', '203.0.113.1');
         }
         $this->assertFalse($limiter->allow('alice', '203.0.113.1'));
 
@@ -66,6 +69,7 @@ final class LoginRateLimiterTest extends TestCase
 
         for ($i = 0; $i < 8; $i++) {
             $this->assertTrue($limiter->allow('alice', '203.0.113.1'), "attempt {$i} should be allowed");
+            $limiter->hit('alice', '203.0.113.1');
         }
 
         $this->assertFalse($limiter->allow('alice', '203.0.113.1'));
@@ -80,6 +84,81 @@ final class LoginRateLimiterTest extends TestCase
 
         for ($i = 0; $i < 20; $i++) {
             $this->assertTrue($limiter->allow('alice', '203.0.113.1'));
+            $limiter->hit('alice', '203.0.113.1');
         }
+    }
+
+    public function test_allow_does_not_consume_budget_until_a_failure_is_recorded(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->assertTrue($limiter->allow('alice', '203.0.113.1'));
+        }
+    }
+
+    public function test_blocks_one_user_across_source_ips(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $ip = '203.0.113.'.$host;
+            $this->assertTrue($limiter->allow('alice', $ip), "attempt {$host} should be allowed");
+            $limiter->hit('alice', $ip);
+        }
+
+        $this->assertFalse($limiter->allow('alice', '203.0.113.40'));
+        $this->assertTrue($limiter->allow('bob', '203.0.113.40'));
+    }
+
+    public function test_protocol_user_ip_limit_does_not_lock_web_login(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($i = 0; $i < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT; $i++) {
+            $this->assertTrue($limiter->allowProtocol('alice', '203.0.113.1'));
+            $limiter->hitProtocol('alice', '203.0.113.1');
+        }
+
+        $this->assertFalse($limiter->allowProtocol('alice', '203.0.113.1'));
+        $this->assertTrue($limiter->allow('alice', '203.0.113.1'));
+        $this->assertTrue($limiter->allowProtocol('bob', '203.0.113.1'));
+    }
+
+    public function test_protocol_user_ceiling_does_not_lock_web_login(): void
+    {
+        $this->assertSame(
+            LoginRateLimiter::USER_LIMIT,
+            3 * LoginRateLimiter::PROTOCOL_USER_IP_LIMIT,
+        );
+
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($host = 1; $host <= 3; $host++) {
+            $ip = '198.51.100.'.$host;
+            for ($attempt = 0; $attempt < LoginRateLimiter::PROTOCOL_USER_IP_LIMIT; $attempt++) {
+                $this->assertTrue(
+                    $limiter->allowProtocol('alice', $ip),
+                    "device {$host} attempt {$attempt} should be allowed",
+                );
+                $limiter->hitProtocol('alice', $ip);
+            }
+        }
+
+        $this->assertTrue($limiter->allow('alice', '203.0.113.50'));
+        $this->assertFalse($limiter->allowProtocol('alice', '198.51.100.4'));
+    }
+
+    public function test_web_user_ceiling_does_not_lock_protocol_login(): void
+    {
+        $limiter = $this->app->make(LoginRateLimiter::class);
+
+        for ($host = 1; $host <= LoginRateLimiter::USER_LIMIT; $host++) {
+            $ip = '203.0.113.'.$host;
+            $this->assertTrue($limiter->allow('alice', $ip), "attempt {$host} should be allowed");
+            $limiter->hit('alice', $ip);
+        }
+
+        $this->assertTrue($limiter->allowProtocol('alice', '198.51.100.9'));
     }
 }

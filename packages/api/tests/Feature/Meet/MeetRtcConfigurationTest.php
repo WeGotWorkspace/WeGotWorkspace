@@ -52,8 +52,54 @@ final class MeetRtcConfigurationTest extends WgwDatabaseTestCase
         $response->assertOk();
         $rtc = $response->json('rtc');
         $this->assertIsArray($rtc);
-        $this->assertSame(['stunUrls', 'turnAvailable'], array_keys($rtc));
+        $this->assertSame(['stunUrls', 'turnAvailable', 'forceRelay', 'debug'], array_keys($rtc));
         $this->assertStringNotContainsString('relay-secret', $response->getContent() ?: '');
+    }
+
+    public function test_debug_logging_is_served_when_enabled(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_STUN_URL => 'stun.public.test:3478',
+            SettingKeys::RTC_DEBUG_LOGGING => true,
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson($this->meetRoomPath('/configuration'))
+            ->assertOk()
+            ->assertJsonPath('rtc.debug', true);
+
+        $this->setAppSettings([
+            SettingKeys::RTC_DEBUG_LOGGING => false,
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson($this->meetRoomPath('/configuration'))
+            ->assertOk()
+            ->assertJsonPath('rtc.debug', false);
+    }
+
+    public function test_forced_relay_is_served_only_with_a_relay(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_STUN_URL => 'stun.public.test:3478',
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org',
+            SettingKeys::RTC_TURN_SECRET => 'relay-secret',
+            SettingKeys::RTC_FORCE_RELAY => true,
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson($this->meetRoomPath('/configuration'))
+            ->assertOk()
+            ->assertJsonPath('rtc.forceRelay', true);
+
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_SECRET => '',
+        ]);
+
+        $this->withBearer($this->userBearerToken())
+            ->getJson($this->meetRoomPath('/configuration'))
+            ->assertOk()
+            ->assertJsonPath('rtc.forceRelay', false);
     }
 
     public function test_anonymous_rtc_configuration_is_unauthorized(): void

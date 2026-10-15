@@ -22,7 +22,6 @@ import { DriveApp } from "@/drive-core/src/drive-app";
 import { validateDriveRouteSearch } from "@/drive-core/src/drive-route-search";
 import {
   meetRoomFromSearch,
-  meetSearchWithoutRoom,
   parseMeetRouteSearch,
   validateMeetRouteSearch,
 } from "@/meet-core/src/meet-route-search";
@@ -251,7 +250,7 @@ function MeetLiveRoute() {
     void navigate({
       to: MEET_MEETINGS_ROUTE,
       params: { meetingId: roomFromSearch },
-      search: meetSearchWithoutRoom(parsedSearch),
+      search: {},
       replace: true,
     });
   }, [meetingId, navigate, onConversationRoute, parsedSearch, roomFromSearch]);
@@ -518,7 +517,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
       throw redirect({
         to: MEET_MEETINGS_ROUTE,
         params: { meetingId: room },
-        search: meetSearchWithoutRoom(parsed),
+        search: {},
         replace: true,
       });
     },
@@ -571,7 +570,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
         throw redirect({
           to: MEET_MEETINGS_ROUTE,
           params: { meetingId: room },
-          search: meetSearchWithoutRoom(parsed),
+          search: {},
           replace: true,
         });
       }
@@ -591,7 +590,7 @@ function buildRouteTree(mode: WeGotWorkspaceRouteMode) {
         throw redirect({
           to: MEET_MEETINGS_ROUTE,
           params: { meetingId: room },
-          search: meetSearchWithoutRoom(parsed),
+          search: {},
           replace: true,
         });
       }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TurnCredentials } from "@/lib/rtc/types";
 import * as Y from "yjs";
 import type { DocsCollabAccess } from "./docs-collab-access";
@@ -92,5 +92,133 @@ describe("DocsCollabHttpSync relay refresh", () => {
     sync.evaluate();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(reasons).toEqual(["timeout", "refresh"]);
+  });
+});
+
+describe("DocsCollabHttpSync evaluate scheduling", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("starts the mailbox fallback 5 s after a peer is first seen without another trigger", async () => {
+    const sent: Array<{ to: string; type: string }> = [];
+    const fastPoll: boolean[] = [];
+    const doc = new Y.Doc();
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [{ id: "peer-b", name: "Bea", caps: ["yjs-http"], connected: false }],
+      webrtcUnavailable: () => false,
+      send: (to, type) => {
+        sent.push({ to, type });
+      },
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async () => ({ outcome: "relay_unavailable" }),
+      onRelay: () => {},
+      setFastPoll: (active) => {
+        fastPoll.push(active);
+      },
+      getYDoc: () => doc,
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.start();
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(sent).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(sent).toContainEqual({ to: "peer-b", type: "yjs-sv" });
+    expect(fastPoll).toContain(true);
+
+    sync.stop();
+  });
+
+  it("asks for a relay 8 s after a peer is first seen without another trigger", async () => {
+    const requestRelay = vi.fn(async () => ({ outcome: "relay_unavailable" as const }));
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [
+        {
+          id: "peer-b",
+          name: "Bea",
+          caps: ["yjs-http", "relay-jit"],
+          connected: false,
+        },
+      ],
+      webrtcUnavailable: () => false,
+      send: () => {},
+      sendStateVectorOnChannel: () => {},
+      requestRelay,
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => null,
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.start();
+    await vi.advanceTimersByTimeAsync(8_000);
+    expect(requestRelay).toHaveBeenCalledTimes(1);
+    expect(requestRelay).toHaveBeenCalledWith("peer-b", "timeout");
+
+    sync.stop();
+  });
+
+  it("does not schedule for connected peers", async () => {
+    const sent: Array<{ to: string; type: string }> = [];
+    const requestRelay = vi.fn(async () => ({ outcome: "relay_unavailable" as const }));
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [
+        { id: "peer-b", name: "Bea", caps: ["yjs-http", "relay-jit"], connected: true },
+      ],
+      webrtcUnavailable: () => false,
+      send: (to, type) => {
+        sent.push({ to, type });
+      },
+      sendStateVectorOnChannel: () => {},
+      requestRelay,
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => new Y.Doc(),
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.start();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sent.filter((row) => row.type === "yjs-sv")).toEqual([]);
+    expect(requestRelay).not.toHaveBeenCalled();
+
+    sync.stop();
+  });
+
+  it("stop clears the pending evaluate", async () => {
+    const sent: Array<{ to: string; type: string }> = [];
+    const sync = new DocsCollabHttpSync({
+      now: () => Date.now(),
+      peers: () => [{ id: "peer-b", name: "Bea", caps: ["yjs-http"], connected: false }],
+      webrtcUnavailable: () => false,
+      send: (to, type) => {
+        sent.push({ to, type });
+      },
+      sendStateVectorOnChannel: () => {},
+      requestRelay: async () => ({ outcome: "relay_unavailable" }),
+      onRelay: () => {},
+      setFastPoll: () => {},
+      getYDoc: () => new Y.Doc(),
+      trust: () => ({ access: "write", user: "editor" }),
+      myAccess: () => "write",
+    });
+
+    sync.start();
+    sync.stop();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(sent).toEqual([]);
   });
 });

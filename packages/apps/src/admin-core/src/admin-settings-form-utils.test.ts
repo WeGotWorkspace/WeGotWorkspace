@@ -60,4 +60,62 @@ describe("adminSettingsFormToMap", () => {
     const values = adminSettingsFormToMap(buildAdminSettingsFormState(data));
     expect(values.mcp_enabled).toBe(false);
   });
+
+  it("round-trips rtc diagnostics switches", () => {
+    const { data } = createAdminAppBootstrap({
+      data: {
+        ...createAdminAppBootstrap().data,
+        rtc: {
+          ...createAdminAppBootstrap().data.rtc,
+          debugLogging: true,
+          forceRelay: true,
+        },
+      },
+    });
+    const form = buildAdminSettingsFormState(data);
+    expect(form.rtcDebugLogging).toBe(true);
+    expect(form.rtcForceRelay).toBe(true);
+    const values = adminSettingsFormToMap(form);
+    expect(values.rtc_debug_logging).toBe(true);
+    expect(values.rtc_force_relay).toBe(true);
+  });
+
+  it("round-trips external invitation caps", () => {
+    const { data } = createAdminAppBootstrap({
+      data: {
+        ...createAdminAppBootstrap().data,
+        apps: {
+          ...createAdminAppBootstrap().data.apps,
+          imipExternalEnabled: false,
+          imipHourlyLimit: 25,
+          imipDailyLimit: 400,
+        },
+      },
+    });
+    const form = buildAdminSettingsFormState(data);
+    expect(form.imipExternalEnabled).toBe(false);
+    expect(form.imipHourlyLimit).toBe("25");
+    expect(form.imipDailyLimit).toBe("400");
+    const values = adminSettingsFormToMap(form);
+    expect(values.imip_external_enabled).toBe(false);
+    expect(values.imip_hourly_limit).toBe(25);
+    expect(values.imip_daily_limit).toBe(400);
+  });
+
+  it("keeps a cleared hourly limit as text and normalizes it on save", () => {
+    const { data } = createAdminAppBootstrap();
+    const form = buildAdminSettingsFormState(data);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "" }).imip_hourly_limit).toBe(100);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "500" }).imip_hourly_limit).toBe(300);
+    expect(adminSettingsFormToMap({ ...form, imipHourlyLimit: "40" }).imip_hourly_limit).toBe(40);
+    expect(
+      adminSettingsFormToMap({ ...form, imipHourlyLimit: "500", imipDailyLimit: "800" })
+        .imip_hourly_limit,
+    ).toBe(500);
+    expect(
+      adminSettingsFormToMap({ ...form, imipHourlyLimit: "500", imipDailyLimit: "200" })
+        .imip_hourly_limit,
+    ).toBe(200);
+    expect(adminSettingsFormToMap({ ...form, imipDailyLimit: "" }).imip_daily_limit).toBe(300);
+  });
 });

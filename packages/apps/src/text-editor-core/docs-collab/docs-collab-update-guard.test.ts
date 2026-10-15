@@ -169,7 +169,7 @@ describe("docs-collab-update-guard", () => {
     });
   });
 
-  it("drops a commenter resolving a thread — resolve stays an editor right", () => {
+  it("drops a commenter resolving somebody else's thread", () => {
     const { local, remote } = pair((doc) => {
       doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "bob", [message("m1", "bob")]));
     });
@@ -182,6 +182,30 @@ describe("docs-collab-update-guard", () => {
       reason: "resolve-by-commenter",
     });
     expect(local.getMap(DOCS_COMMENTS_MAP_KEY).size).toBe(1);
+  });
+
+  it("lets a commenter resolve their own thread", () => {
+    const { local, remote } = pair((doc) => {
+      doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "carol", [message("m1", "carol")]));
+    });
+    remote
+      .getMap(DOCS_COMMENTS_MAP_KEY)
+      .set("t1", { ...thread("t1", "carol", [message("m1", "carol")]), resolved: true });
+
+    expect(guard(local, remote, "comment", "carol")).toEqual({ applied: true });
+    expect(local.getMap(DOCS_COMMENTS_MAP_KEY).get("t1")).toMatchObject({ resolved: true });
+  });
+
+  it("lets a commenter resolve their own thread when only case and space differ", () => {
+    const { local, remote } = pair((doc) => {
+      doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", thread("t1", "Alice", [message("m1", "Alice")]));
+    });
+    remote
+      .getMap(DOCS_COMMENTS_MAP_KEY)
+      .set("t1", { ...thread("t1", "Alice", [message("m1", "Alice")]), resolved: true });
+
+    expect(guard(local, remote, "comment", " alice ")).toEqual({ applied: true });
+    expect(local.getMap(DOCS_COMMENTS_MAP_KEY).get("t1")).toMatchObject({ resolved: true });
   });
 
   it("lets an editor resolve and delete", () => {
@@ -231,6 +255,14 @@ describe("docs-collab-update-guard", () => {
       applied: false,
       reason: "foreign-authorship",
     });
+
+    const { local: foldedLocal, remote: foldedRemote } = pair((doc) => {
+      doc.getMap(DOCS_COMMENTS_MAP_KEY).set("t1", base);
+    });
+    foldedRemote
+      .getMap(DOCS_COMMENTS_MAP_KEY)
+      .set("t1", { ...base, reactions: [{ emoji: "👍", userIds: [" Alice "] }] });
+    expect(guard(foldedLocal, foldedRemote, "comment", "alice")).toEqual({ applied: true });
   });
 
   it("drops an update from a sender with no verified username", () => {

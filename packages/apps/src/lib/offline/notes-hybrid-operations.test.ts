@@ -281,7 +281,7 @@ describe("createHybridNotesOperations", () => {
     expect((await notesNotesTable(db).get(tempId))?.pendingSync).toBe(true);
   });
 
-  it("retries a stale-etag tag after create remap without queuing a conflict", async () => {
+  it("queues a 412 after create remap instead of replaying the metadata upsert", async () => {
     const tempId = "local-abc123";
     const serverNote = {
       ...note,
@@ -293,20 +293,17 @@ describe("createHybridNotesOperations", () => {
     const operations = createHybridNotesOperations(username);
     await operations.upsertNote({ ...note, id: tempId });
 
-    vi.mocked(updateNoteItem)
-      .mockRejectedValueOnce(Object.assign(new Error("precondition"), { status: 412 }))
-      .mockResolvedValueOnce({ ...serverNote, tags: ["focus"], etag: '"etag-tag"' });
+    vi.mocked(updateNoteItem).mockRejectedValue(
+      Object.assign(new Error("precondition"), { status: 412 }),
+    );
 
     const saved = await operations.upsertNote({ ...serverNote, tags: ["focus"], etag: '"stale"' });
 
+    expect(updateNoteItem).toHaveBeenCalledOnce();
     expect(saved.tags).toEqual(["focus"]);
-    expect(saved.etag).toBe('"etag-tag"');
-    expect(await listOutboxMutations(username)).toHaveLength(0);
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect((await notesNotesTable(db).get(serverNote.id))?.pendingSync).toBe(false);
-    expect(JSON.parse((await notesNotesTable(db).get(serverNote.id))?.data ?? "{}").tags).toEqual([
-      "focus",
-    ]);
+    const outbox = await listOutboxMutations(username);
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]?.op).toBe("upsert");
   });
 
   it("queues a 412 metadata upsert instead of throwing", async () => {

@@ -10,6 +10,7 @@ import {
   tighterDocsCollabAccess,
   type DocsCollabAccess,
 } from "@/text-editor-core/docs-collab/docs-collab-access";
+import { collabChannelParts } from "@/text-editor-core/docs-collab/docs-collab-channel";
 import {
   collabRoomKey,
   verifyCollabTicket,
@@ -34,6 +35,9 @@ const MAX_ROSTER_WAITERS = 8;
 
 /** Brief hold before fresh ICE when the principal mesh is still connecting. */
 export const COLLAB_REUSE_PRINCIPAL_CONNECT_DEFER_MS = 400;
+
+/** At most one re-open per peer in this window when its ICE offers are ignored. */
+export const COLLAB_REUSE_REOPEN_GAP_MS = 5_000;
 
 type ReusedPeer = {
   collabPeerId: string;
@@ -104,23 +108,14 @@ export type DocsCollabPrincipalReusePorts = {
  */
 export class DocsCollabPrincipalReuse {
   private readonly room: string;
-
   private readonly registry: PrincipalLinkRegistry;
-
   private readonly ackTimeoutMs: number;
-
   private readonly principalConnectDeferMs: number;
-
   private readonly scheduleTimeout: typeof setTimeout;
-
   private readonly cancelTimeout: typeof clearTimeout;
-
   private readonly unsubscribe: () => void;
-
   private readonly unsubscribeLinks: () => void;
-
   private readonly unsubscribeLinkOpen: () => void;
-
   private readonly unsubscribeSendFailed: () => void;
 
   private readonly pending = new Map<string, PendingPeer>();
@@ -132,6 +127,8 @@ export class DocsCollabPrincipalReuse {
   private readonly failedUsernames = new Set<string>();
 
   private readonly loggedMiss = new Set<string>();
+
+  private readonly reopenSentAt = new Map<string, number>();
 
   /** Stale collab peer ids superseded by principal reuse for the same username. */
   private readonly supersededCollabPeerIds = new Set<string>();
@@ -214,16 +211,33 @@ export class DocsCollabPrincipalReuse {
     return false;
   }
 
+  /** An ignored ICE offer means that peer left reuse. Ask it to attach again. */
+  reopenAfterIgnoredOffer(fromPeerId: string, nowMs: number = Date.now()): void {
+    const entry = this.reused.get(fromPeerId);
+    const myId = this.ports.getMyCollabPeerId();
+    if (!entry || !myId) return;
+    if (nowMs - (this.reopenSentAt.get(fromPeerId) ?? 0) < COLLAB_REUSE_REOPEN_GAP_MS) return;
+    this.reopenSentAt.set(fromPeerId, nowMs);
+    this.log("reuse-reopen", { remoteId: fromPeerId, username: entry.username });
+    this.registry.sendToPrincipalPeer(entry.principalPeerId, this.handshakeEnvelope("open", myId));
+  }
+
   sendTo(collabPeerId: string, msg: unknown): boolean {
     const entry = this.reused.get(collabPeerId);
     if (!entry) return false;
-    return this.registry.sendToPrincipalPeer(entry.principalPeerId, this.dataEnvelope(msg));
+    const wire = collabChannelParts(msg);
+    return this.registry.sendToPrincipalPeer(
+      entry.principalPeerId,
+      this.dataEnvelope(wire.header),
+      wire.bytes,
+    );
   }
 
   broadcast(msg: unknown): void {
-    const envelope = this.dataEnvelope(msg);
+    const wire = collabChannelParts(msg);
+    const envelope = this.dataEnvelope(wire.header);
     for (const entry of this.reused.values()) {
-      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope);
+      this.registry.sendToPrincipalPeer(entry.principalPeerId, envelope, wire.bytes);
     }
   }
 
@@ -283,6 +297,7 @@ export class DocsCollabPrincipalReuse {
   onPrincipalLinkOpen(username: string): void {
     const myId = this.ports.getMyCollabPeerId();
     if (!myId || !username) return;
+    this.failedUsernames.delete(username);
     this.cancelDeferFreshIce(username);
     for (const peer of this.lastRosterPeers) {
       if (peer.id === myId || peer.user !== username) continue;

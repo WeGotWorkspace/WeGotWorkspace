@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarFeedToken;
@@ -39,6 +40,7 @@ final class CalendarRepository
         private readonly DriveGroupResolver $groups,
         private readonly CalendarShareInvites $shareInvites,
         private readonly CalendarCollectionAccess $collectionAccess,
+        private readonly WgwCalendarBackendFactory $backends,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -46,10 +48,10 @@ final class CalendarRepository
     public function list(string $username): array
     {
         $calendars = $this->accessibleVeventInstances($username)
-            ->map(function (CalendarInstance $instance): array {
+            ->map(function (CalendarInstance $instance) use ($username): array {
                 $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-                return $this->mapCalendar($instance, $groupSlug);
+                return $this->mapCalendar($username, $instance, $groupSlug);
             })
             ->values()
             ->all();
@@ -68,7 +70,7 @@ final class CalendarRepository
         $groupSlug = CalendarCollectionUris::parseGroupCalendarApiId($calendarId)
             ?? $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $payload
@@ -128,7 +130,7 @@ final class CalendarRepository
         }
 
         try {
-            $this->calBackend()->createCalendar($principalUri, $uri, $properties);
+            $this->backends->make()->createCollection(CollectionKind::EventCalendar, $principalUri, $uri, $properties);
         } catch (BadRequest $exception) {
             throw new ApiHttpException(400, $exception->getMessage(), 'invalidProperties');
         }
@@ -143,7 +145,7 @@ final class CalendarRepository
             $instance->refresh();
         }
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $payload
@@ -201,7 +203,7 @@ final class CalendarRepository
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapCalendar($instance, $groupSlug);
+        return $this->mapCalendar($username, $instance, $groupSlug);
     }
 
     /** @param array<string, mixed> $options
@@ -217,20 +219,20 @@ final class CalendarRepository
         if ($this->collectionAccess->dismissIfSharee($username, $instance)) {
             return ['ok' => true];
         }
-
         if ((string) $instance->uri === CalendarCollectionUris::EVENT_DEFAULT) {
             throw new ApiHttpException(403, 'The default calendar cannot be deleted.', 'forbidden');
         }
         if ($this->isProvisionedGroupCalendar($instance, $groupSlug)) {
             throw new ApiHttpException(403, 'The group calendar cannot be deleted.', 'forbidden');
         }
-
-        $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
         $isSubscription = $this->subscriptionIdForInstance($instance, $groupSlug) !== null;
+        if (($options['subscriptionDelete'] ?? false) !== true || ! $isSubscription) {
+            $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
+        }
+        $removeContents = (bool) ($options['onDestroyRemoveContents'] ?? false);
         if ($instance->objects()->where('componenttype', 'VEVENT')->exists() && ! $removeContents && ! $isSubscription) {
             throw new ApiHttpException(409, 'Calendar contains events.', 'calendarHasContents');
         }
-
         $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance));
         $this->forgetCalendarSideTables($username, (string) $instance->uri);
 
@@ -239,7 +241,9 @@ final class CalendarRepository
 
     public function deleteIncludingContents(string $username, string $calendarId): void
     {
-        $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true]);
+        // create() maps the calendar before the subscription row exists.
+        $this->subscriptionRowsByUri = null;
+        $this->delete($username, $calendarId, ['onDestroyRemoveContents' => true, 'subscriptionDelete' => true]);
     }
 
     public function isSubscriptionCalendar(string $username, string $calendarId): bool
@@ -418,10 +422,7 @@ final class CalendarRepository
      */
     public function accessibleVeventInstances(string $username)
     {
-        return $this->collectionAccess->accessibleInstances(
-            $username,
-            fn ($query) => $query->supportsVevent(),
-        );
+        return $this->collectionAccess->accessibleInstances($username, CollectionKind::EventCalendar);
     }
 
     /**
@@ -619,7 +620,7 @@ final class CalendarRepository
             return;
         }
         $grants = $this->shareInvites->shareWithForOwner($instance, $groupSlug) ?? [];
-        $mapped = $this->mapCalendar($instance, $groupSlug);
+        $mapped = $this->mapCalendar($username, $instance, $groupSlug);
         $name = (string) ($mapped['name'] ?? $mapped['id'] ?? 'calendar');
         $id = (string) ($mapped['id'] ?? $instance->uri);
         foreach ($added as $sharee) {
@@ -643,7 +644,7 @@ final class CalendarRepository
     }
 
     /** @return array<string, mixed> */
-    private function mapCalendar(CalendarInstance $instance, ?string $groupSlug = null): array
+    private function mapCalendar(string $username, CalendarInstance $instance, ?string $groupSlug = null): array
     {
         $uri = (string) $instance->uri;
         $name = trim((string) ($instance->displayname ?? ''));
@@ -655,7 +656,7 @@ final class CalendarRepository
         $isProvisionedGroup = $this->isProvisionedGroupCalendar($instance, $groupSlug);
         $subscriptionId = $this->subscriptionIdForInstance($instance, $groupSlug);
         $mayShare = $this->shareInvites->canShare($instance, $groupSlug);
-
+        $groupMayDelete = $this->collectionAccess->mayDeleteGroupOwned($username, $instance);
         $rights = match ((int) ($instance->access ?? SharingPlugin::ACCESS_SHAREDOWNER)) {
             SharingPlugin::ACCESS_READ => ['mayRead' => true, 'mayWrite' => false, 'mayShare' => false, 'mayDelete' => true],
             SharingPlugin::ACCESS_READWRITE => ['mayRead' => true, 'mayWrite' => true, 'mayShare' => false, 'mayDelete' => true],
@@ -663,7 +664,7 @@ final class CalendarRepository
                 'mayRead' => true,
                 'mayWrite' => true,
                 'mayShare' => $mayShare,
-                'mayDelete' => ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
+                'mayDelete' => $groupMayDelete && ! $isProvisionedGroup && $uri !== CalendarCollectionUris::EVENT_DEFAULT,
             ],
         };
         if ($subscriptionId !== null) {
@@ -719,9 +720,7 @@ final class CalendarRepository
         return null;
     }
 
-    /**
-     * @return list<array{id: string, username: string}>
-     */
+    /** @return list<array{id: string, username: string}> */
     private function subscriptionRowsForUri(string $calendarUri): array
     {
         if ($this->subscriptionRowsByUri === null) {

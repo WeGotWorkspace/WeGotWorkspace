@@ -257,6 +257,7 @@ export const EditPublished: Story = {
       feed: {
         httpsUrl: "https://example.test/api/v1/calendars/feeds/persontoken",
         webcalUrl: "webcal://example.test/api/v1/calendars/feeds/persontoken",
+        mode: "full" as const,
       },
       onToggle: fn(),
       onCopyHttps: fn(),

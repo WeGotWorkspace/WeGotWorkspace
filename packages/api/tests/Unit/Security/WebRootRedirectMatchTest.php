@@ -29,6 +29,62 @@ final class WebRootRedirectMatchTest extends TestCase
         }
     }
 
+    #[DataProvider('htaccessFiles')]
+    public function test_dav_discovery_rewrite_runs_before_the_front_controller(string $filename): void
+    {
+        $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
+        $htaccess = (string) file_get_contents($path);
+        $base = strpos($htaccess, 'RewriteBase /');
+        $front = strpos($htaccess, 'RewriteRule . index.php [L]');
+        $matched = preg_match(
+            '/RewriteRule\s+\^\\\\\.well-known\/\(caldav\|carddav\)\$\s+index\.php\s+\[L\]/',
+            $htaccess,
+            $rule,
+            PREG_OFFSET_CAPTURE,
+        );
+
+        $this->assertSame(1, $matched, $filename.' is missing the discovery rewrite to index.php');
+        $this->assertNotFalse($base, $filename.' is missing RewriteBase');
+        $this->assertNotFalse($front, $filename.' is missing the index.php fallback');
+        $offset = $rule[0][1];
+        $this->assertGreaterThan($base, $offset, 'discovery rewrite must follow RewriteBase');
+        $this->assertLessThan($front, $offset, 'discovery rewrite must run before the front controller');
+    }
+
+    #[DataProvider('htaccessFiles')]
+    public function test_rewrite_rule_names_plugins_and_content(string $filename): void
+    {
+        $path = dirname(__DIR__, 5).'/apps/wegotworkspace/'.$filename;
+        $htaccess = (string) file_get_contents($path);
+
+        $this->assertStringContainsString(
+            'RewriteRule ^(?:wgw-plugins|wgw-content)(?:/|$) - [F,L,NC]',
+            $htaccess,
+        );
+    }
+
+    public function test_shipped_htaccess_wraps_redirect_matches_in_the_managed_block(): void
+    {
+        $path = dirname(__DIR__, 5).'/apps/wegotworkspace/.htaccess';
+        $htaccess = (string) file_get_contents($path);
+
+        $this->assertStringContainsString($this->managedDenyBlock(), $htaccess);
+    }
+
+    public function test_install_nginx_snippet_denies_plugins_packages_and_anchored_dotfiles(): void
+    {
+        $install = (string) file_get_contents(dirname(__DIR__, 5).'/INSTALL.md');
+
+        $this->assertStringContainsString(
+            'location ~ ^/(wgw-content|wgw-plugins|packages)(/|$) { deny all; }',
+            $install,
+        );
+        $this->assertStringContainsString(
+            'location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }',
+            $install,
+        );
+    }
+
     /**
      * @return list<array{0: string}>
      */
@@ -51,6 +107,10 @@ final class WebRootRedirectMatchTest extends TestCase
             '/files/users/alice/.Trash/x.txt',
             '/files/users/alice/._photo.jpg',
             '/.well-known/oauth-authorization-server/mcp',
+            '/.well-known/caldav',
+            '/.well-known/carddav',
+            '/sub/.env',
+            '/dav/files/u/.env',
         ];
     }
 
@@ -63,11 +123,11 @@ final class WebRootRedirectMatchTest extends TestCase
             '/.env',
             '/.env.local',
             '/.git/config',
-            '/sub/.env',
             '/.user.ini',
             '/.htaccess',
             '/wgw-content/x',
             '/packages/api/.env',
+            '/wgw-plugins/x.php',
         ];
     }
 
@@ -95,5 +155,15 @@ final class WebRootRedirectMatchTest extends TestCase
         }
 
         return false;
+    }
+
+    private function managedDenyBlock(): string
+    {
+        return <<<'BLOCK'
+# BEGIN wgw-deny
+RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
+RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+# END wgw-deny
+BLOCK;
     }
 }

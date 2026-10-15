@@ -6,9 +6,9 @@ Artifact-based REST surface. **Authoritative contract:** `openapi/openapi.json` 
 
 | Route | Access | Notes |
 |-------|--------|-------|
-| `POST /api/v1/auth/token` | guest | Issue bearer + refresh token. |
-| `POST /api/v1/auth/refresh` | guest | Rotate access token. |
-| `POST /api/v1/auth/revoke` | guest | Revoke refresh token. |
+| `POST /api/v1/auth/token` | guest | Issue bearer token. Sets the HttpOnly `wgw_refresh` cookie. JSON has no `refresh_token`. |
+| `POST /api/v1/auth/refresh` | guest | Rotate the access token from the `wgw_refresh` cookie. No request body. A 401 clears the cookie. |
+| `POST /api/v1/auth/revoke` | guest | Revoke the bearer and the `wgw_refresh` cookie. No request body. |
 | `GET /api/v1/me` | user | Current principal. |
 | `GET /api/v1/health` | guest | Liveness. |
 | `GET /api/v1/capabilities` | guest | Feature discovery. |
@@ -60,14 +60,12 @@ Routes that remain:
 | `GET /api/v1/search/results/{resultId}/content` | user |
 | `GET /api/v1/workspace/state` | user |
 
-## Settings, Notes, Plugins, DAV
+## Settings, Notes, DAV
 
 | Route | Access |
 |-------|--------|
 | `GET/PUT /api/v1/settings/*` | user |
 | Notes HTTP | `/api/v1/notes/notebooks`, `/api/v1/notes/items`, `/api/v1/notes/items/{noteId}` (UID), `/star`, `/changes` |
-| `GET /api/v1/plugins` | user |
-| `POST /api/v1/plugins/{id}/session` | user |
 | `GET /api/v1/dav/capabilities` | user |
 
 ## Admin
@@ -84,15 +82,12 @@ Routes that remain:
 | `GET/DELETE /api/v1/admin/updates/log` | admin |
 | `POST/DELETE /api/v1/admin/update-jobs/{jobId}` | admin |
 | `POST/GET/DELETE /api/v1/admin/search/jobs/*` | admin |
-| `POST /api/v1/admin/plugins` | admin |
-| `PUT /api/v1/admin/plugins/{id}/activation` | admin |
 | `GET/DELETE /api/v1/admin/backups/{name}` | admin |
 
 ## Installer
 
 | Route | Access |
 |-------|--------|
-| `GET /api/v1/installer/state` | guest |
 | `GET /api/v1/installer/bootstrap` | guest |
 | `POST /api/v1/installer/action` | guest |
 

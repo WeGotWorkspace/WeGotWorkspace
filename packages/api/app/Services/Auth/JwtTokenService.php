@@ -9,7 +9,7 @@ final class JwtTokenService
     public function __construct(private JwtConfigService $jwtConfig) {}
 
     /**
-     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp?: int, iat?: int}  $claims
+     * @param  array{sub: string, role: 'guest'|'user'|'admin', exp?: int, iat?: int, uid?: int}  $claims
      */
     public function issue(array $claims): string
     {
@@ -27,12 +27,15 @@ final class JwtTokenService
         if (isset($claims['iat'])) {
             $issued['iat'] = $claims['iat'];
         }
+        if (array_key_exists('uid', $claims)) {
+            $issued['uid'] = (int) $claims['uid'];
+        }
 
         return JwtCodec::issue($issued, $cfg);
     }
 
     /**
-     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string}|null
+     * @return array{sub: string, role: 'guest'|'user'|'admin', iat: int, exp: int, iss: string, aud: string, jti: string, uid?: int}|null
      */
     public function validate(string $token, string $kid): ?array
     {

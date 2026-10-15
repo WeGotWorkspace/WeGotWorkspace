@@ -6,6 +6,7 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Services\VObject\VObjectPayloadGuard;
+use App\Support\Net\PublicIp;
 use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -162,6 +163,7 @@ final class SsrfSafeIcsFetcher
      * cURL options for one hop. No `stream` key: that selects Guzzle's
      * StreamHandler, which drops CURLOPT_RESOLVE and resolves DNS again.
      * The sink aborts the transfer with a short write once the body crosses the cap.
+     * `proxy` and CURLOPT_NOPROXY ignore HTTP_PROXY/HTTPS_PROXY so the DNS pin is not skipped.
      *
      * @return array<string, mixed>
      */
@@ -171,12 +173,15 @@ final class SsrfSafeIcsFetcher
             'allow_redirects' => false,
             'timeout' => self::TIMEOUT_SECONDS,
             'connect_timeout' => self::CONNECT_TIMEOUT_SECONDS,
+            'proxy' => '',
             'sink' => new CappedSinkStream(
                 Utils::streamFor(Utils::tryFopen('php://temp', 'w+')),
                 VObjectPayloadGuard::MAX_ICS_BYTES,
             ),
             'curl' => [
                 CURLOPT_RESOLVE => [$host.':'.$port.':'.$connectIp],
+                CURLOPT_PROXY => '',
+                CURLOPT_NOPROXY => '*',
             ],
         ];
     }
@@ -215,7 +220,7 @@ final class SsrfSafeIcsFetcher
 
     private function assertPublicIp(string $ip): void
     {
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        if (! PublicIp::isPublic($ip)) {
             throw new ApiHttpException(400, 'This URL is not allowed.', 'bad_request');
         }
     }

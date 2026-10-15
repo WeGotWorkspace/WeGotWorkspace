@@ -26,7 +26,6 @@ export const SharedWithMe: Story = {
     onViewChange: STORY_NOOP,
     onLogout: () => {},
     onOpenDocsFile: STORY_NOOP,
-    onNavigate: STORY_NOOP,
   },
   parameters: {
     docs: {

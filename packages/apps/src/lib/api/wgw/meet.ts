@@ -1,8 +1,13 @@
 /**
  * Meet app HTTP client (`/api/v1/meetings/rooms`, `/api/v1/rooms/{roomId}/*`).
  */
-import { wgwApiBaseUrl, wgwFetch, wgwFetchPrincipal } from "@/lib/api/wgw/http";
-import { fetchRtcSettings } from "@/lib/api/wgw/rtc";
+import {
+  wgwApiBaseUrl,
+  wgwEnsureFreshAccessToken,
+  wgwFetch,
+  wgwFetchPrincipal,
+} from "@/lib/api/wgw/http";
+import { fallbackRtcSettings, fetchRtcSettings } from "@/lib/api/wgw/rtc";
 import type { HttpSignalingFetch } from "@/lib/rtc/signaling/http-client";
 import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import type {
@@ -69,7 +74,11 @@ export function createWgwMeetGuestSignalingFetch(): HttpSignalingFetch {
 }
 
 export async function fetchMeetLiveBootstrap(): Promise<MeetAppBootstrap> {
-  const [session, rtc] = await Promise.all([wgwFetchPrincipal(), fetchRtcSettings()]);
+  const bearerToken = (await wgwEnsureFreshAccessToken()) ?? undefined;
+  const [session, rtc] = await Promise.all([
+    wgwFetchPrincipal(),
+    fetchRtcSettings({ bearerToken, channel: "meet", room: "bootstrap" }),
+  ]);
   return {
     session,
     data: {
@@ -80,7 +89,10 @@ export async function fetchMeetLiveBootstrap(): Promise<MeetAppBootstrap> {
 }
 
 export async function fetchMeetGuestBootstrap(): Promise<MeetAppBootstrap> {
-  const rtc = await fetchRtcSettings();
+  // A guest bootstrap has no bearer and no session key yet, so the configuration
+  // endpoint can only answer 401 (#1219). Real settings arrive at join, through
+  // `rtcSettings` on the guest operations.
+  const rtc = fallbackRtcSettings();
   return {
     session: {
       user: {
@@ -239,6 +251,7 @@ export function createWgwMeetGuestOperations(): MeetAPIOperations {
   return {
     ...createMeetOperations(guestFetch),
     guestSignalingFetch: createWgwMeetGuestSignalingFetch,
+    rtcSettings: ({ room, sessionKey }) => fetchRtcSettings({ channel: "meet", room, sessionKey }),
   };
 }
 

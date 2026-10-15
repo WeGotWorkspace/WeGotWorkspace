@@ -54,8 +54,13 @@ export const Default: Story = {
     await expect(canvas.getByText(MCP_ASSISTANT_DATA_WARNING_TITLE)).toBeTruthy();
     await expect(canvas.getByText(MCP_ASSISTANT_DATA_WARNING_CONSENT_MESSAGE)).toBeTruthy();
     await expect(canvas.getByRole("button", { name: "Deny" })).toBeTruthy();
+    const share = canvas.getByRole("switch", {
+      name: "Share Drive files and Docs with workspace members",
+    });
+    await expect(share).toHaveAttribute("aria-checked", "false");
     await userEvent.click(canvas.getByRole("button", { name: "Allow" }));
     await expect(canvas.getByRole("status")).toHaveTextContent(/Allow \(mock\)/i);
+    await expect(canvas.getByRole("status")).not.toHaveTextContent("drive.share");
   },
 };
 

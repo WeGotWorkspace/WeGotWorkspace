@@ -146,7 +146,7 @@ export type PresenceMeshEvent =
  * `RtcPeerMesh` (see `presence-rtc-session.ts`); tests inject a fake.
  */
 export type PresenceMeshSession = {
-  join(name: string): Promise<{ peerId: string }>;
+  join(name: string): Promise<{ peerId: string; superseded?: true }>;
   leave(): Promise<void>;
   broadcast(envelope: PresenceEnvelope): void;
   sendTo(peerId: string, envelope: PresenceEnvelope): void;

@@ -66,7 +66,6 @@ export function useDriveAPI(source?: DriveApiSource) {
       user: { username: "", name: "", role: "user", roots: ["/users"] },
       cwd: "/",
       directory: { location: "/", files: [] },
-      plugins: [],
     }),
     [],
   );

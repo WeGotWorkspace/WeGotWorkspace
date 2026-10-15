@@ -17,7 +17,8 @@ final class SsrfSafeIcsFetcherTest extends TestCase
 {
     private const PUBLIC_IP = '93.184.216.34';
 
-    private const OTHER_PUBLIC_IP = '198.51.100.10';
+    /** Globally routed. TEST-NET-2 fails FILTER_FLAG_GLOBAL_RANGE. */
+    private const OTHER_PUBLIC_IP = '1.1.1.1';
 
     private const PRIVATE_IP = '127.0.0.1';
 
@@ -71,9 +72,15 @@ final class SsrfSafeIcsFetcherTest extends TestCase
         $options = $this->fetcher()->requestOptions('feeds.example.test', 443, self::PUBLIC_IP);
 
         $this->assertArrayNotHasKey('stream', $options);
+        $this->assertSame('', $options['proxy']);
         $this->assertInstanceOf(CappedSinkStream::class, $options['sink']);
-        $this->assertSame([CURLOPT_RESOLVE], array_keys($options['curl']));
+        $this->assertSame(
+            [CURLOPT_RESOLVE, CURLOPT_PROXY, CURLOPT_NOPROXY],
+            array_keys($options['curl']),
+        );
         $this->assertSame(['feeds.example.test:443:'.self::PUBLIC_IP], $options['curl'][CURLOPT_RESOLVE]);
+        $this->assertSame('', $options['curl'][CURLOPT_PROXY]);
+        $this->assertSame('*', $options['curl'][CURLOPT_NOPROXY]);
     }
 
     public function test_pins_http_client_to_first_validated_ip_and_does_not_resolve_again(): void

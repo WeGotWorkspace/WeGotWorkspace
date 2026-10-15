@@ -73,7 +73,8 @@ export function DocsCollabWorkspace({ userName, autoJoin = true }: DocsCollabWor
         Open this story in <strong>two browser windows</strong> (or Storybook + iframe) with
         different <strong>userName</strong> controls — e.g. Alex and Sam. A local room service on{" "}
         <strong>8081</strong> has to be running (Storybook starts it, or{" "}
-        <code>pnpm dev:docs-collab-signal</code>). Verbose diagnostics: <code>?rtcDebug=1</code>.
+        <code>pnpm dev:docs-collab-signal</code>). Verbose diagnostics: Admin → Real-time
+        collaboration → Detailed connection logs.
       </div>
 
       <main className="flex-1 p-4">

@@ -78,6 +78,12 @@ function applySettingsMap(
   if (calendars !== undefined) data.apps.calendars = calendars;
   const contacts = readBool("contacts_enabled");
   if (contacts !== undefined) data.apps.contacts = contacts;
+  const imipExternalEnabled = readBool("imip_external_enabled");
+  if (imipExternalEnabled !== undefined) data.apps.imipExternalEnabled = imipExternalEnabled;
+  const imipHourlyLimit = readNumber("imip_hourly_limit");
+  if (imipHourlyLimit !== undefined) data.apps.imipHourlyLimit = imipHourlyLimit;
+  const imipDailyLimit = readNumber("imip_daily_limit");
+  if (imipDailyLimit !== undefined) data.apps.imipDailyLimit = imipDailyLimit;
 
   const sabreUi = readBool("browser_plugin");
   if (sabreUi !== undefined) data.webdav.sabreUi = sabreUi;
@@ -162,6 +168,13 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
     saveSettings: async (values, opts) => {
       await sleep(150, opts?.signal);
       applySettingsMap(current, values, opts);
+      return snapshot();
+    },
+    setAppUrl: async (_url, opts) => {
+      await sleep(120, opts?.signal);
+      current.securityWarnings = current.securityWarnings.filter(
+        (warning) => !warning.startsWith("APP_URL is not set"),
+      );
       return snapshot();
     },
     sendMailDeliveryTest: async (opts) => {
@@ -427,24 +440,6 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
         groups: u.groups.filter((gid) => gid !== id),
       }));
       return snapshot();
-    },
-    activatePlugin: async (pluginId, opts) => {
-      await sleep(120, opts?.signal);
-      current.plugins = current.plugins.map((plugin) =>
-        plugin.id === pluginId ? { ...plugin, active: true } : plugin,
-      );
-      return snapshot();
-    },
-    deactivatePlugin: async (pluginId, opts) => {
-      await sleep(120, opts?.signal);
-      current.plugins = current.plugins.map((plugin) =>
-        plugin.id === pluginId ? { ...plugin, active: false } : plugin,
-      );
-      return snapshot();
-    },
-    installPluginZip: async (_file, opts) => {
-      await sleep(200, opts?.signal);
-      throw new Error("Plugin install from ZIP requires a live server connection.");
     },
   };
 }

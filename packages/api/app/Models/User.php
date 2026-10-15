@@ -31,6 +31,7 @@ use Laravel\Passport\HasApiTokens;
  * @property string $digesta1
  * @property string $digest
  * @property bool $enabled
+ * @property int $ui_session_epoch
  */
 final class User extends Model implements AuthenticatableContract, OAuthenticatable
 {
@@ -66,6 +67,7 @@ final class User extends Model implements AuthenticatableContract, OAuthenticata
     {
         return [
             'enabled' => 'boolean',
+            'ui_session_epoch' => 'integer',
         ];
     }
 

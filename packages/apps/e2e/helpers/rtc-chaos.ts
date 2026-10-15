@@ -1,4 +1,5 @@
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { setRtcTestOverrides } from "./rtc-test-overrides";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
@@ -113,7 +114,8 @@ export async function joinMeetRoom(page: Page, room: string): Promise<void> {
     (request) =>
       request.method() === "POST" && request.url().includes(`/api/v1/rooms/${room}/participants`),
   );
-  await page.goto(`/meet/meetings/${room}?rtcDebug=1`);
+  await setRtcTestOverrides(page.context(), { debug: true, forceRelay: false });
+  await page.goto(`/meet/meetings/${room}`);
   const meetButton = page
     .locator(".meet-workspace__header-actions")
     .getByRole("button", { name: "Meet", exact: true });
@@ -227,21 +229,22 @@ async function openSignedInUser(browser: Browser, username: string): Promise<Cha
     permissions: ["camera", "microphone"],
     ignoreHTTPSErrors: process.env.WGW_APPS_E2E_IGNORE_HTTPS === "1",
   });
+  await setRtcTestOverrides(context, { debug: true, forceRelay: false });
   const page = await context.newPage();
   const response = await page.request.post(`${API}/api/v1/auth/token`, {
     data: { username, password: PASSWORD },
   });
   expect(response.ok(), await response.text()).toBeTruthy();
-  const tokens = (await response.json()) as { access_token?: string; refresh_token?: string };
-  if (!tokens.access_token || !tokens.refresh_token) {
+  const tokens = (await response.json()) as { access_token?: string };
+  if (!tokens.access_token) {
     throw new Error(`Login for ${username} did not return tokens.`);
   }
   await context.addInitScript(
-    ({ access, refresh }) => {
+    ({ access }) => {
       localStorage.setItem("wgw.api.access_token", access);
-      localStorage.setItem("wgw.api.refresh_token", refresh);
+      localStorage.setItem("wgw.api.session_kind", "member");
     },
-    { access: tokens.access_token, refresh: tokens.refresh_token },
+    { access: tokens.access_token },
   );
   return { context, page, accessToken: tokens.access_token, username };
 }

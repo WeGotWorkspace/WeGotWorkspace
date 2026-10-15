@@ -119,7 +119,15 @@ final class GroupDirectoryService
             }
         }
 
+        $before = $this->memberUris($groupUri);
         $this->writeMembers($groupUri, array_keys($uris));
+        $after = array_keys($uris);
+        $changed = array_merge(array_diff($before, $after), array_diff($after, $before));
+        foreach ($changed as $uri) {
+            if (str_starts_with($uri, 'principals/')) {
+                $this->revokeAdminSessions($groupUri, substr($uri, strlen('principals/')));
+            }
+        }
     }
 
     public function setMembership(string $groupUri, string $username, bool $enabled, string $actingAdmin): void

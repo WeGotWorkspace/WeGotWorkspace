@@ -134,9 +134,11 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Token issued */
+                /** @description Token issued. The JSON body has no refresh_token; the refresh token is Set-Cookie. */
                 200: {
                     headers: {
+                        /** @description HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -188,7 +190,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh access token using refresh token */
+        /** Refresh access token using the HttpOnly refresh cookie */
         post: {
             parameters: {
                 query?: never;
@@ -196,17 +198,13 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        refresh_token: string;
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description Refreshed token pair */
+                /** @description Refreshed token pair. The JSON body has no refresh_token; the rotated token is Set-Cookie. */
                 200: {
                     headers: {
+                        /** @description HttpOnly wgw_refresh cookie. Path is <webBase>/api/v1/auth, SameSite=Strict, Secure when the request is HTTPS, Max-Age is WGW_API_JWT_REFRESH_TTL. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -220,9 +218,11 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Unauthorized */
+                /** @description Unauthorized. The response expires wgw_refresh so a dead token is not presented again. */
                 401: {
                     headers: {
+                        /** @description Clears the wgw_refresh cookie (expired, empty value, same path and SameSite=Strict). */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -244,7 +244,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke current access token and/or refresh token */
+        /** Revoke current access token and the HttpOnly refresh cookie */
         post: {
             parameters: {
                 query?: never;
@@ -252,13 +252,7 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        refresh_token?: string;
-                    };
-                };
-            };
+            requestBody?: never;
             responses: {
                 /** @description Revocation result */
                 200: {
@@ -567,7 +561,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["SettingsProfileRequest"];
+                };
+            };
             responses: {
                 /** @description Updated settings state */
                 200: {
@@ -1632,169 +1630,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/plugins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List discovered plugins and capabilities */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Plugin registry snapshot */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/plugins/{id}/activate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Activate a plugin */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Plugin activated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Plugin not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/plugins/{id}/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Deactivate a plugin */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Plugin deactivated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Plugin not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/plugins/{id}/session": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Establish browser UI session cookie for a plugin surface */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Session established */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Plugin not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/meet/join": {
         parameters: {
             query?: never;
@@ -1989,40 +1824,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/installer/state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Installer summary and current state snapshot */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Installer state */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2611,40 +2412,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/admin/plugins": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Install plugin */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Installed */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/admin/search/jobs": {
         parameters: {
             query?: never;
@@ -3099,7 +2866,7 @@ export interface paths {
                     path: string;
                 };
                 header?: {
-                    /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. */
+                    /** @description Yjs sidecar entity tag from `GET /files/collaboration?format=yjs` (sha1 of the sidecar). The markdown ETag is a different representation and is not valid here. The save is refused with 412 when the stored sidecar moved on. A yjs write that sends neither this header nor `If-None-Match` is refused with 428 when a sidecar already exists. */
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
@@ -3147,6 +2914,15 @@ export interface paths {
                 };
                 /** @description `payload_too_large` */
                 413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description A yjs write over an existing sidecar carried neither If-Match nor If-None-Match */
+                428: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3694,42 +3470,6 @@ export interface paths {
                 };
             };
         };
-        trace?: never;
-    };
-    "/plugins/{id}/activation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Set plugin activation */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/rooms/{roomId}/configuration": {
@@ -6312,7 +6052,7 @@ export interface paths {
         put?: never;
         /**
          * Publish a calendar as an ICS / webcal feed
-         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. Subscription calendars cannot be published.
+         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
          */
         post: {
             parameters: {
@@ -6323,7 +6063,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CalendarFeedPublishRequest"];
+                };
+            };
             responses: {
                 /** @description Existing published feed URLs */
                 200: {
@@ -8138,7 +7882,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/plugins/{id}/activation": {
+    "/admin/settings/app-url": {
         parameters: {
             query?: never;
             header?: never;
@@ -8146,34 +7890,38 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Set plugin activation */
+        /** Set APP_URL from an admin-confirmed address */
         put: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    id: string;
-                };
+                path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
+                };
+            };
             responses: {
-                /** @description Updated */
+                /** @description APP_URL saved */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
+                    };
                 };
-                /** @description Admin role required */
-                403: {
+                /** @description Environment file is not writable */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
                 };
-                /** @description Plugin not found */
-                404: {
+                /** @description Address is not http or https, or includes user info, a query, or a path other than the install base */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8182,6 +7930,65 @@ export interface paths {
             };
         };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/csp-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a Content-Security-Policy report */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/csp-report": {
+                        [key: string]: unknown;
+                    };
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description Report accepted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Report larger than 8 KiB */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Too many reports from this address */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -8198,7 +8005,6 @@ export interface components {
         };
         AuthTokenResponse: {
             access_token: string;
-            refresh_token: string;
             token_type: string;
             expires_in: number;
             refresh_expires_in: number;
@@ -8263,11 +8069,6 @@ export interface components {
             admin_display_name?: string;
         };
         InstallerBootstrapResponse: {
-            state: components["schemas"]["InstallerRuntimeState"];
-        };
-        InstallerStateResponse: {
-            installed: boolean;
-            maintenance: boolean;
             state: components["schemas"]["InstallerRuntimeState"];
         };
         InstallerActionResponse: {
@@ -8463,10 +8264,22 @@ export interface components {
              * @enum {string}
              */
             maxVideoProfileRelay: "p720" | "p360" | "p270" | "p180" | "audio";
+            /** @description Browsers write detailed RTC logs to their console after a reload. */
+            debugLogging: boolean;
+            /** @description Stored switch. Served to clients only while a TURN relay is configured. */
+            forceRelay: boolean;
         };
         AdminAppsSettings: {
             calendars: boolean;
             contacts: boolean;
+            /** @description When false, Tasks is disabled for this instance. */
+            tasks: boolean;
+            /** @description When false, Calendar does not email new invitations to people outside this instance. Updates to people already invited, cancellation notices, and RSVP replies still send. */
+            imipExternalEnabled: boolean;
+            /** @description Maximum outbound invitation emails per user per hour. Clamped to the daily limit. */
+            imipHourlyLimit: number;
+            /** @description Maximum outbound invitation emails per user per day. Defaults to 300. */
+            imipDailyLimit: number;
         };
         AdminWebdavSettings: {
             sabreUi: boolean;
@@ -8619,6 +8432,8 @@ export interface components {
             displayName?: string;
             email?: string;
             password?: string;
+            /** @description Current password. Required when password or email is changed. */
+            currentPassword?: string;
         };
         /**
          * @example {
@@ -9241,30 +9056,6 @@ export interface components {
         MeetChatResponse: {
             ok: boolean;
             delivered: number;
-        };
-        PluginRuntime: {
-            indexReady: boolean;
-            editorReady: boolean;
-        };
-        PluginIntegration: {
-            configGlobal?: string;
-            sessionApiPath?: string;
-            saveTransport?: string;
-            editorPaths?: string[];
-        };
-        PluginDescriptor: {
-            id: string;
-            name: string;
-            active: boolean;
-            source?: string;
-            runtime?: components["schemas"]["PluginRuntime"];
-            integration?: components["schemas"]["PluginIntegration"];
-        };
-        PluginsResponse: {
-            plugins: components["schemas"]["PluginDescriptor"][];
-        };
-        PluginSessionResponse: {
-            ok: boolean;
         };
         HomeStateResponse: {
             username?: string;
@@ -11695,6 +11486,11 @@ export interface components {
             httpsUrl: string;
             /** @description Same feed advertised as webcal:// for calendar clients. */
             webcalUrl: string;
+            /**
+             * @description full strips people, alarms, and private details. busy publishes every event as a Busy placeholder.
+             * @enum {string}
+             */
+            mode: "full" | "busy";
         };
         CalendarEventImportError: {
             index: number;
@@ -11967,6 +11763,8 @@ export interface components {
             connectedAt: string;
             scopes: string[];
             lastUsedAt?: string | null;
+            /** @description Last 20 MCP audit rows for this client on drive_share, docs_share, calendar_share, addressbook_share, notebook_share, or tasklist_share, newest first. */
+            shareCalls: components["schemas"]["SettingsMcpShareCall"][];
         };
         SettingsMcpGrantList: {
             grants: components["schemas"]["SettingsMcpGrant"][];
@@ -12160,6 +11958,10 @@ export interface components {
                 stunUrls: string;
                 /** @description True when a relay secret is configured. Credentials are never part of this response. */
                 turnAvailable: boolean;
+                /** @description Every peer connection uses the relay only. Never true without a configured relay. */
+                forceRelay: boolean;
+                /** @description Write detailed RTC logs to the browser console. */
+                debug: boolean;
             };
             /** @description Public half of the contract C2 ticket signing key. No private material is ever part of this response. */
             collabTicket?: {
@@ -12302,6 +12104,24 @@ export interface components {
         };
         /** @description The send was queued. The same object carries the sender's pending mailbox so the client can apply it without waiting for the next poll. */
         RtcSendEventResponse: components["schemas"]["OkResponse"] & components["schemas"]["RtcPollResponse"];
+        AdminAppUrlSaveRequest: {
+            /** @description Public http or https address. The path may be empty or the install base. No user info or query. */
+            url: string;
+        };
+        /** @description Optional publish mode. Omitted mode leaves an existing feed unchanged and creates a new feed as full. */
+        CalendarFeedPublishRequest: {
+            /**
+             * @description full strips people, alarms, and private details. busy publishes every event as a Busy placeholder.
+             * @enum {string}
+             */
+            mode?: "full" | "busy";
+        };
+        SettingsMcpShareCall: {
+            tool: string;
+            outcome: string;
+            createdAt: string;
+            target?: string | null;
+        };
     };
     responses: {
         /** @description Invalid request */

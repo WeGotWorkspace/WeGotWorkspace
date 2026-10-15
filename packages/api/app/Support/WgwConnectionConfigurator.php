@@ -13,6 +13,10 @@ final class WgwConnectionConfigurator
      */
     public static function applyFromInstallerDb(array $db): void
     {
+        // The wizard probes a database before .env exists. Leaving that
+        // connection in place must not satisfy AppPaths::isInstalled().
+        config(['wgw.installer_db_applied' => true]);
+
         $driver = (string) ($db['driver'] ?? 'sqlite');
 
         if ($driver === 'mysql') {

@@ -6,13 +6,13 @@ namespace App\Services\Collab;
 
 use App\Events\EventDispatch;
 use App\Services\Drive\DriveShareAuthorizer;
-use App\Services\Search\BestEffortSearchIndexSync;
-use App\Services\Search\SearchIndexerService;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\ExclusiveFileLock;
 use App\Support\WgwSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Text document + Yjs sidecar persistence on the drive files disk.
@@ -34,8 +34,7 @@ final class DocCollabDocumentService
         private WgwStorage $storage,
         private StoragePaths $paths,
         private DriveShareAuthorizer $authorizer,
-        private SearchIndexerService $search,
-        private BestEffortSearchIndexSync $searchSync,
+        private FileNodeIndexService $fileNodes,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -130,7 +129,7 @@ final class DocCollabDocumentService
         // puts the previous sidecar back.
         $lock = $this->acquireDocumentLock($sidecarKey);
         try {
-            $this->assertSidecarPrecondition($request, $sidecarKey);
+            $this->assertSidecarPrecondition($request, $sidecarKey, $yjsBytes !== null);
             $previousSidecar = $this->readSidecarBytes($sidecarKey);
             $wroteSidecar = false;
             if ($yjsBytes !== null) {
@@ -146,13 +145,11 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
-                // Keep the unified search index in sync with the written content so size and
-                // body reflect the latest save without waiting for a later rename/upload.
-                $this->searchSync->sync(
-                    'collab',
-                    fn () => $this->search->indexFileStorageKey($documentKey),
-                    'files/'.$documentKey,
-                );
+                try {
+                    $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
+                } catch (\Throwable $e) {
+                    Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+                }
                 $this->eventDispatch->fireMutation(
                     (string) $username,
                     'collab',
@@ -223,13 +220,22 @@ final class DocCollabDocumentService
 
     /**
      * C7: `If-Match` must name the stored sidecar, `If-None-Match: *` requires
-     * there to be none. A request carrying neither is accepted, for old clients.
+     * there to be none. A yjs write over an existing sidecar must carry one of
+     * the two; without it the save would blind-overwrite concurrent work.
      */
-    private function assertSidecarPrecondition(Request $request, string $sidecarKey): void
-    {
+    private function assertSidecarPrecondition(
+        Request $request,
+        string $sidecarKey,
+        bool $writesSidecar,
+    ): void {
         $ifMatch = trim((string) $request->headers->get('If-Match', ''));
         $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
+
         if ($ifMatch === '' && $ifNoneMatch === '') {
+            if ($writesSidecar && $this->storedSidecarEtag($sidecarKey) !== null) {
+                $this->fail('precondition_required', 428);
+            }
+
             return;
         }
 
@@ -281,13 +287,7 @@ final class DocCollabDocumentService
 
     private function yjsSidecarPath(string $documentVirtualPath): string
     {
-        $normalized = $this->paths->normalizeVirtualPath($documentVirtualPath);
-        $dir = (string) dirname($normalized);
-        $name = (string) basename($normalized);
-        $hidden = '.'.$name.'.yjs';
-        $prefix = $dir === '/' ? '' : $dir;
-
-        return $this->paths->normalizeVirtualPath($prefix.'/'.$hidden);
+        return CollabSidecarPaths::sidecarVirtualPath($this->paths, $documentVirtualPath);
     }
 
     private function resolveReadablePath(Request $request, mixed $room): string

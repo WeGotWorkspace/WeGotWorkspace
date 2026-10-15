@@ -30,10 +30,15 @@ export function useAdminAPI(source?: AdminApiSource) {
         turnStaticCredentialsPresent: false,
         maxVideoProfile: "p720",
         maxVideoProfileRelay: "p360",
+        debugLogging: false,
+        forceRelay: false,
       },
       apps: {
         calendars: true,
         contacts: true,
+        imipExternalEnabled: true,
+        imipHourlyLimit: 100,
+        imipDailyLimit: 300,
       },
       webdav: {
         sabreUi: true,
@@ -45,7 +50,6 @@ export function useAdminAPI(source?: AdminApiSource) {
         enabled: false,
         endpointUrl: null,
       },
-      plugins: [],
       updates: {
         installChannel: null,
         installedVersion: "",

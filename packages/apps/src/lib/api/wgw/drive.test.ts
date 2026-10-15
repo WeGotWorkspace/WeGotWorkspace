@@ -22,12 +22,7 @@ vi.mock("@/lib/api/wgw/http", () => ({
   wgwApiBaseUrl: () => "/api/v1",
   wgwErrorMessageFromBody: (_body: string, status: number) => String(status),
   wgwFetchPrincipal,
-  wgwEnsurePluginSession: vi.fn(),
   wgwGuestSharePath,
-}));
-
-vi.mock("@/lib/api/wgw/plugins", () => ({
-  fetchWgwPlugins: vi.fn(async () => []),
 }));
 
 vi.mock("@/lib/api/wgw/search", () => ({

@@ -20,6 +20,7 @@ vi.mock("@/hooks/use-app-toast", () => ({
 
 const ACTION_NAMES = [
   "saveSettings",
+  "useThisAddress",
   "clearMailDeliverySmtpPassword",
   "clearTurnSecret",
   "sendMailDeliveryTest",
@@ -45,8 +46,6 @@ const ACTION_NAMES = [
   "createGroup",
   "updateGroup",
   "deleteGroup",
-  "setPluginActive",
-  "installPluginZip",
 ] as const;
 
 describe("useAdminMutations", () => {

@@ -5,7 +5,7 @@ import { resetWgwSessionStateForTests } from "@/lib/api/wgw/http";
 
 const originalFetch = globalThis.fetch;
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
-const REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
+const SESSION_KIND_KEY = "wgw.api.session_kind";
 
 function makeJwt(exp: number): string {
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))
@@ -50,7 +50,7 @@ describe("fetchWgwAuthToken", () => {
   it("uses the live session access token when no inline token or authTokenUrl is provided", async () => {
     const token = makeJwt(Math.floor(Date.now() / 1_000) + 3_600);
     window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, "refresh-token");
+    window.localStorage.setItem(SESSION_KIND_KEY, "member");
 
     await expect(fetchWgwAuthToken({})).resolves.toBe(token);
     expect(globalThis.fetch).toBe(originalFetch);
@@ -70,7 +70,6 @@ describe("fetchWgwAuthToken", () => {
         new Response(
           JSON.stringify({
             access_token: "token-123",
-            refresh_token: "refresh-123",
             token_type: "Bearer",
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },

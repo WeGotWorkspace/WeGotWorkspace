@@ -7,10 +7,10 @@ namespace App\Services\Drive;
 use App\Events\EventDispatch;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
+use App\Services\Collab\CollabSidecarPaths;
 use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRelocator;
-use App\Services\Search\SearchIndexerService;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
@@ -30,7 +30,6 @@ final class DriveService
         private DriveSessionStore $session,
         private DriveStarService $stars,
         private AdminRoleResolver $adminRoles,
-        private SearchIndexerService $search,
         private FileNodeIndexService $fileNodes,
         private DocsThreadRepository $docsThreads,
         private DocAttachmentsService $docAttachments,
@@ -175,7 +174,6 @@ final class DriveService
             }
             $disk->put($key, '');
         }
-        $this->search->indexFileStorageKey($key);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
         $this->eventDispatch->fireMutation($username, 'drive', 'created', 'files/'.$key);
 
@@ -219,12 +217,7 @@ final class DriveService
         }
         $this->shares->rewritePathPrefix($fromPath, $toPath);
         $this->stars->rewritePathPrefix($fromPath, $toPath);
-        $this->search->deleteDavPath('files/'.$fromKey);
-        $this->search->indexFileStorageKey($toKey);
-        if ($disk->directoryExists($toKey)) {
-            $this->reindexSubtree($toKey);
-        }
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMove($fromKey, $toKey));
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMoveWithSidecar($fromKey, $toKey));
         $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
         $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
 
@@ -256,8 +249,7 @@ final class DriveService
                 } else {
                     $disk->delete($key);
                 }
-                $this->search->deleteDavPath('files/'.$key);
-                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDelete($key));
+                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDeleteWithSidecar($key));
                 $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
                 $this->stars->deletePathPrefix($path);
             }
@@ -372,7 +364,6 @@ final class DriveService
         }
 
         $disk->put($key, $text);
-        $this->search->indexFileStorageKey($key);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($key, hash('sha256', $text)));
 
         return [
@@ -512,7 +503,6 @@ final class DriveService
         if ($totalChunks <= 1) {
             $contents = is_string($rawContents = $file->get()) ? $rawContents : throw new \RuntimeException('Failed to read upload.');
             $disk->put($targetKey, $contents);
-            $this->search->indexFileStorageKey($targetKey);
             $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
 
             return 'Stored';
@@ -535,7 +525,6 @@ final class DriveService
         $assembled = $tempDisk->get($partKey);
         $disk->put($targetKey, is_string($assembled) ? $assembled : throw new \RuntimeException('Failed to read upload.'));
         $tempDisk->delete($partKey);
-        $this->search->indexFileStorageKey($targetKey);
         $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
 
         return 'Stored';
@@ -867,30 +856,15 @@ final class DriveService
         return $path === '/' ? '/' : $path.'/';
     }
 
-    private function isHiddenNotesPath(string $virtualPath): bool
-    {
-        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1;
-    }
-
     private function isHiddenBrowsePath(string $virtualPath): bool
     {
-        return $this->isHiddenNotesPath($virtualPath)
-            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath);
+        return preg_match('#/(?:users|groups)/[^/]+/\.notes(?:/|$)#', $virtualPath) === 1
+            || DocAttachmentPaths::isHiddenBrowseVirtualPath($virtualPath)
+            || CollabSidecarPaths::isHiddenBrowseVirtualPath($virtualPath);
     }
 
     private function disk(): Filesystem
     {
         return $this->storage->files();
-    }
-
-    private function reindexSubtree(string $prefix): void
-    {
-        $disk = $this->disk();
-        foreach ($disk->allDirectories($prefix) as $dirKey) {
-            $this->search->indexFileStorageKey($dirKey);
-        }
-        foreach ($disk->allFiles($prefix) as $fileKey) {
-            $this->search->indexFileStorageKey($fileKey);
-        }
     }
 }

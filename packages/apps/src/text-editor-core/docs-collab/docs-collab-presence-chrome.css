@@ -11,7 +11,7 @@
    */
   --button-active-color: var(--workspace-foreground);
   /* Punch-out behind the Meet presence pip, matched to the footer surface. */
-  --user-avatar-presence-ring: var(--workspace-surface, var(--color-we-got-soft));
+  --user-avatar-presence-ring: var(--workspace-surface);
   /* Pin glyph to ink — UserAvatar falls back to `--button-active-color` / emerald
    * otherwise; keep wash on outline-active tokens (no `--user-avatar-bg` override). */
   --user-avatar-fg: var(--workspace-foreground);

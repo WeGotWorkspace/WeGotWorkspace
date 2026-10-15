@@ -6,12 +6,14 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Request;
 use Tests\Support\WgwInstallFixture;
 use Tests\Support\WithMailClientEnabled;
+use Tests\Support\WithPluginsEnabled;
 
 abstract class TestCase extends BaseTestCase
 {
     protected function tearDown(): void
     {
         WithMailClientEnabled::setMailClientEnabledEnv(false);
+        WithPluginsEnabled::setPluginsEnabledEnv(false);
 
         if ($this->app) {
             $this->beforeApplicationDestroyed(static function (): void {
