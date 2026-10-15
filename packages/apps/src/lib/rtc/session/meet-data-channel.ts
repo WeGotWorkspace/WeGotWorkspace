@@ -1,3 +1,5 @@
+import { FrameReassembler, ingestDataChannelData } from "@/lib/rtc/session/data-channel-frames";
+
 /**
  * Negotiated Meet chat channel. Both sides open it when the peer connection
  * is created. Id 2 is reserved for a future unreliable channel and is not opened.
@@ -81,10 +83,12 @@ export function openMeetDataChannel(
   onText: (data: string) => void,
 ): RTCDataChannel {
   const channel = pc.createDataChannel(MEET_DATA_CHANNEL_LABEL, MEET_DATA_CHANNEL_INIT);
+  const reassembler = new FrameReassembler();
   channel.binaryType = "arraybuffer";
   channel.onmessage = (event) => {
-    if (typeof event.data !== "string") return;
-    onText(event.data);
+    const decoded = ingestDataChannelData(reassembler, MEET_DATA_CHANNEL_LABEL, event.data);
+    if (!decoded) return;
+    onText(decoded.json);
   };
   return channel;
 }

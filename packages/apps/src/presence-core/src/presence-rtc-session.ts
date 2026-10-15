@@ -1,7 +1,10 @@
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
-import { parseCollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
+import {
+  attachReusePayload,
+  parseCollabReuseEnvelope,
+} from "@/lib/rtc/session/collab-reuse-envelope";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
 import {
@@ -69,14 +72,15 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.updatePollCadence();
         this.emit({ type: "dc-open", peerId: remoteId });
       },
-      onMessage: (remoteId, data) => {
-        const reuse = parseCollabReuseEnvelope(data);
+      onMessage: (remoteId, json, payload) => {
+        const reuse = parseCollabReuseEnvelope(json);
         if (reuse) {
           const username = this.mesh.getRoomPeers().find((peer) => peer.id === remoteId)?.user;
-          if (username) this.registry.receive(username, remoteId, reuse);
+          if (username)
+            this.registry.receive(username, remoteId, attachReusePayload(reuse, payload));
           return;
         }
-        const envelope = parsePresenceEnvelope(data);
+        const envelope = parsePresenceEnvelope(json);
         if (envelope) this.emit({ type: "envelope", peerId: remoteId, envelope });
       },
       onClose: () => {
@@ -190,7 +194,10 @@ export class PresenceRtcSession implements PresenceMeshSession {
         this.registry.registerLink({
           username: peer.user,
           principalPeerId: peer.id,
-          send: (payload) => this.mesh.sendJsonTo(peer.id, payload),
+          send: (payload, bytes) => {
+            if (bytes) this.mesh.sendJsonTo(peer.id, payload, bytes);
+            else this.mesh.sendJsonTo(peer.id, payload);
+          },
         });
       } else {
         connectingUsernames.add(peer.user);

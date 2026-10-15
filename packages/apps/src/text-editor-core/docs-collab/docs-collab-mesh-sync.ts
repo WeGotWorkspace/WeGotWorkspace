@@ -15,43 +15,43 @@ export const SYNC_STEP_2 = 1;
 
 export const SYNC_UPDATE = 2;
 
-export function encodeSyncStep1(ydoc: Y.Doc): number[] {
+export function encodeSyncStep1(ydoc: Y.Doc): Uint8Array {
   const encoder = encoding.createEncoder();
   syncProtocol.writeSyncStep1(encoder, ydoc);
-  return Array.from(encoding.toUint8Array(encoder));
+  return encoding.toUint8Array(encoder);
 }
 
-export function encodeUpdateBroadcast(update: Uint8Array): number[] {
+export function encodeUpdateBroadcast(update: Uint8Array): Uint8Array {
   const encoder = encoding.createEncoder();
   syncProtocol.writeUpdate(encoder, update);
-  return Array.from(encoding.toUint8Array(encoder));
+  return encoding.toUint8Array(encoder);
 }
 
-export type SyncReply = { type: "sync"; u: number[] };
+export type SyncReply = { type: "sync"; u: Uint8Array };
 
 export function handleSyncMessage(
-  updateBytes: number[],
+  updateBytes: Uint8Array,
   ydoc: Y.Doc,
   origin: string = MESH_ORIGIN,
 ): SyncReply | null {
-  const decoder = decoding.createDecoder(Uint8Array.from(updateBytes));
+  const decoder = decoding.createDecoder(updateBytes);
   const encoder = encoding.createEncoder();
   syncProtocol.readSyncMessage(decoder, encoder, ydoc, origin);
   if (encoding.length(encoder) > 1) {
-    return { type: "sync", u: Array.from(encoding.toUint8Array(encoder)) };
+    return { type: "sync", u: encoding.toUint8Array(encoder) };
   }
   return null;
 }
 
 /** True for a message that carries document content rather than asking for it. */
-export function isDocumentBearingSyncMessage(bytes: readonly number[]): boolean {
+export function isDocumentBearingSyncMessage(bytes: Uint8Array): boolean {
   return bytes[0] === SYNC_STEP_2 || bytes[0] === SYNC_UPDATE;
 }
 
 /** Raw Yjs update inside a step 2 or update message. A state request has none. */
-export function documentUpdateFromSyncMessage(bytes: readonly number[]): Uint8Array | null {
+export function documentUpdateFromSyncMessage(bytes: Uint8Array): Uint8Array | null {
   if (!isDocumentBearingSyncMessage(bytes)) return null;
-  const decoder = decoding.createDecoder(Uint8Array.from(bytes));
+  const decoder = decoding.createDecoder(bytes);
   decoding.readVarUint(decoder);
   return decoding.readVarUint8Array(decoder);
 }
@@ -73,7 +73,7 @@ export type GuardedSyncOutcome =
  * defaults to `read` when the transport could not establish who they are.
  */
 export function handleGuardedSyncMessage(input: {
-  bytes: number[];
+  bytes: Uint8Array;
   ydoc: Y.Doc;
   trust?: DocsCollabSenderTrust;
   from?: string;
@@ -81,7 +81,7 @@ export function handleGuardedSyncMessage(input: {
   /** When false and the doc body is still empty, step 1 is not answered. */
   mayAnswerSyncStep1?: boolean;
 }): GuardedSyncOutcome {
-  const decoder = decoding.createDecoder(Uint8Array.from(input.bytes));
+  const decoder = decoding.createDecoder(input.bytes);
   const messageType = decoding.readVarUint(decoder);
   const mayAnswer = input.mayAnswerSyncStep1 ?? true;
 
@@ -93,7 +93,7 @@ export function handleGuardedSyncMessage(input: {
     syncProtocol.writeSyncStep2(encoder, input.ydoc, decoding.readVarUint8Array(decoder));
     return {
       kind: "reply",
-      reply: { type: "sync", u: Array.from(encoding.toUint8Array(encoder)) },
+      reply: { type: "sync", u: encoding.toUint8Array(encoder) },
     };
   }
 
@@ -129,25 +129,24 @@ export function mayInitiateMeshDocumentSync(ydoc: Y.Doc, seedDone: boolean): boo
 }
 
 export function applyAwarenessUpdate(
-  updateBytes: number[],
+  updateBytes: Uint8Array,
   awareness: awarenessProtocol.Awareness,
   origin: string = MESH_ORIGIN,
 ): void {
-  awarenessProtocol.applyAwarenessUpdate(awareness, Uint8Array.from(updateBytes), origin);
+  awarenessProtocol.applyAwarenessUpdate(awareness, updateBytes, origin);
 }
 
 export function encodeAwarenessBroadcast(
   awareness: awarenessProtocol.Awareness,
   changed: number[],
-): number[] {
-  const encoded = awarenessProtocol.encodeAwarenessUpdate(awareness, changed);
-  return Array.from(encoded);
+): Uint8Array {
+  return awarenessProtocol.encodeAwarenessUpdate(awareness, changed);
 }
 
 /** Full local awareness snapshot for proactive send on dc-open (before mesh existed at join). */
 export function encodeFullAwarenessBroadcast(
   awareness: awarenessProtocol.Awareness,
-): number[] | null {
+): Uint8Array | null {
   const clientIds = [...awareness.getStates().keys()];
   if (clientIds.length === 0) return null;
   return encodeAwarenessBroadcast(awareness, clientIds);

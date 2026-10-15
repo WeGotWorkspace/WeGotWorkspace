@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
-import type { CollabReuseEnvelope } from "@/lib/rtc/session/collab-reuse-envelope";
+import {
+  attachReusePayload,
+  type CollabReuseEnvelope,
+} from "@/lib/rtc/session/collab-reuse-envelope";
 import {
   collabRoomKey,
   createCollabTicketKeyCache,
@@ -227,14 +230,15 @@ describe("DocsCollabPrincipalReuse", () => {
 
     expect(opened).toEqual(["bbbbbbbbbbbbbbbb"]);
     expect(reuse.reusedLinkCount()).toBe(1);
-    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: [9] })).toBe(true);
+    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: Uint8Array.of(9) })).toBe(true);
     expect(sent.at(-1)).toEqual(
       expect.objectContaining({
         op: "data",
         collabPeerId: "aaaaaaaaaaaaaaaa",
-        payload: { type: "sync", u: [9] },
+        payload: { type: "sync", bin: 1 },
       }),
     );
+    expect(sent.at(-1)).not.toHaveProperty("bin");
 
     registry.receive("wouter", "prin-wouter", {
       v: 1,
@@ -242,12 +246,12 @@ describe("DocsCollabPrincipalReuse", () => {
       room: "/groups/administrators/team-notes.md",
       op: "data",
       collabPeerId: "bbbbbbbbbbbbbbbb",
-      payload: { type: "awareness", u: [1] },
+      payload: { type: "awareness", u: Uint8Array.of(1) },
     });
     expect(messages).toEqual([
       {
         type: "awareness",
-        u: [1],
+        u: Uint8Array.of(1),
         from: "bbbbbbbbbbbbbbbb",
         trust: { user: "wouter", access: "read" },
       },
@@ -328,7 +332,7 @@ describe("DocsCollabPrincipalReuse", () => {
       room: "/groups/administrators/team-notes.md",
       op: "data",
       collabPeerId: "dddddddddddddddd",
-      payload: { type: "awareness", u: [3] },
+      payload: { type: "awareness", u: Uint8Array.of(3) },
     });
 
     expect(messages.filter((msg) => msg.type === "awareness")).toEqual([]);
@@ -352,7 +356,7 @@ describe("DocsCollabPrincipalReuse", () => {
     reuse.considerRoster([], "aaaaaaaaaaaaaaaa");
 
     expect(reuse.reusedLinkCount()).toBe(0);
-    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: [1] })).toBe(false);
+    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: Uint8Array.of(1) })).toBe(false);
   });
 
   it("carries the roster access along with a forwarded update", () => {
@@ -384,12 +388,12 @@ describe("DocsCollabPrincipalReuse", () => {
       room: "/groups/administrators/team-notes.md",
       op: "data",
       collabPeerId: "bbbbbbbbbbbbbbbb",
-      payload: { type: "sync", u: [2] },
+      payload: { type: "sync", u: Uint8Array.of(2) },
     });
 
     expect(messages.at(-1)).toEqual({
       type: "sync",
-      u: [2],
+      u: Uint8Array.of(2),
       from: "bbbbbbbbbbbbbbbb",
       trust: { user: "wouter", access: "comment" },
     });
@@ -466,8 +470,8 @@ describe("DocsCollabPrincipalReuse", () => {
     expect(reuse.shouldSkipIce({ id: "cccccccccccccccc", name: "Wouter", user: "wouter" })).toBe(
       true,
     );
-    expect(reuse.sendTo("cccccccccccccccc", { type: "sync", u: [1] })).toBe(true);
-    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: [1] })).toBe(false);
+    expect(reuse.sendTo("cccccccccccccccc", { type: "sync", u: Uint8Array.of(1) })).toBe(true);
+    expect(reuse.sendTo("bbbbbbbbbbbbbbbb", { type: "sync", u: Uint8Array.of(1) })).toBe(false);
 
     registry.receive("wouter", "prin-wouter", {
       v: 1,
@@ -475,11 +479,11 @@ describe("DocsCollabPrincipalReuse", () => {
       room: "/groups/administrators/team-notes.md",
       op: "data",
       collabPeerId: "cccccccccccccccc",
-      payload: { type: "awareness", u: [2] },
+      payload: { type: "awareness", u: Uint8Array.of(2) },
     });
     expect(messages.at(-1)).toEqual({
       type: "awareness",
-      u: [2],
+      u: Uint8Array.of(2),
       from: "cccccccccccccccc",
       trust: { user: "wouter", access: "read" },
     });
@@ -537,7 +541,7 @@ describe("DocsCollabPrincipalReuse", () => {
       }),
     );
     expect(onReuseFallback).toHaveBeenCalledWith(laptop.id);
-    expect(reuse.sendTo(laptop.id, { type: "sync", u: [1] })).toBe(false);
+    expect(reuse.sendTo(laptop.id, { type: "sync", u: Uint8Array.of(1) })).toBe(false);
     expect(reuse.shouldSkipIce(laptop)).toBe(false);
     expect(reuse.shouldSkipIce(tablet)).toBe(false);
     expect(reuse.shouldIgnoreOffer(laptop.id)).toBe(false);
@@ -558,7 +562,7 @@ describe("DocsCollabPrincipalReuse", () => {
       name: "Wouter",
     });
     expect(reuse.shouldSkipIce(peer)).toBe(true);
-    expect(reuse.sendTo(peer.id, { type: "sync", u: [1] })).toBe(true);
+    expect(reuse.sendTo(peer.id, { type: "sync", u: Uint8Array.of(1) })).toBe(true);
 
     expect(() => {
       registry.unregisterLink("prin-wouter");
@@ -569,7 +573,7 @@ describe("DocsCollabPrincipalReuse", () => {
 
     expect(reuse.shouldSkipIce(peer)).toBe(false);
     expect(reuse.reusedLinkCount()).toBe(0);
-    expect(reuse.sendTo(peer.id, { type: "sync", u: [2] })).toBe(false);
+    expect(reuse.sendTo(peer.id, { type: "sync", u: Uint8Array.of(2) })).toBe(false);
     expect(reuse.overlayStatuses([{ ...peer, link: "connecting" }])).toEqual([
       { ...peer, link: "connecting" },
     ]);
@@ -837,15 +841,23 @@ describe("DocsCollabPrincipalReuse bidirectional Yjs over reused DC", () => {
     registry.registerLink({
       username: "wouter",
       principalPeerId: "prin-wouter",
-      send: (payload) => {
-        registry.receive("admin", "prin-admin", payload as CollabReuseEnvelope);
+      send: (payload, bytes) => {
+        registry.receive(
+          "admin",
+          "prin-admin",
+          attachReusePayload(payload as CollabReuseEnvelope, bytes ?? null),
+        );
       },
     });
     registry.registerLink({
       username: "admin",
       principalPeerId: "prin-admin",
-      send: (payload) => {
-        registry.receive("wouter", "prin-wouter", payload as CollabReuseEnvelope);
+      send: (payload, bytes) => {
+        registry.receive(
+          "wouter",
+          "prin-wouter",
+          attachReusePayload(payload as CollabReuseEnvelope, bytes ?? null),
+        );
       },
     });
     // Both sides poll the same room, so both rosters list the other peer —
@@ -934,12 +946,12 @@ describe("DocsCollabPrincipalReuse ticket", () => {
       op: "data",
       collabPeerId: "bbbbbbbbbbbbbbbb",
       ticket: await kit.sign({ user: "wouter", peer: "bbbbbbbbbbbbbbbb", access: "write" }),
-      payload: { type: "sync", u: [7] },
+      payload: { type: "sync", u: Uint8Array.of(7) },
     });
 
     expect(messages.at(-1)).toEqual({
       type: "sync",
-      u: [7],
+      u: Uint8Array.of(7),
       from: "bbbbbbbbbbbbbbbb",
       trust: { user: "wouter", access: "read" },
     });
@@ -1041,7 +1053,7 @@ describe("DocsCollabPrincipalReuse ticket", () => {
       op: "data",
       collabPeerId: peer,
       ticket: await kit.sign({ user: "wouter", peer, access: "write" }),
-      payload: { type: "sync", u: [7] },
+      payload: { type: "sync", u: Uint8Array.of(7) },
     });
     expect(messages.at(-1)).toMatchObject({ trust: { user: "wouter", access: "read" } });
   });

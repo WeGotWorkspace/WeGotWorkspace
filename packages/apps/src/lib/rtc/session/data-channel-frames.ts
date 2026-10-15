@@ -1,13 +1,16 @@
 /**
- * Binary data-channel frames for peers that advertise the `bin` capability.
+ * Binary data-channel frames. Every peer gets frames.
  *
  * Each frame is a `Uint8Array` of at most 16 KiB:
  *   0..3  message id (uint32 big-endian)
  *   4..5  chunk index (uint16 big-endian, zero-based)
  *   6..7  chunk count (uint16 big-endian)
- *   8..   UTF-8 payload bytes
+ *   8..   message bytes
  *
- * Receivers still accept a single JSON string from peers that do not speak `bin`.
+ * A complete message is `[uint16 headerLen][UTF-8 JSON header][raw payload]`.
+ * `bin: 1` on the header, or on a nested `payload` object, marks a tail.
+ * No tail and no `bin` means there is no payload. An empty tail with `bin`
+ * is a payload of zero bytes.
  */
 
 export const BINARY_FRAME_BYTES = 16 * 1024;
@@ -20,7 +23,7 @@ export const PENDING_MESSAGE_TTL_MS = 30_000;
 export const MAX_PENDING_MESSAGES_PER_REMOTE = 4;
 /**
  * Sanity ceiling for one message, on both encode and decode.
- * 4096 frames is about 64 MiB on the wire, above real Yjs JSON traffic.
+ * 4096 frames is about 64 MiB on the wire, above a full document state.
  */
 export const MAX_MESSAGE_FRAMES = 4_096;
 /**
@@ -38,10 +41,6 @@ export type DecodedBinaryFrame = {
   count: number;
   payload: Uint8Array;
 };
-
-export function peerAdvertisesBin(caps: readonly string[] | undefined): boolean {
-  return Array.isArray(caps) && caps.includes("bin");
-}
 
 export function encodeBinaryFrames(payload: Uint8Array, messageId: number): Uint8Array[] {
   const count = Math.max(1, Math.ceil(payload.byteLength / PAYLOAD_BYTES));
@@ -80,6 +79,58 @@ export function decodeBinaryFrame(bytes: Uint8Array): DecodedBinaryFrame | null 
   };
 }
 
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+/** One data-channel message: a JSON header plus an optional raw tail. */
+export function encodeDataChannelMessage(json: string, payload?: Uint8Array): Uint8Array {
+  const header = textEncoder.encode(json);
+  if (header.byteLength > 0xffff) {
+    throw new Error("data-channel header exceeds uint16");
+  }
+  const tail = payload?.byteLength ?? 0;
+  const out = new Uint8Array(2 + header.byteLength + tail);
+  const view = new DataView(out.buffer);
+  view.setUint16(0, header.byteLength);
+  out.set(header, 2);
+  if (payload && tail > 0) out.set(payload, 2 + header.byteLength);
+  return out;
+}
+
+/**
+ * Split one reassembled message. A `headerLen` past the buffer is rejected.
+ * `payload` is null when the header does not carry `bin: 1`.
+ */
+export function decodeDataChannelMessage(
+  bytes: Uint8Array,
+): { json: string; payload: Uint8Array | null } | null {
+  if (bytes.byteLength < 2) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const headerLen = view.getUint16(0);
+  if (headerLen > bytes.byteLength - 2) return null;
+  const json = textDecoder.decode(bytes.subarray(2, 2 + headerLen));
+  let header: unknown;
+  try {
+    header = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  const tail = bytes.subarray(2 + headerLen);
+  if (headerCarriesBinary(header)) return { json, payload: tail };
+  if (tail.byteLength > 0) return null;
+  return { json, payload: null };
+}
+
+/** Root `bin: 1`, or `bin: 1` on a nested reuse `payload`, owns the tail. */
+function headerCarriesBinary(header: unknown): boolean {
+  if (!header || typeof header !== "object") return false;
+  const record = header as Record<string, unknown>;
+  if (record.bin === 1) return true;
+  const nested = record.payload;
+  if (!nested || typeof nested !== "object") return false;
+  return (nested as Record<string, unknown>).bin === 1;
+}
+
 type PendingMessage = {
   count: number;
   chunks: Map<number, Uint8Array>;
@@ -96,7 +147,7 @@ export class FrameReassembler {
 
   constructor(private readonly now: () => number = Date.now) {}
 
-  push(remoteId: string, bytes: Uint8Array): string | null {
+  push(remoteId: string, bytes: Uint8Array): Uint8Array | null {
     const frame = decodeBinaryFrame(bytes);
     if (!frame) return null;
     this.evictExpired(remoteId);
@@ -107,7 +158,7 @@ export class FrameReassembler {
       const merged = this.merge(entry);
       messages.delete(frame.messageId);
       this.forgetIfEmpty(remoteId);
-      return merged ? new TextDecoder().decode(merged) : null;
+      return merged;
     }
     this.enforceByteBudget(remoteId, frame.messageId);
     return null;
@@ -232,16 +283,17 @@ function bytesFromChannelData(data: unknown): Uint8Array | null {
 }
 
 /**
- * Turn one data-channel event into a complete JSON string.
- * A string is legacy JSON. Binary frames return text only once every chunk arrives.
+ * Turn one data-channel event into a header plus an optional raw tail.
+ * A string is not a message. Binary frames decode only once every chunk arrives.
  */
 export function ingestDataChannelData(
   reassembler: FrameReassembler,
   remoteId: string,
   data: unknown,
-): string | null {
-  if (typeof data === "string") return data;
+): { json: string; payload: Uint8Array | null } | null {
   const bytes = bytesFromChannelData(data);
   if (!bytes) return null;
-  return reassembler.push(remoteId, bytes);
+  const merged = reassembler.push(remoteId, bytes);
+  if (!merged) return null;
+  return decodeDataChannelMessage(merged);
 }

@@ -53,7 +53,7 @@ describe("applyFollowerTabSync", () => {
     follower.getXmlFragment("default").insert(0, [new Y.XmlText("from follower")]);
     const encoded = encodeUpdateBroadcast(Y.encodeStateAsUpdate(follower, before));
 
-    const broadcasts: number[][] = [];
+    const broadcasts: Uint8Array[] = [];
     const noted: Uint8Array[] = [];
     applyFollowerTabSync({
       updateBytes: encoded,
@@ -79,7 +79,7 @@ describe("applyFollowerTabSync", () => {
     const before = Y.encodeStateVector(follower);
     follower.getXmlFragment("default").insert(0, [new Y.XmlText("stays local")]);
     const encoded = encodeUpdateBroadcast(Y.encodeStateAsUpdate(follower, before));
-    const broadcasts: number[][] = [];
+    const broadcasts: Uint8Array[] = [];
 
     applyFollowerTabSync({
       updateBytes: encoded,
@@ -112,9 +112,9 @@ describe("follower awareness relay", () => {
     const followerDoc = new Y.Doc();
     const followerAwareness = new awarenessProtocol.Awareness(followerDoc);
     followerAwareness.setLocalStateField("user", { name: "Follower", color: "#dc2626" });
-    const updateBytes = Array.from(
-      awarenessProtocol.encodeAwarenessUpdate(followerAwareness, [followerAwareness.clientID]),
-    );
+    const updateBytes = awarenessProtocol.encodeAwarenessUpdate(followerAwareness, [
+      followerAwareness.clientID,
+    ]);
     const broadcast = vi.fn();
 
     const { unmount } = renderHook(() => {

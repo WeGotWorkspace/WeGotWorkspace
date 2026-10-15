@@ -1,17 +1,18 @@
 import {
   DATA_CHANNEL_BUFFER_HIGH_WATER_BYTES,
   encodeBinaryFrames,
+  encodeDataChannelMessage,
 } from "@/lib/rtc/session/data-channel-frames";
 
 /**
- * Sends one peer's data-channel messages. Binary peers get 16 KiB frames.
- * Everyone else still gets one JSON string. Sending pauses while
- * `bufferedAmount` is above 1 MiB and resumes on `bufferedamountlow`.
+ * Sends one peer's data-channel messages as 16 KiB frames.
+ * Sending pauses while `bufferedAmount` is above 1 MiB and resumes on
+ * `bufferedamountlow`.
  */
 export class DataChannelOutbound {
   private nextMessageId = 1;
 
-  private readonly queue: Array<string | Uint8Array> = [];
+  private readonly queue: Uint8Array[] = [];
 
   private flushing = false;
 
@@ -26,14 +27,10 @@ export class DataChannelOutbound {
     return this.channel === channel;
   }
 
-  sendJson(message: unknown, binary: boolean): void {
+  send(message: unknown, payload?: Uint8Array): void {
     if (this.channel.readyState !== "open") return;
     try {
-      if (!binary) {
-        this.enqueue(JSON.stringify(message));
-        return;
-      }
-      const bytes = new TextEncoder().encode(JSON.stringify(message));
+      const bytes = encodeDataChannelMessage(JSON.stringify(message), payload);
       const messageId = this.nextMessageId;
       this.nextMessageId = (this.nextMessageId + 1) >>> 0;
       if (this.nextMessageId === 0) this.nextMessageId = 1;
@@ -44,7 +41,7 @@ export class DataChannelOutbound {
     }
   }
 
-  private enqueue(data: string | Uint8Array): void {
+  private enqueue(data: Uint8Array): void {
     this.queue.push(data);
     this.flush();
   }
@@ -61,8 +58,7 @@ export class DataChannelOutbound {
         const next = this.queue[0];
         if (next === undefined) return;
         try {
-          if (typeof next === "string") this.channel.send(next);
-          else this.channel.send(new Uint8Array(next));
+          this.channel.send(new Uint8Array(next));
         } catch (error) {
           this.queue.length = 0;
           this.onFailed(error);
