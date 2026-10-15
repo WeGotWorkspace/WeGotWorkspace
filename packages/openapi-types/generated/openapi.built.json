@@ -12452,6 +12452,38 @@
                         ]
                     }
                 }
+            },
+            "NoteCollaborativePut": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "markdown",
+                    "yjs"
+                ],
+                "properties": {
+                    "markdown": {
+                        "type": "string",
+                        "description": "DESCRIPTION projection of the Yjs document."
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY."
+                    },
+                    "yjs": {
+                        "type": "array",
+                        "description": "Full Yjs document state as a list of bytes (0-255). Rejected with 413 above 5 MiB.",
+                        "maxItems": 5242880,
+                        "items": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                        }
+                    },
+                    "room": {
+                        "type": "string",
+                        "description": "Room id the shared save includes. The note is addressed by the path, so this field is ignored."
+                    }
+                }
             }
         },
         "responses": {
@@ -18650,7 +18682,7 @@
                         "name": "If-None-Match",
                         "in": "header",
                         "required": false,
-                        "description": "VJOURNAL entity tag from an earlier GET of this note, including GET ?format=yjs. The server answers 304 when that tag still matches. A 204 (no stored state) carries no tag.",
+                        "description": "State entity tag from an earlier GET ?format=yjs (sha1 of the Yjs bytes). The JSON note's VJOURNAL ETag is a different representation and does not match here. The server answers 304 when the state tag still matches. A 204 (no stored state) carries no tag.",
                         "schema": {
                             "type": "string"
                         }
@@ -18658,10 +18690,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Note JSON, or the raw Yjs bytes when format=yjs. Both representations use the VJOURNAL ETag.",
+                        "description": "Note JSON, or the raw Yjs bytes when format=yjs. The JSON representation uses the VJOURNAL ETag. format=yjs uses the sha1 of the stored state.",
                         "headers": {
                             "ETag": {
-                                "description": "VJOURNAL entity tag. The same value an ordinary note GET returns. Present for format=yjs only when a state row exists.",
+                                "description": "VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable.",
                                 "schema": {
                                     "type": "string"
                                 }
@@ -18685,13 +18717,114 @@
                         "description": "format=yjs and this note has no stored Yjs state. The response has no ETag."
                     },
                     "304": {
-                        "description": "format=yjs and If-None-Match matches the VJOURNAL ETag."
+                        "description": "format=yjs and If-None-Match matches the state ETag (sha1 of the bytes)."
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Notes"
+                ],
+                "summary": "Save a note's collaborative state",
+                "description": "Writes DESCRIPTION from markdown and the Yjs state in one transaction. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title updates SUMMARY when the document has adopted a title.",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "noteId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "State entity tag from GET ?format=yjs (sha1 of the state). Refused with 412 when the stored state moved on.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "If-None-Match",
+                        "in": "header",
+                        "required": false,
+                        "description": "Send * to write the state only when none exists. Refused with 412 when a state is already stored.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NoteCollaborativePut"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Saved. ETag is the sha1 of the stored Yjs state.",
+                        "headers": {
+                            "ETag": {
+                                "description": "State entity tag (sha1 of the Yjs bytes). This is the tag If-Match checks on the next collaborative save.",
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/JmapPreconditionFailed"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/JmapPayloadTooLarge"
+                    },
+                    "428": {
+                        "description": "A yjs write over an existing state carried neither If-Match nor If-None-Match",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 }
             },

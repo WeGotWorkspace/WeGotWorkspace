@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import {
   getConnectivitySnapshot,
   resetConnectivityHubForTests,
@@ -511,50 +512,32 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitFor(() => expect(result.current.pendingSync).toBe(false), { timeout: 7000 });
   }, 15_000);
 
-  it("skips the yjs snapshot merge on reconnect when skipYjsSnapshot is set", async () => {
-    let online = false;
-    vi.spyOn(navigator, "onLine", "get").mockImplementation(() => online);
-    const yjsRequests: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.includes("format=yjs")) {
-          yjsRequests.push(url);
-          throw new Error("yjs snapshot must not be fetched when skipYjsSnapshot is set");
-        }
-        return new Response("# Hello", { status: 200 });
-      }),
-    );
+  it("does not save a room that is not persistent yet", async () => {
+    const fetchMock = mockFetchResponses({ markdown: "# Hello" });
+    vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(() =>
       useDocsCollab({
         userName: "Alex",
         autoJoin: true,
-        urls: { ...testUrls, skipYjsSnapshot: true },
+        urls: { ...testUrls, roomNotPersistent: true },
         wire,
       }),
     );
 
     await waitForCollabSession(result);
-    expect(yjsRequests).toEqual([]);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    act(() => {
+      result.current.onMarkdownChange(() => "# edited before the note exists");
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    });
 
-    online = true;
-    window.dispatchEvent(new Event("online"));
-    window.dispatchEvent(new Event("focus"));
-
-    await waitFor(
-      () => {
-        expect(mockJoin).toHaveBeenCalled();
-        expect(result.current.docStatus).not.toBe("Editing offline");
-        expect(result.current.docStatus).not.toBe("Reconnecting…");
-      },
-      { timeout: 7000 },
-    );
-
-    expect(yjsRequests).toEqual([]);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    const saves = fetchMock.mock.calls.filter(([, init]) => {
+      const method = init?.method ?? "GET";
+      return method === "PUT" || method === "POST" || method === "PATCH";
+    });
+    expect(saves).toEqual([]);
   }, 15_000);
 
   it("fetches and applies the yjs snapshot on reconnect", async () => {
@@ -604,25 +587,42 @@ describe("useDocsCollab offline lifecycle", () => {
     expect(roomServerAllowed(testUrls.room)).toBe(true);
   }, 15_000);
 
-  it("flushes a pending save on reconnect when skipYjsSnapshot is set", async () => {
-    let online = false;
-    vi.spyOn(navigator, "onLine", "get").mockImplementation(() => online);
-    const yjsRequests: string[] = [];
-    const saveRequests: string[] = [];
+  it("remerges a 412 and does not open the conflict dialog", async () => {
+    const update = reconnectMarkerUpdate("server-snapshot");
+    let puts = 0;
+    const listener = vi.fn();
+    setDocsSyncConflictListener(listener);
+    const noteUrls = {
+      ...testUrls,
+      documentUrl: "/api/v1/notes/items/note-1",
+      yjsUrl: "/api/v1/notes/items/note-1?format=yjs",
+      room: "note-1",
+    };
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.deleteDatabase("note-1:v2");
+      request.onblocked = () => resolve();
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+    });
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         const method = init?.method ?? "GET";
         if (url.includes("format=yjs")) {
-          yjsRequests.push(url);
-          throw new Error("yjs snapshot must not be fetched when skipYjsSnapshot is set");
+          return new Response(update, { status: 200, headers: { ETag: '"snap"' } });
         }
         if (method === "PUT" || method === "POST" || method === "PATCH") {
-          saveRequests.push(url);
-          return new Response("{}", { status: 200 });
+          puts += 1;
+          if (puts === 1) {
+            return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
+          }
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
         }
-        return new Response("# Hello", { status: 200 });
+        return new Response("# Hello", {
+          status: 200,
+          headers: { "Content-Type": "text/markdown" },
+        });
       }),
     );
 
@@ -630,31 +630,26 @@ describe("useDocsCollab offline lifecycle", () => {
       useDocsCollab({
         userName: "Alex",
         autoJoin: true,
-        urls: { ...testUrls, skipYjsSnapshot: true },
+        urls: noteUrls,
         wire,
       }),
     );
 
     await waitForCollabSession(result);
-
     act(() => {
-      result.current.onMarkdownChange(() => "# reconnect edit");
+      result.current.onMarkdownChange(() => "# Hello");
     });
-    await waitFor(() => expect(result.current.pendingSync).toBe(true), { timeout: 5000 });
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     });
-    expect(result.current.pendingSync).toBe(true);
-    expect(saveRequests).toEqual([]);
+    act(() => {
+      result.current.onMarkdownChange(() => "# Hello\n\nedited");
+    });
 
-    online = true;
-    window.dispatchEvent(new Event("online"));
-    window.dispatchEvent(new Event("focus"));
-
+    await waitFor(() => expect(puts).toBe(2), { timeout: 7000 });
+    expect(listener).not.toHaveBeenCalled();
     await waitFor(() => expect(result.current.pendingSync).toBe(false), { timeout: 7000 });
-    expect(yjsRequests).toEqual([]);
-    expect(saveRequests.length).toBeGreaterThan(0);
-    expect(roomServerAllowed(testUrls.room)).toBe(true);
+    setDocsSyncConflictListener(undefined);
   }, 20_000);
 
   it("rejoins mesh after offline refresh reconnect", async () => {

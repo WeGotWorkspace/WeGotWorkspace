@@ -6,10 +6,12 @@ namespace App\Http\Controllers\Api\V1\Notes;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Http\Requests\Api\V1\NoteCollaborativePutRequest;
 use App\Http\Requests\Api\V1\NoteCreateRequest;
 use App\Http\Requests\Api\V1\NotePatchRequest;
 use App\Http\Support\JmapResourceResponse;
 use App\Http\Support\OptimisticConcurrency;
+use App\Services\Notes\NoteCollaborativeWrite;
 use App\Services\Notes\NoteRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +19,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class NotesController
 {
-    public function __construct(private readonly NoteRepository $notes) {}
+    public function __construct(
+        private readonly NoteRepository $notes,
+        private readonly NoteCollaborativeWrite $collaboration,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -52,6 +57,29 @@ final class NotesController
             $this->notes->create($principal['username'], $request->validated()),
             201,
         );
+    }
+
+    public function putCollaboration(NoteCollaborativePutRequest $request, string $noteId): JsonResponse
+    {
+        $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $validated = $request->validated();
+        $body = [
+            'markdown' => $validated['markdown'],
+            'yjs' => $request->yjsBytes(),
+        ];
+        if (array_key_exists('title', $validated)) {
+            $body['title'] = $validated['title'];
+        }
+
+        $etag = $this->collaboration->put(
+            $principal['username'],
+            $noteId,
+            $body,
+            $this->header($request, 'If-Match'),
+            $this->header($request, 'If-None-Match'),
+        );
+
+        return response()->json(['ok' => true])->header('ETag', $etag);
     }
 
     public function patch(NotePatchRequest $request, string $noteId): JsonResponse

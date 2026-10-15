@@ -6,6 +6,7 @@ import {
   resetSidecarEtagsForTests,
   sidecarPrecondition,
 } from "./docs-collab-etag";
+import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { isServerDivergenceError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 const DOCUMENT_URL = "/api/v1/files/collaboration?path=docs%2Ftogether.md";
@@ -69,35 +70,41 @@ function edit(ydoc: Y.Doc, text: string): void {
  * The save sequence the collab save hook performs: try once with the known
  * precondition, and on a divergence reload the snapshot, merge, and resave.
  */
-async function saveWithRemerge(ydoc: Y.Doc, markdown: string): Promise<void> {
+async function saveWithRemerge(
+  ydoc: Y.Doc,
+  markdown: string,
+  target: { documentUrl: string; yjsUrl: string; room: string } = {
+    documentUrl: DOCUMENT_URL,
+    yjsUrl: YJS_URL,
+    room: ROOM,
+  },
+): Promise<void> {
   try {
     const etag = await saveDocument(
-      DOCUMENT_URL,
+      target.documentUrl,
       markdown,
       ydoc,
-      ROOM,
+      target.room,
       undefined,
-      "PUT",
-      sidecarPrecondition(ROOM),
+      sidecarPrecondition(target.room),
     );
-    rememberSidecarEtag(ROOM, etag);
+    rememberSidecarEtag(target.room, etag);
     return;
   } catch (error) {
     if (!isServerDivergenceError(error)) throw error;
   }
 
-  const reload = await loadYjsSnapshot(YJS_URL, ydoc, undefined, SERVER_ORIGIN);
-  rememberSidecarEtag(ROOM, reload.etag);
+  const reload = await loadYjsSnapshot(target.yjsUrl, ydoc, undefined, SERVER_ORIGIN);
+  rememberSidecarEtag(target.room, reload.etag);
   const etag = await saveDocument(
-    DOCUMENT_URL,
+    target.documentUrl,
     markdown,
     ydoc,
-    ROOM,
+    target.room,
     undefined,
-    "PUT",
-    sidecarPrecondition(ROOM),
+    sidecarPrecondition(target.room),
   );
-  rememberSidecarEtag(ROOM, etag);
+  rememberSidecarEtag(target.room, etag);
 }
 
 describe("two clients saving in turn without a live mesh", () => {
@@ -150,7 +157,7 @@ describe("two clients saving in turn without a live mesh", () => {
     edit(second, "second client edit");
 
     await expect(
-      saveDocument(DOCUMENT_URL, "second client edit", second, ROOM, undefined, "PUT", {
+      saveDocument(DOCUMENT_URL, "second client edit", second, ROOM, undefined, {
         name: "If-None-Match",
         value: "*",
       }),
@@ -185,5 +192,52 @@ describe("two clients saving in turn without a live mesh", () => {
     const text = stored.getXmlFragment("default").toString();
     expect(text).toContain("first client edit");
     expect(text).toContain("second client edit");
+  });
+
+  it("remerges a note save that gets 412 and keeps both edits", async () => {
+    const server = createCollabServer();
+    vi.stubGlobal("fetch", server.fetchStub);
+    const note = {
+      documentUrl: "/api/v1/notes/items/note-1",
+      yjsUrl: "/api/v1/notes/items/note-1?format=yjs",
+      room: "note-1",
+    };
+    rememberSidecarEtag(note.room, null);
+
+    const first = new Y.Doc();
+    const second = new Y.Doc();
+    edit(first, "offline note a");
+    await saveWithRemerge(first, "offline note a", note);
+
+    resetSidecarEtagsForTests();
+    rememberSidecarEtag(note.room, null);
+    edit(second, "offline note b");
+    await saveWithRemerge(second, "offline note b", note);
+
+    const stored = new Y.Doc();
+    const settled = await loadYjsSnapshot(note.yjsUrl, stored, undefined, SERVER_ORIGIN);
+    expect(settled.applied).toBe(true);
+    const text = stored.getXmlFragment("default").toString();
+    expect(text).toContain("offline note a");
+    expect(text).toContain("offline note b");
+  });
+
+  it("merges two offline note documents without opening a conflict dialog", () => {
+    const listener = vi.fn();
+    setDocsSyncConflictListener(listener);
+    const first = new Y.Doc();
+    const second = new Y.Doc();
+    edit(first, "offline note a");
+    edit(second, "offline note b");
+
+    const merged = new Y.Doc();
+    Y.applyUpdate(merged, Y.encodeStateAsUpdate(first));
+    Y.applyUpdate(merged, Y.encodeStateAsUpdate(second));
+
+    const text = merged.getXmlFragment("default").toString();
+    expect(text).toContain("offline note a");
+    expect(text).toContain("offline note b");
+    expect(listener).not.toHaveBeenCalled();
+    setDocsSyncConflictListener(undefined);
   });
 });

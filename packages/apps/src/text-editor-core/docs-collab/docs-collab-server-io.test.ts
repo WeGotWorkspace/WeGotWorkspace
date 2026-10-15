@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { writeNoteTitle } from "@/notes-core/src/note-title-doc";
 import {
   fetchYjsSnapshot,
   loadMarkdown,
@@ -27,6 +28,20 @@ describe("docs-collab-server-io", () => {
       vi.fn(async () => new Response("# Hello", { status: 200 })),
     );
     await expect(loadMarkdown("/doc")).resolves.toBe("# Hello");
+  });
+
+  it("loadMarkdown reads a JSON note body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ body: "# From note" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+    await expect(loadMarkdown("/notes/items/n1")).resolves.toBe("# From note");
   });
 
   it("loadMarkdown throws on non-ok response", async () => {
@@ -121,7 +136,7 @@ describe("docs-collab-server-io", () => {
     const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", "token", "PUT");
+    await saveDocument("/doc", "# x", ydoc, "docs/test.md", "token");
     expect(fetchMock).toHaveBeenCalledWith(
       "/doc",
       expect.objectContaining({
@@ -138,7 +153,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    const nextEtag = await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+    const nextEtag = await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
       name: "If-Match",
       value: SIDECAR_ETAG,
     });
@@ -157,7 +172,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
       name: "If-None-Match",
       value: "*",
     });
@@ -177,7 +192,7 @@ describe("docs-collab-server-io", () => {
     vi.stubGlobal("fetch", fetchMock);
     const ydoc = new Y.Doc();
 
-    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", null);
+    await saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, null);
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers).not.toHaveProperty("If-Match");
@@ -196,10 +211,31 @@ describe("docs-collab-server-io", () => {
     const ydoc = new Y.Doc();
 
     await expect(
-      saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, "PUT", {
+      saveDocument("/doc", "# x", ydoc, "docs/test.md", undefined, {
         name: "If-Match",
         value: SIDECAR_ETAG,
       }),
     ).rejects.toMatchObject({ status: 412 });
+  });
+
+  it("sends a title only when the document adopted one", async () => {
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response("{}", { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const titled = new Y.Doc();
+    writeNoteTitle(titled, "Event");
+    await saveDocument("/notes/items/n1", "# x", titled, "n1");
+    const titledBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      title?: string;
+    };
+    expect(titledBody.title).toBe("Event");
+
+    await saveDocument("/doc", "# x", new Y.Doc(), "docs/test.md");
+    const plainBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as {
+      title?: string;
+    };
+    expect(plainBody.title).toBeUndefined();
   });
 });

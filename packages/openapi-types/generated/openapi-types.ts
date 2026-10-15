@@ -6422,7 +6422,7 @@ export interface paths {
                     format?: "yjs";
                 };
                 header?: {
-                    /** @description VJOURNAL entity tag from an earlier GET of this note, including GET ?format=yjs. The server answers 304 when that tag still matches. A 204 (no stored state) carries no tag. */
+                    /** @description State entity tag from an earlier GET ?format=yjs (sha1 of the Yjs bytes). The JSON note's VJOURNAL ETag is a different representation and does not match here. The server answers 304 when the state tag still matches. A 204 (no stored state) carries no tag. */
                     "If-None-Match"?: string;
                 };
                 path: {
@@ -6432,10 +6432,10 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Note JSON, or the raw Yjs bytes when format=yjs. Both representations use the VJOURNAL ETag. */
+                /** @description Note JSON, or the raw Yjs bytes when format=yjs. The JSON representation uses the VJOURNAL ETag. format=yjs uses the sha1 of the stored state. */
                 200: {
                     headers: {
-                        /** @description VJOURNAL entity tag. The same value an ordinary note GET returns. Present for format=yjs only when a state row exists. */
+                        /** @description VJOURNAL entity tag on the JSON representation. format=yjs returns the sha1 of the state bytes, and only when a state row exists. Those tags are not interchangeable. */
                         ETag?: string;
                         [name: string]: unknown;
                     };
@@ -6451,7 +6451,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description format=yjs and If-None-Match matches the VJOURNAL ETag. */
+                /** @description format=yjs and If-None-Match matches the state ETag (sha1 of the bytes). */
                 304: {
                     headers: {
                         [name: string]: unknown;
@@ -6462,7 +6462,59 @@ export interface paths {
                 404: components["responses"]["JmapNotFound"];
             };
         };
-        put?: never;
+        /**
+         * Save a note's collaborative state
+         * @description Writes DESCRIPTION from markdown and the Yjs state in one transaction. Guarded by the state ETag from GET ?format=yjs, not the VJOURNAL ETag. Optional title updates SUMMARY when the document has adopted a title.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description State entity tag from GET ?format=yjs (sha1 of the state). Refused with 412 when the stored state moved on. */
+                    "If-Match"?: string;
+                    /** @description Send * to write the state only when none exists. Refused with 412 when a state is already stored. */
+                    "If-None-Match"?: string;
+                };
+                path: {
+                    noteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteCollaborativePut"];
+                };
+            };
+            responses: {
+                /** @description Saved. ETag is the sha1 of the stored Yjs state. */
+                200: {
+                    headers: {
+                        /** @description State entity tag (sha1 of the Yjs bytes). This is the tag If-Match checks on the next collaborative save. */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            ok?: boolean;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
+                412: components["responses"]["JmapPreconditionFailed"];
+                413: components["responses"]["JmapPayloadTooLarge"];
+                /** @description A yjs write over an existing state carried neither If-Match nor If-None-Match */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         post?: never;
         /** Delete a note */
         delete: {
@@ -12149,6 +12201,16 @@ export interface components {
             outcome: string;
             createdAt: string;
             target?: string | null;
+        };
+        NoteCollaborativePut: {
+            /** @description DESCRIPTION projection of the Yjs document. */
+            markdown: string;
+            /** @description SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY. */
+            title?: string;
+            /** @description Full Yjs document state as a list of bytes (0-255). Rejected with 413 above 5 MiB. */
+            yjs: number[];
+            /** @description Room id the shared save includes. The note is addressed by the path, so this field is ignored. */
+            room?: string;
         };
     };
     responses: {

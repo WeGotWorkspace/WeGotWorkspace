@@ -222,13 +222,12 @@ export function useDocsCollabJoin({
     async (authToken: string | undefined): Promise<boolean> => {
       const ydoc = refs.ydocRef.current;
       if (!ydoc) return false;
-      if (urls.skipYjsSnapshot) return false;
       const snapshot = await loadYjsSnapshot(urls.yjsUrl, ydoc, authToken, SERVER_ORIGIN);
       rememberSidecarEtag(room, snapshot.etag);
       if (snapshot.applied) setSnapshotPreview(null);
       return snapshot.applied;
     },
-    [refs, room, urls.yjsUrl, urls.skipYjsSnapshot],
+    [refs, room, urls.yjsUrl],
   );
 
   const applyServerBootstrap = useCallback(
@@ -237,11 +236,8 @@ export function useDocsCollabJoin({
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       const load = await loadBootstrapInParallel({
-        loadMarkdown: () =>
-          urls.loadDocumentMarkdown
-            ? urls.loadDocumentMarkdown(authToken)
-            : loadMarkdown(urls.documentUrl, authToken),
-        fetchSnapshot: urls.skipYjsSnapshot ? null : () => fetchYjsSnapshot(urls.yjsUrl, authToken),
+        loadMarkdown: () => loadMarkdown(urls.documentUrl, authToken),
+        fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, authToken),
         // Teardown drops the doc it is loading into; stop retrying then.
         isCurrent: () =>
           isJoinGenerationCurrent(generation, refs.joinGenerationRef) &&

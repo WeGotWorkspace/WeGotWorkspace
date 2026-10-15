@@ -20,11 +20,15 @@ import {
   useDocsCollabAwarenessPresence,
 } from "@/text-editor-core/docs-collab";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
+import { DocsConflictDialog } from "@/text-editor-core/docs-collab/docs-conflict-dialog";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
+import { useDocsConflictResolution } from "@/text-editor-core/docs-collab/use-docs-conflict-resolution";
+import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 
 import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-field";
 import "@/text-editor-core/src/text-editor.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
+import "@/text-editor-core/docs-collab/docs-conflict-dialog.css";
 
 /** Debounce Yjs hydrate/remote bursts before pushing list preview. */
 const BODY_PREVIEW_SYNC_DEBOUNCE_MS = 50;
@@ -75,6 +79,8 @@ export type NoteCollabSessionProps = {
   wire?: DocsCollabWireOperations;
   initialMarkdown: string;
   localDisplayName: string;
+  /** Shown in the shared save-conflict dialog. */
+  documentTitle?: string;
   /**
    * Fired when accepted body markdown changes so Notes can refresh list preview +
    * “Edited” time without routing body bytes through the metadata API.
@@ -97,6 +103,7 @@ export function NoteCollabSession({
   wire,
   initialMarkdown,
   localDisplayName,
+  documentTitle = "Note",
   onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {
@@ -170,6 +177,15 @@ export function NoteCollabSession({
     // inline callbacks do not re-subscribe every render.
   }, [collab.session?.ydoc, syncBodyPreview]);
 
+  const conflict = useDocsConflictResolution({
+    room: urls.room,
+    ydoc: collab.session?.ydoc ?? null,
+    yjsUrl: urls.yjsUrl,
+    authToken: urls.authToken,
+    saveNow: collab.saveNow,
+    onServerApplied: () => syncBodyPreview("hydrate"),
+  });
+
   const value = useMemo(
     () => ({ ...collab, localDisplayName, onMarkdownChange, registerMarkdownGetter }),
     [collab, localDisplayName, onMarkdownChange, registerMarkdownGetter],
@@ -180,7 +196,18 @@ export function NoteCollabSession({
       ydoc={collab.session?.ydoc ?? null}
       onLocalTitleEdit={collab.scheduleSave}
     >
-      <NoteCollabContext.Provider value={value}>{children}</NoteCollabContext.Provider>
+      <NoteCollabContext.Provider value={value}>
+        {children}
+        <DocsConflictDialog
+          open={conflict.open}
+          documentTitle={documentTitle}
+          busy={conflict.busy}
+          labels={defaultNotesLabels}
+          onKeepLocal={conflict.keepLocal}
+          onUseServer={conflict.useServer}
+          onOpenChange={conflict.setOpen}
+        />
+      </NoteCollabContext.Provider>
     </NoteCollabYDocProvider>
   );
 }

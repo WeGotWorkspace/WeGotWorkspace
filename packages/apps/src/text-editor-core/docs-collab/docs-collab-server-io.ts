@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
+import { noteTitleForSave } from "@/notes-core/src/note-title-doc";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
@@ -13,9 +14,16 @@ function withBearerAuth(
 
 export async function loadMarkdown(documentUrl: string, authToken?: string): Promise<string> {
   const res = await fetch(documentUrl, {
-    headers: withBearerAuth({}, authToken),
+    headers: withBearerAuth({ Accept: "text/markdown, application/json" }, authToken),
   });
-  if (!res.ok) throw new Error(`Could not load document (${res.status})`);
+  if (!res.ok) throw new CollabHttpError(`Could not load document (${res.status})`, res.status);
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const data = (await res.json()) as { body?: unknown; markdown?: unknown };
+    if (typeof data.markdown === "string") return data.markdown;
+    if (typeof data.body === "string") return data.body;
+    return "";
+  }
   return res.text();
 }
 
@@ -68,14 +76,16 @@ export async function saveDocument(
   ydoc: Y.Doc,
   room: string | undefined,
   authToken?: string,
-  method: "POST" | "PUT" | "PATCH" = "POST",
   precondition: CollabSidecarPrecondition = null,
 ): Promise<string | null> {
-  const body: { markdown: string; yjs: number[]; room?: string } = {
+  const body: { markdown: string; yjs: number[]; room?: string; title?: string } = {
     markdown,
     yjs: Array.from(Y.encodeStateAsUpdate(ydoc)),
   };
   if (room) body.room = room;
+  // A document that adopted a title shared type sends it. Docs never creates that type.
+  const title = noteTitleForSave(ydoc);
+  if (title !== undefined) body.title = title;
 
   const headers = withBearerAuth(
     { "Content-Type": "application/json", Accept: "application/json" },
@@ -84,7 +94,7 @@ export async function saveDocument(
   if (precondition) headers[precondition.name] = precondition.value;
 
   const res = await fetch(documentUrl, {
-    method,
+    method: "PUT",
     headers,
     body: JSON.stringify(body),
   });

@@ -130,7 +130,7 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
     expect(result.current.getLocalDirty()).toBe(true);
   });
 
-  it("successful persistMarkdown clears dirty; 412 leaves it set", async () => {
+  it("a shared save that reports success clears dirty; a save that does not leaves it set", async () => {
     const { result } = renderHook(() =>
       useNotesReconnectConflict({
         active: note,
@@ -139,24 +139,21 @@ describe("notes workspace reconnect wiring (Decision 6)", () => {
       }),
     );
     const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
-    const urls = await buildNoteCollabUrls(note.id, note.etag ?? "", {
+    const urls = await buildNoteCollabUrls(note.id, {
       onPersistSuccess: result.current.markEditorSaved,
     });
 
     act(() => {
       result.current.markEditorDirty(true);
     });
-    persistNoteMarkdown.mockResolvedValueOnce({ id: note.id, etag: '"saved"' });
-    await urls.persistMarkdown?.(noteBodyToMarkdown(note.body));
+    act(() => {
+      urls.onPersistSuccess?.(noteBodyToMarkdown(note.body));
+    });
     expect(result.current.getLocalDirty()).toBe(false);
 
     act(() => {
       result.current.markEditorDirty(true);
     });
-    persistNoteMarkdown.mockRejectedValue(
-      Object.assign(new Error("PATCH failed (412)"), { status: 412 }),
-    );
-    await expect(urls.persistMarkdown?.("unsaved")).rejects.toThrow(/412/);
     expect(result.current.getLocalDirty()).toBe(true);
   });
 

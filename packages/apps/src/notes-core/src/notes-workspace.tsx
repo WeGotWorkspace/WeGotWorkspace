@@ -319,7 +319,6 @@ export function NotesWorkspace({
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
   const failedSyncCount = useNotesFailedSync(offlineUsername, bootstrapRevision);
   const {
-    getLocalDirty,
     markEditorDirty,
     markEditorSaved,
     reconnectConflict,
@@ -338,8 +337,6 @@ export function NotesWorkspace({
   );
 
   const activeNoteId = active?.id;
-  const collabEtagRef = useRef(active?.etag ?? "");
-  if (active?.etag) collabEtagRef.current = active.etag;
 
   useEffect(() => {
     if (!wgwLiveApiEnabled() || !activeNoteId) {
@@ -357,17 +354,13 @@ export function NotesWorkspace({
     }
     setAccessLost(false);
     let cancelled = false;
-    void buildNoteCollabUrls(activeNoteId, collabEtagRef.current, {
+    void buildNoteCollabUrls(activeNoteId, {
       onPersistForbidden: () => {
         setAccessLost(true);
         setNoteCollabUrls(undefined);
       },
       onReconnectConflict: () => setReconnectConflict(true),
-      getLocalDirty,
       onPersistSuccess: markEditorSaved,
-      onEtag: (etag) => {
-        collabEtagRef.current = etag;
-      },
     })
       .then((urls) => {
         if (!cancelled) {
@@ -383,7 +376,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [activeNoteId, getLocalDirty, markEditorSaved, setReconnectConflict]);
+  }, [activeNoteId, markEditorSaved, setReconnectConflict]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).
@@ -423,6 +416,7 @@ export function NotesWorkspace({
           urls={noteBodyCollab.urls}
           wire={noteBodyCollab.wire}
           localDisplayName={noteBodyCollab.userName}
+          documentTitle={active.title}
           onBodyMarkdownChange={(markdown, source) => {
             markEditorDirty(source !== "hydrate");
             applyLocalBodyMarkdown(active.id, markdown, {

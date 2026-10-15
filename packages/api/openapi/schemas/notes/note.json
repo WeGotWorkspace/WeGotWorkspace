@@ -118,5 +118,34 @@
         "enum": ["FINAL", "CANCELLED", null]
       }
     }
+  },
+  "NoteCollaborativePut": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["markdown", "yjs"],
+    "properties": {
+      "markdown": {
+        "type": "string",
+        "description": "DESCRIPTION projection of the Yjs document."
+      },
+      "title": {
+        "type": "string",
+        "description": "SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY."
+      },
+      "yjs": {
+        "type": "array",
+        "description": "Full Yjs document state as a list of bytes (0-255). Rejected with 413 above 5 MiB.",
+        "maxItems": 5242880,
+        "items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "room": {
+        "type": "string",
+        "description": "Room id the shared save includes. The note is addressed by the path, so this field is ignored."
+      }
+    }
   }
 }

@@ -11,7 +11,7 @@ export type SnapshotOutcome =
   | { kind: "absent" }
   /** Exhausted the retries. The caller must not seed — it would duplicate. */
   | { kind: "failed"; error: unknown }
-  /** The room has no sidecar endpoint (Notes bodies persist over REST). */
+  /** The caller did not supply a snapshot endpoint. */
   | { kind: "skipped" };
 
 export type BootstrapLoad = {

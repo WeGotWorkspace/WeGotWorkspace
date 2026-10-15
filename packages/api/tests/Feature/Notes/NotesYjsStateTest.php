@@ -124,8 +124,10 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $state = $this->asUser('bob')
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk();
+        $stateEtag = '"'.sha1(self::BINARY).'"';
         $this->assertSame(self::BINARY, $state->getContent());
-        $this->assertSame($noteEtag, (string) $state->headers->get('ETag'));
+        $this->assertSame($stateEtag, (string) $state->headers->get('ETag'));
+        $this->assertNotSame($noteEtag, $stateEtag);
         $this->assertSame(
             $noteEtag,
             (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->headers->get('ETag'),
@@ -134,8 +136,14 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $this->asUser('bob')
             ->withHeaders(['If-None-Match' => $noteEtag])
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertHeader('ETag', $stateEtag);
+
+        $this->asUser('bob')
+            ->withHeaders(['If-None-Match' => $stateEtag])
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertStatus(304)
-            ->assertHeader('ETag', $noteEtag);
+            ->assertHeader('ETag', $stateEtag);
 
         $this->asUser('bob')
             ->withHeaders(['If-None-Match' => '*'])
@@ -186,6 +194,10 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->assertHeader('ETag', $note['etag']);
     }
 
+    /**
+     * object_etag stays the journal ETag. The collaborative PUT's response
+     * ETag is the state tag and is covered separately.
+     */
     public function test_object_etag_matches_the_response_etag(): void
     {
         $note = $this->createNote();
@@ -380,6 +392,148 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         );
         $this->assertNotNull($column);
         $this->assertSame('mediumblob', strtolower((string) $column->data_type));
+    }
+
+    public function test_put_writes_markdown_title_and_state_under_the_state_etag(): void
+    {
+        $note = $this->createNote(body: 'original');
+
+        $saved = $this->putState($note['id'], [
+            'markdown' => 'rewritten',
+            'title' => 'Renamed',
+            'yjs' => self::YJS,
+            'room' => $note['id'],
+        ], ['If-None-Match' => '*'])->assertOk();
+
+        $stateEtag = '"'.sha1(self::BINARY).'"';
+        $this->assertSame($stateEtag, (string) $saved->headers->get('ETag'));
+        $this->assertNotSame($note['etag'], $stateEtag);
+
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('body', 'rewritten')
+            ->assertJsonPath('title', 'Renamed');
+        $this->asUser('bob')
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertOk()
+            ->assertContent(self::BINARY)
+            ->assertHeader('ETag', $stateEtag);
+        $this->assertSame(
+            (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->headers->get('ETag'),
+            $this->storedState($note['id'])['object_etag'],
+        );
+    }
+
+    public function test_state_etag_is_stable_across_a_metadata_change_and_moves_with_the_state(): void
+    {
+        $note = $this->createNote();
+        $this->putState($note['id'], ['markdown' => 'Body', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+        $before = '"'.sha1(self::BINARY).'"';
+        $journal = (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->headers->get('ETag');
+
+        $this->patchNote($note['id'], $journal, ['categories' => ['focus']])->assertOk();
+
+        $this->asUser('bob')
+            ->withHeaders(['If-None-Match' => $before])
+            ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
+            ->assertStatus(304)
+            ->assertHeader('ETag', $before);
+
+        $next = [9, 9, 9];
+        $saved = $this->putState($note['id'], ['markdown' => 'Body', 'yjs' => $next], ['If-Match' => $before])
+            ->assertOk();
+        $this->assertSame('"'.sha1("\x09\x09\x09").'"', (string) $saved->headers->get('ETag'));
+        $this->assertNotSame($before, (string) $saved->headers->get('ETag'));
+    }
+
+    public function test_put_refuses_a_stale_state_etag_and_a_missing_precondition(): void
+    {
+        $note = $this->createNote();
+        $this->putState($note['id'], ['markdown' => 'Body', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+        $before = $this->storedState($note['id']);
+
+        $this->putState($note['id'], ['markdown' => 'other', 'yjs' => [3]], ['If-Match' => '"stale"'])
+            ->assertStatus(412);
+        $this->putState($note['id'], ['markdown' => 'other', 'yjs' => [3]], ['If-None-Match' => '*'])
+            ->assertStatus(412);
+        $this->putState($note['id'], ['markdown' => 'other', 'yjs' => [3]])
+            ->assertStatus(428);
+
+        $after = $this->storedState($note['id']);
+        $this->assertSame($before['bytes'], $after['bytes']);
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('body', 'Body');
+    }
+
+    public function test_metadata_patch_still_uses_the_journal_etag(): void
+    {
+        $note = $this->createNote();
+        $this->putState($note['id'], ['markdown' => 'Body', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+        $stateEtag = '"'.sha1(self::BINARY).'"';
+        $journal = (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])->headers->get('ETag');
+        $this->assertNotSame($stateEtag, $journal);
+
+        $this->patchNote($note['id'], $journal, ['title' => 'From the journal tag'])->assertOk()
+            ->assertJsonPath('title', 'From the journal tag');
+        $this->patchNote($note['id'], $stateEtag, ['title' => 'Wrong tag'])->assertStatus(412);
+    }
+
+    public function test_put_omitted_title_does_not_clear_summary(): void
+    {
+        $note = $this->createNote(title: 'Keep me', body: 'Body');
+        $this->putState($note['id'], ['markdown' => 'next', 'yjs' => self::YJS], ['If-None-Match' => '*'])
+            ->assertOk();
+
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+            ->assertOk()
+            ->assertJsonPath('title', 'Keep me')
+            ->assertJsonPath('body', 'next');
+    }
+
+    public function test_read_only_share_cannot_put_yjs_state(): void
+    {
+        $notebookId = (string) $this->asUser('bob')
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'Read Only Put'])
+            ->assertCreated()
+            ->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/notes/notebooks/'.$notebookId, [
+            'shareWith' => ['alice' => ['mayReadItems' => true]],
+        ])->assertOk();
+        $created = $this->asUser('bob')->postJson('/api/v1/notes/items', [
+            'notebookId' => $notebookId,
+            'title' => 'Shared',
+            'body' => 'secret',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+
+        $this->asUser('alice')
+            ->withHeaders(['If-None-Match' => '*'])
+            ->putJson('/api/v1/notes/items/'.$id, ['markdown' => 'nope', 'yjs' => self::YJS])
+            ->assertForbidden();
+        $this->asUser('alice')
+            ->get('/api/v1/notes/items/'.$id.'?format=yjs')
+            ->assertNoContent();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, string>  $headers
+     */
+    private function putState(string $id, array $payload, array $headers = []): TestResponse
+    {
+        // withHeaders sticks to later requests in this test. A leftover
+        // If-None-Match would turn the next GET into a 304 and the next PUT
+        // into a 412.
+        $previous = $this->defaultHeaders;
+        try {
+            return $this->asUser('bob')->withHeaders($headers)->putJson('/api/v1/notes/items/'.$id, $payload);
+        } finally {
+            $this->defaultHeaders = $previous;
+        }
     }
 
     /**

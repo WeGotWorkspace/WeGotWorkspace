@@ -58,14 +58,7 @@ describe("buildDocsCollabUrls", () => {
       vi.stubGlobal("fetch", fetchMock);
 
       try {
-        await saveDocument(
-          urls.documentUrl,
-          "# Café & co (v2)\n",
-          new Y.Doc(),
-          room,
-          "token",
-          "PUT",
-        );
+        await saveDocument(urls.documentUrl, "# Café & co (v2)\n", new Y.Doc(), room, "token");
       } finally {
         vi.unstubAllGlobals();
       }
