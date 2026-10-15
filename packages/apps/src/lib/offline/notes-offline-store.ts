@@ -42,11 +42,19 @@ const META_GROUPS = "notes:groups";
 export type NoteUpsertMetadata = {
   notebook: string;
   title?: string;
-  tags: string[];
+  /** Full replace. Absent when this write is a tag delta. */
+  tags?: string[];
+  tagsAdd?: string[];
+  tagsRemove?: string[];
   starred?: boolean;
   archived?: boolean;
   /** Present when the note lives under a group notebook. */
   groupSlug?: string | null;
+};
+
+export type NoteTagDelta = {
+  tagsAdd?: string[];
+  tagsRemove?: string[];
 };
 
 export type NotesUpsertPayload = {
@@ -440,18 +448,74 @@ export async function removeOutboxMutationsForNote(
   }
 }
 
+function normalizedTags(tags: readonly string[] | undefined): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const tag of tags ?? []) {
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function hasTagDelta(metadata: NoteTagDelta): boolean {
+  return (metadata.tagsAdd?.length ?? 0) > 0 || (metadata.tagsRemove?.length ?? 0) > 0;
+}
+
 /**
- * Coalesce pending metadata upserts for the same note. Merges **metadata fields
- * only** (latest tags/starred/notebook wins) — there is no whole-note
+ * Later operation wins for one tag. Adding or removing the same tag twice
+ * matches doing it once. An add followed by a remove of that tag ends removed.
+ */
+export function mergeNoteTagDeltas(existing: NoteTagDelta, incoming: NoteTagDelta): NoteTagDelta {
+  let tagsAdd = normalizedTags(existing.tagsAdd);
+  let tagsRemove = normalizedTags(existing.tagsRemove);
+  const without = (tags: string[], tag: string) => tags.filter((item) => item !== tag);
+  for (const tag of normalizedTags(incoming.tagsRemove)) {
+    tagsAdd = without(tagsAdd, tag);
+    if (!tagsRemove.includes(tag)) tagsRemove = [...tagsRemove, tag];
+  }
+  for (const tag of normalizedTags(incoming.tagsAdd)) {
+    tagsRemove = without(tagsRemove, tag);
+    if (!tagsAdd.includes(tag)) tagsAdd = [...tagsAdd, tag];
+  }
+  return {
+    ...(tagsAdd.length > 0 ? { tagsAdd } : {}),
+    ...(tagsRemove.length > 0 ? { tagsRemove } : {}),
+  };
+}
+
+function metadataWithTagDelta(
+  metadata: NoteUpsertMetadata,
+  tagDelta: NoteTagDelta,
+): NoteUpsertMetadata {
+  const merged = mergeNoteTagDeltas({}, tagDelta);
+  if (!hasTagDelta(merged)) return metadata;
+  const { tags: _tags, ...rest } = metadata;
+  return { ...rest, ...merged };
+}
+
+/**
+ * Coalesce pending metadata upserts for the same note. Tag deltas union;
+ * other metadata fields still take the latest value. There is no whole-note
  * replacement, so a concurrent collab body edit can never be clobbered here.
  */
 function mergeNoteUpsertPayloads(
   existing: NotesUpsertPayload,
   incoming: NotesUpsertPayload,
 ): NotesUpsertPayload {
+  const metadata: NoteUpsertMetadata = { ...existing.metadata, ...incoming.metadata };
+  if (hasTagDelta(existing.metadata) || hasTagDelta(incoming.metadata)) {
+    const merged = mergeNoteTagDeltas(existing.metadata, incoming.metadata);
+    delete metadata.tags;
+    delete metadata.tagsAdd;
+    delete metadata.tagsRemove;
+    Object.assign(metadata, merged);
+  }
   return {
     noteId: incoming.noteId,
-    metadata: { ...existing.metadata, ...incoming.metadata },
+    metadata,
     tempNoteId: incoming.tempNoteId ?? existing.tempNoteId,
   };
 }
@@ -463,9 +527,11 @@ export async function enqueueCoalescedNoteUpdate(
   note: Note,
   baseUpdatedAt: string | undefined,
   tempNoteId?: string,
-  _tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] },
+  tagDelta?: NoteTagDelta,
 ): Promise<void> {
-  const metadata = extractNoteMetadata(note);
+  const metadata = tagDelta
+    ? metadataWithTagDelta(extractNoteMetadata(note), tagDelta)
+    : extractNoteMetadata(note);
   await enqueueCoalescedOutboxUpdate<NotesUpsertPayload>({
     username,
     domain: NOTES_DOMAIN,

@@ -16,6 +16,7 @@ export {
   noteTagToggle,
   noteTagsAfterAdd,
   noteTagsAfterToggle,
+  tagDeltaOpts,
 } from "@/notes-core/src/note-tag";
 
 export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {

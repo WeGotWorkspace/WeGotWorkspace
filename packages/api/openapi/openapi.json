@@ -2321,7 +2321,7 @@
             "type": "string"
           },
           "categories": {
-            "description": "Replace the whole tag set. Used by create and by an explicit set-to-exactly-this. Tag edits send categoriesAdd and categoriesRemove instead. Do not combine this field with either delta field.",
+            "description": "Replace the whole tag set. Create uses this, and so does any metadata write that is not a tag edit (title, notebook move, and other upserts that still send tags). Tag edits use categoriesAdd and categoriesRemove. Do not combine this field with either delta field.",
             "type": "array",
             "items": {
               "type": "string"

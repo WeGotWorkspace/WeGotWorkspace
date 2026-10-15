@@ -11589,7 +11589,7 @@ export interface components {
             notebookId?: string;
             title?: string | null;
             body?: string;
-            /** @description Replace the whole tag set. Used by create and by an explicit set-to-exactly-this. Tag edits send categoriesAdd and categoriesRemove instead. Do not combine this field with either delta field. */
+            /** @description Replace the whole tag set. Create uses this, and so does any metadata write that is not a tag edit (title, notebook move, and other upserts that still send tags). Tag edits use categoriesAdd and categoriesRemove. Do not combine this field with either delta field. */
             categories?: string[];
             /** @description Tags to add onto the set stored in the journal. Applied after categoriesRemove, on the locked row. A new tag uses the same rule as categories. Do not send with categories. */
             categoriesAdd?: string[];

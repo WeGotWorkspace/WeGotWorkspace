@@ -102,6 +102,17 @@ describe("createHybridNotesOperations", () => {
     vi.restoreAllMocks();
   });
 
+  it("sends a tag delta and leaves the full tag list off the request", async () => {
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...note, tags: ["essay", "focus"] });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.upsertNote({ ...note, tags: ["essay", "focus"] }, { tagsAdd: ["focus"] });
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ tagsAdd: ["focus"] });
+    expect(request).not.toHaveProperty("tags");
+  });
+
   it("queues upsert offline and updates IndexedDB when navigator.onLine is false", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
 

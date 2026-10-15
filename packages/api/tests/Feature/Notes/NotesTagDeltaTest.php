@@ -81,7 +81,7 @@ final class NotesTagDeltaTest extends WgwDatabaseTestCase
 
         $this->patchTags($id, $this->etagOf($first), ['categoriesAdd' => ['a']])
             ->assertOk()
-            ->assertJsonPath('categories', ['a']);
+            ->assertJsonPath('categories', ['a', 'b']);
     }
 
     public function test_invalid_categories_add_is_rejected_and_the_same_value_may_be_removed(): void

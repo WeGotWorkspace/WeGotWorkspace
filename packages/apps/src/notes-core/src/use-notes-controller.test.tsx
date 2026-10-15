@@ -256,14 +256,14 @@ describe("useNotesController bootstrap sync", () => {
 
       upsertNote.mockClear();
       act(() => {
-        result.current.assignTagToNotes(["note-1"], "v2");
+        result.current.assignTagToNotes(["note-1"], "work");
       });
       await act(async () => {
         await vi.advanceTimersByTimeAsync(2500);
       });
       expect(upsertNote).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ tagsAdd: ["v2"] }),
+        expect.objectContaining({ tagsAdd: ["work"] }),
       );
     } finally {
       vi.useRealTimers();
