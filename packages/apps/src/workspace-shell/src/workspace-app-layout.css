@@ -212,7 +212,6 @@
     var(--app-sidebar-bg, var(--workspace-sidebar-surface))
   );
   --user-avatar-fg: var(--workspace-foreground);
-  --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 22%,
