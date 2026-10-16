@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
@@ -17,17 +17,29 @@ type UseDomainOutboxNoticeArgs = {
 };
 
 /**
- * Failed outbox rows (`isRetryableOutboxRow`) plus the conflict channel and
- * documents kept because they still have unsaved collab work. No poll: the
- * caller refreshes on mount and after reconnect flush.
+ * No-poll sync notice for Docs and Drive. Refreshes on mount and when
+ * `refreshKey` changes. `useContactsFailedSync` stays the poll variant
+ * (interval plus a connectivity refresh). Notes keeps that same poll shape
+ * on its own hook; this one does not replace either of them.
+ *
+ * `active` is true when any of these remain:
+ * - a transient outbox failure (`isRetryableOutboxRow`)
+ * - a permanent 403 or 404 outbox failure (`isPermanentlyFailedOutboxRow`)
+ * - a conflict-channel id (revision conflict, or a path this notice reported)
+ * - a document kept because it still has unsaved collab work
+ *
+ * The toast copy has to name both outbox classes. `clearConflicts` drops the
+ * channel state so Retry can turn the notice off once the other counts are zero.
  */
 export function useDomainOutboxNotice({
   username,
   domain,
   setConflictListener,
   refreshKey,
-}: UseDomainOutboxNoticeArgs): { active: boolean } {
-  const { conflicts } = useOfflineConflictQueue({ setListener: setConflictListener });
+}: UseDomainOutboxNoticeArgs): { active: boolean; clearConflicts: () => void } {
+  const { conflicts, clearConflicts } = useOfflineConflictQueue({
+    setListener: setConflictListener,
+  });
   const [failedCount, setFailedCount] = useState(0);
   const [keptCount, setKeptCount] = useState(0);
 
@@ -39,7 +51,7 @@ export function useDomainOutboxNotice({
     }
     try {
       const rows = await listOutboxMutationsForDomain(username, domain);
-      setFailedCount(rows.filter(isRetryableOutboxRow).length);
+      setFailedCount(rows.filter(isSyncNoticeOutboxRow).length);
       const kept = await listKeptUnsavedDocumentPaths(username);
       setKeptCount(kept.length);
     } catch {
@@ -51,5 +63,8 @@ export function useDomainOutboxNotice({
     void refresh();
   }, [refresh, refreshKey]);
 
-  return { active: failedCount + keptCount + conflicts.length > 0 };
+  return {
+    active: failedCount + keptCount + conflicts.length > 0,
+    clearConflicts,
+  };
 }

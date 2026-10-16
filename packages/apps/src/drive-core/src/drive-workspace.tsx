@@ -157,20 +157,21 @@ export function DriveWorkspace({
       setOutboxNoticeKey((key) => key + 1);
     },
   });
-  const outboxNotice = useDomainOutboxNotice({
+  const { active: outboxNoticeActive, clearConflicts } = useDomainOutboxNotice({
     username: offlineUsername,
     domain: DRIVE_DOMAIN,
     setConflictListener: setDriveSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
   const retryFailedOutbox = useCallback(() => {
+    clearConflicts();
     if (!offlineUsername) return;
     void getDriveSyncRunner(offlineUsername)
       .flush()
       .finally(() => setOutboxNoticeKey((key) => key + 1));
-  }, [offlineUsername]);
+  }, [clearConflicts, offlineUsername]);
   useSyncRetryToast({
-    active: offlineEnabled && outboxNotice.active,
+    active: offlineEnabled && outboxNoticeActive,
     title: driveLabels.syncFailedTitle,
     message: driveLabels.syncFailedMessage,
     retryLabel: driveLabels.retrySync,

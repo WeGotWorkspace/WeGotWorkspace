@@ -227,20 +227,21 @@ export function DocsHomeWorkspace({
       setOutboxNoticeKey((key) => key + 1);
     },
   });
-  const outboxNotice = useDomainOutboxNotice({
+  const { active: outboxNoticeActive, clearConflicts } = useDomainOutboxNotice({
     username: offlineUsername,
     domain: DOCS_DOMAIN,
     setConflictListener: setDocsSyncConflictListener,
     refreshKey: outboxNoticeKey,
   });
   const retryFailedOutbox = useCallback(() => {
+    clearConflicts();
     if (!offlineUsername) return;
     void getDocsSyncRunner(offlineUsername)
       .flush()
       .finally(() => setOutboxNoticeKey((key) => key + 1));
-  }, [offlineUsername]);
+  }, [clearConflicts, offlineUsername]);
   useSyncRetryToast({
-    active: Boolean(offlineUsername) && outboxNotice.active,
+    active: Boolean(offlineUsername) && outboxNoticeActive,
     title: labels.syncFailedTitle,
     message: labels.syncFailedMessage,
     retryLabel: labels.retrySync,

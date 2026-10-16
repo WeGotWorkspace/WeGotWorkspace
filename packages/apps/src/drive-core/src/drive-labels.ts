@@ -81,7 +81,8 @@ export const driveLabels = {
   offlinePendingSync: "Pending sync",
   toastSynced: "Changes synced",
   syncFailedTitle: "Some changes could not sync",
-  syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
+  syncFailedMessage:
+    "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
   retrySync: "Retry sync",
   accessTitle: "Access",
   accessScopesTitle: "Scopes",

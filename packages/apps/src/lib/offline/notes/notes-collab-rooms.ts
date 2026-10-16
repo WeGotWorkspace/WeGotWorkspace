@@ -2,12 +2,12 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
+  collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
 export function noteCollabRoomKey(uid: string): string {
@@ -110,12 +110,17 @@ export async function hasNoteCollabPendingServerSave(
   uid: string,
   existingDatabaseNames?: ReadonlySet<string> | null,
 ): Promise<boolean> {
-  const result = await firstFromRoomNames(
-    uid,
-    async (_d, p) => ((await p.get(PENDING_SERVER_SAVE_KEY)) ? true : null),
-    existingDatabaseNames,
-  );
-  return Boolean(result);
+  const room = noteCollabRoomKey(uid);
+  if (!room) return false;
+  const known =
+    existingDatabaseNames === undefined
+      ? await listExistingNoteCollabDatabaseNames()
+      : existingDatabaseNames;
+  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  for (const name of names) {
+    if (await collabIndexedDbHasPendingServerSave(name)) return true;
+  }
+  return false;
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */

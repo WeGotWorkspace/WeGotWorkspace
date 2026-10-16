@@ -243,8 +243,27 @@ export async function clearDocsCollabOfflinePersistence(apiPath: string): Promis
 }
 
 /** IndexedDB names a room may still occupy: the current `:v2` key and pre-v2 keys. */
-function indexedDbNamesForRoom(roomKey: string): string[] {
+export function indexedDbNamesForRoom(roomKey: string): string[] {
   return [docsCollabIndexedDbKey(roomKey), ...docsCollabLegacyIndexedDbKeys(roomKey)];
+}
+
+/**
+ * True when this y-indexeddb database has `PENDING_SERVER_SAVE_KEY`.
+ * Shared by Docs prune and Notes. Logout wipe reads the `custom` store
+ * directly instead, so a stuck sync cannot hang sign-out.
+ */
+export async function collabIndexedDbHasPendingServerSave(databaseName: string): Promise<boolean> {
+  const ydoc = new Y.Doc();
+  const persistence = new IndexeddbPersistence(databaseName, ydoc);
+  try {
+    await persistence.whenSynced;
+    return Boolean(await persistence.get(PENDING_SERVER_SAVE_KEY));
+  } catch {
+    return false;
+  } finally {
+    await persistence.destroy();
+    ydoc.destroy();
+  }
 }
 
 /**

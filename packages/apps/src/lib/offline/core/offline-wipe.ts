@@ -226,6 +226,10 @@ function collabRoomKeyFromDatabaseName(name: string): string {
   return withoutVersion.replace(/^\/+/, "");
 }
 
+/**
+ * Logout reads the y-indexeddb `custom` store directly so a stuck Y.Doc sync
+ * cannot hang the wipe. Docs prune and Notes use `collabIndexedDbHasPendingServerSave`.
+ */
 async function collabDatabaseHasPendingSave(databaseName: string): Promise<boolean> {
   const value = await readObjectStoreValue(
     databaseName,

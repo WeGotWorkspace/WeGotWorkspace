@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   enqueueOutboxMutation,
+  isPermanentlyFailedOutboxRow,
   isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutations,
   listOutboxMutationsForDomain,
   markOutboxError,
@@ -90,5 +92,42 @@ describe("core outbox store", () => {
     await markOutboxError(username, "a", "stateMismatch");
     const [conflicted] = await listOutboxMutations(username);
     expect(isRetryableOutboxRow(conflicted!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(conflicted!)).toBe(false);
+  });
+
+  it("splits transient retries from permanent 403 and 404 rejections", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "transient",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "missing",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "forbidden",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "transient", "network down");
+    await markOutboxError(username, "missing", "GET failed (404)");
+    await markOutboxError(username, "forbidden", "PATCH failed (403)");
+
+    const rows = await listOutboxMutations(username);
+    const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+
+    expect(isRetryableOutboxRow(byId.transient!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(byId.transient!)).toBe(false);
+    expect(isRetryableOutboxRow(byId.missing!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId.missing!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(byId.forbidden!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.transient!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.missing!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.forbidden!)).toBe(true);
   });
 });

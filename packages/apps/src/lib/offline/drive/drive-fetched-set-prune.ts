@@ -3,26 +3,31 @@ import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { parentAndName } from "@/lib/files/api-path";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import {
-  normalizeDocsAvailabilityPath,
-  removeDocsAvailability,
-} from "@/lib/offline/docs/docs-availability-store";
+import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { removeDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
+import { removeDriveAvailability } from "@/lib/offline/drive/drive-availability-store";
+import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
 import {
   normalizeDriveEntryPath,
+  removeDriveEntriesUnderPrefix,
   upsertDriveEntries,
 } from "@/lib/offline/drive/drive-directory-offline-store";
-import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
-import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import {
-  clearDocsCollabOfflinePersistence,
+  DRIVE_DOMAIN,
+  driveEntriesTable,
+  type OfflineDriveEntryRow,
+} from "@/lib/offline/drive/drive-schema";
+import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
+import { nextPathAfterRename } from "@/lib/offline/shared/drive-sidecar-mutations";
+import {
+  collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
   docsCollabRoomKey,
+  indexedDbNamesForRoom,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
-import { IndexeddbPersistence } from "y-indexeddb";
-import * as Y from "yjs";
 
 /** Paths kept because `PENDING_SERVER_SAVE_KEY` is set. Both home notices read this. */
 export const KEPT_UNSAVED_DOCUMENTS_META_KEY = "drive:kept-unsaved-documents";
@@ -32,6 +37,17 @@ export type FetchedDirectorySnapshotResult = {
   removedPaths: string[];
   /** Child paths left in place because they still have unsaved collab work. */
   keptUnsavedPaths: string[];
+};
+
+type OutboxPathPayload = {
+  op?: string;
+  from?: string;
+  destination?: string;
+  to?: string;
+  cwd?: string;
+  name?: string;
+  path?: string;
+  apiPath?: string;
 };
 
 /**
@@ -45,6 +61,11 @@ export type FetchedDirectorySnapshotResult = {
  * path, not a share alias). When a returned entry's parent is not that key,
  * this refuses to prune: deleting against the wrong parent would wipe a
  * different folder.
+ *
+ * A cached row with an open Docs or Drive outbox mutation for that path is
+ * left in place, including the path a rename or trash will land on. A removed
+ * directory also drops nested rows, except descendants that are unsaved or
+ * covered by an open outbox row.
  */
 export async function applyFetchedDirectorySnapshot(
   username: string,
@@ -68,22 +89,18 @@ export async function pruneDriveEntriesMissingFromFetch(
   const fetchedIds = new Set(entries.map((entry) => normalizeDriveEntryPath(entry.path)));
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = driveEntriesTable(db);
-  const rows = await table.where("parentPath").equals(normalizedParent).toArray();
+  const allRows = await table.toArray();
+  const existingDatabaseNames = await listExistingDatabaseNames();
+  const protectedPaths = await openOutboxProtectedPaths(username);
   const removedPaths: string[] = [];
   const keptUnsavedPaths: string[] = [];
 
-  for (const row of rows) {
-    if (fetchedIds.has(row.id)) continue;
-    if (await documentHasPendingServerSave(row.id)) {
-      keptUnsavedPaths.push(row.id);
-      continue;
-    }
-    await table.delete(row.id);
-    removedPaths.push(row.id);
-    if (isDocsCollabEditablePath(row.id)) {
-      await removeDocsAvailability(username, row.id);
-      await dropCollabDatabase(row.id);
-    }
+  for (const row of allRows) {
+    if (row.parentPath !== normalizedParent || fetchedIds.has(row.id)) continue;
+    await dropMissingRow(username, row, allRows, existingDatabaseNames, protectedPaths, {
+      removedPaths,
+      keptUnsavedPaths,
+    });
   }
 
   if (keptUnsavedPaths.length > 0) {
@@ -98,9 +115,10 @@ export async function pruneDriveEntriesMissingFromFetch(
 export async function listKeptUnsavedDocumentPaths(username: string): Promise<string[]> {
   const raw = await readMeta(username, KEPT_UNSAVED_DOCUMENTS_META_KEY);
   const stored = parsePathList(raw);
+  const existingDatabaseNames = await listExistingDatabaseNames();
   const stillKept: string[] = [];
   for (const path of stored) {
-    if (await documentHasPendingServerSave(path)) stillKept.push(path);
+    if (await documentHasPendingServerSave(path, existingDatabaseNames)) stillKept.push(path);
   }
   if (stillKept.length !== stored.length) {
     await writeKeptUnsavedDocuments(username, stillKept);
@@ -121,6 +139,109 @@ export function fetchedEntriesBelongToParent(
     const parent = normalizeDriveEntryPath(parentAndName(`/${id}`).destination);
     if (parent !== normalizedParent) return false;
   }
+  return true;
+}
+
+type PruneBuckets = {
+  removedPaths: string[];
+  keptUnsavedPaths: string[];
+};
+
+async function dropMissingRow(
+  username: string,
+  row: OfflineDriveEntryRow,
+  allRows: readonly OfflineDriveEntryRow[],
+  existingDatabaseNames: ReadonlySet<string> | null,
+  protectedPaths: ReadonlySet<string>,
+  buckets: PruneBuckets,
+): Promise<void> {
+  if (isCoveredByOpenOutbox(row.id, protectedPaths)) return;
+  if (await documentHasPendingServerSave(row.id, existingDatabaseNames)) {
+    buckets.keptUnsavedPaths.push(row.id);
+    return;
+  }
+  if (row.type === "dir") {
+    await dropMissingDirectory(
+      username,
+      row,
+      allRows,
+      existingDatabaseNames,
+      protectedPaths,
+      buckets,
+    );
+    return;
+  }
+  if (await removePrunedFile(username, row.id)) buckets.removedPaths.push(row.id);
+}
+
+async function dropMissingDirectory(
+  username: string,
+  row: OfflineDriveEntryRow,
+  allRows: readonly OfflineDriveEntryRow[],
+  existingDatabaseNames: ReadonlySet<string> | null,
+  protectedPaths: ReadonlySet<string>,
+  buckets: PruneBuckets,
+): Promise<void> {
+  const descendants = allRows.filter((candidate) => candidate.id.startsWith(`${row.id}/`));
+  const keepIds = new Set<string>();
+  for (const descendant of descendants) {
+    if (isCoveredByOpenOutbox(descendant.id, protectedPaths)) {
+      keepIds.add(descendant.id);
+      continue;
+    }
+    if (await documentHasPendingServerSave(descendant.id, existingDatabaseNames)) {
+      buckets.keptUnsavedPaths.push(descendant.id);
+      keepIds.add(descendant.id);
+    }
+  }
+
+  for (const descendant of descendants) {
+    if (descendant.type === "dir" || keepIds.has(descendant.id)) continue;
+    if (await removePrunedFile(username, descendant.id)) {
+      buckets.removedPaths.push(descendant.id);
+    } else {
+      keepIds.add(descendant.id);
+    }
+  }
+
+  const removableDirs = descendants.filter(
+    (descendant) => descendant.type === "dir" && !keepIds.has(descendant.id),
+  );
+  for (const descendant of removableDirs) {
+    await removeDriveContentBlob(username, descendant.id);
+    await removeDriveAvailability(username, descendant.id);
+    buckets.removedPaths.push(descendant.id);
+  }
+
+  if (keepIds.size === 0) {
+    await removeDriveEntriesUnderPrefix(username, row.id);
+  } else {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const table = driveEntriesTable(db);
+    await table.delete(row.id);
+    for (const descendant of removableDirs) await table.delete(descendant.id);
+  }
+
+  await removeDriveContentBlob(username, row.id);
+  await removeDriveAvailability(username, row.id);
+  buckets.removedPaths.push(row.id);
+}
+
+/**
+ * Drops the listing row, content blob, and drive availability pin.
+ * A Docs path also drops its pin and collab database. Returns false when a
+ * collab database delete is blocked or errors, and leaves that row in place.
+ */
+async function removePrunedFile(username: string, apiPath: string): Promise<boolean> {
+  if (isDocsCollabEditablePath(apiPath)) {
+    const deleted = await dropCollabDatabase(apiPath);
+    if (!deleted) return false;
+    await removeDocsAvailability(username, apiPath);
+  }
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await driveEntriesTable(db).delete(apiPath);
+  await removeDriveContentBlob(username, apiPath);
+  await removeDriveAvailability(username, apiPath);
   return true;
 }
 
@@ -151,39 +272,30 @@ function parsePathList(raw: string | null): string[] {
   }
 }
 
-async function documentHasPendingServerSave(apiPath: string): Promise<boolean> {
-  const room = docsCollabRoomKey(normalizeDocsAvailabilityPath(apiPath));
+async function documentHasPendingServerSave(
+  apiPath: string,
+  existingDatabaseNames: ReadonlySet<string> | null,
+): Promise<boolean> {
+  const room = docsCollabRoomKey(apiPath);
   if (!room || !isDocsCollabEditablePath(room)) return false;
-  const known = await listExistingDatabaseNames();
-  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
+  const names = indexedDbNamesForRoom(room);
   const toOpen =
-    known == null ? [docsCollabIndexedDbKey(room)] : names.filter((name) => known.has(name));
+    existingDatabaseNames == null
+      ? [docsCollabIndexedDbKey(room)]
+      : names.filter((name) => existingDatabaseNames.has(name));
   for (const name of toOpen) {
-    if (await indexedDbHasPendingSave(name)) return true;
+    if (await collabIndexedDbHasPendingServerSave(name)) return true;
   }
   return false;
 }
 
-async function dropCollabDatabase(apiPath: string): Promise<void> {
-  const room = docsCollabRoomKey(normalizeDocsAvailabilityPath(apiPath));
-  if (!room) return;
-  await clearDocsCollabOfflinePersistence(room);
-  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
-  await Promise.all(names.map(deleteIndexedDatabase));
-}
-
-async function indexedDbHasPendingSave(databaseName: string): Promise<boolean> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(databaseName, ydoc);
-  try {
-    await persistence.whenSynced;
-    return Boolean(await persistence.get(PENDING_SERVER_SAVE_KEY));
-  } catch {
-    return false;
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
+async function dropCollabDatabase(apiPath: string): Promise<boolean> {
+  const room = docsCollabRoomKey(apiPath);
+  if (!room) return true;
+  const results = await Promise.all(
+    indexedDbNamesForRoom(room).map((name) => deleteIndexedDatabase(name)),
+  );
+  return results.every(Boolean);
 }
 
 async function listExistingDatabaseNames(): Promise<ReadonlySet<string> | null> {
@@ -200,11 +312,61 @@ async function listExistingDatabaseNames(): Promise<ReadonlySet<string> | null> 
   }
 }
 
-function deleteIndexedDatabase(databaseName: string): Promise<void> {
+function deleteIndexedDatabase(databaseName: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const request = indexedDB.deleteDatabase(databaseName);
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
+    let request: IDBOpenDBRequest;
+    try {
+      request = indexedDB.deleteDatabase(databaseName);
+    } catch {
+      resolve(false);
+      return;
+    }
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => resolve(false);
+    request.onblocked = () => resolve(false);
   });
+}
+
+async function openOutboxProtectedPaths(username: string): Promise<Set<string>> {
+  const rows = await listOutboxMutations(username);
+  const paths = new Set<string>();
+  for (const row of rows) {
+    if (row.domain !== DRIVE_DOMAIN && row.domain !== DOCS_DOMAIN) continue;
+    for (const path of protectedPathsFromOutboxRow(row)) {
+      const id = normalizeDriveEntryPath(path);
+      if (id) paths.add(id);
+    }
+  }
+  return paths;
+}
+
+function protectedPathsFromOutboxRow(row: OfflineOutboxRow): string[] {
+  let payload: OutboxPathPayload;
+  try {
+    payload = JSON.parse(row.payload) as OutboxPathPayload;
+  } catch {
+    return [];
+  }
+  if (payload.op === "upload" && payload.cwd && payload.name) {
+    const parent = payload.cwd.replace(/\/+$/, "") || "/";
+    return [parent === "/" ? `/${payload.name}` : `${parent}/${payload.name}`];
+  }
+  if (payload.op === "star" && payload.path) return [payload.path];
+  if (payload.op === "create" && payload.apiPath) return [payload.apiPath];
+  if ((payload.op === "rename" || payload.op === "trash") && payload.from) {
+    const paths = [payload.from];
+    if (payload.destination && payload.to) {
+      paths.push(nextPathAfterRename(payload.from, payload.destination, payload.to));
+    }
+    return paths;
+  }
+  return [];
+}
+
+function isCoveredByOpenOutbox(id: string, protectedPaths: ReadonlySet<string>): boolean {
+  if (protectedPaths.has(id)) return true;
+  for (const path of protectedPaths) {
+    if (id.startsWith(`${path}/`)) return true;
+  }
+  return false;
 }
