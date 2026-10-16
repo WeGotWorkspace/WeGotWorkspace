@@ -9,8 +9,8 @@
   --user-avatar-name-leading: 1.1;
   --user-avatar-subtitle-leading: 1.25;
   /*
-   * Per-user identity hues. Wash algorithm matches `.checkbox` checked fill:
-   * saturated 1px stroke + surfaceTint 14% into surface.
+   * Per-user identity hues. Fill matches `.checkbox` surfaceTint (14% into
+   * surface). The stroke is the mark's control hairline, not the hue.
    * Glyph fg stays hue→ink for contrast on the soft wash.
    */
   --user-avatar-amber: #f59e0b;
@@ -59,7 +59,7 @@
   --user-avatar-hue: var(--user-avatar-sky);
 }
 
-/* Colored marks: saturated stroke + checkbox-style surfaceTint fill. */
+/* Colored marks: checkbox-style surfaceTint fill. Border stays the control hairline. */
 .user-avatar--colored {
   --_user-avatar-surface: var(--_lc-surface-bg, var(--workspace-surface));
   /* Same 14% surfaceTint as `.checkbox`. */
@@ -68,11 +68,9 @@
     var(--user-avatar-hue) 14%,
     var(--_user-avatar-surface)
   );
-  --user-avatar-tile-border: var(--user-avatar-hue);
   --user-avatar-tile-fg: color-mix(in oklab, var(--user-avatar-hue) 32%, var(--color-we-got-dark));
   --user-avatar-bg: var(--user-avatar-tile-bg);
   --user-avatar-fg: var(--user-avatar-tile-fg);
-  --user-avatar-border: var(--user-avatar-tile-border);
   --user-avatar-hover-bg: color-mix(
     in oklab,
     var(--user-avatar-hue) 18%,
@@ -94,7 +92,7 @@
   box-sizing: border-box;
   /* Match outline IconButton radius (global `--control-radius`). */
   border-radius: var(--user-avatar-radius, var(--control-radius));
-  font-weight: 500;
+  @apply font-semibold;
   /* Selected outline chrome: accent wash + accent glyph; quiet control stroke. */
   background-color: var(
     --user-avatar-bg,
@@ -109,13 +107,7 @@
   color: var(--user-avatar-fg, var(--button-active-color, var(--color-emerald)));
   border-width: var(--user-avatar-border-width, 1px);
   border-style: solid;
-  border-color: var(
-    --user-avatar-border,
-    var(
-      --button-outline-active-border-color,
-      var(--button-outline-border-color, var(--control-border-color))
-    )
-  );
+  border-color: var(--user-avatar-border, var(--control-border-color));
 }
 
 .user-avatar__presence {
@@ -173,7 +165,7 @@ button.user-avatar__mark {
   cursor: pointer;
   font: inherit;
   text-align: center;
-  @apply transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply font-semibold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
 }
 
 button.user-avatar__mark:hover {
@@ -222,7 +214,7 @@ button.user-avatar__mark:hover {
 .user-avatar--xl .user-avatar__mark {
   width: var(--control-height-xl, 2.75rem);
   height: var(--control-height-xl, 2.75rem);
-  @apply text-sm;
+  @apply text-xl;
 }
 
 /* Display-only — outside the control scale (Meet lobby / large idle tiles). */

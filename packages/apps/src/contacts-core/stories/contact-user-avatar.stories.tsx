@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect } from "storybook/test";
 import { createContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { addressBookDotColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactUserAvatar } from "@/contacts-core/src/contact-user-avatar";
 import { ContactsStoryScope } from "./contacts-story-scope";
 
@@ -41,9 +40,7 @@ export const WithPhoto: Story = {
     const img = canvasElement.querySelector("img.user-avatar__image");
     await expect(img?.getAttribute("src")).toBe("https://www.example.com/pub/photos/jqpublic.gif");
     await expect(img?.getAttribute("style") ?? "").toBe("");
-    await expect(avatar?.style.getPropertyValue("--contacts-book-color")).toBe(
-      addressBookDotColor({ id: "default" }),
-    );
+    await expect(avatar?.style.getPropertyValue("--contacts-book-color") ?? "").toBe("");
   },
 };
 
@@ -64,12 +61,7 @@ export const InitialsFromBook: Story = {
   },
   play: async ({ canvasElement }) => {
     const avatar = canvasElement.querySelector(".contacts-user-avatar") as HTMLElement | null;
-    await expect(avatar?.style.getPropertyValue("--contacts-book-color")).toBe(
-      addressBookDotColor({ id: "work" }),
-    );
-    await expect(avatar?.style.getPropertyValue("--contacts-book-color")).not.toBe(
-      addressBookDotColor({ id: "default" }),
-    );
+    await expect(avatar?.style.getPropertyValue("--contacts-book-color") ?? "").toBe("");
     await expect(canvasElement.querySelector(".user-avatar__mark")?.textContent).toMatch(/J/);
   },
 };
@@ -92,8 +84,6 @@ export const Organization: Story = {
   play: async ({ canvasElement }) => {
     const avatar = canvasElement.querySelector(".contacts-user-avatar") as HTMLElement | null;
     await expect(canvasElement.querySelector(".contacts-org-icon")).toBeTruthy();
-    await expect(avatar?.style.getPropertyValue("--contacts-book-color")).toBe(
-      addressBookDotColor({ id: "default" }),
-    );
+    await expect(avatar?.style.getPropertyValue("--contacts-book-color") ?? "").toBe("");
   },
 };

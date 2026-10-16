@@ -8,7 +8,6 @@ import {
   phonesAfterNumberChange,
   urlsAfterUriChange,
 } from "./contact-channel-commit";
-import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsDetailView } from "./contacts-detail-view";
 import { defaultContactsLabels } from "./contacts-labels";
 import {
@@ -365,7 +364,7 @@ describe("ContactsDetailView identity header", () => {
       (
         identity?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
     expect(identity?.querySelector(".contacts-detail-view__heading")).toBeTruthy();
     expect(identity?.querySelector(".contacts-detail-view__title")?.textContent).toBe(
       "Ada Lovelace",

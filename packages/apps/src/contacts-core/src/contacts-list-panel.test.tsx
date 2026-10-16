@@ -3,7 +3,6 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { TooltipProvider } from "@/ui/tooltip";
-import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
 import { contactListRowOffset, flattenContactListRows } from "./contacts-list-window";
@@ -205,10 +204,10 @@ describe("ContactsListPanel avatars", () => {
       (
         personRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
   });
 
-  it("tints list initials from each row's address book", () => {
+  it("does not wash list initials with each row's address book", () => {
     const workCard = {
       ...personCard,
       id: "card-joe",
@@ -223,13 +222,12 @@ describe("ContactsListPanel avatars", () => {
       (
         defaultRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
     expect(
       (
         workRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "work" }));
-    expect(addressBookDotColor({ id: "work" })).not.toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
   });
 
   it("lazy-loads list photo imgs with native loading and decoding", () => {

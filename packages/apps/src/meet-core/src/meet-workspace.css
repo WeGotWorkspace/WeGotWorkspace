@@ -399,10 +399,6 @@
   color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
 }
 
-:is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .user-avatar__mark {
-  font-weight: 600;
-}
-
 :is(.meet-workspace, .meet-dialog-surface, .meet-popover-surface) .meet-menu-surface {
   @apply border-0;
   background-color: var(--meet-panel);
@@ -1033,29 +1029,9 @@
   color: var(--workspace-foreground);
 }
 
-/* Lobby / dark peer tiles: light marks (ink fails on navy fills). */
-.meet-workspace .meet-peer-tile .user-avatar--colored .user-avatar__mark {
-  color: var(--meet-text, #ffffff);
-}
-
 /* Guest preview stays a light wash, so marks stay ink. */
 .meet-guest-lobby__preview .user-avatar--colored .user-avatar__mark {
   color: var(--workspace-foreground);
-}
-
-/* Camera-off initial: neutral disc, not the Brat mark or a saturated hue. */
-.meet-workspace .meet-peer-tile__fill .user-avatar__mark,
-.meet-workspace .meet-peer-tile__fill .user-avatar--colored .user-avatar__mark {
-  --user-avatar-fg: var(--workspace-accent-foreground);
-  --user-avatar-bg: color-mix(
-    in oklch,
-    var(--workspace-accent-foreground) 16%,
-    var(--workspace-accent)
-  );
-  --user-avatar-border: color-mix(in oklch, var(--workspace-accent-foreground) 28%, transparent);
-  color: var(--user-avatar-fg);
-  background-color: var(--user-avatar-bg);
-  border-color: var(--user-avatar-border);
 }
 
 .meet-mini-player__preview .user-avatar__mark {
@@ -1492,13 +1468,6 @@
       align-self: center;
     }
   }
-}
-
-/* Camera-off initial stays smaller than the tile, including spotlight. */
-.meet-call-stage .meet-peer-tile__fill .user-avatar__mark {
-  width: clamp(2.5rem, 18cqmin, 5rem);
-  height: clamp(2.5rem, 18cqmin, 5rem);
-  font-size: clamp(0.875rem, 6cqmin, 1.75rem);
 }
 
 .meet-call-stage__screen,
