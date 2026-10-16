@@ -1,6 +1,12 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  readCachedDriveNodeId,
+  upsertDriveEntry,
+} from "@/lib/offline/drive/drive-directory-offline-store";
+import "@/lib/offline/drive/drive-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import {
@@ -51,6 +57,47 @@ describe("flushDocsOutbox", () => {
     expect(result.flushed).toBe(0);
     expect(result.failed).toBe(1);
     expect(result.stateMismatches).toEqual(["users/alice/doc.md"]);
+  });
+
+  it("moves the cached nodeId when a queued Docs rename flushes", async () => {
+    const oldPath = "/users/alice/queued.md";
+    const entry: WgwDriveDirectoryEntry = {
+      type: "file",
+      path: oldPath,
+      name: "queued.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      nodeId: "fn-queued",
+      myRights: {
+        mayView: true,
+        mayComment: false,
+        mayReview: false,
+        mayEditContent: true,
+        mayManageStructure: true,
+        mayShare: false,
+      },
+    };
+    await upsertDriveEntry(username, entry);
+    await enqueueOutboxMutation(username, {
+      id: "rename-node",
+      domain: DOCS_DOMAIN,
+      op: "rename",
+      payload: JSON.stringify({
+        op: "rename",
+        from: oldPath,
+        destination: "/users/alice",
+        to: "queued-renamed.md",
+      }),
+    });
+    renameItem.mockResolvedValue(undefined);
+
+    await flushDocsOutbox(username);
+
+    expect(await readCachedDriveNodeId(username, "users/alice/queued-renamed.md")).toBe(
+      "fn-queued",
+    );
+    expect(await readCachedDriveNodeId(username, oldPath)).toBeUndefined();
   });
 
   it("reports when removing a path drops a queued trash", async () => {

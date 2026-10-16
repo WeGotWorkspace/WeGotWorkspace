@@ -457,6 +457,11 @@ export function useDocsCollabJoin({
     const ydoc = new Y.Doc();
     refs.ydocRef.current = ydoc;
     const database = await resolveDocsCollabDatabase(room);
+    if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) {
+      if (refs.ydocRef.current === ydoc) refs.ydocRef.current = null;
+      ydoc.destroy();
+      return;
+    }
     const persistence = new IndexeddbPersistence(database.name, ydoc);
     refs.persistenceRef.current = persistence;
 

@@ -99,10 +99,23 @@ export async function migrateDocsCollabPendingSaveFromLegacy(
   }
 }
 
+/** `null` when the browser cannot list databases; callers then open the name. */
+async function listedIndexedDbNames(): Promise<ReadonlySet<string> | null> {
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
+  try {
+    const rows = await indexedDB.databases();
+    return new Set(rows.flatMap((row) => (row.name ? [row.name] : [])));
+  } catch {
+    return null;
+  }
+}
+
 async function withRawIndexedDbPersistence<T>(
   indexedDbName: string,
   run: (persistence: IndexeddbPersistence) => Promise<T>,
 ): Promise<T | undefined> {
+  const listed = await listedIndexedDbNames();
+  if (listed && !listed.has(indexedDbName)) return undefined;
   const ydoc = new Y.Doc();
   const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
   try {
@@ -165,7 +178,9 @@ export async function docsCollabReadNames(roomKey: string): Promise<string[]> {
     names.push(docsCollabIndexedDbKey(slash, DOCS_COLLAB_PATH_DB_VERSION));
   }
   names.push(...docsCollabLegacyIndexedDbKeys(roomKey));
-  return names;
+  const listed = await listedIndexedDbNames();
+  if (!listed) return names;
+  return names.filter((name) => listed.has(name));
 }
 
 async function clearIndexedDbRoom(indexedDbName: string): Promise<void> {

@@ -14,12 +14,12 @@ import {
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import {
-  migrateDocsAvailabilityPath,
   normalizeDocsAvailabilityPath,
   readDocsAvailability,
   removeDocsAvailability,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
+import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { DOCS_DOMAIN, type OfflineDocsAvailabilityRow } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import {
@@ -165,12 +165,7 @@ async function applyOnlineRenameSideEffects(
   destination: string,
   to: string,
 ): Promise<void> {
-  const oldPath = normalizeDocsAvailabilityPath(from);
-  const normalizedDest = normalizeApiVirtualPath(destination);
-  const newPath = normalizeDocsAvailabilityPath(
-    normalizedDest === "/" ? `/${to}` : `${normalizedDest}/${to}`,
-  );
-  await migrateDocsAvailabilityPath(username, oldPath, newPath);
+  await applyDriveSidecarPathMigration(username, from, destination, to);
 }
 
 export function createHybridDocsDriveOperations(username: string): DriveAPIOperations {

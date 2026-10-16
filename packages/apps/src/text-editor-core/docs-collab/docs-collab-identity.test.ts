@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
-import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
+import {
+  readCachedDriveNodeId,
+  upsertDriveEntry,
+} from "@/lib/offline/drive/drive-directory-offline-store";
+import { createHybridDocsDriveOperations } from "@/lib/offline/docs/docs-hybrid-operations";
 import { rememberOfflineDriveUsername } from "@/lib/offline/offline-session";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import "@/lib/offline/drive/drive-schema";
@@ -22,11 +26,31 @@ import {
 } from "./docs-collab-persistence";
 
 const saveDocument = vi.hoisted(() => vi.fn(async () => "etag-1"));
+const liveRenameItem = vi.hoisted(() =>
+  vi.fn(async () => ({
+    user: { username: "ada", name: "Ada", role: "user" as const, roots: [] },
+    cwd: "/",
+    directory: { location: "/", files: [] },
+  })),
+);
 
 vi.mock("./docs-collab-server-io", () => ({
   saveDocument,
   loadYjsSnapshot: vi.fn(),
 }));
+
+vi.mock("@/lib/api/wgw/drive", () => ({
+  createWgwDriveOperations: vi.fn(() => ({
+    renameItem: liveRenameItem,
+    createFolder: vi.fn(),
+    listAllDirectoryEntries: vi.fn(async () => []),
+  })),
+}));
+
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/core/browser-online")>();
+  return { ...actual, readBrowserOnline: () => true };
+});
 
 const username = "ada";
 
@@ -94,6 +118,11 @@ function nextTask(): Promise<void> {
   });
 }
 
+async function renameThroughDocs(from: string, destination: string, to: string): Promise<void> {
+  const operations = createHybridDocsDriveOperations(username);
+  await operations.renameItem({ from, destination, to });
+}
+
 async function databaseNamesAfterDeletes(): Promise<string[]> {
   for (let attempt = 0; attempt < 40; attempt += 1) await nextTask();
   return (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : []));
@@ -102,6 +131,7 @@ async function databaseNamesAfterDeletes(): Promise<string[]> {
 describe("docs collab identity database", () => {
   beforeEach(() => {
     saveDocument.mockClear();
+    liveRenameItem.mockClear();
     rememberOfflineDriveUsername(username);
   });
 
@@ -113,7 +143,10 @@ describe("docs collab identity database", () => {
     await seedPathDatabase(docsCollabRoomKey(oldPath), "unsaved rename", true);
     const drafted = await openResolved(oldPath);
     await closeOpened(drafted);
-    await upsertDriveEntry(username, entry(newPath, "fn-rename"));
+    await renameThroughDocs(oldPath, "/users/ada", "new-name.md");
+
+    expect(await readCachedDriveNodeId(username, "users/ada/new-name.md")).toBe("fn-rename");
+    expect(await readCachedDriveNodeId(username, oldPath)).toBeUndefined();
 
     const opened = await openResolved(newPath);
     try {
@@ -151,7 +184,9 @@ describe("docs collab identity database", () => {
     await seedPathDatabase(docsCollabRoomKey(oldPath), "unsaved move", true);
     const drafted = await openResolved(oldPath);
     await closeOpened(drafted);
-    await upsertDriveEntry(username, entry(newPath, "fn-move"));
+    await renameThroughDocs(oldPath, "/users/ada/archive", "note.md");
+
+    expect(await readCachedDriveNodeId(username, "users/ada/archive/note.md")).toBe("fn-move");
 
     const opened = await openResolved(newPath);
     try {
