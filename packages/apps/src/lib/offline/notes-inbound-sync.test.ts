@@ -226,4 +226,35 @@ describe("syncNotesInboundFromRest", () => {
     expect(ingestNotebookDestroyed).toHaveBeenCalledWith("ada", "notes-gone");
     expect(listNoteChanges).toHaveBeenCalledWith("notes-general", "tok-1");
   });
+
+  it("does not advance the sync token when a notebook delta skipped a note", async () => {
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "note-tok-2",
+      created: [],
+      updated: ["n-skipped"],
+      destroyed: [],
+    });
+    getNote.mockResolvedValue({
+      id: "n-skipped",
+      notebookId: "notes-general",
+      title: "Hi",
+      body: "",
+      categories: [],
+    });
+    ingestNote.mockResolvedValue("skipped-pending");
+
+    const result = await syncNotesInboundFromRest("ada");
+
+    expect(result.changed).toBe(false);
+    expect(writeToken).toHaveBeenCalledWith("ada", NOTES_NOTEBOOKS_TOKEN_KEY, "tok-2");
+    expect(writeToken).not.toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
+  });
 });

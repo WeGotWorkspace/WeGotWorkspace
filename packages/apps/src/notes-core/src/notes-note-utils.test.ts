@@ -305,39 +305,47 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.date).toBe("2026-08-06T12:00:00.000Z");
   });
 
-  it("keeps optimistic tags when merging a stale create/bootstrap row", () => {
+  it("adopts server tags and archived when timestamps are equal", () => {
     const local: Note = {
       ...sampleNote,
       id: "n-new",
       tags: ["focus"],
+      archived: true,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: [],
+      archived: false,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.tags).toEqual([]);
+    expect(merged[0]?.archived).toBe(false);
+  });
+
+  it("keeps optimistic tags and archived when the local row is strictly newer", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: ["focus"],
+      archived: true,
       date: "2026-08-10T12:00:01.000Z",
     };
     const server: Note = {
       ...sampleNote,
       id: "n-new",
       tags: [],
-      date: "2026-08-10T12:00:00.000Z",
-    };
-    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
-    expect(merged[0]?.tags).toEqual(["focus"]);
-  });
-
-  it("keeps optimistic archived when merging a stale bootstrap row", () => {
-    const local: Note = {
-      ...sampleNote,
-      archived: true,
-      date: "2026-08-10T12:00:00.000Z",
-    };
-    const server: Note = {
-      ...sampleNote,
       archived: false,
       date: "2026-08-10T12:00:00.000Z",
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.tags).toEqual(["focus"]);
     expect(merged[0]?.archived).toBe(true);
   });
 
-  it("keeps optimistic archived when the server row is newer but still unarchived", () => {
+  it("adopts a remote un-archive when the server row is newer", () => {
     const local: Note = {
       ...sampleNote,
       archived: true,
@@ -350,7 +358,7 @@ describe("notes-note-utils", () => {
       updatedAt: "2026-08-10T13:00:00.000Z",
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
-    expect(merged[0]?.archived).toBe(true);
+    expect(merged[0]?.archived).toBe(false);
   });
 
   it("keeps optimistic notebook when merging a stale bootstrap row", () => {
@@ -358,7 +366,7 @@ describe("notes-note-utils", () => {
       ...sampleNote,
       notebook: "Ideas",
       notebookId: "nb-ideas",
-      date: "2026-08-10T12:00:00.000Z",
+      date: "2026-08-10T12:00:01.000Z",
     };
     const server: Note = {
       ...sampleNote,
