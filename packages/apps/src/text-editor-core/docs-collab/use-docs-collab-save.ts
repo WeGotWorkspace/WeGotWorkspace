@@ -138,6 +138,7 @@ export function useDocsCollabSave({
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
       refs.localDirtySinceLastSaveRef.current = success.localDirtySinceLastSave ?? false;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
+      refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
       await updatePendingState(false, false);
@@ -148,6 +149,7 @@ export function useDocsCollabSave({
       refs.saveFailedRef.current = true;
       const terminal = terminalSaveFailure(err);
       if (terminal) {
+        refs.saveTerminalKindRef.current = terminal;
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
         await updatePendingState(true, true);

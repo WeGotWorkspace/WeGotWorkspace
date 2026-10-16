@@ -35,6 +35,7 @@ export type TeardownResetState = {
   saveInFlight: boolean;
   saveRetryMs: number;
   nextSaveAttemptAt: number;
+  saveTerminalKind: null;
   reconnectInFlight: boolean;
   joinedRoom: string | null;
   authToken: string | undefined;
@@ -51,6 +52,7 @@ export function createTeardownResetState(): TeardownResetState {
     saveInFlight: false,
     saveRetryMs: 0,
     nextSaveAttemptAt: 0,
+    saveTerminalKind: null,
     reconnectInFlight: false,
     joinedRoom: null,
     authToken: undefined,

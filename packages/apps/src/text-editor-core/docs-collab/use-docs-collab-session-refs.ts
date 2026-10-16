@@ -27,6 +27,9 @@ export function useDocsCollabSessionRefs(
   const saveInFlightRef = useRef(false);
   const saveRetryMsRef = useRef(0);
   const nextSaveAttemptAtRef = useRef(0);
+  const saveTerminalKindRef = useRef<
+    import("./docs-collab-types").DocsCollabSaveTerminalKind | null
+  >(null);
   const localDirtySinceLastSaveRef = useRef(false);
   const pendingServerSaveRef = useRef(false);
   const externalWriteHoldRef = useRef(false);
@@ -60,6 +63,7 @@ export function useDocsCollabSessionRefs(
       saveInFlightRef,
       saveRetryMsRef,
       nextSaveAttemptAtRef,
+      saveTerminalKindRef,
       localDirtySinceLastSaveRef,
       pendingServerSaveRef,
       externalWriteHoldRef,
