@@ -84,7 +84,7 @@ describe("useDocsCollabReconnect save gate", () => {
           setConnectingPeers: vi.fn(),
         },
         save: { persistToServer, flushPendingSaveIfReady: vi.fn() },
-        join: { trySeedFromFile: vi.fn(), mergeServerState: vi.fn(async () => undefined) },
+        join: { trySeedFromFile: vi.fn(), mergeServerState: vi.fn(async () => true) },
         setDocStatus: vi.fn(),
       }),
     );
@@ -113,7 +113,7 @@ describe("useDocsCollabReconnect save gate", () => {
           setConnectingPeers: vi.fn(),
         },
         save: { persistToServer, flushPendingSaveIfReady: vi.fn() },
-        join: { trySeedFromFile: vi.fn(), mergeServerState: vi.fn(async () => undefined) },
+        join: { trySeedFromFile: vi.fn(), mergeServerState: vi.fn(async () => true) },
         setDocStatus: vi.fn(),
       }),
     );
