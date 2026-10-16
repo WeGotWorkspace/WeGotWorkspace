@@ -129,6 +129,12 @@ describe("useNotesTagRename", () => {
       other.result.current.renameTag("a", "b");
     });
     expect(other.selectView).not.toHaveBeenCalled();
+
+    const starred = renderTagRename([note({ id: "yes", tags: ["red"] })], "starred");
+    act(() => {
+      starred.result.current.renameTag("red", "blue");
+    });
+    expect(starred.selectView).not.toHaveBeenCalled();
   });
 
   it("retargets a mixed-case tag view and rewrites both casings", async () => {
