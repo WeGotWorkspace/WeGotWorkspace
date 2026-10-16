@@ -1,8 +1,9 @@
 import { TooltipProvider } from "@/ui/tooltip";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
@@ -36,7 +37,11 @@ import {
   useDriveOfflineOpenGuard,
 } from "@/drive-core/src/use-drive-offline-availability";
 import { useDriveOfflineFileActions } from "@/drive-core/src/use-drive-offline-file-actions";
+import { driveLabels } from "@/drive-core/src/drive-labels";
+import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
+import { setDriveSyncConflictListener } from "@/lib/offline/drive/drive-sync-conflicts";
+import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -140,16 +145,39 @@ export function DriveWorkspace({
     [canOpenOffline, controller, showError],
   );
 
+  const [outboxNoticeKey, setOutboxNoticeKey] = useState(0);
   const syncing = useOfflineReconnectFlush({
     enabled: offlineEnabled,
     flush: async () => {
       if (!offlineUsername) return;
       await getDriveSyncRunner(offlineUsername).flush();
     },
-    afterFlush: refresh,
+    afterFlush: async () => {
+      await refresh();
+      setOutboxNoticeKey((key) => key + 1);
+    },
+  });
+  const outboxNotice = useDomainOutboxNotice({
+    username: offlineUsername,
+    domain: DRIVE_DOMAIN,
+    setConflictListener: setDriveSyncConflictListener,
+    refreshKey: outboxNoticeKey,
+  });
+  const retryFailedOutbox = useCallback(() => {
+    if (!offlineUsername) return;
+    void getDriveSyncRunner(offlineUsername)
+      .flush()
+      .finally(() => setOutboxNoticeKey((key) => key + 1));
+  }, [offlineUsername]);
+  useSyncRetryToast({
+    active: offlineEnabled && outboxNotice.active,
+    title: driveLabels.syncFailedTitle,
+    message: driveLabels.syncFailedMessage,
+    retryLabel: driveLabels.retrySync,
+    onRetry: retryFailedOutbox,
   });
 
-  useOfflineSyncToast(syncing, "Changes synced");
+  useOfflineSyncToast(syncing, driveLabels.toastSynced);
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({
     labels: controller.labels,
     view: controller.view,

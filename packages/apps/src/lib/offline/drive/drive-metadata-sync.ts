@@ -2,10 +2,8 @@ import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
 import type { WgwDriveDirectoryEntry, WgwDriveListingResponse } from "@/lib/api/wgw/types";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
-import {
-  upsertDriveEntries,
-  writeDriveBootstrapToCache,
-} from "@/lib/offline/drive/drive-directory-offline-store";
+import { writeDriveBootstrapToCache } from "@/lib/offline/drive/drive-directory-offline-store";
+import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 
@@ -109,7 +107,9 @@ export async function syncDriveMetadataTree(
     progress.total += 1;
     try {
       const entries = await fetchDirectoryEntries(dir, signal);
-      await upsertDriveEntries(username, entries);
+      // Snapshot replaces upsert: a later JMAP crawl keeps this call and
+      // stamps node ids after it. Do not prune in the catch below.
+      await applyFetchedDirectorySnapshot(username, dir, entries);
       for (const entry of entries) {
         if (entry.type === "dir") {
           queue.push(normalizePath(entry.path));
@@ -136,5 +136,5 @@ export async function refreshDriveDirectoryCache(
 ): Promise<void> {
   if (!getConnectivitySnapshot()) return;
   const entries = await fetchDirectoryEntries(parentPath, signal);
-  await upsertDriveEntries(username, entries);
+  await applyFetchedDirectorySnapshot(username, parentPath, entries);
 }
