@@ -20,7 +20,7 @@ Draws from the collab storage hardening milestone (the binary Docs wire, #1303).
 - JMAP listing maps a node and currently drops `node.id` except the field added in the cache pull request. `path: packages/apps/src/lib/api/wgw/drive-jmap.ts:103`
 - `/groups` is a JMAP top-level query, and user paths resolve through FileNode. `path: packages/apps/src/lib/api/wgw/drive-jmap.ts:234`
 - Guest offline sync is skipped. `path: packages/apps/src/drive-core/src/use-drive-api.ts:79`
-- `docsCollabIndexedDbKey` appends `:v2` and is shared with Notes.
+- `docsCollabIndexedDbKey` appends `:v2` and is shared with Notes. Notes opens that name as its `:v2` database. `path: packages/apps/src/lib/offline/notes/notes-collab-rooms.ts:69` `path: packages/apps/src/lib/offline/notes/notes-collab-rooms.ts:81`
 
 ## Considered
 
