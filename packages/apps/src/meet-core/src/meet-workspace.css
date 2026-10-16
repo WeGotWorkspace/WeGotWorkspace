@@ -962,8 +962,8 @@
 }
 
 /*
- * Call chrome fill is the main-area selected outline wash: 12% accent into
- * paper (`--button-outline-active-background`). Button tokens on this element
+ * Call chrome fill is the shared selected outline wash
+ * (`--button-outline-active-background`). Button tokens on this element
  * stay local so a selected toggle still reads against that fill.
  * `--meet-screen-bg` stays black for video pixels.
  */
@@ -977,12 +977,8 @@
 }
 
 :is(.meet-call-bar, .meet-call-stage--expanded, .meet-call-expanded) {
-  --meet-call-surface: color-mix(in oklab, var(--workspace-accent) 12%, var(--workspace-surface));
+  --meet-call-surface: var(--button-outline-active-background);
   background-color: var(--meet-call-surface);
-  /*
-   * Chrome is already a 12% accent wash. Outline hover/selected must be
-   * darker steps of the same mix or they disappear into the bar.
-   */
 }
 
 .meet-call-bar {
@@ -1307,11 +1303,6 @@
 
 .meet-call-stage__brand {
   @apply flex min-w-0 items-center gap-3;
-}
-
-.meet-call-stage__mark {
-  @apply flex size-4 shrink-0 items-center justify-center;
-  color: var(--workspace-accent);
 }
 
 .meet-call-stage__copy {
