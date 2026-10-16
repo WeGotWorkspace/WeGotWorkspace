@@ -709,7 +709,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    const target = resolveNotesCreateTarget(createView, notebooks);
+    const target = resolveNotesCreateTarget(createView, notebooks, notebookCollections);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();
@@ -721,6 +721,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       excerpt: "",
       body: [""],
       notebook: target.notebook,
+      ...(target.notebookId ? { notebookId: target.notebookId } : {}),
       tags: targetTag ? [normalizeTag(targetTag)] : [],
       wordCount: 0,
       ...(target.scope === "group" && target.groupSlug
@@ -757,7 +758,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           );
         }
         if (isLocalTempNoteId(saved.id)) {
-          showMutationError(L.syncFailedMessage);
+          showMutationError(L.createNoteFailedMessage(target.notebook));
           return saved;
         }
         persistOptimisticNote(saved, false);
@@ -774,10 +775,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     }
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [
-    L.newNoteCategory,
-    L.syncFailedMessage,
-    L.toastNewNote,
+    L,
     canCreateNote,
+    notebookCollections,
     notebooks,
     operations,
     persistOptimisticNote,

@@ -78,6 +78,7 @@ function noteMetadataUpsertRequest(
   return {
     id: noteId,
     notebook: metadata.notebook,
+    ...(metadata.notebookId ? { notebookId: metadata.notebookId } : {}),
     ...(metadata.title !== undefined ? { title: metadata.title } : {}),
     ...(metadata.tags !== undefined ? { tags: metadata.tags } : {}),
     ...(metadata.tagsAdd !== undefined ? { tagsAdd: metadata.tagsAdd } : {}),
