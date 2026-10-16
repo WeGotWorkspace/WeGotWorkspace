@@ -197,7 +197,8 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
-   * These steps apply at every viewport. Do not raise them on small screens.
+   * Desktop keeps those steps. Phones floor real text entry to 1rem below
+   * so iOS Safari does not zoom the viewport on focus.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -297,8 +298,9 @@
 
 /*
  * Unmanaged native `input` / `textarea` / `select` stay ≥1rem.
- * Shared Input / Textarea / SelectTrigger / control-surface use the size-step
- * tokens at every viewport (xs/sm/md stay below 1rem).
+ * Shared Input / Textarea use the size-step tokens, then the phone block
+ * floors those text fields at 1rem. SelectTrigger and `.control-surface`
+ * stay on the desktop steps (they are buttons; iOS does not zoom them).
  *
  * Opt-outs from the unmanaged floor (own type scale):
  * - `.input` / `.input__field` / `.textarea` — size-class tokens
@@ -318,6 +320,28 @@ select {
 }
 
 @media (max-width: 767px) {
+  /*
+   * iOS Safari zooms the viewport when a focused field is under 16px.
+   * Floor real text entry only. Do not lift xs/sm fields onto the md step.
+   */
+  .input,
+  .input__field,
+  .textarea,
+  .tag-group__input {
+    --input-font-size-xs: 1rem;
+    --input-font-size-sm: 1rem;
+    --input-font-size-md: 1rem;
+    /* Chip field reads `--tag-font-size`, not the input size steps. */
+    --tag-font-size: 1rem;
+    font-size: 1rem;
+  }
+
+  /* 16px belongs in a taller control. Same ratio as native iOS. */
+  :root {
+    --control-height-sm: 2.5rem;
+    --control-height-md: 2.75rem;
+  }
+
   .text-editor,
   .text-editor-prose {
     --text-editor-prose-font-size: 1rem;
