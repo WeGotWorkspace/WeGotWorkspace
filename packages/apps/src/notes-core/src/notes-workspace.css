@@ -82,10 +82,11 @@
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /*
-   * Open / selected list row: same wash as Drive and Docs tiles
-   * (`--drive-item-selected-background` in workspace-color.css).
+   * Selected list row: same wash as sidebar item hover
+   * (`.sidebar-section .menu-item--interactive:hover` /
+   * `--button-outline-hover-background`). Active-only stays the Drive tile wash.
    */
-  --list-item-selected-bg: var(--drive-item-selected-background);
+  --list-item-selected-bg: var(--button-outline-hover-background);
   --list-item-active-bg: var(--drive-item-selected-background);
   /* Checked fill is Dark (`--color-emerald`). White glyph, same as Drive. */
   --list-item-checkbox-icon-color: #ffffff;
