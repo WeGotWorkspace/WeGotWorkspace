@@ -201,12 +201,31 @@
 }
 
 /*
+ * Sheet measure is `max-w-[680px]` (`.note-detail-view.paper-sheet`). Once the
+ * detail pane is that narrow, the sheet's inline edges already meet the pane.
+ * Zero desk pads at the same width so full height arrives with the side flush
+ * — not later, while a band of viewports still shows cream above and below.
+ * Variables live on the scroll (a descendant of container `workspace-detail`)
+ * so the shared min-height calc becomes `100%`.
+ */
+@container workspace-detail (max-width: 680px) {
+  .notes-workspace .workspace-detail-pane__scroll:has(.note-detail-view.paper-sheet) {
+    --note-detail-sheet-desk-pad-block-start: 0;
+    --note-detail-sheet-desk-pad-block-end: 0;
+    background-color: var(--paper-sheet-bg);
+  }
+
+  .notes-workspace .note-detail-view.paper-sheet {
+    --paper-sheet-shadow: none;
+  }
+}
+
+/*
  * Flush sheet chrome below the sidebar-dock threshold (`--breakpoint-sidebar`
- * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Above that,
- * cream desk pads stay intentional on wide three-column layouts. At and
- * below: zero desk pads so the base min-height calc is `100%`, flush scroll
- * padding, and paint desk/pane with `--paper-sheet-bg` so short notes
- * read as continuous fullscreen tint (not cream around paper).
+ * / 72.5rem in styles.css; same ε pattern as Meet `72.49rem`). Below that the
+ * sidebar overlays, so the pane can still be wider than 680px; `max-w-none`
+ * removes the remaining inline inset and the desk pads drop with it. Wider
+ * panes keep the cream desk until the 680px container query above.
  */
 @media (max-width: 72.49rem) {
   .notes-workspace {

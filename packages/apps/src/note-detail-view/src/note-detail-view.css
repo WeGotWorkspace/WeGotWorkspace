@@ -10,9 +10,9 @@
  * Notes-workspace sets `--paper-sheet-min-height` (scrollport minus desk pads)
  * so short notes fill the visible desk; shared `.paper-sheet` grows with
  * content (`height: fit-content`) and overflow scrolls on
- * `.workspace-detail-pane__scroll`. Below sidebar-dock it zeroes desk pads
- * (so the same calc is `100%`), zeroes scroll padding, and matches the desk
- * to this sheet fill for fullscreen tint.
+ * `.workspace-detail-pane__scroll`. Desk pads also drop when the detail pane
+ * is at most this sheet's 680px measure (inline edges already meet the pane)
+ * and below sidebar-dock (fullscreen tint, `max-w-none`).
  */
 .note-detail-view.paper-sheet {
   /* Horizontal inset matches list-item `px-4 md:px-6` (Notes `--notes-pane-padding-x`). */
