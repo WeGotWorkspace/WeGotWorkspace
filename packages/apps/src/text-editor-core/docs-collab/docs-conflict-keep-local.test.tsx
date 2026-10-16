@@ -16,7 +16,7 @@ import { useDocsConflictResolution } from "./use-docs-conflict-resolution";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
 
 /**
- * Pins the three Keep-mine branches of the Docs conflict dialog (#1364).
+ * Pins the Keep-mine branches of the Docs conflict dialog (#1364).
  * `useDocsConflictResolution.keepLocal` runs the real `saveNow` from
  * `useDocsCollabSave`, which calls `persistCollabSave`. Assertions record the
  * current outcome. A comment marks a branch whose outcome is wrong, so a later
@@ -266,8 +266,15 @@ describe("Docs conflict Keep mine", () => {
   });
 
   it("keeps the dialog open when the remerge threw before the etag was refreshed", async () => {
-    // The snapshot load rejects with 412, so the failed remerge both throws
-    // before rememberSidecarEtag and reports the conflict that opens the dialog.
+    // The 412 on GET format=yjs is a stand-in. A correct server never returns
+    // 412 on that GET: fetchYjsSnapshot sends no precondition. Realistic
+    // remerge failures (500, 503, network) are not divergence errors, so they
+    // do not report a conflict and do not open the dialog. The reachable
+    // second-412 route — reload succeeded (applied === true) and the etag was
+    // refreshed, then the follow-up save gets 412 — is not this test.
+    //
+    // remergeAttempted is cleared only after a successful remerge. One failure
+    // leaves it set for the rest of this document, so Keep mine does not reload.
     const server = createFakeServer({
       markdown: SERVER,
       yjs: new Uint8Array([1]),
@@ -325,12 +332,50 @@ describe("Docs conflict Keep mine", () => {
     });
 
     const kept = server.puts.slice(putsBeforeKeep);
-    // A null etag from the empty snapshot is sent as If-None-Match: *.
-    // The server has no sidecar, so that PUT is accepted.
+    // This 204 is "no sidecar". The null etag is sent as If-None-Match: *,
+    // and that PUT is accepted because nothing is stored yet. A 0-byte sidecar
+    // is the other applied === false case; it is the next test.
     expect(kept).toEqual([{ ifMatch: undefined, ifNoneMatch: "*", markdown: LOCAL, status: 200 }]);
     expect(result.current.conflict.open).toBe(false);
     expect(server.document.markdown).toBe(LOCAL);
     expect(rejections).toEqual([]);
+  });
+
+  it("keeps the dialog open when the sidecar body is empty", async () => {
+    // 0-byte sidecar: the snapshot GET is 200 with an empty body, so
+    // fetchYjsSnapshot reports applied === false and a null etag. Keep mine
+    // sends If-None-Match: *. The sidecar still exists, so a correct server
+    // rejects that with 412. The dialog stays open and the rejection is unhandled.
+    const server = createFakeServer({
+      markdown: SERVER,
+      yjs: new Uint8Array(0),
+      revision: 1,
+      snapshotMode: "serve",
+    });
+    vi.stubGlobal("fetch", vi.fn(server.handle));
+    rememberSidecarEtag(ROOM, STALE_ETAG);
+
+    const { result } = renderHook(() => useKeepLocalHarness(markdown));
+    markEdited(result, markdown, LOCAL);
+    await saveUntilConflict(result);
+    const putsBeforeKeep = server.puts.length;
+
+    const rejections = await trackRejections(async () => {
+      act(() => {
+        result.current.conflict.keepLocal();
+      });
+      await waitFor(() => expect(result.current.conflict.busy).toBe(false));
+    });
+
+    const kept = server.puts.slice(putsBeforeKeep);
+    // Correct outcome: Keep mine writes the local version, the dialog closes,
+    // the server stores that version, and the promise does not reject. Flip
+    // these assertions when that lands.
+    expect(kept).toEqual([{ ifMatch: undefined, ifNoneMatch: "*", markdown: LOCAL, status: 412 }]);
+    expect(result.current.conflict.open).toBe(true);
+    expect(server.document.markdown).toBe(SERVER);
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]).toMatchObject({ status: 412 });
   });
 
   it("closes the dialog without a PUT when the signature matches the last save", async () => {
@@ -354,9 +399,9 @@ describe("Docs conflict Keep mine", () => {
     await saveUntilConflict(result);
     expect(result.current.conflict.open).toBe(true);
 
-    // Back to the bytes of the last successful save. The ydoc vector is
-    // unchanged, so the signature matches lastSuccessfulSaveSignature.
-    // The dirty flag is still set. Signature equality alone skips the PUT.
+    // Precondition: the editor is back on the last successful save, so the
+    // signature matches lastSuccessfulSaveSignature, and the dirty flag is
+    // still set. Signature equality alone skips the PUT.
     markdown.current = LOCAL;
     expect(result.current.localDirty()).toBe(true);
     const putsBeforeKeep = server.puts.length;
@@ -368,12 +413,16 @@ describe("Docs conflict Keep mine", () => {
       await waitFor(() => expect(result.current.conflict.busy).toBe(false));
     });
 
-    // Correct outcome: Keep mine PUTs the current local version, the server
-    // stores it, and the dialog closes only after that write. No unhandled
-    // rejection (already the case). Flip the PUT and server assertions.
+    // Current outcome: the short-circuit clears the dirty flag and writes
+    // nothing, while the server still has the other version. Correct outcome:
+    // Keep mine PUTs the local version and the server stores it; the dirty
+    // flag stays set until that write succeeds. No unhandled rejection
+    // (already the case). Flip the empty PUT, the server markdown, and
+    // localDirty() below.
     expect(server.puts.slice(putsBeforeKeep)).toEqual([]);
     expect(result.current.conflict.open).toBe(false);
     expect(server.document.markdown).toBe(SERVER);
+    expect(result.current.localDirty()).toBe(false);
     expect(rejections).toEqual([]);
   });
 });
