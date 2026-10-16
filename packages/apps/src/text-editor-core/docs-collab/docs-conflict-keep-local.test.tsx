@@ -63,25 +63,31 @@ function etagFor(document: FakeDocument): string | null {
 function headerValue(init: RequestInit | undefined, name: string): string | undefined {
   const headers = init?.headers;
   if (!headers) return undefined;
-  if (headers instanceof Headers) return headers.get(name) ?? undefined;
-  if (Array.isArray(headers)) {
-    const found = headers.find(([key]) => key.toLowerCase() === name.toLowerCase());
-    return found?.[1];
-  }
   return (headers as Record<string, string>)[name];
 }
 
-function readFramedMarkdown(body: BodyInit | null | undefined): string | undefined {
+function readFramedParts(body: BodyInit | null | undefined): {
+  markdown?: string;
+  yjs: Uint8Array | null;
+} {
   const bytes =
     body instanceof Uint8Array ? body : body instanceof ArrayBuffer ? new Uint8Array(body) : null;
-  if (!bytes) return undefined;
+  if (!bytes) return { yjs: null };
   const framed = decodeFramedPayload(bytes);
   if (!framed?.header || typeof framed.header !== "object" || Array.isArray(framed.header)) {
-    return undefined;
+    return { yjs: null };
   }
-  const documentLen = (framed.header as { documentLen?: unknown }).documentLen;
-  if (typeof documentLen !== "number") return undefined;
-  return new TextDecoder().decode(framed.tail.subarray(0, documentLen));
+  const lengths = framed.header as { documentLen?: unknown; yjsLen?: unknown };
+  const documentLen = typeof lengths.documentLen === "number" ? lengths.documentLen : 0;
+  const markdown =
+    typeof lengths.documentLen === "number"
+      ? new TextDecoder().decode(framed.tail.subarray(0, documentLen))
+      : undefined;
+  const yjs =
+    typeof lengths.yjsLen === "number"
+      ? framed.tail.subarray(documentLen, documentLen + lengths.yjsLen).slice()
+      : null;
+  return { markdown, yjs };
 }
 
 function createFakeServer(initial: Partial<FakeDocument> = {}) {
@@ -110,15 +116,9 @@ function createFakeServer(initial: Partial<FakeDocument> = {}) {
         headers: { ETag: etagFor(document)! },
       });
     }
-    if (method === "GET") {
-      return new Response(document.markdown, {
-        status: 200,
-        headers: { "Content-Type": "text/markdown" },
-      });
-    }
     if (method !== "PUT") return new Response("not found", { status: 404 });
 
-    const markdown = readFramedMarkdown(init?.body);
+    const { markdown, yjs } = readFramedParts(init?.body);
     const ifMatch = headerValue(init, "If-Match");
     const ifNoneMatch = headerValue(init, "If-None-Match");
     const current = etagFor(document);
@@ -129,7 +129,6 @@ function createFakeServer(initial: Partial<FakeDocument> = {}) {
     if (refused) {
       return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
     }
-    const yjs = readFramedYjs(init?.body);
     if (yjs) {
       document.yjs = yjs;
       document.revision += 1;
@@ -143,20 +142,6 @@ function createFakeServer(initial: Partial<FakeDocument> = {}) {
   };
 
   return { document, puts, handle };
-}
-
-function readFramedYjs(body: BodyInit | null | undefined): Uint8Array | null {
-  const bytes =
-    body instanceof Uint8Array ? body : body instanceof ArrayBuffer ? new Uint8Array(body) : null;
-  if (!bytes) return null;
-  const framed = decodeFramedPayload(bytes);
-  if (!framed?.header || typeof framed.header !== "object" || Array.isArray(framed.header)) {
-    return null;
-  }
-  const lengths = framed.header as { documentLen?: unknown; yjsLen?: unknown };
-  if (typeof lengths.yjsLen !== "number") return null;
-  const documentLen = typeof lengths.documentLen === "number" ? lengths.documentLen : 0;
-  return framed.tail.subarray(documentLen, documentLen + lengths.yjsLen).slice();
 }
 
 type Harness = {
