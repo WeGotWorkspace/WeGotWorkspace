@@ -122,8 +122,10 @@ final class NoteJournalConverter
 
         // A metadata patch must advance the note's modified time, or clients
         // cannot tell a changed row from the one they already hold (#1351).
+        // Property assignment is rejected by PHPStan (hyphenated Sabre property);
+        // add() is the same write ChatMessageJournalConverter already uses.
         unset($journal->{'LAST-MODIFIED'});
-        $journal->{'LAST-MODIFIED'} = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $journal->add('LAST-MODIFIED', new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
         return $calendar->serialize();
     }
