@@ -48,6 +48,29 @@ if [ -f "${CONFIG_VOL}/api.env" ]; then
   ln -sf "${CONFIG_VOL}/api.env" "${API_ROOT}/.env"
 fi
 
+set_env_kv() {
+  file="$1"
+  key="$2"
+  value="$3"
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
+    sed --follow-symlinks -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+# .env.example ships WGW_DB_DATABASE=./wgw-content/db.sqlite. That path is
+# resolved from the install root, so it ignores an absolute WGW_DATA_DIR from
+# compose and Laravel looks for /var/www/html/wgw-content/db.sqlite.
+if [ -f "${API_ROOT}/.env" ] && [ -n "${WGW_DATA_DIR:-}" ] && [ "${WGW_DATA_DIR#/}" != "$WGW_DATA_DIR" ]; then
+  current_db="$(grep -E '^WGW_DB_DATABASE=' "${API_ROOT}/.env" | tail -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
+  case "$current_db" in
+    ""|./wgw-content/db.sqlite|wgw-content/db.sqlite)
+      set_env_kv "${API_ROOT}/.env" "WGW_DB_DATABASE" "${DATA_DIR}/db.sqlite"
+      ;;
+  esac
+fi
+
 # Laravel will not open a sqlite database that does not exist yet. The install
 # lock can land before db.sqlite (the release smoke plants only .installed).
 mkdir -p "$DATA_DIR"
