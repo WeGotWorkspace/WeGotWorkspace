@@ -138,7 +138,7 @@ final class AuthTokenService
     {
         $this->requireEnabled($username);
 
-        return $this->refreshTokens->issue($username, $this->roleFor($username), $familyId);
+        return $this->refreshTokens->issueRotated($username, $this->roleFor($username), $familyId);
     }
 
     private function requireEnabled(string $username): void

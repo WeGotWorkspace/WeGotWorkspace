@@ -168,6 +168,28 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $this->refresh($other['refresh_token'])->assertOk();
     }
 
+    public function test_logout_of_a_pre_rotation_token_revokes_the_live_successor(): void
+    {
+        $issued = $this->issueTokenPair();
+        $other = $this->issueTokenPair();
+        $rotated = $this->refresh($issued['refresh_token']);
+        $rotated->assertOk();
+        $successor = $this->refreshCookieValue($rotated);
+        $successorHash = RefreshTokenRepository::hashToken($successor);
+
+        $this->withBearer($issued['access_token'])
+            ->withUnencryptedCookie(RefreshCookie::NAME, $issued['refresh_token'])
+            ->withCredentials()
+            ->postJson('/api/v1/auth/revoke')
+            ->assertOk()
+            ->assertCookieExpired(RefreshCookie::NAME);
+
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $successorHash)->value('revoked'));
+        $this->refresh($issued['refresh_token'])->assertUnauthorized();
+        $this->refresh($successor)->assertUnauthorized();
+        $this->refresh($other['refresh_token'])->assertOk();
+    }
+
     public function test_revoked_access_token_is_rejected_until_refresh(): void
     {
         $issued = $this->issueTokenPair();

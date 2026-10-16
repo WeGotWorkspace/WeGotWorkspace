@@ -77,8 +77,11 @@ final class UserSessionRevokerTest extends WgwDatabaseTestCase
 
         $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $firstHash)->value('revoked'));
         $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $secondHash)->value('revoked'));
-        $this->assertNull($tokens->consume($first));
-        $this->assertNull($tokens->consume($second));
+        $mustNotRotate = function (string $username, string $familyId): string {
+            $this->fail('A revoked refresh token must not be rotated for '.$username.' ('.$familyId.').');
+        };
+        $this->assertNull($tokens->consume($first, $mustNotRotate));
+        $this->assertNull($tokens->consume($second, $mustNotRotate));
     }
 
     private function seedPush(string $username): void

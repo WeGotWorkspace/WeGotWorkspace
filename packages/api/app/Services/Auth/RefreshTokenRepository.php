@@ -7,11 +7,10 @@ namespace App\Services\Auth;
 use App\Models\ApiRefreshToken;
 use Closure;
 use Illuminate\Support\Str;
-use LogicException;
 
 final class RefreshTokenRepository
 {
-    /** Reuse inside this window replays the successor. Outside it, reuse is theft. */
+    /** Seconds after a rotation during which a still-live successor is replayed. */
     public const ROTATION_GRACE_SECONDS = 60;
 
     public function __construct() {}
@@ -32,36 +31,30 @@ final class RefreshTokenRepository
     public function issue(string $username, string $role, ?string $familyId = null): string
     {
         $this->cleanupExpired();
-        $token = bin2hex(random_bytes(32));
-        $familyId = $familyId !== null && $familyId !== '' ? $familyId : (string) Str::ulid();
 
-        ApiRefreshToken::query()->updateOrInsert(
-            ['token_hash' => self::hashToken($token)],
-            [
-                'username' => $username,
-                'role' => $role,
-                'expires_at' => time() + $this->refreshTtl(),
-                'revoked' => 0,
-                'created_at' => time(),
-                'family_id' => $familyId,
-                'rotated_at' => null,
-                'successor_hash' => null,
-                'successor_token' => null,
-            ],
-        );
+        return $this->store($username, $role, $familyId);
+    }
 
-        return $token;
+    /**
+     * Insert the successor for a rotation. consume() already swept, and this
+     * runs inside that transaction, so it must not sweep again.
+     */
+    public function issueRotated(string $username, string $role, string $familyId): string
+    {
+        return $this->store($username, $role, $familyId);
     }
 
     /**
      * Redeem a refresh token. A live token is rotated through $issueSuccessor.
-     * Presenting it again inside the grace window returns that same successor
-     * and does not rotate or revoke. Later reuse revokes the token family.
+     * Presenting it again while that successor is still live, inside the grace
+     * window, returns the same successor. The replay is not consumed, so two
+     * holders can stay in step until the successor is rotated or revoked.
+     * After that, a later presentation revokes the family.
      *
-     * @param  (Closure(string, string): string)|null  $issueSuccessor  (username, familyId): plaintext token
+     * @param  Closure(string, string): string  $issueSuccessor  (username, familyId): plaintext token
      * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
      */
-    public function consume(string $token, ?Closure $issueSuccessor = null): ?array
+    public function consume(string $token, Closure $issueSuccessor): ?array
     {
         $this->cleanupExpired();
         $hash = self::hashToken($token);
@@ -80,21 +73,23 @@ final class RefreshTokenRepository
                 if ((int) $row->revoked === 1) {
                     return $this->replayOrRevoke($row);
                 }
-                if ($issueSuccessor === null) {
-                    throw new LogicException('Refresh token rotation requires a successor issuer.');
-                }
 
                 return $this->rotate($row, $issueSuccessor);
             },
         );
     }
 
+    /**
+     * End the login chain that presented this token, including a successor
+     * issued for a response the client never received.
+     */
     public function revoke(string $token): void
     {
+        $row = ApiRefreshToken::query()->where('token_hash', self::hashToken($token))->first();
+        if ($row !== null) {
+            $this->revokeChain($row);
+        }
         $this->cleanupExpired();
-        ApiRefreshToken::query()
-            ->where('token_hash', self::hashToken($token))
-            ->update(['revoked' => 1]);
     }
 
     public function revokeAllForUsername(string $username): void
@@ -143,6 +138,12 @@ final class RefreshTokenRepository
     }
 
     /**
+     * The conditional claim lost. On MySQL, lockForUpdate() makes this unreachable:
+     * a concurrent revoker commits before the lock, and the first read already
+     * sees revoked = 1. SQLite ignores that row lock, so two writers can both
+     * pass the first read and the second update matches zero rows. Drop the
+     * orphan successor and take the replay-or-revoke path.
+     *
      * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
      */
     private function loseRotationRace(string $presentedHash, string $orphanHash): ?array
@@ -237,6 +238,45 @@ final class RefreshTokenRepository
     private function markFamilyRevoked(string $familyId): void
     {
         ApiRefreshToken::query()->where('family_id', $familyId)->update(['revoked' => 1]);
+    }
+
+    private function revokeChain(ApiRefreshToken $row): void
+    {
+        $familyId = is_string($row->family_id) ? $row->family_id : '';
+        if ($familyId !== '') {
+            $this->markFamilyRevoked($familyId);
+
+            return;
+        }
+
+        $hashes = [(string) $row->token_hash];
+        if (is_string($row->successor_hash) && $row->successor_hash !== '') {
+            $hashes[] = $row->successor_hash;
+        }
+        ApiRefreshToken::query()->whereIn('token_hash', $hashes)->update(['revoked' => 1]);
+    }
+
+    private function store(string $username, string $role, ?string $familyId): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $familyId = $familyId !== null && $familyId !== '' ? $familyId : (string) Str::ulid();
+
+        ApiRefreshToken::query()->updateOrInsert(
+            ['token_hash' => self::hashToken($token)],
+            [
+                'username' => $username,
+                'role' => $role,
+                'expires_at' => time() + $this->refreshTtl(),
+                'revoked' => 0,
+                'created_at' => time(),
+                'family_id' => $familyId,
+                'rotated_at' => null,
+                'successor_hash' => null,
+                'successor_token' => null,
+            ],
+        );
+
+        return $token;
     }
 
     private function cleanupExpired(): void
