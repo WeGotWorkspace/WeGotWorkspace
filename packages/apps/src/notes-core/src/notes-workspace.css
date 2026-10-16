@@ -307,7 +307,7 @@
 /* Isolate from assigned CATEGORIES ink/gold (`--tag-bg` / `--tag-fg`). */
 .notes-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --tag-bg: var(--button-outline-hover-background);
   /* 72% clears WCAG AA on cream footer wash (~4.5:1); 65% was ~4.38:1. */
   --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }

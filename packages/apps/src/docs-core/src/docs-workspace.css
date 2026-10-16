@@ -32,13 +32,8 @@
   --docs-comments-column-width: 20rem;
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
-  --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
-  /* Accent is already Dark, so chip ink stays Dark and clears AA on the cream footer. */
-  --docs-stat-tag-color: color-mix(
-    in oklch,
-    var(--workspace-accent) 40%,
-    var(--workspace-foreground)
-  );
+  --docs-stat-tag-bg: var(--button-outline-hover-background);
+  --docs-stat-tag-color: var(--workspace-foreground);
   --docs-text: var(--workspace-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
   --docs-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
@@ -192,10 +187,10 @@
   text-align: right;
 }
 
-/* Mute last-edited chip so it stays distinct from accent word/char stats. */
+/* Last-edited chip: same theme wash as the word/char stats; muted ink keeps it quieter. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --tag-bg: var(--button-outline-hover-background);
   /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
   --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
@@ -211,15 +206,6 @@
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy .loading-spinner {
   color: var(--color-warning);
-}
-
-/* Soft wash on shared `.docs-collab-presence-chrome`; Docs only sets accent. */
-.docs-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--workspace-accent);
-}
-
-.docs-workspace .docs-collab-presence__avatar--connecting {
-  --docs-collab-presence-accent: var(--workspace-accent);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {
