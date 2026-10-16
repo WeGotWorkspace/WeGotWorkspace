@@ -259,7 +259,14 @@ export function DriveFolderPicker({
         : canPickDriveFolderDestination(files, moveIds, initialBrowsePath)
           ? initialBrowsePath
           : null;
-    setHighlightedPath((prev) => (prev === next ? prev : next));
+    setHighlightedPath((prev) => {
+      // A new files/moveIds array must not clear a drive the user already chose
+      // when nothing was preselected (next is null).
+      if (next === null && prev && canPickDriveFolderDestination(files, moveIds, prev)) {
+        return prev;
+      }
+      return prev === next ? prev : next;
+    });
   }, [fileSelect, files, initialBrowsePath, initialSelectedPath, moveIds]);
 
   useEffect(() => {
