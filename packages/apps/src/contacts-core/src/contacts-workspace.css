@@ -201,6 +201,23 @@
 
 .contacts-detail-view__tag-group {
   @apply w-full py-1;
+  /* Invert the detail pane: fill is the pane text, ink is the pane fill. */
+  --tag-bg: var(--workspace-foreground);
+  --tag-fg: var(--workspace-detail-bg, var(--workspace-surface));
+}
+
+.contacts-detail-view__tag-group .tag {
+  @apply border-0;
+  background-color: var(--tag-bg);
+  color: var(--tag-fg);
+}
+
+.contacts-detail-view__tag-group .tag__icon,
+.contacts-detail-view__tag-group .tag__label,
+.contacts-detail-view__tag-group .tag__remove,
+.contacts-detail-view__tag-group .contacts-group-icon {
+  color: var(--tag-fg);
+  @apply opacity-100;
 }
 
 .contacts-detail-view__notes {

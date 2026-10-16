@@ -15,10 +15,12 @@
  * 11% cylindrical blend into warm Soft interpolates toward cream’s hue
  * and reads peach for purple/teal notebooks.
  * `--notes-detail-accent` still binds to that tint so selected
- * Star/Archive, tags, and editor checks use the live notebook hue.
- * Title/body use `--notes-detail-contrast-fg` (ink mixed onto the sheet,
- * not full ink). Detail task-list checks share the tag wash (saturated
- * border + surfaceTint 14% fill, accent-strong mark).
+ * Star/Archive and editor checks use the live notebook hue. Detail tag
+ * chips invert the paper sheet: fill is `--notes-detail-contrast-fg`,
+ * label and icons are `--paper-sheet-bg` (no notebook color, no stroke).
+ * Title/body use `--notes-detail-contrast-fg`
+ * (ink mixed onto the sheet, not full ink). Detail task-list checks keep
+ * the tag wash (saturated border + surfaceTint 14% fill, accent-strong mark).
  * Import only from {@link NotesWorkspace}.
  */
 .notes-workspace {
@@ -96,17 +98,20 @@
    * uses the shared Dark-mixed default. Detail editor task-lists use the tag
    * wash on `.note-text-editor-body`. */
   --checkbox-checked-border: var(--workspace-accent);
-  /* Idle tag chips — sidebar filters + list-row pills share this family.
-   * Selected sidebar chips use `--notes-tag-selected-*`. Detail CATEGORIES
-   * use `--note-detail-tag-*` (notebook wash on the paper sheet). */
-  --notes-tag-bg: color-mix(in oklch, var(--workspace-foreground) 8%, transparent);
+  /* Idle sidebar filter chips reuse the selected collection-row wash
+   * (`.collection-sidebar-row--selected` → `--collection-sidebar-row-selected-bg`).
+   * Selected chips stay ink on white so the filter stays distinct from that wash.
+   * Detail category chips invert the sheet (`--notes-detail-contrast-fg` /
+   * `--paper-sheet-bg`). `--note-detail-tag-*` stays the editor task-list wash. */
+  --notes-tag-bg: var(
+    --collection-sidebar-row-selected-bg,
+    var(--button-outline-active-background)
+  );
   --notes-tag-fg: var(--workspace-foreground);
-  --notes-tag-border: color-mix(in oklch, var(--workspace-foreground) 18%, transparent);
-  /* Selected sidebar tag chip — ink + product yellow. Nested `.notes-workspace`
-   * inherits the tokens so stories do not reset chip text. */
+  /* Selected sidebar tag chip — ink fill, white label, no stroke. Nested
+   * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--workspace-foreground);
   --notes-tag-selected-fg: #ffffff;
-  --notes-tag-selected-border: var(--workspace-foreground);
   /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
    * surfaceTint 14% accent into surface (srgb). */
   --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
@@ -365,9 +370,6 @@
 
 .notes-workspace .note-detail-view__tag-group {
   border-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
-  --tag-bg: var(--note-detail-tag-bg);
-  --tag-fg: var(--note-detail-tag-fg);
-  --tag-remove-fg: var(--note-detail-tag-fg);
   --tag-group-input-border: color-mix(in oklch, var(--workspace-foreground) 16%, transparent);
   --tag-group-input-bg: color-mix(in oklch, var(--workspace-foreground) 4%, transparent);
   --tag-group-input-bg-focus: var(--workspace-surface);
@@ -382,10 +384,19 @@
 }
 
 .notes-workspace .note-detail-view__tag-group .tag {
-  @apply border;
-  border-color: var(--note-detail-tag-border);
-  background-color: var(--note-detail-tag-bg);
-  color: var(--note-detail-tag-fg);
+  @apply border-0;
+  /* Invert the paper sheet: fill is the sheet text, ink is the sheet fill. */
+  --tag-bg: var(--notes-detail-contrast-fg, var(--workspace-foreground));
+  --tag-fg: var(--paper-sheet-bg);
+  background-color: var(--tag-bg);
+  color: var(--tag-fg);
+}
+
+.notes-workspace .note-detail-view__tag-group .tag__icon,
+.notes-workspace .note-detail-view__tag-group .tag__label,
+.notes-workspace .note-detail-view__tag-group .tag__remove {
+  color: var(--tag-fg);
+  @apply opacity-100;
 }
 
 /* Sidebar Tags: wrapping Tag chips (not full-width MenuItem rows).
@@ -405,22 +416,21 @@
   --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
-/* Idle chips: sidebar filter tags. */
+/* Idle chips: same wash as a selected sidebar row, no stroke. */
 .notes-workspace .notes-sidebar-tags__item .tag {
-  @apply max-w-full border;
-  border-color: var(--notes-tag-border);
+  @apply max-w-full border-0;
   background-color: var(--notes-tag-bg);
   color: var(--notes-tag-fg);
 }
 
 .notes-workspace .notes-sidebar-tags__item:hover .tag {
-  background-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
+  background-color: var(--button-outline-active-hover-background);
 }
 
 .notes-workspace .notes-sidebar-tags__item--selected .tag,
 .notes-workspace .notes-sidebar-tags__item--selected:hover .tag {
+  @apply border-0;
   background-color: var(--notes-tag-selected-bg);
-  border-color: var(--notes-tag-selected-border);
   color: var(--notes-tag-selected-fg);
 }
 
