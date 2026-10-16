@@ -1,9 +1,20 @@
+import "fake-indexeddb/auto";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act, renderHook } from "@testing-library/react";
 import type { MutableRefObject, ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { NotesVjournalRequestError } from "@/lib/api/wgw/notes-vjournal";
 import type { Note } from "@/lib/models/note";
+import { createHybridNotesOperations } from "@/lib/offline/notes-hybrid-operations";
+import {
+  listOutboxMutations,
+  readNotesBootstrapFromCache,
+  upsertNoteInCache,
+  writeNotesBootstrapToCache,
+} from "@/lib/offline/notes-offline-store";
+import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { notesNotebooksTable, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
@@ -28,6 +39,12 @@ const keepNote: Note = {
   excerpt: "In work",
   notebook: "Work",
   notebookId: "notes-work",
+};
+
+const unsyncedScratchNote: Note = {
+  ...scratchNote,
+  id: "local-scratch",
+  excerpt: "Not on the server yet",
 };
 
 const collections: NotesNotebookCollection[] = [
@@ -87,6 +104,35 @@ function shellStub(overrides: Partial<NotesShellState> = {}): NotesShellState {
   } as NotesShellState;
 }
 
+const cacheUsername = "alice";
+
+function setBrowserOnline(online: boolean) {
+  Object.defineProperty(navigator, "onLine", {
+    configurable: true,
+    get: () => online,
+  });
+}
+
+async function seedNotebookCache(notes: Note[]) {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(cacheUsername));
+  await db.outbox.clear();
+  await notesNotesTable(db).clear();
+  await notesNotebooksTable(db).clear();
+  await db.meta.clear();
+  await writeNotesBootstrapToCache(cacheUsername, {
+    session: {
+      ...mockWorkspaceSession,
+      user: { ...mockWorkspaceSession.user, username: cacheUsername },
+    },
+    data: {
+      notes,
+      notebooks: ["Scratch", "Ideas", "Work"],
+      tags: [],
+      notebookCollections: collections,
+    },
+  });
+}
+
 function stubSelectEnv() {
   Element.prototype.scrollIntoView = vi.fn();
   Object.defineProperty(window, "matchMedia", {
@@ -127,6 +173,7 @@ describe("useNotesNotebookDelete", () => {
   beforeEach(() => {
     cleanup();
     stubSelectEnv();
+    setBrowserOnline(true);
   });
 
   it("deletes an empty notebook in one step without a choice dialog", async () => {
@@ -193,6 +240,10 @@ describe("useNotesNotebookDelete", () => {
       await apiRef.current?.requestDeleteNotebook("notes-scratch");
     });
 
+    expect(
+      screen.getByRole("button", { name: "Move notes to “Ideas” and delete notebook" }),
+    ).toBeTruthy();
+
     fireEvent.click(screen.getByRole("combobox"));
     const optionNames = screen.getAllByRole("option").map((option) => option.textContent?.trim());
     expect(optionNames).toContain("Work");
@@ -202,7 +253,9 @@ describe("useNotesNotebookDelete", () => {
 
     fireEvent.click(screen.getByRole("option", { name: "Work" }));
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Move and delete notebook" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Move notes to “Work” and delete notebook" }),
+      );
     });
 
     expect(deleteNotebook).toHaveBeenLastCalledWith("notes-scratch", {
@@ -268,5 +321,96 @@ describe("useNotesNotebookDelete", () => {
       <TooltipProvider delayDuration={0}>{result.current.notebookDeleteDialog}</TooltipProvider>,
     );
     expect(screen.queryByRole("dialog", { name: "This notebook still has notes" })).toBeNull();
+  });
+
+  it("opens the choice dialog offline when the cache has notes and queues nothing", async () => {
+    await seedNotebookCache([scratchNote, keepNote]);
+    await upsertNoteInCache(cacheUsername, unsyncedScratchNote, true);
+    setBrowserOnline(false);
+
+    const operations = createHybridNotesOperations(cacheUsername);
+    const shell = shellStub({
+      notes: [keepNote],
+      operations,
+    });
+    const apiRef = { current: null as ReturnType<typeof useNotesNotebookDelete> | null };
+    render(<DeleteHarness shell={shell} apiRef={apiRef} />);
+
+    await act(async () => {
+      await apiRef.current?.requestDeleteNotebook("notes-scratch");
+    });
+
+    expect(screen.getByRole("dialog", { name: "This notebook still has notes" })).toBeTruthy();
+    expect(shell.show).not.toHaveBeenCalled();
+    expect(shell.setNotes).not.toHaveBeenCalled();
+    expect(shell.setNotebookCollections).not.toHaveBeenCalled();
+    const cached = await readNotesBootstrapFromCache(cacheUsername);
+    expect(cached?.data.notes.map((note) => note.id).sort()).toEqual([
+      "local-scratch",
+      "n-keep",
+      "n-scratch",
+    ]);
+    const queued = await listOutboxMutations(cacheUsername);
+    expect(queued.filter((row) => row.op === "deleteNotebook")).toEqual([]);
+  });
+
+  it("deletes an empty offline notebook without queueing purge-if-empty", async () => {
+    await seedNotebookCache([keepNote]);
+    setBrowserOnline(false);
+
+    const operations = createHybridNotesOperations(cacheUsername);
+    const shell = shellStub({
+      notes: [keepNote],
+      operations,
+    });
+    const apiRef = { current: null as ReturnType<typeof useNotesNotebookDelete> | null };
+    render(<DeleteHarness shell={shell} apiRef={apiRef} />);
+
+    await act(async () => {
+      await apiRef.current?.requestDeleteNotebook("notes-scratch");
+    });
+
+    const queued = await listOutboxMutations(cacheUsername);
+    expect(queued.map((row) => JSON.parse(row.payload) as { action?: { kind?: string } })).toEqual([
+      expect.objectContaining({
+        name: "notes-scratch",
+        action: { kind: "purge" },
+      }),
+    ]);
+    const cached = await readNotesBootstrapFromCache(cacheUsername);
+    expect(cached?.data.notes.map((note) => note.id)).toEqual(["n-keep"]);
+    expect(shell.show).toHaveBeenCalledWith(defaultNotesLabels.toastNotebookDeleted("Scratch"));
+  });
+
+  it("surfaces a destination uid collision instead of a generic failure", async () => {
+    const deleteNotebook = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new NotesVjournalRequestError("Notebook contains notes.", 409, "notebookHasContents"),
+      )
+      .mockRejectedValueOnce(
+        new NotesVjournalRequestError("A note with this UID already exists.", 409, "alreadyExists"),
+      );
+    const shell = shellStub({
+      operations: { ...shellStub().operations!, deleteNotebook },
+    });
+    const apiRef = { current: null as ReturnType<typeof useNotesNotebookDelete> | null };
+    render(<DeleteHarness shell={shell} apiRef={apiRef} />);
+
+    await act(async () => {
+      await apiRef.current?.requestDeleteNotebook("notes-scratch");
+    });
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Work" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Move/ }));
+    });
+
+    expect(shell.showMutationError).toHaveBeenCalledWith(
+      "A note in this notebook uses the same id as a note in the destination.",
+    );
+    expect(shell.setNotebookCollections).not.toHaveBeenCalled();
+    expect(shell.setNotes).not.toHaveBeenCalled();
   });
 });

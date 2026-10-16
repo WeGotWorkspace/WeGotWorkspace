@@ -183,6 +183,20 @@ describe("NotesChangeNotebookDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("disables confirm when requireChange is false and there is no destination", () => {
+    const { onNotebookChange, onClose } = renderDialog({
+      notebooks: [],
+      value: { name: "" },
+      requireChange: false,
+    });
+    const confirm = screen.getByRole("button", { name: "Change" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(confirm);
+    expect(onNotebookChange).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("fires the destructive action without moving", () => {
     const onDeleteNotes = vi.fn();
     const { onNotebookChange, onClose } = renderDialog({

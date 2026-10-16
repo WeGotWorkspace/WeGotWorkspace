@@ -238,6 +238,30 @@ final class NotebookDeleteWithMoveTest extends WgwDatabaseTestCase
         $this->asUser('bob')->getJson('/api/v1/notes/notebooks/'.$source)->assertOk();
     }
 
+    public function test_delete_with_move_bumps_the_destination_synctoken_once_for_many_notes(): void
+    {
+        $source = $this->createNotebook('bob', 'Source');
+        $dest = $this->createNotebook('bob', 'Dest');
+        $this->createNote('bob', $source, 'One');
+        $this->createNote('bob', $source, 'Two');
+        $destCalendarId = (int) CalendarInstance::query()->where('uri', $dest)->value('calendarid');
+        $destToken = (int) DB::connection('wgw')->table('calendars')->where('id', $destCalendarId)->value('synctoken');
+
+        $this->asUser('bob')
+            ->deleteJson('/api/v1/notes/notebooks/'.$source.'?moveNotesTo='.$dest)
+            ->assertOk();
+
+        $newDestToken = (int) DB::connection('wgw')->table('calendars')->where('id', $destCalendarId)->value('synctoken');
+        $this->assertSame($destToken + 1, $newDestToken);
+        $this->assertSame(
+            2,
+            DB::connection('wgw')->table('calendarchanges')
+                ->where('calendarid', $destCalendarId)
+                ->where('operation', 1)
+                ->count(),
+        );
+    }
+
     public function test_delete_with_move_aborts_when_destination_uid_collides(): void
     {
         $source = $this->createNotebook('bob', 'Source');
@@ -254,6 +278,36 @@ final class NotebookDeleteWithMoveTest extends WgwDatabaseTestCase
         $this->asUser('bob')->getJson('/api/v1/notes/notebooks/'.$source)->assertOk();
         $this->assertContains($sourceNote, array_column($this->noteList('bob', $source), 'id'));
         $this->asUser('bob')->getJson('/api/v1/notes/notebooks/'.$dest)->assertOk();
+    }
+
+    public function test_delete_with_move_rolls_back_when_removing_the_notebook_fails(): void
+    {
+        if (DB::connection('wgw')->getDriverName() !== 'sqlite') {
+            $this->markTestSkipped('Notebook removal failure is forced with a SQLite trigger.');
+        }
+
+        $source = $this->createNotebook('bob', 'Source');
+        $dest = $this->createNotebook('bob', 'Dest');
+        $noteId = $this->createNote('bob', $source, 'Stay');
+        $sourceCalendarId = (int) CalendarInstance::query()->where('uri', $source)->value('calendarid');
+
+        DB::connection('wgw')->unprepared('DROP TRIGGER IF EXISTS abort_calendar_delete');
+        DB::connection('wgw')->unprepared(
+            "CREATE TRIGGER abort_calendar_delete BEFORE DELETE ON calendars BEGIN SELECT RAISE(FAIL, 'calendar delete failed'); END",
+        );
+
+        try {
+            $response = $this->asUser('bob')
+                ->deleteJson('/api/v1/notes/notebooks/'.$source.'?moveNotesTo='.$dest);
+
+            $object = CalendarObject::query()->where('uid', $noteId)->first();
+            $this->assertNotNull($object);
+            $this->assertSame($sourceCalendarId, (int) $object->calendarid);
+            $this->assertNotNull(CalendarInstance::query()->where('uri', $source)->first());
+            $this->assertGreaterThanOrEqual(500, $response->status());
+        } finally {
+            DB::connection('wgw')->unprepared('DROP TRIGGER IF EXISTS abort_calendar_delete');
+        }
     }
 
     private function asUser(string $username): static
