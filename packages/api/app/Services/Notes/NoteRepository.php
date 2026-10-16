@@ -593,22 +593,9 @@ final class NoteRepository
         }
     }
 
-    /**
-     * UID is the collab room key (Decision 7). Uniqueness is global across
-     * VJOURNAL objects so a minted or colliding id cannot enter another room.
-     * When $exceptCalendarId is set (MOVE), the source calendar is ignored.
-     */
     private function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
     {
-        $query = CalendarObject::query()
-            ->where('uid', $uid)
-            ->where('componenttype', 'VJOURNAL');
-        if ($exceptCalendarId !== null) {
-            $query->where('calendarid', '!=', $exceptCalendarId);
-        }
-        if ($query->exists()) {
-            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
-        }
+        $this->moveHelper->assertUidAvailable($uid, $exceptCalendarId);
     }
 
     private function findObjectByUid(int $calendarId, string $uid): ?CalendarObject

@@ -220,6 +220,7 @@ export function NotesWorkspace({
     createNotebookCollection,
     updateNotebookCollection,
     deleteNotebookCollection,
+    notebookDeleteDialog,
     patchNotebookShareWith,
     removeSharedNotebook,
     hiddenNotebookIds,
@@ -290,7 +291,10 @@ export function NotesWorkspace({
     );
   }, [active, ownedNotebooks, sharedNotebookRows]);
   const selectNotebooks = useMemo(
-    () => [...ownedNotebooks, ...sharedNotebookRows],
+    () =>
+      [...ownedNotebooks, ...sharedNotebookRows].filter(
+        (notebook) => !isViewOnlyNotebook(notebook),
+      ),
     [ownedNotebooks, sharedNotebookRows],
   );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
@@ -745,6 +749,7 @@ export function NotesWorkspace({
         contentClassName="notes-dialog-surface"
       />
 
+      {notebookDeleteDialog}
       {confirmDialog}
     </TooltipProvider>
   );

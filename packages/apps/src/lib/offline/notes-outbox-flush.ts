@@ -89,15 +89,6 @@ function noteMetadataUpsertRequest(
   };
 }
 
-function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
-  mode: "archive" | "move" | "purge";
-  target?: string;
-} {
-  if (action.kind === "archive") return { mode: "archive" };
-  if (action.kind === "purge") return { mode: "purge" };
-  return { mode: "move", target: action.target };
-}
-
 export async function flushNotesOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) {
@@ -208,7 +199,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         await renameNotebook(String(payload.from ?? ""), String(payload.to ?? ""));
       } else if (row.op === "deleteNotebook") {
         const action = payload.action as DeleteNotebookAction;
-        await deleteNotebook(String(payload.name ?? ""), notebookDeleteBodyForAction(action));
+        await deleteNotebook(String(payload.name ?? ""), action);
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {

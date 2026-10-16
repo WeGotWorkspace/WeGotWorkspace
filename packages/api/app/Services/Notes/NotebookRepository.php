@@ -39,6 +39,7 @@ final class NotebookRepository
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarShareInvites $shareInvites,
         private readonly WgwCalendarBackendFactory $backends,
+        private readonly NotebookNotesRelocation $notesRelocation,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -214,6 +215,11 @@ final class NotebookRepository
             throw new ApiHttpException(403, 'The group notebook cannot be deleted.', 'forbidden');
         }
         $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
+        $this->notesRelocation->apply(
+            $instance,
+            $options,
+            fn (string $id): ?CalendarInstance => $this->findAccessibleNotebook($username, $id),
+        );
         if ($instance->objects()->where('componenttype', 'VJOURNAL')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
             throw new ApiHttpException(409, 'Notebook contains notes.', 'notebookHasContents');
         }

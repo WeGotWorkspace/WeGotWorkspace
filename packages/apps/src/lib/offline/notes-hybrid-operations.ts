@@ -1,9 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type {
-  DeleteNotebookAction,
-  NotesAPIOperations,
-  NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
@@ -114,13 +110,23 @@ async function renameCachedNotebook(username: string, from: string, to: string):
   await writeNotesBootstrapToCache(username, cached);
 }
 
-function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
-  mode: "archive" | "move" | "purge";
-  target?: string;
+function cachedMoveTarget(
+  collections: readonly NotesNotebookCollection[] | undefined,
+  target: string,
+): {
+  id: string;
+  name: string;
+  scope?: "personal" | "group";
+  groupSlug?: string | null;
 } {
-  if (action.kind === "archive") return { mode: "archive" };
-  if (action.kind === "purge") return { mode: "purge" };
-  return { mode: "move", target: action.target };
+  const match = collections?.find((item) => item.id === target || item.name === target);
+  if (!match) return { id: target, name: target };
+  return {
+    id: match.id,
+    name: match.name,
+    ...(match.scope ? { scope: match.scope } : {}),
+    ...(match.groupSlug !== undefined ? { groupSlug: match.groupSlug } : {}),
+  };
 }
 
 function baseUpdatedAt(note: Note): string | undefined {
@@ -618,8 +624,17 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
     },
     deleteNotebook: async (name, action, opts) => {
+      const cached = await readNotesBootstrapFromCache(username);
+      const moveNotesTo =
+        action.kind === "move"
+          ? cachedMoveTarget(cached?.data.notebookCollections, action.target)
+          : undefined;
+      const cacheOptions = {
+        keepPendingNotes: false as const,
+        ...(moveNotesTo ? { moveNotesTo } : {}),
+      };
       if (!readBrowserOnline()) {
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await removeNotebookFromCache(username, name, cacheOptions);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -629,12 +644,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         return;
       }
       try {
-        await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await deleteNotebookApi(name, action, opts);
+        await removeNotebookFromCache(username, name, cacheOptions);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await removeNotebookFromCache(username, name, cacheOptions);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,

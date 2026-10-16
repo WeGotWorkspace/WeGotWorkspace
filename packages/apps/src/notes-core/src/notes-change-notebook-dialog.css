@@ -7,3 +7,7 @@
 .notes-change-notebook-dialog .notes-notebook-select {
   @apply w-full;
 }
+
+.notes-change-notebook-dialog__destructive {
+  @apply me-auto;
+}

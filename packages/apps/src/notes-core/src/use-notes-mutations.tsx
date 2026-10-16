@@ -564,55 +564,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [notebooks, operations, setNotebooks, setNotes, setView, show, view],
   );
 
-  const deleteNotebook = useCallback(
-    (name: string, opts: { transferTo?: string; archive?: boolean }) => {
-      if (opts.transferTo) {
-        const target = opts.transferTo;
-        setNotes((prev) =>
-          prev.map((note) => (note.notebook === name ? { ...note, notebook: target } : note)),
-        );
-        if (operations) {
-          persistBestEffort(operations.deleteNotebook(name, { kind: "move", target }));
-        }
-      } else if (opts.archive) {
-        const fallback = notebooks.find((notebook) => notebook !== name) ?? "";
-        setArchived((state) => {
-          const next = { ...state };
-          notes.forEach((note) => {
-            if (note.notebook === name) next[note.id] = true;
-          });
-          return next;
-        });
-        if (fallback) {
-          setNotes((prev) =>
-            prev.map((note) => (note.notebook === name ? { ...note, notebook: fallback } : note)),
-          );
-        }
-        if (operations) {
-          persistBestEffort(operations.deleteNotebook(name, { kind: "archive" }));
-        }
-      } else if (operations) {
-        persistBestEffort(operations.deleteNotebook(name, { kind: "purge" }));
-      }
-      // Drop from sidebar even when empty / Dexie-only (API omits empty personal dirs).
-      setNotebooks((prev) => prev.filter((notebook) => notebook !== name));
-      if (view === `nb:${name}`) setView("all");
-      show(L.toastNotebookDeleted(name), { icon: <Trash2 className="size-4" /> });
-    },
-    [
-      L.toastNotebookDeleted,
-      notebooks,
-      notes,
-      operations,
-      setArchived,
-      setNotebooks,
-      setNotes,
-      setView,
-      show,
-      view,
-    ],
-  );
-
   const toggleNoteTag = useCallback(
     (noteId: string, rawTag: string, mode: "toggle" | "add" = "toggle") => {
       const before = notes.find((note) => note.id === noteId);
@@ -921,7 +872,6 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     moveActiveNoteToNotebook,
     assignTagToNotes,
     renameNotebook,
-    deleteNotebook,
     toggleNoteTag,
     addNoteTag,
     updateNote,

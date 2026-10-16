@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\Calendar;
 use App\Models\CalendarChange;
 use App\Models\CalendarObject;
@@ -18,6 +19,23 @@ final class NoteMoveHelper
     public const OP_ADD = 1;
 
     public const OP_DELETE = 3;
+
+    /**
+     * UID is the collab room key. Uniqueness is global across VJOURNAL objects.
+     * When $exceptCalendarId is set (a move), the source calendar is ignored.
+     */
+    public function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
+    {
+        $query = CalendarObject::query()
+            ->where('uid', $uid)
+            ->where('componenttype', 'VJOURNAL');
+        if ($exceptCalendarId !== null) {
+            $query->where('calendarid', '!=', $exceptCalendarId);
+        }
+        if ($query->exists()) {
+            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
+        }
+    }
 
     public function move(CalendarObject $object, int $destinationCalendarId): void
     {
