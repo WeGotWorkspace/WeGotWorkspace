@@ -43,7 +43,7 @@
   --contacts-pending-sync-color: var(--color-warning);
   --contacts-swipe-delete-color: #dc2626;
   --contacts-swipe-remove-color: var(--workspace-accent);
-  --contacts-detail-title-font-family: var(--font-serif);
+  --contacts-detail-title-font-family: var(--font-sans);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
@@ -188,7 +188,7 @@
 .contacts-detail-view__title {
   font-family: var(--contacts-detail-title-font-family);
   font-size: 1.75rem;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.2;
   color: var(--workspace-foreground);
   margin: 0;
