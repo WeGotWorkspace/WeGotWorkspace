@@ -182,7 +182,8 @@
 }
 
 .share-dialog__link-field {
-  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg bg-card/80 px-2.5 py-1.5;
+  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg px-2.5 py-1.5;
+  background-color: var(--input-background);
   border: 1px solid var(--control-border-color);
 }
 

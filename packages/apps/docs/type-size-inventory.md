@@ -26,14 +26,14 @@ Chrome weight stays `font-semibold` (600). Do not add `font-ui`.
 
 ## Keep (layout / component metrics)
 
-| File                                                   | Value                                                       | Why                                           |
-| ------------------------------------------------------ | ----------------------------------------------------------- | --------------------------------------------- |
-| `text-editor.css`                                      | `clamp(15px, 0.875rem + 0.35vw, 16px)`                      | Editor body prose floor — not a chrome role   |
-| `user-avatar.css` (xs / sm / md / 2xl)                 | `10px` / `11px` / `1.8125rem` via `--user-avatar-font-size` | Circle-fitted initials                        |
-| `CalendarTimelineView.css` / `CalendarTimeSidebar.css` | `0.625rem` time labels                                      | Dense timeline metric (below caption floor)   |
-| `styles.css`                                           | `max(1rem, 100%)` / mobile `--input-font-size*: 1rem`       | iOS zoom floor — control rule, not type token |
-| `input.css` / `button.css` / control sizes             | `--input-font-size-*`                                       | Control size scale                            |
-| `AllDayEvent.css`                                      | `text-[0px]`                                                | Visually hide text, not a type role           |
+| File                                                   | Value                                                       | Why                                                  |
+| ------------------------------------------------------ | ----------------------------------------------------------- | ---------------------------------------------------- |
+| `text-editor.css`                                      | `clamp(15px, 0.875rem + 0.35vw, 16px)`                      | Editor body prose floor — not a chrome role          |
+| `user-avatar.css` (xs / sm / md / 2xl)                 | `10px` / `11px` / `1.8125rem` via `--user-avatar-font-size` | Circle-fitted initials                               |
+| `CalendarTimelineView.css` / `CalendarTimeSidebar.css` | `0.625rem` time labels                                      | Dense timeline metric (below caption floor)          |
+| `styles.css`                                           | `max(1rem, 100%)` on unmanaged native fields                | Unmanaged control floor — shared size steps stay put |
+| `input.css` / `button.css` / control sizes             | `--input-font-size-*`                                       | Control size scale                                   |
+| `AllDayEvent.css`                                      | `text-[0px]`                                                | Visually hide text, not a type role                  |
 
 ## Remaining snap candidates (not this slice)
 

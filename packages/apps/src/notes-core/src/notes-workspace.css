@@ -325,11 +325,11 @@
 }
 
 /*
- * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker)
- * — cream surface; height/radius come from the shared primitive.
+ * Detail header notebook switcher: ColorSwatchTrigger (CalendarEventCalendarPicker).
+ * Height/radius come from the shared primitive; fill is `--input-background`.
  */
 .notes-workspace .action-bar .notes-notebook-select.color-swatch-trigger {
-  background-color: var(--workspace-surface);
+  background-color: var(--input-background);
 }
 
 /*

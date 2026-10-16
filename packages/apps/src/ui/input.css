@@ -2,12 +2,12 @@
 /**
  * Text field primitives. Optional overrides: `--input-height`, `--input-background`,
  * `--input-background-focus`, `--input-background-disabled`, `--input-color-disabled`,
- * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`.
+ * `--input-placeholder-color`, `--input-shadow`, `--input-border-focus`, `--control-border-color`,
+ * `--input-background-hover`, `--input-border-hover` (search hover; unset keeps the resting fill).
  * Size (`xs` … `xl`) changes height, padding, and font-size only.
  * Default `md` = 36px — action bar / view header / event form density.
  * Spacious forms use `lg` (40px); hero CTAs use `xl` (44px).
- * Desktop xs/sm/md type is <16px. iOS Safari focus-zoom floor (1rem below 768px)
- * lives in `styles.css` — do not re-set font-size here or at product callsites.
+ * Size steps apply at every viewport. Do not re-set font-size here or at product callsites.
  * Radius stays global `--control-radius` on the shared surface — do not remap
  * soft chrome on layout ancestors. True capsules use `--control-radius-pill`.
  * Search variant: leading icon + trailing clear when the field has a value.
@@ -25,16 +25,17 @@
   /* Transparent fallback — `none` cannot compose with other shadows. */
   box-shadow: var(--input-shadow, 0 0 #0000);
   font-size: var(--input-font-size, 1rem);
-  background-color: var(
-    --input-background,
-    color-mix(in oklab, var(--color-background) 90%, var(--color-muted) 10%)
-  );
+  background-color: var(--input-background, transparent);
 }
 
-/* Picker triggers share Button outline focus — not text-field border chrome. */
-.control-surface,
-.select-trigger {
-  @apply focus-visible:ring-1 focus-visible:ring-ring;
+/* Keyboard-only ring and border, same as Button / IconButton. Mouse :focus does not match. */
+.control-surface:focus-visible,
+.select-trigger:focus-visible,
+.input:focus-visible,
+.textarea:focus-visible,
+.input:has(> .input__field:focus-visible) {
+  @apply ring-1 ring-ring;
+  border-color: var(--input-border-focus, var(--control-border-color));
 }
 
 .control-surface,
@@ -214,14 +215,19 @@
   @apply gap-2;
 }
 
+/* Hover wash/border are parent tokens. Unset, this stays the idle field. */
+.input--search:hover:not(:focus-within):not(:has(.input__field:read-only)) {
+  background-color: var(--input-background-hover, var(--input-background));
+  border-color: var(--input-border-hover, var(--control-border-color));
+}
+
 .input--search:focus-within:not(:has(.input__field:read-only)),
 .input--password:focus-within:not(:has(.input__field:read-only)) {
-  background-color: var(--input-background-focus, #ffffff);
-  border-color: var(--input-border-focus, var(--ring));
+  background-color: var(--input-background-focus, var(--input-background, transparent));
 }
 
 .input__field {
-  @apply min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 outline-none;
+  @apply min-w-0 flex-1 appearance-none border-0 bg-transparent p-0 outline-none focus-visible:outline-none;
   color: inherit;
   -webkit-text-fill-color: inherit;
   caret-color: currentColor;
@@ -289,10 +295,7 @@ input.input:read-only,
 .textarea:read-only,
 .select-trigger:disabled {
   color: var(--input-color-disabled, var(--color-muted-foreground));
-  background-color: var(
-    --input-background-disabled,
-    color-mix(in oklab, var(--color-muted) 30%, var(--color-background))
-  );
+  background-color: var(--input-background-disabled, var(--input-background, transparent));
 }
 
 .control-surface:disabled,
@@ -309,18 +312,17 @@ input.input:read-only,
   @apply cursor-default;
 }
 
-/* Text fields: keyboard-only border focus — mouse click must not paint chrome. */
+/* Focus keeps the resting fill. The border change lives on the keyboard rule above. */
 input.input:focus-visible:not(:read-only),
 .textarea:focus-visible:not(:read-only) {
-  background-color: var(--input-background-focus, #ffffff);
-  border-color: var(--input-border-focus, var(--ring));
+  background-color: var(--input-background-focus, var(--input-background, transparent));
 }
 
-/* Open select keeps the elevated surface without relying on :focus (pointer open). */
+/* Open select keeps the resting fill without relying on :focus (pointer open). */
 .control-surface[data-state="open"]:not(:disabled),
 .select-trigger[data-state="open"]:not(:disabled) {
-  background-color: var(--input-background-focus, #ffffff);
-  border-color: var(--input-border-focus, var(--ring));
+  background-color: var(--input-background-focus, var(--input-background, transparent));
+  border-color: var(--input-border-focus, var(--control-border-color));
 }
 
 /**

@@ -197,8 +197,7 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
-   * Form controls floor xs/sm/md to 1rem below 768px (iOS focus-zoom block).
-   * Buttons / chips keep this desktop scale — do not raise these tokens on :root.
+   * These steps apply at every viewport. Do not raise them on small screens.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -297,18 +296,14 @@
 }
 
 /*
- * iOS Safari zooms focused form controls whose computed font-size is < 16px.
- * Icon-only buttons and labels keep their own type — this floor is text-entry only.
- *
- * Unmanaged native `input` / `textarea` / `select` always use ≥1rem.
- * Shared Input / Textarea / SelectTrigger / control-surface keep the desktop
- * xs/sm/md scale and raise `--input-font-size*` to 1rem at max-width 767px
- * (same breakpoint as `MOBILE_MEDIA_QUERY` / `useIsMobile`).
+ * Unmanaged native `input` / `textarea` / `select` stay ≥1rem.
+ * Shared Input / Textarea / SelectTrigger / control-surface use the size-step
+ * tokens at every viewport (xs/sm/md stay below 1rem).
  *
  * Opt-outs from the unmanaged floor (own type scale):
- * - `.input` / `.input__field` / `.textarea` — size-class tokens (mobile floor below)
+ * - `.input` / `.input__field` / `.textarea` — size-class tokens
  * - `.note-detail-view__title` — title-scale (`--text-4xl`)
- * - `.tag-group__input` — chip scale on desktop; included in the mobile floor
+ * - `.tag-group__input` — chip scale
  * - `.text-editor-source__input` — shares `--text-editor-source-font-size` with the
  *   line-number gutter (mobile floor is on `.text-editor-source` in text-editor.css)
  */
@@ -323,22 +318,6 @@ select {
 }
 
 @media (max-width: 767px) {
-  .control-surface,
-  .input,
-  .textarea,
-  .select-trigger,
-  .tag-group__input {
-    --input-font-size: 1rem;
-    --input-font-size-xs: 1rem;
-    --input-font-size-sm: 1rem;
-    --input-font-size-md: 1rem;
-    font-size: 1rem !important;
-  }
-
-  .input__field {
-    font-size: inherit !important;
-  }
-
   .text-editor,
   .text-editor-prose {
     --text-editor-prose-font-size: 1rem;

@@ -46,8 +46,6 @@
   --field-label-color: var(--meet-muted);
   --foreground: var(--meet-text);
   --color-foreground: var(--meet-text);
-  --input-background: var(--meet-panel-soft);
-  --input-background-focus: var(--meet-panel-soft);
   --accent: var(--meet-panel-soft);
   --accent-foreground: var(--meet-text);
 
@@ -172,7 +170,6 @@
 }
 
 .meet-workspace__form .meet-workspace__display-name-input {
-  --input-background: transparent;
   --input-background-focus: transparent;
   --foreground: var(--meet-text);
   --color-foreground: var(--meet-text);
@@ -187,9 +184,8 @@
 }
 
 .meet-workspace__form .meet-device-row__trigger {
-  --input-background: transparent;
   --input-background-focus: transparent;
-  background-color: transparent;
+  background-color: var(--input-background);
   color: var(--meet-text);
   box-shadow: none;
   border: 0;
@@ -270,8 +266,6 @@
   --user-avatar-bg: color-mix(in oklch, #ffffff 12%, var(--meet-surface));
   --user-avatar-fg: var(--meet-text);
   --color-foreground: var(--meet-text);
-  --input-background: var(--meet-panel-soft);
-  --input-background-focus: var(--meet-panel-soft);
   --accent: var(--meet-panel-soft);
   --accent-foreground: var(--meet-text);
   --popover: var(--meet-panel);
@@ -386,14 +380,12 @@
   color: var(--workspace-foreground);
   border-color: color-mix(in oklch, var(--workspace-foreground) 12%, transparent);
   box-shadow: none;
-  --input-background: var(--workspace-surface);
-  --input-background-focus: var(--workspace-surface);
-  background-color: var(--workspace-surface);
+  background-color: var(--input-background);
 }
 
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger:focus,
 .meet-guest-channel__lobby .meet-guest-lobby__devices .meet-device-row__trigger[data-state="open"] {
-  background-color: var(--workspace-surface);
+  background-color: var(--input-background-focus);
   color: var(--workspace-foreground);
   border-color: color-mix(
     in oklch,
@@ -1691,8 +1683,6 @@
     "invite";
   background-color: var(--workspace-surface);
   --card-surface-bg: var(--workspace-surface);
-  --input-background: var(--workspace-surface);
-  --input-background-focus: var(--workspace-surface);
   box-shadow: 0 18px 48px color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
 }
 
@@ -1825,8 +1815,6 @@
 .meet-guest-channel__lobby .meet-guest-lobby__name .meet-workspace__display-name-input {
   --foreground: var(--workspace-foreground);
   --color-foreground: var(--workspace-foreground);
-  --input-background: var(--workspace-surface);
-  --input-background-focus: var(--workspace-surface);
   color: var(--workspace-foreground);
 }
 

@@ -71,7 +71,7 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--workspace-surface);
+  background-color: var(--input-background);
 }
 
 /**

@@ -57,17 +57,9 @@
     var(--workspace-foreground)
   );
 
-  --input-background: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
-  --input-background-focus: color-mix(
-    in oklch,
-    var(--workspace-foreground) 8%,
-    var(--workspace-surface)
-  );
-  --input-background-disabled: color-mix(
-    in oklch,
-    var(--workspace-foreground) 4%,
-    var(--workspace-surface)
-  );
+  --input-background: transparent;
+  --input-background-focus: var(--input-background);
+  --input-background-disabled: var(--input-background);
 
   --button-outline-color: var(--workspace-foreground);
   --button-outline-hover-color: var(--workspace-accent);
