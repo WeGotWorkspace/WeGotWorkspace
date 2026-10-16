@@ -7,7 +7,6 @@ import { useConnectivity } from "@/hooks/use-connectivity";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   workspaceUserFooterDetailLine,
   type WorkspaceSession,
@@ -381,9 +380,6 @@ function DriveSidebar({
           session={session}
           detailLine={workspaceUserFooterDetailLine(session, wgwIsGuestSession())}
           onLogout={onLogout}
-          onBeforeOpen={() => {
-            if (isSidebarOverlayViewport()) setSidebarOpen(false);
-          }}
         />
       }
       primaryButton={

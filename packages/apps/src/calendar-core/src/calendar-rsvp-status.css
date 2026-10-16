@@ -8,50 +8,32 @@
 .calendar-rsvp-select--accept.calendar-rsvp-select--selected,
 .calendar-invitees-status-mark--organizer {
   /* Host/organizer shares the accepted green wash (not calendar-accent purple). */
-  --tag-fg: #3a8f5a;
-  --tag-bg: color-mix(in oklab, #3a8f5a 18%, var(--workspace-surface));
-  --user-chip-fg: #3a8f5a;
-  --user-chip-bg: color-mix(in oklab, #3a8f5a 18%, var(--workspace-surface));
-  --user-chip-border: color-mix(in oklab, #3a8f5a 42%, transparent);
+  --tag-fg: var(--color-success);
+  --tag-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
+  --user-chip-fg: var(--color-success);
+  --user-chip-bg: color-mix(in oklab, var(--color-success) 18%, var(--workspace-surface));
+  --user-chip-border: color-mix(in oklab, var(--color-success) 42%, transparent);
 }
 
 .calendar-rsvp-status--tentative,
 .calendar-invitees-rsvp-tag--tentative,
 .calendar-rsvp-select--maybe.calendar-rsvp-select--selected {
   /* Maybe / tentative = app accent wash (same purple as selected Maybe RSVP thumb). */
-  --tag-fg: var(
-    --workspace-accent-strong,
-    var(--workspace-accent, var(--workspace-accent, #962fa8))
-  );
-  --tag-bg: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
-    var(--workspace-surface)
-  );
-  --user-chip-fg: var(
-    --workspace-accent-strong,
-    var(--workspace-accent, var(--workspace-accent, #962fa8))
-  );
-  --user-chip-bg: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--workspace-accent, #962fa8)) 18%,
-    var(--workspace-surface)
-  );
-  --user-chip-border: color-mix(
-    in oklab,
-    var(--workspace-accent, var(--workspace-accent, #962fa8)) 42%,
-    transparent
-  );
+  --tag-fg: var(--workspace-accent-strong, var(--workspace-accent));
+  --tag-bg: color-mix(in oklab, var(--workspace-accent) 18%, var(--workspace-surface));
+  --user-chip-fg: var(--workspace-accent-strong, var(--workspace-accent));
+  --user-chip-bg: color-mix(in oklab, var(--workspace-accent) 18%, var(--workspace-surface));
+  --user-chip-border: color-mix(in oklab, var(--workspace-accent) 42%, transparent);
 }
 
 .calendar-rsvp-status--declined,
 .calendar-invitees-rsvp-tag--declined,
 .calendar-rsvp-select--decline.calendar-rsvp-select--selected {
-  --tag-fg: #b14242;
-  --tag-bg: color-mix(in oklab, #b14242 18%, var(--workspace-surface));
-  --user-chip-fg: #b14242;
-  --user-chip-bg: color-mix(in oklab, #b14242 18%, var(--workspace-surface));
-  --user-chip-border: color-mix(in oklab, #b14242 42%, transparent);
+  --tag-fg: var(--color-error);
+  --tag-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
+  --user-chip-fg: var(--color-error);
+  --user-chip-bg: color-mix(in oklab, var(--color-error) 18%, var(--workspace-surface));
+  --user-chip-border: color-mix(in oklab, var(--color-error) 42%, transparent);
 }
 
 .calendar-invitees-status-mark--pending,

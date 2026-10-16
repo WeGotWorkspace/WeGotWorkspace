@@ -98,12 +98,15 @@ Run `bash setup.sh --help` for the full command list.
 curl -fsSL .../install | sh -s -- --sqlite
 ```
 
-Or edit `wegotworkspace/.env`:
+`--sqlite` sets the compose profile and points `WGW_DB_DATABASE` at `/var/wgw/content/db.sqlite` on the content volume. MySQL installs keep `WGW_DB_DATABASE=wgw`.
+
+Or edit `wegotworkspace/.env` to the same values:
 
 ```bash
 COMPOSE_PROFILES=sqlite
 WGW_WAIT_FOR_DB=0
 WGW_DB_HOST=
+WGW_DB_DATABASE=/var/wgw/content/db.sqlite
 ```
 
 In the installer, choose **SQLite**. Data lives under the `wgw-content` volume.
@@ -139,6 +142,7 @@ bash tools/setup-docker-install.sh --local
 | `WGW_DB_PORT` | `3306` | MySQL port |
 | `WGW_DB_USERNAME` | `wgw` | Credentials passed to DB wait probe |
 | `WGW_DB_PASSWORD` | `wgw` | Credentials passed to DB wait probe |
+| `WGW_DB_DATABASE` | `wgw` (MySQL); `/var/wgw/content/db.sqlite` with `--sqlite` | MySQL database name, or the SQLite file on the content volume. This value wins over `api.env`. `--sqlite` writes the volume path; MySQL keeps `wgw`. |
 | `MARIADB_ROOT_PASSWORD` | `wgw-root` | MariaDB root password |
 | `MARIADB_DATABASE` | `wgw` | Database created on first boot |
 | `MARIADB_USER` | `wgw` | Application database user |
@@ -321,7 +325,7 @@ Maintainers: pre-release checklist (smoke job, GHCR visibility, multi-arch manif
 
 ## Real-time capacity
 
-A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md). After install, **Admin → Real-time health** shows join time, relay use, and who could not connect directly.
+A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md).
 
 ## TLS (HTTPS)
 

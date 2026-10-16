@@ -35,4 +35,4 @@
 
 - Optional, for heavy DB queries
 - Must not accept `\PDO` from `WgwDatabase` — use models or `DB::connection('wgw')`
-- Must not use `Paths::` or raw PHP file functions — inject `WgwStorage` for any file persistence (notes, drive metadata files, etc.)
+- Must not use `Paths::` or raw PHP file functions — inject `WgwStorage` for any file persistence (drive metadata files, migration-source trees, etc.)

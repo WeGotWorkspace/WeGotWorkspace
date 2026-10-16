@@ -110,10 +110,8 @@ import {
 import { isSubscribedCalendar } from "@/calendar-core/src/calendar-subscription";
 import { calendarPeriodNavLabels } from "@/calendar-core/src/calendar-labels";
 import { useCalendarController } from "@/calendar-core/src/use-calendar-controller";
-import {
-  CALENDAR_VIEW_ORDER,
-  closeCalendarSidebarOnMobile,
-} from "@/calendar-core/src/calendar-workspace-nav";
+import { CALENDAR_VIEW_ORDER } from "@/calendar-core/src/calendar-workspace-nav";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { SideDrawer } from "@/ui/side-drawer";
 import { DOCS_COLLAB_SIDEBAR_PANEL_DRAWER_CLASS } from "@/text-editor-core/docs-collab/docs-collab-card";
 import { useDocsCommentsLayout } from "@/text-editor-core/docs-collab/use-docs-comments-layout";
@@ -816,13 +814,13 @@ export function CalendarWorkspace({
                   onCreateEvent={() => {
                     closeEventPreview();
                     openCreateEvent();
-                    closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
+                    dismissSidebarOverlay(() => setSidebarOpen(false));
                   }}
                   onCreateCalendar={
                     canCreateCalendar
                       ? () => {
                           openCreateCalendarDialog();
-                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
+                          dismissSidebarOverlay(() => setSidebarOpen(false));
                         }
                       : undefined
                   }
@@ -830,7 +828,7 @@ export function CalendarWorkspace({
                     canSubscribeCalendar
                       ? () => {
                           openSubscribeCalendarDialog();
-                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
+                          dismissSidebarOverlay(() => setSidebarOpen(false));
                         }
                       : undefined
                   }
@@ -838,7 +836,7 @@ export function CalendarWorkspace({
                     canImportEvents
                       ? () => {
                           closeEventPreview();
-                          closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
+                          dismissSidebarOverlay(() => setSidebarOpen(false));
                           icsFileInputRef.current?.click();
                         }
                       : undefined
@@ -850,7 +848,7 @@ export function CalendarWorkspace({
                   icon={<CalendarDays />}
                   onClick={() => {
                     goToday();
-                    closeCalendarSidebarOnMobile(() => setSidebarOpen(false));
+                    dismissSidebarOverlay(() => setSidebarOpen(false));
                   }}
                   size="md"
                   pill
@@ -864,7 +862,6 @@ export function CalendarWorkspace({
                 session={session}
                 detailLine={session.user.email}
                 onLogout={onLogout}
-                onBeforeOpen={() => closeCalendarSidebarOnMobile(() => setSidebarOpen(false))}
               />
             }
           >

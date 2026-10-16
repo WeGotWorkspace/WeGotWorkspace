@@ -177,8 +177,8 @@
 .drive-workspace .drive-access-grant-row__via-link,
 .drive-workspace .drive-access-person-drawer__via-link {
   @apply rounded underline-offset-2 hover:underline;
-  /* Darker than --workspace-accent for WCAG AA on light row backgrounds. */
-  color: #047857;
+  /* Darker than a flat accent so the link clears AA on light rows. */
+  color: var(--workspace-accent-strong);
 }
 
 .drive-workspace .drive-access-grant-row__inherited {

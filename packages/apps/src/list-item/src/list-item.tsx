@@ -45,12 +45,14 @@ type ListItemProps = {
   title: string;
   /** Meta line (folder, notebook, company, etc.). May include a leading icon. */
   subtitle: ReactNode;
-  /** Subtitle/meta line placement. Mail and notes keep the default `above`; contacts pass `below`. */
+  /** Subtitle/meta line placement. Mail keeps the default `above`; contacts and notes pass `below`. */
   metaPosition?: ListItemMetaPosition;
   date: string;
   icons?: ReactNode[];
-  /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present. */
+  /** Secondary body line (excerpt, tags row, etc.). Omitted when empty and a title is present, unless `showEmptyText` is set. */
   text?: ReactNode;
+  /** Keep the body line when `text` is empty, using `emptyText` as the placeholder. */
+  showEmptyText?: boolean;
   isActive: boolean;
   isSelected: boolean;
   selectionMode: boolean;
@@ -108,6 +110,7 @@ export function ListItem({
   date,
   icons = [],
   text,
+  showEmptyText = false,
   isActive,
   isSelected,
   selectionMode,
@@ -131,7 +134,8 @@ export function ListItem({
   const highlight = useListItemHighlight(entityId, { isActive, isSelected });
   const palette = { ...defaultTheme, ...theme };
   const themeVars = theme ? themeToCssVars(palette) : undefined;
-  const bodyContent = text || (!title ? emptyText : null);
+  const bodyContent = text || (showEmptyText || !title ? emptyText : null);
+  const bodyIsPlaceholder = !text && bodyContent != null;
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const longPressBlockedBySwipeRef = useRef(false);
@@ -273,7 +277,11 @@ export function ListItem({
           <p className="list-item__subtitle list-item__subtitle--below">{subtitle}</p>
         ) : null}
 
-        {bodyContent ? <div className="list-item__body">{bodyContent}</div> : null}
+        {bodyContent ? (
+          <div className="list-item__body" data-empty={bodyIsPlaceholder ? "true" : "false"}>
+            {bodyContent}
+          </div>
+        ) : null}
       </div>
     </button>
   );

@@ -5,7 +5,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import type { Note } from "@/lib/models/note";
 import { enrichNotesListPreviewsFromCollabOffline } from "@/lib/offline/notes/notes-list-preview-enrich";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
-import { noteListTitle } from "@/notes-core/src/notes-note-utils";
+import { noteListExcerpt, noteListTitle } from "@/notes-core/src/notes-note-utils";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { collabDocumentFormat } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
@@ -46,7 +46,8 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
       alreadyFilled,
     ]);
 
-    expect(noteListTitle(enriched[0]!)).toMatch(/Typed offline/);
+    expect(noteListTitle(enriched[0]!)).toBe("Empty title");
+    expect(noteListExcerpt(enriched[0]!)).toMatch(/Typed offline/);
     expect(enriched[0]?.excerpt).toMatch(/Typed offline/);
     expect(enriched[1]?.body).toEqual(["Already on disk"]);
     expect(enriched[1]).toBe(alreadyFilled);
@@ -70,7 +71,7 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
     }
 
     const enriched = await enrichNotesListPreviewsFromCollabOffline(username, notes);
-    expect(enriched.map((note) => noteListTitle(note))).toEqual([
+    expect(enriched.map((note) => noteListExcerpt(note))).toEqual([
       "Preview for n-a",
       "Preview for n-b",
       "Preview for n-c",
@@ -93,7 +94,8 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
     await seedCollabRoom(noteCollabRoomKey(localId), "Typed after offline create");
 
     const enriched = await enrichNotesListPreviewsFromCollabOffline(username, [stuckOnId]);
-    expect(noteListTitle(enriched[0]!)).toBe("Typed after offline create");
+    expect(noteListTitle(enriched[0]!)).toBe("Empty title");
+    expect(noteListExcerpt(enriched[0]!)).toBe("Typed after offline create");
     expect(enriched[0]?.excerpt).toMatch(/Typed after offline create/);
   });
 
@@ -109,6 +111,7 @@ describe("enrichNotesListPreviewsFromCollabOffline", () => {
       wordCount: 0,
     };
     const enriched = await enrichNotesListPreviewsFromCollabOffline("alice", [empty]);
-    expect(noteListTitle(enriched[0]!)).toBe("Untitled note");
+    expect(noteListTitle(enriched[0]!)).toBe("Empty title");
+    expect(noteListExcerpt(enriched[0]!)).toBe("");
   });
 });

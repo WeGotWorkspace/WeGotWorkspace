@@ -6,10 +6,14 @@ import type { Note } from "@/lib/models/note";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import { ingestRemoteNote, ingestRemoteNoteDestroyed } from "@/lib/offline/notes-jmap-inbound";
+import { setNotesSyncConflictListener } from "@/lib/offline/notes-sync-conflicts";
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
+  getNoteFromCache,
   listOutboxMutations,
+  listPendingNoteFields,
   listPendingNoteIds,
   readNotesBootstrapFromCache,
   readSyncToken,
@@ -422,5 +426,70 @@ describe("notes offline store", () => {
     });
     const rows = await listOutboxMutations(username);
     expect(rows.map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  it("records only the fields the enqueue actually changed", async () => {
+    const local: Note = {
+      ...note,
+      id: "n-title",
+      title: "Queued title",
+      notebook: "Drafts",
+      tags: ["essay", "focus"],
+      starred: false,
+      archived: false,
+    };
+    await upsertNoteInCache(username, local, true);
+    await enqueueCoalescedNoteUpdate(username, local.id, local, local.date, undefined, undefined, {
+      includeTitle: true,
+    });
+    await enqueueCoalescedNoteUpdate(username, local.id, local, local.date, undefined, undefined, {
+      includeTags: true,
+    });
+
+    const fields = await listPendingNoteFields(username);
+    expect([...(fields.get("n-title") ?? [])].sort()).toEqual(["tags", "title"]);
+
+    const conflicts: string[][] = [];
+    setNotesSyncConflictListener((ids) => {
+      conflicts.push(ids);
+    });
+    try {
+      await ingestRemoteNote(username, {
+        ...local,
+        archived: true,
+      });
+    } finally {
+      setNotesSyncConflictListener(undefined);
+    }
+
+    expect(conflicts).toEqual([]);
+    const cached = await getNoteFromCache(username, "n-title");
+    expect(cached?.title).toBe("Queued title");
+    expect(cached?.tags).toEqual(["essay", "focus"]);
+    expect(cached?.archived).toBe(true);
+  });
+
+  it("does not restore a note while a delete is still queued", async () => {
+    const local: Note = { ...note, id: "n-del", title: "Local title" };
+    await upsertNoteInCache(username, local, true);
+    await enqueueOutboxMutation(username, {
+      id: "del-1",
+      domain: NOTES_DOMAIN,
+      op: "delete",
+      payload: JSON.stringify({ noteId: local.id }),
+    });
+
+    await ingestRemoteNote(username, { ...local, title: "From server" });
+
+    const cached = await getNoteFromCache(username, local.id);
+    expect(cached?.title).toBe("Local title");
+  });
+
+  it("removes a destroyed note when pendingSync is set but the outbox is empty", async () => {
+    const local: Note = { ...note, id: "n-flag-only" };
+    await upsertNoteInCache(username, local, true);
+
+    await expect(ingestRemoteNoteDestroyed(username, local.id)).resolves.toBe("removed");
+    expect(await getNoteFromCache(username, local.id)).toBeNull();
   });
 });

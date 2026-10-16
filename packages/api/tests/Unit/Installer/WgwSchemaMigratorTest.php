@@ -102,6 +102,20 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
     }
 
+    public function test_refresh_token_grace_down_drops_added_columns(): void
+    {
+        app(WgwSchemaMigrator::class)->migrate();
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+
+        $migration = require database_path('migrations/wgw/2026_10_16_000640_wgw_refresh_token_rotation_grace.php');
+        $migration->down();
+
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+    }
+
     public function test_migrate_is_idempotent_when_already_at_current_version(): void
     {
         $migrator = app(WgwSchemaMigrator::class);
@@ -200,7 +214,6 @@ final class WgwSchemaMigratorTest extends TestCase
             'notification_deliveries',
             'push_subscriptions',
             'rtc_relay_events',
-            'rtc_session_metrics',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -219,6 +232,10 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
@@ -278,26 +295,10 @@ final class WgwSchemaMigratorTest extends TestCase
         foreach (['created_at', 'channel', 'actor', 'reason', 'outcome'] as $column) {
             $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_relay_events', $column));
         }
-        foreach ([
-            'created_at',
-            'channel',
-            'join_ms',
-            'candidate_type',
-            'failed_pairs',
-            'ice_restarts',
-            'http_fallback',
-            'poll_rtt_ms',
-            'net',
-        ] as $column) {
-            $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_session_metrics', $column));
-        }
+        $this->assertFalse(Schema::connection('wgw')->hasTable('rtc_session_metrics'));
         $this->assertContains(
             'idx_rtc_relay_events_created',
             collect(Schema::connection('wgw')->getIndexes('rtc_relay_events'))->pluck('name')->all(),
-        );
-        $this->assertContains(
-            'idx_rtc_session_metrics_created',
-            collect(Schema::connection('wgw')->getIndexes('rtc_session_metrics'))->pluck('name')->all(),
         );
     }
 

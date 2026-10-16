@@ -403,14 +403,13 @@ Artisan::command('wgw:meet:sweep-reservations', function (MeetReservationService
 Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping): int {
     $result = $housekeeping->sweep();
     $this->info(sprintf(
-        'Pruned %d stale signaling peer(s); %d relay event(s); %d session metric(s).',
+        'Pruned %d stale signaling peer(s); %d relay event(s).',
         $result['peers'],
         $result['relayEvents'],
-        $result['sessionMetrics'],
     ));
 
     return Command::SUCCESS;
-})->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events and session metrics');
+})->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
 
 Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
     $result = $collector->collect();

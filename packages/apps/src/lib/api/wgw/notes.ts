@@ -184,6 +184,7 @@ export function wgwNoteUpsertFromNote(
   return {
     id: note.id,
     notebook: note.notebook,
+    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(note.title !== undefined ? { title: note.title } : {}),
     body: note.body.join("\n\n"),
     tags: note.tags,
@@ -255,12 +256,16 @@ export async function createNoteItem(
   opts?: { signal?: AbortSignal },
 ): Promise<Note> {
   const notebooks = await notebooksForMap();
-  const notebook = notebooks.find(
-    (item) =>
-      item.name === body.notebook && (body.groupSlug ? item.groupSlug === body.groupSlug : true),
-  );
+  // Id first: the sidebar view key is a collection id, and a display name is
+  // neither unique nor equal to the id for group or slugged notebooks (#1253).
+  const notebook =
+    (body.notebookId ? notebooks.find((item) => item.id === body.notebookId) : undefined) ??
+    notebooks.find(
+      (item) =>
+        item.name === body.notebook && (body.groupSlug ? item.groupSlug === body.groupSlug : true),
+    );
   if (!notebook) {
-    throw new NotesRequestError("Notebook not found", 404);
+    throw new NotesRequestError(`Notebook not found: ${body.notebookId ?? body.notebook}`, 404);
   }
   const created = await createVjournalNote(
     {

@@ -16,6 +16,7 @@ import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
 import { joinFileNameForRename } from "@/lib/files/filename-rename";
+import "@/drive-core/src/drive-create-markdown-dialog.css";
 
 export function DriveCreateMarkdownDialog({
   open,
@@ -41,7 +42,7 @@ export function DriveCreateMarkdownDialog({
   labels: DriveUILabels;
   defaultName: string;
   initialBrowsePath: string;
-  /** Optional preselected destination (Docs: sidebar drive on the Drives root listing). */
+  /** Optional preselected destination. Omit so the picker starts with nothing chosen. */
   initialSelectedPath?: string | null;
   files: DriveFile[];
   groupPaths: string[];
@@ -89,7 +90,9 @@ export function DriveCreateMarkdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={cn(dialogSurfaceClassName, "sm:max-w-lg")}>
+      <DialogContent
+        className={cn(dialogSurfaceClassName, "drive-create-markdown-dialog", "sm:max-w-lg")}
+      >
         <DialogHeader>
           <DialogTitle>{labels.createMarkdownDialogTitle}</DialogTitle>
           <DialogDescription>{labels.createMarkdownDialogDescription}</DialogDescription>

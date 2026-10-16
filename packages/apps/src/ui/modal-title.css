@@ -1,10 +1,7 @@
 @import "../styles.css" reference;
 
 .ui-modal-title {
-  font-family: var(--modal-title-font-family, var(--font-serif));
-  font-size: var(--modal-title-font-size, 1.5rem);
-  font-weight: var(--modal-title-font-weight, 400);
-  line-height: var(--modal-title-line-height, 1);
-  letter-spacing: var(--modal-title-letter-spacing, -0.025em);
+  /* Same face as the sidebar app name (.app-switch-button__label + __label-name). */
+  @apply font-sans text-xl font-semibold tracking-tight;
   color: var(--modal-title-foreground, var(--color-foreground, var(--foreground)));
 }

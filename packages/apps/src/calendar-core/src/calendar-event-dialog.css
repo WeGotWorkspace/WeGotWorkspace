@@ -24,8 +24,7 @@
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: var(--color-we-got-soft);
   --card-title-icon-color: var(--workspace-accent);
-  --card-panel-border-color: var(--border);
-  --card-row-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
+  --card-panel-border-color: var(--control-border-color);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
   /* Desktop New event Dialog only — matches Dialog max-w-lg (~32rem). Editable
    * details popover keeps its own narrower token in details-popover.css. */

@@ -135,4 +135,29 @@ final class NoteJournalConverterTest extends TestCase
         $kept = $converter->mergeIntoIcs($ics, ['categories' => ['v2', 'focus', 'new-tag']]);
         $this->assertSame(['v2', 'focus', 'new-tag'], $converter->fromIcs($kept, 'n-legacy')['categories']);
     }
+
+    public function test_body_only_merge_leaves_last_modified_and_dtstamp(): void
+    {
+        $converter = new NoteJournalConverter;
+        $ics = implode("\r\n", [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'BEGIN:VJOURNAL',
+            'UID:n-body',
+            'DTSTAMP:20260101T000000Z',
+            'LAST-MODIFIED:20260810T120000Z',
+            'SUMMARY:Same',
+            'DESCRIPTION:Old',
+            'END:VJOURNAL',
+            'END:VCALENDAR',
+            '',
+        ]);
+
+        $patched = $converter->mergeIntoIcs($ics, ['body' => 'New body']);
+        $note = $converter->fromIcs($patched, 'n-body');
+
+        $this->assertSame('New body', $note['body']);
+        $this->assertSame('2026-08-10T12:00:00Z', $note['updatedAt']);
+        $this->assertStringContainsString('DTSTAMP:20260101T000000Z', $patched);
+    }
 }

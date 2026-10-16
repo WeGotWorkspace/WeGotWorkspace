@@ -40,6 +40,7 @@ function NotesMultiSelectionPaneHarness({
               ),
               onClick: () => {},
               active: archived,
+              severity: archived ? undefined : "danger",
             },
             {
               id: "move",
@@ -52,12 +53,15 @@ function NotesMultiSelectionPaneHarness({
               label: L.selectionDeletePermanently,
               icon: <Trash2 className="size-4" />,
               onClick: () => {},
+              severity: "danger",
             },
             {
               id: "done",
               label: L.selectionDone,
               icon: <CheckCircle2 className="size-4" />,
               onClick: () => {},
+              separatorBefore: true,
+              variant: "primary",
             },
           ]}
         />

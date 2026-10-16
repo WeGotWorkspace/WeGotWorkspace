@@ -27,10 +27,8 @@
   --card-title-icon-color: var(--workspace-accent);
   --card-title-color: var(--workspace-foreground);
   --card-description-color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-  --card-panel-border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
   --card-surface-bg: transparent;
   --card-panel-bg: transparent;
-  --card-row-hover-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
   background-color: var(--workspace-surface);
   color: var(--workspace-foreground);
   border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);

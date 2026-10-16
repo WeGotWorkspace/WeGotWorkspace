@@ -19,11 +19,8 @@
   --font-mono: var(--font-we-got-mono);
   --font-mark: var(--font-we-got-mark);
   /* Body weight: use Tailwind font-normal (400). Chrome stays font-semibold (600). */
-  --color-forest: #042318;
+  /* Status green still read by list, drive, and mail. Not a brand primitive. */
   --color-emerald: #34d399;
-  --color-paper: #34d399;
-  --color-slate-muted: #0a3a2a;
-  --color-ghost: #22c55e;
   /*
    * We Got brand primitives — hex first (source + fallback), then oklch(from)
    * so supporting browsers mix in OKLCH. Floor: relative color + color-mix
@@ -58,8 +55,6 @@
   --color-success: oklch(from #3a8f5a l c h);
   --color-info: #a3c4e8;
   --color-info: oklch(from #a3c4e8 l c h);
-  /** Meet / suite dark surfaces — keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-we-got-soft`. */
-  --workspace-home-bg: #1b1d3a;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -128,6 +123,7 @@
   --color-workspace-sidebar-foreground: var(--workspace-sidebar-foreground);
   --color-workspace-icon-surface: var(--workspace-icon-surface);
   --color-workspace-icon-foreground: var(--workspace-icon-foreground);
+  --color-workspace-home-bg: var(--workspace-home-bg);
 }
 
 :root {
@@ -147,6 +143,12 @@
   /* Rail is Soft — not a tint of the icon pair. Paper is Soft mixed toward white. */
   --workspace-sidebar-surface: var(--color-we-got-soft);
   --workspace-sidebar-foreground: var(--workspace-foreground);
+  /*
+   * Suite navy. Source for the `@theme` alias `--color-workspace-home-bg`.
+   * Keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-we-got-soft`.
+   * `var(--workspace-home-bg)` only resolves from this `:root` custom property.
+   */
+  --workspace-home-bg: #1b1d3a;
 
   /* Compatibility aliases still read by product sheets. */
   --sidebar-bg: var(--workspace-sidebar-surface);
@@ -197,8 +199,8 @@
    * Control type scale (shared by Input, Button, Select, UserChip, …).
    * `--input-font-size` remains the unset/base fallback (body-adjacent).
    * Size steps: xs=12 / sm=14 / md=14 / lg=16 / xl=16.
-   * Form controls floor xs/sm/md to 1rem below 768px (iOS focus-zoom block).
-   * Buttons / chips keep this desktop scale — do not raise these tokens on :root.
+   * Desktop keeps those steps. Phones floor real text entry to 1rem below
+   * so iOS Safari does not zoom the viewport on focus.
    */
   --input-font-size: 1rem;
   --input-font-size-xs: 0.75rem;
@@ -297,18 +299,15 @@
 }
 
 /*
- * iOS Safari zooms focused form controls whose computed font-size is < 16px.
- * Icon-only buttons and labels keep their own type — this floor is text-entry only.
- *
- * Unmanaged native `input` / `textarea` / `select` always use ≥1rem.
- * Shared Input / Textarea / SelectTrigger / control-surface keep the desktop
- * xs/sm/md scale and raise `--input-font-size*` to 1rem at max-width 767px
- * (same breakpoint as `MOBILE_MEDIA_QUERY` / `useIsMobile`).
+ * Unmanaged native `input` / `textarea` / `select` stay ≥1rem.
+ * Shared Input / Textarea use the size-step tokens, then the phone block
+ * floors those text fields at 1rem. SelectTrigger and `.control-surface`
+ * stay on the desktop steps (they are buttons; iOS does not zoom them).
  *
  * Opt-outs from the unmanaged floor (own type scale):
- * - `.input` / `.input__field` / `.textarea` — size-class tokens (mobile floor below)
+ * - `.input` / `.input__field` / `.textarea` — size-class tokens
  * - `.note-detail-view__title` — title-scale (`--text-4xl`)
- * - `.tag-group__input` — chip scale on desktop; included in the mobile floor
+ * - `.tag-group__input` — chip scale
  * - `.text-editor-source__input` — shares `--text-editor-source-font-size` with the
  *   line-number gutter (mobile floor is on `.text-editor-source` in text-editor.css)
  */
@@ -323,24 +322,33 @@ select {
 }
 
 @media (max-width: 767px) {
-  .control-surface,
+  /*
+   * iOS Safari zooms the viewport when a focused field is under 16px.
+   * Floor real text entry only. Do not lift xs/sm fields onto the md step.
+   */
   .input,
+  .input__field,
   .textarea,
-  .select-trigger,
   .tag-group__input {
-    --input-font-size: 1rem;
     --input-font-size-xs: 1rem;
     --input-font-size-sm: 1rem;
     --input-font-size-md: 1rem;
-    font-size: 1rem !important;
-  }
-
-  .input__field {
-    font-size: inherit !important;
+    /* Chip field reads `--tag-font-size`, not the input size steps. */
+    --tag-font-size: 1rem;
+    /* 16px belongs in a taller control — only the field itself. */
+    --control-height-sm: 2.5rem;
+    --control-height-md: 2.75rem;
+    font-size: 1rem;
   }
 
   .text-editor,
   .text-editor-prose {
     --text-editor-prose-font-size: 1rem;
   }
+}
+
+/* Lucide folder stays an outline. Stroke comes from currentColor; do not fill the shape. */
+.lucide-folder,
+.lucide-folder * {
+  fill: none;
 }

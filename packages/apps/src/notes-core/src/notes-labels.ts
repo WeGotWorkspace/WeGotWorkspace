@@ -31,6 +31,20 @@ export type NotesUILabels = {
   addTag: string;
   /** Shown when a newly typed tag is outside a-z and hyphen. */
   tagCharsetHint: string;
+  /** Pencil action on a sidebar tag row. */
+  renameTagActionFor: (tag: string) => string;
+  renameTagTitle: string;
+  renameTagDescription: string;
+  renameTagNameLabel: string;
+  renameTagConfirm: string;
+  /** Shown when the new name is already a tag — the two will merge. */
+  renameTagMergeHint: (tag: string) => string;
+  tagRenamed: (tag: string, count: number) => string;
+  tagRenamedSomeSkipped: (tag: string, count: number, skipped: number) => string;
+  tagRenameInvalidMessage: string;
+  tagRenameUndone: string;
+  /** Toast for the queued write that puts the old tag back. Distinct from `tagRenameUndone`. */
+  tagRenameRestored: (tag: string, count: number) => string;
   listSelected: (count: number) => string;
   listItems: (count: number) => string;
   emptyList: string;
@@ -127,6 +141,8 @@ export type NotesUILabels = {
   deleteNotebookDestinationReadOnly: string;
   deleteNotebookDeleteNotesToo: string;
   toastNotebookDeletedNotesMoved: (notebook: string, destination: string) => string;
+  /** Shown when a new note could not be created in the selected notebook. */
+  createNoteFailedMessage: (notebook: string) => string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -148,6 +164,18 @@ export const defaultNotesLabels: NotesUILabels = {
   addNotebook: "Create notebook",
   addTag: "New tag",
   tagCharsetHint: "Use letters a–z and -",
+  renameTagActionFor: (tag) => `Rename tag ${tag}`,
+  renameTagTitle: "Rename tag",
+  renameTagDescription: "Every note with this tag gets the new name.",
+  renameTagNameLabel: "Tag name",
+  renameTagConfirm: "Rename",
+  renameTagMergeHint: (tag) => `“${tag}” already exists. The two tags will be merged.`,
+  tagRenamed: (tag, count) => `Renamed to “${tag}” on ${count} note${count === 1 ? "" : "s"}`,
+  tagRenamedSomeSkipped: (tag, count, skipped) =>
+    `Renamed to “${tag}” on ${count} note${count === 1 ? "" : "s"}. ${skipped} read-only note${skipped === 1 ? "" : "s"} kept the old tag.`,
+  tagRenameInvalidMessage: "A tag may only use letters a–z and -",
+  tagRenameUndone: "Tag rename undone.",
+  tagRenameRestored: (tag, count) => `Restored “${tag}” on ${count} note${count === 1 ? "" : "s"}`,
   listSelected: (count) => `${count} Selected`,
   listItems: (count) => `${count} Items`,
   emptyList: "No items",
@@ -246,6 +274,8 @@ export const defaultNotesLabels: NotesUILabels = {
   deleteNotebookDeleteNotesToo: "Delete the notes too",
   toastNotebookDeletedNotesMoved: (notebook, destination) =>
     `Deleted “${notebook}”. Its notes moved to “${destination}”.`,
+  createNoteFailedMessage: (notebook) =>
+    `Could not create a note in “${notebook}”. The notebook may no longer be available.`,
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

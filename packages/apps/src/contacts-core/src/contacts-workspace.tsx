@@ -3,7 +3,7 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { FileDropOverlay } from "@/file-drop-overlay/src/file-drop-overlay";
 import { cn } from "@/lib/utils";
@@ -73,11 +73,6 @@ export function ContactsWorkspace({
   onViewChange,
   onContactChange,
 }: ContactsWorkspaceProps) {
-  const closeSidebarOnMobile = (closeSidebar: () => void) => {
-    if (!isSidebarOverlayViewport()) return;
-    closeSidebar();
-  };
-
   const {
     L,
     cards,
@@ -308,7 +303,6 @@ export function ContactsWorkspace({
                   appId="contacts"
                   session={session}
                   onLogout={onLogout}
-                  onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
                 />
               }
               primaryButton={
@@ -317,7 +311,7 @@ export function ContactsWorkspace({
                   disabled={!canCreateContact}
                   onCreateContact={() => {
                     createContact();
-                    closeSidebarOnMobile(c.closeSidebar);
+                    dismissSidebarOverlay(c.closeSidebar);
                   }}
                   onCreateGroup={canCreateGroup ? () => setCreateGroupDialog(true) : undefined}
                   onImportVcf={canImportVcf ? () => fileInputRef.current?.click() : undefined}
@@ -335,15 +329,9 @@ export function ContactsWorkspace({
                     personalLabel={L.personalAddressBook}
                     hiddenAddressBookIds={hiddenAddressBookIds}
                     onToggleVisibility={toggleAddressBookVisibility}
-                    onSelect={(bookId) => {
-                      selectView(contactsBookViewKey(bookId));
-                      closeSidebarOnMobile(c.closeSidebar);
-                    }}
+                    onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
-                    onSelectGroup={(groupId) => {
-                      selectView(contactsGroupViewKey(groupId));
-                      closeSidebarOnMobile(c.closeSidebar);
-                    }}
+                    onSelectGroup={(groupId) => selectView(contactsGroupViewKey(groupId))}
                     {...bookGroupRows}
                   />
                 </SidebarSection>
@@ -358,15 +346,9 @@ export function ContactsWorkspace({
                     personalLabel={L.personalAddressBook}
                     hiddenAddressBookIds={hiddenAddressBookIds}
                     onToggleVisibility={toggleAddressBookVisibility}
-                    onSelect={(bookId) => {
-                      selectView(contactsBookViewKey(bookId));
-                      closeSidebarOnMobile(c.closeSidebar);
-                    }}
+                    onSelect={(bookId) => selectView(contactsBookViewKey(bookId))}
                     onEdit={openEditAddressBookDialog}
-                    onSelectGroup={(groupId) => {
-                      selectView(contactsGroupViewKey(groupId));
-                      closeSidebarOnMobile(c.closeSidebar);
-                    }}
+                    onSelectGroup={(groupId) => selectView(contactsGroupViewKey(groupId))}
                     {...bookGroupRows}
                   />
                 </SidebarSection>

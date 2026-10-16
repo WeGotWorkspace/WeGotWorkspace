@@ -10,7 +10,6 @@ import {
   CollectionSidebarRow,
 } from "@/collection-sidebar/src/collection-sidebar-row";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { getConnectivitySnapshot, subscribeBrowserOnline } from "@/lib/offline/core/browser-online";
@@ -240,14 +239,7 @@ export function TasksWorkspace({
               />
             }
             footer={
-              <WorkspaceAppSettingsFooter
-                appId="tasks"
-                session={session}
-                onLogout={onLogout}
-                onBeforeOpen={() => {
-                  if (isSidebarOverlayViewport()) setSidebarOpen(false);
-                }}
-              />
+              <WorkspaceAppSettingsFooter appId="tasks" session={session} onLogout={onLogout} />
             }
           >
             <SidebarSection items={topSidebarItems} />

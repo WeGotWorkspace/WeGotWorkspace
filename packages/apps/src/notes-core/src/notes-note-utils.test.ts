@@ -91,6 +91,16 @@ describe("notes-note-utils", () => {
     expect(noteTagsAfterToggle(["focus"], "v2")).toBeNull();
   });
 
+  it("matches a tag view when the stored tag differs only in case", () => {
+    const visible = filterVisibleNotes([{ ...sampleNote, id: "n-case", tags: ["Focus"] }], {
+      view: "tag:focus",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["n-case"]);
+  });
+
   it("computes plain text and word count from markdown body", () => {
     expect(plainTextFromBody(sampleNote.body)).toContain("Title");
     expect(computeWordCount(sampleNote.body)).toBeGreaterThan(0);
@@ -101,20 +111,20 @@ describe("notes-note-utils", () => {
     expect(computeExcerpt(longBody).endsWith("…")).toBe(true);
   });
 
-  it("derives list titles from excerpt or body", () => {
-    expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
-    expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
-    expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+  it("keeps an empty title on the title line and the excerpt on the body line", () => {
+    expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
+    expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
+    expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body: [""] })).toBe("");
     expect(noteListTitle({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
       "SUMMARY",
     );
-  });
-
-  it("shows excerpt only when a title is already set", () => {
     expect(noteListExcerpt({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
       "Preview line",
     );
-    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("");
+    expect(noteListExcerpt({ title: "", excerpt: "", body: [""] })).toBe("");
   });
 
   it("never uses a local-* id as the list title", () => {
@@ -124,11 +134,16 @@ describe("notes-note-utils", () => {
     expect(usableNoteListPreview(localId, localId)).toBe("");
     expect(usableNoteListPreview("Pasta with garlic", localId)).toBe("Pasta with garlic");
 
-    expect(noteListTitle({ id: localId, excerpt: localId, body: [""] })).toBe("Untitled note");
-    expect(noteListTitle({ id: localId, excerpt: localId, body: [localId] })).toBe("Untitled note");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ id: localId, excerpt: localId, body: [""] })).toBe("");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [localId] })).toBe("Empty title");
+    expect(noteListExcerpt({ id: localId, excerpt: localId, body: [localId] })).toBe("");
     expect(noteListTitle({ id: localId, excerpt: localId, body: ["First line of the note"] })).toBe(
-      "First line of the note",
+      "Empty title",
     );
+    expect(
+      noteListExcerpt({ id: localId, excerpt: localId, body: ["First line of the note"] }),
+    ).toBe("First line of the note");
     expect(noteHasListableBody({ id: localId, body: [localId] })).toBe(false);
     expect(noteHasListableBody({ id: localId, body: ["First line of the note"] })).toBe(true);
 
@@ -140,20 +155,22 @@ describe("notes-note-utils", () => {
       wordCount: 1,
     });
     expect(enriched.excerpt).toBe("");
-    expect(noteListTitle(enriched)).toBe("Untitled note");
+    expect(noteListTitle(enriched)).toBe("Empty title");
+    expect(noteListExcerpt(enriched)).toBe("");
   });
 
-  it("strips checkbox markdown from list titles and excerpts", () => {
+  it("strips checkbox markdown from list excerpts", () => {
     const body = ["Boodschappen Aug", "- [ ] Bananen", "- [ ] Fruit", "- [ ] Pasta"];
-    expect(noteListTitle({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
+    expect(noteListTitle({ excerpt: "", body })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
     expect(computeExcerpt(body)).toBe("Boodschappen Aug Bananen Fruit Pasta");
     // Stale excerpt that still has raw `[ ]` markers must not leak into the list row.
-    expect(
-      noteListTitle({
-        excerpt: "Boodschappen Aug [ ] Bananen [ ] Fruit [ ] Past…",
-        body: [""],
-      }),
-    ).toBe("Boodschappen Aug Bananen Fruit Past");
+    const stale = noteListExcerpt({
+      excerpt: "Boodschappen Aug [ ] Bananen [ ] Fruit [ ] Past…",
+      body: [""],
+    });
+    expect(stale).not.toContain("[ ]");
+    expect(stale).toContain("Bananen");
   });
 
   it("hides tags and stars for Shared-with-me recipients; shows for owned and group", () => {
@@ -213,7 +230,7 @@ describe("notes-note-utils", () => {
     ).toBe(false);
   });
 
-  it("does not render Untitled when title/excerpt are empty but body has text", () => {
+  it("keeps body text on the excerpt line when the title is empty", () => {
     // Historical rows: frontmatter title was "Untitled", excerpt never backfilled,
     // but the markdown body already has content (e.g. n1781784157-style).
     const stale: Pick<Note, "excerpt" | "body"> = {
@@ -222,8 +239,8 @@ describe("notes-note-utils", () => {
         "Donec ullamcorper nulla non metus auctor fringilla. Donec ullamcorper nulla non metus auctor fringilla.",
       ],
     };
-    expect(noteListTitle(stale)).toMatch(/^Donec ullamcorper/);
-    expect(noteListTitle(stale)).not.toBe("Untitled note");
+    expect(noteListTitle(stale)).toBe("Empty title");
+    expect(noteListExcerpt(stale)).toMatch(/^Donec ullamcorper/);
 
     const enriched = enrichNote({
       ...sampleNote,
@@ -232,7 +249,8 @@ describe("notes-note-utils", () => {
       wordCount: 0,
     });
     expect(enriched.excerpt).toMatch(/Donec ullamcorper/);
-    expect(noteListTitle(enriched)).toMatch(/^Donec ullamcorper/);
+    expect(noteListTitle(enriched)).toBe("Empty title");
+    expect(noteListExcerpt(enriched)).toMatch(/^Donec ullamcorper/);
   });
 
   it("enriches notes with excerpt and word count", () => {
@@ -265,7 +283,8 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.tags).toEqual(["local-tag"]);
     expect(merged[0]?.starred).toBe(true);
     expect(noteHasListableBody(merged[0]!)).toBe(true);
-    expect(noteListTitle(merged[0]!)).toMatch(/^Donec ullamcorper/);
+    expect(noteListTitle(merged[0]!)).toBe("Empty title");
+    expect(noteListExcerpt(merged[0]!)).toMatch(/^Donec ullamcorper/);
     expect(merged[0]?.excerpt).toMatch(/Donec ullamcorper/);
   });
 
@@ -301,43 +320,51 @@ describe("notes-note-utils", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0]?.tags).toEqual(["server-tag"]);
     expect(merged[0]?.starred).toBe(false);
-    expect(noteListTitle(merged[0]!)).toBe("Optimistic preview from typing");
+    expect(noteListExcerpt(merged[0]!)).toBe("Optimistic preview from typing");
     expect(merged[0]?.date).toBe("2026-08-06T12:00:00.000Z");
   });
 
-  it("keeps optimistic tags when merging a stale create/bootstrap row", () => {
+  it("adopts server tags and archived when timestamps are equal", () => {
     const local: Note = {
       ...sampleNote,
       id: "n-new",
       tags: ["focus"],
+      archived: true,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const server: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: [],
+      archived: false,
+      date: "2026-08-10T12:00:00.000Z",
+    };
+    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.tags).toEqual([]);
+    expect(merged[0]?.archived).toBe(false);
+  });
+
+  it("keeps optimistic tags and archived when the local row is strictly newer", () => {
+    const local: Note = {
+      ...sampleNote,
+      id: "n-new",
+      tags: ["focus"],
+      archived: true,
       date: "2026-08-10T12:00:01.000Z",
     };
     const server: Note = {
       ...sampleNote,
       id: "n-new",
       tags: [],
-      date: "2026-08-10T12:00:00.000Z",
-    };
-    const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
-    expect(merged[0]?.tags).toEqual(["focus"]);
-  });
-
-  it("keeps optimistic archived when merging a stale bootstrap row", () => {
-    const local: Note = {
-      ...sampleNote,
-      archived: true,
-      date: "2026-08-10T12:00:00.000Z",
-    };
-    const server: Note = {
-      ...sampleNote,
       archived: false,
       date: "2026-08-10T12:00:00.000Z",
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
+    expect(merged[0]?.tags).toEqual(["focus"]);
     expect(merged[0]?.archived).toBe(true);
   });
 
-  it("keeps optimistic archived when the server row is newer but still unarchived", () => {
+  it("adopts a remote un-archive when the server row is newer", () => {
     const local: Note = {
       ...sampleNote,
       archived: true,
@@ -350,7 +377,7 @@ describe("notes-note-utils", () => {
       updatedAt: "2026-08-10T13:00:00.000Z",
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([server], [local]);
-    expect(merged[0]?.archived).toBe(true);
+    expect(merged[0]?.archived).toBe(false);
   });
 
   it("keeps optimistic notebook when merging a stale bootstrap row", () => {
@@ -358,7 +385,7 @@ describe("notes-note-utils", () => {
       ...sampleNote,
       notebook: "Ideas",
       notebookId: "nb-ideas",
-      date: "2026-08-10T12:00:00.000Z",
+      date: "2026-08-10T12:00:01.000Z",
     };
     const server: Note = {
       ...sampleNote,
@@ -582,7 +609,7 @@ describe("notes-note-utils", () => {
     const next = applyNoteBodyMarkdown(emptyPreview, "Loaded from Yjs after refresh", {
       bumpDate: false,
     });
-    expect(noteListTitle(next)).toBe("Loaded from Yjs after refresh");
+    expect(noteListExcerpt(next)).toBe("Loaded from Yjs after refresh");
     expect(next.date).toBe("2026-01-01T00:00:00.000Z");
   });
 
@@ -1139,6 +1166,15 @@ describe("group notebook create targets", () => {
     expect(notesCanCreateInView("shared-with-me")).toBe(false);
   });
 
+  it("blocks New note in a read-only notebook and allows it when mayWriteAll is absent", () => {
+    expect(
+      notesCanCreateInView("nb:group-eng", [
+        { id: "group-eng", name: "Engineering", myRights: { mayWriteAll: false } },
+      ]),
+    ).toBe(false);
+    expect(notesCanCreateInView("nb:drafts", [{ id: "drafts", name: "Drafts" }])).toBe(true);
+  });
+
   it("switches Starred and Archive create to All Items", () => {
     expect(notesViewForCreate("starred")).toBe("all");
     expect(notesViewForCreate("archive")).toBe("all");
@@ -1158,7 +1194,9 @@ describe("group notebook create targets", () => {
       scope: "group",
       groupSlug: "eng",
     });
-    expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({ notebook: "Ideas" });
+    expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({
+      notebook: "Ideas",
+    });
     expect(resolveNotesCreateTarget("all", ["Drafts"])).toEqual({ notebook: "Drafts" });
     expect(resolveNotesCreateTarget("nb:Drafts", ["The Journal", "Drafts"])).toEqual({
       notebook: "Drafts",

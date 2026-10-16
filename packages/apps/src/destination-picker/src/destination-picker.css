@@ -15,21 +15,13 @@
 .destination-picker__breadcrumbs {
   @apply shrink-0 px-3;
   padding-block: 0.5rem;
-  background-color: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-  --path-breadcrumb-lead-color: var(--destination-picker-accent, var(--color-emerald));
-  --path-breadcrumb-lead-bg: color-mix(
-    in oklab,
-    var(--destination-picker-accent, var(--color-emerald)) 12%,
-    transparent
-  );
-  --path-breadcrumb-link-color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  background-color: var(--button-outline-hover-background);
+  border-bottom: 1px solid var(--border);
+  --path-breadcrumb-lead-color: var(--workspace-foreground);
+  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
+  --path-breadcrumb-link-color: var(--muted-foreground);
   --path-breadcrumb-current-color: var(--workspace-foreground);
-  --path-breadcrumb-link-hover-bg: color-mix(
-    in oklab,
-    var(--destination-picker-accent, var(--color-emerald)) 10%,
-    transparent
-  );
+  --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
 .destination-picker__body {
@@ -59,19 +51,23 @@
 
 .destination-picker__scroll .destination-list-row {
   @apply w-full cursor-pointer transition-colors;
-  border-bottom: 1px solid color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
+  border-bottom: 1px solid var(--border);
 }
 
-.destination-picker__scroll .destination-list-row--selected {
-  background-color: color-mix(
-    in oklab,
-    var(--destination-picker-accent, var(--color-emerald)) 16%,
-    transparent
-  );
+.destination-picker__scroll
+  .destination-list-row:not(.destination-list-row--disabled):not(
+    .destination-list-row--selected
+  ):hover {
+  background-color: var(--button-outline-hover-background);
+}
+
+.destination-picker__scroll .destination-list-row--selected,
+.destination-picker__scroll .destination-list-row--selected:hover {
+  background-color: var(--button-outline-active-background);
 }
 
 .destination-picker__scroll .destination-list-destination-icon {
-  color: var(--destination-picker-accent, var(--color-emerald));
+  color: var(--workspace-foreground);
 }
 
 .destination-picker__scroll .destination-list-row--disabled {

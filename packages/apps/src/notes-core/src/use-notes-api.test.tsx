@@ -20,7 +20,11 @@ const mockOnReconnect = vi.fn();
 const mockInbound = vi.fn();
 const mockShow = vi.fn();
 const mockShowError = vi.fn();
+const mockInitialize = vi.fn();
+const mockStartPolling = vi.fn();
+const mockStopPolling = vi.fn();
 let mockOnline = true;
+let mockLiveApiEnabled = false;
 
 vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   useHybridBootstrap: () => ({
@@ -40,6 +44,7 @@ vi.mock("@/lib/offline/notes-hybrid-operations", () => ({
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
   readNotesBootstrapFromCache: vi.fn(),
+  listNoteIdsBlockingSyncToken: async () => new Set<string>(),
 }));
 
 vi.mock("@/lib/offline/notes-inbound-sync", () => ({
@@ -48,8 +53,28 @@ vi.mock("@/lib/offline/notes-inbound-sync", () => ({
 
 vi.mock("@/lib/api/wgw/http", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api/wgw/http")>("@/lib/api/wgw/http");
-  return { ...actual, wgwLiveApiEnabled: () => false };
+  return { ...actual, wgwLiveApiEnabled: () => mockLiveApiEnabled };
 });
+
+vi.mock("@/lib/jmap-client", () => ({
+  JmapClient: class {
+    isConnected = false;
+    connect() {
+      return Promise.resolve();
+    }
+  },
+  JmapNotesAdapter: class {
+    initialize() {
+      return mockInitialize();
+    }
+    startPolling(intervalMs: number) {
+      mockStartPolling(intervalMs);
+    }
+    stopPolling() {
+      mockStopPolling();
+    }
+  },
+}));
 
 vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
@@ -75,6 +100,11 @@ vi.mock("@/hooks/use-app-toast", () => ({
 describe("useNotesAPI", () => {
   beforeEach(async () => {
     mockOnline = true;
+    mockLiveApiEnabled = false;
+    mockInitialize.mockReset();
+    mockStartPolling.mockReset();
+    mockStopPolling.mockReset();
+    mockInitialize.mockResolvedValue(undefined);
     mockPatchBootstrap.mockReset();
     mockLoadBootstrap.mockReset();
     mockFlush.mockReset();
@@ -218,5 +248,35 @@ describe("useNotesAPI", () => {
 
     expect(mockLoadBootstrap).not.toHaveBeenCalled();
     expect(mockInbound).not.toHaveBeenCalled();
+  });
+
+  it("logs and starts the REST interval when live initialize rejects", async () => {
+    mockLiveApiEnabled = true;
+    mockInitialize.mockRejectedValueOnce(new Error("no notes capability"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    renderHook(() => useNotesAPI(source));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(warn).toHaveBeenCalledWith("[notes] live inbound poll unavailable", expect.any(Error));
+    expect(mockStartPolling).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(mockInbound).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

@@ -19,6 +19,7 @@ describe("FloatingActionBar", () => {
                 icon: <CheckCircle2 />,
                 onClick: vi.fn(),
                 separatorBefore: true,
+                variant: "primary",
               },
             ]}
           />
@@ -35,7 +36,10 @@ describe("FloatingActionBar", () => {
     const outlineButtons = container.querySelectorAll(
       ".floating-action-bar__actions .button--variant-outline",
     );
-    expect(outlineButtons.length).toBe(3);
+    expect(outlineButtons.length).toBe(2);
+    expect(
+      container.querySelector(".floating-action-bar__actions .button--variant-primary"),
+    ).toBeTruthy();
     expect(
       container.querySelector(".floating-action-bar__actions .button--variant-ghost"),
     ).toBeNull();

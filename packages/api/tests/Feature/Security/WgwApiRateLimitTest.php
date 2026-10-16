@@ -104,7 +104,6 @@ final class WgwApiRateLimitTest extends WgwDatabaseTestCase
         $this->assertNotContains('throttle:wgw-api', $this->declaredMiddleware('POST', '/api/v1/auth/token'));
         $this->assertNotContains('throttle:wgw-api', $this->declaredMiddleware('POST', '/api/v1/auth/refresh'));
         $this->assertNotContains('throttle:wgw-api', $this->declaredMiddleware('GET', '/api/v1/rooms/room1/events'));
-        $this->assertNotContains('throttle:wgw-api', $this->declaredMiddleware('POST', '/api/v1/rtc/metrics'));
 
         // Guests read this before join. The room limiter's actor lookup would
         // count a failed Basic attempt, so the route stays outside both buckets.

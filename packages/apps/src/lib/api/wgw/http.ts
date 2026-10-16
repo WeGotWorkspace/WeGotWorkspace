@@ -4,7 +4,7 @@ import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
 import { readLoggedOutMarker, setLoggedOutMarker } from "@/lib/api/wgw/logged-out-marker";
-import { appendSessionDebugRecord } from "@/lib/api/wgw/session-debug";
+import { appendRefreshFailure, appendSessionCleared } from "@/lib/api/wgw/session-debug";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 
@@ -194,18 +194,8 @@ function noteRefreshFailure(): void {
   refreshFailureCount += 1;
 }
 
-function appendSessionDebugEvent(reason: WgwSessionClearReason): void {
-  appendSessionDebugRecord({
-    event: "wgw.session.cleared",
-    reason,
-    online: readBrowserOnline(),
-    hadRefreshExpiry: refreshExpiresAt !== null,
-    timestamp: new Date().toISOString(),
-  });
-}
-
 export function clearWgwSession(reason: WgwSessionClearReason): void {
-  appendSessionDebugEvent(reason);
+  appendSessionCleared(reason, readBrowserOnline(), refreshExpiresAt !== null);
   accessToken = null;
   sessionKind = null;
   accessExpiresAt = null;
@@ -639,6 +629,25 @@ export async function wgwEnsureSession(): Promise<void> {
   await wgwLoginWithCredentials(username.trim(), password);
 }
 
+function failRefresh(error: unknown): false {
+  const http = error instanceof AuthHttpError ? error : null;
+  const cleared = http !== null && (http.status === 401 || http.status === 403);
+  if (cleared) {
+    refreshRejectedByAuth = true;
+    clearWgwSession("401_online");
+  } else {
+    noteRefreshFailure();
+    maybeClearOnRetryCap();
+  }
+  const reason = http !== null ? "http" : isFetchNetworkError(error) ? "network" : "error";
+  appendRefreshFailure(reason, {
+    status: http?.status ?? null,
+    message: error instanceof Error ? error.message : null,
+    cleared,
+  });
+  return false;
+}
+
 async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
   if (sessionKind !== "member") return false;
   if (refreshPromise) return refreshPromise;
@@ -647,8 +656,11 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
     readTokensFromStorage();
     if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
     if (sessionKind !== "member") return false;
-    if (!readBrowserOnline()) return false;
+    if (!readBrowserOnline()) {
+      return false;
+    }
     if (isRefreshTokenExpired()) {
+      appendRefreshFailure("refresh_expired", { cleared: true });
       clearWgwSession("refresh_expired");
       return false;
     }
@@ -659,21 +671,7 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
       applyTokens(tokens, "member");
       return true;
     } catch (error) {
-      if (error instanceof AuthHttpError && (error.status === 401 || error.status === 403)) {
-        refreshRejectedByAuth = true;
-        clearWgwSession("401_online");
-        return false;
-      }
-
-      if (isFetchNetworkError(error)) {
-        noteRefreshFailure();
-        maybeClearOnRetryCap();
-        return false;
-      }
-
-      noteRefreshFailure();
-      maybeClearOnRetryCap();
-      return false;
+      return failRefresh(error);
     }
   }).then((didRefresh) => {
     if (didRefresh) return true;

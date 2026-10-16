@@ -3,6 +3,35 @@ import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 const SESSION_DEBUG_RING_KEY = "wgw.api.session_debug";
 const SESSION_DEBUG_RING_MAX = 20;
 
+export function appendSessionCleared(
+  reason: string,
+  online: boolean,
+  hadRefreshExpiry: boolean,
+): void {
+  appendSessionDebugRecord({
+    event: "wgw.session.cleared",
+    reason,
+    online,
+    hadRefreshExpiry,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function appendRefreshFailure(
+  reason: string,
+  details: { status?: number | null; message?: string | null; cleared?: boolean } = {},
+): void {
+  appendSessionDebugRecord({
+    event: "wgw.refresh.failed",
+    reason,
+    status: details.status ?? null,
+    message: details.message ?? null,
+    cleared: details.cleared ?? false,
+    online: readBrowserOnline(),
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export function appendSessionDebugRecord(record: Record<string, unknown>): void {
   if (import.meta.env.DEV) {
     console.debug(record.event, record);

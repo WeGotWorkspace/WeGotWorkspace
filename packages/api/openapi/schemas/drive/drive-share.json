@@ -2,7 +2,7 @@
   "DriveShareAccess": {
     "type": "string",
     "enum": ["view", "comment", "review", "edit", "full"],
-    "description": "Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected."
+    "description": "Share access level for a grant or default access. Leftover Drive path grants under …/.notes/… accept view|edit only; comment, legacy review, and full are rejected. Those paths are old path grants, not the Notes store."
   },
   "DriveRights": {
     "type": "object",

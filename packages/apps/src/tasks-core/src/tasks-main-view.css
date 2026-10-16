@@ -174,7 +174,7 @@
 .tasks-main-view__composer-select {
   @apply flex h-8 w-auto items-center gap-1.5 border px-2 text-xs shadow-none;
   border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  background-color: transparent;
+  background-color: var(--input-background);
   --input-height: 2rem;
   --control-height-sm: 2rem;
   --control-height-md: 2rem;
@@ -198,7 +198,7 @@
   line-height: 1rem;
   justify-content: flex-start;
   gap: 0.375rem;
-  background-color: transparent;
+  background-color: var(--input-background);
   border-radius: var(--control-radius);
 }
 
@@ -225,10 +225,7 @@
 .tasks-main-view__composer-select:disabled {
   @apply cursor-not-allowed opacity-50;
   color: var(--input-color-disabled, var(--color-muted-foreground));
-  background-color: var(
-    --input-background-disabled,
-    color-mix(in oklab, var(--color-muted) 30%, var(--color-background))
-  );
+  background-color: var(--input-background-disabled, var(--input-background, transparent));
 }
 
 .tasks-main-view__composer-select-option {
@@ -367,7 +364,7 @@
 
 .tasks-main-view__remind-button--active {
   border-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
-  background-color: color-mix(in oklab, var(--workspace-accent, #ffbdc2) 14%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
 }
 
 .tasks-main-view__remind-button--active svg {

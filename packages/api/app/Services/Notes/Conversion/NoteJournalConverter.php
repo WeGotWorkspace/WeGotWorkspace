@@ -68,25 +68,7 @@ final class NoteJournalConverter
             $this->assertBodySize($patch['body']);
         }
 
-        try {
-            $calendar = Reader::read($ics);
-        } catch (\Throwable) {
-            throw new ApiHttpException(400, 'Invalid journal payload.', 'bad_request');
-        }
-        if (! $calendar instanceof VCalendar) {
-            throw new ApiHttpException(400, 'Invalid journal payload.', 'bad_request');
-        }
-
-        $journal = null;
-        foreach ($calendar->select('VJOURNAL') as $component) {
-            if ($component instanceof VJournal) {
-                $journal = $component;
-                break;
-            }
-        }
-        if (! $journal instanceof VJournal) {
-            throw new ApiHttpException(400, 'Note is not a VJOURNAL.', 'bad_request');
-        }
+        [$calendar, $journal] = $this->readJournal($ics);
 
         if (array_key_exists('title', $patch)) {
             $title = $patch['title'];
@@ -121,6 +103,43 @@ final class NoteJournalConverter
         }
 
         return $calendar->serialize();
+    }
+
+    /**
+     * Stamp LAST-MODIFIED for a metadata change. Body-only collab saves must
+     * not call this: updatedAt is the offline ifInState token.
+     * Property assignment is rejected by PHPStan (hyphenated Sabre property);
+     * add() is the same write ChatMessageJournalConverter already uses.
+     */
+    public function touchLastModified(string $ics): string
+    {
+        [$calendar, $journal] = $this->readJournal($ics);
+        unset($journal->{'LAST-MODIFIED'});
+        $journal->add('LAST-MODIFIED', new DateTimeImmutable('now', new DateTimeZone('UTC')));
+
+        return $calendar->serialize();
+    }
+
+    /**
+     * @return array{0: VCalendar, 1: VJournal}
+     */
+    private function readJournal(string $ics): array
+    {
+        try {
+            $calendar = Reader::read($ics);
+        } catch (\Throwable) {
+            throw new ApiHttpException(400, 'Invalid journal payload.', 'bad_request');
+        }
+        if (! $calendar instanceof VCalendar) {
+            throw new ApiHttpException(400, 'Invalid journal payload.', 'bad_request');
+        }
+        foreach ($calendar->select('VJOURNAL') as $component) {
+            if ($component instanceof VJournal) {
+                return [$calendar, $component];
+            }
+        }
+
+        throw new ApiHttpException(400, 'Note is not a VJOURNAL.', 'bad_request');
     }
 
     /**
