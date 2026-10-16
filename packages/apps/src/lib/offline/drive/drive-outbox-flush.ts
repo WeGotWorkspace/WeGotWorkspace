@@ -110,7 +110,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         const path = driveOutboxApiPath(row);
         if (path) stateMismatches.push(path);
       }
-      await markOutboxError(username, row.id, message);
+      await markOutboxError(username, row.id, message, status);
     }
   }
 

@@ -48,16 +48,27 @@ export async function removeOutboxMutation(username: string, id: string): Promis
   await db.outbox.delete(id);
 }
 
-/** Increment retry count and record the last error message for a queued mutation. */
-export async function markOutboxError(username: string, id: string, error: string): Promise<void> {
+/**
+ * Increment the retry count and record the last error. `status`, when it is a
+ * number, is stored as `lastStatus`. A later failure without a status clears it.
+ */
+export async function markOutboxError(
+  username: string,
+  id: string,
+  error: string,
+  status?: number,
+): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const row = await db.outbox.get(id);
   if (!row) return;
-  await db.outbox.put({
+  const next: OfflineOutboxRow = {
     ...row,
     retries: row.retries + 1,
     lastError: error,
-  });
+  };
+  if (typeof status === "number") next.lastStatus = status;
+  else delete next.lastStatus;
+  await db.outbox.put(next);
 }
 
 function isFailedNonConflict(row: OfflineOutboxRow): boolean {
@@ -65,11 +76,15 @@ function isFailedNonConflict(row: OfflineOutboxRow): boolean {
 }
 
 /**
- * Server rejected the mutation. Flush paths record `failed (404)` or
- * `failed (403)`. A bare 404 in a path or ticket number is not this.
+ * 403 and 404 from `lastStatus`. Rows written before that column exist fall
+ * back to the Docs/Drive flush text `failed (403)` or `failed (404)`. Any
+ * stored status that is not 403 or 404 is transient, even when the text matches.
  */
-function isPermanentOutboxFailure(lastError: string): boolean {
-  return /failed \((?:403|404)\)/.test(lastError);
+function isPermanentOutboxFailure(row: OfflineOutboxRow): boolean {
+  if (typeof row.lastStatus === "number") {
+    return row.lastStatus === 403 || row.lastStatus === 404;
+  }
+  return /failed \((?:403|404)\)/.test(row.lastError ?? "");
 }
 
 /**
@@ -77,16 +92,16 @@ function isPermanentOutboxFailure(lastError: string): boolean {
  * Permanent 403 and 404 rejections are `isPermanentlyFailedOutboxRow`, not this.
  */
 export function isRetryableOutboxRow(row: OfflineOutboxRow): boolean {
-  return isFailedNonConflict(row) && !isPermanentOutboxFailure(row.lastError ?? "");
+  return isFailedNonConflict(row) && !isPermanentOutboxFailure(row);
 }
 
 /**
- * True when the server rejected the mutation with `failed (403)` or `failed (404)`.
+ * True when the server rejected the mutation with HTTP 403 or 404.
  * These stay visible in the sync notices. They are not transient retries and
  * they are not revision conflicts (`stateMismatch`).
  */
 export function isPermanentlyFailedOutboxRow(row: OfflineOutboxRow): boolean {
-  return isFailedNonConflict(row) && isPermanentOutboxFailure(row.lastError ?? "");
+  return isFailedNonConflict(row) && isPermanentOutboxFailure(row);
 }
 
 /**

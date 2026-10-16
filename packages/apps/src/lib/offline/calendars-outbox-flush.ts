@@ -186,10 +186,12 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         }
         continue;
       }
+      const status = (error as { status?: number } | undefined)?.status;
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

@@ -5,8 +5,13 @@ import { listFailedCalendarOutbox } from "@/lib/offline/calendars-offline-store"
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import { listFailedContactOutbox } from "@/lib/offline/contacts-offline-store";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
-import { enqueueOutboxMutation, markOutboxError } from "@/lib/offline/core/outbox-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import {
+  enqueueOutboxMutation,
+  isPermanentlyFailedOutboxRow,
+  isRetryableOutboxRow,
+  markOutboxError,
+} from "@/lib/offline/core/outbox-store";
 import { listFailedNotesOutbox } from "@/lib/offline/notes-offline-store";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { listFailedTaskOutbox } from "@/lib/offline/tasks-offline-store";
@@ -14,12 +19,20 @@ import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 
 const username = "alice";
 
-const lists = [
-  ["calendars", CALENDARS_DOMAIN, listFailedCalendarOutbox],
-  ["contacts", CONTACTS_DOMAIN, listFailedContactOutbox],
-  ["notes", NOTES_DOMAIN, listFailedNotesOutbox],
-  ["tasks", TASKS_DOMAIN, listFailedTaskOutbox],
-] as const;
+async function failRow(
+  id: string,
+  domain: string,
+  message: string,
+  status?: number,
+): Promise<void> {
+  await enqueueOutboxMutation(username, {
+    id,
+    domain,
+    op: "update",
+    payload: "{}",
+  });
+  await markOutboxError(username, id, message, status);
+}
 
 describe("domain failed outbox notices", () => {
   beforeEach(async () => {
@@ -27,16 +40,36 @@ describe("domain failed outbox notices", () => {
     await db.outbox.clear();
   });
 
-  it.each(lists)("keeps a 404 %s outbox row visible", async (_label, domain, listFailed) => {
-    await enqueueOutboxMutation(username, {
-      id: `${domain}-404`,
-      domain,
-      op: "update",
-      payload: "{}",
-    });
-    await markOutboxError(username, `${domain}-404`, "GET failed (404)");
+  it("keeps client 404 messages visible when lastStatus is 404", async () => {
+    await failRow("contacts-book", CONTACTS_DOMAIN, "AddressBook/get did not return book-1", 404);
+    await failRow("contacts-card", CONTACTS_DOMAIN, "ContactCard/get did not return card-1", 404);
+    await failRow(
+      "calendars-event",
+      CALENDARS_DOMAIN,
+      "CalendarEvent/set returned no created id",
+      404,
+    );
+    await failRow("notes-book", NOTES_DOMAIN, "Notebook not found", 404);
+    await failRow("tasks-item", TASKS_DOMAIN, "GET /tasks/items/missing failed (404)", 404);
 
-    const rows = await listFailed(username);
-    expect(rows.map((row) => row.id)).toEqual([`${domain}-404`]);
+    expect((await listFailedContactOutbox(username)).map((row) => row.id)).toEqual([
+      "contacts-book",
+      "contacts-card",
+    ]);
+    expect((await listFailedCalendarOutbox(username)).map((row) => row.id)).toEqual([
+      "calendars-event",
+    ]);
+    expect((await listFailedNotesOutbox(username)).map((row) => row.id)).toEqual(["notes-book"]);
+    expect((await listFailedTaskOutbox(username)).map((row) => row.id)).toEqual(["tasks-item"]);
+  });
+
+  it("leaves a drive row transient when lastError only contains 404", async () => {
+    await failRow("drive-path", "drive", "could not write notes/404.md");
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const row = await db.outbox.get("drive-path");
+    expect(row?.lastStatus).toBeUndefined();
+    expect(isRetryableOutboxRow(row!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(row!)).toBe(false);
   });
 });

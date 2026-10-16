@@ -119,10 +119,12 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         await removeOutboxMutation(username, row.id);
         continue;
       }
+      const status = (error as { status?: number } | undefined)?.status;
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

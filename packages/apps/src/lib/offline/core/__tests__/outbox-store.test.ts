@@ -141,5 +141,38 @@ describe("core outbox store", () => {
     expect(isRetryableOutboxRow(loose!)).toBe(true);
     expect(isPermanentlyFailedOutboxRow(loose!)).toBe(false);
     expect(isSyncNoticeOutboxRow(loose!)).toBe(true);
+    expect(loose?.lastStatus).toBeUndefined();
+  });
+
+  it("prefers lastStatus over the flush text", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "card",
+      domain: "contacts",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "retry",
+      domain: "drive",
+      op: "upload",
+      payload: "{}",
+    });
+    await markOutboxError(username, "card", "ContactCard/get did not return card-1", 404);
+    await markOutboxError(username, "retry", "GET failed (404)", 500);
+
+    const rows = await listOutboxMutations(username);
+    const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+    expect(byId.card?.lastStatus).toBe(404);
+    expect(isPermanentlyFailedOutboxRow(byId.card!)).toBe(true);
+    expect(isRetryableOutboxRow(byId.card!)).toBe(false);
+    expect(byId.retry?.lastStatus).toBe(500);
+    expect(isPermanentlyFailedOutboxRow(byId.retry!)).toBe(false);
+    expect(isRetryableOutboxRow(byId.retry!)).toBe(true);
+
+    await markOutboxError(username, "card", "network down");
+    const cleared = (await listOutboxMutations(username)).find((row) => row.id === "card");
+    expect(cleared?.lastStatus).toBeUndefined();
+    expect(isPermanentlyFailedOutboxRow(cleared!)).toBe(false);
+    expect(isRetryableOutboxRow(cleared!)).toBe(true);
   });
 });

@@ -112,7 +112,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
         const path = docsOutboxApiPath(row);
         if (path) stateMismatches.push(path);
       }
-      await markOutboxError(username, row.id, message);
+      await markOutboxError(username, row.id, message, status);
     }
   }
 

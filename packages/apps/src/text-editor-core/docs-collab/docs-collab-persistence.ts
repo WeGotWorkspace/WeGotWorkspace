@@ -249,11 +249,6 @@ export function indexedDbNamesForRoom(roomKey: string): string[] {
 }
 
 /**
- * True when this y-indexeddb database has `PENDING_SERVER_SAVE_KEY`.
- * Shared by Docs prune and Notes. Logout wipe reads the `custom` store
- * directly instead, so a stuck sync cannot hang sign-out.
- */
-/**
  * Databases that already exist. `null` when `indexedDB.databases` is missing
  * or rejects; callers then open a name without an existence check.
  */
@@ -271,6 +266,11 @@ export async function listExistingIndexedDatabaseNames(): Promise<ReadonlySet<st
   }
 }
 
+/**
+ * True when this y-indexeddb database has `PENDING_SERVER_SAVE_KEY`.
+ * Shared by Docs prune and Notes. Logout wipe reads the `custom` store
+ * directly instead, so a stuck sync cannot hang sign-out.
+ */
 export async function collabIndexedDbHasPendingServerSave(databaseName: string): Promise<boolean> {
   const ydoc = new Y.Doc();
   const persistence = new IndexeddbPersistence(databaseName, ydoc);

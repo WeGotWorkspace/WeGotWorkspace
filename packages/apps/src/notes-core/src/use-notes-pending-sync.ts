@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import {
-  hasNoteCollabPendingServerSave,
-  listExistingNoteCollabDatabaseNames,
-} from "@/lib/offline/notes/notes-collab-rooms";
+import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -26,7 +24,7 @@ export function useNotesPendingSync(
     try {
       const ids = new Set(await listPendingNoteIds(username));
       const cached = await readNotesBootstrapFromCache(username);
-      const existingDatabaseNames = await listExistingNoteCollabDatabaseNames();
+      const existingDatabaseNames = await listExistingIndexedDatabaseNames();
       for (const note of cached?.data.notes ?? []) {
         if (ids.has(note.id)) continue;
         if (await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames)) ids.add(note.id);

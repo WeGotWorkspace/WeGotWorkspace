@@ -212,10 +212,12 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      const status = (error as { status?: number } | undefined)?.status;
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

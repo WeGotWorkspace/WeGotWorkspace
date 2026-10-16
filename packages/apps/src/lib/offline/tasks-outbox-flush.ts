@@ -108,10 +108,12 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
         await markOutboxError(username, row.id, "etagMismatch");
         continue;
       }
+      const status = (error as { status?: number } | undefined)?.status;
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

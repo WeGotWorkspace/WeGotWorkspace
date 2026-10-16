@@ -19,6 +19,8 @@ export type OfflineOutboxRow = {
   createdAt: number;
   retries: number;
   lastError?: string;
+  /** HTTP status from the last flush failure. Absent on rows written before this field. */
+  lastStatus?: number;
 };
 
 /** Dexie store spec map (`tableName` → index spec). A `null` value drops the table. */

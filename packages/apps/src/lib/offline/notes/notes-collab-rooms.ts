@@ -22,11 +22,6 @@ function noteCollabLegacyIndexedDbKeys(room: string): string[] {
   return [room];
 }
 
-/** Note-room alias of `listExistingIndexedDatabaseNames`. */
-export async function listExistingNoteCollabDatabaseNames(): Promise<ReadonlySet<string> | null> {
-  return listExistingIndexedDatabaseNames();
-}
-
 function legacyNamesToOpen(
   room: string,
   existingDatabaseNames: ReadonlySet<string> | null,
@@ -63,7 +58,7 @@ async function firstFromRoomNames<T>(
   if (!room) return null;
   const known =
     existingDatabaseNames === undefined
-      ? await listExistingNoteCollabDatabaseNames()
+      ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
@@ -84,7 +79,7 @@ export async function readNoteCollabOfflineContent(uid: string): Promise<string 
 export async function hasNoteCollabOfflinePersistence(uid: string): Promise<boolean> {
   const room = noteCollabRoomKey(uid);
   if (!room) return false;
-  const known = await listExistingNoteCollabDatabaseNames();
+  const known = await listExistingIndexedDatabaseNames();
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
     const found = await withIndexedDb(name, async (ydoc) => !isYDocEmpty(ydoc));
@@ -101,7 +96,7 @@ export async function hasNoteCollabPendingServerSave(
   if (!room) return false;
   const known =
     existingDatabaseNames === undefined
-      ? await listExistingNoteCollabDatabaseNames()
+      ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
