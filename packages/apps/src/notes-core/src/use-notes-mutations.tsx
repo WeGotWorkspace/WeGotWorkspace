@@ -709,7 +709,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const createNote = useCallback(() => {
     if (!canCreateNote) return;
     const createView = notesViewForCreate(view);
-    const target = resolveNotesCreateTarget(createView, notebooks);
+    const target = resolveNotesCreateTarget(createView, notebooks, notebookCollections);
     const targetTag = createView.startsWith("tag:") ? createView.slice(4) : null;
     const id = createTempNoteId();
     const date = new Date().toISOString();
@@ -721,6 +721,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       excerpt: "",
       body: [""],
       notebook: target.notebook,
+      ...(target.notebookId ? { notebookId: target.notebookId } : {}),
       tags: targetTag ? [normalizeTag(targetTag)] : [],
       wordCount: 0,
       ...(target.scope === "group" && target.groupSlug
@@ -730,14 +731,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setNotes((prev) => [note, ...prev]);
     // setView — not selectView — so closeMobileDetail does not race with opening
     // the new note overlay (starred/archive create switches to All Items first).
-    if (createView !== view) {
-      setView(createView);
-    }
+    if (createView !== view) setView(createView);
     setActiveId(id);
     selectSingle(id);
     openMobileDetail();
-    // Persist immediately. Leaving the detail pane without a body (or title)
-    // must not DELETE — empty DESCRIPTION is a valid VJOURNAL.
+    // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
     if (operations) {
       void persistOptimisticNote(note, true);
       const persist = operations.upsertNote(note).then((saved) => {
@@ -757,7 +755,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           );
         }
         if (isLocalTempNoteId(saved.id)) {
-          showMutationError(L.syncFailedMessage);
+          showMutationError(L.createNoteFailedMessage(target.notebook));
           return saved;
         }
         persistOptimisticNote(saved, false);
@@ -775,9 +773,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [
     L.newNoteCategory,
+    L.createNoteFailedMessage,
     L.syncFailedMessage,
     L.toastNewNote,
     canCreateNote,
+    notebookCollections,
     notebooks,
     operations,
     persistOptimisticNote,

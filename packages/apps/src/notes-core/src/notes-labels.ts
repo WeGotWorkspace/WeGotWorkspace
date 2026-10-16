@@ -120,6 +120,8 @@ export type NotesUILabels = {
   deleteNotebook: string;
   deleteNotebookConfirmTitle: string;
   deleteNotebookConfirmDescription: string;
+  /** Shown when a new note could not be created in the selected notebook. */
+  createNoteFailedMessage: (notebook: string) => string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -228,6 +230,8 @@ export const defaultNotesLabels: NotesUILabels = {
   deleteNotebookConfirmTitle: "Delete notebook?",
   deleteNotebookConfirmDescription:
     "Notes in this notebook will be permanently deleted. This cannot be undone.",
+  createNoteFailedMessage: (notebook) =>
+    `Could not create a note in “${notebook}”. The notebook may no longer be available.`,
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

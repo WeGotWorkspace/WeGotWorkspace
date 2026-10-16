@@ -7,19 +7,13 @@ import type {
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
 import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
-import { canChangeNotebookOwner, canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
+import {
+  canChangeNotebookOwner,
+  canDeleteNotebook,
+  findNotebookCollection,
+} from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
-
-function findNotebookCollection(
-  collections: NotesNotebookCollection[],
-  notebookId: string,
-): NotesNotebookCollection | undefined {
-  return (
-    collections.find((item) => item.id === notebookId) ??
-    collections.find((item) => item.name === notebookId)
-  );
-}
 
 function notebookPatchFromDialog(
   current: NotesNotebookCollection,

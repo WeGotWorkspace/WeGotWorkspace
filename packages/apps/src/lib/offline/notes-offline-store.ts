@@ -41,6 +41,8 @@ const META_GROUPS = "notes:groups";
  */
 export type NoteUpsertMetadata = {
   notebook: string;
+  /** REST collection id. Preferred over `notebook` when resolving the target. */
+  notebookId?: string;
   title?: string;
   /** Full replace. Absent when this write is a tag delta or leaves tags alone. */
   tags?: string[];
@@ -96,6 +98,7 @@ export function extractNoteMetadata(
   const includeTitle = selection ? selection.includeTitle === true : note.title !== undefined;
   return {
     notebook: note.notebook,
+    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(includeTitle && note.title !== undefined ? { title: note.title } : {}),
     ...(includeTags ? { tags: note.tags } : {}),
     ...(note.starred !== undefined ? { starred: note.starred } : {}),

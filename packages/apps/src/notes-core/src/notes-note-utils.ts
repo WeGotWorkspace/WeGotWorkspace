@@ -6,6 +6,8 @@ import {
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
+import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { normalizeTag } from "@/notes-core/src/note-tag";
 
@@ -668,12 +670,19 @@ export function noteAfterNotebookMove(
 }
 
 /** Whether New note is allowed for the current sidebar/list view. */
-export function notesCanCreateInView(view: string): boolean {
+export function notesCanCreateInView(
+  view: string,
+  notebookCollections: readonly Pick<NotesNotebookCollection, "id" | "name" | "myRights">[] = [],
+): boolean {
   if (view === "shared-with-me") {
     return false;
   }
   if (view.startsWith("shared-nb:")) {
     return parseGroupNotebookPath(view.slice("shared-nb:".length)) !== null;
+  }
+  if (view.startsWith("nb:")) {
+    const key = view.slice(3);
+    return canCreateInNotebook(findNotebookCollection(notebookCollections, key));
   }
   return true;
 }
