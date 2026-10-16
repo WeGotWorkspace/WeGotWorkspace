@@ -121,7 +121,9 @@ export function useDocsCollabReconnect({
     if (!ydoc || !persistence || !joined) return;
     refs.reconnectInFlightRef.current = true;
 
-    setDocStatus("Reconnecting…");
+    if (refs.nextSaveAttemptAtRef.current !== Number.POSITIVE_INFINITY) {
+      setDocStatus("Reconnecting…");
+    }
     const allowServerRequests = roomServerAllowed(room);
 
     try {
@@ -143,6 +145,10 @@ export function useDocsCollabReconnect({
         }
 
         const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
+        if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) {
+          setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
+          return;
+        }
         if (pendingSave || refs.pendingServerSaveRef.current) {
           await persistToServer();
         } else {
