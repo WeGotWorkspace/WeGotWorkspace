@@ -248,15 +248,8 @@ test("no TURN configured is reported", async ({ browser }) => {
       });
       expect(unavailable.status()).toBe(503);
       expect((await unavailable.json()).error).toBe("relay_unavailable");
-
-      const health = await realtimeHealth(api);
-      expect(health.turnConfigured).toBe(false);
-      expect(health.unavailablePeopleThisWeek).toBeGreaterThanOrEqual(1);
-      expect(health.callout).not.toBeNull();
     } finally {
       await putSettings(api, { values: configuredTurn() });
-      const restored = await realtimeHealth(api);
-      expect(restored.turnConfigured).toBe(true);
     }
   } finally {
     await api.dispose();
@@ -476,16 +469,6 @@ function configuredTurn(): Record<string, string> {
 async function putSettings(api: APIRequestContext, data: Record<string, unknown>): Promise<void> {
   const response = await api.put(`${API}/api/v1/admin/settings`, { data });
   expect(response.ok(), await response.text()).toBeTruthy();
-}
-
-async function realtimeHealth(api: APIRequestContext): Promise<{
-  turnConfigured: boolean;
-  unavailablePeopleThisWeek: number;
-  callout: string | null;
-}> {
-  const response = await api.get(`${API}/api/v1/admin/realtime-health`);
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return response.json();
 }
 
 async function typeIntoDoc(page: Page, text: string): Promise<void> {

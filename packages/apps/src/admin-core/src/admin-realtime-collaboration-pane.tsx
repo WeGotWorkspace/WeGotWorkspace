@@ -71,10 +71,10 @@ export function AdminRealtimeCollaborationPane({
           />
         </FormField>
         <p className="mb-3 text-sm text-muted-foreground">
-          Optional. Turn this on when the Real-time health page shows people who can&apos;t connect.
-          The secret matches your TURN server&apos;s <code>use-auth-secret</code> setting. It is
-          currently <strong>{controller.settingsForm.turnSecretSet ? "set" : "not set"}</strong>; it
-          is never shown again after saving.
+          Optional. The secret matches your TURN server&apos;s <code>use-auth-secret</code> setting.
+          It is currently{" "}
+          <strong>{controller.settingsForm.turnSecretSet ? "set" : "not set"}</strong>; it is never
+          shown again after saving.
         </p>
         {controller.settingsForm.turnStaticCredentialsPresent ? (
           <p className="mb-3 text-sm text-destructive">

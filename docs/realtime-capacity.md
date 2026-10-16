@@ -1,6 +1,6 @@
 # Real-time capacity on shared hosting
 
-Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one request. The admin page **Real-time health** (`/admin/realtime-health`) reads the same instance. It does not call a third party.
+Reference profile: PHP-FPM with `pm.max_children = 5`. One child serves one request. The instance does not call a third party for real-time traffic.
 
 Clients poll their own signaling route. After a room is connected the cadence backs off (`packages/apps/src/lib/rtc/session/poll-cadence.ts`):
 
@@ -10,7 +10,7 @@ Clients poll their own signaling route. After a room is connected the cadence ba
 | Docs | 400 ms | 15 s |
 | Presence | 400 ms | 1.2 s (no extra backoff) |
 
-Session samples (`POST /rtc/metrics`) are at most one request a minute per session, so they do not change this budget.
+Clients do not post session samples. The budget below is signaling polls only.
 
 ## Scenario
 

@@ -37,7 +37,6 @@ export type MeshConnectivityHost = {
   onRelayGiveUp: (remoteId: string, entry: MeshPeerEntry) => void;
   kickPoll: () => void;
   log: (event: string, details?: unknown) => void;
-  onIceRestart?: () => void;
   postRelay?: RelayRequestClient["postRelay"];
 };
 
@@ -69,7 +68,6 @@ export type MeshSurface = {
   log: (event: string, details?: unknown) => void;
   sessionKey: () => string | null;
   rtcSettings: () => RtcSettings;
-  onIceRestart?: () => void;
 };
 
 export function hostFromSurface(surface: MeshSurface): MeshConnectivityHost {
@@ -109,7 +107,6 @@ export function hostFromSurface(surface: MeshSurface): MeshConnectivityHost {
     },
     kickPoll: () => surface.kickPoll(),
     log: (event, details) => surface.log(event, details),
-    onIceRestart: surface.onIceRestart,
     postRelay:
       typeof relayFn === "function"
         ? (roomId, body) =>
@@ -198,7 +195,6 @@ export async function restartPeerIce(host: MeshConnectivityHost, remoteId: strin
   } catch {
     return;
   }
-  host.onIceRestart?.();
   if (!host.isInitiator(remoteId)) return;
   const offer = await entry.pc.createOffer({ iceRestart: true });
   await entry.pc.setLocalDescription(host.formatOutbound(offer));

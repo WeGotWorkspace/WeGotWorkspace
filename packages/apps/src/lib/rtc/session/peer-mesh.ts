@@ -49,7 +49,6 @@ import {
 } from "@/lib/rtc/session/peer-mesh-options";
 import type { MeshPollCadenceSnapshot } from "@/lib/rtc/session/poll-cadence";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
-import { SessionMetricsReporter } from "@/lib/rtc/telemetry/session-metrics-reporter";
 import {
   DEFAULT_RTC_POLL_INTERVALS,
   type RtcLinkState,
@@ -107,8 +106,6 @@ export class RtcPeerMesh {
 
   private visibilityUnsubscribe: (() => void) | null = null;
 
-  private readonly metrics: SessionMetricsReporter;
-
   private readonly settings: MeshRtcSettings;
   private readonly options: RtcPeerMeshOptions;
 
@@ -157,18 +154,6 @@ export class RtcPeerMesh {
     this.scheduleTimeout = options.ports?.setTimeout ?? setTimeout.bind(globalThis);
     this.cancelTimeout = options.ports?.clearTimeout ?? clearTimeout.bind(globalThis);
     this.visibility = options.ports?.visibility ?? defaultVisibilityPort();
-    const reportSessionMetric = options.signaling.reportSessionMetric?.bind(options.signaling);
-    this.metrics = new SessionMetricsReporter({
-      channel: options.channel,
-      post:
-        typeof options.signaling.reportSessionMetric === "function"
-          ? reportSessionMetric
-          : undefined,
-      sessionKey: () => this.sessionKey,
-      net: () => this.localNet,
-      schedule: this.scheduleTimeout,
-      cancel: this.cancelTimeout,
-    });
     this.pollLoop = new MeshPollLoop({
       myId: () => this.myId,
       poll: (input) => options.signaling.poll(input),
@@ -187,7 +172,6 @@ export class RtcPeerMesh {
       shouldRecover: (error) => Boolean(options.recoverOnUnknownPeer && isUnknownPeerError(error)),
       recover: () => this.recoverUnknownPeer(),
       onPollError: options.onPollError,
-      onPollRoundTrip: (elapsedMs) => this.metrics.notePollRtt(elapsedMs),
       isVisible: () => this.visibility?.getState() === "visible",
       log: (event, details) => this.log(event, details),
       scheduleTimeout: this.scheduleTimeout,
@@ -369,7 +353,6 @@ export class RtcPeerMesh {
       onConnected: (id) => {
         this.recovery?.onConnected(id);
         this.options.onPeerConnected?.(id);
-        void this.metrics.noteConnected(entry.pc);
       },
       onIceState: (id, state) => {
         if (state === "disconnected") this.recovery?.onDisconnected(id);
@@ -413,8 +396,6 @@ export class RtcPeerMesh {
   }
 
   private handleConnectionFailed(remoteId: string, entry: MeshPeerEntry): void {
-    this.metrics.noteFailedPair();
-    if (this.options.channel === "collab") this.metrics.noteHttpFallback();
     if (this.options.channel === "principal") {
       this.removePeer(remoteId, "roster");
       this.log("peer-skipped", { remoteId, reason: "connect-failed" });
@@ -613,7 +594,6 @@ export class RtcPeerMesh {
     const epoch = ++this.sessionEpoch;
     this.activeEpoch = epoch;
     this.log("join-request", { room: this.options.room, name: this.myName });
-    this.metrics.begin();
     const joined = await this.signalingJoin(input.peerId);
     if (epoch !== this.sessionEpoch) {
       const peerId = joined.peerId ?? input.peerId;
@@ -700,7 +680,6 @@ export class RtcPeerMesh {
       log: (event, details) => this.log(event, details),
       sessionKey: () => this.sessionKey,
       rtcSettings: () => this.settings.current(),
-      onIceRestart: () => this.metrics.noteIceRestart(),
     };
   }
 
@@ -764,7 +743,6 @@ export class RtcPeerMesh {
   async leave(): Promise<void> {
     this.leaveEpoch += 1;
     this.sessionEpoch += 1;
-    this.metrics.flush();
     this.stopPolling();
     this.pollLoop.release();
     this.networkUnsubscribe?.();

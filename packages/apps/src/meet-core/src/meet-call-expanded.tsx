@@ -205,36 +205,6 @@ export function MeetCallExpanded({
           />
         ) : null}
 
-        {room.controller.relayBanner ? (
-          <div className="meet-call-stage__relay" role="status">
-            <p className="meet-call-stage__relay-message">{room.controller.relayBanner.message}</p>
-            {room.controller.relayBanner.setupHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.setupHref}
-              >
-                {meetLabels.setUpRelay}
-              </a>
-            ) : null}
-            {room.controller.relayBanner.docsHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.docsHref}
-              >
-                {meetLabels.relayDocs}
-              </a>
-            ) : null}
-            {room.controller.relayBanner.planHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.planHref}
-              >
-                {meetLabels.relayPlan}
-              </a>
-            ) : null}
-          </div>
-        ) : null}
-
         {waitingForAdmission ? (
           <div className="meet-call-stage__body meet-call-stage__body--waiting">
             <MeetCallKnockWaiting

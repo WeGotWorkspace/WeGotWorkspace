@@ -8,8 +8,8 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Anonymous session sample for the real-time health page: no addresses, room
- * names, or user ids. Pruned after 30 days by the scheduler.
+ * Anonymous session sample: no addresses, room names, or user ids.
+ * Nothing writes new rows. Pruned after 30 days by the scheduler.
  *
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
  *
