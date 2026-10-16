@@ -297,9 +297,12 @@ export async function patchNotebook(
 
 export async function deleteNotebook(
   notebookId: string,
-  opts?: NotesRequestOpts & { onDestroyRemoveContents?: boolean },
+  opts?: NotesRequestOpts & { onDestroyRemoveContents?: boolean; moveNotesTo?: string },
 ): Promise<void> {
-  const query = opts?.onDestroyRemoveContents === true ? "?onDestroyRemoveContents=1" : "";
+  const params = new URLSearchParams();
+  if (opts?.onDestroyRemoveContents === true) params.set("onDestroyRemoveContents", "1");
+  if (opts?.moveNotesTo) params.set("moveNotesTo", opts.moveNotesTo);
+  const query = params.size > 0 ? `?${params.toString()}` : "";
   await requestNotesJson(
     `/notes/notebooks/${encodeURIComponent(notebookId)}${query}`,
     "DELETE",

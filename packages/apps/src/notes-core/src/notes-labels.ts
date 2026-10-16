@@ -122,6 +122,11 @@ export type NotesUILabels = {
   deleteNotebookConfirmDescription: string;
   /** Shown when a new note could not be created in the selected notebook. */
   createNoteFailedMessage: (notebook: string) => string;
+  deleteNotebookHasNotesTitle: string;
+  deleteNotebookHasNotesDescription: string;
+  deleteNotebookMoveConfirm: string;
+  deleteNotebookDeleteNotesToo: string;
+  toastNotebookDeletedNotesMoved: (notebook: string, destination: string) => string;
 };
 
 export const defaultNotesLabels: NotesUILabels = {
@@ -232,6 +237,13 @@ export const defaultNotesLabels: NotesUILabels = {
     "Notes in this notebook will be permanently deleted. This cannot be undone.",
   createNoteFailedMessage: (notebook) =>
     `Could not create a note in “${notebook}”. The notebook may no longer be available.`,
+  deleteNotebookHasNotesTitle: "This notebook still has notes",
+  deleteNotebookHasNotesDescription:
+    "Pick a notebook to move them to, or delete them along with the notebook.",
+  deleteNotebookMoveConfirm: "Move and delete notebook",
+  deleteNotebookDeleteNotesToo: "Delete the notes too",
+  toastNotebookDeletedNotesMoved: (notebook, destination) =>
+    `Deleted “${notebook}”. Its notes moved to “${destination}”.`,
 };
 
 export function mergeNotesLabels(overrides?: Partial<NotesUILabels>): NotesUILabels {

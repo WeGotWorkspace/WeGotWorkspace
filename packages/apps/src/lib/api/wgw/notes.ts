@@ -1,4 +1,5 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
+import type { DeleteNotebookAction } from "@/notes-core/src/notes-types";
 import type { Note } from "@/lib/models/note";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import type { WgwNoteItem, WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
@@ -477,25 +478,32 @@ export async function renameNotebook(
   await patchNotebook(notebook.id, { name: to }, opts);
 }
 
+function notebookByIdOrName<T extends { id: string; name: string }>(
+  notebooks: readonly T[],
+  idOrName: string,
+): T | undefined {
+  return (
+    notebooks.find((item) => item.id === idOrName) ??
+    notebooks.find((item) => item.name === idOrName)
+  );
+}
+
 export async function deleteNotebook(
-  name: string,
-  action: { mode: "archive" | "move" | "purge"; target?: string },
+  notebookIdOrName: string,
+  action: DeleteNotebookAction,
   opts?: { signal?: AbortSignal },
 ): Promise<void> {
   const notebooks = await notebooksForMap();
-  const notebook = notebooks.find((item) => item.name === name);
+  const notebook = notebookByIdOrName(notebooks, notebookIdOrName);
   if (!notebook) throw new NotesRequestError("Notebook not found", 404);
-  if (action.mode === "move" && action.target) {
-    const dest = notebooks.find((item) => item.name === action.target);
+  if (action.kind === "move") {
+    const dest = notebookByIdOrName(notebooks, action.target);
     if (!dest) throw new NotesRequestError("Target notebook not found", 404);
-    const { listNotes } = await import("@/lib/api/wgw/notes-vjournal");
-    const items = await listNotes({ notebookId: notebook.id, signal: opts?.signal });
-    for (const item of items) {
-      await patchNote(item.id, { notebookId: dest.id }, { ...opts, ifMatch: item.etag });
-    }
+    await deleteVjournalNotebook(notebook.id, { ...opts, moveNotesTo: dest.id });
+    return;
   }
   await deleteVjournalNotebook(notebook.id, {
     ...opts,
-    onDestroyRemoveContents: action.mode === "purge" || action.mode === "archive",
+    ...(action.kind === "purge" ? { onDestroyRemoveContents: true } : {}),
   });
 }
