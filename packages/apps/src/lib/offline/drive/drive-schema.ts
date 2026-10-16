@@ -7,15 +7,20 @@ import { DRIVE_OFFLINE_VERSION } from "@/lib/offline/core/offline-version-alloca
 
 export const DRIVE_DOMAIN = "drive";
 
-/** Cached directory entry (serialized WgwDriveDirectoryEntry). */
+/**
+ * Cached directory entry (serialized WgwDriveDirectoryEntry).
+ * `id` stays the path. `nodeId` is optional until the first JMAP crawl.
+ */
 export type OfflineDriveEntryRow = {
-  /** Normalized API path (no leading slash). */
+  /** Normalized API path (no leading slash). Primary key; not the FileNode id. */
   id: string;
   parentPath: string;
   type: "file" | "dir";
   modifiedAt: number;
   /** JSON payload mirroring listing entry fields. */
   data: string;
+  /** JMAP FileNode id. Absent on rows written before the first crawl. */
+  nodeId?: string;
 };
 
 /** Binary file body cached for offline open/download. */
@@ -57,6 +62,12 @@ registerOfflineDomainTables({
       version: DRIVE_OFFLINE_VERSION.availabilityTables,
       stores: {
         drive_availability: "id, source, pinnedAt, lastSyncedAt",
+      },
+    },
+    {
+      version: DRIVE_OFFLINE_VERSION.entryNodeId,
+      stores: {
+        drive_entries: "id, parentPath, type, modifiedAt, nodeId",
       },
     },
   ],

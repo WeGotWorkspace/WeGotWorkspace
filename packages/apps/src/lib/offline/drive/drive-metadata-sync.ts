@@ -1,7 +1,8 @@
-import { wgwFetch, wgwReadJson } from "@/lib/api/wgw/http";
-import type { WgwDriveDirectoryEntry, WgwDriveListingResponse } from "@/lib/api/wgw/types";
+import { driveJmapSession, listFileNodeEntries } from "@/lib/api/wgw/drive-jmap";
+import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
+import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availability-store";
 import {
   upsertDriveEntries,
   writeDriveBootstrapToCache,
@@ -23,14 +24,6 @@ function emptyProgress(): DriveMetadataSyncProgress {
   return { running: false, total: 0, synced: 0, failed: 0, updatedAt: Date.now() };
 }
 
-function pathQuery(path: string): string {
-  return `path=${encodeURIComponent(normalizePath(path))}`;
-}
-
-function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
-  return !entry.name.trim().startsWith(".");
-}
-
 function normalizeDriveEntryKey(path: string): string {
   return path.trim().replace(/^\/+/, "");
 }
@@ -39,14 +32,27 @@ async function writeProgress(username: string, progress: DriveMetadataSyncProgre
   await writeMeta(username, DRIVE_METADATA_SYNC_META_KEY, JSON.stringify(progress));
 }
 
+/**
+ * Signed-in crawl roots are the user home and group directories.
+ * JMAP `listFileNodeEntries` covers both (`/groups` is the top-level query;
+ * a user or group path resolves through FileNode). Guests never enter this
+ * crawl. Share roots are not crawl roots, matching the previous REST root set.
+ */
 async function fetchDirectoryEntries(
+  username: string,
   dir: string,
   signal?: AbortSignal,
 ): Promise<WgwDriveDirectoryEntry[]> {
-  const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal });
-  if (!res.ok) throw new Error(`GET /files/children failed (${res.status})`);
-  const payload = (await wgwReadJson(res)) as WgwDriveListingResponse;
-  return payload.data.files.filter(isVisibleDriveEntry);
+  const session = await driveJmapSession();
+  return listFileNodeEntries(session, dir, username, { signal });
+}
+
+async function cacheDirectoryEntries(
+  username: string,
+  entries: readonly WgwDriveDirectoryEntry[],
+): Promise<void> {
+  await upsertDriveEntries(username, entries);
+  await stampDocsAvailabilityNodeIds(username, entries);
 }
 
 export async function readDriveMetadataSyncProgress(
@@ -65,7 +71,7 @@ async function collectMetadataRoots(username: string): Promise<string[]> {
   const userRoot = normalizePath(`/users/${username}`);
   const roots = [userRoot];
   try {
-    const groups = await fetchDirectoryEntries("/groups");
+    const groups = await fetchDirectoryEntries(username, "/groups");
     for (const entry of groups) {
       if (entry.type === "dir") {
         roots.push(normalizePath(entry.path));
@@ -108,8 +114,8 @@ export async function syncDriveMetadataTree(
     visited.add(normalized);
     progress.total += 1;
     try {
-      const entries = await fetchDirectoryEntries(dir, signal);
-      await upsertDriveEntries(username, entries);
+      const entries = await fetchDirectoryEntries(username, dir, signal);
+      await cacheDirectoryEntries(username, entries);
       for (const entry of entries) {
         if (entry.type === "dir") {
           queue.push(normalizePath(entry.path));
@@ -135,6 +141,6 @@ export async function refreshDriveDirectoryCache(
   signal?: AbortSignal,
 ): Promise<void> {
   if (!getConnectivitySnapshot()) return;
-  const entries = await fetchDirectoryEntries(parentPath, signal);
-  await upsertDriveEntries(username, entries);
+  const entries = await fetchDirectoryEntries(username, parentPath, signal);
+  await cacheDirectoryEntries(username, entries);
 }

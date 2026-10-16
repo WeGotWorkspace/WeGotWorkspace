@@ -56,6 +56,26 @@ export async function markDocsAvailabilitySynced(username: string, apiPath: stri
   });
 }
 
+/** Fill `nodeId` on pins whose path the crawl just saw. Missing ids stay missing. */
+export async function stampDocsAvailabilityNodeIds(
+  username: string,
+  entries: readonly { path: string; nodeId?: string }[],
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = docsAvailabilityTable(db);
+  const pins = new Map((await table.toArray()).map((row) => [row.id, row]));
+  for (const entry of entries) {
+    const nodeId = entry.nodeId?.trim();
+    if (!nodeId) continue;
+    const id = normalizeDocsAvailabilityPath(entry.path);
+    const existing = pins.get(id);
+    if (!existing || existing.nodeId === nodeId) continue;
+    const next = { ...existing, nodeId };
+    pins.set(id, next);
+    await table.put(next);
+  }
+}
+
 export async function migrateDocsAvailabilityPath(
   username: string,
   oldPath: string,

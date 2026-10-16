@@ -247,8 +247,17 @@ export type WgwSearchReindexStateResponse = {
 };
 export type WgwDriveEntryType = DriveEntryType;
 export type WgwDriveRootPath = DriveRootPath;
-export type WgwDriveDirectoryEntry = DriveDirectoryEntry;
-export type WgwDriveDirectoryData = DriveDirectoryData;
+/**
+ * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
+ * unset: guests have no offline cache, so the id is not backfilled there.
+ */
+export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
+  nodeId?: string;
+};
+/** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */
+export type WgwDriveDirectoryData = Omit<DriveDirectoryData, "files"> & {
+  files: WgwDriveDirectoryEntry[];
+};
 export type WgwDriveGetDirRequest = DriveGetDirRequest;
 export type WgwDriveSearchRequest = DriveSearchRequest;
 export type WgwDriveChangeDirRequest = DriveChangeDirRequest;
