@@ -44,12 +44,12 @@
   @apply flex shrink-0 rounded-full border-0 bg-transparent p-0;
   --user-avatar-bg: var(
     --workspace-shell-header-user-menu-bg,
-    color-mix(in oklab, #ffffff 16%, var(--workspace-home-bg, #1b1d3a))
+    color-mix(in oklab, var(--workspace-accent-foreground) 16%, var(--workspace-home-bg))
   );
-  --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, #ffffff);
+  --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, var(--workspace-accent-foreground));
   --user-avatar-border: var(
     --workspace-shell-header-user-menu-border,
-    color-mix(in oklab, #ffffff 22%, var(--workspace-home-bg, #1b1d3a))
+    color-mix(in oklab, var(--workspace-accent-foreground) 22%, var(--workspace-home-bg))
   );
   --user-avatar-border-width: 1px;
 }

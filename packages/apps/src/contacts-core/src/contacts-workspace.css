@@ -16,12 +16,6 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --sidebar-badge-fg: #ffffff;
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
@@ -33,15 +27,9 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --contacts-pending-sync-color: var(--color-warning);
-  --contacts-swipe-delete-color: #dc2626;
+  --contacts-swipe-delete-color: var(--color-error);
   --contacts-swipe-remove-color: var(--workspace-accent);
   --contacts-detail-title-font-family: var(--font-sans);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
@@ -479,7 +467,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

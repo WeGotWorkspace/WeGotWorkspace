@@ -5,10 +5,10 @@
  * Ink and primary / active fills follow We Got Dark.
  */
 .installer {
-  --installer-status-ok: #15803d;
-  --installer-status-error: #b14242;
+  --installer-status-ok: var(--color-success);
+  --installer-status-error: var(--color-error);
   --installer-status-pending: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
-  --installer-status-warn: #b45309;
+  --installer-status-warn: var(--color-warning);
   --button-outline-color: var(--workspace-foreground);
   --button-outline-hover-color: var(--workspace-foreground);
   --button-outline-hover-background: color-mix(
@@ -25,7 +25,7 @@
   --segmented-control-color: var(--workspace-foreground);
   --segmented-control-hover-color: var(--workspace-foreground);
   --segmented-control-hover-bg: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
-  --segmented-control-active-fg: #ffffff;
+  --segmented-control-active-fg: var(--workspace-accent-foreground);
   --segmented-control-active-bg: var(--workspace-accent);
   --segmented-control-track-border-color: color-mix(
     in oklab,

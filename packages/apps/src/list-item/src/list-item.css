@@ -79,7 +79,7 @@
 
 .list-item__checkbox-icon {
   @apply size-3;
-  color: var(--list-item-checkbox-icon-color, #ffffff);
+  color: var(--list-item-checkbox-icon-color, var(--workspace-accent-foreground));
 }
 
 .list-item__leading {

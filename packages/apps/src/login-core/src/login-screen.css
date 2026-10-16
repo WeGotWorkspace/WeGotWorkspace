@@ -78,7 +78,7 @@ html:has(.login-screen) {
 }
 
 .login-screen__error {
-  color: var(--destructive, #b14242);
+  color: var(--destructive);
   @apply mb-5 text-sm;
 }
 

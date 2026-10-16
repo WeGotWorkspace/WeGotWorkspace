@@ -79,42 +79,32 @@
 }
 
 .button--variant-destructive {
-  background-color: var(--button-destructive-bg, var(--color-red-500, #dc2626));
-  color: var(--button-destructive-fg, #ffffff);
+  background-color: var(--button-destructive-bg, var(--destructive));
+  color: var(--button-destructive-fg, var(--destructive-foreground));
 }
 
 .button--variant-destructive:hover {
   background-color: color-mix(
     in oklab,
-    var(--button-destructive-bg, var(--color-red-500, #dc2626)) 88%,
+    var(--button-destructive-bg, var(--destructive)) 88%,
     black
   );
 }
 
 .button--variant-destructive-outline {
-  color: var(
-    --button-destructive-outline-color,
-    var(--button-destructive-bg, var(--color-red-500, #dc2626))
-  );
+  color: var(--button-destructive-outline-color, var(--button-destructive-bg, var(--destructive)));
   background-color: transparent;
   border: 1px solid
     var(
       --button-destructive-outline-border-color,
-      var(
-        --button-destructive-outline-color,
-        var(--button-destructive-bg, var(--color-red-500, #dc2626))
-      )
+      var(--button-destructive-outline-color, var(--button-destructive-bg, var(--destructive)))
     );
 }
 
 .button--variant-destructive-outline:hover {
   background-color: var(
     --button-destructive-outline-hover-background,
-    color-mix(
-      in oklab,
-      var(--button-destructive-bg, var(--color-red-500, #dc2626)) 12%,
-      transparent
-    )
+    color-mix(in oklab, var(--button-destructive-bg, var(--destructive)) 12%, transparent)
   );
 }
 
@@ -144,7 +134,7 @@
 .button--severity-danger {
   --button-severity-color: var(
     --menu-item-severity-color,
-    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive)))
   );
   --button-severity-hover-background: var(
     --menu-item-severity-hover-background,
@@ -175,14 +165,13 @@
 }
 
 /*
- * Success outline/ghost (Resolve, Accept): fg from a true green — not
- * `--color-emerald`, which product workspaces remap to accent. Wash on hover
- * only, matching severity-danger.
+ * Success outline (Resolve, Accept): status success mixed into foreground.
+ * Not `--color-emerald`, which product sheets remap to accent.
  */
 .button--severity-success {
   --button-severity-color: var(
     --button-severity-success-color,
-    color-mix(in oklab, var(--color-ghost, #22c55e) 55%, var(--workspace-foreground))
+    color-mix(in oklab, var(--color-success) 55%, var(--workspace-foreground))
   );
   --button-severity-hover-background: var(
     --button-severity-success-hover-background,
@@ -206,7 +195,7 @@
 /* Pressed/selected outline (Today, open sidebar/inbox): accent fg + wash;
    keep the quiet control stroke (not a full accent ring). */
 .button.button--variant-outline.icon-button--active {
-  color: var(--button-active-color, var(--color-emerald));
+  color: var(--button-active-color, var(--workspace-accent));
   border-color: var(
     --button-outline-active-border-color,
     var(--button-outline-border-color, var(--control-border-color))
@@ -221,7 +210,7 @@
 }
 
 .button.button--variant-outline.icon-button--active:hover {
-  color: var(--button-active-color, var(--color-emerald));
+  color: var(--button-active-color, var(--workspace-accent));
   background-color: var(
     --button-outline-active-hover-background,
     var(
@@ -253,7 +242,7 @@
 
 .button--variant-link {
   @apply underline-offset-4;
-  color: var(--button-link-color, var(--color-emerald));
+  color: var(--button-link-color, var(--workspace-accent));
   background-color: transparent;
   text-decoration: underline;
 }

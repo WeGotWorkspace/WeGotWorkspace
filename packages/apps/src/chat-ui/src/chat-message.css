@@ -77,7 +77,10 @@
 
 .chat-message__body mark {
   @apply rounded-sm px-0.5;
-  background-color: var(--chat-mention-bg, color-mix(in oklab, #eab308 32%, transparent));
+  background-color: var(
+    --chat-mention-bg,
+    color-mix(in oklab, var(--color-warning) 32%, transparent)
+  );
   color: inherit;
 }
 
@@ -115,7 +118,7 @@
 
 .chat-message__replies:hover,
 .chat-message__replies:focus-visible {
-  color: var(--chat-accent, #0e7490);
+  color: var(--chat-accent, var(--workspace-accent));
   text-decoration: underline;
 }
 

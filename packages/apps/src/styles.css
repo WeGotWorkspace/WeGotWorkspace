@@ -19,11 +19,8 @@
   --font-mono: var(--font-we-got-mono);
   --font-mark: var(--font-we-got-mark);
   /* Body weight: use Tailwind font-normal (400). Chrome stays font-semibold (600). */
-  --color-forest: #042318;
+  /* Status green still read by list, drive, and mail. Not a brand primitive. */
   --color-emerald: #34d399;
-  --color-paper: #34d399;
-  --color-slate-muted: #0a3a2a;
-  --color-ghost: #22c55e;
   /*
    * We Got brand primitives — hex first (source + fallback), then oklch(from)
    * so supporting browsers mix in OKLCH. Floor: relative color + color-mix

@@ -24,7 +24,7 @@
   border-color: var(--control-border-color);
   border-radius: var(--control-radius);
   /* Transparent fallback — `none` cannot compose with other shadows. */
-  box-shadow: var(--input-shadow, 0 0 #0000);
+  box-shadow: var(--input-shadow, 0 0 transparent);
   font-size: var(--input-font-size, 1rem);
   background-color: var(--input-background, transparent);
 }
@@ -50,7 +50,7 @@ html[data-modality="pointer"]
     .input:has(> .input__field:focus-visible)
   ) {
   border-color: var(--control-border-color);
-  box-shadow: var(--input-shadow, 0 0 #0000);
+  box-shadow: var(--input-shadow, 0 0 transparent);
 }
 
 .control-surface,

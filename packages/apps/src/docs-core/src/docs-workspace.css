@@ -48,7 +48,6 @@
   --workspace-chrome-footer-padding-y: var(--docs-format-chrome-padding-y);
   --workspace-chrome-footer-border: var(--docs-border);
 
-  --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);
@@ -227,7 +226,7 @@
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
   background-color: var(--workspace-accent);
-  color: #ffffff;
+  color: var(--workspace-accent-foreground);
 }
 
 .docs-workspace .docs-workspace__review-toggle:not([data-count])::after {
@@ -242,7 +241,6 @@
 
 .docs-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
-  --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);

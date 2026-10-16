@@ -28,10 +28,6 @@
     --button-outline-border-color,
     var(--control-border-color)
   );
-  --segmented-control-active-border-color: var(
-    --button-outline-border-color,
-    var(--control-border-color)
-  );
   --segmented-control-active-bg: var(
     --button-outline-active-background,
     color-mix(in oklab, var(--workspace-accent) 18%, var(--workspace-surface))

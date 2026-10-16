@@ -11,10 +11,8 @@
   --chat-list-surface: var(--workspace-surface);
   --chat-border: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
   --chat-rule: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  --chat-accent: #0e7490;
+  --chat-accent: var(--workspace-accent);
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
-  --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: var(--workspace-surface);
   --chat-reaction-bg: var(--button-outline-hover-background);
   --chat-reaction-selected-bg: var(--button-outline-active-background);
   --user-avatar-presence-ring: var(--chat-list-surface);

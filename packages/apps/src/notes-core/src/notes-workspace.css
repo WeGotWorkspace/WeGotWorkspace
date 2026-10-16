@@ -55,12 +55,6 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --sidebar-badge-fg: #ffffff;
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
@@ -72,12 +66,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --notes-list-star-color: var(--workspace-accent);
   /* Tile pair is notes yellow. Rail stays Soft from :root. */
@@ -90,8 +78,8 @@
    */
   --list-item-selected-bg: var(--button-outline-hover-background);
   --list-item-active-bg: var(--drive-item-selected-background);
-  /* Checked fill is Dark (`--color-emerald`). White glyph, same as Drive. */
-  --list-item-checkbox-icon-color: #ffffff;
+  /* Checked fill is accent (Dark). Glyph follows the accent-foreground pair. */
+  --list-item-checkbox-icon-color: var(--workspace-accent-foreground);
   --checkbox-border-color: color-mix(in oklch, var(--workspace-foreground) 30%, transparent);
   /* Workspace-level — sidebar collection rows override with row color.
    * Checked fill uses `.checkbox` surfaceTint; border stays saturated; glyph
@@ -101,14 +89,14 @@
   /* Idle sidebar filter chips read the selected collection-row wash on the
    * chip rule (sidebar-local `--button-outline-active-background`). Do not
    * alias that wash here: `.notes-workspace` resolves the mix against the
-   * desk surface, not the sidebar. Selected chips stay ink on white.
+   * desk surface, not the sidebar. Selected chips use the foreground/surface pair.
    * Detail category chips invert the sheet (`--notes-detail-contrast-fg` /
    * `--paper-sheet-bg`). `--note-detail-tag-*` stays the editor task-list wash. */
   --notes-tag-fg: var(--workspace-foreground);
-  /* Selected sidebar tag chip — ink fill, white label, no stroke. Nested
+  /* Selected sidebar tag chip — foreground fill, surface label, no stroke. Nested
    * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
   --notes-tag-selected-bg: var(--workspace-foreground);
-  --notes-tag-selected-fg: #ffffff;
+  --notes-tag-selected-fg: var(--workspace-surface);
   /* Same wash as `.checkbox` / colored `.user-avatar`: saturated 1px border +
    * surfaceTint 14% accent into surface (srgb). */
   --_note-detail-tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
@@ -284,11 +272,11 @@
 
 /*
  * Bell lives in the header (sibling of scroll). Unread badge is severity red
- * (`--color-error`) with a white label — not the Dark accent.
+ * (`--color-error`) with accent-foreground ink — not the Dark accent.
  */
 .notes-workspace .app-sidebar__notifications {
   --notification-inbox-badge-bg: var(--color-error);
-  --notification-inbox-badge-fg: #ffffff;
+  --notification-inbox-badge-fg: var(--workspace-accent-foreground);
 }
 
 /**
@@ -321,7 +309,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-yellow);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

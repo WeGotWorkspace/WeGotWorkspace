@@ -26,6 +26,6 @@
   border-inline-start-width: 0;
   border-start-end-radius: var(--control-radius);
   border-end-end-radius: var(--control-radius);
-  box-shadow: var(--input-shadow, 0 0 #0000);
+  box-shadow: var(--input-shadow, 0 0 transparent);
   user-select: none;
 }

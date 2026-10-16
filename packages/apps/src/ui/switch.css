@@ -48,7 +48,7 @@
 .switch:focus-visible {
   @apply ring-1;
   box-shadow:
-    0 0 0 2px var(--background, #ffffff),
+    0 0 0 2px var(--background, var(--workspace-surface)),
     0 0 0 4px var(--switch-ring-color, var(--ring, var(--workspace-foreground)));
 }
 

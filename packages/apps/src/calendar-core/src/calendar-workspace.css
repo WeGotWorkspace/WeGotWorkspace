@@ -27,12 +27,6 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --sidebar-badge-fg: #ffffff;
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
     var(--workspace-foreground) 80%,
@@ -48,12 +42,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 85%,
-    var(--workspace-surface)
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   --workspace-icon-surface: var(--color-we-got-prince);
   --workspace-icon-foreground: var(--color-we-got-soft);
   /* Full-bleed main column (drive/docs pattern): the lit calendar surface
@@ -212,7 +200,7 @@
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
   background-color: var(--workspace-accent-strong);
-  color: #ffffff;
+  color: var(--workspace-surface);
 }
 
 .calendar-workspace .calendar-invitations-trigger:not([data-count])::after {

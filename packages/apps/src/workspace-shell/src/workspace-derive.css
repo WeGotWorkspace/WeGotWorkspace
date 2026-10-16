@@ -101,6 +101,8 @@
   --switch-on-bg: var(--workspace-foreground);
   --switch-on-thumb-bg: var(--workspace-accent-foreground);
   --list-sticky-header-color: var(--workspace-foreground);
+  /* Selected sidebar count: default fill is foreground, so ink is the surface. */
+  --sidebar-badge-fg: var(--workspace-surface);
 
   --background: var(--workspace-surface);
   --foreground: var(--workspace-foreground);

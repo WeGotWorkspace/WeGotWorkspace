@@ -29,12 +29,6 @@
     var(--workspace-foreground) 18%,
     transparent
   );
-  --workspace-user-footer-link-color: var(--workspace-foreground);
-  --workspace-user-footer-link-bg: color-mix(
-    in oklab,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
 
   --workspace-main-content-max-width: 42rem;
 }

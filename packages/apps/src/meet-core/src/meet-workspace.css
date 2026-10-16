@@ -27,9 +27,7 @@
   --app-sidebar-color: var(--meet-text);
   --meet-border: rgba(255, 255, 255, 0.06);
   --meet-border-strong: rgba(255, 255, 255, 0.08);
-  --meet-border-input: rgba(255, 255, 255, 0.15);
   --meet-error: #fda4af;
-  --meet-link: #93c5fd;
   --meet-live: #34d399;
   /* Ink on the speaking tag. Assigned here so paint can stay off the brand primitive. */
   --meet-live-foreground: var(--color-we-got-dark);
@@ -754,11 +752,6 @@
   --sidebar-badge-fg: var(--workspace-accent-foreground);
   --meet-unread-bg: var(--workspace-accent-strong);
   --meet-unread-fg: var(--workspace-accent-foreground);
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
     var(--workspace-foreground) 70%,
@@ -775,12 +768,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   /*
    * Form / SidebarSection labels use `field-label-row__label` → `--field-label-color`.
    * Root `.meet-workspace` keeps white lobby/call labels; split chrome is ink-on-tint.
@@ -800,8 +787,6 @@
   --chat-hover: color-mix(in oklch, var(--workspace-accent) 8%, transparent);
   --chat-accent: var(--workspace-accent-strong);
   --chat-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
-  --chat-day-bg: var(--chat-list-surface);
-  --chat-action-surface: var(--workspace-surface);
   --user-avatar-presence-ring: var(--chat-list-surface);
   background-color: var(--meet-surface);
   color: var(--workspace-foreground);
@@ -810,8 +795,6 @@
 .meet-workspace .chat-ui {
   --chat-surface: var(--workspace-surface);
   --chat-list-surface: var(--workspace-surface);
-  --chat-day-bg: var(--workspace-surface);
-  --chat-action-surface: var(--workspace-surface);
   --chat-hover: color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface));
   --chat-reaction-bg: var(--button-outline-hover-background);
   --chat-reaction-selected-bg: var(--button-outline-active-background);
@@ -878,11 +861,6 @@
   --workspace-user-footer-border-color: color-mix(
     in oklch,
     var(--workspace-foreground) 10%,
-    transparent
-  );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
     transparent
   );
 }

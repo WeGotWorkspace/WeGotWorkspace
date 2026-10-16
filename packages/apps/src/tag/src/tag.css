@@ -155,7 +155,7 @@
 
 .tag-group__input:focus,
 .tag-group__input:focus-visible {
-  background-color: var(--tag-group-input-bg-focus, #ffffff);
+  background-color: var(--tag-group-input-bg-focus, var(--workspace-surface));
   box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
 }
 
@@ -171,7 +171,7 @@
   @apply absolute left-0 top-full z-20 mt-1 max-h-48 min-w-full overflow-y-auto border py-1;
   border-color: var(--tag-group-suggestions-border, var(--control-border-color));
   border-radius: var(--control-radius);
-  background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
+  background-color: var(--tag-group-suggestions-bg, var(--popover, var(--workspace-surface)));
   box-shadow: var(
     --tag-group-suggestions-shadow,
     0 4px 16px color-mix(in oklab, var(--workspace-foreground) 12%, transparent)

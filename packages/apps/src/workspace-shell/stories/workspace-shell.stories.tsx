@@ -40,7 +40,7 @@ export const Default: Story = {
   render: () => (
     <WorkspaceAppLayout
       style={{
-        ["--workspace-root-bg" as string]: "var(--color-paper)",
+        ["--workspace-root-bg" as string]: "var(--workspace-surface)",
         ["--sidebar-logo-close-button-color" as string]: "var(--color-we-got-dark)",
         ["--workspace-user-footer-text-color" as string]:
           "color-mix(in oklab, var(--color-we-got-dark) 70%, transparent)",

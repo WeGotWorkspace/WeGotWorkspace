@@ -364,7 +364,7 @@
 
 .tasks-main-view__remind-button--active {
   border-color: color-mix(in oklab, var(--workspace-foreground) 28%, transparent);
-  background-color: color-mix(in oklab, var(--workspace-accent, #ffbdc2) 14%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent) 14%, transparent);
 }
 
 .tasks-main-view__remind-button--active svg {

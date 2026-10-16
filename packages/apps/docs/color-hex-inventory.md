@@ -18,35 +18,28 @@ Excluded from this list on purpose:
 
 ## Suite / theme leftovers (`styles.css`)
 
-| File         | Hex                                            | Recommendation                                                      |
-| ------------ | ---------------------------------------------- | ------------------------------------------------------------------- |
-| `styles.css` | `#042318` (`--color-forest`)                   | **semantic alias** or retire — legacy green suite, not We Got Dark  |
-| `styles.css` | `#34d399` (`--color-emerald`, `--color-paper`) | **keep** until ghost/emerald consumers remap; not a brand primitive |
-| `styles.css` | `#0a3a2a` (`--color-slate-muted`)              | **semantic alias** or retire with forest                            |
-| `styles.css` | `#22c55e` (`--color-ghost`)                    | **keep** (ghost control hue) or later map toward success/brat       |
-| `styles.css` | `#1b1d3a` (`--workspace-home-bg`)              | **keep** (suite home navy; Home has no app accent)                  |
-| `styles.css` | `#0000000a`, `#0f172a1f` (sheet shadow)        | **keep** (shadow alpha, not paint)                                  |
+| File         | Hex                                     | Recommendation                                                        |
+| ------------ | --------------------------------------- | --------------------------------------------------------------------- |
+| `styles.css` | `#34d399` (`--color-emerald`)           | **keep** — list, drive, and mail still read it; not a brand primitive |
+| `styles.css` | `#1b1d3a` (`--workspace-home-bg`)       | **keep** (suite home navy; Home has no app accent)                    |
+| `styles.css` | `#0000000a`, `#0f172a1f` (sheet shadow) | **keep** (shadow alpha, not paint)                                    |
 
 ## Meet dark surfaces
 
-| File                                     | Hex                                        | Recommendation                                                           |
-| ---------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| `meet-workspace.css`                     | `#171826`, `#20223a` (panel)               | **keep** (Meet call chrome; dark-mode later remaps semantics, not these) |
-| `meet-workspace.css`                     | `#fda4af`, `#e5484d`, `#93c5fd`, `#34d399` | **semantic alias** (error / mic-off / link / live → status or brand)     |
-| `meet-workspace.css`                     | `#000000` (`--meet-screen-bg`)             | **keep** (true black screen share)                                       |
-| `meet-workspace.css` / `app-sidebar.css` | `#1b1d3a` fallbacks on home bg             | **keep** or chain to `--workspace-home-bg` only                          |
+| File                 | Hex                             | Recommendation                                                                     |
+| -------------------- | ------------------------------- | ---------------------------------------------------------------------------------- |
+| `meet-workspace.css` | `#171826`, `#20223a` (panel)    | **keep** (Meet call chrome; dark-mode later remaps semantics, not these)           |
+| `meet-workspace.css` | `#fda4af`, `#e5484d`, `#34d399` | **semantic alias** (error / mic-off / live). `--meet-link` was unread and removed. |
+| `meet-workspace.css` | `#000000` (`--meet-screen-bg`)  | **keep** (true black screen share)                                                 |
+| `meet-workspace.css` | `#1b1d3a` on home bg            | **keep** (Meet dark scope). App sidebar now chains `--workspace-home-bg` only.     |
 
 ## Status / destructive still as raw hex
 
-| File                       | Hex                                    | Recommendation                                                                   |
-| -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------- |
-| `calendar-rsvp-status.css` | `#3a8f5a`, `#b14242`                   | **semantic alias** → `--color-success` / `--color-error`                         |
-| `admin-panes.css`          | `#c98a1f` (tag wash)                   | **semantic alias** → `--color-warning`                                           |
-| `button.css` / Meet        | `#dc2626` (`--color-red-500` fallback) | **semantic alias** → `--color-error` (do not reuse We Got Red)                   |
-| `contacts-workspace.css`   | `#dc2626` (swipe delete)               | **semantic alias** → `--color-error`                                             |
-| `callout.css`              | `#1a1a18` (info/neutral)               | **keep** for now (callout-info stays neutral; `--color-info` is Sky when needed) |
-| `text-editor.css`          | `#b14242` (danger menu fallback)       | **semantic alias** → `--color-error`                                             |
-| `installer.css`            | `#15803d`, `#b45309`                   | **semantic alias** → success / warning                                           |
+Product sheets below now use `--color-success`, `--color-error`, `--color-warning`, or `--destructive`. Meet still falls back to `#dc2626` on `--button-destructive-bg` (palette migration is a later PR).
+
+| File                 | Hex                                    | Recommendation                                 |
+| -------------------- | -------------------------------------- | ---------------------------------------------- |
+| `meet-workspace.css` | `#dc2626` (`--color-red-500` fallback) | **semantic alias** → `--destructive` with Meet |
 
 ## Avatar / chip / presence palettes
 
@@ -54,27 +47,27 @@ Excluded from this list on purpose:
 | -------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `user-avatar.css`          | `#f59e0b`, `#06b6d4`, `#f97316`, `#8b5cf6`, `#f43f5e`, `#84cc16`, `#14b8a6`, `#0ea5e9` | **keep** (per-user identity hues) or later a shared identity scale |
 | `user-avatar.css`          | `#22c55e`, `#eab308` (presence)                                                        | **semantic alias** → success / warning                             |
-| `docs-collab-presence.css` | `#c2410c` (connecting chip)                                                            | **keep** or **semantic alias** → warning/error mix                 |
+| `docs-collab-presence.css` | warning chip uses `--color-warning`                                                    | done                                                               |
 | `docs-collab-utils.ts`     | peer color list (`#2563eb`, `#dc2626`, …)                                              | **keep** (collab author palette)                                   |
 
 ## Chat / search accents
 
-| File                                              | Hex                                        | Recommendation                                            |
-| ------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| `chat-ui.css` / message / reaction / link-preview | `#0e7490`, `#06b6d4`, `#eab308`, `#1d4ed8` | **semantic alias** or Meet-scoped component tokens        |
-| `unified-search-results-dropdown.css`             | `#2563eb`, `#8b5cf6`, `#16a34a`            | **keep** (row-type accents) or map to workspace accents   |
-| `contacts-conflict-dialog.css`                    | `#0e7490`                                  | **semantic alias** → chat/Meet accent or workspace accent |
+| File                                   | Hex                                                             | Recommendation                                            |
+| -------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| `chat-ui.css` / message / link-preview | accent and mention use `--workspace-accent` / `--color-warning` | done                                                      |
+| `unified-search-results-dropdown.css`  | row accents fall back to `--workspace-accent`                   | done                                                      |
+| `contacts-conflict-dialog.css`         | `#0e7490`                                                       | **semantic alias** → chat/Meet accent or workspace accent |
 
 ## Drive / share leftovers
 
-| File                      | Hex                                 | Recommendation                                                                       |
-| ------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `drive-browser.css`       | `#22c55e` (offline available badge) | **semantic alias** → success                                                         |
-| `drive-access.css`        | `#047857`                           | **semantic alias** or Drive brat/ink mix                                             |
-| `drive-folder-picker.css` | `#3b82f6`, `#0f172a` fallbacks      | **brand primitive** / ink — stale Tailwind blue; should inherit `--workspace-accent` |
-| `drive-detail-panel.css`  | `#8ace00` hard-set accent           | **brand primitive** → `var(--color-we-got-brat)`                                     |
-| `drive-workspace.css`     | `#1d6635` (wai / switch fg)         | **keep** (Drive mark contrast mix toward ink)                                        |
-| `share-ui.css`            | `#10b981` primary fallback          | **brand primitive** / workspace accent — stale emerald                               |
+| File                      | Hex                                            | Recommendation                                   |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| `drive-browser.css`       | offline available badge uses `--color-success` | done                                             |
+| `drive-access.css`        | via-link uses `--workspace-accent-strong`      | done                                             |
+| `drive-folder-picker.css` | docs listing inherits `--workspace-accent`     | done                                             |
+| `drive-detail-panel.css`  | `#8ace00` hard-set accent                      | **brand primitive** → `var(--color-we-got-brat)` |
+| `drive-workspace.css`     | `#1d6635` (wai / switch fg)                    | **keep** (Drive mark contrast mix toward ink)    |
+| `share-ui.css`            | accent is `--workspace-accent`                 | done                                             |
 
 ## Calendar timeline / engine (third-party-ish)
 
@@ -88,20 +81,20 @@ Excluded from this list on purpose:
 
 ## Tasks / notes / docs collab
 
-| File                            | Hex                             | Recommendation                              |
-| ------------------------------- | ------------------------------- | ------------------------------------------- |
-| `tasks-priority.tsx`            | `#ef4444`, `#eab308`, `#3b82f6` | **semantic alias** → error / warning / info |
-| `notes-notebook-color.ts`       | `#14b8a6` default               | **keep** (notebook default swatch)          |
-| `docs-collab-sidebar-panel.css` | `#0f172a` in strong mix         | **semantic alias** → `--color-we-got-dark`  |
-| `workspace-split-app.css`       | `#2f302c` primary bg            | **brand primitive** → `--color-we-got-dark` |
-| `workspace-app-layout.css`      | comment `#2563eb`               | docs only — ignore                          |
+| File                            | Hex                                                                 | Recommendation                              |
+| ------------------------------- | ------------------------------------------------------------------- | ------------------------------------------- |
+| `tasks-priority.tsx`            | `#ef4444`, `#eab308`, `#3b82f6` (low fill is `--workspace-surface`) | **semantic alias** → error / warning / info |
+| `notes-notebook-color.ts`       | `#14b8a6` default                                                   | **keep** (notebook default swatch)          |
+| `docs-collab-sidebar-panel.css` | `#0f172a` in strong mix                                             | **semantic alias** → `--color-we-got-dark`  |
+| `workspace-split-app.css`       | `#2f302c` primary bg                                                | **brand primitive** → `--color-we-got-dark` |
+| `workspace-app-layout.css`      | comment `#2563eb`                                                   | docs only — ignore                          |
 
 ## Charts / swatches / icons
 
 | File                                    | Hex                                                  | Recommendation                                 |
 | --------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
 | `ui/chart.tsx`                          | Recharts `#ccc` / `#fff`                             | **keep** (third-party chart)                   |
-| `ui/swatch-color-picker.css`            | conic rainbow hexes                                  | **keep** (picker UI)                           |
+| `ui/swatch-color-picker.css`            | conic rainbow in `oklch()` (no hex)                  | **keep** (picker spectrum)                     |
 | `app-icons/*.svg`, `public/app-icons/*` | brand hex fallbacks in `var(--app-icon-layer-*, #…)` | **keep** (SVG fallbacks mirror primitives)     |
 | `reminders.svg`                         | `#f43f5e`                                            | **keep** or map if Reminders ships under Tasks |
 
