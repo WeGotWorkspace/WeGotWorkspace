@@ -272,14 +272,16 @@ jobs:
       - name: Replace the install-cells section in the release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
           python3 - << 'PY'
           import os, pathlib, subprocess
           tag = os.environ["GITHUB_REF_NAME"]
+          repo = os.environ["GITHUB_REPOSITORY"]
           body = subprocess.check_output(
-              ["gh", "release", "view", tag, "--json", "body", "--jq", ".body"],
+              ["gh", "release", "view", tag, "--repo", repo, "--json", "body", "--jq", ".body"],
               text=True,
           )
           marker = "## Install cells"
@@ -297,7 +299,7 @@ jobs:
           )
           pathlib.Path("/tmp/release-notes.md").write_text(f"{body}\n\n{section}", encoding="utf-8")
           PY
-          gh release edit "$TAG" --notes-file /tmp/release-notes.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file /tmp/release-notes.md
 
   cleanup:
     needs: prepare
