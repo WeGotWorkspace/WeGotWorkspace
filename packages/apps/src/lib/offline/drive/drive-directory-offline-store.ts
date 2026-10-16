@@ -46,15 +46,31 @@ export async function upsertDriveEntry(
   entry: WgwDriveDirectoryEntry,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = driveEntriesTable(db);
   const id = normalizeDriveEntryPath(entry.path);
   const parentPath = normalizeDriveEntryPath(parentAndName(`/${id}`).destination);
-  await driveEntriesTable(db).put({
+  const existing = await table.get(id);
+  const nodeId = entry.nodeId?.trim() || existing?.nodeId;
+  const stored = nodeId ? { ...entry, nodeId } : entry;
+  await table.put({
     id,
     parentPath: parentPath || "",
     type: entry.type === "dir" ? "dir" : "file",
     modifiedAt: entry.time ?? 0,
-    data: JSON.stringify(entry),
+    data: JSON.stringify(stored),
+    ...(nodeId ? { nodeId } : {}),
   });
+}
+
+/** Path → FileNode id from the offline cache. `undefined` until a crawl has stored it. */
+export async function readCachedDriveNodeId(
+  username: string,
+  apiPath: string,
+): Promise<string | undefined> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await driveEntriesTable(db).get(normalizeDriveEntryPath(apiPath));
+  const nodeId = row?.nodeId?.trim();
+  return nodeId || undefined;
 }
 
 export async function upsertDriveEntries(
@@ -124,6 +140,7 @@ export async function migrateDriveEntryPath(
     type: row.type,
     modifiedAt: row.modifiedAt,
     data: JSON.stringify(entry),
+    ...(row.nodeId ? { nodeId: row.nodeId } : {}),
   });
   await table.delete(oldId);
 
@@ -142,6 +159,7 @@ export async function migrateDriveEntryPath(
       type: descendant.type,
       modifiedAt: descendant.modifiedAt,
       data: JSON.stringify(migratedEntry),
+      ...(descendant.nodeId ? { nodeId: descendant.nodeId } : {}),
     });
     await table.delete(descendant.id);
   }

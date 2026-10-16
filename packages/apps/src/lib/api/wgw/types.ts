@@ -247,7 +247,13 @@ export type WgwSearchReindexStateResponse = {
 };
 export type WgwDriveEntryType = DriveEntryType;
 export type WgwDriveRootPath = DriveRootPath;
-export type WgwDriveDirectoryEntry = DriveDirectoryEntry;
+/**
+ * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
+ * unset: guests have no offline cache, so the id is not backfilled there.
+ */
+export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
+  nodeId?: string;
+};
 export type WgwDriveDirectoryData = DriveDirectoryData;
 export type WgwDriveGetDirRequest = DriveGetDirRequest;
 export type WgwDriveSearchRequest = DriveSearchRequest;

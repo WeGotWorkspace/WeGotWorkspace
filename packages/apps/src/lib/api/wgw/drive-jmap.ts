@@ -100,6 +100,7 @@ export function fileNodeToDirectoryEntry(path: string, node: JmapFileNode): WgwD
   return {
     type: node.nodeType === "directory" ? "dir" : "file",
     path,
+    nodeId: node.id,
     name: node.name,
     size: node.size ?? 0,
     time: Number.isFinite(modified) ? Math.floor(modified / 1000) : 0,
