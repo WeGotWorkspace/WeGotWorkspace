@@ -12,7 +12,7 @@ export type JmapNotesAdapterOptions = {
   accountId?: JmapId;
   onSyncError?: (error: unknown) => void;
   onRemoteNote?: (note: JmapNote) => void;
-  onRemoteNoteDestroyed?: (noteId: JmapId) => void;
+  onRemoteNoteDestroyed?: (noteId: JmapId) => void | Promise<void | "skipped-pending">;
   onRemoteNotebook?: (notebook: JmapNotebook) => void;
   onRemoteNotebookDestroyed?: (notebookId: JmapId) => void;
   onRefetchAll?: (snapshot: { notebooks: JmapNotebook[]; notes: JmapNote[] }) => void;
@@ -81,8 +81,13 @@ export class JmapNotesAdapter {
             this.#options.onRemoteNote?.(note);
           }
         }
+        let holdNoteState = false;
         for (const id of destroyed) {
-          this.#options.onRemoteNoteDestroyed?.(id);
+          const result = await this.#options.onRemoteNoteDestroyed?.(id);
+          if (result === "skipped-pending") holdNoteState = true;
+        }
+        if (holdNoteState) {
+          client.setState(this.accountId, NOTE_TYPE, noteState);
         }
       }
     } catch (error) {

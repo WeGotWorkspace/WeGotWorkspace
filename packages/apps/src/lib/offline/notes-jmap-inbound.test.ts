@@ -9,6 +9,7 @@ import {
 } from "@/lib/offline/notes-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
+const listOutboxIds = vi.fn<() => Promise<Set<string>>>();
 const listPendingFields = vi.fn<() => Promise<Map<string, Set<string>>>>();
 const getCachedNote = vi.fn<(username: string, noteId: string) => Promise<Note | null>>();
 const upsert = vi.fn();
@@ -24,6 +25,7 @@ const reportConflicts = vi.fn();
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
   listPendingNoteIds: () => listPending(),
+  listOutboxNoteIds: () => listOutboxIds(),
   listPendingNoteFields: () => listPendingFields(),
   getNoteFromCache: (username: string, noteId: string) => getCachedNote(username, noteId),
   upsertNoteInCache: (...args: unknown[]) => upsert(...args),
@@ -52,6 +54,7 @@ const remote: Note = {
 describe("notes-jmap-inbound", () => {
   beforeEach(() => {
     listPending.mockReset();
+    listOutboxIds.mockReset();
     listPendingFields.mockReset();
     getCachedNote.mockReset();
     upsert.mockReset();
@@ -61,6 +64,7 @@ describe("notes-jmap-inbound", () => {
     readCache.mockReset();
     reportConflicts.mockReset();
     listPending.mockResolvedValue([]);
+    listOutboxIds.mockResolvedValue(new Set());
     listPendingFields.mockResolvedValue(new Map());
     getCachedNote.mockResolvedValue(null);
     readCache.mockResolvedValue({ data: { notes: [] } });
@@ -119,7 +123,7 @@ describe("notes-jmap-inbound", () => {
   });
 
   it("does not remove a pending local row on remote destroy", async () => {
-    listPending.mockResolvedValue(["n-1"]);
+    listOutboxIds.mockResolvedValue(new Set(["n-1"]));
     await expect(ingestRemoteNoteDestroyed("ada", "n-1")).resolves.toBe("skipped-pending");
     expect(remove).not.toHaveBeenCalled();
     expect(reportConflicts).toHaveBeenCalledWith(["n-1"]);

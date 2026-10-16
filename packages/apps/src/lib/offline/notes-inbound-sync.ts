@@ -16,6 +16,7 @@ import {
   ingestRemoteNotebookDestroyed,
 } from "@/lib/offline/notes-jmap-inbound";
 import {
+  listNoteIdsBlockingSyncToken,
   readNotesBootstrapFromCache,
   readSyncToken,
   writeSyncToken,
@@ -142,16 +143,18 @@ export async function syncNotesInboundFromRest(
 
   const cached = await readNotesBootstrapFromCache(username);
   const notebookRows = cached?.data.notebookCollections ?? [];
+  const blockingIds = await listNoteIdsBlockingSyncToken(username);
   const skippedIds = new Set<string>();
   for (const id of upsertIds) {
     const row = await getNote(id);
     const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
-    if (result === "skipped-pending") skippedIds.add(id);
     if (result === "upserted" || result === "merged-pending") changed = true;
   }
   for (const id of destroyIds) {
     const result = await ingestRemoteNoteDestroyed(username, id);
-    if (result === "skipped-pending") skippedIds.add(id);
+    // Upserts merge field-wise. Only a pending destroy skips, and a
+    // stateMismatch row must not pin the notebook token.
+    if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
     if (result === "removed") changed = true;
   }
   for (const delta of deltas) {

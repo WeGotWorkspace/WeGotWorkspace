@@ -44,6 +44,7 @@ vi.mock("@/lib/offline/notes-hybrid-operations", () => ({
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
   readNotesBootstrapFromCache: vi.fn(),
+  listNoteIdsBlockingSyncToken: async () => new Set<string>(),
 }));
 
 vi.mock("@/lib/offline/notes-inbound-sync", () => ({

@@ -374,6 +374,7 @@ describe("notes offline store", () => {
       id: "n-title",
       title: "Queued title",
       notebook: "Drafts",
+      tags: ["essay", "focus"],
       starred: false,
       archived: false,
     };
@@ -381,15 +382,9 @@ describe("notes offline store", () => {
     await enqueueCoalescedNoteUpdate(username, local.id, local, local.date, undefined, undefined, {
       includeTitle: true,
     });
-    await enqueueCoalescedNoteUpdate(
-      username,
-      local.id,
-      { ...local, tags: ["essay", "focus"] },
-      local.date,
-      undefined,
-      undefined,
-      { includeTags: true },
-    );
+    await enqueueCoalescedNoteUpdate(username, local.id, local, local.date, undefined, undefined, {
+      includeTags: true,
+    });
 
     const fields = await listPendingNoteFields(username);
     expect([...(fields.get("n-title") ?? [])].sort()).toEqual(["tags", "title"]);
@@ -402,7 +397,6 @@ describe("notes offline store", () => {
       await ingestRemoteNote(username, {
         ...local,
         archived: true,
-        tags: ["from-server"],
       });
     } finally {
       setNotesSyncConflictListener(undefined);

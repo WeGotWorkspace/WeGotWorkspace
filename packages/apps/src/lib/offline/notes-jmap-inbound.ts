@@ -3,6 +3,7 @@ import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { noteTagsEqual } from "@/notes-core/src/notes-note-utils";
 import {
   getNoteFromCache,
+  listOutboxNoteIds,
   listPendingNoteFields,
   listPendingNoteIds,
   removeNoteFromCache,
@@ -28,6 +29,7 @@ export async function ingestRemoteNote(
 ): Promise<"upserted" | "merged-pending" | "skipped-pending"> {
   if (!note.id) return "skipped-pending";
   const pendingFields = (await listPendingNoteFields(username)).get(note.id);
+  if (pendingFields?.has("delete")) return "merged-pending";
   if (!pendingFields || pendingFields.size === 0) {
     await upsertNoteInCache(username, note, false);
     return "upserted";
@@ -70,7 +72,7 @@ export async function ingestRemoteNoteDestroyed(
   username: string,
   noteId: string,
 ): Promise<"removed" | "skipped-pending"> {
-  const pending = await pendingSet(username);
+  const pending = await listOutboxNoteIds(username);
   if (pending.has(noteId)) {
     reportNotesSyncConflicts([noteId]);
     return "skipped-pending";

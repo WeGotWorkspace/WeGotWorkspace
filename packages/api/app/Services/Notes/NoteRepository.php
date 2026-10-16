@@ -211,6 +211,7 @@ final class NoteRepository
             }
             $patch = $this->expandCategoryDelta($object, $patch);
 
+            $moved = false;
             if (array_key_exists('notebookId', $patch) && is_string($patch['notebookId']) && $patch['notebookId'] !== '') {
                 $destination = $this->notebooks->findAccessibleNotebook($username, $patch['notebookId']);
                 if ($destination === null) {
@@ -222,14 +223,20 @@ final class NoteRepository
                     $this->moveHelper->move($object, (int) $destination->calendarid);
                     $object->refresh();
                     $instance = $destination;
+                    $moved = true;
                 }
             }
 
             $fieldPatch = $patch;
             unset($fieldPatch['notebookId'], $fieldPatch['yjs']);
-            if ($fieldPatch !== []) {
+            $metadataPatch = $fieldPatch;
+            unset($metadataPatch['body']);
+            if ($fieldPatch !== [] || $moved) {
                 $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-                $ics = $this->converter->mergeIntoIcs($raw, $fieldPatch);
+                $ics = $fieldPatch !== [] ? $this->converter->mergeIntoIcs($raw, $fieldPatch) : $raw;
+                if ($metadataPatch !== [] || $moved) {
+                    $ics = $this->converter->touchLastModified($ics);
+                }
                 try {
                     $this->calBackend()->updateCalendarObject(
                         [(int) $instance->calendarid, (int) $instance->id],
