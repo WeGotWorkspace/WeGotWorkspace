@@ -142,17 +142,25 @@ export async function syncNotesInboundFromRest(
 
   const cached = await readNotesBootstrapFromCache(username);
   const notebookRows = cached?.data.notebookCollections ?? [];
+  const skippedIds = new Set<string>();
   for (const id of upsertIds) {
     const row = await getNote(id);
     const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
-    if (result === "upserted") changed = true;
+    if (result === "skipped-pending") skippedIds.add(id);
+    if (result === "upserted" || result === "merged-pending") changed = true;
   }
   for (const id of destroyIds) {
     const result = await ingestRemoteNoteDestroyed(username, id);
+    if (result === "skipped-pending") skippedIds.add(id);
     if (result === "removed") changed = true;
   }
   for (const delta of deltas) {
-    await writeSyncToken(username, delta.notebookId, delta.newState);
+    const skipped = [...delta.created, ...delta.updated, ...delta.destroyed].some((id) =>
+      skippedIds.has(id),
+    );
+    if (!skipped) {
+      await writeSyncToken(username, delta.notebookId, delta.newState);
+    }
     usedFullResync = usedFullResync || delta.usedFullResync;
   }
 

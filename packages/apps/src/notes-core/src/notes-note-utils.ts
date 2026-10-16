@@ -336,22 +336,18 @@ export function mergeBootstrapNotesPreservingOptimistic(
     const local = localById.get(server.id);
     if (!local) return enrichNote(server);
 
-    const localNewerOrEqual = noteDisplayTimestampMs(local) >= noteDisplayTimestampMs(server);
-    const preserveTags = localNewerOrEqual && !noteTagsEqual(local.tags, server.tags);
+    const localNewer = noteDisplayTimestampMs(local) > noteDisplayTimestampMs(server);
+    const preserveTags = localNewer && !noteTagsEqual(local.tags, server.tags);
     const preserveStarred =
-      localNewerOrEqual && local.starred !== undefined && local.starred !== server.starred;
+      localNewer && local.starred !== undefined && local.starred !== server.starred;
     const preserveArchived =
-      local.archived !== undefined &&
-      local.archived !== server.archived &&
-      (localNewerOrEqual || (local.archived && !server.archived));
-    const preserveNotebook =
-      localNewerOrEqual && !!local.notebook && local.notebook !== server.notebook;
-    const preserveBody =
-      noteHasListableBody(local) && (!noteHasListableBody(server) || localNewerOrEqual);
+      localNewer && local.archived !== undefined && local.archived !== server.archived;
+    const preserveNotebook = localNewer && !!local.notebook && local.notebook !== server.notebook;
+    const preserveBody = noteHasListableBody(local) && (!noteHasListableBody(server) || localNewer);
     const localTitle = local.title?.trim();
     const serverTitle = server.title?.trim();
     const preserveTitle =
-      !!localTitle && (!serverTitle || (localNewerOrEqual && localTitle !== serverTitle));
+      !!localTitle && (!serverTitle || (localNewer && localTitle !== serverTitle));
 
     return enrichNote({
       ...server,

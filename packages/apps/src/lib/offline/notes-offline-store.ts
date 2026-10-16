@@ -269,6 +269,18 @@ export async function upsertNoteInCache(
   await notesNotesTable(db).put(noteRow(note, pendingSync));
 }
 
+/** One cached note, or null when the id is absent or the row is unreadable. */
+export async function getNoteFromCache(username: string, noteId: string): Promise<Note | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await notesNotesTable(db).get(noteId);
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data) as Note;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Update the Dexie list-preview body without touching metadata `pendingSync`.
  * Body is owned by the collab document — this must not stamp unsynced metadata.
@@ -405,6 +417,46 @@ export async function listPendingNoteIds(username: string): Promise<string[]> {
     .filter((row) => row.pendingSync)
     .toArray();
   return rows.map((row) => row.id);
+}
+
+/** Fields the outbox has queued per note, so an inbound change to any other
+ *  field can still be ingested (#1351). */
+export async function listPendingNoteFields(
+  username: string,
+): Promise<Map<string, Set<keyof NoteUpsertMetadata>>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  const out = new Map<string, Set<keyof NoteUpsertMetadata>>();
+  for (const row of rows) {
+    let payload: { noteId?: unknown; metadata?: NoteUpsertMetadata } | null = null;
+    try {
+      payload = JSON.parse(row.payload) as {
+        noteId?: unknown;
+        metadata?: NoteUpsertMetadata;
+      };
+    } catch {
+      continue;
+    }
+    const noteId = typeof payload?.noteId === "string" ? payload.noteId : null;
+    if (!noteId) continue;
+    const fields = out.get(noteId) ?? new Set<keyof NoteUpsertMetadata>();
+    if (row.op === "archive" || row.op === "restore") fields.add("archived");
+    const metadata = payload.metadata;
+    if (metadata) {
+      if (metadata.title !== undefined) fields.add("title");
+      if (
+        metadata.tags !== undefined ||
+        metadata.tagsAdd !== undefined ||
+        metadata.tagsRemove !== undefined
+      ) {
+        fields.add("tags");
+      }
+      if (metadata.starred !== undefined) fields.add("starred");
+      if (metadata.archived !== undefined) fields.add("archived");
+      if (metadata.notebook !== undefined) fields.add("notebook");
+    }
+    out.set(noteId, fields);
+  }
+  return out;
 }
 
 export async function readSyncToken(username: string, notebook: string): Promise<string | null> {

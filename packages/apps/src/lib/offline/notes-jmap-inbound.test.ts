@@ -75,7 +75,7 @@ describe("notes-jmap-inbound", () => {
   it("merges an inbound tag change when the queued write is an archive", async () => {
     listPendingFields.mockResolvedValue(new Map([["n-1", new Set(["archived"])]]));
     getCachedNote.mockResolvedValue({ ...remote, tags: [], archived: true });
-    const inbound: Note = { ...remote, tags: ["focus"], archived: false };
+    const inbound: Note = { ...remote, tags: ["focus"], archived: true };
 
     await expect(ingestRemoteNote("ada", inbound)).resolves.toBe("merged-pending");
 

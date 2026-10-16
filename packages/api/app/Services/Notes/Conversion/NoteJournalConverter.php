@@ -120,6 +120,11 @@ final class NoteJournalConverter
             }
         }
 
+        // A metadata patch must advance the note's modified time, or clients
+        // cannot tell a changed row from the one they already hold (#1351).
+        unset($journal->{'LAST-MODIFIED'});
+        $journal->{'LAST-MODIFIED'} = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+
         return $calendar->serialize();
     }
 
