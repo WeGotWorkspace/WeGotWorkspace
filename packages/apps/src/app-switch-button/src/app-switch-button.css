@@ -47,7 +47,7 @@
 }
 
 .app-switch-button__label-name {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-center gap-2 tracking-tight;
 }
 
 .app-switch-button__chevron {

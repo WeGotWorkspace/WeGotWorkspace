@@ -141,7 +141,7 @@
 }
 
 .list-item__body {
-  @apply text-sm leading-relaxed line-clamp-1 min-w-0;
+  @apply text-sm leading-relaxed line-clamp-1 min-w-0 tracking-tight;
   color: var(
     --list-item-body-color,
     color-mix(in oklab, var(--workspace-foreground) 68%, transparent)
