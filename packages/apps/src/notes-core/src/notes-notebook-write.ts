@@ -13,8 +13,26 @@ export type NotebookWriteInfo = {
   role?: string | null;
   scope?: "personal" | "group" | null;
   groupSlug?: string | null;
-  myRights?: { mayDelete?: boolean } | null;
+  myRights?: { mayDelete?: boolean; mayWriteAll?: boolean } | null;
 };
+
+/** Sidebar key → collection. REST id wins; a display-name key still matches. */
+export function findNotebookCollection<T extends { id: string; name: string }>(
+  collections: readonly T[],
+  key: string,
+): T | undefined {
+  return (
+    collections.find((item) => item.id === key) ?? collections.find((item) => item.name === key)
+  );
+}
+
+/**
+ * New note in this notebook. Missing `mayWriteAll` stays writable
+ * (same rule as `isViewOnlyNotebook`).
+ */
+export function canCreateInNotebook(notebook?: NotebookWriteInfo | null): boolean {
+  return notebook?.myRights?.mayWriteAll !== false;
+}
 
 /** Owned personal General — API `role: "general"` and/or `isDefault`. */
 export function isDefaultNotebook(notebook?: NotebookWriteInfo): boolean {

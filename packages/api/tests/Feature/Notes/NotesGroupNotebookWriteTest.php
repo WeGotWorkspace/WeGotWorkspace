@@ -7,13 +7,10 @@ namespace Tests\Feature\Notes;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
-use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class NotesGroupNotebookWriteTest extends WgwDatabaseTestCase
 {
-    use SeedsWgwIdentity;
-
     private const GROUP_SLUG = 'eng';
 
     protected function setUp(): void

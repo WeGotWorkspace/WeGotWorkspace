@@ -731,14 +731,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     setNotes((prev) => [note, ...prev]);
     // setView — not selectView — so closeMobileDetail does not race with opening
     // the new note overlay (starred/archive create switches to All Items first).
-    if (createView !== view) {
-      setView(createView);
-    }
+    if (createView !== view) setView(createView);
     setActiveId(id);
     selectSingle(id);
     openMobileDetail();
-    // Persist immediately. Leaving the detail pane without a body (or title)
-    // must not DELETE — empty DESCRIPTION is a valid VJOURNAL.
+    // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
     if (operations) {
       void persistOptimisticNote(note, true);
       const persist = operations.upsertNote(note).then((saved) => {
@@ -775,7 +772,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     }
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [
-    L,
+    L.newNoteCategory,
+    L.createNoteFailedMessage,
+    L.syncFailedMessage,
+    L.toastNewNote,
     canCreateNote,
     notebookCollections,
     notebooks,

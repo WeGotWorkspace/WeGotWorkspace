@@ -1,5 +1,6 @@
 import { preferredCollectionName } from "@/lib/default-collection-prefs";
 import { parseGroupNotebookPath } from "@/notes-core/src/notes-note-utils";
+import { findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 
 export type NotesCreateTarget = {
@@ -24,11 +25,10 @@ export function resolveNotesCreateTarget(
     }
   }
   if (view.startsWith("nb:")) {
-    // The view key is the REST collection id (notes-route-search.ts), never a name.
+    // The view key is usually the REST collection id. Name keys still occur:
+    // a move builds `nb:${id || name}`, and the workspace still matches `nb:${name}`.
     const key = view.slice(3);
-    const collection =
-      notebookCollections.find((item) => item.id === key) ??
-      notebookCollections.find((item) => item.name === key);
+    const collection = findNotebookCollection(notebookCollections, key);
     if (collection) {
       const groupSlug = collection.scope === "group" ? collection.groupSlug?.trim() : undefined;
       return {
@@ -37,7 +37,7 @@ export function resolveNotesCreateTarget(
         ...(groupSlug ? { scope: "group" as const, groupSlug } : {}),
       };
     }
-    return { notebook: key, notebookId: key };
+    return { notebook: key };
   }
   return {
     notebook:

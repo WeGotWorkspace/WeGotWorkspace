@@ -6,6 +6,7 @@ import {
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { normalizeTag } from "@/notes-core/src/note-tag";
@@ -695,10 +696,7 @@ export function notesCanCreateInView(
   }
   if (view.startsWith("nb:")) {
     const key = view.slice(3);
-    const collection =
-      notebookCollections.find((item) => item.id === key) ??
-      notebookCollections.find((item) => item.name === key);
-    return collection?.myRights?.mayWriteAll !== false;
+    return canCreateInNotebook(findNotebookCollection(notebookCollections, key));
   }
   return true;
 }
