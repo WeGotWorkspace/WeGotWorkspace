@@ -203,6 +203,7 @@ export function useNotesBatchActions({
     );
     const allArchived = selectedIds.every((id) => archived[id]);
     const nextArchived = !allArchived;
+    const editedAt = new Date().toISOString();
     setArchived((state) => {
       const next = { ...state };
       selectedIds.forEach((id) => (next[id] = nextArchived));
@@ -210,7 +211,9 @@ export function useNotesBatchActions({
     });
     setNotes((prev) =>
       prev.map((note) =>
-        selectedIds.includes(note.id) ? { ...note, archived: nextArchived } : note,
+        selectedIds.includes(note.id)
+          ? { ...note, archived: nextArchived, date: editedAt, updatedAt: editedAt }
+          : note,
       ),
     );
     const toastMessage = `${allArchived ? "Unarchived" : "Archived"} ${selectedIds.length} item${selectedIds.length === 1 ? "" : "s"}`;
