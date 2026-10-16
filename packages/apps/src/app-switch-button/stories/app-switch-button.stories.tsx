@@ -30,7 +30,7 @@ const meta: Meta<typeof AppSwitchButton> = {
 export default meta;
 type Story = StoryObj<typeof AppSwitchButton>;
 
-/** In-app trigger: user artwork icon + serif route label (no suite wordmark). */
+/** In-app trigger: user artwork icon + sans route label (no suite wordmark). */
 export const InApp: Story = {
   parameters: {
     routerPath: "/mail",

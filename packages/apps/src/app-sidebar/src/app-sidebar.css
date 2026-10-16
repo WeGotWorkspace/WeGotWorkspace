@@ -10,7 +10,7 @@
 :is([class$="-workspace"], .app-sidebar, .workspace-shell-header) {
   --app-switch-lockup-bg: var(--app-sidebar-bg, var(--workspace-home-bg, #1b1d3a));
   --app-switch-label-color: var(--app-sidebar-color, currentColor);
-  /* Subtle affordance — lower contrast than the serif app name. */
+  /* Wordmark chevron only. The in-app app-name chevron matches the label. */
   --app-switch-chevron-color: color-mix(in oklab, var(--app-switch-label-color) 28%, transparent);
 }
 
