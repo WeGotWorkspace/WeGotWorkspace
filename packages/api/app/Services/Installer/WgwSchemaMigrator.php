@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 final class WgwSchemaMigrator
 {
     /** Number of baseline migrations in {@see migrationsPath()}. */
-    public const CURRENT_SCHEMA_VERSION = 62;
+    public const CURRENT_SCHEMA_VERSION = 63;
 
     public function migrate(): void
     {

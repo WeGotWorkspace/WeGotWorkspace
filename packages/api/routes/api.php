@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberC
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
 use App\Http\Controllers\Api\V1\Admin\PluginInstallController as AdminPluginInstallController;
-use App\Http\Controllers\Api\V1\Admin\RealtimeHealthController as AdminRealtimeHealthController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
@@ -53,7 +52,6 @@ use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivatio
 use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
 use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
-use App\Http\Controllers\Api\V1\Rtc\MetricsController as RtcMetricsController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Security\CspReportController;
@@ -133,9 +131,6 @@ Route::middleware('throttle:'.RtcRoomRateLimiters::ROOMS)->group(function (): vo
         ->middleware('throttle:'.RtcRoomRateLimiters::RELAY)
         ->where('roomId', '[A-Za-z0-9_.-]+');
 });
-
-Route::post('rtc/metrics', RtcMetricsController::class)
-    ->middleware('throttle:'.RtcRoomRateLimiters::METRICS);
 
 Route::middleware([
     EncryptCookies::class,
@@ -380,7 +375,6 @@ Route::post('files/share-sessions', [DriveShareSessionsController::class, 'store
 
 Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('admin')->group(function (): void {
     Route::get('state', AdminStateController::class);
-    Route::get('realtime-health', AdminRealtimeHealthController::class);
     Route::post('users', [AdminUsersController::class, 'store']);
     Route::patch('users/{username}', [AdminUsersController::class, 'update'])
         ->where('username', '[a-z0-9_-]+');

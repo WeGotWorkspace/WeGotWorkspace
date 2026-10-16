@@ -31,13 +31,14 @@ export default async function globalSetup() {
     throw new Error(`Admin TURN settings failed (${saved.status}): ${saved.text}`);
   }
 
-  const health = await adminFetch(token, "/api/v1/admin/realtime-health");
-  if (!health.ok) {
-    throw new Error(`Realtime health failed (${health.status}): ${health.text}`);
+  const state = await adminFetch(token, "/api/v1/admin/state");
+  if (!state.ok) {
+    throw new Error(`Admin state failed (${state.status}): ${state.text}`);
   }
-  const body = JSON.parse(health.text);
-  if (body.turnConfigured !== true) {
-    throw new Error(`TURN is not configured: ${health.text}`);
+  const body = JSON.parse(state.text);
+  const turnUrls = String(body.rtc?.turnUrls ?? "");
+  if (body.rtc?.turnSecretSet !== true || !turnUrls.includes(turnHost)) {
+    throw new Error(`TURN is not configured: ${state.text}`);
   }
 }
 

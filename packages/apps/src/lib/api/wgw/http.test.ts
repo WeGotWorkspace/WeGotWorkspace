@@ -32,6 +32,13 @@ const LEGACY_REFRESH_TOKEN_KEY = "wgw.api.refresh_token";
 const ACCESS_EXPIRES_AT_KEY = "wgw.api.access_expires_at";
 const REFRESH_EXPIRES_AT_KEY = "wgw.api.refresh_expires_at";
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
+const SESSION_DEBUG_KEY = "wgw.api.session_debug";
+
+function sessionDebugRing(): Array<Record<string, unknown>> {
+  const raw = window.localStorage.getItem(SESSION_DEBUG_KEY);
+  const parsed: unknown = raw ? JSON.parse(raw) : [];
+  return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : [];
+}
 
 const originalFetch = globalThis.fetch;
 const onlineState = { value: true };
@@ -323,6 +330,7 @@ describe("wgw auth refresh behavior", () => {
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBeTruthy();
     expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(sessionDebugRing().map((record) => record.reason)).not.toContain("offline");
   });
 
   it("keeps session when retry cap hits with unknown refresh expiry", async () => {
@@ -357,6 +365,64 @@ describe("wgw auth refresh behavior", () => {
 
     await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(false);
+    expect(
+      sessionDebugRing().find((record) => record.event === "wgw.refresh.failed"),
+    ).toMatchObject({
+      event: "wgw.refresh.failed",
+      reason: "http",
+      status: 401,
+      message: "Invalid refresh token.",
+      cleared: true,
+    });
+  });
+
+  it("records a missing refresh cookie without confusing it with rejection", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ error: "Missing refresh token." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+    expect(
+      sessionDebugRing().find((record) => record.event === "wgw.refresh.failed"),
+    ).toMatchObject({
+      reason: "http",
+      status: 401,
+      message: "Missing refresh token.",
+      cleared: true,
+    });
+  });
+
+  it("records a non-401 refresh failure without clearing the session", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    globalThis.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ error: "JWT key configuration missing." }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(
+      sessionDebugRing().find((record) => record.event === "wgw.refresh.failed"),
+    ).toMatchObject({
+      reason: "http",
+      status: 503,
+      message: "JWT key configuration missing.",
+      cleared: false,
+    });
   });
 
   it("posts auth refresh once when a second call waits on the Web Locks mutex", async () => {

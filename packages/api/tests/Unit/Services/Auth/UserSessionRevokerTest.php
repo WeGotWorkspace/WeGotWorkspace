@@ -47,8 +47,8 @@ final class UserSessionRevokerTest extends WgwDatabaseTestCase
 
         app(UserSessionRevoker::class)->revokeAll('alice');
 
-        $aliceHash = hash('sha256', $aliceRefresh);
-        $bobHash = hash('sha256', $bobRefresh);
+        $aliceHash = RefreshTokenRepository::hashToken($aliceRefresh);
+        $bobHash = RefreshTokenRepository::hashToken($bobRefresh);
         $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $aliceHash)->value('revoked'));
         $this->assertSame(0, (int) ApiRefreshToken::query()->where('token_hash', $bobHash)->value('revoked'));
         $this->assertTrue((bool) Passport::token()->newQuery()->find($aliceAccess)?->revoked);
@@ -65,13 +65,23 @@ final class UserSessionRevokerTest extends WgwDatabaseTestCase
         $tokens = app(RefreshTokenRepository::class);
         $first = $tokens->issue('alice', 'user');
         $second = $tokens->issue('alice', 'user');
+        $firstHash = RefreshTokenRepository::hashToken($first);
+        $secondHash = RefreshTokenRepository::hashToken($second);
+        $firstFamily = ApiRefreshToken::query()->where('token_hash', $firstHash)->value('family_id');
+        $secondFamily = ApiRefreshToken::query()->where('token_hash', $secondHash)->value('family_id');
+        $this->assertIsString($firstFamily);
+        $this->assertIsString($secondFamily);
+        $this->assertNotSame($firstFamily, $secondFamily);
 
         app(UserSessionRevoker::class)->revokeAll('alice');
 
-        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', hash('sha256', $first))->value('revoked'));
-        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', hash('sha256', $second))->value('revoked'));
-        $this->assertNull($tokens->consume($first));
-        $this->assertNull($tokens->consume($second));
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $firstHash)->value('revoked'));
+        $this->assertSame(1, (int) ApiRefreshToken::query()->where('token_hash', $secondHash)->value('revoked'));
+        $mustNotRotate = function (string $username, string $familyId): string {
+            $this->fail('A revoked refresh token must not be rotated for '.$username.' ('.$familyId.').');
+        };
+        $this->assertNull($tokens->consume($first, $mustNotRotate));
+        $this->assertNull($tokens->consume($second, $mustNotRotate));
     }
 
     private function seedPush(string $username): void
