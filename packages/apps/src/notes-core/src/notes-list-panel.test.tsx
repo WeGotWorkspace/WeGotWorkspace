@@ -1,6 +1,6 @@
 import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
@@ -74,15 +74,18 @@ function ListHarness({
     toggleArchive: () => {},
     selectionBar: null,
   });
-  if (slot === "both") {
-    return (
+  const content =
+    slot === "both" ? (
       <>
         {panel.header}
         {panel.listContent}
       </>
+    ) : slot === "header" ? (
+      panel.header
+    ) : (
+      panel.listContent
     );
-  }
-  return <>{slot === "header" ? panel.header : panel.listContent}</>;
+  return <TooltipProvider delayDuration={0}>{content}</TooltipProvider>;
 }
 
 describe("NotesListPanel refresh vs initial load", () => {
@@ -139,9 +142,26 @@ describe("NotesListPanel notebook labels", () => {
         ]}
       />,
     );
-    expect(screen.getByText("Journal")).toBeTruthy();
-    expect(screen.getByText("Work")).toBeTruthy();
+    expect(screen.queryByText("Journal")).toBeNull();
+    expect(screen.queryByText("Work")).toBeNull();
     expect(screen.queryByText("Drafts")).toBeNull();
+    const journal = screen.getByRole("img", { name: "Journal" });
+    const work = screen.getByRole("img", { name: "Work" });
+    expect(journal.closest(".list-item__meta-trailing")).toBeTruthy();
+    expect(work.closest(".list-item__meta-trailing")).toBeTruthy();
+    expect(journal.closest(".list-item__subtitle")).toBeNull();
+    expect(journal.querySelector(".notes-list-panel__notebook-name")).toBeNull();
+  });
+
+  it("shows the notebook name in a tooltip on the icon", async () => {
+    render(
+      <ListHarness
+        notes={[{ ...baseNote, notebook: "Drafts", notebookId: "notes-drafts" }]}
+        notebookCollections={[{ id: "notes-drafts", name: "Journal" }]}
+      />,
+    );
+    fireEvent.pointerMove(screen.getByRole("img", { name: "Journal" }), { pointerType: "mouse" });
+    expect((await screen.findByRole("tooltip")).textContent).toBe("Journal");
   });
 
   it("shows the group collection display name and color, not the group-… slug", () => {
@@ -169,10 +189,12 @@ describe("NotesListPanel notebook labels", () => {
         ]}
       />,
     );
-    expect(screen.getByText("Administratorss")).toBeTruthy();
+    expect(screen.queryByText("Administratorss")).toBeNull();
     expect(screen.queryByText("group-administrators")).toBeNull();
     expect(screen.queryByText("administrators")).toBeNull();
-    const location = container.querySelector(".notes-list-panel__notebook");
+    const location = screen.getByRole("img", { name: "Administratorss" });
+    expect(location.closest(".list-item__meta-trailing")).toBeTruthy();
+    expect(container.querySelector(".notes-list-panel__notebook-name")).toBeNull();
     expect(location).toBeTruthy();
     expect((location as HTMLElement).style.getPropertyValue("--collection-row-color")).toBe(
       "#ea8c72",
@@ -235,6 +257,78 @@ describe("NotesListPanel selection paint", () => {
     expect(
       container.querySelector(`[data-list-item-id="${third.id}"]`)!.getAttribute("data-selected"),
     ).toBe("true");
+  });
+});
+
+describe("NotesListPanel row placeholders", () => {
+  it("reserves a muted empty body when a titled note has no excerpt", () => {
+    const { container } = render(
+      <ListHarness
+        notes={[
+          {
+            ...baseNote,
+            id: "titled-empty",
+            title: "Hallo, hier toch?",
+            excerpt: "",
+            body: [""],
+          },
+          {
+            ...baseNote,
+            id: "titled-body",
+            title: "Kunnen we dit nog doen?",
+            excerpt: "Vivamus sagittis lacus",
+            body: ["Vivamus sagittis lacus"],
+          },
+        ]}
+      />,
+    );
+    const emptyRow = container.querySelector('[data-list-item-id="titled-empty"]');
+    const filledRow = container.querySelector('[data-list-item-id="titled-body"]');
+    expect(emptyRow?.querySelector(".list-item__title")?.textContent).toBe("Hallo, hier toch?");
+    expect(emptyRow?.querySelector(".list-item__title")?.getAttribute("data-empty")).toBe("false");
+    expect(emptyRow?.querySelector(".list-item__body")?.textContent).toBe("Empty item");
+    expect(emptyRow?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("true");
+    expect(filledRow?.querySelector(".list-item__body")?.textContent).toBe(
+      "Vivamus sagittis lacus",
+    );
+    expect(filledRow?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("false");
+  });
+
+  it("shows an untitled placeholder and still reserves the body line", () => {
+    const { container } = render(
+      <ListHarness notes={[{ ...baseNote, id: "blank", title: "", excerpt: "", body: [""] }]} />,
+    );
+    const row = container.querySelector('[data-list-item-id="blank"]');
+    const title = row?.querySelector(".list-item__title");
+    expect(title?.textContent).toBe("Empty title");
+    expect(title?.getAttribute("data-empty")).toBe("true");
+    expect(row?.querySelector(".list-item__body")?.textContent).toBe("Empty item");
+    expect(row?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("true");
+  });
+
+  it("keeps an empty title placeholder and shows the excerpt on the body line", () => {
+    const { container } = render(
+      <ListHarness
+        notes={[
+          {
+            ...baseNote,
+            id: "empty-title",
+            title: "",
+            excerpt: "Vivamus sagittis lacus vel augue",
+            body: ["Vivamus sagittis lacus vel augue"],
+          },
+        ]}
+      />,
+    );
+    const row = container.querySelector('[data-list-item-id="empty-title"]');
+    const title = row?.querySelector(".list-item__title");
+    expect(title?.textContent).toBe("Empty title");
+    expect(title?.getAttribute("data-empty")).toBe("true");
+    expect(title?.textContent).not.toContain("Vivamus");
+    expect(row?.querySelector(".list-item__body")?.textContent).toBe(
+      "Vivamus sagittis lacus vel augue",
+    );
+    expect(row?.querySelector(".list-item__body")?.getAttribute("data-empty")).toBe("false");
   });
 });
 
@@ -305,11 +399,12 @@ describe("NotesListPanel access chips", () => {
         ]}
       />,
     );
-    const meta = container.querySelector(".notes-list-panel__notebook");
-    expect(meta).toBeTruthy();
-    expect(meta!.querySelector(".notes-notebook-color-icon")).toBeTruthy();
-    expect(meta!.querySelector(".collection-sidebar-row__dot")).toBeNull();
-    expect(meta!.querySelector(".notes-list-panel__notebook-name")?.textContent).toBe("bob");
+    const meta = screen.getByRole("img", { name: "bob" });
+    expect(meta.closest(".list-item__meta-trailing")).toBeTruthy();
+    expect(screen.queryByText("bob")).toBeNull();
+    expect(meta.querySelector(".notes-notebook-color-icon")).toBeTruthy();
+    expect(meta.querySelector(".collection-sidebar-row__dot")).toBeNull();
+    expect(meta.querySelector(".notes-list-panel__notebook-name")).toBeNull();
     expect(container.querySelector(".notes-list-panel__shared-by-chip")).toBeNull();
     expect(container.querySelector(".tag")).toBeNull();
   });

@@ -435,7 +435,7 @@ export function NotesWorkspace({
   const noteTitleActive = showSingleNoteDetail;
   const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
   useDocumentTitle(browserTitleContext, {
-    // Body edits derive the list title; debounce tab updates while typing.
+    // Debounce the tab title while the open note is edited.
     debounceMs: noteTitleActive ? DOCUMENT_TITLE_DEBOUNCE_MS : 0,
     flushKey: activeId ?? view,
   });

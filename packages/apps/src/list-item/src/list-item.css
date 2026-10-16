@@ -136,7 +136,8 @@
   @apply mb-1;
 }
 
-.list-item__title[data-empty="true"] {
+.list-item__title[data-empty="true"],
+.list-item__body[data-empty="true"] {
   color: color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
 }
 
