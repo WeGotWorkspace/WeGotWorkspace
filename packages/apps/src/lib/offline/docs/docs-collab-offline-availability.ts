@@ -2,8 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import {
-  docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
+  docsCollabReadNames,
   docsCollabRoomKey,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
@@ -29,10 +28,8 @@ export async function hasDocsCollabOfflinePersistence(
   const room = docsCollabRoomKey(apiPath ?? "");
   if (!room || !isDocsCollabEditablePath(room)) return false;
 
-  if (await roomHasCollabPersistence(docsCollabIndexedDbKey(room))) return true;
-
-  for (const legacyKey of docsCollabLegacyIndexedDbKeys(room)) {
-    if (await roomHasCollabPersistence(legacyKey)) return true;
+  for (const name of await docsCollabReadNames(room)) {
+    if (await roomHasCollabPersistence(name)) return true;
   }
   return false;
 }

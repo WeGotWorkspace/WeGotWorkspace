@@ -266,7 +266,9 @@ describe("user-initiated logout", () => {
     await createNamedDatabase("Docs/private.md");
     await createNamedDatabase("/Docs/private.md");
     await createNamedDatabase("orphan-room:v2");
+    await createNamedDatabase("fn-doc:v3");
     await createNamedDatabase("report:v2-draft");
+    await createNamedDatabase("report:v3-draft");
     await createNamedDatabase("not-wgw-cache");
 
     await wgwLogout();
@@ -279,7 +281,9 @@ describe("user-initiated logout", () => {
     expect(names).not.toContain("Docs/private.md");
     expect(names).not.toContain("/Docs/private.md");
     expect(names).not.toContain("orphan-room:v2");
+    expect(names).not.toContain("fn-doc:v3");
     expect(names).toContain("report:v2-draft");
+    expect(names).toContain("report:v3-draft");
     expect(names).toContain("not-wgw-cache");
   });
 
@@ -299,9 +303,11 @@ describe("user-initiated logout", () => {
       pinnedAt: 1,
       lastSyncedAt: null,
       location: "My Drive",
+      nodeId: "fn-private",
     });
     await createNamedDatabase("note-uid:v2");
     await createNamedDatabase("Docs/private.md:v2");
+    await createNamedDatabase("fn-private:v3");
     await createNamedDatabase("orphan-room:v2");
     const databases = indexedDB.databases.bind(indexedDB);
     Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
@@ -316,6 +322,7 @@ describe("user-initiated logout", () => {
     expect(names).not.toContain("note-uid:v2");
     expect(names).not.toContain("note-uid");
     expect(names).not.toContain("Docs/private.md:v2");
+    expect(names).not.toContain("fn-private:v3");
     expect(names).toContain("orphan-room:v2");
   });
 
