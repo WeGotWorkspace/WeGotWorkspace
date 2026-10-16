@@ -77,7 +77,7 @@ test("release smoke calls apply_sqlite_profile and still plants the volume datab
   const workflow = readFileSync(releaseWorkflow, "utf8");
   assert.match(workflow, /WGW_SETUP_LIB=1/);
   assert.match(workflow, /apply_sqlite_profile "\$SMOKE_DIR\/\.env"/);
-  assert.equal(workflow.includes("s/^COMPOSE_PROFILES=/"), false);
+  assert.equal(workflow.includes("s/^COMPOSE_PROFILES="), false);
   assert.equal(workflow.includes("s|^WGW_DB_DATABASE="), false);
   assert.match(workflow, /touch \/data\/db\.sqlite/);
   assert.match(workflow, /compose logs migrator/);
@@ -87,4 +87,14 @@ test("executing setup.sh still parses commands", () => {
   const result = spawnSync("sh", [setupScript, "--help"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /--sqlite/);
+});
+
+test("sourced setup resolves SETUP_SCRIPT_DIR from the script file", () => {
+  const result = spawnSync(
+    "bash",
+    ["-c", 'WGW_SETUP_LIB=1 . "$1"; printf "%s\\n" "$SETUP_SCRIPT_DIR"', "bash", setupScript],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), path.dirname(setupScript));
 });

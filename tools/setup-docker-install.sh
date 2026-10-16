@@ -20,7 +20,13 @@ WGW_PLATFORM_ENSURED=0
 
 COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
-SETUP_SCRIPT_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)
+# Executed: $0 is this file. Sourced by bash: $0 is the caller (the test
+# shell, or the release-smoke runner), and BASH_SOURCE is this file.
+if [ -n "${BASH_SOURCE:-}" ] && [ "${BASH_SOURCE}" != "$0" ]; then
+  SETUP_SCRIPT_DIR=$(CDPATH= cd "$(dirname "${BASH_SOURCE}")" && pwd)
+else
+  SETUP_SCRIPT_DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)
+fi
 
 usage() {
   cat <<'EOF'
