@@ -277,7 +277,7 @@ describe("applyFetchedDirectorySnapshot", () => {
     const deleteDatabase = vi.spyOn(indexedDB, "deleteDatabase").mockImplementation(() => {
       const request = {} as IDBOpenDBRequest;
       queueMicrotask(() => {
-        request.onblocked?.call(request, new Event("blocked"));
+        request.onblocked?.call(request, new Event("blocked") as IDBVersionChangeEvent);
       });
       return request;
     });
