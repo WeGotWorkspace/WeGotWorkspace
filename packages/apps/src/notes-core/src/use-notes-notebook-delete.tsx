@@ -2,6 +2,9 @@ import { useCallback, useMemo, useState, type ReactElement } from "react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
 import { canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
@@ -13,6 +16,25 @@ function isNotebookHasContents(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const record = error as { status?: unknown; code?: unknown };
   return record.status === 409 && record.code === "notebookHasContents";
+}
+
+function isUidCollision(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as { status?: unknown; code?: unknown };
+  return record.status === 409 && record.code === "alreadyExists";
+}
+
+async function notesStoredInNotebook(
+  notebook: { id: string; name: string },
+  visibleNotes: readonly Note[],
+): Promise<number> {
+  const username = readOfflineNotesUsername();
+  const cached = username ? await readNotesBootstrapFromCache(username) : null;
+  const ids = new Set<string>();
+  for (const note of [...(cached?.data.notes ?? []), ...visibleNotes]) {
+    if (noteInNotebook(note, notebook)) ids.add(note.id);
+  }
+  return ids.size;
 }
 
 function noteInNotebook(note: Note, notebook: { id: string; name: string }): boolean {
@@ -48,6 +70,7 @@ export function useNotesNotebookDelete({
   const {
     L,
     operations,
+    notes,
     setNotebooks,
     notebookCollections,
     setNotebookCollections,
@@ -89,7 +112,15 @@ export function useNotesNotebookDelete({
       const current = findNotebook(notebookCollections, notebookId);
       if (!current || !canDeleteNotebook(current)) return;
       try {
-        await operations.deleteNotebook(current.id, { kind: "purge-if-empty" });
+        if (!readBrowserOnline()) {
+          if ((await notesStoredInNotebook(current, notes)) > 0) {
+            setPendingId(current.id);
+            return;
+          }
+          await operations.deleteNotebook(current.id, { kind: "purge" });
+        } else {
+          await operations.deleteNotebook(current.id, { kind: "purge-if-empty" });
+        }
         finishRemoved(
           current,
           (prev) => prev.filter((note) => !noteInNotebook(note, current)),
@@ -103,7 +134,7 @@ export function useNotesNotebookDelete({
         showMutationError();
       }
     },
-    [L, finishRemoved, notebookCollections, operations, showMutationError],
+    [L, finishRemoved, notebookCollections, notes, operations, showMutationError],
   );
 
   const moveNotesAndDelete = useCallback(
@@ -121,8 +152,8 @@ export function useNotesNotebookDelete({
             ),
           L.toastNotebookDeletedNotesMoved(pending.name, dest.name),
         );
-      } catch {
-        showMutationError();
+      } catch (error) {
+        showMutationError(isUidCollision(error) ? L.deleteNotebookUidCollision : undefined);
       }
     },
     [L, finishRemoved, notebookCollections, operations, pending, showMutationError],
@@ -196,7 +227,7 @@ export function useNotesNotebookDelete({
         labels={L}
         title={L.deleteNotebookHasNotesTitle}
         description={L.deleteNotebookHasNotesDescription}
-        confirmLabel={L.deleteNotebookMoveConfirm}
+        confirmLabel={(destination) => L.deleteNotebookMoveToConfirm(destination)}
         requireChange={false}
         destructiveAction={{
           label: L.deleteNotebookDeleteNotesToo,

@@ -215,16 +215,12 @@ final class NotebookRepository
             throw new ApiHttpException(403, 'The group notebook cannot be deleted.', 'forbidden');
         }
         $this->collectionAccess->assertGroupOwnedDeleteAllowed($username, $instance);
-        $this->notesRelocation->apply(
+        $this->notesRelocation->commit(
             $instance,
             $options,
             fn (string $id): ?CalendarInstance => $this->findAccessibleNotebook($username, $id),
+            fn () => $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance)),
         );
-        if ($instance->objects()->where('componenttype', 'VJOURNAL')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
-            throw new ApiHttpException(409, 'Notebook contains notes.', 'notebookHasContents');
-        }
-
-        $this->calBackend()->deleteCalendar($this->calBackendCalendarId($instance));
 
         return ['ok' => true];
     }

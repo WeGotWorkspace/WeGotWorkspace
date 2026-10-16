@@ -75,6 +75,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     onCreateNotebook: () => setNotebookDialog({ mode: "create" }),
     onFinished: () => setNotebookDialog(null),
   });
+  const { requestDeleteNotebook, acceptCreatedNotebook, notebookDeleteDialog } = notebookDelete;
 
   const canManageNotebooks = Boolean(operations?.createNotebook && operations?.patchNotebook);
 
@@ -113,7 +114,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         selectView(notebookViewKey(collection.id));
         show(L.toastNotebookCreated);
         setNotebookDialog(null);
-        notebookDelete.acceptCreatedNotebook(collection);
+        acceptCreatedNotebook(collection);
         return collection;
       } catch {
         showMutationError();
@@ -122,7 +123,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     },
     [
       L.toastNotebookCreated,
-      notebookDelete,
+      acceptCreatedNotebook,
       operations,
       selectView,
       setNotebookCollections,
@@ -244,7 +245,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     ],
   );
 
-  const deleteNotebookCollection = notebookDelete.requestDeleteNotebook;
+  const deleteNotebookCollection = requestDeleteNotebook;
 
   const openCreateNotebookDialog = useCallback(() => {
     setNotebookDialog({ mode: "create" });
@@ -279,7 +280,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     createNotebook,
     updateNotebook,
     deleteNotebookCollection,
-    notebookDeleteDialog: notebookDelete.notebookDeleteDialog,
+    notebookDeleteDialog,
     patchShareWith,
     removeSharedNotebook,
     notebooks,

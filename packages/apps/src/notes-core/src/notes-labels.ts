@@ -123,6 +123,8 @@ export type NotesUILabels = {
   deleteNotebookHasNotesTitle: string;
   deleteNotebookHasNotesDescription: string;
   deleteNotebookMoveConfirm: string;
+  deleteNotebookMoveToConfirm: (destination: string) => string;
+  deleteNotebookUidCollision: string;
   deleteNotebookDeleteNotesToo: string;
   toastNotebookDeletedNotesMoved: (notebook: string, destination: string) => string;
 };
@@ -237,6 +239,10 @@ export const defaultNotesLabels: NotesUILabels = {
   deleteNotebookHasNotesDescription:
     "Pick a notebook to move them to, or delete them along with the notebook.",
   deleteNotebookMoveConfirm: "Move and delete notebook",
+  deleteNotebookMoveToConfirm: (destination) =>
+    `Move notes to “${destination}” and delete notebook`,
+  deleteNotebookUidCollision:
+    "A note in this notebook uses the same id as a note in the destination.",
   deleteNotebookDeleteNotesToo: "Delete the notes too",
   toastNotebookDeletedNotesMoved: (notebook, destination) =>
     `Deleted “${notebook}”. Its notes moved to “${destination}”.`,

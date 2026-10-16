@@ -42,7 +42,7 @@ export type NotesChangeNotebookDialogProps = {
   /** Overrides the default title (`labels.selectionMoveToNotebook`). */
   title?: string;
   /** Overrides the default confirm label (`labels.changeNotebookConfirm`). */
-  confirmLabel?: string;
+  confirmLabel?: string | ((destinationName: string) => string);
   /** When false, confirm is enabled even if the draft equals `value`. Default true. */
   requireChange?: boolean;
   /** Third, destructive footer action — e.g. "Delete the notes too". */
@@ -72,7 +72,12 @@ function NotesChangeNotebookDialogForm({
     createdNotebook ?? toSelectItem(value),
   );
   const dirty = requireChange === false || !notebookSelectionEquals(draft, value);
-  const confirmText = confirmLabel || labels.changeNotebookConfirm || "Change";
+  const hasDestination = draft.id.trim() !== "" && draft.name.trim() !== "";
+  const canConfirm = dirty && hasDestination;
+  const confirmText =
+    typeof confirmLabel === "function"
+      ? confirmLabel(draft.name)
+      : confirmLabel || labels.changeNotebookConfirm || "Change";
 
   return (
     <>
@@ -101,9 +106,9 @@ function NotesChangeNotebookDialogForm({
           type="button"
           variant="primary"
           label={confirmText}
-          disabled={!dirty}
+          disabled={!canConfirm}
           onClick={() => {
-            if (!dirty) return;
+            if (!canConfirm) return;
             onNotebookChange(draft);
             onClose();
           }}

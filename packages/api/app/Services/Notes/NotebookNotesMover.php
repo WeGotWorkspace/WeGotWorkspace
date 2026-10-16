@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use Illuminate\Support\Facades\DB;
@@ -30,8 +31,18 @@ final class NotebookNotesMover
             foreach ($objects as $object) {
                 $this->moveHelper->assertUidAvailable((string) $object->uid, $sourceCalendarId);
             }
+            $sourceToken = (int) Calendar::query()->whereKey($sourceCalendarId)->value('synctoken');
+            $destinationToken = (int) Calendar::query()->whereKey($destinationCalendarId)->value('synctoken');
             foreach ($objects as $object) {
-                $this->moveHelper->move($object, $destinationCalendarId);
+                $this->moveHelper->moveWithoutTokenBump(
+                    $object,
+                    $destinationCalendarId,
+                    $sourceToken,
+                    $destinationToken,
+                );
+            }
+            if ($objects->isNotEmpty()) {
+                $this->moveHelper->bumpSyncTokens($sourceCalendarId, $destinationCalendarId);
             }
 
             return $objects->count();

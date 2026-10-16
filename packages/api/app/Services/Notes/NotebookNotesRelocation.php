@@ -7,6 +7,7 @@ namespace App\Services\Notes;
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarInstance;
 use App\Services\Calendars\CalendarCollectionAccess;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Destination handling for notebook delete. Kept out of NotebookRepository so that file stays under 800 lines.
@@ -38,5 +39,27 @@ final class NotebookNotesRelocation
         }
         $this->collectionAccess->assertCollectionWritable($destination, 'The destination notebook is read-only.');
         $this->mover->moveAll($source, $destination);
+    }
+
+    /**
+     * Move when asked, refuse a notebook that still has notes, and delete it in one transaction.
+     *
+     * @param  array<string, mixed>  $options
+     * @param  callable(string): ?CalendarInstance  $findDestination
+     * @param  callable(): void  $deleteCalendar
+     */
+    public function commit(
+        CalendarInstance $source,
+        array $options,
+        callable $findDestination,
+        callable $deleteCalendar,
+    ): void {
+        DB::connection('wgw')->transaction(function () use ($source, $options, $findDestination, $deleteCalendar): void {
+            $this->apply($source, $options, $findDestination);
+            if ($source->objects()->where('componenttype', 'VJOURNAL')->exists() && ! ($options['onDestroyRemoveContents'] ?? false)) {
+                throw new ApiHttpException(409, 'Notebook contains notes.', 'notebookHasContents');
+            }
+            $deleteCalendar();
+        });
     }
 }
