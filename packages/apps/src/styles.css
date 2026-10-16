@@ -55,8 +55,6 @@
   --color-success: oklch(from #3a8f5a l c h);
   --color-info: #a3c4e8;
   --color-info: oklch(from #a3c4e8 l c h);
-  /** Meet / suite dark surfaces — keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-we-got-soft`. */
-  --workspace-home-bg: #1b1d3a;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -125,6 +123,7 @@
   --color-workspace-sidebar-foreground: var(--workspace-sidebar-foreground);
   --color-workspace-icon-surface: var(--workspace-icon-surface);
   --color-workspace-icon-foreground: var(--workspace-icon-foreground);
+  --color-workspace-home-bg: var(--workspace-home-bg);
 }
 
 :root {
@@ -145,7 +144,8 @@
   --workspace-sidebar-surface: var(--color-we-got-soft);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   /*
-   * Suite navy. Also listed under `@theme` so utilities can read it.
+   * Suite navy. Source for the `@theme` alias `--color-workspace-home-bg`.
+   * Keep in sync with `WORKSPACE_HOME_ACCENT`. Auth/installer use `--color-we-got-soft`.
    * `var(--workspace-home-bg)` only resolves from this `:root` custom property.
    */
   --workspace-home-bg: #1b1d3a;
