@@ -241,6 +241,9 @@ export function NotesWorkspace({
 
   const [focusTitleAfterCreate, setFocusTitleAfterCreate] = useState(false);
   const [renameTagDialog, setRenameTagDialog] = useState<{ tag: string } | null>(null);
+  const openRenameTagDialog = useCallback((tag: string) => {
+    setRenameTagDialog({ tag });
+  }, []);
   const beginCreateNote = useCallback(() => {
     createNote();
     setFocusTitleAfterCreate(true);
@@ -277,7 +280,7 @@ export function NotesWorkspace({
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
-    onRenameTag: (tag) => setRenameTagDialog({ tag }),
+    onRenameTag: openRenameTagDialog,
   });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -524,7 +527,7 @@ export function NotesWorkspace({
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
                   ({ tag, selected, onSelect, onRename, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag} className="notes-sidebar-tags__row">
+                    <li key={tag} className="notes-sidebar-tags__row" {...dropHandlers}>
                       <button
                         type="button"
                         className={cn(
@@ -534,7 +537,6 @@ export function NotesWorkspace({
                         )}
                         onClick={onSelect}
                         aria-pressed={selected}
-                        {...dropHandlers}
                       >
                         <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                       </button>

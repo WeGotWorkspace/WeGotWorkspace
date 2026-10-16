@@ -43,6 +43,8 @@ export type NotesUILabels = {
   tagRenamedSomeSkipped: (tag: string, count: number, skipped: number) => string;
   tagRenameInvalidMessage: string;
   tagRenameUndone: string;
+  /** Toast for the queued write that puts the old tag back. Distinct from `tagRenameUndone`. */
+  tagRenameRestored: (tag: string, count: number) => string;
   listSelected: (count: number) => string;
   listItems: (count: number) => string;
   emptyList: string;
@@ -164,6 +166,7 @@ export const defaultNotesLabels: NotesUILabels = {
     `Renamed to “${tag}” on ${count} note${count === 1 ? "" : "s"}. ${skipped} read-only note${skipped === 1 ? "" : "s"} kept the old tag.`,
   tagRenameInvalidMessage: "A tag may only use letters a–z and -",
   tagRenameUndone: "Tag rename undone.",
+  tagRenameRestored: (tag, count) => `Restored “${tag}” on ${count} note${count === 1 ? "" : "s"}`,
   listSelected: (count) => `${count} Selected`,
   listItems: (count) => `${count} Items`,
   emptyList: "No items",
