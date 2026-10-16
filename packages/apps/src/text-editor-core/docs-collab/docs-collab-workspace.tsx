@@ -50,6 +50,7 @@ import {
 } from "@/text-editor-core/src/text-editor-track-changes";
 import { TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src/text-editor-format-bar-config";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
@@ -268,7 +269,7 @@ function DocsCollabWorkspaceInner({
     [awarenessPresencePeers, collabSession, peers],
   );
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
   const [viewSource, setViewSource] = useState(false);
   const [sourceClosedDialogOpen, setSourceClosedDialogOpen] = useState(false);
