@@ -33,7 +33,6 @@ final class NotifyListener implements WorkspaceEventListener
         ['chat', 'message_posted'],
         ['chat', 'mentioned'],
         ['meet', 'started'],
-        ['rtc', 'direct_connect'],
     ];
 
     public function handle(WorkspaceEvent $event): void
@@ -225,7 +224,6 @@ final class NotifyListener implements WorkspaceEventListener
             'chat.message_posted' => 'New chat message',
             'chat.mentioned' => 'You were mentioned in chat',
             'meet.started' => 'A meeting started',
-            'rtc.direct_connect' => "People couldn't connect directly",
             default => 'Notification',
         };
     }

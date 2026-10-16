@@ -6,8 +6,7 @@ namespace App\Services\Rtc\Signaling;
 
 /**
  * Network class a peer measured for itself before joining. Stored as a hint
- * for the other peers and for the real-time health page; anything unexpected
- * is dropped rather than stored.
+ * for the other peers; anything unexpected is dropped rather than stored.
  */
 final class RtcNetClass
 {
