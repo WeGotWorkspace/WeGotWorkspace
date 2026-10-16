@@ -47,11 +47,9 @@ import {
   readDocsStarredPaths,
   writeDocsStarredPaths,
 } from "@/lib/offline/docs/docs-stars-store";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import {
   captureDocsCollabOfflinePersistence,
   clearDocsCollabOfflinePersistence,
-  migrateCollabPersistence,
   restoreDocsCollabOfflinePersistence,
   type DocsCollabOfflinePersistenceSnapshot,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -172,13 +170,6 @@ async function applyOnlineRenameSideEffects(
   const newPath = normalizeDocsAvailabilityPath(
     normalizedDest === "/" ? `/${to}` : `${normalizedDest}/${to}`,
   );
-  if (isDocsCollabEditablePath(oldPath) && isDocsCollabEditablePath(newPath)) {
-    try {
-      await migrateCollabPersistence(oldPath, newPath);
-    } catch (error) {
-      console.warn("[docs-hybrid] collab persistence migration failed", error);
-    }
-  }
   await migrateDocsAvailabilityPath(username, oldPath, newPath);
 }
 

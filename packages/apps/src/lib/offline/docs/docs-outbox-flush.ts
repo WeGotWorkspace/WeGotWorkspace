@@ -14,8 +14,6 @@ import {
   normalizeDocsAvailabilityPath,
 } from "@/lib/offline/docs/docs-availability-store";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
-import { migrateCollabPersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 
 export type DocsOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
@@ -51,13 +49,6 @@ async function applyRenameSideEffects(
 ): Promise<void> {
   const oldPath = normalizeDocsAvailabilityPath(from);
   const newPath = normalizeDocsAvailabilityPath(nextPathAfterRename(from, destination, to));
-  if (isDocsCollabEditablePath(oldPath) && isDocsCollabEditablePath(newPath)) {
-    try {
-      await migrateCollabPersistence(oldPath, newPath);
-    } catch (error) {
-      console.warn("[docs-offline] collab persistence migration failed", error);
-    }
-  }
   await migrateDocsAvailabilityPath(username, oldPath, newPath);
 }
 
