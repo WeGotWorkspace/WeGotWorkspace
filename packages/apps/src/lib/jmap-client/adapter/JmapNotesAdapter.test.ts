@@ -142,7 +142,7 @@ describe("JmapNotesAdapter", () => {
     const client = clientStub({ Notebook: "nb-1", Note: "n-1" });
     const adapter = new JmapNotesAdapter({
       client,
-      onRemoteNoteDestroyed: async () => "skipped-pending",
+      onRemoteNoteDestroyed: async () => "skipped-pending" as const,
     });
     notebookChanges.mockImplementation(async () => {
       client.setState("bob", "Notebook", "nb-2");
