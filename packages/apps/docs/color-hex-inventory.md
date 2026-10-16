@@ -78,13 +78,13 @@ Excluded from this list on purpose:
 
 ## Calendar timeline / engine (third-party-ish)
 
-| File                                                                                 | Hex                                         | Recommendation                                      |
-| ------------------------------------------------------------------------------------ | ------------------------------------------- | --------------------------------------------------- |
-| `CalendarTimelineView.css` / `CalendarTimeSidebar.css` / `CalendarWeekdayHeader.css` | `#ff0000`, `#222`, `#fff` grid / now-marker | **keep** (library defaults; overridden by `--lc-*`) |
-| `TimeLine.css`                                                                       | `#d0d0d0`, `#505050`, `#e0342f`, `#ff6b64`  | **keep** (timeline chrome defaults)                 |
-| `CalendarsSidebar.css`                                                               | `#f8fafc`, `#1e293b`                        | **brand primitive** → Soft / Dark                   |
-| `EventColor.ts` / `eventColor.ts` / JMAP defaults                                    | `#94a3b8`, `#4285f4`, `#6366f1`, …          | **keep** (user calendar colors + defaults)          |
-| `calendar-calendar-dialog.tsx`, addressbook/notebook/task color lists                | Tailwind-like swatches                      | **keep** (user-picked collection colors)            |
+| File                                                                                 | Hex                                | Recommendation                                                                 |
+| ------------------------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------ |
+| `CalendarTimelineView.css` / `CalendarTimeSidebar.css` / `CalendarWeekdayHeader.css` | `#fff` today-pill ink fallback     | **keep** (ink fallback; today fill is `--lc-higlight-color` → `--color-error`) |
+| `TimeLine.css`                                                                       | now-marker                         | **semantic alias** → `--lc-higlight-color` / `--color-error`                   |
+| `CalendarsSidebar.css`                                                               | `#f8fafc`, `#1e293b`               | **brand primitive** → Soft / Dark                                              |
+| `EventColor.ts` / `eventColor.ts` / JMAP defaults                                    | `#94a3b8`, `#4285f4`, `#6366f1`, … | **keep** (user calendar colors + defaults)                                     |
+| `calendar-calendar-dialog.tsx`, addressbook/notebook/task color lists                | Tailwind-like swatches             | **keep** (user-picked collection colors)                                       |
 
 ## Tasks / notes / docs collab
 

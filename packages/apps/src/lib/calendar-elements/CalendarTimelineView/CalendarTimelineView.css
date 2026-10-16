@@ -20,7 +20,7 @@
   --_lc-grid-line-day-color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --_lc-in-month-day-color: var(--workspace-foreground);
   --_lc-outside-month-day-color: color-mix(in oklch, var(--workspace-foreground) 63%, transparent);
-  /* Today pill fill is `--lc-higlight-color` → accent. Ink must be the accent
+  /* Today pill fill is `--lc-higlight-color` → `--color-error`. Ink must be the accent
      pair, not `#fff`, or a remapped white accent is white-on-white. */
   --_lc-today-day-color: var(--lc-today-on-color, var(--workspace-accent-foreground));
   --_lc-grid-ghost-color: color-mix(in oklch, var(--workspace-foreground) 10%, transparent);
@@ -32,7 +32,7 @@
 
 time-line {
   /* Current-time indicator uses the same calendar token as the grid stack. */
-  --time-line-marker-color: var(--lc-higlight-color, #ff0000);
+  --time-line-marker-color: var(--lc-higlight-color, var(--color-error));
   /* Compact month flag: flipped by the lc-timeline-month container query below; inherits into
      <time-line>'s shadow content so click handlers can read it via getComputedStyle (same
      pattern as the grid's --_lc-compact-month-view). */
@@ -427,7 +427,7 @@ time-line.timeline-timed::part(viewport) {
 
 .year-day-number.is-today {
   @apply font-semibold;
-  background: var(--lc-higlight-color, #ff0000);
+  background: var(--lc-higlight-color, var(--color-error));
   color: var(--_lc-today-day-color);
 }
 
@@ -439,9 +439,10 @@ time-line.timeline-timed::part(viewport) {
   @apply size-1 rounded-full opacity-90 shrink-0;
 }
 
+/* Year month names stay the workspace accent; today uses `--lc-higlight-color`. */
 .month-title {
   @apply m-0 px-0.5 pb-3.5 text-[17px] font-semibold leading-tight text-start;
-  color: var(--lc-higlight-color, #ff0000);
+  color: var(--workspace-accent);
 }
 
 @container lc-timeline-year (max-width: 1280px) {
@@ -584,7 +585,7 @@ time-line::part(day-number-outside-month) {
 }
 
 time-line::part(day-number-today) {
-  background: var(--lc-higlight-color, #ff0000);
+  background: var(--lc-higlight-color, var(--color-error));
   color: var(--_lc-today-day-color);
   font-weight: 600;
 }

@@ -6,7 +6,8 @@
 
 /**
  * Calendar product shell: cream main pane, brand-tinted sidebar rail, Dark solid
- * accents (today pill, primary CTA, checks). Tile accent stays pink `#ffbdc2`
+ * accents (primary CTA, checks). Today’s time label, now-line, and day number
+ * use severity red (`--lc-higlight-color` → `--color-error`). Tile accent stays pink `#ffbdc2`
  * (WORKSPACE_APP_ACCENT); UI accent and tile may diverge. Primary CTAs use
  * Dark with white glyphs. Import only from {@link CalendarWorkspace}.
  * The calendar surface itself is the vendored lit-calendar view stack
@@ -59,8 +60,8 @@
      fills the viewport instead of the default centered 42rem measure. */
   --workspace-main-content-max-width: none;
 
-  /* The lit views highlight "today" and previews with this. */
-  --lc-higlight-color: var(--workspace-accent);
+  /* Now-line, time label, and today day-number pills (day, week, month, year). */
+  --lc-higlight-color: var(--color-error);
   --lc-today-on-color: var(--workspace-accent-foreground);
   /* Grid chrome follows the workspace pair — not light-dark() slate. */
   --lc-grid-base-color: var(--workspace-foreground);

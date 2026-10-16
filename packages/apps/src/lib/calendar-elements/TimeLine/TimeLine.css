@@ -147,7 +147,7 @@
   inset-inline: 0;
   height: 0;
   top: var(--__marker-pos, 0);
-  border-top: 2px solid var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+  border-top: 2px solid var(--time-line-marker-color, var(--lc-higlight-color, var(--color-error)));
 }
 
 .marker.marker--dimmed {
@@ -163,7 +163,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+  background: var(--time-line-marker-color, var(--lc-higlight-color, var(--color-error)));
   transform: translate(-50%, -50%) translateZ(0);
 }
 
@@ -173,7 +173,8 @@
   bottom: 0;
   width: 0;
   inset-inline-start: var(--__marker-pos, 0);
-  border-inline-start: 2px solid var(--time-line-marker-color, light-dark(#e0342f, #ff6b64));
+  border-inline-start: 2px solid
+    var(--time-line-marker-color, var(--lc-higlight-color, var(--color-error)));
 }
 
 /* Snapped drop-target ghost during a move gesture: plain translucent tint at the snapped
