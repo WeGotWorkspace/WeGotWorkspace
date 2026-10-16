@@ -256,6 +256,39 @@ describe("workspace token core", () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  it("rejects literal colors in component CSS, including var() fallbacks", () => {
+    const literal = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\blight-dark\(/;
+    /**
+     * File allowlist. Everything else, including hex inside `var(--token, …)`, fails.
+     * Story fixtures pin demo palettes and are not product chrome.
+     */
+    const allow = new Map<string, string>([
+      ["styles.css", "Tier-1 primitives."],
+      ["user-avatar/src/user-avatar.css", "Identity hues for the avatar palette."],
+      ["meet-core/src/meet-workspace.css", "TODO: migrate the Meet palette off literals."],
+      [
+        "meet-core/src/meet-channel-dialog.css",
+        "Meet pair; same palette migration as meet-workspace.css.",
+      ],
+      [
+        "meet-core/src/meet-call-mini-player.css",
+        "Meet dark ink; same palette migration as meet-workspace.css.",
+      ],
+    ]);
+    const leaks: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (rel.startsWith("lib/calendar-elements/")) continue;
+      if (rel.endsWith(".stories.css")) continue;
+      if (allow.has(rel)) continue;
+      const css = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const [index, line] of css.split("\n").entries()) {
+        if (literal.test(line)) leaks.push(`${rel}:${index + 1} ${line.trim()}`);
+      }
+    }
+    expect(leaks).toEqual([]);
+  });
 });
 
 describe("workspace token contrast (AA floors)", () => {
