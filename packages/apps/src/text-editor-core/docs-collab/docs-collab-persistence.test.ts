@@ -31,6 +31,15 @@ async function seedCollabRoom(room: string): Promise<void> {
 }
 
 describe("docs-collab pending server save persistence", () => {
+  it("does not create missing collab databases while checking a pending save", async () => {
+    const apiPath = "users/alice/absent-doc.md";
+    await expect(hasDocsCollabPendingServerSave(apiPath)).resolves.toBe(false);
+    const names = await databaseNamesAfterDeletes();
+    expect(names).not.toContain(docsCollabIndexedDbKey(apiPath));
+    expect(names).not.toContain(apiPath);
+    expect(names).not.toContain(`/${apiPath}`);
+  });
+
   it("detects and clears pending save metadata by api path", async () => {
     const apiPath = "users/alice/offline-doc.md";
     await seedPendingSave(apiPath);
