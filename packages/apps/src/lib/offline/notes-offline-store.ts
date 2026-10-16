@@ -87,6 +87,11 @@ export type NotesUpsertPayload = {
   tempNoteId?: string;
   /** Real changes in this write. Unioned when two upserts coalesce. */
   fields?: NotePendingField[];
+  /**
+   * False when this write's selection left the notebook off the PATCH.
+   * Absent on a legacy snapshot, which still sends the notebook name.
+   */
+  patchNotebook?: boolean;
 };
 
 /** Pull only the outbox-tracked metadata fields off a note (drops body/excerpt). */
@@ -96,12 +101,14 @@ export function extractNoteMetadata(
 ): NoteUpsertMetadata {
   const includeTags = selection ? selection.includeTags === true : true;
   const includeTitle = selection ? selection.includeTitle === true : note.title !== undefined;
+  const includeStarred = selection ? selection.includeStarred === true : note.starred !== undefined;
+  const includeNotebook = selection ? selection.includeNotebook === true : true;
   return {
     notebook: note.notebook,
-    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
+    ...(includeNotebook && note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(includeTitle && note.title !== undefined ? { title: note.title } : {}),
     ...(includeTags ? { tags: note.tags } : {}),
-    ...(note.starred !== undefined ? { starred: note.starred } : {}),
+    ...(includeStarred && note.starred !== undefined ? { starred: note.starred } : {}),
     ...(note.archived !== undefined ? { archived: note.archived } : {}),
     ...(note.scope === "group" && note.groupSlug?.trim()
       ? { groupSlug: note.groupSlug.trim() }
@@ -619,12 +626,23 @@ function mergeNoteUpsertPayloads(
   const fields = [
     ...new Set<NotePendingField>([...(existing.fields ?? []), ...(incoming.fields ?? [])]),
   ];
+  const patchNotebook = mergedPatchNotebook(existing.patchNotebook, incoming.patchNotebook);
   return {
     noteId: incoming.noteId,
     metadata,
     tempNoteId: incoming.tempNoteId ?? existing.tempNoteId,
     ...(fields.length > 0 ? { fields } : {}),
+    ...(patchNotebook !== undefined ? { patchNotebook } : {}),
   };
+}
+
+function mergedPatchNotebook(
+  existing: boolean | undefined,
+  incoming: boolean | undefined,
+): boolean | undefined {
+  if (existing === true || incoming === true) return true;
+  if (existing === false || incoming === false) return false;
+  return undefined;
 }
 
 function fieldsForUpsert(
@@ -660,7 +678,13 @@ export async function enqueueCoalescedNoteUpdate(
     domain: NOTES_DOMAIN,
     op: "upsert",
     entityId: noteId,
-    patch: { noteId, metadata, tempNoteId, ...(fields.length > 0 ? { fields } : {}) },
+    patch: {
+      noteId,
+      metadata,
+      tempNoteId,
+      ...(fields.length > 0 ? { fields } : {}),
+      ...(selection ? { patchNotebook: selection.includeNotebook === true } : {}),
+    },
     ifInState: baseUpdatedAt,
     mergePatches: mergeNoteUpsertPayloads,
     entityIdFromRow: notesOutboxNoteId,

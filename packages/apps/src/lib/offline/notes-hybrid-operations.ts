@@ -415,10 +415,11 @@ async function upsertNoteOnline(
   const delta = tagDeltaFromOpts(opts);
   const selection = metadataSelection(previous, note, !!delta);
   const metadataRequest = wgwNoteMetadataFromNote(note, {
-    starred: !!note.starred,
+    ...(selection.includeStarred ? { starred: !!note.starred } : {}),
     archived: !!note.archived,
     includeTitle: selection.includeTitle,
     includeTags: selection.includeTags,
+    includeNotebook: selection.includeNotebook,
   });
   const request = delta ? { ...metadataRequest, ...delta } : metadataRequest;
   try {
