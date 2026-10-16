@@ -75,7 +75,7 @@
 }
 
 /**
- * App switcher lockup: contacts.svg literals (sky tile / soft person).
+ * App switcher lockup: dark tile, soft person.
  */
 .contacts-workspace
   .app-sidebar__header
@@ -87,7 +87,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 

@@ -120,7 +120,7 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-/** Sidebar lockup: blue tile + soft marks. UI accent is Dark. */
+/** Sidebar lockup: dark tile, soft marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--workspace-icon-surface);
   --app-switch-icon-fg: var(--workspace-icon-foreground);
@@ -131,7 +131,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 

@@ -78,7 +78,7 @@
   --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
-/** App switcher lockup: calendar.svg literals (prince tile / soft marks). */
+/** App switcher lockup: dark tile, soft marks. */
 .calendar-workspace
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -89,7 +89,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-prince);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 

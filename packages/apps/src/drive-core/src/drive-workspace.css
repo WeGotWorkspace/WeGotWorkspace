@@ -70,8 +70,8 @@
 }
 
 /**
- * App switcher lockup: drive.svg literals (soft tile / brat folder).
- * Pin both the lockup variables and `--workspace-icon-surface*` so artwork stays distinct from
+ * App switcher lockup: dark tile, brat folder.
+ * Pin both the lockup variables and `--workspace-icon-*` so artwork stays distinct from
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -84,7 +84,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-brat);
 }
 

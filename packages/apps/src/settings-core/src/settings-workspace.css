@@ -56,8 +56,8 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-dark);
+  --workspace-icon-surface: var(--color-we-got-dark);
+  --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
 .settings-workspace .app-sidebar__footer {
