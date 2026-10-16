@@ -35,6 +35,7 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
+        onRenameTag: vi.fn(),
       }),
     );
 
@@ -61,6 +62,7 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
+        onRenameTag: vi.fn(),
       }),
     );
     expect(empty.result.current.showTagsSection).toBe(false);
@@ -128,6 +130,7 @@ describe("useNotesSidebarModel", () => {
         sidebarDropZoneProps: () => dropZone(),
         moveToNotebook: vi.fn(),
         assignTagToNotes: vi.fn(),
+        onRenameTag: vi.fn(),
       }),
     );
 

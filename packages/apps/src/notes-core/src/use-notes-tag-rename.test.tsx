@@ -46,7 +46,7 @@ function renderTagRename(notes: Note[], view = "all") {
     operations: { upsertNote },
     showMutationError,
     L: defaultNotesLabels,
-  } as NotesShellState;
+  } as unknown as NotesShellState;
 
   const { result } = renderHook(() => {
     const { queueMutation } = useQueuedMutation({
