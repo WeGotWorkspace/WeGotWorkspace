@@ -1196,8 +1196,7 @@
 }
 
 .meet-workspace__chat-empty {
-  @apply flex flex-1 items-center justify-center px-6 text-sm;
-  color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+  @apply flex min-h-0 w-full flex-1 flex-col;
 }
 
 .meet-workspace__surfaces {
