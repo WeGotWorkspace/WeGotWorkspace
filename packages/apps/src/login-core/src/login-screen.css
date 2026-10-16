@@ -1,12 +1,12 @@
 @import "../../styles.css" reference;
 
 /**
- * Auth / gated-entry shell — app paper with ink chrome
- * (same paper as apps home). Primary fills use We Got Dark with white fg.
+ * Auth / gated-entry shell — same fill as the app sidebar.
+ * Installer steps reuse this shell. Primary fills use We Got Dark with white fg.
  * Do not reuse `--workspace-home-bg` (home icon navy).
  */
 .login-screen {
-  background-color: var(--workspace-surface);
+  background-color: var(--workspace-sidebar-surface);
   color: var(--workspace-foreground);
   color-scheme: light;
   box-sizing: border-box;
@@ -16,11 +16,11 @@
   flex-direction: column;
   --app-switch-label-color: var(--workspace-foreground);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--workspace-surface);
+  --app-switch-lockup-bg: var(--workspace-sidebar-surface);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
     var(--workspace-foreground) 12%,
-    var(--workspace-surface)
+    var(--workspace-sidebar-surface)
   );
   --workspace-shell-header-user-menu-fg: var(--workspace-foreground);
   --workspace-shell-header-user-menu-border: color-mix(
@@ -34,7 +34,7 @@
 }
 
 html:has(.login-screen) {
-  background-color: var(--workspace-surface);
+  background-color: var(--workspace-sidebar-surface);
 }
 
 .login-screen > section {
