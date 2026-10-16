@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Database\Migrations\WgwMigration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -62,25 +61,45 @@ return new class extends WgwMigration
         $hashes = DB::connection('wgw')
             ->table('api_refresh_tokens')
             ->whereNull('family_id')
+            ->orderBy('token_hash')
             ->pluck('token_hash');
 
+        foreach ($hashes->chunk(100) as $chunk) {
+            $this->assignFamilyIds(array_values($chunk->all()));
+        }
+    }
+
+    /**
+     * @param  list<mixed>  $hashes
+     */
+    private function assignFamilyIds(array $hashes): void
+    {
+        $when = [];
+        $bindings = [];
+        $selected = [];
         foreach ($hashes as $hash) {
             if (! is_string($hash) || $hash === '') {
                 continue;
             }
-
-            DB::connection('wgw')
-                ->table('api_refresh_tokens')
-                ->where('token_hash', $hash)
-                ->update(['family_id' => (string) Str::ulid()]);
+            $when[] = 'WHEN ? THEN ?';
+            $bindings[] = $hash;
+            $bindings[] = (string) Str::ulid();
+            $selected[] = $hash;
         }
+        if ($selected === []) {
+            return;
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($selected), '?'));
+        DB::connection('wgw')->update(
+            'UPDATE api_refresh_tokens SET family_id = CASE token_hash '.implode(' ', $when).' END WHERE token_hash IN ('.$placeholders.')',
+            [...$bindings, ...$selected],
+        );
     }
 
     private function hasIndex(string $table, string $name): bool
     {
-        $indexes = Schema::connection('wgw')->getIndexes($table);
-
-        foreach ($indexes as $index) {
+        foreach ($this->wgw()->getIndexes($table) as $index) {
             if ($index['name'] === $name) {
                 return true;
             }
