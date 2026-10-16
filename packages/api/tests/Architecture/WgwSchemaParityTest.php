@@ -54,7 +54,6 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'notification_deliveries',
             'push_subscriptions',
             'rtc_relay_events',
-            'rtc_session_metrics',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -80,5 +79,6 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('principal_peers', 'browser_id'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'caps'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'net'));
+        $this->assertFalse(Schema::connection('wgw')->hasTable('rtc_session_metrics'));
     }
 }

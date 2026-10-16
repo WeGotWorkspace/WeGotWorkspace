@@ -47,4 +47,4 @@ Rates below are the polls that mix produces. They come from the cadence above, n
 
 The burst is the constraint. It lasts until ICE settles and Meet drops back to a 4-second poll. A poll that stays under 200 ms fits the reference mix on this profile, including the 10th joiner, as long as that connecting window is brief. A poll slower than 200 ms fills all five children for the whole burst.
 
-Confirm the assumption on the host with the k6 script. The health page then shows whether that host is actually spending its connects on relay or HTTP fallback.
+Confirm the assumption on the host with the k6 script.

@@ -6,12 +6,26 @@ use App\Database\Migrations\WgwMigration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Removes inbox rows for the retired direct-connect admin notice.
- * Only `rtc.direct_connect` (domain `rtc`, action `direct_connect`).
+ * Removes inbox rows for the retired direct-connect admin notice, and drops
+ * `rtc_session_metrics`. Nothing writes that table anymore.
+ * Notices: only `rtc.direct_connect` (domain `rtc`, action `direct_connect`).
  */
 return new class extends WgwMigration
 {
+    private const DELETE_CHUNK = 500;
+
     public function up(): void
+    {
+        $this->deleteDirectConnectNotices();
+        $this->wgw()->dropIfExists('rtc_session_metrics');
+    }
+
+    public function down(): void
+    {
+        // Removed inbox rows and the metrics table are not restored.
+    }
+
+    private function deleteDirectConnectNotices(): void
     {
         if (! $this->wgwHasTable('notifications')) {
             return;
@@ -25,21 +39,16 @@ return new class extends WgwMigration
                     });
             })
             ->pluck('id');
-        if ($ids->isEmpty()) {
-            return;
+
+        foreach ($ids->chunk(self::DELETE_CHUNK) as $chunk) {
+            $idList = $chunk->all();
+            if ($this->wgwHasTable('notification_deliveries')) {
+                DB::connection('wgw')->table('notification_deliveries')
+                    ->whereIn('notification_id', $idList)
+                    ->delete();
+            }
+
+            DB::connection('wgw')->table('notifications')->whereIn('id', $idList)->delete();
         }
-
-        if ($this->wgwHasTable('notification_deliveries')) {
-            DB::connection('wgw')->table('notification_deliveries')
-                ->whereIn('notification_id', $ids->all())
-                ->delete();
-        }
-
-        DB::connection('wgw')->table('notifications')->whereIn('id', $ids->all())->delete();
-    }
-
-    public function down(): void
-    {
-        // Removed inbox rows are not restored.
     }
 };

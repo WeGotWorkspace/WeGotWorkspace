@@ -6,7 +6,6 @@ namespace Tests\Feature\Rtc;
 
 use App\Models\MeetPeer;
 use App\Models\RtcRelayEvent;
-use App\Models\RtcSessionMetric;
 use App\Services\Rtc\RtcHousekeepingService;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\WgwDatabaseTestCase;
@@ -22,19 +21,12 @@ final class RtcHousekeepingTest extends WgwDatabaseTestCase
             ['created_at' => $now - RtcRelayEvent::RETENTION_SECONDS - 1, 'channel' => 'meet', 'actor' => 'bob', 'reason' => 'failed', 'outcome' => 'issued'],
             ['created_at' => $now - 60, 'channel' => 'meet', 'actor' => 'bob', 'reason' => 'failed', 'outcome' => 'issued'],
         ]);
-        RtcSessionMetric::query()->insert([
-            ['created_at' => $now - RtcSessionMetric::RETENTION_SECONDS - 1, 'channel' => 'meet'],
-            ['created_at' => $now - 60, 'channel' => 'meet'],
-        ]);
-
         $swept = (new RtcHousekeepingService)->sweep($now);
 
         $this->assertSame(1, $swept['peers']);
         $this->assertSame(1, $swept['relayEvents']);
-        $this->assertSame(1, $swept['sessionMetrics']);
         $this->assertSame(['live-peer'], MeetPeer::query()->pluck('peer_id')->all());
         $this->assertSame(1, RtcRelayEvent::query()->count());
-        $this->assertSame(1, RtcSessionMetric::query()->count());
     }
 
     public function test_the_scheduled_command_reports_what_it_removed(): void

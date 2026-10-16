@@ -200,7 +200,6 @@ final class WgwSchemaMigratorTest extends TestCase
             'notification_deliveries',
             'push_subscriptions',
             'rtc_relay_events',
-            'rtc_session_metrics',
         ] as $table) {
             $this->assertTrue(
                 Schema::connection('wgw')->hasTable($table),
@@ -278,26 +277,10 @@ final class WgwSchemaMigratorTest extends TestCase
         foreach (['created_at', 'channel', 'actor', 'reason', 'outcome'] as $column) {
             $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_relay_events', $column));
         }
-        foreach ([
-            'created_at',
-            'channel',
-            'join_ms',
-            'candidate_type',
-            'failed_pairs',
-            'ice_restarts',
-            'http_fallback',
-            'poll_rtt_ms',
-            'net',
-        ] as $column) {
-            $this->assertTrue(Schema::connection('wgw')->hasColumn('rtc_session_metrics', $column));
-        }
+        $this->assertFalse(Schema::connection('wgw')->hasTable('rtc_session_metrics'));
         $this->assertContains(
             'idx_rtc_relay_events_created',
             collect(Schema::connection('wgw')->getIndexes('rtc_relay_events'))->pluck('name')->all(),
-        );
-        $this->assertContains(
-            'idx_rtc_session_metrics_created',
-            collect(Schema::connection('wgw')->getIndexes('rtc_session_metrics'))->pluck('name')->all(),
         );
     }
 
