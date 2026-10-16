@@ -3,8 +3,11 @@ import { Eye, EyeOff, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
+import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 
 import "./input.css";
+
+installKeyboardFocusModality();
 
 export type InputSize = ControlSize;
 export type InputVariant = "default" | "search" | "password";

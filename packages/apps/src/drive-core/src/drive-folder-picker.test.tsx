@@ -64,6 +64,36 @@ describe("DriveFolderPicker", () => {
     expect(screen.getAllByTestId("docs-drive-root-icon").length).toBeGreaterThan(0);
   });
 
+  it("keeps a chosen drive when moveIds is a new array and nothing is preselected", () => {
+    const onDestinationChange = vi.fn();
+    const props = {
+      labels: driveLabels,
+      files: [] as DriveFile[],
+      groupPaths: ["Groups/engineering"],
+      initialBrowsePath: DRIVE_FOLDER_PICKER_ROOT,
+      currentUsername: "alice",
+      groupRootNames: new Set(["engineering"]),
+      rootLabels: {
+        "My Drive": driveLabels.sidebarMyDrive,
+        "Groups/engineering": "engineering",
+      },
+      onDestinationChange,
+    };
+
+    const view = render(<DriveFolderPicker {...props} moveIds={[]} />);
+    const personal = screen.getByText("Personal").closest("tr");
+    expect(personal).toBeTruthy();
+    fireEvent.click(personal!);
+    expect(onDestinationChange).toHaveBeenCalledWith("My Drive");
+
+    view.rerender(<DriveFolderPicker {...props} moveIds={[]} />);
+
+    expect(screen.getByText("Personal").closest("tr")?.className).toContain(
+      "destination-list-row--selected",
+    );
+    expect(onDestinationChange).toHaveBeenLastCalledWith("My Drive");
+  });
+
   it("preselects initialSelectedPath on the Drives root for create (empty moveIds)", () => {
     const onDestinationChange = vi.fn();
     render(

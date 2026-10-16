@@ -82,7 +82,7 @@ export function AppsHomeScreen({
                   <span className="text-current [&_svg]:size-12">{app.icon}</span>
                 </span>
               )}
-              <span className="text-sm font-medium">{app.label}</span>
+              <span className="apps-home-screen__label">{app.label}</span>
             </button>
           ))}
         </div>

@@ -28,4 +28,31 @@ describe("resolveNotesCreateTarget", () => {
       notebook: "Drafts",
     });
   });
+
+  it("returns the collection id and display name for an nb view", () => {
+    expect(
+      resolveNotesCreateTarget("nb:drafts", ["Drafts"], [{ id: "drafts", name: "Drafts" }]),
+    ).toEqual({ notebook: "Drafts", notebookId: "drafts" });
+  });
+
+  it("returns group scope for a team notebook id", () => {
+    expect(
+      resolveNotesCreateTarget(
+        "nb:group-eng",
+        ["Drafts"],
+        [{ id: "group-eng", name: "Engineering", scope: "group", groupSlug: "eng" }],
+      ),
+    ).toEqual({
+      notebook: "Engineering",
+      notebookId: "group-eng",
+      scope: "group",
+      groupSlug: "eng",
+    });
+  });
+
+  it("omits notebookId when the view key matches no collection", () => {
+    expect(resolveNotesCreateTarget("nb:missing-id", ["Drafts"])).toEqual({
+      notebook: "missing-id",
+    });
+  });
 });

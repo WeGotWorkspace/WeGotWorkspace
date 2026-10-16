@@ -2417,41 +2417,6 @@
                     "baseUri"
                 ]
             },
-            "NotesStateResponse": {
-                "type": "object",
-                "properties": {
-                    "baseUri": {
-                        "type": "string"
-                    },
-                    "username": {
-                        "type": "string"
-                    },
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "logoutUrl": {
-                        "type": "string"
-                    },
-                    "notesPath": {
-                        "type": "string"
-                    },
-                    "filesEnabled": {
-                        "type": "boolean"
-                    },
-                    "distReady": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "baseUri",
-                    "username",
-                    "displayName",
-                    "logoutUrl",
-                    "notesPath",
-                    "filesEnabled",
-                    "distReady"
-                ]
-            },
             "NoteTagList": {
                 "type": "array",
                 "items": {
@@ -8029,7 +7994,7 @@
                     "edit",
                     "full"
                 ],
-                "description": "Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected."
+                "description": "Share access level for a grant or default access. Leftover Drive path grants under …/.notes/… accept view|edit only; comment, legacy review, and full are rejected. Those paths are old path grants, not the Notes store."
             },
             "DriveRights": {
                 "type": "object",
@@ -9027,155 +8992,6 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/DriveShareByPrincipal"
-                    }
-                },
-                "additionalProperties": false
-            },
-            "NotesSharedNoteEntry": {
-                "type": "object",
-                "required": [
-                    "path",
-                    "id",
-                    "notebook",
-                    "title",
-                    "tags",
-                    "owner",
-                    "scope",
-                    "groupSlug",
-                    "access",
-                    "myRights"
-                ],
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md)."
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "notebook": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": "string",
-                        "description": "List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*."
-                    },
-                    "tags": {
-                        "$ref": "#/components/schemas/NoteTagList",
-                        "description": "Tags from the note markdown frontmatter. Empty when the file is missing or has no tags."
-                    },
-                    "owner": {
-                        "type": "string",
-                        "description": "Username or group slug that owns the note tree."
-                    },
-                    "scope": {
-                        "type": "string",
-                        "enum": [
-                            "personal",
-                            "group"
-                        ]
-                    },
-                    "groupSlug": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "access": {
-                        "$ref": "#/components/schemas/DriveShareAccess"
-                    },
-                    "myRights": {
-                        "$ref": "#/components/schemas/DriveRights"
-                    },
-                    "viaGroup": {
-                        "type": "string",
-                        "description": "Present when access is via a group grant (groups/{slug})."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "NotesSharedWithMeResponse": {
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
-                        }
-                    }
-                },
-                "additionalProperties": false
-            },
-            "NotesSharedNotebookEntry": {
-                "type": "object",
-                "required": [
-                    "path",
-                    "notebook",
-                    "owner",
-                    "scope",
-                    "groupSlug",
-                    "access",
-                    "myRights"
-                ],
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Virtual drive path of the shared notebook directory (…/.notes/{notebook})."
-                    },
-                    "notebook": {
-                        "type": "string"
-                    },
-                    "owner": {
-                        "type": "string",
-                        "description": "Username or group slug that owns the notebook tree."
-                    },
-                    "scope": {
-                        "type": "string",
-                        "enum": [
-                            "personal",
-                            "group"
-                        ]
-                    },
-                    "groupSlug": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "access": {
-                        "$ref": "#/components/schemas/DriveShareAccess"
-                    },
-                    "myRights": {
-                        "$ref": "#/components/schemas/DriveRights"
-                    },
-                    "viaGroup": {
-                        "type": "string",
-                        "description": "Present when access is via a group grant (groups/{slug})."
-                    }
-                },
-                "additionalProperties": false
-            },
-            "NotesSharedNotebooksResponse": {
-                "type": "object",
-                "required": [
-                    "items"
-                ],
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/NotesSharedNotebookEntry"
-                        }
-                    },
-                    "notes": {
-                        "type": "array",
-                        "description": "Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items.",
-                        "items": {
-                            "$ref": "#/components/schemas/NotesSharedNoteEntry"
-                        }
                     }
                 },
                 "additionalProperties": false

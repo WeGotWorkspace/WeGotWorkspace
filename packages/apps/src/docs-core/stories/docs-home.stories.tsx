@@ -269,7 +269,9 @@ export const CreateUniqueName: Story = {
     const dialog = await body.findByRole("dialog", { name: "New document" });
     const dialogScope = within(dialog);
     const personalRow = dialogScope.getByText("Personal").closest("tr");
-    await expect(personalRow).toHaveClass("destination-list-row--selected");
+    await expect(personalRow).not.toHaveClass("destination-list-row--selected");
+    await expect(dialogScope.getByRole("button", { name: "Create" })).toBeDisabled();
+    await userEvent.click(personalRow!);
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>
       expect(args.onCreateDocument).toHaveBeenCalledWith("/users/alice/Untitled 2.md"),
@@ -277,9 +279,9 @@ export const CreateUniqueName: Story = {
   },
 };
 
-/** Sidebar drive selection preselects that drive in the New document destination picker. */
+/** The New document picker lists drives with none selected until the user chooses one. */
 export const CreateFromSelectedDrive: Story = {
-  name: "Create (from selected drive)",
+  name: "Create (chosen drive)",
   tags: ["vitest-ci"],
   args: {
     fetcher: createPaginatedFetcher(FIXTURES),
@@ -299,7 +301,9 @@ export const CreateFromSelectedDrive: Story = {
 
     await expect(dialogScope.getByText("Personal")).toBeInTheDocument();
     const engineeringRow = dialogScope.getByText("engineering").closest("tr");
-    await expect(engineeringRow).toHaveClass("destination-list-row--selected");
+    await expect(engineeringRow).not.toHaveClass("destination-list-row--selected");
+    await expect(dialog.querySelector(".destination-list-row--selected")).toBeNull();
+    await userEvent.click(engineeringRow!);
 
     await userEvent.click(await dialogScope.findByRole("button", { name: "Create" }));
     await waitFor(() =>

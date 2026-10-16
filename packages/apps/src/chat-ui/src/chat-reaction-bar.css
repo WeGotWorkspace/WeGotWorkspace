@@ -5,40 +5,33 @@
 }
 
 .chat-reaction-bar__reaction {
-  @apply inline-flex h-6 items-center gap-1 border px-1.5 text-xs transition-colors;
+  /* Quiet filled chip: same outline wash as other theme chips, no hairline. */
+  @apply inline-flex h-6 items-center gap-1 border-0 px-1.5 text-xs transition-colors;
   border-radius: var(--control-radius);
-  border-color: var(
-    --chat-border,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
-  background-color: var(
-    --chat-reaction-bg,
-    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
-  );
+  background-color: var(--chat-reaction-bg, var(--button-outline-hover-background));
   color: var(--chat-text, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction:hover {
-  background-color: var(
-    --chat-hover,
-    color-mix(in oklab, var(--workspace-foreground) 4%, transparent)
-  );
+  background-color: var(--button-outline-active-background);
 }
 
 .chat-reaction-bar__reaction[data-reacted="true"] {
-  border-color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 35%, transparent);
+  background-color: var(--chat-reaction-selected-bg, var(--button-outline-active-background));
+}
+
+.chat-reaction-bar__reaction[data-reacted="true"]:hover {
   background-color: var(
-    --chat-reaction-selected-bg,
-    color-mix(in oklab, var(--chat-accent, #1d4ed8) 10%, transparent)
+    --button-outline-active-hover-background,
+    var(--button-outline-active-background)
   );
-  color: color-mix(in oklab, var(--chat-accent, #1d4ed8) 88%, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction--add {
-  @apply justify-center px-2;
-  border-style: dashed;
-  border-color: color-mix(in oklab, var(--workspace-foreground) 18%, transparent);
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
+  @apply justify-center border border-dashed px-2;
+  border-color: var(--control-border-color);
+  background-color: transparent;
+  color: var(--chat-muted, var(--workspace-foreground));
 }
 
 .chat-reaction-bar__reaction-add-icon {

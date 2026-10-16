@@ -10,7 +10,7 @@
 
 /**
  * Truncation for section titles. Type/color come from `.field-label-row__label`.
- * Search groups restyle this class with a more specific (uppercase) selector.
+ * Search groups reuse this class — do not restyle casing, size, or tracking.
  */
 h4.sidebar-section__title {
   @apply truncate min-w-0;

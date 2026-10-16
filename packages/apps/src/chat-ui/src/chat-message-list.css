@@ -7,6 +7,16 @@
   background-color: var(--chat-list-surface, var(--workspace-surface));
 }
 
+/*
+ * Shared empty hosts use min-h-full so a short label fills a scroll pane.
+ * This list is the flex sibling above the composer, so that minimum claims
+ * the whole column and clips the input. Stay in the leftover slot and scroll
+ * the icon block inside it.
+ */
+.chat-message-list.collection-state-host:has(> .collection-state) {
+  @apply min-h-0 overflow-x-hidden overflow-y-auto;
+}
+
 .chat-message-list__scroll {
   @apply min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto;
   /* The hover bar overlays the row. A constant inset keeps the last message's
@@ -25,11 +35,6 @@
 
 .chat-message-list .list-sticky-header {
   @apply px-5;
-}
-
-.chat-message-list__empty {
-  @apply flex flex-1 items-center justify-center px-4 py-12 text-sm;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 45%, transparent));
 }
 
 .chat-message-list__group {

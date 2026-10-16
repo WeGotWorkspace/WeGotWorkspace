@@ -124,7 +124,7 @@ function priorityFlagStyle(priority: number | string | null | undefined): Priori
   if (normalized == null) return null;
 
   const stroke = priorityFlagColor(normalized);
-  const fill = normalized === TASK_PRIORITY_LOW ? "#ffffff" : stroke;
+  const fill = normalized === TASK_PRIORITY_LOW ? "var(--workspace-surface)" : stroke;
   return {
     "--tasks-priority-flag-stroke": stroke,
     "--tasks-priority-flag-fill": fill,

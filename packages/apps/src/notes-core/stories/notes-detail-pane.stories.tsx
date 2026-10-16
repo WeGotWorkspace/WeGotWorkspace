@@ -101,11 +101,11 @@ export const Editable: Story = {
     expect(remove).toBeTruthy();
     const workspace = canvasElement.querySelector(".notes-workspace");
     expect(workspace).toBeTruthy();
-    const probe = document.createElement("span");
-    probe.style.color = "var(--note-detail-tag-fg)";
-    workspace!.appendChild(probe);
-    expect(getComputedStyle(remove!).color).toBe(getComputedStyle(probe).color);
-    probe.remove();
+    const sheetFill = document.createElement("span");
+    sheetFill.style.backgroundColor = "var(--paper-sheet-bg)";
+    workspace!.appendChild(sheetFill);
+    expect(getComputedStyle(remove!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
+    sheetFill.remove();
 
     const label = remove!.getAttribute("aria-label") ?? "";
     const tagLabel = label.replace(/^Remove tag /, "");
@@ -183,7 +183,7 @@ export const NotebookTint: Story = {
     tintBg.style.backgroundColor = "var(--notes-detail-tint)";
     sheetBg.style.backgroundColor = "var(--paper-sheet-bg)";
     paneBg.style.backgroundColor = "var(--workspace-detail-bg)";
-    detailFg.style.color = "var(--note-detail-tag-fg)";
+    detailFg.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
     sidebarFg.style.color = "var(--notes-tag-selected-fg)";
     workspace!.appendChild(tintBg);
     workspace!.appendChild(sheetBg);
@@ -210,11 +210,24 @@ export const NotebookTint: Story = {
       getComputedStyle(cream).backgroundColor,
     );
     cream.remove();
+    const accent = document.createElement("span");
+    accent.style.color = "var(--notes-detail-accent)";
+    workspace!.appendChild(accent);
+    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(detailFg).color);
+    expect(getComputedStyle(chip!).borderTopWidth).toBe("0px");
     expect(getComputedStyle(chip!).backgroundColor).not.toBe(
-      getComputedStyle(tintBg).backgroundColor,
+      getComputedStyle(sheetBg).backgroundColor,
     );
-    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(detailFg).color);
-    expect(getComputedStyle(chip!).color).not.toBe(getComputedStyle(sidebarFg).color);
+    expect(getComputedStyle(chip!).backgroundColor).not.toBe(getComputedStyle(accent).color);
+    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
+    accent.remove();
+    const label = chip!.querySelector(".tag__label");
+    const icon = chip!.querySelector(".tag__icon");
+    expect(label).toBeTruthy();
+    expect(getComputedStyle(label!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
+    expect(icon).toBeTruthy();
+    expect(getComputedStyle(icon!).color).toBe(getComputedStyle(sheetBg).backgroundColor);
+    expect(getComputedStyle(label!).color).not.toBe(getComputedStyle(sidebarFg).color);
     const sheetRect = sheet!.getBoundingClientRect();
     expect(getComputedStyle(sheet!).minHeight).not.toBe("100%");
     // Sheet grows with content; desk scrollport owns overflow (no sheet max-height / overflow-y).
@@ -287,10 +300,28 @@ export const NotebookTintDark: Story = {
       ".note-detail-view__tag-group .tag",
     ) as HTMLElement | null;
     expect(chip).toBeTruthy();
+    const sheetFg = document.createElement("span");
+    const sheetFill = document.createElement("span");
+    sheetFg.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
+    sheetFill.style.backgroundColor = "var(--paper-sheet-bg)";
+    workspace!.appendChild(sheetFg);
+    workspace!.appendChild(sheetFill);
+    const label = chip!.querySelector(".tag__label");
+    expect(label).toBeTruthy();
+    expect(getComputedStyle(chip!).backgroundColor).toBe(getComputedStyle(sheetFg).color);
+    expect(getComputedStyle(label!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
+    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
+    expect(getComputedStyle(chip!).borderTopWidth).toBe("0px");
+    const accentFill = document.createElement("span");
+    accentFill.style.color = "var(--notes-detail-accent)";
+    workspace!.appendChild(accentFill);
+    expect(getComputedStyle(chip!).backgroundColor).not.toBe(getComputedStyle(accentFill).color);
+    accentFill.remove();
+    sheetFg.remove();
+    sheetFill.remove();
     const accentStrong = document.createElement("span");
     accentStrong.style.color = "var(--notes-detail-accent-strong)";
     workspace!.appendChild(accentStrong);
-    expect(getComputedStyle(chip!).color).toBe(getComputedStyle(accentStrong).color);
     const title = canvasElement.querySelector(".note-detail-view__title") as HTMLElement | null;
     const softInk = document.createElement("span");
     softInk.style.color = "var(--notes-detail-contrast-fg)";
@@ -341,17 +372,26 @@ export const ReadOnly: Story = {
     const chip = canvasElement.querySelector(".note-detail-view__tag-group .tag");
     expect(workspace).toBeTruthy();
     expect(chip).toBeTruthy();
-    const probe = document.createElement("span");
-    probe.style.backgroundColor = "var(--note-detail-tag-bg)";
-    probe.style.color = "var(--note-detail-tag-fg)";
-    probe.style.borderColor = "var(--note-detail-tag-border)";
-    workspace!.appendChild(probe);
+    const fill = document.createElement("span");
+    const ink = document.createElement("span");
+    const accent = document.createElement("span");
+    fill.style.color = "var(--notes-detail-contrast-fg, var(--workspace-foreground))";
+    ink.style.backgroundColor = "var(--paper-sheet-bg)";
+    accent.style.color = "var(--notes-detail-accent)";
+    workspace!.appendChild(fill);
+    workspace!.appendChild(ink);
+    workspace!.appendChild(accent);
     const chipStyle = getComputedStyle(chip!);
-    const probeStyle = getComputedStyle(probe);
-    expect(chipStyle.backgroundColor).toBe(probeStyle.backgroundColor);
-    expect(chipStyle.color).toBe(probeStyle.color);
-    expect(chipStyle.borderColor).toBe(probeStyle.borderColor);
-    probe.remove();
+    const label = chip!.querySelector(".tag__label");
+    expect(label).toBeTruthy();
+    expect(chipStyle.backgroundColor).toBe(getComputedStyle(fill).color);
+    expect(chipStyle.color).toBe(getComputedStyle(ink).backgroundColor);
+    expect(getComputedStyle(label!).color).toBe(getComputedStyle(ink).backgroundColor);
+    expect(chipStyle.backgroundColor).not.toBe(getComputedStyle(accent).color);
+    expect(chipStyle.borderTopWidth).toBe("0px");
+    fill.remove();
+    ink.remove();
+    accent.remove();
   },
 };
 

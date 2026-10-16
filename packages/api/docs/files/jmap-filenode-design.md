@@ -13,7 +13,7 @@ Verified starting facts (2026-08-13):
 
 - **REST writes** all funnel through `DriveService` (`createItem`, `handleUpload`, `renameItem`, `deleteItems`); there is no REST copy endpoint.
 - **WebDAV writes** happen in `FlysystemNode::setName()` (MOVE), `FlysystemFile::put()/patch()/delete()`, `FlysystemDirectory::createFile()/createDirectory()/delete()/moveInto()`. The node methods have **zero hooks**, but the server registers after-method plugins — `SearchIndexPlugin` (`afterMethod:{PUT,PATCH,MKCOL,DELETE,MOVE,COPY}`) is the precedent to copy.
-- **Drift already exists** between the path-keyed stores: REST rename rewrites `drive_shares.path` (`DriveShareService::rewritePathPrefix`) but not stars; WebDAV MOVE updates **only** the search index (shares and stars go stale); deletes clean neither; notes (`WgwStorage::notes()`, same physical root) and collab `.yjs` sidecars write the same tree outside `DriveService`; `FlysystemFile::patch()` bypasses `put()` with a raw `fopen`.
+- **Drift already exists** between the path-keyed stores: REST rename rewrites `drive_shares.path` (`DriveShareService::rewritePathPrefix`) but not stars; WebDAV MOVE updates **only** the search index (shares and stars go stale); deletes clean neither; leftover on-disk `.notes` trees (personal and group) are migration source and are **not** the Notes store (Decision 4), and collab `.yjs` sidecars write the same tree outside `DriveService`; `FlysystemFile::patch()` bypasses `put()` with a raw `fopen`.
 - **Backfill precedent:** `SearchIndexerService::reindexAll()` walks `allDirectories()` + `allFiles()` on `wgw_files`.
 - **Rights resolution exists:** `DriveShareAuthorizer::resolvePathContext` (owner/group → full; else deepest member grant; else guest session) → `DriveShareAccess::rightsFor()`.
 
@@ -48,7 +48,7 @@ A new **`FileNodeIndexService`** owns all index mutations (`recordCreate`, `reco
 1. **REST:** `DriveService` mutation methods (`createItem`, `handleUpload`, `renameItem`, `deleteItems`), next to the existing search-sync calls.
 2. **WebDAV:** a new **`FileNodeIndexPlugin`** modeled 1:1 on `SearchIndexPlugin` (`afterMethod:{PUT,PATCH,MKCOL,DELETE,MOVE,COPY}`). MOVE knows source + destination paths at the HTTP layer, so the plugin **re-keys the index subtree while keeping every `node_id`** — this is where rename-stability comes from on the DAV path.
 
-Rejected alternative — wrapping the Flysystem adapter: it would catch notes and collab writes we deliberately do **not** index (decision 4), misses `FlysystemFile::patch()` (raw `fopen`, bypasses `put()`), and loses MOVE semantics (adapter sees delete+create on some drivers). The two-call-site approach matches how search indexing already works and reuses its best-effort pattern (`BestEffortSearchIndexSync`): index failures log (`file_node_index_sync_failed`) and never fail the user's write.
+Rejected alternative — wrapping the Flysystem adapter: it would catch collab writes we deliberately do **not** index (decision 4; product Notes are CalDAV VJOURNAL and do not write this tree), misses `FlysystemFile::patch()` (raw `fopen`, bypasses `put()`), and loses MOVE semantics (adapter sees delete+create on some drivers). The two-call-site approach matches how search indexing already works and reuses its best-effort pattern (`BestEffortSearchIndexSync`): index failures log (`file_node_index_sync_failed`) and never fail the user's write.
 
 ## Decision 3 — drift is expected; reconcile, don't pretend
 

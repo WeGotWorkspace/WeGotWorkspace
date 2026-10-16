@@ -8,13 +8,11 @@ export function WorkspaceAppSettingsFooter({
   session,
   onLogout,
   detailLine,
-  onBeforeOpen,
 }: {
   appId: WorkspaceAppId;
   session: WorkspaceSession;
   onLogout?: () => void;
   detailLine?: string;
-  onBeforeOpen?: () => void;
 }) {
   const settingsItem = useWorkspaceAppSettingsEntry(appId);
   return (
@@ -26,10 +24,7 @@ export function WorkspaceAppSettingsFooter({
         settingsItem.visible
           ? {
               label: settingsItem.label,
-              onClick: () => {
-                onBeforeOpen?.();
-                settingsItem.onClick();
-              },
+              onClick: settingsItem.onClick,
             }
           : undefined
       }

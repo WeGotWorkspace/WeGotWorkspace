@@ -42,8 +42,3 @@
 .note-detail-view__pending-sync .loading-spinner {
   color: var(--color-warning);
 }
-
-/* Soft wash lives on shared `.docs-collab-presence-chrome`; Notes only sets accent. */
-.notes-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--workspace-accent, #ffc800);
-}

@@ -429,4 +429,39 @@ final class JmapNotesMethodsTest extends WgwDatabaseTestCase
         $this->assertNotContains($noteId, $noteChanges['created']);
         $this->assertContains($noteId, $noteChanges['destroyed']);
     }
+
+    public function test_note_changes_reports_a_metadata_only_patch_as_updated(): void
+    {
+        $created = $this->jmap([
+            ['Note/set', [
+                'accountId' => 'bob',
+                'create' => ['k0' => [
+                    'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                    'title' => 'Meta',
+                    'body' => 'Body',
+                ]],
+            ], 'c0'],
+        ])->assertOk();
+        $noteId = $created->json('methodResponses.0.1.created.k0.id');
+        $etag = $created->json('methodResponses.0.1.created.k0.etag');
+        $since = $created->json('methodResponses.0.1.newState');
+        $this->assertIsString($noteId);
+        $this->assertIsString($etag);
+        $this->assertIsString($since);
+
+        sleep(1);
+
+        $patched = $this->jmap([
+            ['Note/set', [
+                'accountId' => 'bob',
+                'update' => [$noteId => ['status' => 'CANCELLED', 'etag' => $etag]],
+            ], 'c0'],
+        ])->assertOk();
+        $this->assertSame([], $patched->json('methodResponses.0.1.notUpdated') ?? []);
+
+        $updated = $this->jmap([
+            ['Note/changes', ['accountId' => 'bob', 'sinceState' => $since], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.updated');
+        $this->assertContains($noteId, $updated);
+    }
 }

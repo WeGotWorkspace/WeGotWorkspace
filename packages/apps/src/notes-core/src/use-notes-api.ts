@@ -25,7 +25,10 @@ import {
   reconcileNotesSnapshot,
 } from "@/lib/offline/notes-jmap-inbound";
 import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
-import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  listNoteIdsBlockingSyncToken,
+  readNotesBootstrapFromCache,
+} from "@/lib/offline/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
@@ -176,6 +179,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
+  const [livePollRunning, setLivePollRunning] = useState(false);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
@@ -192,11 +196,13 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
           void patchFromCache();
         });
       },
-      onRemoteNoteDestroyed: (noteId) => {
-        void ingestRemoteNoteDestroyed(username, noteId).then(() => {
+      onRemoteNoteDestroyed: (noteId) =>
+        ingestRemoteNoteDestroyed(username, noteId).then(async (result) => {
           void patchFromCache();
-        });
-      },
+          if (result !== "skipped-pending") return;
+          const blocking = await listNoteIdsBlockingSyncToken(username);
+          if (blocking.has(noteId)) return "skipped-pending" as const;
+        }),
       onRemoteNotebook: (notebook: JmapNotebook) => {
         void ingestRemoteNotebook(username, jmapNotebookToCollection(notebook)).then(() => {
           void patchFromCache();
@@ -216,6 +222,9 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
           void patchFromCache();
         });
       },
+      onSyncError: (error: unknown) => {
+        console.warn("[notes] live inbound poll failed", error);
+      },
     });
 
     let cancelled = false;
@@ -224,21 +233,27 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       .then(() => {
         if (cancelled) return;
         adapter.startPolling(ONLINE_CHANGES_POLL_MS);
+        setLivePollRunning(true);
       })
-      .catch(() => {
-        // Session missing notes capability — REST `/changes` fallback still runs below.
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // No notes JMAP capability, or the session failed. Live updates are off;
+        // the REST `/changes` interval below takes over (#1351).
+        console.warn("[notes] live inbound poll unavailable", error);
+        setLivePollRunning(false);
       });
 
     return () => {
       cancelled = true;
       adapter.stopPolling();
+      setLivePollRunning(false);
     };
   }, [offlineUsername, online, patchFromCache, phase]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
     if (typeof window === "undefined") return;
-    if (wgwLiveApiEnabled()) return;
+    if (livePollRunning) return;
 
     let cancelled = false;
 
@@ -267,7 +282,15 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [applyInboundRefresh, listRefreshing, offlineUsername, online, phase, reconnectSyncing]);
+  }, [
+    applyInboundRefresh,
+    listRefreshing,
+    livePollRunning,
+    offlineUsername,
+    online,
+    phase,
+    reconnectSyncing,
+  ]);
 
   return {
     phase,

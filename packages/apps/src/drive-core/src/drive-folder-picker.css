@@ -31,12 +31,11 @@
  * here with higher specificity and paint icons/toggle with `--workspace-accent`.
  */
 .destination-picker[data-drive-listing-theme="docs"] {
-  --workspace-accent: var(--workspace-accent, #3b82f6);
-  --color-emerald: var(--workspace-accent, #3b82f6);
-  --workspace-accent: var(--workspace-accent, #3b82f6);
+  --workspace-accent: var(--workspace-accent);
+  --color-emerald: var(--workspace-accent);
   --workspace-accent-strong: var(
     --workspace-accent-strong,
-    color-mix(in oklab, var(--workspace-accent, #3b82f6) 70%, #0f172a)
+    color-mix(in oklab, var(--workspace-accent) 70%, var(--workspace-foreground))
   );
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
@@ -51,5 +50,5 @@
     .drive-file-tile__kind-icon,
     .drive-file-tile__star-badge
   ) {
-  color: var(--workspace-accent, #3b82f6);
+  color: var(--workspace-accent);
 }

@@ -6,16 +6,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--file-drop-overlay-scrim, rgb(0 0 0 / 0.1));
+  background-color: var(--file-drop-overlay-scrim, color-mix(in oklab, black 10%, transparent));
 }
 
 .file-drop-overlay__card {
   border-radius: var(--control-radius);
-  background-color: var(--file-drop-overlay-card-bg, rgb(255 255 255 / 0.9));
+  background-color: var(
+    --file-drop-overlay-card-bg,
+    color-mix(in oklab, var(--workspace-surface) 90%, transparent)
+  );
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-  color: var(--file-drop-overlay-card-color, var(--color-emerald));
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
+  color: var(--file-drop-overlay-card-color, var(--workspace-accent));
 }

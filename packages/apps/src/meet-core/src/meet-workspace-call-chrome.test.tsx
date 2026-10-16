@@ -125,7 +125,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
     expect(screen.getByRole("button", { name: meetLabels.devices })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /# random/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^random/i }));
 
     expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
     expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
@@ -133,7 +133,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.getByRole("button", { name: /^Meet$/ })).toBeTruthy();
     expect(leaveCall).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /# design/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^design/i }));
 
     expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
     expect(leaveCall).not.toHaveBeenCalled();
@@ -162,7 +162,7 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
     expect(screen.getByRole("heading", { name: "#random" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /# design/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^design/i }));
 
     expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
     expect(screen.getByRole("button", { name: meetLabels.devices })).toBeTruthy();

@@ -1,8 +1,7 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Hash } from "lucide-react";
 import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
+import { UserPresenceDot } from "@/user-avatar/src/user-avatar";
 import type { ChatAuthorPresenceMap } from "@/chat-ui/src/chat-types";
-import { meetChannelHashName } from "@/meet-core/src/meet-channel-label";
 import { DEFAULT_MEET_CHANNEL_COLOR } from "@/meet-core/src/meet-channel-write";
 import {
   leftoverMeetingStartLabel,
@@ -16,6 +15,12 @@ import type { MeetChannel } from "@/meet-core/src/meet-types";
 
 function channelDotColor(channel: MeetChannel): string {
   return channel.color?.trim() || DEFAULT_MEET_CHANNEL_COLOR;
+}
+
+/** Sidebar label. The hash mark is an icon, so the name stays the lowercased channel text. */
+function sidebarChannelLabel(channel: MeetChannel): string {
+  if (channel.kind === "meeting") return channel.name;
+  return channel.name.toLowerCase();
 }
 
 export function MeetSidebarRowMeta({
@@ -67,13 +72,7 @@ export function MeetDirectMessageRows({
           selected={selectedId === person.channelId}
           onSelect={() => onSelect(person.channelId)}
           leading={
-            <UserAvatar
-              displayName={person.displayName}
-              compact
-              size="xs"
-              presence={authorPresence?.[person.id] ?? "offline"}
-              color={avatarColorForUserId(person.id)}
-            />
+            <UserPresenceDot presence={authorPresence?.[person.id] ?? "offline"} standalone />
           }
           trailing={
             <MeetSidebarRowMeta
@@ -151,13 +150,15 @@ export function MeetSidebarRows({
         return (
           <CollectionSidebarRow
             key={channel.id}
-            name={meetChannelHashName(channel)}
+            name={sidebarChannelLabel(channel)}
             color={channelDotColor(channel)}
             selected={selectedId === channel.id}
             leading={
               channel.kind === "meeting" ? (
                 <CalendarDays className="meet-workspace__sidebar-kind-icon" aria-hidden />
-              ) : undefined
+              ) : (
+                <Hash className="meet-workspace__sidebar-kind-icon" aria-hidden />
+              )
             }
             onSelect={() => onSelect(channel.id)}
             trailing={

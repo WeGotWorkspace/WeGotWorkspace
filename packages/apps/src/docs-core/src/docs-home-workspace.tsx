@@ -6,7 +6,7 @@ import { DOCS_VIEW_MODE_STORAGE_KEY } from "@/hooks/persisted-view-mode";
 import { usePersistedViewMode } from "@/hooks/use-persisted-view-mode";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import { useDocumentTitle } from "@/lib/document-title";
@@ -327,9 +327,7 @@ export function DocsHomeWorkspace({
 
   const selectView = useCallback((next: DocsHomeView) => {
     setView(next);
-    if (isSidebarOverlayViewport()) {
-      setSidebarOpen(false);
-    }
+    dismissSidebarOverlay(() => setSidebarOpen(false));
   }, []);
 
   const { primaryItems, driveItems } = useDocsHomeSidebarModel({

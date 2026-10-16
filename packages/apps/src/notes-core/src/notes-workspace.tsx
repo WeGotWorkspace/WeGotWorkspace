@@ -1,4 +1,4 @@
-import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
@@ -21,12 +21,17 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
+import { IconButton } from "@/button/src/button";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import {
+  dismissSidebarOverlay,
+  sidebarSelectMarker,
+} from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
 import { noteBodyToMarkdown } from "@/lib/models/note-body-markdown";
 import { cn } from "@/lib/utils";
@@ -161,11 +166,6 @@ export function NotesWorkspace({
   syncConflictNoteIds,
   onClearSyncConflicts,
 }: NotesWorkspaceProps) {
-  const closeSidebarOnMobile = (closeSidebar: () => void) => {
-    if (!isSidebarOverlayViewport()) return;
-    closeSidebar();
-  };
-
   const {
     L,
     notes,
@@ -203,6 +203,7 @@ export function NotesWorkspace({
     moveToNotebook,
     moveActiveNoteToNotebook,
     assignTagToNotes,
+    renameTag,
     createNote,
     toggleStar,
     toggleArchive,
@@ -237,6 +238,10 @@ export function NotesWorkspace({
   });
 
   const [focusTitleAfterCreate, setFocusTitleAfterCreate] = useState(false);
+  const [renameTagDialog, setRenameTagDialog] = useState<{ tag: string } | null>(null);
+  const openRenameTagDialog = useCallback((tag: string) => {
+    setRenameTagDialog({ tag });
+  }, []);
   const beginCreateNote = useCallback(() => {
     createNote();
     setFocusTitleAfterCreate(true);
@@ -273,6 +278,7 @@ export function NotesWorkspace({
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
+    onRenameTag: openRenameTagDialog,
   });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -437,7 +443,7 @@ export function NotesWorkspace({
   const noteTitleActive = showSingleNoteDetail;
   const browserTitleContext = noteTitleActive && active ? noteListTitle(active) : viewLabel;
   useDocumentTitle(browserTitleContext, {
-    // Body edits derive the list title; debounce tab updates while typing.
+    // Debounce the tab title while the open note is edited.
     debounceMs: noteTitleActive ? DOCUMENT_TITLE_DEBOUNCE_MS : 0,
     flushKey: activeId ?? view,
   });
@@ -457,12 +463,7 @@ export function NotesWorkspace({
             open={c.sidebarOpen}
             onCloseMobile={c.closeSidebar}
             footer={
-              <WorkspaceAppSettingsFooter
-                appId="notes"
-                session={session}
-                onLogout={onLogout}
-                onBeforeOpen={() => closeSidebarOnMobile(c.closeSidebar)}
-              />
+              <WorkspaceAppSettingsFooter appId="notes" session={session} onLogout={onLogout} />
             }
             primaryButton={
               <NotesNewMenu
@@ -470,7 +471,7 @@ export function NotesWorkspace({
                 disabled={!canCreateNote}
                 onCreateNote={() => {
                   beginCreateNote();
-                  closeSidebarOnMobile(c.closeSidebar);
+                  dismissSidebarOverlay(c.closeSidebar);
                 }}
                 onCreateNotebook={canManageNotebooks ? () => openCreateNotebook() : undefined}
               />
@@ -486,10 +487,9 @@ export function NotesWorkspace({
                   viewOnlyLabel={L.viewOnly}
                   hiddenNotebookIds={hiddenNotebookIds}
                   onToggleVisibility={toggleNotebookVisibility}
-                  onSelect={(notebookId) => {
-                    selectViewClearingTitleFocus(notebookViewKey(notebookId));
-                    closeSidebarOnMobile(c.closeSidebar);
-                  }}
+                  onSelect={(notebookId) =>
+                    selectViewClearingTitleFocus(notebookViewKey(notebookId))
+                  }
                   onEdit={openEditNotebookDialog}
                   sidebarDropZoneProps={sidebarDropZoneProps}
                   moveToNotebook={moveToNotebook}
@@ -505,10 +505,9 @@ export function NotesWorkspace({
                   viewOnlyLabel={L.viewOnly}
                   hiddenNotebookIds={hiddenNotebookIds}
                   onToggleVisibility={toggleNotebookVisibility}
-                  onSelect={(notebookId) => {
-                    selectViewClearingTitleFocus(notebookViewKey(notebookId));
-                    closeSidebarOnMobile(c.closeSidebar);
-                  }}
+                  onSelect={(notebookId) =>
+                    selectViewClearingTitleFocus(notebookViewKey(notebookId))
+                  }
                   onEdit={openEditNotebookDialog}
                   sidebarDropZoneProps={sidebarDropZoneProps}
                   moveToNotebook={moveToNotebook}
@@ -518,10 +517,11 @@ export function NotesWorkspace({
             {showTagsSection ? (
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
-                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag}>
+                  ({ tag, selected, onSelect, onRename, isDropTarget, ...dropHandlers }) => (
+                    <li key={tag} className="notes-sidebar-tags__row" {...dropHandlers}>
                       <button
                         type="button"
+                        {...sidebarSelectMarker}
                         className={cn(
                           "notes-sidebar-tags__item",
                           selected && "notes-sidebar-tags__item--selected",
@@ -529,10 +529,17 @@ export function NotesWorkspace({
                         )}
                         onClick={onSelect}
                         aria-pressed={selected}
-                        {...dropHandlers}
                       >
                         <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                       </button>
+                      <IconButton
+                        label={L.renameTagActionFor(tag)}
+                        icon={<Pencil className="size-3.5" aria-hidden />}
+                        size="xs"
+                        variant="ghost"
+                        className="notes-sidebar-tags__edit"
+                        onClick={onRename}
+                      />
                     </li>
                   ),
                 )}
@@ -743,6 +750,17 @@ export function NotesWorkspace({
         }
         labels={notesNotebookDialogLabelsFrom(L)}
         contentClassName="notes-dialog-surface"
+      />
+
+      <NotesRenameTagDialog
+        open={renameTagDialog !== null}
+        tag={renameTagDialog?.tag ?? ""}
+        existingTags={tags}
+        labels={L}
+        onClose={() => setRenameTagDialog(null)}
+        onRename={(next) => {
+          if (renameTagDialog) renameTag(renameTagDialog.tag, next);
+        }}
       />
 
       {confirmDialog}
