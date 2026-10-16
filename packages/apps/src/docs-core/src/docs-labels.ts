@@ -38,7 +38,11 @@ export const docsLabels = {
   accessLostMessage:
     "You no longer have access to this document. Your local copy is still on this device.",
   keptUnsavedDocumentTitle: "A document was removed on the server",
-  keptUnsavedDocumentMessage: "Your unsaved copy is still here.",
+  keptUnsavedDocumentMessage: (paths: readonly string[]) => {
+    const shown = paths.map((path) => (path.startsWith("/") ? path : `/${path}`));
+    if (shown.length === 1) return `Your unsaved copy of ${shown[0]} is still here.`;
+    return `Your unsaved copies are still here: ${shown.join(", ")}.`;
+  },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
   homeCreateError: "Could not create a new document.",

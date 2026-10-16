@@ -12,20 +12,22 @@ export function useDriveFileNodeInbound(
   username: string | null | undefined,
   refreshKey: number,
 ): void {
-  const { showError } = useAppToast();
+  const { show } = useAppToast();
   useEffect(() => {
     if (!username) return;
     let cancelled = false;
     void syncDriveInboundFromFileNodes(username)
       .then((result) => {
         if (cancelled || result.keptUnsavedPaths.length === 0) return;
-        showError(docsLabels.keptUnsavedDocumentTitle, {
-          description: docsLabels.keptUnsavedDocumentMessage,
+        show(docsLabels.keptUnsavedDocumentTitle, {
+          description: docsLabels.keptUnsavedDocumentMessage(result.keptUnsavedPaths),
         });
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        console.warn("[drive-inbound] FileNode sync failed", error);
+      });
     return () => {
       cancelled = true;
     };
-  }, [refreshKey, showError, username]);
+  }, [refreshKey, show, username]);
 }

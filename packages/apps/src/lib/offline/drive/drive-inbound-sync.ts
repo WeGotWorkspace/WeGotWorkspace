@@ -36,6 +36,9 @@ import {
 /** Meta key for the FileNode/changes `sinceState`. One token per account. */
 export const DRIVE_FILE_NODE_SYNC_TOKEN_KEY = "drive:file-node-sync-state";
 
+/** Safety cap on `hasMoreChanges` follow-ups inside one sync. Same bound as `JmapChatAdapter`. */
+export const DRIVE_INBOUND_MAX_CHANGE_PAGES = 20;
+
 const INITIAL_FILE_NODE_STATE = "0";
 
 export type DriveInboundSyncResult = {
@@ -91,14 +94,22 @@ async function runDriveInbound(
   const since = (await readDriveSyncToken(username)) ?? INITIAL_FILE_NODE_STATE;
   const session = await driveJmapSession();
   try {
-    const changes = await session.fileNodes.fileNodeChanges(session.accountId, since, {
-      signal: options?.signal,
-    });
+    const drained = await drainFileNodeChanges(session, since, options?.signal);
     if (options?.signal?.aborted) {
       return { changed: false, usedFullResync: false, keptUnsavedPaths: [] };
     }
-    const kept = await applyFileNodeChanges(username, session, changes, options?.signal);
-    await writeDriveSyncToken(username, changes.newState);
+    const kept = await applyFileNodeChanges(username, session, drained, options?.signal);
+    if (options?.signal?.aborted) {
+      return {
+        changed: kept.changed,
+        usedFullResync: false,
+        keptUnsavedPaths: kept.keptUnsavedPaths,
+      };
+    }
+    // A blocked move stays unapplied. Leave the token so the next sync retries it.
+    if (!kept.blocked) {
+      await writeDriveSyncToken(username, drained.newState);
+    }
     return {
       changed: kept.changed,
       usedFullResync: false,
@@ -108,6 +119,45 @@ async function runDriveInbound(
     if (!isCannotCalculateChanges(error)) throw error;
     return fullResync(username, session, options?.signal);
   }
+}
+
+/**
+ * Follows `hasMoreChanges` the way `JmapChatAdapter` does. The token is the
+ * last page actually read. Hitting the cap leaves the remainder for the next
+ * sync instead of skipping it.
+ */
+async function drainFileNodeChanges(
+  session: Awaited<ReturnType<typeof driveJmapSession>>,
+  since: string,
+  signal?: AbortSignal,
+): Promise<{ created: string[]; updated: string[]; destroyed: string[]; newState: string }> {
+  const created = new Set<string>();
+  const updated = new Set<string>();
+  const destroyed = new Set<string>();
+  let sinceState = since;
+  let newState = since;
+  for (let page = 0; page < DRIVE_INBOUND_MAX_CHANGE_PAGES; page += 1) {
+    const changes = await session.fileNodes.fileNodeChanges(session.accountId, sinceState, {
+      signal,
+    });
+    for (const id of changes.created) created.add(id);
+    for (const id of changes.updated) updated.add(id);
+    for (const id of changes.destroyed) destroyed.add(id);
+    newState = changes.newState;
+    sinceState = changes.newState;
+    if (!changes.hasMoreChanges) break;
+    if (page === DRIVE_INBOUND_MAX_CHANGE_PAGES - 1) {
+      console.warn("[drive-inbound] FileNode/changes still has more pages after the safety cap", {
+        pages: DRIVE_INBOUND_MAX_CHANGE_PAGES,
+      });
+    }
+  }
+  return {
+    created: [...created],
+    updated: [...updated],
+    destroyed: [...destroyed],
+    newState,
+  };
 }
 
 async function fullResync(
@@ -134,10 +184,15 @@ async function applyFileNodeChanges(
   session: Awaited<ReturnType<typeof driveJmapSession>>,
   changes: { created: string[]; updated: string[]; destroyed: string[] },
   signal?: AbortSignal,
-): Promise<{ changed: boolean; keptUnsavedPaths: string[] }> {
-  const upsertIds = [...new Set([...changes.created, ...changes.updated])];
+): Promise<{ changed: boolean; keptUnsavedPaths: string[]; blocked: boolean }> {
+  const destroyed = new Set(changes.destroyed);
+  const upsertIds = [...new Set([...changes.created, ...changes.updated])].filter(
+    (id) => !destroyed.has(id),
+  );
   const upserted = new Set<string>();
   let changed = false;
+  let blocked = false;
+  const keptUnsavedPaths: string[] = [];
   if (upsertIds.length > 0) {
     const got = await session.fileNodes.getFileNodes(session.accountId, upsertIds, { signal });
     const ordered = parentsBeforeChildren(got.list);
@@ -145,10 +200,15 @@ async function applyFileNodeChanges(
     for (const node of ordered) {
       const path = await resolveNodePath(username, node, ordered, cachePaths, session, signal);
       if (!path) {
-        throw new Error(`FileNode ${node.id} has no resolvable path`);
+        console.warn("[drive-inbound] skipped FileNode with no resolvable path", { id: node.id });
+        continue;
       }
       const placement = await moveCachedNodeToPath(username, node, path, cachePaths);
-      if (placement === "blocked") continue;
+      if (placement === "blocked") {
+        keptUnsavedPaths.push(normalizePath(path));
+        blocked = true;
+        continue;
+      }
       await upsertDriveEntry(username, fileNodeToDirectoryEntry(path, node));
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
       cachePaths.set(node.id, path);
@@ -157,7 +217,6 @@ async function applyFileNodeChanges(
     }
   }
 
-  const keptUnsavedPaths: string[] = [];
   for (const id of changes.destroyed) {
     if (upserted.has(id)) continue;
     const paths = await pathsForNodeId(username, id);
@@ -172,7 +231,7 @@ async function applyFileNodeChanges(
       changed = true;
     }
   }
-  return { changed, keptUnsavedPaths };
+  return { changed, keptUnsavedPaths: [...new Set(keptUnsavedPaths)], blocked };
 }
 
 async function moveCachedNodeToPath(
@@ -250,6 +309,10 @@ async function resolveNodePath(
     }
     let path: string;
     if (!current.parentId) {
+      // Account roots only: home is `/users/{username}`, every other parentless
+      // node is `/groups/{name}` (same rule as `rememberTopLevel`). A share
+      // rooted under someone else's tree has a parent FileNode/get will not
+      // return, so this walk yields null and the caller skips the node.
       path = current.name === username ? `/users/${username}` : `/groups/${current.name}`;
     } else {
       const parent = await resolve(current.parentId, [...stack, id]);
@@ -281,7 +344,7 @@ function parentsBeforeChildren(nodes: readonly JmapFileNode[]): JmapFileNode[] {
 }
 
 async function cachedPathsByNodeId(username: string): Promise<Map<string, string>> {
-  const rows = await driveEntriesTable(accountDb(username)).toArray();
+  const rows = await driveEntriesTable(accountDb(username)).where("nodeId").above("").toArray();
   const paths = new Map<string, string>();
   for (const row of rows) {
     const nodeId = row.nodeId?.trim();
@@ -309,8 +372,22 @@ async function driveRowAt(
 }
 
 async function descendantIds(username: string, oldId: string): Promise<string[]> {
-  const rows = await driveEntriesTable(accountDb(username)).toArray();
-  return rows.filter((row) => row.id.startsWith(`${oldId}/`)).map((row) => row.id);
+  const table = driveEntriesTable(accountDb(username));
+  const ids: string[] = [];
+  const pending = [oldId];
+  const seen = new Set<string>([oldId]);
+  while (pending.length > 0) {
+    const parent = pending.shift();
+    if (!parent) continue;
+    const children = await table.where("parentPath").equals(parent).toArray();
+    for (const child of children) {
+      if (seen.has(child.id)) continue;
+      seen.add(child.id);
+      ids.push(child.id);
+      if (child.type === "dir") pending.push(child.id);
+    }
+  }
+  return ids;
 }
 
 function accountDb(username: string) {
