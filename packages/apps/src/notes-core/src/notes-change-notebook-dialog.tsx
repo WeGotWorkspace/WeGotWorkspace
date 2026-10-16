@@ -45,6 +45,8 @@ export type NotesChangeNotebookDialogProps = {
   confirmLabel?: string | ((destinationName: string) => string);
   /** When false, confirm is enabled even if the draft equals `value`. Default true. */
   requireChange?: boolean;
+  /** Keeps confirm from firing again while the caller is still finishing. */
+  confirmDisabled?: boolean;
   /** Third, destructive footer action — e.g. "Delete the notes too". */
   destructiveAction?: { label: string; onAction: () => void };
 };
@@ -63,6 +65,7 @@ function NotesChangeNotebookDialogForm({
   onCreateNotebook,
   confirmLabel,
   requireChange = true,
+  confirmDisabled = false,
   destructiveAction,
 }: Omit<
   NotesChangeNotebookDialogProps,
@@ -106,9 +109,9 @@ function NotesChangeNotebookDialogForm({
           type="button"
           variant="primary"
           label={confirmText}
-          disabled={!canConfirm}
+          disabled={!canConfirm || confirmDisabled}
           onClick={() => {
-            if (!canConfirm) return;
+            if (!canConfirm || confirmDisabled) return;
             onNotebookChange(draft);
             onClose();
           }}
@@ -132,6 +135,7 @@ export function NotesChangeNotebookDialog({
   title,
   confirmLabel,
   requireChange,
+  confirmDisabled,
   destructiveAction,
 }: NotesChangeNotebookDialogProps): ReactElement {
   return (
@@ -155,6 +159,7 @@ export function NotesChangeNotebookDialog({
             onCreateNotebook={onCreateNotebook}
             confirmLabel={confirmLabel}
             requireChange={requireChange}
+            confirmDisabled={confirmDisabled}
             destructiveAction={destructiveAction}
           />
         ) : null}

@@ -7,9 +7,8 @@ namespace App\Services\Notes;
 use App\Models\Calendar;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
-use Illuminate\Support\Facades\DB;
 
-/** Move every VJOURNAL from one notebook collection to another inside one transaction. */
+/** Move every VJOURNAL onto the destination. The caller already holds the transaction. */
 final class NotebookNotesMover
 {
     public function __construct(private readonly NoteMoveHelper $moveHelper) {}
@@ -22,30 +21,24 @@ final class NotebookNotesMover
             return 0;
         }
 
-        return DB::connection('wgw')->transaction(function () use ($sourceCalendarId, $destinationCalendarId): int {
-            $objects = CalendarObject::query()
-                ->where('calendarid', $sourceCalendarId)
-                ->where('componenttype', 'VJOURNAL')
-                ->lockForUpdate()
-                ->get();
-            foreach ($objects as $object) {
-                $this->moveHelper->assertUidAvailable((string) $object->uid, $sourceCalendarId);
-            }
-            $sourceToken = (int) Calendar::query()->whereKey($sourceCalendarId)->value('synctoken');
-            $destinationToken = (int) Calendar::query()->whereKey($destinationCalendarId)->value('synctoken');
-            foreach ($objects as $object) {
-                $this->moveHelper->moveWithoutTokenBump(
-                    $object,
-                    $destinationCalendarId,
-                    $sourceToken,
-                    $destinationToken,
-                );
-            }
-            if ($objects->isNotEmpty()) {
-                $this->moveHelper->bumpSyncTokens($sourceCalendarId, $destinationCalendarId);
-            }
+        $objects = CalendarObject::query()
+            ->where('calendarid', $sourceCalendarId)
+            ->where('componenttype', 'VJOURNAL')
+            ->lockForUpdate()
+            ->get();
+        foreach ($objects as $object) {
+            $this->moveHelper->assertUidAvailable((string) $object->uid, $sourceCalendarId);
+        }
+        if ($objects->isEmpty()) {
+            return 0;
+        }
 
-            return $objects->count();
-        });
+        $destinationToken = (int) Calendar::query()->whereKey($destinationCalendarId)->value('synctoken');
+        foreach ($objects as $object) {
+            $this->moveHelper->moveWithoutTokenBump($object, $destinationCalendarId, $destinationToken);
+        }
+        $this->moveHelper->bumpSyncToken($destinationCalendarId);
+
+        return $objects->count();
     }
 }

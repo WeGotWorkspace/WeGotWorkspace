@@ -159,16 +159,15 @@ describe("NotesChangeNotebookDialog", () => {
   it("uses title and confirmLabel when those props are set", () => {
     renderDialog({
       title: defaultNotesLabels.deleteNotebookHasNotesTitle,
-      confirmLabel: defaultNotesLabels.deleteNotebookMoveConfirm,
+      confirmLabel: defaultNotesLabels.deleteNotebookMoveToConfirm,
     });
 
     expect(
       screen.getByRole("dialog", { name: defaultNotesLabels.deleteNotebookHasNotesTitle }),
     ).toBeTruthy();
-    const confirm = screen.getByRole("button", {
-      name: defaultNotesLabels.deleteNotebookMoveConfirm,
-    });
-    expect(confirm.textContent).toBe(defaultNotesLabels.deleteNotebookMoveConfirm);
+    const expected = defaultNotesLabels.deleteNotebookMoveToConfirm("Drafts");
+    const confirm = screen.getByRole("button", { name: expected });
+    expect(confirm.textContent).toBe(expected);
   });
 
   it("enables confirm on an unchanged draft when requireChange is false", () => {

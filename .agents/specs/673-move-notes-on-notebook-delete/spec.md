@@ -31,7 +31,7 @@ Deleting a notebook that still has notes offers the owner a choice: move every n
 - "Has notes" is the existing 409 `notebookHasContents`, including archived notes. The client does not count notes.
 - Destinations are writable notebooks other than the source, including group notebooks. Read-only sharee notebooks are not offered.
 - Sharee removal stays a share dismissal and does not move notes.
-- Bulk move reuses `NoteMoveHelper` (object id, uid, star foreign key, dual changelog) and checks uid uniqueness before moving any row.
+- Bulk move reuses `NoteMoveHelper` (object id, uid, star foreign key). It writes only the destination ADD and bumps only the destination synctoken, because the source notebook is deleted in the same transaction. It checks uid uniqueness before moving any row.
 - `DeleteNotebookAction` becomes `{ kind: "move"; target: string } | { kind: "purge" } | { kind: "purge-if-empty" }`. `target` is a notebook id.
 - One chunk: `notebook-delete-move`.
 
@@ -41,4 +41,4 @@ Deleting a notebook that still has notes offers the owner a choice: move every n
 - Move to the source, to an unknown id, or to a read-only notebook moves nothing.
 - General and provisioned group notebooks still 403 before any move.
 - A sharee delete with `moveNotesTo` dismisses the share and leaves the owner's notes in place.
-- A uid already present in the destination aborts the whole move.
+- A uid already present outside the source notebook aborts the whole move.

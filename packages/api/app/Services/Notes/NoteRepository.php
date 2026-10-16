@@ -125,7 +125,7 @@ final class NoteRepository
         // Decision 7: room key = UID. Always mint so clients cannot aim at
         // another principal's collab room. Client-supplied `uid` is ignored.
         $uid = (string) Str::uuid();
-        $this->assertUidAvailable($uid);
+        $this->moveHelper->assertUidAvailable($uid);
 
         $note = [
             'id' => $uid,
@@ -218,7 +218,7 @@ final class NoteRepository
                 }
                 $this->collectionAccess->assertCollectionWritable($destination, 'This notebook is read-only.');
                 if ((int) $destination->calendarid !== (int) $object->calendarid) {
-                    $this->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
+                    $this->moveHelper->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
                     $this->moveHelper->move($object, (int) $destination->calendarid);
                     $object->refresh();
                     $instance = $destination;
@@ -591,11 +591,6 @@ final class NoteRepository
         if (NoteTag::mergeForUpdate($submitted, $existing) !== $normalized) {
             throw new ApiHttpException(400, 'A tag may only use letters a-z and hyphen.', 'bad_request');
         }
-    }
-
-    private function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
-    {
-        $this->moveHelper->assertUidAvailable($uid, $exceptCalendarId);
     }
 
     private function findObjectByUid(int $calendarId, string $uid): ?CalendarObject

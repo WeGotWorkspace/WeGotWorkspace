@@ -27,6 +27,26 @@ export function isNotesNotFound(error: unknown): boolean {
   );
 }
 
+export function isNotesNotebookHasContents(error: unknown): boolean {
+  return (
+    error instanceof NotesVjournalRequestError &&
+    error.status === 409 &&
+    error.code === "notebookHasContents"
+  );
+}
+
+export function isNotesAlreadyExists(error: unknown): boolean {
+  return (
+    error instanceof NotesVjournalRequestError &&
+    error.status === 409 &&
+    error.code === "alreadyExists"
+  );
+}
+
+export function isNotesForbidden(error: unknown): boolean {
+  return error instanceof NotesVjournalRequestError && error.status === 403;
+}
+
 export type NotesVjournalNotebook = NotesNotebookCollection & {
   id: string;
   name: string;

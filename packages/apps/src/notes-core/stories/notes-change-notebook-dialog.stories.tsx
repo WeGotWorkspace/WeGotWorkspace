@@ -106,7 +106,7 @@ export const DeleteNotebookChoice: Story = {
       labels={defaultNotesLabels}
       title={defaultNotesLabels.deleteNotebookHasNotesTitle}
       description={defaultNotesLabels.deleteNotebookHasNotesDescription}
-      confirmLabel={defaultNotesLabels.deleteNotebookMoveConfirm}
+      confirmLabel={defaultNotesLabels.deleteNotebookMoveToConfirm}
       requireChange={false}
       destructiveAction={{
         label: defaultNotesLabels.deleteNotebookDeleteNotesToo,

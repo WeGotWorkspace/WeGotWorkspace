@@ -55,13 +55,13 @@ final class NoteMoveHelper
     }
 
     /**
-     * Write the dual changelog rows for a bulk move without advancing synctokens.
-     * The caller bumps each calendar once after every note has moved.
+     * Write the destination ADD for a bulk move without advancing the synctoken.
+     * The source notebook is deleted in the same transaction, so no source row is written.
+     * The caller bumps the destination once after every note has moved.
      */
     public function moveWithoutTokenBump(
         CalendarObject $object,
         int $destinationCalendarId,
-        int $sourceSyncToken,
         int $destinationSyncToken,
     ): void {
         $sourceCalendarId = (int) $object->calendarid;
@@ -69,19 +69,15 @@ final class NoteMoveHelper
             return;
         }
 
-        $uri = (string) $object->uri;
-        $this->writeChange($sourceCalendarId, $uri, self::OP_DELETE, $sourceSyncToken);
-        $this->writeChange($destinationCalendarId, $uri, self::OP_ADD, $destinationSyncToken);
+        $this->writeChange($destinationCalendarId, (string) $object->uri, self::OP_ADD, $destinationSyncToken);
         $object->calendarid = $destinationCalendarId;
         $object->save();
     }
 
-    public function bumpSyncTokens(int ...$calendarIds): void
+    public function bumpSyncToken(int $calendarId): void
     {
-        foreach (array_unique($calendarIds) as $calendarId) {
-            $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
-            Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
-        }
+        $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
+        Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
     }
 
     private function recordChange(int $calendarId, string $uri, int $operation): void

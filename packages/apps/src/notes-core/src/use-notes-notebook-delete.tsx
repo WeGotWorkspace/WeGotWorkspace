@@ -1,7 +1,12 @@
-import { useCallback, useMemo, useState, type ReactElement } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactElement } from "react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
+import {
+  isNotesAlreadyExists,
+  isNotesForbidden,
+  isNotesNotebookHasContents,
+} from "@/lib/api/wgw/notes-vjournal";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
@@ -11,18 +16,6 @@ import { canDeleteNotebook } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import type { NotesShellState } from "@/notes-core/src/use-notes-shell";
 import { isViewOnlyNotebook, notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
-
-function isNotebookHasContents(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const record = error as { status?: unknown; code?: unknown };
-  return record.status === 409 && record.code === "notebookHasContents";
-}
-
-function isUidCollision(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const record = error as { status?: unknown; code?: unknown };
-  return record.status === 409 && record.code === "alreadyExists";
-}
 
 async function notesStoredInNotebook(
   notebook: { id: string; name: string },
@@ -82,6 +75,8 @@ export function useNotesNotebookDelete({
   } = shell;
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [createdNotebook, setCreatedNotebook] = useState<NotesNotebookCollection | null>(null);
+  const [moveBusy, setMoveBusy] = useState(false);
+  const moveInFlight = useRef(false);
   const { confirmDialog, requestConfirm } = useConfirmDialog({
     contentClassName: "notes-dialog-surface",
   });
@@ -112,22 +107,18 @@ export function useNotesNotebookDelete({
       const current = findNotebook(notebookCollections, notebookId);
       if (!current || !canDeleteNotebook(current)) return;
       try {
-        if (!readBrowserOnline()) {
-          if ((await notesStoredInNotebook(current, notes)) > 0) {
-            setPendingId(current.id);
-            return;
-          }
-          await operations.deleteNotebook(current.id, { kind: "purge" });
-        } else {
-          await operations.deleteNotebook(current.id, { kind: "purge-if-empty" });
+        if (!readBrowserOnline() && (await notesStoredInNotebook(current, notes)) > 0) {
+          setPendingId(current.id);
+          return;
         }
+        await operations.deleteNotebook(current.id, { kind: "purge-if-empty" });
         finishRemoved(
           current,
           (prev) => prev.filter((note) => !noteInNotebook(note, current)),
           L.toastNotebookDeleted(current.name),
         );
       } catch (error) {
-        if (isNotebookHasContents(error)) {
+        if (isNotesNotebookHasContents(error)) {
           setPendingId(current.id);
           return;
         }
@@ -139,9 +130,11 @@ export function useNotesNotebookDelete({
 
   const moveNotesAndDelete = useCallback(
     async (destinationId: string) => {
-      if (!pending || !operations?.deleteNotebook) return;
+      if (moveInFlight.current || !pending || !operations?.deleteNotebook) return;
       const dest = findNotebook(notebookCollections, destinationId);
       if (!dest) return;
+      moveInFlight.current = true;
+      setMoveBusy(true);
       try {
         await operations.deleteNotebook(pending.id, { kind: "move", target: dest.id });
         finishRemoved(
@@ -153,7 +146,12 @@ export function useNotesNotebookDelete({
           L.toastNotebookDeletedNotesMoved(pending.name, dest.name),
         );
       } catch (error) {
-        showMutationError(isUidCollision(error) ? L.deleteNotebookUidCollision : undefined);
+        if (isNotesAlreadyExists(error)) showMutationError(L.deleteNotebookUidCollision);
+        else if (isNotesForbidden(error)) showMutationError(L.deleteNotebookDestinationReadOnly);
+        else showMutationError();
+      } finally {
+        moveInFlight.current = false;
+        setMoveBusy(false);
       }
     },
     [L, finishRemoved, notebookCollections, operations, pending, showMutationError],
@@ -228,12 +226,14 @@ export function useNotesNotebookDelete({
         title={L.deleteNotebookHasNotesTitle}
         description={L.deleteNotebookHasNotesDescription}
         confirmLabel={(destination) => L.deleteNotebookMoveToConfirm(destination)}
+        confirmDisabled={moveBusy}
         requireChange={false}
         destructiveAction={{
           label: L.deleteNotebookDeleteNotesToo,
           onAction: requestDeleteNotesToo,
         }}
         onClose={() => {
+          if (moveInFlight.current) return;
           setPendingId(null);
           setCreatedNotebook(null);
         }}
