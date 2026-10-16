@@ -199,6 +199,16 @@ function DocsCollabWorkspaceInner({
   docApiPath?: string;
 }) {
   const labels = docsLabels;
+  const reportDocumentGoneRef = useRef<() => void>(() => undefined);
+  const sessionUrls = useMemo(() => {
+    if (!urls) return undefined;
+    return {
+      ...urls,
+      onDocumentGone: () => {
+        reportDocumentGoneRef.current();
+      },
+    };
+  }, [urls]);
   const formatBarMode = resolveDocsCollabFormatBarMode(permissions);
   const session = useMemo(
     () => ({
@@ -228,7 +238,7 @@ function DocsCollabWorkspaceInner({
   } = useDocsCollab({
     userName,
     autoJoin: true,
-    urls,
+    urls: sessionUrls,
     wire,
   });
   const showFailedSync = useDocsCollabFailedSync(urls?.room);
@@ -546,6 +556,16 @@ function DocsCollabWorkspaceInner({
     saveNow,
     onServerApplied: handleServerDocApplied,
   });
+  reportDocumentGoneRef.current = conflict.reportDocumentGone;
+  const dialogLabels =
+    conflict.mode === "gone"
+      ? {
+          conflictTitle: labels.documentGoneTitle,
+          conflictDescription: () => labels.documentGoneDescription,
+          conflictKeepMine: labels.documentGoneKeep,
+          conflictUseServer: labels.documentGoneClose,
+        }
+      : labels;
 
   useEffect(() => {
     if (!sourceLockedByCollab || !viewSource) return;
@@ -726,7 +746,7 @@ function DocsCollabWorkspaceInner({
           open={conflict.open}
           documentTitle={resolvedDocumentTitle}
           busy={conflict.busy}
-          labels={labels}
+          labels={dialogLabels}
           onKeepLocal={conflict.keepLocal}
           onUseServer={conflict.useServer}
           onOpenChange={conflict.setOpen}

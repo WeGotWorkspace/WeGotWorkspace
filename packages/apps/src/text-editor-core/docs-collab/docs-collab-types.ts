@@ -61,6 +61,10 @@ export type DocsCollabUrls = {
   roomNotPersistent?: boolean;
   onPersistForbidden?: () => void;
   /**
+   * The server answered 404. Retrying the save stops. The local copy stays.
+   */
+  onDocumentGone?: () => void;
+  /**
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */

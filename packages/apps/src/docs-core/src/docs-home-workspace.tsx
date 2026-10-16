@@ -47,6 +47,7 @@ import {
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
 import { useOfflineBodySyncProgress } from "@/lib/offline/use-offline-body-sync-progress";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import "@/docs-core/src/docs-workspace.css";
@@ -211,14 +212,19 @@ export function DocsHomeWorkspace({
     offlineUsername,
   );
 
+  const [inboundRefreshKey, setInboundRefreshKey] = useState(0);
   const syncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
       if (!offlineUsername) return;
       await getDocsSyncRunner(offlineUsername).flush();
     },
-    afterFlush: refresh,
+    afterFlush: async () => {
+      await refresh();
+      setInboundRefreshKey((key) => key + 1);
+    },
   });
+  useDriveFileNodeInbound(offlineUsername, inboundRefreshKey);
 
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {

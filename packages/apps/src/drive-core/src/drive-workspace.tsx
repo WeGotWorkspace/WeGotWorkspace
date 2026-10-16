@@ -1,5 +1,5 @@
 import { TooltipProvider } from "@/ui/tooltip";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PanelRight } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -37,6 +37,7 @@ import {
 } from "@/drive-core/src/use-drive-offline-availability";
 import { useDriveOfflineFileActions } from "@/drive-core/src/use-drive-offline-file-actions";
 import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -140,14 +141,19 @@ export function DriveWorkspace({
     [canOpenOffline, controller, showError],
   );
 
+  const [inboundRefreshKey, setInboundRefreshKey] = useState(0);
   const syncing = useOfflineReconnectFlush({
     enabled: offlineEnabled,
     flush: async () => {
       if (!offlineUsername) return;
       await getDriveSyncRunner(offlineUsername).flush();
     },
-    afterFlush: refresh,
+    afterFlush: async () => {
+      await refresh();
+      setInboundRefreshKey((key) => key + 1);
+    },
   });
+  useDriveFileNodeInbound(offlineEnabled ? offlineUsername : null, inboundRefreshKey);
 
   useOfflineSyncToast(syncing, "Changes synced");
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({

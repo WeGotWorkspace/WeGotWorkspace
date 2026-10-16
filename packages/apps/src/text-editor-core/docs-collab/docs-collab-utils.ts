@@ -66,6 +66,11 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   return /precondition failed/i.test(message);
 }
 
+/** 404 — the document is gone. Stop retrying and keep the local copy. */
+export function isCollabDocumentGoneError(error: unknown): boolean {
+  return collabErrorStatus(error) === 404;
+}
+
 /** 409 / 412 / 428 — the stored document moved on; reload, merge, and save again. */
 export function isServerDivergenceError(error: unknown): boolean {
   const status = collabErrorStatus(error);
