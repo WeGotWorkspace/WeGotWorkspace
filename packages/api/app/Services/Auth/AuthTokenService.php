@@ -80,19 +80,18 @@ final class AuthTokenService
             throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
         }
 
-        $principal = $this->refreshTokens->consume($refreshToken);
-        if ($principal === null) {
+        $rotated = $this->refreshTokens->consume(
+            $refreshToken,
+            fn (string $username, string $familyId): string => $this->issueRefreshToken($username, $familyId),
+        );
+        if ($rotated === null) {
             throw new ApiHttpException(401, 'Invalid refresh token.', 'unauthorized');
         }
 
-        $user = User::query()->where('username', $principal['username'])->first();
-        if ($user === null || ! $user->isEnabled()) {
-            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
-        }
+        $username = $rotated['username'];
+        $this->requireEnabled($username);
 
-        $role = $this->adminRoles->isAdmin($principal['username']) ? 'admin' : 'user';
-
-        return $this->issueTokenPair($principal['username'], $role);
+        return $this->tokenResponse($username, $this->roleFor($username), $rotated['refresh_token']);
     }
 
     /**
@@ -132,9 +131,30 @@ final class AuthTokenService
             throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
         }
 
-        $role = $this->adminRoles->isAdmin($username) ? 'admin' : 'user';
+        return $this->issueTokenPair($username, $this->roleFor($username));
+    }
 
-        return $this->issueTokenPair($username, $role);
+    private function issueRefreshToken(string $username, string $familyId): string
+    {
+        $this->requireEnabled($username);
+
+        return $this->refreshTokens->issue($username, $this->roleFor($username), $familyId);
+    }
+
+    private function requireEnabled(string $username): void
+    {
+        $user = User::query()->where('username', $username)->first();
+        if ($user === null || ! $user->isEnabled()) {
+            throw new ApiHttpException(401, 'Invalid credentials.', 'unauthorized');
+        }
+    }
+
+    /**
+     * @return 'admin'|'user'
+     */
+    private function roleFor(string $username): string
+    {
+        return $this->adminRoles->isAdmin($username) ? 'admin' : 'user';
     }
 
     /**
@@ -167,6 +187,23 @@ final class AuthTokenService
      */
     private function issueTokenPair(string $username, string $role): array
     {
+        return $this->tokenResponse($username, $role, $this->refreshTokens->issue($username, $role));
+    }
+
+    /**
+     * @param  'guest'|'user'|'admin'  $role
+     * @return array{
+     *   access_token: string,
+     *   refresh_token: string,
+     *   token_type: string,
+     *   expires_in: int,
+     *   refresh_expires_in: int,
+     *   role: 'guest'|'user'|'admin',
+     *   username: string
+     * }
+     */
+    private function tokenResponse(string $username, string $role, string $refreshToken): array
+    {
         $ttl = $this->jwtConfig->accessTtl();
         $uid = 0;
         if ($role !== 'guest') {
@@ -179,11 +216,10 @@ final class AuthTokenService
             'exp' => time() + $ttl,
             'uid' => $uid,
         ]);
-        $refresh = $this->refreshTokens->issue($username, $role);
 
         return [
             'access_token' => $access,
-            'refresh_token' => $refresh,
+            'refresh_token' => $refreshToken,
             'token_type' => 'Bearer',
             'expires_in' => $ttl,
             'refresh_expires_in' => $this->refreshTokens->refreshTtl(),

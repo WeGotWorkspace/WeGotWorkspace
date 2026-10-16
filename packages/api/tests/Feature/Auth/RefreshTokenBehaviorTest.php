@@ -75,7 +75,7 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $this->assertNotNull($presented->rotated_at);
         $this->assertGreaterThanOrEqual(time() - 5, (int) $presented->rotated_at);
         $this->assertSame(0, (int) ApiRefreshToken::query()->where('token_hash', $successorHash)->value('revoked'));
-        $this->assertSame(2, ApiRefreshToken::query()->where('username', 'alice')->count());
+        $this->assertSame(2, ApiRefreshToken::query()->where('username', 'alice')->where('revoked', 0)->count());
 
         $this->withBearer((string) $rotated->json('access_token'))->getJson('/api/v1/me')->assertOk();
         $this->withBearer((string) $replay->json('access_token'))->getJson('/api/v1/me')->assertOk();
@@ -83,6 +83,25 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
         $continued = $this->refresh($successor);
         $continued->assertOk();
         $this->assertNotSame($successor, $this->refreshCookieValue($continued));
+        $this->refresh($other['refresh_token'])->assertOk();
+    }
+
+    public function test_reuse_after_the_successor_rotated_revokes_only_that_family(): void
+    {
+        $issued = $this->issueTokenPair();
+        $other = $this->issueTokenPair();
+        $rotated = $this->refresh($issued['refresh_token']);
+        $rotated->assertOk();
+        $successor = $this->refreshCookieValue($rotated);
+        $grandchild = $this->refreshCookieValue($this->refresh($successor)->assertOk());
+
+        $this->refresh($issued['refresh_token'])
+            ->assertUnauthorized()
+            ->assertJson([
+                'error' => 'Invalid refresh token.',
+                'code' => 'unauthorized',
+            ]);
+        $this->refresh($grandchild)->assertUnauthorized();
         $this->refresh($other['refresh_token'])->assertOk();
     }
 
@@ -126,6 +145,7 @@ final class RefreshTokenBehaviorTest extends WgwDatabaseTestCase
             $familyId,
             ApiRefreshToken::query()->where('token_hash', $successorHash)->value('family_id'),
         );
+        $this->assertNotNull(ApiRefreshToken::query()->where('token_hash', $presentedHash)->value('successor_token'));
 
         $this->ageRotation($issued['refresh_token']);
 

@@ -102,6 +102,20 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertFalse(Schema::connection('wgw')->hasColumn('collab_peers', 'access'));
     }
 
+    public function test_refresh_token_grace_down_drops_added_columns(): void
+    {
+        app(WgwSchemaMigrator::class)->migrate();
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+
+        $migration = require database_path('migrations/wgw/2026_10_16_000640_wgw_refresh_token_rotation_grace.php');
+        $migration->down();
+
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
+    }
+
     public function test_migrate_is_idempotent_when_already_at_current_version(): void
     {
         $migrator = app(WgwSchemaMigrator::class);
@@ -219,6 +233,10 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('chat_channel_meta', 'default_for_group'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'ui_session_epoch'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'family_id'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'rotated_at'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
