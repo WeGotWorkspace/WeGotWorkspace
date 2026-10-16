@@ -187,11 +187,16 @@ jobs:
           docker pull "$IMAGE"
           cp dist/releases/docker-compose.yml "$SMOKE_DIR/docker-compose.yml"
           cp dist/releases/env.example "$SMOKE_DIR/.env"
+          cp dist/releases/setup.sh "$SMOKE_DIR/setup.sh"
           sed -i "s|^WGW_IMAGE=.*|WGW_IMAGE=${IMAGE}|" "$SMOKE_DIR/.env"
-          sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=sqlite/' "$SMOKE_DIR/.env"
-          sed -i 's/^WGW_WAIT_FOR_DB=.*/WGW_WAIT_FOR_DB=0/' "$SMOKE_DIR/.env"
-          sed -i 's/^WGW_DB_HOST=.*/WGW_DB_HOST=/' "$SMOKE_DIR/.env"
-          sed -i 's|^WGW_DB_DATABASE=.*|WGW_DB_DATABASE=/var/wgw/content/db.sqlite|' "$SMOKE_DIR/.env"
+          # Same rewrite as setup.sh --sqlite. The script sets WGW_SQLITE=0
+          # while it is sourced, so the flag is set after that.
+          (
+            WGW_SETUP_LIB=1
+            . "$SMOKE_DIR/setup.sh"
+            WGW_SQLITE=1
+            apply_sqlite_profile "$SMOKE_DIR/.env"
+          )
           sed -i 's/^WGW_HTTP_PORT=.*/WGW_HTTP_PORT=18080/' "$SMOKE_DIR/.env"
           cd "$SMOKE_DIR"
           compose() { docker compose -f docker-compose.yml --env-file .env "$@"; }

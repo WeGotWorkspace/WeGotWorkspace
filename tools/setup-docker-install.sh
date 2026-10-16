@@ -325,6 +325,10 @@ apply_sqlite_profile() {
     sed_inplace 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=sqlite/' "$env_path"
     sed_inplace 's/^WGW_WAIT_FOR_DB=.*/WGW_WAIT_FOR_DB=0/' "$env_path"
     sed_inplace 's/^WGW_DB_HOST=.*/WGW_DB_HOST=/' "$env_path"
+    # .env.example always sets WGW_DB_DATABASE, so the compose fallback never
+    # runs. Containers mount the content volume at /var/wgw/content. MySQL
+    # keeps the database name wgw.
+    sed_inplace 's|^WGW_DB_DATABASE=.*|WGW_DB_DATABASE=/var/wgw/content/db.sqlite|' "$env_path"
   fi
 }
 
@@ -728,4 +732,8 @@ parse_args() {
   esac
 }
 
-parse_args "$@"
+# Release smoke and tests source this file (WGW_SETUP_LIB=1) and call
+# apply_sqlite_profile. A normal install parses CLI args.
+if [ "${WGW_SETUP_LIB:-0}" != 1 ]; then
+  parse_args "$@"
+fi
