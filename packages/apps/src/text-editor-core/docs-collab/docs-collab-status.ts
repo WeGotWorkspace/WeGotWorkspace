@@ -3,6 +3,9 @@ export const TRANSIENT_DOC_STATUS_DISMISS_MS = 4000;
 export const DOC_STATUS_LOADED_SHARED_DOCUMENT = "Loaded shared document";
 export const DOC_STATUS_RESTORED_WORKING_VERSION = "Restored working version";
 export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";
+export const DOC_STATUS_DOCUMENT_GONE =
+  "This document no longer exists. Your local copy is still here.";
+export const DOC_STATUS_ACCESS_LOST = "You no longer have access to save this document.";
 /** The snapshot state is unknown, so the document is deliberately left unseeded. */
 export const DOC_STATUS_SNAPSHOT_UNAVAILABLE = "Could not load the shared copy. Retrying…";
 

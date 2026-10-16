@@ -120,8 +120,16 @@ export function useDocsCollabReconnect({
     const persistence = refs.persistenceRef.current;
     if (!ydoc || !persistence || !joined) return;
     refs.reconnectInFlightRef.current = true;
+    // A 404 stays terminal. A 403 lifts here so a restored ACL can save.
+    if (refs.saveTerminalKindRef.current === "forbidden") {
+      refs.saveTerminalKindRef.current = null;
+      refs.saveRetryMsRef.current = 0;
+      refs.nextSaveAttemptAtRef.current = 0;
+    }
 
-    setDocStatus("Reconnecting…");
+    if (refs.nextSaveAttemptAtRef.current !== Number.POSITIVE_INFINITY) {
+      setDocStatus("Reconnecting…");
+    }
     const allowServerRequests = roomServerAllowed(room);
 
     try {
@@ -143,6 +151,10 @@ export function useDocsCollabReconnect({
         }
 
         const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
+        if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) {
+          setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
+          return;
+        }
         if (pendingSave || refs.pendingServerSaveRef.current) {
           await persistToServer();
         } else {
