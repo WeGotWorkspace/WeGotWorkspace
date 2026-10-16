@@ -247,6 +247,18 @@ describe("useNotesTagRename", () => {
       const merged = inverse.find((call) => call[0].id === "merged");
       expect(merged?.[1]).toEqual(expect.objectContaining({ tagsAdd: ["a"] }));
       expect(merged?.[1]?.tagsRemove).toBeUndefined();
+      const restored = toastApi.show.mock.calls.find(
+        (call) => call[0] === "Restored “a” on 2 notes",
+      );
+      const undoRestore = restored?.[1]?.onUndo as (() => void) | undefined;
+      act(() => {
+        undoRestore?.();
+      });
+      expect(selectView).toHaveBeenLastCalledWith("tag:b");
+      expect(persistOptimisticNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "plain", tags: ["b", "keep"] }),
+        true,
+      );
     } finally {
       vi.useRealTimers();
     }
