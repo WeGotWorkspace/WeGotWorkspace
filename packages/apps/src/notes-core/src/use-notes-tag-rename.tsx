@@ -61,7 +61,7 @@ export function useNotesTagRenameCollaborators(shell: NotesShellState, list: Not
 }
 
 function tagViewMatches(view: string, tag: string): boolean {
-  return normalizeTag(view.slice(4)) === tag;
+  return view.startsWith("tag:") && normalizeTag(view.slice(4)) === tag;
 }
 
 export function useNotesTagRename({
