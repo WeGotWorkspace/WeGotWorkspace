@@ -1167,10 +1167,14 @@ describe("group notebook create targets", () => {
       scope: "group",
       groupSlug: "eng",
     });
-    expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({ notebook: "Ideas" });
+    expect(resolveNotesCreateTarget("nb:Ideas", ["Drafts"])).toEqual({
+      notebook: "Ideas",
+      notebookId: "Ideas",
+    });
     expect(resolveNotesCreateTarget("all", ["Drafts"])).toEqual({ notebook: "Drafts" });
     expect(resolveNotesCreateTarget("nb:Drafts", ["The Journal", "Drafts"])).toEqual({
       notebook: "Drafts",
+      notebookId: "Drafts",
     });
   });
 });

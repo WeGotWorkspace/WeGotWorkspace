@@ -210,7 +210,7 @@ export function useNotesShell({
     return L.fallbackViewTitle;
   }, [L, notebookCollections, view]);
 
-  const canCreateNote = notesCanCreateInView(view);
+  const canCreateNote = notesCanCreateInView(view, notebookCollections);
 
   const selectView = useCallback((nextView: string) => {
     setView(nextView);
