@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe("SharePrincipalSearchDropdown", () => {
-  it("paints group hits with the same UserAvatar mark as people", () => {
+  it("paints a group with the same mark as the share row", () => {
     render(
       <SharePrincipalSearchDropdown
         query="ad"
@@ -34,14 +34,14 @@ describe("SharePrincipalSearchDropdown", () => {
 
     expect(group.classList.contains("user-avatar__mark")).toBe(true);
     expect(person.classList.contains("user-avatar__mark")).toBe(true);
-    expect(group.textContent).toBe("A");
+    expect(group.querySelector("svg")).not.toBeNull();
+    expect(person.querySelector("svg")).toBeNull();
     expect(person.textContent).toBe("M");
-    expect(group.querySelector("svg")).toBeNull();
     expect(groupAvatar?.classList.contains("user-avatar--md")).toBe(true);
     expect(personAvatar?.classList.contains("user-avatar--md")).toBe(true);
     expect(groupAvatar?.classList.contains("share-principal-search-dropdown__mark")).toBe(true);
+    expect(groupAvatar?.classList.contains("share-dialog__principal-mark--group")).toBe(true);
     expect(groupAvatar?.classList.contains("user-avatar--colored")).toBe(false);
-    expect(group.closest(".share-dialog__principal-mark--group")).toBeNull();
     expect(
       personAvatar?.classList.contains(`user-avatar--color-${avatarColorForUserId("member")}`),
     ).toBe(true);

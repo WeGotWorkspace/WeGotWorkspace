@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { LoaderCircle } from "lucide-react";
-import type { SharePrincipalKind } from "@/share-ui/share-principal-mark";
+import { SharePrincipalMark, type SharePrincipalKind } from "@/share-ui/share-principal-mark";
 import { shareLabels } from "@/share-ui/share-labels";
 import { Popover, PopoverAnchor, PopoverContent } from "@/ui/popover";
-import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
 import { cn } from "@/lib/utils";
 import "@/unified-search-dropdown/src/unified-search-results-dropdown.css";
 
@@ -92,15 +91,11 @@ export function SharePrincipalSearchDropdown({
                     onSelect(entry);
                   }}
                 >
-                  <UserAvatar
+                  <SharePrincipalMark
+                    principalType={entry.principalType}
                     displayName={entry.displayName}
-                    compact
+                    principalId={entry.id}
                     size="md"
-                    color={
-                      entry.principalType === "user"
-                        ? avatarColorForUserId(entry.id || entry.displayName)
-                        : undefined
-                    }
                     className={
                       entry.principalType === "group"
                         ? "share-principal-search-dropdown__mark"

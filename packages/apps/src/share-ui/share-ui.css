@@ -275,7 +275,7 @@
   min-height: var(--input-height);
 }
 
-/* Groups have no hue. Same UserAvatar tile as people; ink instead of accent green. */
+/* Groups use SharePrincipalMark (Users glyph). Ink, not an accent fill. */
 .share-principal-search-dropdown__mark {
   --user-avatar-fg: var(--workspace-foreground);
 }
