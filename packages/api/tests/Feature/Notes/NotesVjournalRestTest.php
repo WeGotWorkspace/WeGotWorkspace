@@ -441,6 +441,7 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
             'body' => 'keep',
         ])->assertCreated();
         $noteId = (string) $created->json('id');
+        $updatedAt = (string) $created->json('updatedAt');
         $this->asBob()->postJson('/api/v1/notes/items/'.$noteId.'/star')->assertOk();
 
         $object = CalendarObject::query()->where('uid', $noteId)->first();
@@ -453,11 +454,14 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
         $sourceSince = (string) $sourceToken;
 
+        sleep(1);
+
         $moved = $this->asBob()->withHeaders(['If-Match' => $etag])
             ->patchJson('/api/v1/notes/items/'.$noteId, ['notebookId' => $dest])
             ->assertOk();
         $moved->assertJsonPath('notebookId', $dest);
         $moved->assertJsonPath('body', 'keep');
+        $this->assertGreaterThan($updatedAt, (string) $moved->json('updatedAt'));
 
         $object->refresh();
         $this->assertSame($objectId, (int) $object->id);

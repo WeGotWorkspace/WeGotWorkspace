@@ -124,7 +124,6 @@ export function createMeetStoryController(
     cameraSendingDisabled: false,
     lowData: false,
     setLowData: noop,
-    relayBanner: null,
     relayTiles: {},
     canShareScreen: true,
     switchMic: noopAsync,

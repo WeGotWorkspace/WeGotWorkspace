@@ -2,8 +2,11 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
+import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 
 import "./input.css";
+
+installKeyboardFocusModality();
 
 export type TextareaProps = React.ComponentProps<"textarea"> & {
   /** Padding + font-size only; height stays auto. Default `md`. */

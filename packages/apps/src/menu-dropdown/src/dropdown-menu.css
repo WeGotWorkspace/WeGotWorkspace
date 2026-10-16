@@ -31,7 +31,7 @@
 .dropdown-menu-ui__item.menu-item--severity-danger:focus {
   color: var(
     --menu-item-severity-color,
-    var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242)))
+    var(--menu-item-danger-color, var(--color-destructive, var(--destructive)))
   );
   background-color: var(
     --menu-item-severity-hover-background,
@@ -39,7 +39,7 @@
       --menu-item-danger-hover-background,
       color-mix(
         in oklab,
-        var(--menu-item-danger-color, var(--color-destructive, var(--destructive, #b14242))) 14%,
+        var(--menu-item-danger-color, var(--color-destructive, var(--destructive))) 14%,
         transparent
       )
     )

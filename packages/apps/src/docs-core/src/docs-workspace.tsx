@@ -4,7 +4,6 @@ import { Code2, Pencil, Printer, Share } from "lucide-react";
 import { TooltipProvider } from "@/ui/tooltip";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { WorkspaceAppLayout } from "@/workspace-shell/src/workspace-app-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   workspaceUserFooterDetailLine,
   type WorkspaceSession,
@@ -140,11 +139,8 @@ function DocsWorkspaceShell({
     (index: number) => {
       setActiveOutlineIndex(index);
       if (editor) focusOutlineHeading(editor, index);
-      if (isSidebarOverlayViewport()) {
-        controller.setSidebarOpen(false);
-      }
     },
-    [controller, editor],
+    [editor],
   );
 
   return (
@@ -212,9 +208,6 @@ function DocsSidebar({
           session={session}
           detailLine={workspaceUserFooterDetailLine(session, controller.readOnly)}
           onLogout={onLogout}
-          onBeforeOpen={() => {
-            if (isSidebarOverlayViewport()) controller.setSidebarOpen(false);
-          }}
         />
       }
     >

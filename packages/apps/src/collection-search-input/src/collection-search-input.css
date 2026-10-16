@@ -2,13 +2,19 @@
 
 /**
  * Collection / header search: compact Input search variant.
- * Parents may tint via `--collection-search-input-bg` / `--collection-search-input-color`.
+ * Resting fill is `--input-background`. Parents may set `--collection-search-input-color`.
  */
 .collection-search-input {
   @apply mt-3;
-  --input-background: var(
-    --collection-search-input-bg,
-    color-mix(in oklab, var(--workspace-foreground) 6%, transparent)
-  );
+  background-color: var(--input-background);
   color: var(--collection-search-input-color, var(--workspace-foreground));
+}
+
+/*
+ * Docs, Contacts, and Drive: hover matches outline icon-button hover.
+ * Focus keeps the resting fill and the shared control hairline.
+ */
+:is(.docs-workspace, .contacts-workspace, .drive-workspace) .collection-search-input {
+  --input-background-hover: var(--button-outline-hover-background);
+  --input-border-hover: var(--button-outline-border-color, var(--control-border-color));
 }

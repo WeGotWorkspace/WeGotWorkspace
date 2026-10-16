@@ -88,14 +88,29 @@ final class MeetRelayTest extends WgwDatabaseTestCase
             ->assertJson(['error' => 'relay_unavailable']);
 
         $this->assertRelayEvent('bob', 'precheck', 'unavailable');
+        $this->assertSame(0, Notification::query()->count());
+    }
 
-        $notice = Notification::query()->where('principal', 'alice')->sole();
-        $this->assertSame(
-            "1 people couldn't connect directly to a call or document today.",
-            $notice->title,
-        );
-        $this->assertSame('bob (Meet)', $notice->body);
-        $this->assertStringNotContainsString('symmetric', (string) json_encode($notice->data));
+    public function test_failed_connection_still_issues_turn_and_creates_no_notice(): void
+    {
+        $this->configureRelay();
+        $token = $this->userBearerToken();
+        $this->joinAsMember('host-peer', $token);
+        $this->withoutBearer()->guestJoin('guest-peer', 'Guest');
+
+        $response = $this->withBearer($token)->postJson($this->meetRoomPath('/relay'), [
+            'peerId' => 'host-peer',
+            'target' => 'guest-peer',
+            'reason' => 'failed',
+            'net' => 'symmetric',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame(['turn:relay.example.org:3478'], $response->json('turn.urls'));
+        $this->assertSame(3600, $response->json('turn.ttl'));
+        $this->assertNotSame('', (string) $response->json('turn.credential'));
+        $this->assertRelayEvent('bob', 'failed', 'issued');
+        $this->assertSame(0, Notification::query()->count());
     }
 
     public function test_admitted_guest_gets_credentials_on_a_reserved_room(): void

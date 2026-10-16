@@ -16,15 +16,13 @@ use App\Services\Rtc\Signaling\RtcSignalingException;
  * static credentials on the configuration endpoint were.
  *
  * Every request leaves exactly one `rtc_relay_events` row, including the
- * refusals, because "who could not connect" is the question the real-time
- * health page exists to answer.
+ * refusals. The row is the relay decision itself.
  */
 final class RtcRelayService
 {
     /**
      * `refresh` re-mints a credential that is already in use. It is not a
-     * failed connection, so it does not hint the other peer and health does
-     * not count it as "couldn't connect".
+     * failed connection, so it does not hint the other peer.
      *
      * @var list<string>
      */
@@ -41,7 +39,6 @@ final class RtcRelayService
 
     public function __construct(
         private RtcTurnCredentialService $credentials,
-        private RtcDirectConnectNotifier $directConnect,
     ) {}
 
     /**
@@ -95,7 +92,7 @@ final class RtcRelayService
     /**
      * Username for an account. A guest is `guest:` plus the first 8 hex
      * characters of sha256(session key), so two guests behind one NAT count
-     * as two people and the notice can say "a guest" instead of a username.
+     * as two people.
      */
     public static function actorLabel(string $actorMarker): string
     {
@@ -106,12 +103,6 @@ final class RtcRelayService
         $sessionKey = str_starts_with($actorMarker, 'g:') ? substr($actorMarker, 2) : $actorMarker;
 
         return 'guest:'.substr(hash('sha256', $sessionKey), 0, 8);
-    }
-
-    /** Notice copy for a counted guest label. Usernames pass through. */
-    public static function noticeName(string $actor): string
-    {
-        return str_starts_with($actor, 'guest:') ? 'a guest' : $actor;
     }
 
     /**
@@ -141,14 +132,5 @@ final class RtcRelayService
             'reason' => $reason,
             'outcome' => $outcome,
         ]);
-        if ($outcome !== self::OUTCOME_UNAVAILABLE) {
-            return;
-        }
-        // The relay decision is already stored. Inbox delivery must not change it.
-        try {
-            $this->directConnect->notifyFromToday();
-        } catch (\Throwable) {
-            // The unavailable row is already stored. A notice failure stays off this response.
-        }
     }
 }

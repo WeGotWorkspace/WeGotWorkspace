@@ -362,7 +362,7 @@ When picking up a chunk, load:
 
 **Do not** copy CardDAV PDO for tasks — always use CalDAV PDO.
 
-### Do NOT use (Notes / Flysystem)
+### Do NOT use (Flysystem)
 
 Tasks are **VTODO** in CalDAV `calendarobjects`. Notes are **VJOURNAL** in VJOURNAL-only collections. Same table, different component and collection. **Notes resolve by `uid`; Tasks resolve by `uri`** ([notes.md](../../docs/architecture/notes.md) Decision 3).
 

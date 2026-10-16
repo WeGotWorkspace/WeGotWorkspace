@@ -83,6 +83,12 @@ describe("CollectionSidebarRow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit" }));
     expect(onEdit).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Drafts" }).getAttribute("data-sidebar-select")).toBe(
+      "",
+    );
+    expect(screen.getByRole("button", { name: "Edit" }).hasAttribute("data-sidebar-select")).toBe(
+      false,
+    );
     expect(screen.getByRole("button", { name: "Edit" }).className).toMatch(/icon-button--size-xs/);
   });
 

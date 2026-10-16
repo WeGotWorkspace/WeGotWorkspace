@@ -6,6 +6,7 @@ import {
 import type { Note } from "@/lib/models/note";
 import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
+import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { isNotesPersistGone } from "@/notes-core/src/notes-persist-access";
 import { normalizeTag } from "@/notes-core/src/note-tag";
@@ -143,40 +144,30 @@ export function computeExcerpt(body: string[]): string {
 
 const NOTE_LIST_TITLE_MAX = 80;
 
-/** Body excerpt for the list row. Omitted when it would duplicate the title fallback. */
+/** Title-line placeholder when SUMMARY is empty. Body text stays on the excerpt line. */
+export const NOTE_LIST_EMPTY_TITLE = "Empty title";
+
+/**
+ * Body line for the list row. Uses the stored excerpt, then the body.
+ * An empty title does not hide this line.
+ */
 export function noteListExcerpt(
   note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
 ): string {
-  const titled = note.title?.trim();
   const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
-  if (!excerpt) return "";
-  if (!titled) return "";
-  return excerpt;
+  if (excerpt) return excerpt;
+  return usableNoteListPreview(plainTextFromBody(note.body), note.id);
 }
 
-/** List-row heading: SUMMARY when set, otherwise the excerpt or body. */
+/** List-row heading: SUMMARY when set, otherwise {@link NOTE_LIST_EMPTY_TITLE}. */
 export function noteListTitle(
   note: Pick<Note, "excerpt" | "body"> & { id?: string; title?: string },
 ): string {
   const titled = note.title?.trim();
-  if (titled) {
-    return titled.length <= NOTE_LIST_TITLE_MAX
-      ? titled
-      : `${titled.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
-  }
-  // Re-strip so stale excerpts (or server listPreview) never leak raw markdown.
-  const excerpt = usableNoteListPreview(markdownToPlainText(note.excerpt ?? ""), note.id);
-  if (excerpt) {
-    const withoutEllipsis = excerpt.endsWith("…") ? excerpt.slice(0, -1).trim() : excerpt;
-    return withoutEllipsis.length <= NOTE_LIST_TITLE_MAX
-      ? withoutEllipsis
-      : `${withoutEllipsis.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
-  }
-  const text = usableNoteListPreview(plainTextFromBody(note.body), note.id);
-  if (text) {
-    return text.length <= NOTE_LIST_TITLE_MAX ? text : `${text.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
-  }
-  return "Untitled note";
+  if (!titled) return NOTE_LIST_EMPTY_TITLE;
+  return titled.length <= NOTE_LIST_TITLE_MAX
+    ? titled
+    : `${titled.slice(0, NOTE_LIST_TITLE_MAX - 1)}…`;
 }
 
 type NoteShareAudienceFields = Pick<
@@ -692,10 +683,7 @@ export function notesCanCreateInView(
   }
   if (view.startsWith("nb:")) {
     const key = view.slice(3);
-    const collection =
-      notebookCollections.find((item) => item.id === key) ??
-      notebookCollections.find((item) => item.name === key);
-    return collection?.myRights?.mayWriteAll !== false;
+    return canCreateInNotebook(findNotebookCollection(notebookCollections, key));
   }
   return true;
 }

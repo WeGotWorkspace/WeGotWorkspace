@@ -312,7 +312,7 @@ Use existing [tasks.svg](../../packages/apps/src/assets/app-icons/tasks.svg) —
 | | Notes | Tasks |
 |---|-------|-------|
 | Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive) | Structured **entity** (title, status, due, tags, list) |
-| Offline path | Dexie working set + UID-keyed y-indexeddb crash buffer | **Single-path:** whole task record like **Contacts** |
+| Offline path | **Dual-path:** Dexie working set (metadata) + UID-keyed y-indexeddb crash buffer (Yjs body) | **Single-path:** whole task record like **Contacts** |
 | Transport | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same | `GET/POST/PATCH /tasks/items` + CalDAV blob via [#134](https://github.com/WeGotWorkspace/wegotworkspace/issues/134) |
 | Stars | Notes stars table (not Drive `/files/star`) | — |
 

@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useId, useState, type ReactElement } from "react";
 import { Button } from "@/button/src/button";
 import { isValidNewTag, normalizeTag } from "@/notes-core/src/note-tag";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
@@ -42,6 +42,7 @@ function NotesRenameTagDialogForm({
   onClose,
   onRename,
 }: Omit<NotesRenameTagDialogProps, "open">): ReactElement {
+  const hintId = useId();
   const [draft, setDraft] = useState(tag);
   const normalizedDraft = normalizeTag(draft);
   const unchanged = normalizedDraft === normalizeTag(tag);
@@ -50,6 +51,7 @@ function NotesRenameTagDialogForm({
     valid &&
     !unchanged &&
     existingTags.some((existing) => normalizeTag(existing) === normalizedDraft);
+  const describedBy = !valid || merges ? hintId : undefined;
 
   return (
     <>
@@ -60,16 +62,18 @@ function NotesRenameTagDialogForm({
             value={draft}
             size="sm"
             autoComplete="off"
+            aria-invalid={valid ? undefined : true}
+            aria-describedby={describedBy}
             onChange={(event) => setDraft(event.target.value)}
           />
         </FieldLabelRow>
         {valid ? null : (
-          <p className="notes-rename-tag-dialog__hint" role="status">
+          <p id={hintId} className="notes-rename-tag-dialog__hint" role="status">
             {labels.tagCharsetHint}
           </p>
         )}
         {merges ? (
-          <p className="notes-rename-tag-dialog__hint" role="status">
+          <p id={hintId} className="notes-rename-tag-dialog__hint" role="status">
             {labels.renameTagMergeHint(normalizedDraft)}
           </p>
         ) : null}

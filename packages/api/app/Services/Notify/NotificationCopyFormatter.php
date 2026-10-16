@@ -61,7 +61,6 @@ final class NotificationCopyFormatter
             'chat.message_posted' => ChatMessagePostedNotify::formatCopy($data),
             'chat.mentioned' => ChatMentionedNotify::formatCopy($data),
             'meet.started' => MeetStartedNotify::formatCopy($data),
-            'rtc.direct_connect' => RtcDirectConnectNotify::formatCopy($data),
             default => [
                 'title' => $legacyTitle !== '' ? $legacyTitle : 'Notification',
                 'body' => $legacyBody,

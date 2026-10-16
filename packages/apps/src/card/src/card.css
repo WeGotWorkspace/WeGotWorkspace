@@ -10,14 +10,9 @@
   --card-header-gap: 1rem;
   @apply border p-6 mb-6;
   border-radius: var(--control-radius);
-  background-color: var(
-    --card-surface-bg,
-    color-mix(in oklab, var(--workspace-foreground) 3%, transparent)
-  );
-  border-color: var(
-    --card-surface-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
-  );
+  /* Resting wash is the shared outline step, same ladder as Drive tiles and footer chips. */
+  background-color: var(--card-surface-bg, var(--button-outline-hover-background));
+  border-color: var(--card-surface-border-color, var(--control-border-color));
 }
 
 .card__header {
@@ -59,10 +54,8 @@
 }
 
 .card__icon-action:hover:not(:disabled) {
-  background-color: var(
-    --card-icon-action-hover-bg,
-    color-mix(in oklab, var(--workspace-foreground) 8%, transparent)
-  );
+  /* One ladder step above the resting card wash. */
+  background-color: var(--card-icon-action-hover-bg, var(--button-outline-active-background));
 }
 
 /**
@@ -90,14 +83,8 @@
 
 .card__panel {
   @apply flex flex-col gap-1 rounded-xl border p-2;
-  border-color: var(
-    --card-panel-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
-  );
-  background-color: var(
-    --card-panel-bg,
-    color-mix(in oklab, var(--workspace-foreground) 3%, transparent)
-  );
+  border-color: var(--card-panel-border-color, var(--control-border-color));
+  background-color: var(--card-panel-bg, var(--button-outline-hover-background));
 }
 
 .card__row {
@@ -105,10 +92,8 @@
 }
 
 .card__row:hover {
-  background: var(
-    --card-row-hover-bg,
-    color-mix(in oklab, var(--workspace-foreground) 5%, transparent)
-  );
+  /* One ladder step above the resting card wash. */
+  background: var(--card-row-hover-bg, var(--button-outline-active-background));
 }
 
 .card__row-leading {
@@ -167,8 +152,5 @@
 
 .card__row-divider {
   @apply my-1 border-t;
-  border-color: var(
-    --card-panel-border-color,
-    color-mix(in oklab, var(--workspace-foreground) 12%, transparent)
-  );
+  border-color: var(--card-panel-border-color, var(--control-border-color));
 }

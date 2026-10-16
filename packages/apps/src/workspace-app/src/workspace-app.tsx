@@ -50,6 +50,7 @@ export type WorkspaceAppProps = {
     listContent: ReactNode;
     hasItems: boolean;
     emptyLabel: string;
+    emptyIcon?: ReactNode;
     floatingActionBar?: ReactNode;
     dropZone?: {
       active: boolean;
@@ -202,6 +203,7 @@ export const WorkspaceApp = forwardRef<WorkspaceAppHandle, WorkspaceAppProps>(fu
           listContent={listProps.listContent}
           hasItems={listProps.hasItems}
           emptyLabel={listProps.emptyLabel}
+          emptyIcon={listProps.emptyIcon}
           floatingActionBar={listProps.floatingActionBar}
           dropZone={listProps.dropZone}
         />

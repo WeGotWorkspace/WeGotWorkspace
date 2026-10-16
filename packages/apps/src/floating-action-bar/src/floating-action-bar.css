@@ -66,21 +66,25 @@
   background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }
 
-/* Same chrome as the paper bar; fill is brand Dark and content is light. */
+/* Same chrome as the paper bar; fill is accent and content is the accent-foreground pair. */
 .floating-action-bar--dark {
-  color: #fff;
+  color: var(--workspace-accent-foreground);
   background-color: var(--workspace-accent);
-  border-color: color-mix(in oklab, #fff 22%, transparent);
-  --button-outline-color: #fff;
-  --button-outline-hover-color: #fff;
-  --button-ghost-color: #fff;
-  --button-outline-border-color: color-mix(in oklab, #fff 22%, transparent);
+  border-color: color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
+  --button-outline-color: var(--workspace-accent-foreground);
+  --button-outline-hover-color: var(--workspace-accent-foreground);
+  --button-ghost-color: var(--workspace-accent-foreground);
+  --button-outline-border-color: color-mix(
+    in oklab,
+    var(--workspace-accent-foreground) 22%,
+    transparent
+  );
 }
 
 .floating-action-bar--dark .floating-action-bar__count {
-  color: #fff;
+  color: var(--workspace-accent-foreground);
 }
 
 .floating-action-bar--dark .floating-action-bar__spacer {
-  background-color: color-mix(in oklab, #fff 22%, transparent);
+  background-color: color-mix(in oklab, var(--workspace-accent-foreground) 22%, transparent);
 }

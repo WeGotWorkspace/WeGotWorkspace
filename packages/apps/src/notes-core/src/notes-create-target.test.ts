@@ -16,7 +16,6 @@ describe("resolveNotesCreateTarget", () => {
     });
     expect(resolveNotesCreateTarget("nb:Drafts", ["Drafts", "The Journal"])).toEqual({
       notebook: "Drafts",
-      notebookId: "Drafts",
     });
     expect(
       resolveNotesCreateTarget(notesViewForCreate("starred"), ["Drafts", "The Journal"]),
@@ -51,10 +50,9 @@ describe("resolveNotesCreateTarget", () => {
     });
   });
 
-  it("uses the view key as notebook and notebookId when no collection matches", () => {
+  it("omits notebookId when the view key matches no collection", () => {
     expect(resolveNotesCreateTarget("nb:missing-id", ["Drafts"])).toEqual({
       notebook: "missing-id",
-      notebookId: "missing-id",
     });
   });
 });

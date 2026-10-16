@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { Tag } from "lucide-react";
 import type { DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import type { Note } from "@/lib/models/note";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { normalizeTag } from "@/notes-core/src/note-tag";
 import { persistBestEffort } from "@/notes-core/src/notes-note-utils";
 import { persistNoteKeepingSyncRace } from "@/notes-core/src/notes-persist-access";
 import { noteTagsAfterRename, planNoteTagRename } from "@/notes-core/src/note-tag-rename";
@@ -59,6 +60,10 @@ export function useNotesTagRenameCollaborators(shell: NotesShellState, list: Not
   return { persistOptimisticNote, resolveNoteId, waitForInFlightCreate, dropGoneNote };
 }
 
+function tagViewMatches(view: string, tag: string): boolean {
+  return view.startsWith("tag:") && normalizeTag(view.slice(4)) === tag;
+}
+
 export function useNotesTagRename({
   shell,
   queueMutation,
@@ -67,6 +72,9 @@ export function useNotesTagRename({
   waitForInFlightCreate,
   dropGoneNote,
 }: UseNotesTagRenameArgs) {
+  const shellRef = useRef(shell);
+  shellRef.current = shell;
+
   const renameTag = useCallback(
     (rawFrom: string, rawTo: string) => {
       const { notes, setNotes, view, selectView, operations, showMutationError, L } = shell;
@@ -88,44 +96,73 @@ export function useNotesTagRename({
       plan.notes.forEach((row) => {
         persistOptimisticNote(rewritten(row), true);
       });
-      if (view === `tag:${plan.from}`) selectView(`tag:${plan.to}`);
+      if (tagViewMatches(view, plan.from)) selectView(`tag:${plan.to}`);
       if (!operations) return;
 
+      const retargetIf = (tag: string, next: string) => {
+        const live = shellRef.current;
+        if (tagViewMatches(live.view, tag)) live.selectView(next);
+      };
       const restoreSnapshots = () => {
         setNotes((prev) =>
           prev.map((note) => plan.notes.find((row) => row.id === note.id) ?? note),
         );
+        plan.notes.forEach((row) => {
+          persistOptimisticNote(row, true);
+        });
+        retargetIf(plan.to, `tag:${plan.from}`);
       };
+      const reapplyRename = () => {
+        setNotes((prev) =>
+          prev.map((note) =>
+            plan.notes.some((row) => row.id === note.id) ? rewritten(note) : note,
+          ),
+        );
+        plan.notes.forEach((row) => {
+          persistOptimisticNote(rewritten(row), true);
+        });
+        retargetIf(plan.from, `tag:${plan.to}`);
+      };
+      const sendDelta = (
+        rows: Note[],
+        delta: { tagsAdd: string[]; tagsRemove?: string[] },
+      ): Promise<void> =>
+        Promise.all(
+          rows.map(async (row) => {
+            await waitForInFlightCreate(row.id);
+            const persistId = resolveNoteId(row.id);
+            return persistNoteKeepingSyncRace(
+              operations.upsertNote({ ...row, id: persistId }, delta),
+              () => dropGoneNote(row.id),
+              persistId,
+            );
+          }),
+        ).then(() => {});
       const requeueInverse = () => {
-        const reversible = plan.notes.filter((row) => !plan.mergedIds.includes(row.id));
-        if (reversible.length === 0) return;
+        const plain = plan.notes.filter((row) => !plan.mergedIds.includes(row.id));
+        const merged = plan.notes.filter((row) => plan.mergedIds.includes(row.id));
+        if (plain.length === 0 && merged.length === 0) return;
         queueMutation({
           key: `notes:tag-rename-undo:${plan.from}:${plan.to}`,
-          toastMessage: L.tagRenameUndone,
+          toastMessage: L.tagRenameRestored(plan.from, plan.notes.length),
           icon: <Tag className="size-4" />,
-          execute: () =>
-            Promise.all(
-              reversible.map(async (row) => {
-                await waitForInFlightCreate(row.id);
-                const persistId = resolveNoteId(row.id);
-                return persistNoteKeepingSyncRace(
-                  operations.upsertNote(
-                    { ...row, id: persistId },
-                    { tagsAdd: [plan.from], tagsRemove: [plan.to] },
-                  ),
-                  () => dropGoneNote(row.id),
-                  persistId,
-                );
-              }),
-            ).then(() => {}),
-          undo: restoreSnapshots,
-          onError: restoreSnapshots,
-          undoToastMessage: L.tagRenameUndone,
+          execute: () => {
+            const writes: Promise<void>[] = [];
+            if (plain.length > 0) {
+              writes.push(sendDelta(plain, { tagsAdd: [plan.from], tagsRemove: [plan.to] }));
+            }
+            if (merged.length > 0) writes.push(sendDelta(merged, { tagsAdd: [plan.from] }));
+            return Promise.all(writes).then(() => {});
+          },
+          undo: reapplyRename,
+          onError: reapplyRename,
+          undoToastMessage: L.tagRenamed(plan.to, plan.notes.length),
         });
       };
+      let started = false;
       const rollback = () => {
         restoreSnapshots();
-        requeueInverse();
+        if (started) requeueInverse();
       };
 
       queueMutation({
@@ -135,23 +172,13 @@ export function useNotesTagRename({
             ? L.tagRenamedSomeSkipped(plan.to, plan.notes.length, plan.skippedCount)
             : L.tagRenamed(plan.to, plan.notes.length),
         icon: <Tag className="size-4" />,
-        execute: () =>
-          Promise.all(
-            plan.notes.map(async (row) => {
-              await waitForInFlightCreate(row.id);
-              const persistId = resolveNoteId(row.id);
-              const next = {
-                ...row,
-                id: persistId,
-                tags: noteTagsAfterRename(row.tags, plan.from, plan.to),
-              };
-              return persistNoteKeepingSyncRace(
-                operations.upsertNote(next, { tagsAdd: [plan.to], tagsRemove: [plan.from] }),
-                () => dropGoneNote(row.id),
-                persistId,
-              );
-            }),
-          ).then(() => {}),
+        execute: () => {
+          started = true;
+          return sendDelta(
+            plan.notes.map((row) => rewritten(row)),
+            { tagsAdd: [plan.to], tagsRemove: [plan.from] },
+          );
+        },
         undo: rollback,
         onError: rollback,
         undoToastMessage: L.tagRenameUndone,

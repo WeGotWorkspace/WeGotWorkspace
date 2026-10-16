@@ -85,7 +85,7 @@ export type UserAvatarProps = {
   size?: UserAvatarSize;
   /** Optional online/offline pip. Rendered by the primitive — do not draw a second custom dot. */
   presence?: UserAvatarPresence;
-  /** Per-user palette (saturated stroke + surfaceTint fill). Omit for app-accent chrome. */
+  /** Per-user palette (surfaceTint fill). Omit for the shared theme fallback. */
   color?: UserAvatarColor;
   /** Native `<img>` loading hint. List rows pass `lazy`; omit (eager) for the open card. */
   loading?: "eager" | "lazy";
@@ -95,7 +95,7 @@ export type UserAvatarProps = {
   className?: string;
   /** Overrides the default “{name} avatar” accessible name. */
   ariaLabel?: string;
-  /** Runtime CSS variables (e.g. a per-collection `--contacts-book-color`). */
+  /** Runtime CSS variables (parent-scoped tokens such as `--user-avatar-bg`). */
   style?: CSSProperties;
 };
 

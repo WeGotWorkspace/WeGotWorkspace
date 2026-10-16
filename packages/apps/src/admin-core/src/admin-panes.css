@@ -17,8 +17,8 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-user-status-tag {
   @apply shrink-0;
   /* Ink-mixed warning so 12px chip text meets 4.5:1 on the cream wash. */
-  --tag-fg: color-mix(in oklab, #c98a1f 32%, var(--workspace-foreground));
-  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--workspace-surface));
+  --tag-fg: color-mix(in oklab, var(--color-warning) 32%, var(--workspace-foreground));
+  --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-list-row__actions {
@@ -49,7 +49,7 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-group-avatar-slot {
   @apply size-9 rounded-full flex items-center justify-center shrink-0;
   background-color: var(--workspace-accent);
-  color: #ffffff;
+  color: var(--workspace-accent-foreground);
 }
 
 /* --- Typography --- */
@@ -85,8 +85,8 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__status-tag {
   @apply shrink-0;
   /* Same washed warning chip as `.admin-user-status-tag`. */
-  --tag-fg: color-mix(in oklab, #c98a1f 32%, var(--workspace-foreground));
-  --tag-bg: color-mix(in oklab, #c98a1f 18%, var(--workspace-surface));
+  --tag-fg: color-mix(in oklab, var(--color-warning) 32%, var(--workspace-foreground));
+  --tag-bg: color-mix(in oklab, var(--color-warning) 18%, var(--workspace-surface));
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-feature-row__title {
@@ -153,8 +153,8 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-card {
   @apply mt-5 border p-4;
   border-radius: var(--control-radius);
-  background-color: color-mix(in oklab, var(--workspace-foreground) 4%, transparent);
-  border-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
+  background-color: var(--button-outline-hover-background);
+  border-color: var(--control-border-color);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-updates-progress-head {
@@ -254,15 +254,15 @@
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-server-check-icon[data-check-tone="error"] {
-  color: #b14242;
+  color: var(--color-error);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-server-check-icon[data-check-tone="warning"] {
-  color: #c98a1f;
+  color: var(--color-warning);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-server-check-icon[data-check-tone="success"] {
-  color: #3a8f5a;
+  color: var(--color-success);
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-email-delivery-pane {
@@ -285,40 +285,6 @@
 :is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__lead {
   @apply mb-4 text-sm;
   color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health {
-  @apply flex flex-col gap-4;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__lead {
-  @apply mb-3 text-sm;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__windows {
-  @apply grid gap-4;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__callout {
-  @apply rounded-md px-3 py-3 text-sm;
-  background: color-mix(in oklab, #c98a1f 16%, var(--workspace-surface));
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__stats {
-  @apply grid gap-2 text-sm;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__stats dt {
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__relay {
-  @apply w-full text-sm;
-}
-
-:is(.admin-workspace, .admin-dialog-surface) .admin-realtime-health__relay th {
-  @apply text-left font-medium;
 }
 
 :is(.admin-workspace, .admin-dialog-surface) .admin-mcp-pane__endpoint {

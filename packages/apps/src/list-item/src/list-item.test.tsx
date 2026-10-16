@@ -20,7 +20,7 @@ const baseProps = {
 };
 
 describe("ListItem", () => {
-  it("renders subtitle above title by default (mail/notes layout)", () => {
+  it("renders subtitle above title by default (mail layout)", () => {
     const { container } = render(<ListItem {...baseProps} />);
     const content = container.querySelector(".list-item__content");
     expect(content).not.toBeNull();
@@ -51,6 +51,23 @@ describe("ListItem", () => {
   it("omits the body row when text is empty and a title is present", () => {
     const { container } = render(<ListItem {...baseProps} text="" />);
     expect(container.querySelector(".list-item__body")).toBeNull();
+  });
+
+  it("keeps a muted empty-body placeholder when showEmptyText is set", () => {
+    const { container } = render(<ListItem {...baseProps} title="Hello" text="" showEmptyText />);
+    const body = container.querySelector(".list-item__body");
+    expect(body).not.toBeNull();
+    expect(body!.textContent).toBe("Empty item");
+    expect(body!.getAttribute("data-empty")).toBe("true");
+  });
+
+  it("marks the empty-title body fallback as a placeholder", () => {
+    const { container } = render(<ListItem {...baseProps} title="" text="" />);
+    const body = container.querySelector(".list-item__body");
+    expect(body!.textContent).toBe("Empty item");
+    expect(body!.getAttribute("data-empty")).toBe("true");
+    expect(container.querySelector(".list-item__title")!.getAttribute("data-empty")).toBe("true");
+    expect(container.querySelector(".list-item__title")!.textContent).toBe("Untitled");
   });
 
   it("uses itemId for data-list-item-id when React id is overwritten", () => {

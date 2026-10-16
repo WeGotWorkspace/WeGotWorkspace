@@ -4,6 +4,7 @@ import { IconButton } from "@/button/src/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
 import "./collection-sidebar-row.css";
 
 const NESTED_ROW_CONTROL = "button, a, input, [role='button']";
@@ -159,7 +160,12 @@ export function CollectionSidebarRow({
           ) : null}
         </span>
       ) : null}
-      <button type="button" className={bem(blocks, "__select")} onClick={() => onSelect?.()}>
+      <button
+        type="button"
+        className={bem(blocks, "__select")}
+        onClick={() => onSelect?.()}
+        {...(onSelect ? sidebarSelectMarker : undefined)}
+      >
         <span className={bem(blocks, "__title")}>
           <span className={bem(blocks, "__name")}>{name}</span>
           {badges}

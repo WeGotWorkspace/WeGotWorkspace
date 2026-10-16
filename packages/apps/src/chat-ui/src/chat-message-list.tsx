@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { MessageSquare } from "lucide-react";
 import { Button } from "@/button/src/button";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import { ChatMessage, type ChatMessageAction } from "@/chat-ui/src/chat-message";
 import { chatUiLabels } from "@/chat-ui/src/chat-labels";
 import { groupChatMessages, groupChatMessagesByDay } from "@/chat-ui/src/chat-message-group";
@@ -130,9 +132,15 @@ export function ChatMessageList({
   }, [messages, currentUserId]);
 
   return (
-    <div className={cn("chat-ui chat-message-list", className)}>
+    <div
+      className={cn(
+        "chat-ui chat-message-list",
+        messages.length === 0 && "collection-state-host",
+        className,
+      )}
+    >
       {messages.length === 0 ? (
-        <p className="chat-message-list__empty">{emptyLabel}</p>
+        <CollectionState icon={<MessageSquare className="size-12" />}>{emptyLabel}</CollectionState>
       ) : (
         <>
           <div

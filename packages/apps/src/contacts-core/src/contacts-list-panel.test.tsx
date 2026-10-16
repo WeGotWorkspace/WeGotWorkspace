@@ -1,8 +1,8 @@
 import { createRef } from "react";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { TooltipProvider } from "@/ui/tooltip";
-import { addressBookDotColor } from "./contacts-addressbook-color";
 import { ContactsListPanel } from "./contacts-list-panel";
 import { defaultContactsLabels } from "./contacts-labels";
 import { contactListRowOffset, flattenContactListRows } from "./contacts-list-window";
@@ -117,6 +117,52 @@ function renderListAvatars(visibleCards: ContactCard[]) {
   );
 }
 
+function EmptyListHarness({ view = "all" }: { view?: string }) {
+  const panel = ContactsListPanel({
+    L: defaultContactsLabels,
+    sidebarOpen: true,
+    onToggleSidebar: vi.fn(),
+    viewLabel: "All contacts",
+    view,
+    selectedGroupId: null,
+    selectedIds: [],
+    selectionMode: false,
+    listLoading: false,
+    visibleCards: [],
+    searchQuery: "",
+    setSearchQuery: vi.fn(),
+    searchInputRef: createRef<HTMLInputElement>(),
+    isTouch: false,
+    activeId: "",
+    isItemDragging: () => false,
+    handleSelect: vi.fn(),
+    enterSelectionFor: vi.fn(),
+    itemDragHandlers: () => ({}),
+    onSwipeDelete: vi.fn(),
+    onSwipeRemoveFromGroup: vi.fn(),
+    selectionBar: null,
+  });
+  return <CollectionListWorkspace {...panel} />;
+}
+
+describe("ContactsListPanel empty state", () => {
+  it("shows the contacts icon above the no-contacts label", () => {
+    const { container } = render(
+      <TooltipProvider>
+        <EmptyListHarness />
+      </TooltipProvider>,
+    );
+    const state = container.querySelector(".collection-state");
+    const icon = state?.querySelector(".collection-state__icon");
+    expect(icon?.querySelector("svg.lucide-users")).toBeTruthy();
+    expect(state?.querySelector(".collection-state__body")?.textContent).toBe(
+      defaultContactsLabels.emptyList,
+    );
+    expect(container.querySelector(".collection-state-host")).toBeTruthy();
+    expect(container.querySelector(".collection-empty-state")).toBeNull();
+  });
+});
+
 describe("ContactsListPanel refresh vs initial load", () => {
   it("keeps existing cards visible while the refresh button is busy", () => {
     render(
@@ -158,10 +204,10 @@ describe("ContactsListPanel avatars", () => {
       (
         personRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
   });
 
-  it("tints list initials from each row's address book", () => {
+  it("does not wash list initials with each row's address book", () => {
     const workCard = {
       ...personCard,
       id: "card-joe",
@@ -176,13 +222,12 @@ describe("ContactsListPanel avatars", () => {
       (
         defaultRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
     expect(
       (
         workRow?.querySelector(".contacts-user-avatar") as HTMLElement | null
       )?.style.getPropertyValue("--contacts-book-color"),
-    ).toBe(addressBookDotColor({ id: "work" }));
-    expect(addressBookDotColor({ id: "work" })).not.toBe(addressBookDotColor({ id: "default" }));
+    ).toBe("");
   });
 
   it("lazy-loads list photo imgs with native loading and decoding", () => {

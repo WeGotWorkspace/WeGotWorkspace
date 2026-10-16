@@ -4,7 +4,6 @@ import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { WorkspaceAppSettingsFooter } from "@/settings-core/src/workspace-app-settings-footer";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 
@@ -52,16 +51,7 @@ export function DocsHomeSidebar({
           />
         ) : undefined
       }
-      footer={
-        <WorkspaceAppSettingsFooter
-          appId="docs"
-          session={session}
-          onLogout={onLogout}
-          onBeforeOpen={() => {
-            if (isSidebarOverlayViewport()) onCloseMobile();
-          }}
-        />
-      }
+      footer={<WorkspaceAppSettingsFooter appId="docs" session={session} onLogout={onLogout} />}
     >
       <SidebarSection items={primaryItems} />
       {driveItems.length > 0 ? (

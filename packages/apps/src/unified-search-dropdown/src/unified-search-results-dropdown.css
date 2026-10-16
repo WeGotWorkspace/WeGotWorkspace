@@ -1,9 +1,11 @@
+@import "../../styles.css" reference;
+
 .unified-search-results-dropdown {
-  border: 1px solid var(--unified-search-dropdown-border, hsl(0 0% 84%));
+  border: 1px solid var(--unified-search-dropdown-border, var(--border));
   border-radius: 8px;
-  background: var(--unified-search-dropdown-bg, hsl(0 0% 100%));
-  color: var(--unified-search-dropdown-text, hsl(0 0% 10%));
-  box-shadow: var(--unified-search-dropdown-shadow, 0 12px 28px hsl(0 0% 0% / 0.14));
+  background: var(--unified-search-dropdown-bg, var(--workspace-surface));
+  color: var(--unified-search-dropdown-text, var(--workspace-foreground));
+  box-shadow: var(--unified-search-dropdown-shadow, var(--control-shadow));
   width: min(100%, var(--unified-search-dropdown-width, 560px));
   max-height: min(62dvh, 480px);
   overflow: auto;
@@ -14,7 +16,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.85rem 1rem;
-  color: var(--unified-search-dropdown-muted, hsl(0 0% 42%));
+  color: var(--unified-search-dropdown-muted, var(--muted-foreground));
   font-size: 0.92rem;
 }
 
@@ -25,7 +27,7 @@
 }
 
 .unified-search-results-dropdown__group + .unified-search-results-dropdown__group {
-  border-top: 1px solid var(--unified-search-dropdown-divider, hsl(0 0% 91%));
+  border-top: 1px solid var(--unified-search-dropdown-divider, var(--border));
 }
 
 .unified-search-results-dropdown__group .sidebar-section__heading {
@@ -35,18 +37,11 @@
   padding-inline: 0.25rem;
 }
 
-.unified-search-results-dropdown__group .sidebar-section__title {
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--unified-search-dropdown-muted, hsl(0 0% 42%));
-}
-
 .unified-search-results-dropdown__menu-item {
   border-radius: 6px;
   margin: 0.08rem 0;
   width: 100%;
-  color: var(--unified-search-dropdown-text, hsl(0 0% 10%));
+  color: var(--unified-search-dropdown-text, var(--workspace-foreground));
 }
 
 .unified-search-results-dropdown__menu-item .menu-item__badge {
@@ -60,23 +55,27 @@
 }
 
 .unified-search-results-dropdown__menu-item--file {
-  --unified-search-row-accent: var(--unified-search-accent-files, #2563eb);
+  --unified-search-row-accent: var(--unified-search-accent-files, var(--workspace-accent));
 }
 
 .unified-search-results-dropdown__menu-item--note {
-  --unified-search-row-accent: var(--unified-search-accent-notes, #ffc800);
+  --unified-search-row-accent: var(--unified-search-accent-notes, var(--workspace-accent));
 }
 
 .unified-search-results-dropdown__menu-item--caldav {
-  --unified-search-row-accent: var(--unified-search-accent-calendar, #8b5cf6);
+  --unified-search-row-accent: var(--unified-search-accent-calendar, var(--workspace-accent));
 }
 
 .unified-search-results-dropdown__menu-item--carddav {
-  --unified-search-row-accent: var(--unified-search-accent-contacts, #16a34a);
+  --unified-search-row-accent: var(--unified-search-accent-contacts, var(--workspace-accent));
 }
 
 .unified-search-results-dropdown__menu-item:hover {
-  background: color-mix(in oklab, var(--unified-search-row-accent, hsl(0 0% 50%)) 10%, transparent);
+  background: color-mix(
+    in oklab,
+    var(--unified-search-row-accent, var(--workspace-accent)) 10%,
+    transparent
+  );
 }
 
 .unified-search-results-dropdown__item-description {
@@ -86,6 +85,15 @@
   text-overflow: ellipsis;
 }
 
+/* Title line is text-sm (1.25rem). Center the glyph on that line, not the description. */
+.unified-search-results-dropdown__menu-item .menu-item__icon-slot {
+  @apply flex h-5 items-center self-start;
+}
+
 .unified-search-results-dropdown__item-icon {
-  color: var(--unified-search-row-accent, var(--unified-search-dropdown-icon, hsl(0 0% 38%)));
+  @apply inline-flex items-center;
+  color: var(
+    --unified-search-row-accent,
+    var(--unified-search-dropdown-icon, var(--workspace-foreground))
+  );
 }

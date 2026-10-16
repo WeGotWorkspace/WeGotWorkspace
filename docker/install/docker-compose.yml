@@ -19,6 +19,9 @@ x-wgw-web-volumes: &wgw-web-volumes
 x-wgw-web-environment: &wgw-web-environment
   WGW_APP_ROOT: /var/www/html
   WGW_DATA_DIR: /var/wgw/content
+  # SQLite file on the content volume. MySQL sets WGW_DB_DATABASE in .env
+  # (see .env.example) so this does not replace the database name in api.env.
+  WGW_DB_DATABASE: ${WGW_DB_DATABASE:-/var/wgw/content/db.sqlite}
   WGW_STORAGE_PATH: /var/wgw/storage
   WGW_WAIT_FOR_DB: ${WGW_WAIT_FOR_DB:-1}
   WGW_DB_HOST: ${WGW_DB_HOST:-db}

@@ -89,6 +89,20 @@ describe("ChatMessageList jump chip", () => {
   });
 });
 
+describe("ChatMessageList empty state", () => {
+  beforeEach(() => {
+    cleanup();
+  });
+
+  it("shows a collection-state icon above the empty label", () => {
+    render(<ChatMessageList messages={[]} currentUserId={CURRENT_USER} />);
+    const label = screen.getByText(chatUiLabels.empty);
+    const state = label.closest(".collection-state");
+    expect(label.closest(".collection-state__body")).toBeTruthy();
+    expect(state?.querySelector(".lucide-message-square")).toBeTruthy();
+  });
+});
+
 describe("ChatMessageList sticky day labels", () => {
   beforeEach(() => {
     cleanup();

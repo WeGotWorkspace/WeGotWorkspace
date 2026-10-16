@@ -30,8 +30,6 @@ final class RtcRoomRateLimiters
 
     public const RELAY = 'rtc-relay';
 
-    public const METRICS = 'rtc-metrics';
-
     /** 4 peers polling at 400 ms is 150 requests per minute, plus sends and leaves. */
     private const ROOM_REQUESTS_PER_MINUTE = 300;
 
@@ -46,8 +44,6 @@ final class RtcRoomRateLimiters
     private const RELAY_REQUESTS_PER_MINUTE = 6;
 
     private const ADDRESS_RELAY_REQUESTS_PER_MINUTE = 30;
-
-    private const METRIC_REPORTS_PER_MINUTE = 30;
 
     public static function register(): void
     {
@@ -93,22 +89,6 @@ final class RtcRoomRateLimiters
                     $actor ?? $address,
                 ),
                 Limit::perMinute(self::ADDRESS_RELAY_REQUESTS_PER_MINUTE)->by($address),
-            ];
-        });
-
-        RateLimiter::for(self::METRICS, static function (Request $request): array {
-            // A guest session key is only an actor when the server signed it.
-            // The address ceiling still matches the per-actor ceiling so one
-            // NAT cannot multiply inserts by collecting signed keys.
-            $actor = self::actorIdentity($request);
-            $address = self::addressKey($request);
-            if ($actor === null) {
-                return [Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($address)];
-            }
-
-            return [
-                Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($actor),
-                Limit::perMinute(self::METRIC_REPORTS_PER_MINUTE)->by($address),
             ];
         });
     }

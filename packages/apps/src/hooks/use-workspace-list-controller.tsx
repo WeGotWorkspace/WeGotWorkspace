@@ -107,6 +107,7 @@ export function useWorkspaceSelectionPresentation({
         icon: <CheckCircle2 className="size-4" />,
         onClick: () => exitSelection(activeId),
         separatorBefore: true,
+        variant: "primary",
       },
     ],
     [actionButtons, doneLabel, exitSelection, activeId],

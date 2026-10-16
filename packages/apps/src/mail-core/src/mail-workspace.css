@@ -20,11 +20,6 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --mail-state-accent: var(--workspace-accent);
 
   --workspace-user-footer-text-color: color-mix(
@@ -37,12 +32,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --mail-detail-tag-primary-fg: var(--workspace-accent-foreground);
   --mail-detail-tag-primary-bg: color-mix(in oklch, var(--workspace-foreground) 88%, transparent);
@@ -106,7 +95,7 @@
 
 .mail-workspace .mail-detail-view__sender-row .user-avatar {
   --user-avatar-bg: var(--workspace-accent);
-  --user-avatar-fg: #ffffff;
+  --user-avatar-fg: var(--workspace-accent-foreground);
   --user-avatar-label-color: var(--workspace-foreground);
   --user-avatar-subtitle-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   --user-avatar-gap: 0.75rem;
@@ -148,12 +137,10 @@
  */
 :is(.mail-compose-dialog-surface, .mail-dialog-surface) {
   --workspace-accent: var(--color-we-got-dark);
-  --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   /* Switch mark stays the mail icon (red + soft). */
   --workspace-icon-surface: var(--color-we-got-red);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

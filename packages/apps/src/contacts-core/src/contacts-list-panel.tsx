@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Circle, Trash2, UserMinus } from "lucide-react";
+import { Circle, Trash2, UserMinus, Users } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
 import { ListStickyHeader } from "@/list-sticky-header/src/list-sticky-header";
@@ -166,6 +166,7 @@ export function ContactsListPanel({
     ),
     hasItems: listLoading || visibleCards.length > 0,
     emptyLabel: view.startsWith("group:") ? L.emptyGroupMembers : L.emptyList,
+    emptyIcon: <Users className="size-12" />,
     floatingActionBar: selectionBar,
   };
 }

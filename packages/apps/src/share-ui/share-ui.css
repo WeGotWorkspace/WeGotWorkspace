@@ -3,7 +3,7 @@
 .share-dialog,
 .share-access-card {
   /* Accent for icons and small marks only — not section fills (see dialog surface --primary). */
-  --share-dialog-accent: var(--workspace-accent, var(--workspace-accent, var(--primary, #10b981)));
+  --share-dialog-accent: var(--workspace-accent);
   --workspace-accent: var(--share-dialog-accent);
   --share-dialog-tag-bg: color-mix(in oklab, var(--share-dialog-accent) 62%, transparent);
   --share-dialog-tag-fg: var(--workspace-foreground);
@@ -182,7 +182,8 @@
 }
 
 .share-dialog__link-field {
-  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg bg-card/80 px-2.5 py-1.5;
+  @apply flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-lg px-2.5 py-1.5;
+  background-color: var(--input-background);
   border: 1px solid var(--control-border-color);
 }
 
@@ -257,7 +258,7 @@
   max-height: min(40dvh, 280px);
   overflow: auto;
   --unified-search-dropdown-width: 100%;
-  --share-dialog-accent: var(--workspace-accent, var(--workspace-accent, var(--primary, #10b981)));
+  --share-dialog-accent: var(--workspace-accent);
   --share-dialog-muted: var(
     --muted-foreground,
     color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
@@ -272,6 +273,11 @@
 .share-principal-search-dropdown__option {
   @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/50;
   min-height: var(--input-height);
+}
+
+/* Groups use SharePrincipalMark (Users glyph). Ink, not an accent fill. */
+.share-principal-search-dropdown__mark {
+  --user-avatar-fg: var(--workspace-foreground);
 }
 
 .share-principal-search-dropdown__name {

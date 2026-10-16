@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
-import { MessageSquare, Video } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
@@ -180,9 +180,6 @@ export function MeetCallExpanded({
               </div>
             ) : null}
             <div className="meet-call-stage__brand">
-              <span className="meet-call-stage__mark" aria-hidden>
-                <Video className="meet-workspace__header-kind-icon" />
-              </span>
               <div className="meet-call-stage__copy">
                 <h2 className="meet-call-stage__title">{title}</h2>
                 <p className="meet-call-stage__meta">
@@ -203,36 +200,6 @@ export function MeetCallExpanded({
             onDeny={(peerId) => room.controller.denyKnocker(peerId)}
             onAdmitError={room.onToastError}
           />
-        ) : null}
-
-        {room.controller.relayBanner ? (
-          <div className="meet-call-stage__relay" role="status">
-            <p className="meet-call-stage__relay-message">{room.controller.relayBanner.message}</p>
-            {room.controller.relayBanner.setupHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.setupHref}
-              >
-                {meetLabels.setUpRelay}
-              </a>
-            ) : null}
-            {room.controller.relayBanner.docsHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.docsHref}
-              >
-                {meetLabels.relayDocs}
-              </a>
-            ) : null}
-            {room.controller.relayBanner.planHref ? (
-              <a
-                className="meet-call-stage__relay-link"
-                href={room.controller.relayBanner.planHref}
-              >
-                {meetLabels.relayPlan}
-              </a>
-            ) : null}
-          </div>
         ) : null}
 
         {waitingForAdmission ? (

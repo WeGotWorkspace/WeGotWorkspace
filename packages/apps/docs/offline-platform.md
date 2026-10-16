@@ -107,26 +107,38 @@ Therefore the metadata builders deliberately construct the request object
 `POST /notes/items` create / 404-create fallback, where seeding an (empty) body
 once is correct.
 
-### State decision: metadata `updatedAt` is body-edit-invariant
+### State decision: `updatedAt` is edit-invariant
 
-The Notes API derives a note's `updatedAt` from VJOURNAL `LAST-MODIFIED` /
-`DTSTAMP`. `contentUpdatedAt` is an optional projected content mtime for collab
-body saves, sent only when the API includes it — do not assume the field is
-populated. A body-only `PATCH /notes/items/{uid}` updates `DESCRIPTION` without
-treating the metadata outbox `ifInState` as stale.
+The Notes API derives a note's `updatedAt` from VJOURNAL `LAST-MODIFIED`, then
+`DTSTAMP`. `mergeIntoIcs()` touches neither property, on a body patch and on a
+metadata patch. `toIcs()` sets `DTSTAMP` once at create. `updatedAt` changes
+only when an external CalDAV client writes the journal. A
+`PATCH /notes/items/{uid}` does not bump it, so the metadata outbox
+`ifInState` does not go stale from a WGW edit.
+
+`contentUpdatedAt` is a legacy frontend field
+([`notes-vjournal.ts`](../src/lib/api/wgw/notes-vjournal.ts),
+[`types.ts`](../src/lib/api/wgw/types.ts)). The VJOURNAL API never populates
+it. There is no `contentUpdatedAt` in `packages/api`, and
+`openapi/schemas/notes/note.json` sets `additionalProperties: false` without
+that field. Display falls back to `updatedAt`.
 
 This closes a false-conflict seam: the offline metadata flush uses the note's
 `updatedAt`-at-enqueue as its `ifInState` guard and raises a `stateMismatch`
-when the server looks newer. Without that split, the sequence _edit body →
-later flush a queued metadata change with a now-stale `ifInState`_ would
-falsely look "server newer". Notes no longer shows a
+when the server looks newer. A WGW edit leaves `updatedAt` where it was, so
+the sequence _edit body → later flush a queued metadata change_ does not look
+"server newer". Notes no longer shows a
 choice screen for that. The only prompt is an outside write
-([Decision 6](../../../docs/architecture/notes.md)). With that split, a
-`stateMismatch` only ever reflects a genuine metadata divergence (an outside write). (Consequence: body edits no longer re-sort the note list by
+([Decision 6](../../../docs/architecture/notes.md)). A
+`stateMismatch` reflects a genuine metadata divergence (an outside write). (Consequence: body edits no longer re-sort the note list by
 modified time; body freshness is surfaced by the collab pending-sync dot,
 [`use-docs-collab-pending-sync.ts`](../src/text-editor-core/docs-collab/use-docs-collab-pending-sync.ts),
 not by `updatedAt`.) Notes that lack `LAST-MODIFIED` and `DTSTAMP` fall back to
-`calendarobjects.lastmodified`. There is no file mtime and no frontmatter
+`calendarobjects.lastmodified` (`NoteJournalConverter::fromObject`). Sabre
+bumps that column on every write, so for those notes `updatedAt` is body-edit
+sensitive and the false-conflict seam returns. In practice those notes are
+almost unreachable because `toIcs()` always sets `DTSTAMP` and an external
+VJOURNAL has one per RFC. There is no file mtime and no frontmatter
 marker on the VJOURNAL store.
 
 ### History

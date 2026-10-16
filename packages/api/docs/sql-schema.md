@@ -25,7 +25,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
-| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
+| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK). `family_id` is one login chain. `rotated_at` + `successor_hash` record a rotation; `successor_token` is the APP_KEY ciphertext of that successor and is cleared after the 60s replay window. |
 | `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |
@@ -44,7 +44,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `calendar_subscriptions` | `App\Models\CalendarSubscription` | Live ICS/webcal subscriptions (owner username + personal calendar uri + normalized source URL) |
 | `calendar_feed_tokens` | `App\Models\CalendarFeedToken` | Published ICS/webcal feed tokens (`token_hash` SHA-256; `token_cipher` Laravel-encrypted with APP_KEY so the owner URL can be re-shown — not hash-only like RSVP; `mode` is `full` or `busy`) |
 | `calendar_share_dismissals` | `App\Models\CalendarShareDismissal` | Per-user hide of an inbound ACL share (`username` + Sabre `calendarid`). Owner `shareWith` is unchanged; restore deletes the row. |
-| `calendarobjects` | `App\Models\CalendarObject` | CalDAV objects (`VEVENT` / `VTODO` / `VJOURNAL` blobs; Calendars REST + Tasks REST + Notes REST; search indexer). Note items and Docs comment/suggestion threads are `VJOURNAL`. Unique index `calendarid_uid` on (`calendarid`, `uid`) is the Notes identity key (Decision 4 in [notes.md](../../../docs/architecture/notes.md)). |
+| `calendarobjects` | `App\Models\CalendarObject` | CalDAV objects (`VEVENT` / `VTODO` / `VJOURNAL` blobs; Calendars REST + Tasks REST + Notes REST + Chat; search indexer). Note items, Docs comment/suggestion threads, and chat messages are `VJOURNAL`. Unique index `calendarid_uid` on (`calendarid`, `uid`) is the Notes identity key (Decision 4 in [notes.md](../../../docs/architecture/notes.md)). |
 | `calendars` | `App\Models\Calendar` | CalDAV calendar collection root (`components` includes `VTODO` for task lists and `VJOURNAL` for note notebooks) |
 | `note_stars` | `App\Models\NoteStar` | Per-user note stars: `id`; `username` (string 255); `calendar_object_id` (unsigned int, FK → `calendarobjects.id` ON DELETE CASCADE); `note_uid` (string 200). Unique `(username, calendar_object_id)`; index on `note_uid`. |
 | `calendarinstances` | `App\Models\CalendarInstance` | Per-principal calendar instances (Calendars REST reads; Tasks REST `TaskList.id` = instance `uri`) |
@@ -58,7 +58,6 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 | `rtc_relay_events` | `App\Models\RtcRelayEvent` | One row per relay request (`channel`, `actor`, `reason`, `outcome`). No room name, no addresses; 30-day retention |
-| `rtc_session_metrics` | `App\Models\RtcSessionMetric` | Anonymous real-time session samples for the health page. No addresses, room names, or user ids; 30-day retention |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 

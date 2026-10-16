@@ -147,7 +147,7 @@
 }
 
 .weekday-day-number.is-today {
-  background: var(--lc-higlight-color, #ff0000);
+  background: var(--lc-higlight-color, var(--color-error));
   color: var(--lc-today-on-color, var(--workspace-accent-foreground, #fff));
   font-weight: 600;
 }

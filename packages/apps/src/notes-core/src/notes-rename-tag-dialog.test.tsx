@@ -35,6 +35,7 @@ describe("NotesRenameTagDialog", () => {
     expect((input as HTMLInputElement).value).toBe("focus");
     const confirm = screen.getByRole("button", { name: "Rename" });
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
 
     fireEvent.change(input, { target: { value: "reading" } });
     expect((confirm as HTMLButtonElement).disabled).toBe(false);
@@ -48,7 +49,11 @@ describe("NotesRenameTagDialog", () => {
     expect((screen.getByRole("button", { name: "Rename" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
-    expect(screen.getByText(defaultNotesLabels.tagCharsetHint)).toBeTruthy();
+    const hint = screen.getByText(defaultNotesLabels.tagCharsetHint);
+    const input = screen.getByRole("textbox", { name: "Tag name" });
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(hint.getAttribute("id")).toEqual(expect.any(String));
+    expect(input.getAttribute("aria-describedby")).toBe(hint.getAttribute("id"));
   });
 
   it("shows the merge hint when the draft is an existing tag", () => {
@@ -57,7 +62,11 @@ describe("NotesRenameTagDialog", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Tag name" }), {
       target: { value: "reading" },
     });
-    expect(screen.getByText("“reading” already exists. The two tags will be merged.")).toBeTruthy();
+    const hint = screen.getByText("“reading” already exists. The two tags will be merged.");
+    const input = screen.getByRole("textbox", { name: "Tag name" });
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
+    expect(hint.getAttribute("id")).toEqual(expect.any(String));
+    expect(input.getAttribute("aria-describedby")).toBe(hint.getAttribute("id"));
   });
 
   it("does not rename when Cancel closes a dirty draft", () => {

@@ -119,7 +119,6 @@ export function useMeetController({
     cameraSendingDisabled: callSession.cameraSendingDisabled,
     lowData: callSession.lowData,
     setLowData: callSession.setLowData,
-    relayBanner: callSession.relayBanner,
     relayTiles: callSession.relayTiles,
     canShareScreen: isDisplayCaptureSupported(),
     switchMic: callSession.switchMic,

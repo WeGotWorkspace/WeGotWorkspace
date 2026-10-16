@@ -25,7 +25,10 @@ import {
   reconcileNotesSnapshot,
 } from "@/lib/offline/notes-jmap-inbound";
 import { syncNotesInboundFromRest } from "@/lib/offline/notes-inbound-sync";
-import { readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  listNoteIdsBlockingSyncToken,
+  readNotesBootstrapFromCache,
+} from "@/lib/offline/notes-offline-store";
 import {
   readOfflineNotesUsername,
   resolveNotesOfflineUsername,
@@ -176,7 +179,6 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
-  const livePollRunningRef = useRef(false);
   const [livePollRunning, setLivePollRunning] = useState(false);
 
   useEffect(() => {
@@ -194,11 +196,13 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
           void patchFromCache();
         });
       },
-      onRemoteNoteDestroyed: (noteId) => {
-        void ingestRemoteNoteDestroyed(username, noteId).then(() => {
+      onRemoteNoteDestroyed: (noteId) =>
+        ingestRemoteNoteDestroyed(username, noteId).then(async (result) => {
           void patchFromCache();
-        });
-      },
+          if (result !== "skipped-pending") return;
+          const blocking = await listNoteIdsBlockingSyncToken(username);
+          if (blocking.has(noteId)) return "skipped-pending" as const;
+        }),
       onRemoteNotebook: (notebook: JmapNotebook) => {
         void ingestRemoteNotebook(username, jmapNotebookToCollection(notebook)).then(() => {
           void patchFromCache();
@@ -229,7 +233,6 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       .then(() => {
         if (cancelled) return;
         adapter.startPolling(ONLINE_CHANGES_POLL_MS);
-        livePollRunningRef.current = true;
         setLivePollRunning(true);
       })
       .catch((error: unknown) => {
@@ -237,14 +240,12 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
         // No notes JMAP capability, or the session failed. Live updates are off;
         // the REST `/changes` interval below takes over (#1351).
         console.warn("[notes] live inbound poll unavailable", error);
-        livePollRunningRef.current = false;
         setLivePollRunning(false);
       });
 
     return () => {
       cancelled = true;
       adapter.stopPolling();
-      livePollRunningRef.current = false;
       setLivePollRunning(false);
     };
   }, [offlineUsername, online, patchFromCache, phase]);

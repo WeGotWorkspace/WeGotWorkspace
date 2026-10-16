@@ -163,6 +163,8 @@ describe("MeetPeerTile mute", () => {
 
     const mark = screen.getByRole("img", { name: "Admin avatar" });
     expect(mark.textContent).toBe("A");
+    expect(mark.classList.contains("user-avatar__mark")).toBe(true);
+    expect(mark.closest(".user-avatar--xl")).not.toBeNull();
     expect(mark.closest(".meet-peer-tile__fill")).not.toBeNull();
     expect(mark.closest(".sr-only")).toBeNull();
     expect(document.querySelector(".meet-peer-tile__display-name")).toBeNull();
