@@ -213,7 +213,7 @@ export function DriveFolderPicker({
   moveIds: string[];
   initialBrowsePath: string;
   /**
-   * Optional preselected destination (Docs New document: sidebar drive).
+   * Optional preselected destination.
    * When omitted, a pickable `initialBrowsePath` is highlighted.
    */
   initialSelectedPath?: string | null;
