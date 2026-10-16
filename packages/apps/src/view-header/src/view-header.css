@@ -48,8 +48,9 @@
   order: var(--view-header-leading-order, 0);
 }
 
+/* One size for the title and the count beside it. The count inherits; it does not set its own. */
 .view-header__title-block {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-center gap-2 text-sm;
 }
 
 .view-header__title-prefix {
@@ -61,11 +62,11 @@
 }
 
 /**
- * List counts beside the title — same typography as `.view-header__title`
- * (sans / size / weight / color). Not a Badge (those read as unread).
+ * List counts beside the title — same face, weight, and color as
+ * `.view-header__title`. Font size is inherited. Not a Badge (those read as unread).
  */
 .view-header__title-count {
-  @apply text-sm font-medium leading-none md:text-lg;
+  @apply font-medium leading-none;
   font-family: var(--font-sans);
   color: var(--workspace-foreground);
 }
@@ -75,13 +76,14 @@
  * `titleSize="sm"` path). Serif display titles are removed.
  */
 .view-header__title {
-  @apply min-w-0 truncate text-sm font-medium leading-none;
+  @apply min-w-0 truncate font-medium leading-none;
   font-family: var(--font-sans);
   color: var(--workspace-foreground);
+  text-box: auto;
 }
 
 @media (width >= 48rem) {
-  .view-header__title {
+  .view-header__title-block {
     @apply text-base;
   }
 }

@@ -11,13 +11,7 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
   --workspace-user-footer-text-color: color-mix(
     in oklch,
     var(--workspace-foreground) 70%,
@@ -28,12 +22,6 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
   --upload-progress-active-fill: var(--workspace-accent);
   --upload-progress-done-fill: var(--color-emerald);
   --file-drop-overlay-card-color: var(--workspace-accent);
@@ -61,17 +49,17 @@
 }
 
 /*
- * Bell lives in the header (sibling of scroll). Mirror New CTA: brat fill +
- * Dark label.
+ * Bell lives in the header (sibling of scroll). Unread badge is severity red
+ * (`--color-error`) with accent-foreground ink — not the Dark accent.
  */
 .drive-workspace .app-sidebar__notifications {
-  --notification-inbox-badge-bg: var(--workspace-accent);
-  --notification-inbox-badge-fg: #ffffff;
+  --notification-inbox-badge-bg: var(--color-error);
+  --notification-inbox-badge-fg: var(--workspace-accent-foreground);
 }
 
 /**
- * App switcher lockup: drive.svg literals (soft tile / brat folder).
- * Pin both the lockup variables and `--workspace-icon-surface*` so artwork stays distinct from
+ * App switcher lockup: dark tile, brat folder.
+ * Pin both the lockup variables and `--workspace-icon-*` so artwork stays distinct from
  * any shared switch-trigger remaps (do not recolor the folder mark).
  */
 .drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
@@ -84,7 +72,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-soft);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-brat);
 }
 
@@ -144,12 +132,12 @@
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
   background-color: var(--button-outline-hover-background);
-  border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
-  --path-breadcrumb-lead-color: var(--workspace-accent);
-  --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
+  border-bottom: 1px solid var(--border);
+  --path-breadcrumb-lead-color: var(--workspace-foreground);
+  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
   --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   --path-breadcrumb-current-color: var(--workspace-foreground);
-  --path-breadcrumb-link-hover-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
+  --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
 .drive-workspace .drive-main-header__search-dropdown {
@@ -167,7 +155,6 @@
  */
 .drive-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
-  --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);

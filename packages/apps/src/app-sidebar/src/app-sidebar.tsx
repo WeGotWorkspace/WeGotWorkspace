@@ -1,7 +1,11 @@
-import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
+import { type CSSProperties, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
 import { AppSwitchButton } from "@/app-switch-button/src/app-switch-button";
 import { bindOpenSidebarStatusBar } from "@/app-sidebar/src/sidebar-status-bar";
 import { cn } from "@/lib/utils";
+import {
+  dismissSidebarOverlay,
+  sidebarSelectClickDismisses,
+} from "@/workspace-shell/src/sidebar-breakpoint";
 import { NotificationInboxTray } from "@/notifications-core/src/notification-inbox-tray";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import "@/app-sidebar/src/app-sidebar.css";
@@ -61,6 +65,11 @@ export function AppSidebar({
   const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => bindOpenSidebarStatusBar(sidebarRef.current, open), [open]);
 
+  const handleSidebarClick = (event: MouseEvent<HTMLElement>) => {
+    if (!sidebarSelectClickDismisses(event.target)) return;
+    dismissSidebarOverlay(onCloseMobile);
+  };
+
   return (
     <>
       {open ? <div className="app-sidebar__scrim" onClick={onCloseMobile} aria-hidden /> : null}
@@ -68,6 +77,7 @@ export function AppSidebar({
         ref={sidebarRef}
         data-open={open ? "true" : "false"}
         className={cn("app-sidebar", className)}
+        onClick={handleSidebarClick}
       >
         <header className="app-sidebar__header">
           <div className="app-sidebar__header-main">

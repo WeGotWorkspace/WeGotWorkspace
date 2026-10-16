@@ -213,7 +213,7 @@ export function DriveFolderPicker({
   moveIds: string[];
   initialBrowsePath: string;
   /**
-   * Optional preselected destination (Docs New document: sidebar drive).
+   * Optional preselected destination.
    * When omitted, a pickable `initialBrowsePath` is highlighted.
    */
   initialSelectedPath?: string | null;
@@ -259,7 +259,14 @@ export function DriveFolderPicker({
         : canPickDriveFolderDestination(files, moveIds, initialBrowsePath)
           ? initialBrowsePath
           : null;
-    setHighlightedPath((prev) => (prev === next ? prev : next));
+    setHighlightedPath((prev) => {
+      // A new files/moveIds array must not clear a drive the user already chose
+      // when nothing was preselected (next is null).
+      if (next === null && prev && canPickDriveFolderDestination(files, moveIds, prev)) {
+        return prev;
+      }
+      return prev === next ? prev : next;
+    });
   }, [fileSelect, files, initialBrowsePath, initialSelectedPath, moveIds]);
 
   useEffect(() => {
@@ -472,9 +479,9 @@ export function DriveFolderPicker({
             const navigable = row.kind === "folder" || row.kind === "root";
             const icon =
               row.kind === "root" ? (
-                (rootIcon ?? <Folder fill="currentColor" fillOpacity={0.18} />)
+                (rootIcon ?? <Folder />)
               ) : row.kind === "folder" ? (
-                <Folder fill="currentColor" fillOpacity={0.18} />
+                <Folder />
               ) : (
                 <span className="[&>svg]:size-4">{row.file ? kindIcon[row.file.kind] : null}</span>
               );

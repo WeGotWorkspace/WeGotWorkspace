@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 
+import { Button } from "@/button/src/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 
 export type ConfirmDialogVariant = "default" | "destructive";
 
@@ -68,16 +68,15 @@ export function useConfirmDialog(options?: { contentClassName?: string }) {
           <AlertDialogFooter>
             <AlertDialogCancel>{request.cancelLabel}</AlertDialogCancel>
             <AlertDialogAction
-              className={cn(
-                variant === "destructive" &&
-                  "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-              )}
+              asChild
               onClick={() => {
                 request.onConfirm();
                 dismiss();
               }}
             >
-              {request.confirmLabel}
+              <Button variant={variant === "destructive" ? "destructive" : "primary"}>
+                {request.confirmLabel}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

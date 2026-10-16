@@ -88,7 +88,10 @@ import {
   resolveCalendarEventPreview,
   type CalendarEventSelectionOrigin,
 } from "@/calendar-core/src/calendar-event-preview";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import {
+  dismissSidebarOverlay,
+  isSidebarOverlayViewport,
+} from "@/workspace-shell/src/sidebar-breakpoint";
 import { persistCalendarRoutePrefs } from "@/calendar-core/src/calendar-view-prefs";
 import { useCalendarDisplayPrefs } from "@/calendar-core/src/use-calendar-display-prefs";
 import { calendarViewRangeTitle } from "@/calendar-core/src/calendar-range-title";
@@ -296,10 +299,7 @@ export function useCalendarController({
       viewRef.current = next;
       persistCalendarRoutePrefs(next, presentationRef.current);
       setView(next);
-      // Match tasks/drive: only dismiss the overlay drawer on small viewports.
-      if (isSidebarOverlayViewport()) {
-        setSidebarOpen(false);
-      }
+      dismissSidebarOverlay(() => setSidebarOpen(false));
       onViewChange?.(next);
       emitRouteState(currentRouteState());
     },

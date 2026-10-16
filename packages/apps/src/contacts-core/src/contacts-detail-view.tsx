@@ -13,9 +13,7 @@ import { Textarea } from "@/ui/textarea";
 import { Switch } from "@/ui/switch";
 import { cn } from "@/lib/utils";
 import { Tag, TagGroup, type TagItem } from "@/tag/src/tag";
-import { groupAddressBookColor } from "@/contacts-core/src/contacts-addressbook-color";
 import { ContactsGroupIcon } from "@/contacts-core/src/contacts-group-icon";
-import { useAddressBookColorOverrides } from "@/contacts-core/src/use-contacts-addressbook-colors";
 import type { ContactDetailGroupChip } from "@/contacts-core/src/contacts-detail-groups";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import type {
@@ -79,17 +77,12 @@ type ContactsDetailViewProps = {
   className?: string;
 };
 
-function groupToTagItem(
-  chip: ContactDetailGroupChip,
-  removable: boolean,
-  colorOverrides: Record<string, string>,
-): TagItem {
+function groupToTagItem(chip: ContactDetailGroupChip, removable: boolean): TagItem {
   const { group } = chip;
   return {
     id: group.id,
     label: contactDisplayName(group),
-    icon: <ContactsGroupIcon book={group} />,
-    collectionTint: groupAddressBookColor(group, colorOverrides),
+    icon: <ContactsGroupIcon />,
     removable,
   };
 }
@@ -608,7 +601,6 @@ export function ContactsDetailView({
   locale = "en-US",
   className,
 }: ContactsDetailViewProps) {
-  const colorOverrides = useAddressBookColorOverrides();
   const isEditing = editMode && !!editDraft;
 
   return (
@@ -641,7 +633,7 @@ export function ContactsDetailView({
             className="contacts-detail-view__tag-group"
             size="lg"
             tags={groupTags.assigned.map((chip) =>
-              groupToTagItem(chip, !groupTags.readonly && chip.writable, colorOverrides),
+              groupToTagItem(chip, !groupTags.readonly && chip.writable),
             )}
             suggestions={groupTags.suggestions.map((group) => ({
               id: group.id,

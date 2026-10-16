@@ -25,7 +25,7 @@ export const Default: Story = {
         label: "Drive",
         appId: "drive",
         accent: WORKSPACE_APP_ACCENT.drive,
-        fg: "#ffffff",
+        fg: "var(--color-we-got-soft)",
       },
       {
         id: "mail",
@@ -38,7 +38,7 @@ export const Default: Story = {
         label: "Meet",
         appId: "meet",
         accent: WORKSPACE_APP_ACCENT.meet,
-        fg: "#ffffff",
+        fg: "var(--color-we-got-soft)",
       },
       {
         id: "notes",
@@ -51,7 +51,7 @@ export const Default: Story = {
         label: "Admin",
         appId: "admin",
         accent: WORKSPACE_APP_ACCENT.admin,
-        fg: "#ffffff",
+        fg: "var(--color-we-got-soft)",
       },
       {
         id: "settings",

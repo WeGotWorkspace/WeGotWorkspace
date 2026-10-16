@@ -3,7 +3,6 @@
 .mcp-consent-permissions-card {
   @apply relative w-full mb-0;
   --mcp-border: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
-  --switch-on-bg: var(--workspace-accent);
 }
 
 .mcp-consent-permissions-card--plain {

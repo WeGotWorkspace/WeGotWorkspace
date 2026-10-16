@@ -16,12 +16,6 @@
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
   --sidebar-logo-close-button-color: var(--workspace-foreground);
-  --sidebar-badge-fg: #ffffff;
-  --workspace-user-footer-link-hover-bg: color-mix(
-    in oklch,
-    var(--workspace-foreground) 10%,
-    transparent
-  );
 
   --workspace-user-footer-text-color: color-mix(
     in oklch,
@@ -33,25 +27,18 @@
     var(--workspace-foreground) 10%,
     transparent
   );
-  --workspace-user-footer-link-color: color-mix(
-    in oklch,
-    var(--workspace-foreground) 65%,
-    transparent
-  );
-  --workspace-user-footer-link-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
 
   --contacts-pending-sync-color: var(--color-warning);
-  --contacts-swipe-delete-color: #dc2626;
+  --contacts-swipe-delete-color: var(--color-error);
   --contacts-swipe-remove-color: var(--workspace-accent);
-  --contacts-detail-title-font-family: var(--font-serif);
+  --contacts-detail-title-font-family: var(--font-sans);
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --switch-on-bg: var(--workspace-accent);
-  /* Selected / open list row: same wash as Drive and Docs tiles. */
-  --list-item-selected-bg: var(--drive-item-selected-background);
+  /* Selected list row: same wash as sidebar item hover. Active-only stays the Drive tile wash. */
+  --list-item-selected-bg: var(--button-outline-hover-background);
   --list-item-active-bg: var(--drive-item-selected-background);
 }
 
@@ -72,11 +59,11 @@
  * — cream surface; height/radius come from the shared primitive.
  */
 .contacts-workspace .action-bar .contacts-address-book-select.color-swatch-trigger {
-  background-color: var(--workspace-surface);
+  background-color: var(--input-background);
 }
 
 /**
- * App switcher lockup: contacts.svg literals (sky tile / soft person).
+ * App switcher lockup: dark tile, soft person.
  */
 .contacts-workspace
   .app-sidebar__header
@@ -88,7 +75,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-sky);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
@@ -189,7 +176,7 @@
 .contacts-detail-view__title {
   font-family: var(--contacts-detail-title-font-family);
   font-size: 1.75rem;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.2;
   color: var(--workspace-foreground);
   margin: 0;
@@ -202,6 +189,23 @@
 
 .contacts-detail-view__tag-group {
   @apply w-full py-1;
+  /* Invert the detail pane: fill is the pane text, ink is the pane fill. */
+  --tag-bg: var(--workspace-foreground);
+  --tag-fg: var(--workspace-detail-bg, var(--workspace-surface));
+}
+
+.contacts-detail-view__tag-group .tag {
+  @apply border-0;
+  background-color: var(--tag-bg);
+  color: var(--tag-fg);
+}
+
+.contacts-detail-view__tag-group .tag__icon,
+.contacts-detail-view__tag-group .tag__label,
+.contacts-detail-view__tag-group .tag__remove,
+.contacts-detail-view__tag-group .contacts-group-icon {
+  color: var(--tag-fg);
+  @apply opacity-100;
 }
 
 .contacts-detail-view__notes {
@@ -463,7 +467,6 @@
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);
-  --segmented-control-track-active-bg: var(--workspace-foreground);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */
 }
 

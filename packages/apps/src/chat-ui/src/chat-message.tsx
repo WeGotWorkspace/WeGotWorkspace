@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MessageSquareReply, Pencil, Smile, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/icon-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
@@ -92,6 +92,7 @@ export function ChatMessage({
   editComposer,
   className,
 }: ChatMessageProps) {
+  const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
   const deleted = Boolean(message.deletedAt);
   const showHeader = !continuation;
   const showReactions = !deleted && message.reactions.length > 0 && onToggleReaction;
@@ -103,20 +104,25 @@ export function ChatMessage({
     : undefined;
   const hoverActions =
     resolvedActions && resolvedActions.length > 0 && !deleted && !editing ? (
-      <div className="chat-message__actions">
+      <div className="chat-message__actions overlay-paper">
         {resolvedActions.map((action) => {
           const Icon = ACTION_ICONS[action.id];
           const label = action.label ?? ACTION_LABELS[action.id];
           if (action.id === "react" && onToggleReaction) {
             return (
-              <Popover key={action.id}>
+              <Popover
+                key={action.id}
+                open={reactionPickerOpen}
+                onOpenChange={setReactionPickerOpen}
+              >
                 <PopoverTrigger asChild>
-                  <IconButton label={label} icon={<Icon />} size="md" variant="ghost" />
+                  <IconButton label={label} icon={<Icon />} size="sm" variant="ghost" />
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
                   side="bottom"
                   sideOffset={0}
+                  avoidCollisions={!showReactions}
                   className="chat-reaction-bar__picker"
                 >
                   <div className="chat-reaction-bar__picker-grid">
@@ -125,7 +131,10 @@ export function ChatMessage({
                         key={emoji}
                         type="button"
                         className="chat-reaction-bar__picker-item"
-                        onClick={() => onToggleReaction(emoji)}
+                        onClick={() => {
+                          onToggleReaction(emoji);
+                          setReactionPickerOpen(false);
+                        }}
                       >
                         {emoji}
                       </button>
@@ -140,7 +149,7 @@ export function ChatMessage({
               key={action.id}
               label={label}
               icon={<Icon />}
-              size="md"
+              size="sm"
               variant="ghost"
               onClick={action.onClick}
             />
@@ -197,7 +206,7 @@ export function ChatMessage({
         ) : (
           <div className="chat-message__body">
             <ChatMarkdownBody content={message.body} mentions={message.mentions} />
-            {hoverActions}
+            {showReactions ? null : hoverActions}
           </div>
         )}
         {!deleted && !editing && threadAllowed && replyCount > 0 ? (
@@ -217,12 +226,15 @@ export function ChatMessage({
           </div>
         ) : null}
         {showReactions && onToggleReaction ? (
-          <ChatReactionBar
-            className="chat-message__reactions"
-            reactions={message.reactions}
-            currentUserId={currentUserId}
-            onToggleReaction={onToggleReaction}
-          />
+          <div className="chat-message__reactions-wrap">
+            <ChatReactionBar
+              className="chat-message__reactions"
+              reactions={message.reactions}
+              currentUserId={currentUserId}
+              onToggleReaction={onToggleReaction}
+            />
+            {hoverActions}
+          </div>
         ) : null}
       </div>
     </article>

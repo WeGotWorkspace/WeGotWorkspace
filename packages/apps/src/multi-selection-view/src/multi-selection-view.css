@@ -6,7 +6,12 @@
 }
 
 .multi-selection-view__label {
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  /* Same type as `.sidebar-section__title` / `.field-label-row__label`. */
+  @apply mb-3 text-sm font-medium;
+  letter-spacing: normal;
+  text-transform: none;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  color: var(--field-label-color, var(--workspace-foreground));
 }
 
 .multi-selection-view__title {
@@ -16,4 +21,10 @@
 .multi-selection-view__actions {
   /* Idle outline chips stay muted; parents publish accent active/hover washes. */
   --button-outline-color: color-mix(in oklab, var(--workspace-foreground) 70%, transparent);
+}
+
+.multi-selection-view__spacer {
+  @apply mx-0.5 self-stretch;
+  width: 1px;
+  background-color: color-mix(in oklab, var(--workspace-foreground) 12%, transparent);
 }

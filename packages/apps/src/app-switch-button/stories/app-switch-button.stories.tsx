@@ -18,7 +18,10 @@ const meta: Meta<typeof AppSwitchButton> = {
         value: "#ffffff",
         description: "Sidebar label color for the switch lockup",
       },
-      "color-paper": { value: "var(--color-paper)", description: "Notes / workspace menu surface" },
+      "workspace-surface": {
+        value: "var(--workspace-surface)",
+        description: "Workspace menu surface",
+      },
       "color-we-got-dark": {
         value: "var(--color-we-got-dark)",
         description: "Primary ink on light surfaces",
@@ -30,7 +33,7 @@ const meta: Meta<typeof AppSwitchButton> = {
 export default meta;
 type Story = StoryObj<typeof AppSwitchButton>;
 
-/** In-app trigger: user artwork icon + serif route label (no suite wordmark). */
+/** In-app trigger: user artwork icon + sans route label (no suite wordmark). */
 export const InApp: Story = {
   parameters: {
     routerPath: "/mail",

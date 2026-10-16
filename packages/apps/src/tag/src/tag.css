@@ -43,24 +43,6 @@
   --tag-gap: 0.375rem;
 }
 
-/* Same wash as `.checkbox` / colored `.user-avatar`: saturated stroke +
- * surfaceTint 14% into surface (srgb). */
-.tag--collection-tint {
-  --_tag-surface: var(--_lc-surface-bg, var(--workspace-surface));
-  --tag-bg: color-mix(
-    in srgb,
-    var(--collection-row-color, var(--workspace-foreground)) 14%,
-    var(--_tag-surface)
-  );
-  --tag-fg: color-mix(
-    in oklab,
-    var(--collection-row-color, var(--workspace-foreground)) 32%,
-    var(--workspace-accent)
-  );
-  @apply border;
-  border-color: var(--collection-row-color, var(--workspace-foreground));
-}
-
 .tag__icon {
   @apply shrink-0 opacity-70;
 }
@@ -71,8 +53,7 @@
 }
 
 .tag__remove {
-  /* Inherit chip ink/gold — UA `button { color: buttontext }` is ink-on-ink
-   * once assigned notes chips use `--notes-tag-selected-*` (ink fill). */
+  /* UA `button { color: buttontext }` ignores inherited chip ink. */
   @apply relative z-10 inline-flex shrink-0 cursor-pointer items-center justify-center;
   @apply appearance-none border-0 bg-transparent p-0 opacity-70 transition-opacity hover:opacity-100;
   color: var(--tag-remove-fg, var(--tag-fg, inherit));
@@ -174,7 +155,7 @@
 
 .tag-group__input:focus,
 .tag-group__input:focus-visible {
-  background-color: var(--tag-group-input-bg-focus, #ffffff);
+  background-color: var(--tag-group-input-bg-focus, var(--workspace-surface));
   box-shadow: 0 0 0 1px var(--ring, var(--color-ring, currentColor));
 }
 
@@ -190,7 +171,7 @@
   @apply absolute left-0 top-full z-20 mt-1 max-h-48 min-w-full overflow-y-auto border py-1;
   border-color: var(--tag-group-suggestions-border, var(--control-border-color));
   border-radius: var(--control-radius);
-  background-color: var(--tag-group-suggestions-bg, var(--color-popover, #ffffff));
+  background-color: var(--tag-group-suggestions-bg, var(--popover, var(--workspace-surface)));
   box-shadow: var(
     --tag-group-suggestions-shadow,
     0 4px 16px color-mix(in oklab, var(--workspace-foreground) 12%, transparent)

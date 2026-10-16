@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { useDefaultCollectionId } from "@/lib/default-collection-prefs";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import {
+  dismissSidebarOverlay,
+  isSidebarOverlayViewport,
+} from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeTasksLabels, type TasksUILabels } from "@/tasks-core/src/tasks-labels";
 import { DEFAULT_TASKS_VIEW, normalizeTasksView } from "@/tasks-core/src/tasks-route-search";
 import {
@@ -138,9 +141,7 @@ export function useTasksShell({
       const normalized = normalizeTasksView(nextView, taskLists);
       pendingViewRef.current = normalized;
       setView(normalized);
-      if (isSidebarOverlayViewport()) {
-        setSidebarOpen(false);
-      }
+      dismissSidebarOverlay(() => setSidebarOpen(false));
     },
     [taskLists],
   );

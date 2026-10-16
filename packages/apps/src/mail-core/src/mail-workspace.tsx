@@ -8,7 +8,7 @@ import { MailMoveToDialog } from "@/mail-core/src/mail-move-to-dialog";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { WorkspaceApp } from "@/workspace-app/src/workspace-app";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceSidebarAccountFooter } from "@/workspace-shell/src/workspace-app-layout";
 import { MailDetailView } from "@/mail-core/src/mail-detail-view";
 import { MailComposeView } from "@/mail-core/src/mail-compose-view";
@@ -48,11 +48,6 @@ export function MailWorkspace({
   initialActiveId,
   className,
 }: MailWorkspaceProps) {
-  const closeSidebarOnMobile = (closeSidebar: () => void) => {
-    if (!isSidebarOverlayViewport()) return;
-    closeSidebar();
-  };
-
   const {
     L,
     allSystemMailboxes: _allSystemMailboxes,
@@ -165,7 +160,7 @@ export function MailWorkspace({
                 icon={<Pencil />}
                 onClick={() => {
                   compose();
-                  closeSidebarOnMobile(c.closeSidebar);
+                  dismissSidebarOverlay(c.closeSidebar);
                 }}
                 size="md"
                 pill

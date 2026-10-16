@@ -101,20 +101,20 @@ describe("notes-note-utils", () => {
     expect(computeExcerpt(longBody).endsWith("…")).toBe(true);
   });
 
-  it("derives list titles from excerpt or body", () => {
-    expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
-    expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
-    expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Untitled note");
+  it("keeps an empty title on the title line and the excerpt on the body line", () => {
+    expect(noteListTitle({ excerpt: "Preview line", body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("Preview line");
+    expect(noteListTitle({ excerpt: "", body: ["Body line one"] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body: ["Body line one"] })).toBe("Body line one");
+    expect(noteListTitle({ excerpt: "", body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body: [""] })).toBe("");
     expect(noteListTitle({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
       "SUMMARY",
     );
-  });
-
-  it("shows excerpt only when a title is already set", () => {
     expect(noteListExcerpt({ title: "SUMMARY", excerpt: "Preview line", body: [""] })).toBe(
       "Preview line",
     );
-    expect(noteListExcerpt({ excerpt: "Preview line", body: [""] })).toBe("");
+    expect(noteListExcerpt({ title: "", excerpt: "", body: [""] })).toBe("");
   });
 
   it("never uses a local-* id as the list title", () => {
@@ -124,11 +124,16 @@ describe("notes-note-utils", () => {
     expect(usableNoteListPreview(localId, localId)).toBe("");
     expect(usableNoteListPreview("Pasta with garlic", localId)).toBe("Pasta with garlic");
 
-    expect(noteListTitle({ id: localId, excerpt: localId, body: [""] })).toBe("Untitled note");
-    expect(noteListTitle({ id: localId, excerpt: localId, body: [localId] })).toBe("Untitled note");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [""] })).toBe("Empty title");
+    expect(noteListExcerpt({ id: localId, excerpt: localId, body: [""] })).toBe("");
+    expect(noteListTitle({ id: localId, excerpt: localId, body: [localId] })).toBe("Empty title");
+    expect(noteListExcerpt({ id: localId, excerpt: localId, body: [localId] })).toBe("");
     expect(noteListTitle({ id: localId, excerpt: localId, body: ["First line of the note"] })).toBe(
-      "First line of the note",
+      "Empty title",
     );
+    expect(
+      noteListExcerpt({ id: localId, excerpt: localId, body: ["First line of the note"] }),
+    ).toBe("First line of the note");
     expect(noteHasListableBody({ id: localId, body: [localId] })).toBe(false);
     expect(noteHasListableBody({ id: localId, body: ["First line of the note"] })).toBe(true);
 
@@ -140,20 +145,22 @@ describe("notes-note-utils", () => {
       wordCount: 1,
     });
     expect(enriched.excerpt).toBe("");
-    expect(noteListTitle(enriched)).toBe("Untitled note");
+    expect(noteListTitle(enriched)).toBe("Empty title");
+    expect(noteListExcerpt(enriched)).toBe("");
   });
 
-  it("strips checkbox markdown from list titles and excerpts", () => {
+  it("strips checkbox markdown from list excerpts", () => {
     const body = ["Boodschappen Aug", "- [ ] Bananen", "- [ ] Fruit", "- [ ] Pasta"];
-    expect(noteListTitle({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
+    expect(noteListTitle({ excerpt: "", body })).toBe("Empty title");
+    expect(noteListExcerpt({ excerpt: "", body })).toBe("Boodschappen Aug Bananen Fruit Pasta");
     expect(computeExcerpt(body)).toBe("Boodschappen Aug Bananen Fruit Pasta");
     // Stale excerpt that still has raw `[ ]` markers must not leak into the list row.
-    expect(
-      noteListTitle({
-        excerpt: "Boodschappen Aug [ ] Bananen [ ] Fruit [ ] Past…",
-        body: [""],
-      }),
-    ).toBe("Boodschappen Aug Bananen Fruit Past");
+    const stale = noteListExcerpt({
+      excerpt: "Boodschappen Aug [ ] Bananen [ ] Fruit [ ] Past…",
+      body: [""],
+    });
+    expect(stale).not.toContain("[ ]");
+    expect(stale).toContain("Bananen");
   });
 
   it("hides tags and stars for Shared-with-me recipients; shows for owned and group", () => {
@@ -213,7 +220,7 @@ describe("notes-note-utils", () => {
     ).toBe(false);
   });
 
-  it("does not render Untitled when title/excerpt are empty but body has text", () => {
+  it("keeps body text on the excerpt line when the title is empty", () => {
     // Historical rows: frontmatter title was "Untitled", excerpt never backfilled,
     // but the markdown body already has content (e.g. n1781784157-style).
     const stale: Pick<Note, "excerpt" | "body"> = {
@@ -222,8 +229,8 @@ describe("notes-note-utils", () => {
         "Donec ullamcorper nulla non metus auctor fringilla. Donec ullamcorper nulla non metus auctor fringilla.",
       ],
     };
-    expect(noteListTitle(stale)).toMatch(/^Donec ullamcorper/);
-    expect(noteListTitle(stale)).not.toBe("Untitled note");
+    expect(noteListTitle(stale)).toBe("Empty title");
+    expect(noteListExcerpt(stale)).toMatch(/^Donec ullamcorper/);
 
     const enriched = enrichNote({
       ...sampleNote,
@@ -232,7 +239,8 @@ describe("notes-note-utils", () => {
       wordCount: 0,
     });
     expect(enriched.excerpt).toMatch(/Donec ullamcorper/);
-    expect(noteListTitle(enriched)).toMatch(/^Donec ullamcorper/);
+    expect(noteListTitle(enriched)).toBe("Empty title");
+    expect(noteListExcerpt(enriched)).toMatch(/^Donec ullamcorper/);
   });
 
   it("enriches notes with excerpt and word count", () => {
@@ -265,7 +273,8 @@ describe("notes-note-utils", () => {
     expect(merged[0]?.tags).toEqual(["local-tag"]);
     expect(merged[0]?.starred).toBe(true);
     expect(noteHasListableBody(merged[0]!)).toBe(true);
-    expect(noteListTitle(merged[0]!)).toMatch(/^Donec ullamcorper/);
+    expect(noteListTitle(merged[0]!)).toBe("Empty title");
+    expect(noteListExcerpt(merged[0]!)).toMatch(/^Donec ullamcorper/);
     expect(merged[0]?.excerpt).toMatch(/Donec ullamcorper/);
   });
 
@@ -301,7 +310,7 @@ describe("notes-note-utils", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0]?.tags).toEqual(["server-tag"]);
     expect(merged[0]?.starred).toBe(false);
-    expect(noteListTitle(merged[0]!)).toBe("Optimistic preview from typing");
+    expect(noteListExcerpt(merged[0]!)).toBe("Optimistic preview from typing");
     expect(merged[0]?.date).toBe("2026-08-06T12:00:00.000Z");
   });
 
@@ -590,7 +599,7 @@ describe("notes-note-utils", () => {
     const next = applyNoteBodyMarkdown(emptyPreview, "Loaded from Yjs after refresh", {
       bumpDate: false,
     });
-    expect(noteListTitle(next)).toBe("Loaded from Yjs after refresh");
+    expect(noteListExcerpt(next)).toBe("Loaded from Yjs after refresh");
     expect(next.date).toBe("2026-01-01T00:00:00.000Z");
   });
 

@@ -132,7 +132,7 @@
 .workspace-sidebar-toggle[data-unread]::after {
   content: "";
   @apply absolute -right-0.5 -top-0.5 size-2 rounded-full;
-  background-color: var(--notification-inbox-badge-bg, var(--workspace-accent));
+  background-color: var(--notification-inbox-badge-bg, var(--color-error));
 }
 
 /* Same one-shot as the bell badge; mute does not suppress. */
@@ -212,7 +212,6 @@
     var(--app-sidebar-bg, var(--workspace-sidebar-surface))
   );
   --user-avatar-fg: var(--workspace-foreground);
-  --user-avatar-border: color-mix(in oklch, var(--workspace-accent) 28%, transparent);
   --user-avatar-hover-bg: color-mix(
     in oklch,
     var(--workspace-accent) 22%,

@@ -32,13 +32,8 @@
   --docs-comments-column-width: 20rem;
   --docs-comments-column-gap: 1rem;
   --workspace-panel-width: var(--docs-comments-column-width);
-  --docs-stat-tag-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
-  /* Accent is already Dark, so chip ink stays Dark and clears AA on the cream footer. */
-  --docs-stat-tag-color: color-mix(
-    in oklch,
-    var(--workspace-accent) 40%,
-    var(--workspace-foreground)
-  );
+  --docs-stat-tag-bg: var(--button-outline-hover-background);
+  --docs-stat-tag-color: var(--workspace-foreground);
   --docs-text: var(--workspace-foreground);
   /* 72% clears WCAG AA on cream sidebar / footer wash; 65% failed outline nums. */
   --docs-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
@@ -53,7 +48,6 @@
   --workspace-chrome-footer-padding-y: var(--docs-format-chrome-padding-y);
   --workspace-chrome-footer-border: var(--docs-border);
 
-  --sidebar-badge-fg: #ffffff;
   --workspace-main-content-max-width: none;
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);
@@ -125,7 +119,7 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-/** Sidebar lockup: blue tile + soft marks. UI accent is Dark. */
+/** Sidebar lockup: dark tile, soft marks. UI accent is Dark. */
 .docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   --app-switch-icon-bg: var(--workspace-icon-surface);
   --app-switch-icon-fg: var(--workspace-icon-foreground);
@@ -136,7 +130,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-blue);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
@@ -192,10 +186,10 @@
   text-align: right;
 }
 
-/* Mute last-edited chip so it stays distinct from accent word/char stats. */
+/* Last-edited chip: same theme wash as the word/char stats; muted ink keeps it quieter. */
 .docs-workspace .workspace-detail-footer__meta-tag--edited {
   @apply shrink-0;
-  --tag-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
+  --tag-bg: var(--button-outline-hover-background);
   /* Match Notes: 72% clears AA on cream footer (~4.5:1); 65% was ~2.8:1. */
   --tag-fg: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
@@ -211,15 +205,6 @@
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy .loading-spinner {
   color: var(--color-warning);
-}
-
-/* Soft wash on shared `.docs-collab-presence-chrome`; Docs only sets accent. */
-.docs-workspace .docs-collab-presence-chrome {
-  --docs-collab-presence-accent: var(--workspace-accent);
-}
-
-.docs-workspace .docs-collab-presence__avatar--connecting {
-  --docs-collab-presence-accent: var(--workspace-accent);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {
@@ -241,7 +226,7 @@
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
   background-color: var(--workspace-accent);
-  color: #ffffff;
+  color: var(--workspace-accent-foreground);
 }
 
 .docs-workspace .docs-workspace__review-toggle:not([data-count])::after {
@@ -256,7 +241,6 @@
 
 .docs-dialog-surface {
   --workspace-accent: var(--color-we-got-dark);
-  --destination-picker-accent: var(--workspace-accent);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);

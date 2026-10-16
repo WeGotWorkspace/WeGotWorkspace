@@ -4,7 +4,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useStarredMap } from "@/hooks/use-starred-map";
 import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
 import {
   enrichNote,
@@ -207,9 +207,7 @@ export function useNotesShell({
   const selectView = useCallback((nextView: string) => {
     setView(nextView);
     workspaceLayoutRef.current?.closeMobileDetail();
-    if (isSidebarOverlayViewport()) {
-      workspaceLayoutRef.current?.closeSidebar();
-    }
+    dismissSidebarOverlay(() => workspaceLayoutRef.current?.closeSidebar());
   }, []);
 
   const viewSyncedRef = useRef(false);

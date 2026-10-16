@@ -17,12 +17,15 @@
   align-items: center;
   padding-inline: 0.75rem;
   min-height: var(--input-height, 2.25rem);
-  font-size: var(--input-font-size, 0.875rem);
+  /* Same face as `.input--size-sm`. Base `--input-font-size` is 1rem. */
+  font-size: var(--input-font-size-sm, 0.875rem);
   color: color-mix(in oklab, var(--color-foreground) 72%, transparent);
   background-color: color-mix(in oklab, var(--color-muted) 55%, var(--color-background) 45%);
-  border: 0;
-  border-top-right-radius: var(--control-radius);
-  border-bottom-right-radius: var(--control-radius);
-  box-shadow: var(--control-shadow);
+  /* Same hairline as `.input`. No start border — the name field's end edge is the seam. */
+  border: 1px solid var(--control-border-color);
+  border-inline-start-width: 0;
+  border-start-end-radius: var(--control-radius);
+  border-end-end-radius: var(--control-radius);
+  box-shadow: var(--input-shadow, 0 0 transparent);
   user-select: none;
 }

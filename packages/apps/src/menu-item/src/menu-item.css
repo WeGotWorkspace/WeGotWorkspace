@@ -38,7 +38,7 @@
 .menu-item--severity-danger {
   --menu-item-severity-color: var(
     --menu-item-danger-color,
-    var(--color-destructive, var(--destructive, #b14242))
+    var(--color-destructive, var(--destructive))
   );
   --menu-item-severity-hover-background: var(
     --menu-item-danger-hover-background,
@@ -183,7 +183,7 @@
 
 .sidebar-section .menu-item.menu-item--selected .menu-item__badge {
   background-color: var(--sidebar-badge-bg, var(--workspace-foreground));
-  color: var(--sidebar-badge-fg, var(--workspace-accent-foreground));
+  color: var(--sidebar-badge-fg, var(--workspace-surface));
 }
 
 /* ----- Checked ----- */

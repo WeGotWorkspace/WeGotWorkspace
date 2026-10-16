@@ -50,6 +50,7 @@ import {
 } from "@/text-editor-core/src/text-editor-track-changes";
 import { TEXT_EDITOR_FORMAT_BAR_FULL } from "@/text-editor-core/src/text-editor-format-bar-config";
 import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-last-edited-tag";
+import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
@@ -80,7 +81,6 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -269,7 +269,7 @@ function DocsCollabWorkspaceInner({
     [awarenessPresencePeers, collabSession, peers],
   );
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isSidebarOverlayViewport());
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
   const [viewSource, setViewSource] = useState(false);
   const [sourceClosedDialogOpen, setSourceClosedDialogOpen] = useState(false);
@@ -521,9 +521,6 @@ function DocsCollabWorkspaceInner({
     (index: number) => {
       setActiveOutlineIndex(index);
       if (editor) focusOutlineHeading(editor, index);
-      if (isSidebarOverlayViewport()) {
-        setSidebarOpen(false);
-      }
     },
     [editor],
   );

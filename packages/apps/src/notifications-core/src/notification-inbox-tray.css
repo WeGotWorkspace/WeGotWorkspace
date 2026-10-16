@@ -3,10 +3,9 @@
 .notification-inbox-tray__trigger {
   @apply relative;
   /*
-   * Unread badge follows the sidebar primary CTA (`Button` variant primary):
-   * `--notification-inbox-badge-*` when set, else accent / accent-foreground
-   * (Dark fill + white label). Glyph
-   * and button stroke stay parent-owned (sidebar icon chrome /
+   * Unread count is severity red (`--color-error`), not workspace accent (Dark).
+   * `--notification-inbox-badge-*` when set, else error / accent-foreground label.
+   * Glyph and button stroke stay parent-owned (sidebar icon chrome /
    * `--app-sidebar-border-color`); do not pin them here.
    */
 }
@@ -14,7 +13,7 @@
 .notification-inbox-tray__trigger::after {
   content: attr(data-count);
   @apply absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold;
-  background-color: var(--notification-inbox-badge-bg, var(--workspace-accent));
+  background-color: var(--notification-inbox-badge-bg, var(--color-error));
   color: var(--notification-inbox-badge-fg, var(--workspace-accent-foreground));
 }
 

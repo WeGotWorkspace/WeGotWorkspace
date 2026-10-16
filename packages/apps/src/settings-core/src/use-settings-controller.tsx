@@ -12,7 +12,7 @@ import {
   settingsSectionDescriptor,
   useSettingsSidebarModel,
 } from "@/settings-core/src/use-settings-sidebar-model";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
 /**
  * Settings workspace: section nav + sidebar visibility, plus independent profile and mail form
@@ -44,9 +44,7 @@ export function useSettingsController({
       setInternalSection(resolved);
     }
     onSectionChange?.(resolved);
-    if (isSidebarOverlayViewport()) {
-      setSidebarOpen(false);
-    }
+    dismissSidebarOverlay(() => setSidebarOpen(false));
   };
 
   const profile = useSettingsProfileForm({ user: data.user, operations });

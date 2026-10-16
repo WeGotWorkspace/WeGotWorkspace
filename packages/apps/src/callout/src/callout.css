@@ -24,9 +24,9 @@
 }
 
 .callout--info {
-  --callout-bg: color-mix(in oklab, #1a1a18 5%, transparent);
-  --callout-border: color-mix(in oklab, #1a1a18 15%, transparent);
-  --callout-icon-color: #1a1a18;
+  --callout-bg: color-mix(in oklab, var(--workspace-foreground) 5%, transparent);
+  --callout-border: color-mix(in oklab, var(--workspace-foreground) 15%, transparent);
+  --callout-icon-color: var(--workspace-foreground);
 }
 
 .callout--success {

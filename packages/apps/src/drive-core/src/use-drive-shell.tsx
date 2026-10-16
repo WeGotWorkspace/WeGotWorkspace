@@ -34,7 +34,7 @@ import type {
 } from "@/drive-core/src/drive-types";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { wgwFetch, wgwLiveApiEnabled, wgwReadJson } from "@/lib/api/wgw/http";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import {
   apiPathFromSearchSourceKey,
   driveFileFromSearchResult,
@@ -249,9 +249,7 @@ export function useDriveShell({
       }
       commitView(v);
       setLiveSearchResults(null);
-      if (isSidebarOverlayViewport()) {
-        setSidebarOpen(false);
-      }
+      dismissSidebarOverlay(() => setSidebarOpen(false));
     },
     [commitView],
   );
