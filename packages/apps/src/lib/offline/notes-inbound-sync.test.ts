@@ -232,6 +232,7 @@ describe("syncNotesInboundFromRest", () => {
   });
 
   it("does not report changed when an upsert ingest skips without writing", async () => {
+    blockingIds.mockResolvedValue(new Set(["n-queued-delete"]));
     listNotebookChanges.mockResolvedValue({
       oldState: "tok-1",
       newState: "tok-2",
@@ -258,7 +259,8 @@ describe("syncNotesInboundFromRest", () => {
     const result = await syncNotesInboundFromRest("ada");
 
     expect(result.changed).toBe(false);
-    expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
+    expect(writeToken).toHaveBeenCalledWith("ada", NOTES_NOTEBOOKS_TOKEN_KEY, "tok-2");
+    expect(writeToken).not.toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
   });
 
   it("does not advance the sync token when a destroy is still pending", async () => {

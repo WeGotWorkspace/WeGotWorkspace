@@ -102,10 +102,9 @@ export function extractNoteMetadata(
   const includeTags = selection ? selection.includeTags === true : true;
   const includeTitle = selection ? selection.includeTitle === true : note.title !== undefined;
   const includeStarred = selection ? selection.includeStarred === true : note.starred !== undefined;
-  const includeNotebook = selection ? selection.includeNotebook === true : true;
   return {
     notebook: note.notebook,
-    ...(includeNotebook && note.notebookId ? { notebookId: note.notebookId } : {}),
+    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(includeTitle && note.title !== undefined ? { title: note.title } : {}),
     ...(includeTags ? { tags: note.tags } : {}),
     ...(includeStarred && note.starred !== undefined ? { starred: note.starred } : {}),

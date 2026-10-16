@@ -366,4 +366,29 @@ describe("flushNotesOutbox", () => {
     expect(request).not.toHaveProperty("notebook");
     expect(request).not.toHaveProperty("notebookId");
   });
+
+  it("posts notebookId for a local create that did not select a notebook move", async () => {
+    const tempId = "local-create-notebook";
+    const offlineNote: Note = {
+      ...note,
+      id: tempId,
+      notebookId: "notes-drafts",
+    };
+    await enqueueCoalescedNoteUpdate(
+      username,
+      tempId,
+      offlineNote,
+      offlineNote.date,
+      tempId,
+      undefined,
+      { includeTitle: true, includeNotebook: false },
+    );
+    createNoteItem.mockResolvedValue({ ...offlineNote, id: "server-note-1" });
+
+    await flushNotesOutbox(username);
+
+    expect(createNoteItem).toHaveBeenCalledWith(
+      expect.objectContaining({ notebook: "Drafts", notebookId: "notes-drafts" }),
+    );
+  });
 });
