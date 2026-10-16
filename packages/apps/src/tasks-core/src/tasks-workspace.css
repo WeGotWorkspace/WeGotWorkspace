@@ -56,7 +56,7 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
-/** App switcher lockup: tasks.svg literals (pink tile, soft marks). */
+/** App switcher lockup: dark tile, soft marks. */
 .tasks-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
   background-color: var(--workspace-icon-surface);
 }
@@ -65,7 +65,7 @@
   .app-sidebar__header
   .app-switch-button__icon.workspace-app-icon--switch-trigger
   svg {
-  --workspace-icon-surface: var(--color-we-got-pink);
+  --workspace-icon-surface: var(--color-we-got-dark);
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
