@@ -1,6 +1,6 @@
 import { useEffect, useState, type TransitionEvent } from "react";
 import { IconButton } from "@/button/src/button";
-import type { ButtonSeverity } from "@/button/src/button.shared";
+import type { ButtonSeverity, ButtonVariant } from "@/button/src/button.shared";
 import { cn } from "@/lib/utils";
 import "@/floating-action-bar/src/floating-action-bar.css";
 
@@ -12,6 +12,8 @@ export type FloatingActionBarButton = {
   active?: boolean;
   /** Destructive actions (trash / archive): danger fg + severity hover wash. */
   severity?: ButtonSeverity;
+  /** Done is primary; other selection actions stay outline. */
+  variant?: ButtonVariant;
   /** Visual hairline before this control (typically Done). */
   separatorBefore?: boolean;
 };
@@ -75,7 +77,7 @@ export function FloatingActionBar({
               active={button.active}
               severity={button.severity}
               size="md"
-              variant="outline"
+              variant={button.variant ?? "outline"}
             />
           </span>
         ))}
