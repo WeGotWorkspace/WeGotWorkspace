@@ -103,6 +103,9 @@ export type UseDocsCollabOptions = {
   seedContent?: string;
 };
 
+/** Why a save stopped for good. `forbidden` lifts on reconnect; the others stay. */
+export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large";
+
 export type DocsCollabSessionRefs = {
   meshRef: MutableRefObject<DocsRtcSession | null>;
   ydocRef: MutableRefObject<Y.Doc | null>;
@@ -125,6 +128,7 @@ export type DocsCollabSessionRefs = {
   saveInFlightRef: MutableRefObject<boolean>;
   saveRetryMsRef: MutableRefObject<number>;
   nextSaveAttemptAtRef: MutableRefObject<number>;
+  saveTerminalKindRef: MutableRefObject<DocsCollabSaveTerminalKind | null>;
   localDirtySinceLastSaveRef: MutableRefObject<boolean>;
   pendingServerSaveRef: MutableRefObject<boolean>;
   /** While set, a save must not replace an outside edit the person has not chosen. */

@@ -177,6 +177,7 @@ export function useDocsCollabJoin({
     refs.saveInFlightRef.current = reset.saveInFlight;
     refs.saveRetryMsRef.current = reset.saveRetryMs;
     refs.nextSaveAttemptAtRef.current = reset.nextSaveAttemptAt;
+    refs.saveTerminalKindRef.current = reset.saveTerminalKind;
     refs.reconnectInFlightRef.current = reset.reconnectInFlight;
     refs.joinedRoomRef.current = reset.joinedRoom;
     refs.authTokenRef.current = reset.authToken;
@@ -294,6 +295,7 @@ export function useDocsCollabJoin({
       // read-only preview and is not written into the Y.Doc.
       if (snapshot.kind === "failed" && isCollabDocumentGoneError(snapshot.error)) {
         urls.onDocumentGone?.();
+        refs.saveTerminalKindRef.current = "gone";
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
         setDocStatus(DOC_STATUS_DOCUMENT_GONE);

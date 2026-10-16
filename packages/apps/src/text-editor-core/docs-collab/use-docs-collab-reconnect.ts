@@ -120,6 +120,12 @@ export function useDocsCollabReconnect({
     const persistence = refs.persistenceRef.current;
     if (!ydoc || !persistence || !joined) return;
     refs.reconnectInFlightRef.current = true;
+    // A 404 stays terminal. A 403 lifts here so a restored ACL can save.
+    if (refs.saveTerminalKindRef.current === "forbidden") {
+      refs.saveTerminalKindRef.current = null;
+      refs.saveRetryMsRef.current = 0;
+      refs.nextSaveAttemptAtRef.current = 0;
+    }
 
     if (refs.nextSaveAttemptAtRef.current !== Number.POSITIVE_INFINITY) {
       setDocStatus("Reconnecting…");

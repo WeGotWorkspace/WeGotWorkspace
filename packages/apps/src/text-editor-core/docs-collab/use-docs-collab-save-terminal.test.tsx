@@ -50,6 +50,7 @@ function sessionRefs(): DocsCollabSessionRefs {
     saveInFlightRef: ref(false),
     saveRetryMsRef: ref(0),
     nextSaveAttemptAtRef: ref(0),
+    saveTerminalKindRef: ref(null),
     localDirtySinceLastSaveRef: ref(true),
     pendingServerSaveRef: ref(false),
     externalWriteHoldRef: ref(false),
@@ -96,6 +97,7 @@ describe("useDocsCollabSave terminal failures", () => {
     await expect(result.current.persistToServer()).rejects.toThrow(/404/);
     expect(onDocumentGone).toHaveBeenCalledTimes(1);
     expect(setDocStatus).toHaveBeenCalledWith(DOC_STATUS_DOCUMENT_GONE);
+    expect(refs.saveTerminalKindRef.current).toBe("gone");
     expect(refs.saveRetryMsRef.current).toBe(Number.POSITIVE_INFINITY);
     expect(refs.nextSaveAttemptAtRef.current).toBe(Number.POSITIVE_INFINITY);
     expect(refs.pendingServerSaveRef.current).toBe(true);
@@ -126,6 +128,7 @@ describe("useDocsCollabSave terminal failures", () => {
     expect(onPersistForbidden).toHaveBeenCalledTimes(1);
     expect(onDocumentGone).not.toHaveBeenCalled();
     expect(setDocStatus).toHaveBeenCalledWith(DOC_STATUS_ACCESS_LOST);
+    expect(refs.saveTerminalKindRef.current).toBe("forbidden");
     expect(refs.nextSaveAttemptAtRef.current).toBe(Number.POSITIVE_INFINITY);
     expect(refs.pendingServerSaveRef.current).toBe(true);
   });
