@@ -63,6 +63,24 @@ describe("domain failed outbox notices", () => {
     expect((await listFailedTaskOutbox(username)).map((row) => row.id)).toEqual(["tasks-item"]);
   });
 
+  it.each([
+    ["calendars", CALENDARS_DOMAIN],
+    ["contacts", CONTACTS_DOMAIN],
+    ["notes", NOTES_DOMAIN],
+    ["tasks", TASKS_DOMAIN],
+  ] as const)(
+    "treats a %s JMAP notFound row with lastStatus 404 as permanent",
+    async (_label, domain) => {
+      const id = `${domain}-jmap-missing`;
+      await failRow(id, domain, `JMAP set update failed for ${id}: notFound`, 404);
+
+      const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+      const row = await db.outbox.get(id);
+      expect(isPermanentlyFailedOutboxRow(row!)).toBe(true);
+      expect(isRetryableOutboxRow(row!)).toBe(false);
+    },
+  );
+
   it("leaves a drive row transient when lastError only contains 404", async () => {
     await failRow("drive-path", "drive", "could not write notes/404.md");
 

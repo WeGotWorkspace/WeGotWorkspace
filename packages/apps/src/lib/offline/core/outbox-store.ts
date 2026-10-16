@@ -71,6 +71,10 @@ export async function markOutboxError(
   await db.outbox.put(next);
 }
 
+/**
+ * Only `"stateMismatch"` counts as a conflict here. Calendar writes `"conflict"`
+ * and Tasks writes `"etagMismatch"`. Those two still count as failed rows.
+ */
 function isFailedNonConflict(row: OfflineOutboxRow): boolean {
   return row.retries > 0 && Boolean(row.lastError) && row.lastError !== "stateMismatch";
 }

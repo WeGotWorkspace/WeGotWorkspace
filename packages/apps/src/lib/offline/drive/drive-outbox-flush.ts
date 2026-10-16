@@ -1,6 +1,7 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,
   markOutboxError,
@@ -102,7 +103,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
       flushed += 1;
     } catch (error) {
       failed += 1;
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       const message = error instanceof Error ? error.message : String(error);
       const isStateMismatch =
         status === 409 || status === 412 || /precondition failed/i.test(message);

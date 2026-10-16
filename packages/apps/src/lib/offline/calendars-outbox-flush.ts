@@ -20,6 +20,7 @@ import {
   type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
   listOutboxMutations,
@@ -186,7 +187,7 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         }
         continue;
       }
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,

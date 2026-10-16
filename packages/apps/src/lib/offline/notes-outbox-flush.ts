@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/wgw/notes";
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
@@ -213,7 +214,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,

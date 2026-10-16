@@ -6,6 +6,7 @@ import type {
 import { contactCardSet, ContactStateMismatchError } from "@/lib/api/wgw/contacts-set";
 import { getCard, patchAddressBook } from "@/lib/api/wgw/contacts";
 import { JmapSetItemError } from "@/lib/jmap-client";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
@@ -119,7 +120,7 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
         await removeOutboxMutation(username, row.id);
         continue;
       }
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,

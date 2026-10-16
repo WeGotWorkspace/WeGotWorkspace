@@ -15,6 +15,7 @@ import {
   putTask,
   TasksRequestError,
 } from "@/lib/api/wgw/tasks";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import {
   listOutboxMutations,
@@ -108,7 +109,7 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
         await markOutboxError(username, row.id, "etagMismatch");
         continue;
       }
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,
