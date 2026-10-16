@@ -1,16 +1,16 @@
 @import "../../styles.css" reference;
 
-/** Shared suite home shell — brand cream surface with ink chrome. */
+/** Shared suite home shell — same fill as the app sidebar, with ink chrome. */
 .apps-home-screen {
-  background-color: var(--workspace-surface);
+  background-color: var(--workspace-sidebar-surface);
   color: var(--workspace-foreground);
   --app-switch-label-color: var(--workspace-foreground);
   /* Same tagline mix surface as app sidebars (muted “we got” over lockup paper). */
-  --app-switch-lockup-bg: var(--workspace-surface);
+  --app-switch-lockup-bg: var(--workspace-sidebar-surface);
   --workspace-shell-header-user-menu-bg: color-mix(
     in oklab,
     var(--workspace-foreground) 12%,
-    var(--workspace-surface)
+    var(--workspace-sidebar-surface)
   );
   --workspace-shell-header-user-menu-fg: var(--workspace-foreground);
   --workspace-shell-header-user-menu-border: color-mix(
@@ -24,7 +24,7 @@
 }
 
 html:has(.apps-home-screen) {
-  background-color: var(--workspace-surface);
+  background-color: var(--workspace-sidebar-surface);
 }
 
 /**
@@ -81,6 +81,12 @@ html:has(.apps-home-screen) {
 .apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="tasks"] {
   --workspace-icon-surface: var(--color-we-got-pink);
   --workspace-icon-foreground: var(--color-we-got-soft);
+}
+
+.apps-home-screen__label {
+  /* Same type as the sidebar app name (.app-switch-button__label + __label-name). */
+  @apply font-sans text-xl font-semibold tracking-tight;
+  color: var(--workspace-foreground);
 }
 
 /** Home grid tile — 128px base, 160px from `sm` (+25%); radius is CSS-only (SVG stays square). */
