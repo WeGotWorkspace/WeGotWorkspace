@@ -101,11 +101,11 @@ export const Editable: Story = {
     expect(remove).toBeTruthy();
     const workspace = canvasElement.querySelector(".notes-workspace");
     expect(workspace).toBeTruthy();
-    const probe = document.createElement("span");
-    probe.style.color = "var(--notes-detail-check-fg, var(--color-we-got-soft))";
-    workspace!.appendChild(probe);
-    expect(getComputedStyle(remove!).color).toBe(getComputedStyle(probe).color);
-    probe.remove();
+    const sheetFill = document.createElement("span");
+    sheetFill.style.backgroundColor = "var(--paper-sheet-bg)";
+    workspace!.appendChild(sheetFill);
+    expect(getComputedStyle(remove!).color).toBe(getComputedStyle(sheetFill).backgroundColor);
+    sheetFill.remove();
 
     const label = remove!.getAttribute("aria-label") ?? "";
     const tagLabel = label.replace(/^Remove tag /, "");
