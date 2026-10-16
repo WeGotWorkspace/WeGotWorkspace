@@ -99,8 +99,14 @@
   --segmented-control-active-bg: var(--button-outline-active-background);
   --segmented-control-active-fg: var(--button-active-color);
 
-  --switch-off-bg: color-mix(in oklch, var(--workspace-foreground) 18%, var(--workspace-surface));
-  --switch-on-bg: var(--workspace-accent);
+  /* Track follows text ink. Off is a lighter tint of that same hue.
+     Surface lightness, chroma stripped, hue omitted so paper does not pull it. */
+  --switch-off-bg: color-mix(
+    in oklch,
+    var(--workspace-foreground) 32%,
+    oklch(from var(--workspace-surface) l 0 none)
+  );
+  --switch-on-bg: var(--workspace-foreground);
   --switch-on-thumb-bg: var(--workspace-accent-foreground);
   --list-sticky-header-color: var(--workspace-foreground);
 

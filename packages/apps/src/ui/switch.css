@@ -1,8 +1,9 @@
 @import "../styles.css" reference;
 
 /**
- * Conventional compact toggle. Parents override `--switch-*`.
- * On-fill follows `--workspace-accent` so app accents apply.
+ * Conventional compact toggle. Parents publish `--switch-*`.
+ * On-track follows text ink (`--switch-on-bg` → `--workspace-foreground`).
+ * Off-track is a lighter tint of that same ink.
  * Never stretch: width is the track, not 100%.
  */
 .switch {
@@ -52,7 +53,7 @@
 }
 
 .switch[data-state="on"] {
-  background-color: var(--switch-on-bg, var(--workspace-accent));
+  background-color: var(--switch-on-bg, var(--workspace-foreground));
 }
 
 .switch:disabled {

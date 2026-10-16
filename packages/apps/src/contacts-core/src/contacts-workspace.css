@@ -49,7 +49,6 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
   --checkbox-border-color: var(--workspace-accent);
   --checkbox-checked-border: var(--workspace-accent);
-  --switch-on-bg: var(--workspace-accent);
   /* Selected list row: same wash as sidebar item hover. Active-only stays the Drive tile wash. */
   --list-item-selected-bg: var(--button-outline-hover-background);
   --list-item-active-bg: var(--drive-item-selected-background);

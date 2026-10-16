@@ -201,14 +201,29 @@ describe("workspace token core", () => {
     expect(sst).toContain("--list-sticky-header-color: var(--workspace-foreground)");
   });
 
-  it("paints the switch on-state from the accent pair", () => {
+  it("paints switch tracks from text ink, with one shared off tint", () => {
     const css = readFileSync(join(srcRoot, "ui/switch.css"), "utf8");
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
     expect(css).toContain("appearance: none");
+    expect(css).toContain("background-color: var(--switch-on-bg, var(--workspace-foreground))");
     expect(css).toContain(
       "background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground))",
     );
+    expect(derive).toContain("--switch-on-bg: var(--workspace-foreground)");
+    expect(derive).not.toContain("--switch-on-bg: var(--workspace-accent)");
     expect(derive).toContain("--switch-on-thumb-bg: var(--workspace-accent-foreground)");
+    expect(derive).toContain("oklch(from var(--workspace-surface) l 0 none)");
+
+    const offenders: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (rel === "workspace-shell/src/workspace-derive.css" || rel === "ui/switch.css") continue;
+      const text = readFileSync(file, "utf8");
+      if (text.includes("--switch-on-bg:") || text.includes("--switch-off-bg:")) {
+        offenders.push(rel);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it("lets month day-number buttons inherit header ink (UA ButtonText is dark)", () => {
