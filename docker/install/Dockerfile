@@ -42,7 +42,9 @@ RUN corepack enable \
 
 FROM php:8.5-apache-bookworm
 
-# PHP 8.4+ unbundled ext-imap; the mail API still loads it from PECL.
+# PHP 8.4+ unbundled ext-imap. Fetch the pinned tarball with curl: `pecl install imap`
+# looks up the channel release index and fails the image with "No releases available"
+# when that index is briefly unreachable.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -64,8 +66,10 @@ RUN apt-get update \
         intl \
         gmp \
         bcmath \
-    && printf '\n' | pecl install imap \
+    && curl -fsSL -o /tmp/imap.tgz https://pecl.php.net/get/imap-1.0.3.tgz \
+    && printf '\n' | pecl install /tmp/imap.tgz \
     && docker-php-ext-enable imap \
+    && rm -f /tmp/imap.tgz \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
