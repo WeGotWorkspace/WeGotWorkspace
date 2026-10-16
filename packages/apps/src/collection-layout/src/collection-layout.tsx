@@ -1,4 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import "./collection-layout.css";
 
 type CollectionPaneProps = {
@@ -22,6 +23,8 @@ type CollectionListWorkspaceProps = {
   listContent: ReactNode;
   hasItems: boolean;
   emptyLabel: string;
+  /** When set, the empty pane uses CollectionState (muted icon above the label). */
+  emptyIcon?: ReactNode;
   floatingActionBar?: React.ReactNode;
   dropZone?: {
     active: boolean;
@@ -37,16 +40,22 @@ export function CollectionListWorkspace({
   listContent,
   hasItems,
   emptyLabel,
+  emptyIcon,
   floatingActionBar,
   dropZone,
 }: CollectionListWorkspaceProps) {
+  const showEmptyIcon = !hasItems && emptyIcon != null;
   const listBody = (
     <>
       <div
-        className={`flex-1 notes-swipe-list ${hasItems ? "overflow-y-auto" : "overflow-y-hidden"}`}
+        className={`flex-1 notes-swipe-list ${hasItems ? "overflow-y-auto" : "overflow-y-hidden"}${
+          showEmptyIcon ? " collection-state-host" : ""
+        }`}
       >
         {hasItems ? (
           listContent
+        ) : showEmptyIcon ? (
+          <CollectionState icon={emptyIcon}>{emptyLabel}</CollectionState>
         ) : (
           <div className="collection-empty-state p-10 text-center text-sm">{emptyLabel}</div>
         )}
