@@ -38,11 +38,17 @@ function renderTagRename(notes: Note[], view = "all") {
   const waitForInFlightCreate = vi.fn(async () => undefined);
   const dropGoneNote = vi.fn();
   const showMutationError = vi.fn();
+  const viewState = { current: view };
   const shell = {
     notes,
     setNotes,
-    view,
-    selectView,
+    get view() {
+      return viewState.current;
+    },
+    selectView: (next: string) => {
+      viewState.current = next;
+      selectView(next);
+    },
     operations: { upsertNote },
     showMutationError,
     L: defaultNotesLabels,
@@ -125,6 +131,31 @@ describe("useNotesTagRename", () => {
     expect(other.selectView).not.toHaveBeenCalled();
   });
 
+  it("retargets a mixed-case tag view and rewrites both casings", async () => {
+    vi.useFakeTimers();
+    try {
+      const { result, selectView, upsertNote } = renderTagRename(
+        [note({ id: "mixed", tags: ["Focus"] }), note({ id: "lower", tags: ["focus"] })],
+        "tag:Focus",
+      );
+      act(() => {
+        result.current.renameTag("Focus", "reading");
+      });
+      expect(selectView).toHaveBeenCalledWith("tag:reading");
+      await flushQueue();
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "mixed", tags: ["reading"] }),
+        expect.objectContaining({ tagsAdd: ["reading"], tagsRemove: ["focus"] }),
+      );
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "lower", tags: ["reading"] }),
+        expect.objectContaining({ tagsAdd: ["reading"], tagsRemove: ["focus"] }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("names the renamed count, and the skipped count when a note is read-only", () => {
     const renamed = renderTagRename([
       note({ id: "yes-1", tags: ["a"] }),
@@ -148,34 +179,74 @@ describe("useNotesTagRename", () => {
     );
   });
 
-  it("undo re-queues the inverse delta and skips merged notes", async () => {
+  it("does not send an inverse patch when undo happens before the write starts", async () => {
     vi.useFakeTimers();
     try {
-      const { result, upsertNote } = renderTagRename([
-        note({ id: "plain", tags: ["a", "keep"] }),
-        note({ id: "merged", tags: ["a", "b"] }),
-        note({ id: "other", tags: ["c"] }),
-      ]);
+      const { result, upsertNote, persistOptimisticNote, selectView } = renderTagRename(
+        [note({ id: "plain", tags: ["a", "keep"] })],
+        "tag:a",
+      );
       act(() => {
         result.current.renameTag("a", "b");
       });
+      expect(selectView).toHaveBeenCalledWith("tag:b");
       const onUndo = toastApi.show.mock.calls[0]?.[1]?.onUndo as (() => void) | undefined;
-      expect(onUndo).toEqual(expect.any(Function));
       act(() => {
         onUndo?.();
       });
       await flushQueue();
+      expect(upsertNote).not.toHaveBeenCalled();
+      expect(persistOptimisticNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "plain", tags: ["a", "keep"] }),
+        true,
+      );
+      expect(selectView).toHaveBeenCalledWith("tag:a");
+      expect(
+        toastApi.show.mock.calls.filter((call) => call[0] === "Tag rename undone."),
+      ).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("after the write starts, undo restores cache and adds the old tag back on a merge", async () => {
+    vi.useFakeTimers();
+    try {
+      const { result, upsertNote, persistOptimisticNote, selectView } = renderTagRename(
+        [note({ id: "plain", tags: ["a", "keep"] }), note({ id: "merged", tags: ["a", "b"] })],
+        "tag:a",
+      );
+      upsertNote.mockImplementation((row: Note) => new Promise(() => row));
+      act(() => {
+        result.current.renameTag("a", "b");
+      });
+      await flushQueue();
+      expect(upsertNote).toHaveBeenCalledTimes(2);
+      const onUndo = toastApi.show.mock.calls[0]?.[1]?.onUndo as (() => void) | undefined;
+      act(() => {
+        onUndo?.();
+      });
+      expect(persistOptimisticNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "plain", tags: ["a", "keep"] }),
+        true,
+      );
+      expect(persistOptimisticNote).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "merged", tags: ["a", "b"] }),
+        true,
+      );
+      expect(selectView).toHaveBeenCalledWith("tag:a");
+      const messages = toastApi.show.mock.calls.map((call) => call[0]);
+      expect(messages.filter((message) => message === "Tag rename undone.")).toHaveLength(1);
+      expect(messages).toContain("Restored “a” on 2 notes");
+      await flushQueue();
       const inverse = upsertNote.mock.calls.filter((call) => call[1]?.tagsAdd?.[0] === "a");
-      expect(inverse).toHaveLength(1);
-      expect(inverse[0]?.[0]).toEqual(expect.objectContaining({ id: "plain" }));
-      expect(inverse[0]?.[1]).toEqual(
+      expect(inverse).toHaveLength(2);
+      expect(inverse.find((call) => call[0].id === "plain")?.[1]).toEqual(
         expect.objectContaining({ tagsAdd: ["a"], tagsRemove: ["b"] }),
       );
-      expect(
-        upsertNote.mock.calls.some(
-          (call) => call[0].id === "merged" && call[1]?.tagsRemove?.[0] === "b",
-        ),
-      ).toBe(false);
+      const merged = inverse.find((call) => call[0].id === "merged");
+      expect(merged?.[1]).toEqual(expect.objectContaining({ tagsAdd: ["a"] }));
+      expect(merged?.[1]?.tagsRemove).toBeUndefined();
     } finally {
       vi.useRealTimers();
     }
