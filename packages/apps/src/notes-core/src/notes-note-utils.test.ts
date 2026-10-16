@@ -1139,6 +1139,15 @@ describe("group notebook create targets", () => {
     expect(notesCanCreateInView("shared-with-me")).toBe(false);
   });
 
+  it("blocks New note in a read-only notebook and allows it when mayWriteAll is absent", () => {
+    expect(
+      notesCanCreateInView("nb:group-eng", [
+        { id: "group-eng", name: "Engineering", myRights: { mayWriteAll: false } },
+      ]),
+    ).toBe(false);
+    expect(notesCanCreateInView("nb:drafts", [{ id: "drafts", name: "Drafts" }])).toBe(true);
+  });
+
   it("switches Starred and Archive create to All Items", () => {
     expect(notesViewForCreate("starred")).toBe("all");
     expect(notesViewForCreate("archive")).toBe("all");

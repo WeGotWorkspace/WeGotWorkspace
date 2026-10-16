@@ -22,6 +22,7 @@ function buildShell(overrides: Partial<NotesShellState> = {}): NotesShellState {
     L: {
       newNoteCategory: "Note",
       syncFailedMessage: "Sync failed",
+      createNoteFailedMessage: (notebook: string) => `Could not create a note in “${notebook}”.`,
       toastNewNote: "New note",
     } as NotesShellState["L"],
     notes: [],
@@ -95,5 +96,70 @@ describe("useNotesMutations createNote", () => {
     expect(selectSingle).toHaveBeenCalledWith(expect.stringMatching(/^local-/));
     expect(openMobileDetail).toHaveBeenCalledWith();
     expect(setNotes).toHaveBeenCalled();
+  });
+
+  it("creates in the selected team notebook", async () => {
+    const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+    const shell = buildShell({
+      view: "nb:group-eng",
+      notebooks: ["Drafts"],
+      notebookCollections: [
+        { id: "drafts", name: "Drafts" },
+        { id: "group-eng", name: "Engineering", scope: "group", groupSlug: "eng" },
+      ],
+      operations: {
+        upsertNote,
+        deleteNote: vi.fn(),
+        archiveNote: vi.fn(),
+        restoreNote: vi.fn(),
+        createNotebook: vi.fn(),
+        renameNotebook: vi.fn(),
+        deleteNotebook: vi.fn(),
+      } as NotesShellState["operations"],
+    });
+
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+    });
+
+    expect(upsertNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notebook: "Engineering",
+        notebookId: "group-eng",
+        scope: "group",
+        groupSlug: "eng",
+      }),
+    );
+  });
+
+  it("creates in the selected personal notebook by id", async () => {
+    const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+    const shell = buildShell({
+      view: "nb:drafts",
+      operations: {
+        upsertNote,
+        deleteNote: vi.fn(),
+        archiveNote: vi.fn(),
+        restoreNote: vi.fn(),
+        createNotebook: vi.fn(),
+        renameNotebook: vi.fn(),
+        deleteNotebook: vi.fn(),
+      } as NotesShellState["operations"],
+    });
+
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+    });
+
+    expect(upsertNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        notebook: "Drafts",
+        notebookId: "drafts",
+      }),
+    );
   });
 });
