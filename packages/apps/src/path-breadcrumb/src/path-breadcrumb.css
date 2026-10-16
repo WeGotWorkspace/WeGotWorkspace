@@ -91,7 +91,8 @@
     background-color 0.15s ease;
 }
 
-.path-breadcrumb__link:hover {
+.path-breadcrumb__link:hover,
+.path-breadcrumb__link:focus-visible {
   color: var(--path-breadcrumb-current-color, var(--workspace-foreground));
   background-color: var(
     --path-breadcrumb-link-hover-bg,

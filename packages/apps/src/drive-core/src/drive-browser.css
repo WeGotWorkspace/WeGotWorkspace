@@ -2,24 +2,13 @@
 
 /*
  * Tile and list chrome. Idle is the main paper (`--workspace-surface`).
- * Hover and selected-hover mix `--workspace-accent` into that paper
- * (oklab). Selected is `--drive-item-selected-background` in
- * `workspace-color.css` (6.6% accent into the same paper) so Notes and
- * Contacts share it. The percentages match the lightness drop of the
- * sidebar item ladder (4 / 8 / 12 into the Soft rail).
- * 4.4 / 6.6 / 10.3 keep tile hover/selected a step quieter than that rail.
+ * Hover and selected are the shared outline ladder (`workspace-derive.css`),
+ * not a Dark accent mix. Selected+hover stays on the selected step.
+ * Notes and Contacts read `--drive-item-selected-background` for that step.
  */
 .drive-workspace {
-  --drive-item-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 4.4%,
-    var(--workspace-surface)
-  );
-  --drive-item-selected-hover-background: color-mix(
-    in oklab,
-    var(--workspace-accent) 10.3%,
-    var(--workspace-surface)
-  );
+  --drive-item-hover-background: var(--button-outline-hover-background);
+  --drive-item-selected-hover-background: var(--drive-item-selected-background);
 }
 
 /** Matches sidebar / form labels (`.field-label-row__label`). */
@@ -90,7 +79,7 @@
 }
 
 /*
- * Folder hit target: same accent hairline as file tiles (`drive-file-tile::after`).
+ * Folder hit target: same hairline as file tiles (`drive-file-tile::after`).
  * The hit is shared with file tiles; those already paint the hairline on the tile,
  * so this stays on the folder only.
  */
@@ -100,13 +89,7 @@
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 16%, transparent);
-}
-
-.drive-workspace .drive-folder-tile--selected .drive-tile__hit::after {
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .drive-workspace .drive-folder-tile--drop-target .drive-tile__hit::after {
@@ -152,12 +135,13 @@
   background-color: var(--workspace-surface);
 }
 
-.drive-workspace .drive-folder-tile--idle:hover {
+.drive-workspace .drive-folder-tile--idle:hover,
+.drive-workspace .drive-folder-tile--idle:focus-within {
   background-color: var(--drive-item-hover-background);
 }
 
 .drive-workspace .drive-folder-tile__icon {
-  color: var(--color-emerald);
+  color: var(--workspace-foreground);
 }
 
 .drive-workspace .drive-folder-tile__title {
@@ -181,7 +165,7 @@
 .drive-workspace .drive-file-tile__footer {
   @apply relative px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center gap-2.5 border-t;
   background-color: var(--workspace-surface);
-  border-color: color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 14%, transparent);
+  border-color: var(--border);
   transition:
     padding 180ms ease,
     background-color 150ms ease;
@@ -237,7 +221,7 @@
 }
 
 /*
- * File tiles: idle paper + full-card accent hairline.
+ * File tiles: idle paper + the shared control hairline.
  * Inset shadow sits on ::after — opaque preview/footer otherwise cover a parent inset.
  */
 .drive-workspace .drive-file-tile {
@@ -254,26 +238,24 @@
   z-index: 2;
   pointer-events: none;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 16%, transparent);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .drive-workspace .drive-file-tile--dragging {
   @apply opacity-40;
 }
 
-.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__preview,
-.drive-workspace .drive-file-tile:not(.drive-file-tile--selected):hover .drive-file-tile__footer {
+.drive-workspace
+  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
+  .drive-file-tile__preview,
+.drive-workspace
+  .drive-file-tile:not(.drive-file-tile--selected):is(:hover, :focus-within)
+  .drive-file-tile__footer {
   background-color: var(--drive-item-hover-background);
 }
 
 .drive-workspace .drive-file-tile--selected {
   box-shadow: none;
-}
-
-.drive-workspace .drive-file-tile--selected::after {
-  box-shadow: inset 0 0 0 1px
-    color-mix(in oklab, var(--workspace-accent, var(--color-emerald)) 14%, transparent);
 }
 
 .drive-workspace .drive-file-tile--selected .drive-file-tile__preview,
@@ -478,7 +460,7 @@
 }
 
 .drive-workspace .drive-list-row--active {
-  background-color: color-mix(in oklab, var(--workspace-foreground) 8%, transparent);
+  background-color: var(--drive-item-selected-background);
 }
 
 .drive-workspace .drive-list-row--dragging {
@@ -515,7 +497,7 @@
 }
 
 .drive-workspace .drive-list-folder-icon {
-  color: var(--color-emerald);
+  color: var(--workspace-foreground);
 }
 
 .drive-workspace .drive-list-file-icon {

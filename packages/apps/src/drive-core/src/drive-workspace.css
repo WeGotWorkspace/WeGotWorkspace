@@ -144,12 +144,12 @@
   @apply px-4 md:px-6 shrink-0;
   padding-block: 1rem;
   background-color: var(--button-outline-hover-background);
-  border-bottom: 1px solid color-mix(in oklch, var(--workspace-accent) 12%, transparent);
-  --path-breadcrumb-lead-color: var(--workspace-accent);
-  --path-breadcrumb-lead-bg: color-mix(in oklch, var(--workspace-accent) 12%, transparent);
+  border-bottom: 1px solid var(--border);
+  --path-breadcrumb-lead-color: var(--workspace-foreground);
+  --path-breadcrumb-lead-bg: var(--button-outline-active-background);
   --path-breadcrumb-link-color: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
   --path-breadcrumb-current-color: var(--workspace-foreground);
-  --path-breadcrumb-link-hover-bg: color-mix(in oklch, var(--workspace-accent) 10%, transparent);
+  --path-breadcrumb-link-hover-bg: var(--button-outline-active-background);
 }
 
 .drive-workspace .drive-main-header__search-dropdown {

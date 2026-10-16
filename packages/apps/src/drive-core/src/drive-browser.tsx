@@ -110,7 +110,7 @@ function DriveFileKindIcon({ file, listStyle = false }: { file: DriveFile; listS
   if (file.kind === "folder") {
     return (
       <span className={cn("shrink-0 [&>svg]:size-4", listStyle && "drive-list-folder-icon")}>
-        <Folder className="size-4" fill="currentColor" fillOpacity={0.18} />
+        <Folder className="size-4" />
       </span>
     );
   }
@@ -507,11 +507,7 @@ function FolderTile({
       {isDrivePickerRootFile(file) ? (
         <HardDrive className="drive-folder-tile__icon size-5 shrink-0" />
       ) : (
-        <Folder
-          className="drive-folder-tile__icon size-5 shrink-0"
-          fill="currentColor"
-          fillOpacity={0.15}
-        />
+        <Folder className="drive-folder-tile__icon size-5 shrink-0" />
       )}
       <span className="drive-folder-tile__title">{file.title}</span>
       {isStarred ? <Star className="drive-folder-tile__star" fill="currentColor" /> : null}

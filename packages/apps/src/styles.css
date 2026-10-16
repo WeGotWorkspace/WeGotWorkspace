@@ -344,3 +344,9 @@ select {
     --text-editor-prose-font-size: 1rem;
   }
 }
+
+/* Lucide folder stays an outline. Stroke comes from currentColor; do not fill the shape. */
+.lucide-folder,
+.lucide-folder * {
+  fill: none;
+}

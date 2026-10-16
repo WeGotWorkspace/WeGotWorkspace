@@ -472,9 +472,9 @@ export function DriveFolderPicker({
             const navigable = row.kind === "folder" || row.kind === "root";
             const icon =
               row.kind === "root" ? (
-                (rootIcon ?? <Folder fill="currentColor" fillOpacity={0.18} />)
+                (rootIcon ?? <Folder />)
               ) : row.kind === "folder" ? (
-                <Folder fill="currentColor" fillOpacity={0.18} />
+                <Folder />
               ) : (
                 <span className="[&>svg]:size-4">{row.file ? kindIcon[row.file.kind] : null}</span>
               );
