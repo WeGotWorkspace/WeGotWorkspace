@@ -9,8 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * One row per relay request, whatever the outcome. Carries no room name and no
- * addresses, so the real-time health page can read it without leaking who met
- * whom. Pruned after 30 days.
+ * addresses. Pruned after 30 days.
  *
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
  *

@@ -321,7 +321,7 @@ Maintainers: pre-release checklist (smoke job, GHCR visibility, multi-arch manif
 
 ## Real-time capacity
 
-A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md). After install, **Admin → Real-time health** shows join time, relay use, and who could not connect directly.
+A shared-hosting pool with PHP-FPM `pm.max_children = 5` can carry presence, two documents, and a 4-person call, including a short join burst when a 10th participant arrives. The request rates and the sizing table are in [realtime-capacity.md](realtime-capacity.md).
 
 ## TLS (HTTPS)
 

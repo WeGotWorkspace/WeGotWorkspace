@@ -57,7 +57,6 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 | `rtc_relay_events` | `App\Models\RtcRelayEvent` | One row per relay request (`channel`, `actor`, `reason`, `outcome`). No room name, no addresses; 30-day retention |
-| `rtc_session_metrics` | `App\Models\RtcSessionMetric` | Anonymous real-time session samples for the health page. No addresses, room names, or user ids; 30-day retention |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 

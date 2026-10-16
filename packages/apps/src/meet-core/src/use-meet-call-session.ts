@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { principalRoleFromToken } from "@/lib/api/wgw/principal-role";
-import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 import { presentMeetRelayOutcome } from "@/meet-core/src/meet-relay-present";
-import type { MeetRelayCopy } from "@/meet-core/src/meet-relay-copy";
 import { parseUrlList } from "@/lib/rtc/config";
 import { isRtcDebugEnabled } from "@/lib/rtc/debug";
 import { rtcLog } from "@/lib/rtc/log";
@@ -46,7 +43,6 @@ export function useMeetCallSession({
   const presence = usePresenceStoreContext();
   const cameraBlockedRef = useRef(false);
   const [cameraSendingDisabled, setCameraSendingDisabled] = useState(false);
-  const [relayBanner, setRelayBanner] = useState<MeetRelayCopy | null>(null);
   const [relayTiles, setRelayTiles] = useState<Readonly<Record<string, string>>>({});
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -170,14 +166,12 @@ export function useMeetCallSession({
       const selfId = room.selfIdRef.current;
       const displayName = remoteId === selfId ? (room.displayNameRef.current ?? name) : name;
       const presented = presentMeetRelayOutcome({
-        role: principalRoleFromToken(wgwCurrentAccessToken()),
         selfId,
         remoteId,
         name: displayName,
         outcome: outcome.outcome,
       });
       if (presented.toast) toast.show(presented.toast, { severity: "warning" });
-      if (presented.banner) setRelayBanner(presented.banner);
       const tile = presented.tile;
       if (tile) {
         setRelayTiles((current) => ({ ...current, [tile.peerId]: tile.message }));
@@ -364,7 +358,6 @@ export function useMeetCallSession({
     cameraSendingDisabled,
     lowData,
     setLowData,
-    relayBanner,
     relayTiles,
     switchMic,
     switchCamera,

@@ -27,13 +27,7 @@ describe("wegotworkspace admin routes", () => {
   });
 
   it("matches sidebar section slugs on /admin/:section deep links", async () => {
-    for (const section of [
-      "mail",
-      "updates",
-      "mcp",
-      "email-delivery",
-      "realtime-health",
-    ] as const) {
+    for (const section of ["mail", "updates", "mcp", "email-delivery", "collaboration"] as const) {
       const history = createMemoryHistory({
         initialEntries: [`/admin/${section}`],
       });
