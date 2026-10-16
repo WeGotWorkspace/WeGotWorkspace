@@ -50,7 +50,7 @@ Chrome weight stays `font-semibold` (600). Do not add `font-ui`.
 | `drive-browser.css`                                                   | `sm:text-[0.9375rem]`                   | `sm:text-base` or keep mid-step             |
 | `list-sticky-header.css`                                              | `15px` emphasis                         | nearest `text-sm` / keep if optical         |
 | `CalendarTimelineView.css`                                            | `text-[17px]`                           | nearest `text-lg`                           |
-| `unified-search-results-dropdown.css`                                 | `0.92rem` / `0.76rem`                   | nearest steps                               |
+| `unified-search-results-dropdown.css`                                 | `0.92rem`                               | nearest steps                               |
 | `tasks-main-view.css`                                                 | `0.75rem` / badge `0.625rem` / `0.5rem` | `text-xs`; badges may **keep**              |
 | `file-preview-text-pane.css`                                          | `text-[0.625rem]`                       | keep dense chrome or `text-xs`              |
 | `docs-collab` reply mark                                              | `text-[9px]`                            | keep circle metric or `text-xs`             |

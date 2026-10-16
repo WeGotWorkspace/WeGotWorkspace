@@ -1,3 +1,5 @@
+@import "../../styles.css" reference;
+
 .unified-search-results-dropdown {
   border: 1px solid var(--unified-search-dropdown-border, hsl(0 0% 84%));
   border-radius: 8px;
@@ -33,13 +35,6 @@
   height: auto;
   padding-top: 0.5rem;
   padding-inline: 0.25rem;
-}
-
-.unified-search-results-dropdown__group .sidebar-section__title {
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--unified-search-dropdown-muted, hsl(0 0% 42%));
 }
 
 .unified-search-results-dropdown__menu-item {
@@ -86,6 +81,12 @@
   text-overflow: ellipsis;
 }
 
+/* Title line is text-sm (1.25rem). Center the glyph on that line, not the description. */
+.unified-search-results-dropdown__menu-item .menu-item__icon-slot {
+  @apply flex h-5 items-center self-start;
+}
+
 .unified-search-results-dropdown__item-icon {
+  @apply inline-flex items-center;
   color: var(--unified-search-row-accent, var(--unified-search-dropdown-icon, hsl(0 0% 38%)));
 }
