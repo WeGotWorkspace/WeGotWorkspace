@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Notes;
 
+use App\Models\CalendarObject;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Sabre\CalDAV\Backend\PDO as CalPDO;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -120,6 +123,28 @@ final class NotesTagDeltaTest extends WgwDatabaseTestCase
             ->assertJsonPath('categories', ['a']);
     }
 
+    public function test_a_lowercase_remove_drops_a_stored_mixed_case_tag(): void
+    {
+        $uid = 'legacy-case-'.bin2hex(random_bytes(4));
+        $this->seedJournalViaPdo(
+            $uid.'.ics',
+            $this->journalIcs($uid, 'Legacy case', 'Body', 'CATEGORIES:Focus'),
+            $uid,
+        );
+
+        $stored = CalendarObject::query()->where('uid', $uid)->value('calendardata');
+        $this->assertIsString($stored);
+        $this->assertStringContainsString('CATEGORIES:Focus', $stored);
+
+        $note = $this->asBob()->getJson('/api/v1/notes/items/'.$uid)->assertOk();
+        $etag = $this->etagOf($note);
+
+        $this->patchTags($uid, $etag, [
+            'categoriesRemove' => ['focus'],
+            'categoriesAdd' => ['reading'],
+        ])->assertOk()->assertJsonPath('categories', ['reading']);
+    }
+
     public function test_two_clients_adding_different_tags_both_keep_them_when_the_second_uses_a_fresh_etag(): void
     {
         ['id' => $id, 'etag' => $shared] = $this->createNote(['a']);
@@ -179,5 +204,22 @@ final class NotesTagDeltaTest extends WgwDatabaseTestCase
     private function asBob()
     {
         return $this->withBearer($this->issueBearerTokenFor('bob'));
+    }
+
+    private function seedJournalViaPdo(string $uri, string $ics, string $uid): void
+    {
+        $caldav = new CalPDO(DB::connection('wgw')->getPdo());
+        $row = DB::connection('wgw')->table('calendarinstances')
+            ->where('principaluri', 'principals/bob')
+            ->where('uri', CalendarCollectionUris::NOTE_GENERAL)
+            ->first();
+        $this->assertNotNull($row);
+        $caldav->createCalendarObject([(int) $row->calendarid, (int) $row->id], $uri, $ics);
+        CalendarObject::query()->where('calendarid', (int) $row->calendarid)->where('uri', $uri)->update(['uid' => $uid]);
+    }
+
+    private function journalIcs(string $uid, string $title, string $body, string $extra): string
+    {
+        return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WGW//Notes//EN\r\nBEGIN:VJOURNAL\r\nUID:{$uid}\r\nDTSTAMP:20260828T120000Z\r\nSUMMARY:{$title}\r\nDESCRIPTION:{$body}\r\n{$extra}\r\nEND:VJOURNAL\r\nEND:VCALENDAR\r\n";
     }
 }

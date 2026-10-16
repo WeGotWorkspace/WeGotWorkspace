@@ -10,6 +10,7 @@ export type NotesSidebarTagEntry = {
   tag: string;
   selected: boolean;
   onSelect: () => void;
+  onRename: () => void;
 } & ListDropZoneProps;
 
 export type NotesNotebookSidebarEntry = NotesNotebookCollection;
@@ -28,6 +29,7 @@ type UseNotesSidebarModelArgs = {
   sidebarDropZoneProps: (target: string, onDrop: (ids: string[]) => void) => ListDropZoneProps;
   moveToNotebook: (ids: string[], notebook: string) => void;
   assignTagToNotes: (ids: string[], tag: string) => void;
+  onRenameTag: (tag: string) => void;
 };
 
 export function notebookViewKey(notebookId: string): string {
@@ -106,6 +108,7 @@ export function useNotesSidebarModel({
   sidebarDropZoneProps,
   moveToNotebook,
   assignTagToNotes,
+  onRenameTag,
 }: UseNotesSidebarModelArgs) {
   const collections = useMemo(
     () => collectionsFromNotesData(notebooks, sharedNotebooks, notebookCollections),
@@ -149,9 +152,10 @@ export function useNotesSidebarModel({
           tag,
           selected: view === tagViewKey(tag),
           onSelect: () => selectView(nextNotesTagView(view, tag)),
+          onRename: () => onRenameTag(tag),
           ...sidebarDropZoneProps(tagViewKey(tag), (ids) => assignTagToNotes(ids, tag)),
         })),
-    [assignTagToNotes, selectView, sidebarDropZoneProps, tags, view],
+    [assignTagToNotes, onRenameTag, selectView, sidebarDropZoneProps, tags, view],
   );
 
   return {

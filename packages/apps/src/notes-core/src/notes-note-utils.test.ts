@@ -91,6 +91,16 @@ describe("notes-note-utils", () => {
     expect(noteTagsAfterToggle(["focus"], "v2")).toBeNull();
   });
 
+  it("matches a tag view when the stored tag differs only in case", () => {
+    const visible = filterVisibleNotes([{ ...sampleNote, id: "n-case", tags: ["Focus"] }], {
+      view: "tag:focus",
+      archived: {},
+      starred: {},
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["n-case"]);
+  });
+
   it("computes plain text and word count from markdown body", () => {
     expect(plainTextFromBody(sampleNote.body)).toContain("Title");
     expect(computeWordCount(sampleNote.body)).toBeGreaterThan(0);
