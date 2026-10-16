@@ -8,13 +8,8 @@ import {
 import { driveEntriesTable } from "@/lib/offline/drive/drive-schema";
 import {
   clearDocsCollabOfflinePersistence,
-  docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
-  docsCollabRoomKey,
+  hasDocsCollabPendingServerSave,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
-import { IndexeddbPersistence } from "y-indexeddb";
-import * as Y from "yjs";
 
 /** Paths kept because `PENDING_SERVER_SAVE_KEY` is set. */
 export const KEPT_UNSAVED_DOCUMENTS_META_KEY = "drive:kept-unsaved-documents";
@@ -54,16 +49,7 @@ export async function listKeptUnsavedDocumentPaths(username: string): Promise<st
 }
 
 export async function documentHasPendingServerSave(apiPath: string): Promise<boolean> {
-  const room = docsCollabRoomKey(normalizeDocsAvailabilityPath(apiPath));
-  if (!room || !isDocsCollabEditablePath(room)) return false;
-  const known = await listExistingDatabaseNames();
-  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
-  const toOpen =
-    known == null ? [docsCollabIndexedDbKey(room)] : names.filter((name) => known.has(name));
-  for (const name of toOpen) {
-    if (await indexedDbHasPendingSave(name)) return true;
-  }
-  return false;
+  return hasDocsCollabPendingServerSave(apiPath);
 }
 
 export async function deleteDriveEntryByPath(username: string, apiPath: string): Promise<void> {
@@ -99,46 +85,5 @@ function parsePathList(raw: string | null): string[] {
 }
 
 async function dropCollabDatabase(apiPath: string): Promise<void> {
-  const room = docsCollabRoomKey(normalizeDocsAvailabilityPath(apiPath));
-  if (!room) return;
-  await clearDocsCollabOfflinePersistence(room);
-  const names = [docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)];
-  await Promise.all(names.map(deleteIndexedDatabase));
-}
-
-async function indexedDbHasPendingSave(databaseName: string): Promise<boolean> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(databaseName, ydoc);
-  try {
-    await persistence.whenSynced;
-    return Boolean(await persistence.get(PENDING_SERVER_SAVE_KEY));
-  } catch {
-    return false;
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
-}
-
-async function listExistingDatabaseNames(): Promise<ReadonlySet<string> | null> {
-  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
-  try {
-    const rows = await indexedDB.databases();
-    const names = new Set<string>();
-    for (const row of rows) {
-      if (row.name) names.add(row.name);
-    }
-    return names;
-  } catch {
-    return null;
-  }
-}
-
-function deleteIndexedDatabase(databaseName: string): Promise<void> {
-  return new Promise((resolve) => {
-    const request = indexedDB.deleteDatabase(databaseName);
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
+  await clearDocsCollabOfflinePersistence(apiPath);
 }
