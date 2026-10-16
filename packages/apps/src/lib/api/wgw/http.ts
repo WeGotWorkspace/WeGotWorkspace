@@ -657,7 +657,6 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
     if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
     if (sessionKind !== "member") return false;
     if (!readBrowserOnline()) {
-      appendRefreshFailure("offline");
       return false;
     }
     if (isRefreshTokenExpired()) {

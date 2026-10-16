@@ -330,13 +330,7 @@ describe("wgw auth refresh behavior", () => {
 
     await expect(wgwEnsureFreshAccessToken()).resolves.toBeTruthy();
     expect(wgwHasAuthenticatedSession()).toBe(true);
-    expect(sessionDebugRing().at(-1)).toMatchObject({
-      event: "wgw.refresh.failed",
-      reason: "offline",
-      status: null,
-      message: null,
-      cleared: false,
-    });
+    expect(sessionDebugRing().map((record) => record.reason)).not.toContain("offline");
   });
 
   it("keeps session when retry cap hits with unknown refresh expiry", async () => {
