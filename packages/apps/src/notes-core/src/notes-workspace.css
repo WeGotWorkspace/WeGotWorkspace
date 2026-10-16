@@ -261,11 +261,11 @@
 }
 
 /*
- * Bell lives in the header (sibling of scroll). Pin the unread badge to the
- * same pair as New note: yellow fill + Dark label.
+ * Bell lives in the header (sibling of scroll). Unread badge is severity red
+ * (`--color-error`) with a white label — not the Dark accent.
  */
 .notes-workspace .app-sidebar__notifications {
-  --notification-inbox-badge-bg: var(--workspace-accent);
+  --notification-inbox-badge-bg: var(--color-error);
   --notification-inbox-badge-fg: #ffffff;
 }
 

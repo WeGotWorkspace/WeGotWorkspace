@@ -71,7 +71,7 @@
   /*
    * Remap ink to sidebar icon chrome so the bell glyph matches the app-switch
    * close/lockup color (white on Docs/Mail, ink on Calendar/Drive, …).
-   * Unread badge fill/on-color stay on the tray trigger (primary CTA tokens).
+   * Unread badge fill/on-color stay on the tray trigger (severity red, `--color-error`).
    */
   --button-outline-color: var(
     --sidebar-logo-close-button-color,

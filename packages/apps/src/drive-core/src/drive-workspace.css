@@ -61,11 +61,11 @@
 }
 
 /*
- * Bell lives in the header (sibling of scroll). Mirror New CTA: brat fill +
- * Dark label.
+ * Bell lives in the header (sibling of scroll). Unread badge is severity red
+ * (`--color-error`) with a white label — not the Dark accent.
  */
 .drive-workspace .app-sidebar__notifications {
-  --notification-inbox-badge-bg: var(--workspace-accent);
+  --notification-inbox-badge-bg: var(--color-error);
   --notification-inbox-badge-fg: #ffffff;
 }
 
