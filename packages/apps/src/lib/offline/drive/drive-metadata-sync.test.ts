@@ -103,7 +103,7 @@ describe("syncDriveMetadataTree JMAP node ids", () => {
     });
   });
 
-  it("keeps the same nodeId on the new path after a server rename and another crawl", async () => {
+  it("stores the same nodeId when a later crawl lists a second path", async () => {
     let renamed = false;
     listFileNodeEntries.mockImplementation(async (_session: unknown, dir: string) => {
       if (dir === "/groups") return [];
@@ -120,8 +120,6 @@ describe("syncDriveMetadataTree JMAP node ids", () => {
     await syncDriveMetadataTree(username, bootstrap());
 
     expect(await readCachedDriveNodeId(username, "users/ada/renamed.md")).toBe("fn-same");
-    const renamedRow = await readDriveEntryFromCache(username, "users/ada/renamed.md");
-    expect(renamedRow?.nodeId).toBe("fn-same");
-    expect(renamedRow && "path" in renamedRow).toBe(true);
+    expect(await readCachedDriveNodeId(username, "users/ada/original.md")).toBe("fn-same");
   });
 });

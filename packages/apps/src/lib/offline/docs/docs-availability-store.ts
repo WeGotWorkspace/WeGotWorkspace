@@ -63,13 +63,16 @@ export async function stampDocsAvailabilityNodeIds(
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = docsAvailabilityTable(db);
+  const pins = new Map((await table.toArray()).map((row) => [row.id, row]));
   for (const entry of entries) {
     const nodeId = entry.nodeId?.trim();
     if (!nodeId) continue;
     const id = normalizeDocsAvailabilityPath(entry.path);
-    const existing = await table.get(id);
+    const existing = pins.get(id);
     if (!existing || existing.nodeId === nodeId) continue;
-    await table.put({ ...existing, nodeId });
+    const next = { ...existing, nodeId };
+    pins.set(id, next);
+    await table.put(next);
   }
 }
 

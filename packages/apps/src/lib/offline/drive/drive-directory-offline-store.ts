@@ -49,15 +49,13 @@ export async function upsertDriveEntry(
   const table = driveEntriesTable(db);
   const id = normalizeDriveEntryPath(entry.path);
   const parentPath = normalizeDriveEntryPath(parentAndName(`/${id}`).destination);
-  const existing = await table.get(id);
-  const nodeId = entry.nodeId?.trim() || existing?.nodeId;
-  const stored = nodeId ? { ...entry, nodeId } : entry;
+  const nodeId = entry.nodeId?.trim();
   await table.put({
     id,
     parentPath: parentPath || "",
     type: entry.type === "dir" ? "dir" : "file",
     modifiedAt: entry.time ?? 0,
-    data: JSON.stringify(stored),
+    data: JSON.stringify(entry),
     ...(nodeId ? { nodeId } : {}),
   });
 }
