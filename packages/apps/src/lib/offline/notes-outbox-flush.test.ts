@@ -326,4 +326,69 @@ describe("flushNotesOutbox", () => {
       expect.objectContaining({ starred: true, etag: '"etag-1"' }),
     );
   });
+
+  it("a title or tag enqueue does not star and does not patch the notebook", async () => {
+    const titled = {
+      ...note,
+      title: "Renamed",
+      starred: true,
+      notebookId: "notes-drafts",
+      tags: ["essay", "focus"],
+    };
+    await enqueueCoalescedNoteUpdate(
+      username,
+      titled.id,
+      titled,
+      titled.date,
+      undefined,
+      { tagsAdd: ["focus"] },
+      {
+        includeTitle: true,
+        includeTags: false,
+        includeStarred: false,
+        includeNotebook: false,
+      },
+    );
+    updateNoteItem.mockResolvedValue(titled);
+
+    await flushNotesOutbox(username);
+
+    const request = updateNoteItem.mock.calls[0]?.[1] as {
+      starred?: boolean;
+      notebook?: string;
+      notebookId?: string;
+      title?: string;
+      tagsAdd?: string[];
+    };
+    expect(request.title).toBe("Renamed");
+    expect(request.tagsAdd).toEqual(["focus"]);
+    expect(request).not.toHaveProperty("starred");
+    expect(request).not.toHaveProperty("notebook");
+    expect(request).not.toHaveProperty("notebookId");
+  });
+
+  it("posts notebookId for a local create that did not select a notebook move", async () => {
+    const tempId = "local-create-notebook";
+    const offlineNote: Note = {
+      ...note,
+      id: tempId,
+      notebookId: "notes-drafts",
+    };
+    await enqueueCoalescedNoteUpdate(
+      username,
+      tempId,
+      offlineNote,
+      offlineNote.date,
+      tempId,
+      undefined,
+      { includeTitle: true, includeNotebook: false },
+    );
+    createNoteItem.mockResolvedValue({ ...offlineNote, id: "server-note-1" });
+
+    await flushNotesOutbox(username);
+
+    expect(createNoteItem).toHaveBeenCalledWith(
+      expect.objectContaining({ notebook: "Drafts", notebookId: "notes-drafts" }),
+    );
+  });
 });

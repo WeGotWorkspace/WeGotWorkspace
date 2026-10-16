@@ -187,7 +187,8 @@ export type WgwNoteItem = {
 
 export type WgwNoteUpsertRequest = {
   id?: string;
-  notebook: string;
+  /** Omitted when this PATCH must not move the note. Create still sends it. */
+  notebook?: string;
   /** REST collection id — preferred over name when looking up the dest notebook. */
   notebookId?: string;
   title?: string | null;

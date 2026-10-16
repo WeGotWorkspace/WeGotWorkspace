@@ -43,11 +43,13 @@ function isPreconditionFailed(error: unknown): boolean {
 async function flushOutboxNoteUpsert(
   username: string,
   noteId: string,
+  metadata: NoteUpsertMetadata,
   metadataRequest: WgwNoteUpsertRequest,
   tempNoteId?: string,
 ): Promise<{ saved: Note } | { conflict: true } | { gone: true }> {
+  const createRequest = { ...metadataRequest, notebook: metadata.notebook, body: "" };
   if (isLocalTempNoteId(noteId)) {
-    return { saved: await createNoteItem({ ...metadataRequest, body: "" }) };
+    return { saved: await createNoteItem(createRequest) };
   }
   try {
     return { saved: await updateNoteItem(noteId, metadataRequest) };
@@ -65,7 +67,7 @@ async function flushOutboxNoteUpsert(
       await dropLocalNoteAfterServerGone(username, noteId);
       return { gone: true };
     }
-    return { saved: await createNoteItem({ ...metadataRequest, body: "" }) };
+    return { saved: await createNoteItem(createRequest) };
   }
 }
 
@@ -73,12 +75,14 @@ async function flushOutboxNoteUpsert(
 function noteMetadataUpsertRequest(
   noteId: string,
   metadata: NoteUpsertMetadata,
-  etag?: string,
+  etag: string | undefined,
+  patchNotebook: boolean | undefined,
 ): WgwNoteUpsertRequest {
+  const sendNotebook = isLocalTempNoteId(noteId) || patchNotebook !== false;
   return {
     id: noteId,
-    notebook: metadata.notebook,
-    ...(metadata.notebookId ? { notebookId: metadata.notebookId } : {}),
+    ...(sendNotebook ? { notebook: metadata.notebook } : {}),
+    ...(sendNotebook && metadata.notebookId ? { notebookId: metadata.notebookId } : {}),
     ...(metadata.title !== undefined ? { title: metadata.title } : {}),
     ...(metadata.tags !== undefined ? { tags: metadata.tags } : {}),
     ...(metadata.tagsAdd !== undefined ? { tagsAdd: metadata.tagsAdd } : {}),
@@ -115,10 +119,16 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       if (row.op === "upsert") {
         const upsert = payload as NotesUpsertPayload;
         const noteId = upsert.noteId;
-        const metadataRequest = noteMetadataUpsertRequest(noteId, upsert.metadata, row.ifInState);
+        const metadataRequest = noteMetadataUpsertRequest(
+          noteId,
+          upsert.metadata,
+          row.ifInState,
+          upsert.patchNotebook,
+        );
         const result = await flushOutboxNoteUpsert(
           username,
           noteId,
+          upsert.metadata,
           metadataRequest,
           upsert.tempNoteId,
         );

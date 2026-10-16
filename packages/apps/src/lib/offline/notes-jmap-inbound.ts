@@ -29,7 +29,9 @@ export async function ingestRemoteNote(
 ): Promise<"upserted" | "merged-pending" | "skipped-pending"> {
   if (!note.id) return "skipped-pending";
   const pendingFields = (await listPendingNoteFields(username)).get(note.id);
-  if (pendingFields?.has("delete")) return "merged-pending";
+  // A queued delete is not a cache write. merged-pending would make REST
+  // sync report changed without ingesting the remote row.
+  if (pendingFields?.has("delete")) return "skipped-pending";
   if (!pendingFields || pendingFields.size === 0) {
     await upsertNoteInCache(username, note, false);
     return "upserted";
