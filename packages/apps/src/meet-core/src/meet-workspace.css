@@ -813,12 +813,8 @@
   --chat-day-bg: var(--workspace-surface);
   --chat-action-surface: var(--workspace-surface);
   --chat-hover: color-mix(in oklab, var(--workspace-accent) 8%, var(--workspace-surface));
-  --chat-reaction-bg: var(--workspace-surface);
-  --chat-reaction-selected-bg: color-mix(
-    in oklab,
-    var(--workspace-accent) 12%,
-    var(--workspace-surface)
-  );
+  --chat-reaction-bg: var(--button-outline-hover-background);
+  --chat-reaction-selected-bg: var(--button-outline-active-background);
   --chat-muted: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
   --button-ghost-hover-background: color-mix(
     in oklab,
@@ -829,8 +825,7 @@
 
 .meet-workspace .chat-thread-panel,
 .meet-workspace .chat-thread-panel__body,
-.meet-workspace .chat-thread-panel__header,
-.meet-workspace .chat-message__actions {
+.meet-workspace .chat-thread-panel__header {
   background-color: var(--workspace-surface);
 }
 
