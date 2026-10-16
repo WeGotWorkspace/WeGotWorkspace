@@ -98,15 +98,12 @@
    * uses the shared Dark-mixed default. Detail editor task-lists use the tag
    * wash on `.note-text-editor-body`. */
   --checkbox-checked-border: var(--workspace-accent);
-  /* Idle sidebar filter chips reuse the selected collection-row wash
-   * (`.collection-sidebar-row--selected` → `--collection-sidebar-row-selected-bg`).
-   * Selected chips stay ink on white so the filter stays distinct from that wash.
+  /* Idle sidebar filter chips read the selected collection-row wash on the
+   * chip rule (sidebar-local `--button-outline-active-background`). Do not
+   * alias that wash here: `.notes-workspace` resolves the mix against the
+   * desk surface, not the sidebar. Selected chips stay ink on white.
    * Detail category chips invert the sheet (`--notes-detail-contrast-fg` /
    * `--paper-sheet-bg`). `--note-detail-tag-*` stays the editor task-list wash. */
-  --notes-tag-bg: var(
-    --collection-sidebar-row-selected-bg,
-    var(--button-outline-active-background)
-  );
   --notes-tag-fg: var(--workspace-foreground);
   /* Selected sidebar tag chip — ink fill, white label, no stroke. Nested
    * `.notes-workspace` inherits the tokens so stories do not reset chip text. */
@@ -416,10 +413,14 @@
   --tw-ring-color: color-mix(in oklch, var(--workspace-foreground) 35%, transparent);
 }
 
-/* Idle chips: same wash as a selected sidebar row, no stroke. */
+/* Idle chips: same wash as a selected sidebar row, no stroke.
+ * Resolve on the chip so `.app-sidebar`’s recomputed active wash wins. */
 .notes-workspace .notes-sidebar-tags__item .tag {
   @apply max-w-full border-0;
-  background-color: var(--notes-tag-bg);
+  background-color: var(
+    --collection-sidebar-row-selected-bg,
+    var(--button-outline-active-background)
+  );
   color: var(--notes-tag-fg);
 }
 
