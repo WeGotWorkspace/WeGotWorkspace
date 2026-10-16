@@ -1154,16 +1154,6 @@
   @apply size-4;
 }
 
-.meet-workspace .meet-direct-message-row {
-  @apply gap-4;
-}
-
-.meet-workspace .meet-direct-message-row .collection-sidebar-row__leading {
-  width: var(--control-height-xs, 1.75rem);
-  min-width: var(--control-height-xs, 1.75rem);
-  height: var(--control-height-xs, 1.75rem);
-}
-
 .meet-workspace .collection-sidebar-row__title {
   @apply min-w-0 flex-1;
 }
