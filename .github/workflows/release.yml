@@ -187,10 +187,16 @@ jobs:
           docker pull "$IMAGE"
           cp dist/releases/docker-compose.yml "$SMOKE_DIR/docker-compose.yml"
           cp dist/releases/env.example "$SMOKE_DIR/.env"
+          cp dist/releases/setup.sh "$SMOKE_DIR/setup.sh"
           sed -i "s|^WGW_IMAGE=.*|WGW_IMAGE=${IMAGE}|" "$SMOKE_DIR/.env"
-          sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=sqlite/' "$SMOKE_DIR/.env"
-          sed -i 's/^WGW_WAIT_FOR_DB=.*/WGW_WAIT_FOR_DB=0/' "$SMOKE_DIR/.env"
-          sed -i 's/^WGW_DB_HOST=.*/WGW_DB_HOST=/' "$SMOKE_DIR/.env"
+          # Same rewrite as setup.sh --sqlite. The script sets WGW_SQLITE=0
+          # while it is sourced, so the flag is set after that.
+          (
+            WGW_SETUP_LIB=1
+            . "$SMOKE_DIR/setup.sh"
+            WGW_SQLITE=1
+            apply_sqlite_profile "$SMOKE_DIR/.env"
+          )
           sed -i 's/^WGW_HTTP_PORT=.*/WGW_HTTP_PORT=18080/' "$SMOKE_DIR/.env"
           cd "$SMOKE_DIR"
           compose() { docker compose -f docker-compose.yml --env-file .env "$@"; }
@@ -216,8 +222,11 @@ jobs:
           CONTENT_VOL="$(docker volume ls -q | grep '_wgw-content$' | head -1)"
           [ -n "$CONTENT_VOL" ] || { echo "::error::wgw-content volume not found"; compose ps -a; docker volume ls; exit 1; }
           docker run --rm -v "${CONTENT_VOL}:/data" alpine:3.20 \
-            sh -c 'mkdir -p /data && date -Iseconds > /data/.installed'
-          compose up -d --force-recreate
+            sh -c 'mkdir -p /data && date -Iseconds > /data/.installed && touch /data/db.sqlite'
+          if ! compose up -d --force-recreate; then
+            compose logs migrator || true
+            exit 1
+          fi
           compose logs migrator | tee /tmp/wgw-migrator-installed.log
           grep -q "Running wgw:schema-migrate" /tmp/wgw-migrator-installed.log
           echo "=== Config persistence: force-recreate web, health should remain ok ==="
@@ -272,6 +281,7 @@ jobs:
       - name: Replace the install-cells section in the release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
