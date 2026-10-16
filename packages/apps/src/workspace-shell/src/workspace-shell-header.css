@@ -42,14 +42,15 @@
 
 .workspace-shell-header__user-menu-trigger {
   @apply flex shrink-0 rounded-full border-0 bg-transparent p-0;
+  /* Initials sit on a shell wash, not on the solid accent (accent-foreground is white). */
   --user-avatar-bg: var(
     --workspace-shell-header-user-menu-bg,
-    color-mix(in oklab, var(--workspace-accent-foreground) 16%, var(--workspace-home-bg))
+    color-mix(in oklab, var(--workspace-foreground) 12%, var(--workspace-surface))
   );
-  --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, var(--workspace-accent-foreground));
+  --user-avatar-fg: var(--workspace-shell-header-user-menu-fg, var(--workspace-foreground));
   --user-avatar-border: var(
     --workspace-shell-header-user-menu-border,
-    color-mix(in oklab, var(--workspace-accent-foreground) 22%, var(--workspace-home-bg))
+    color-mix(in oklab, var(--workspace-foreground) 22%, transparent)
   );
   --user-avatar-border-width: 1px;
 }

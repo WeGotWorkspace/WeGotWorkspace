@@ -104,7 +104,7 @@
       )
     )
   );
-  color: var(--user-avatar-fg, var(--button-active-color, var(--workspace-surface)));
+  color: var(--user-avatar-fg, var(--button-active-color, var(--workspace-foreground)));
   border-width: var(--user-avatar-border-width, 1px);
   border-style: solid;
   border-color: var(--user-avatar-border, var(--control-border-color));
