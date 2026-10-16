@@ -7,8 +7,11 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bridgePortalThemeFromOpenTrigger } from "@/ui/portal-theme-vars";
 import { controlSizeClassName, type ControlSize } from "@/ui/control-size";
+import { installKeyboardFocusModality } from "@/ui/keyboard-focus";
 
 import "./input.css";
+
+installKeyboardFocusModality();
 
 const Select = SelectPrimitive.Root;
 

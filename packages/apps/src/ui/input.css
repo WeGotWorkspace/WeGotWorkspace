@@ -28,7 +28,9 @@
   background-color: var(--input-background, transparent);
 }
 
-/* Keyboard-only ring and border, same as Button / IconButton. Mouse :focus does not match. */
+/* Keyboard-only ring, same as Button / IconButton.
+ * Text fields also match :focus-visible on mouse click, so the ring is
+ * suppressed while the last input was a pointer (`installKeyboardFocusModality`). */
 .control-surface:focus-visible,
 .select-trigger:focus-visible,
 .input:focus-visible,
@@ -36,6 +38,18 @@
 .input:has(> .input__field:focus-visible) {
   @apply ring-1 ring-ring;
   border-color: var(--input-border-focus, var(--control-border-color));
+}
+
+html[data-modality="pointer"]
+  :is(
+    .control-surface:focus-visible,
+    .select-trigger:focus-visible,
+    .input:focus-visible,
+    .textarea:focus-visible,
+    .input:has(> .input__field:focus-visible)
+  ) {
+  border-color: var(--control-border-color);
+  box-shadow: var(--input-shadow, 0 0 #0000);
 }
 
 .control-surface,
