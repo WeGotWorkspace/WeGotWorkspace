@@ -193,21 +193,39 @@ describe("applyFetchedDirectorySnapshot", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("keeps an unsaved nested document when its directory is pruned", async () => {
-    const child = "/users/alice/nested/stay.md";
+  it("keeps ancestor directories when a nested document still has unsaved work", async () => {
+    const child = "/users/alice/nested/deep/stay.md";
+    const gone = "/users/alice/nested/gone.md";
     await upsertDriveEntry(username, entry("/users/alice/nested", "dir"));
+    await upsertDriveEntry(username, entry("/users/alice/nested/deep", "dir"));
     await upsertDriveEntry(username, entry(child));
+    await upsertDriveEntry(username, entry(gone));
     await writeDocsAvailability(username, { id: child, location: "My Drive" });
     await seedPendingSave(child);
 
     const result = await applyFetchedDirectorySnapshot(username, "/users/alice", []);
 
-    expect(result.keptUnsavedPaths).toEqual(["users/alice/nested/stay.md"]);
+    expect(result.keptUnsavedPaths).toEqual(["users/alice/nested/deep/stay.md"]);
+    expect(result.removedPaths).toContain("users/alice/nested/gone.md");
+    expect(result.removedPaths).not.toContain("users/alice/nested");
+    expect(result.removedPaths).not.toContain("users/alice/nested/deep");
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    await expect(driveEntriesTable(db).get("users/alice/nested")).resolves.toBeUndefined();
-    await expect(driveEntriesTable(db).get("users/alice/nested/stay.md")).resolves.toBeDefined();
+    await expect(driveEntriesTable(db).get("users/alice/nested")).resolves.toBeDefined();
+    await expect(driveEntriesTable(db).get("users/alice/nested/deep")).resolves.toBeDefined();
+    await expect(
+      driveEntriesTable(db).get("users/alice/nested/deep/stay.md"),
+    ).resolves.toBeDefined();
+    await expect(driveEntriesTable(db).get("users/alice/nested/gone.md")).resolves.toBeUndefined();
+    const parentListing = (await readDirectoryEntriesFromCache(username, "/users/alice")).map(
+      (row) => row.path,
+    );
+    expect(parentListing).toContain("/users/alice/nested");
+    const deepListing = (
+      await readDirectoryEntriesFromCache(username, "/users/alice/nested/deep")
+    ).map((row) => row.path);
+    expect(deepListing).toEqual(["/users/alice/nested/deep/stay.md"]);
     await expect(readDocsAvailability(username, child)).resolves.toMatchObject({
-      id: "users/alice/nested/stay.md",
+      id: "users/alice/nested/deep/stay.md",
     });
   });
 

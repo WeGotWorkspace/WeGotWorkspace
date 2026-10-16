@@ -129,5 +129,17 @@ describe("core outbox store", () => {
     expect(isSyncNoticeOutboxRow(byId.transient!)).toBe(true);
     expect(isSyncNoticeOutboxRow(byId.missing!)).toBe(true);
     expect(isSyncNoticeOutboxRow(byId.forbidden!)).toBe(true);
+
+    await enqueueOutboxMutation(username, {
+      id: "path-404",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "path-404", "could not write notes/404.md");
+    const [loose] = (await listOutboxMutations(username)).filter((row) => row.id === "path-404");
+    expect(isRetryableOutboxRow(loose!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(loose!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(loose!)).toBe(true);
   });
 });

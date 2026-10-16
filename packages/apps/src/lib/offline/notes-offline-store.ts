@@ -4,7 +4,7 @@ import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
-  isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
@@ -396,7 +396,7 @@ export async function dropLocalNoteAfterServerGone(
 
 export async function listFailedNotesOutbox(username: string): Promise<OfflineOutboxRow[]> {
   const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
-  return rows.filter(isRetryableOutboxRow);
+  return rows.filter(isSyncNoticeOutboxRow);
 }
 
 export async function listPendingNoteIds(username: string): Promise<string[]> {

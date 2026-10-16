@@ -3,7 +3,7 @@ import { rememberOfflineTasksUsername } from "@/lib/offline/offline-session";
 import type { Task, TaskList, TaskPatch } from "@/tasks-core/src/tasks-types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
-  isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
@@ -119,7 +119,7 @@ export async function removeTaskListFromCache(username: string, listId: string):
 
 export async function listFailedTaskOutbox(username: string): Promise<OfflineOutboxRow[]> {
   const rows = await listOutboxMutationsForDomain(username, TASKS_DOMAIN);
-  return rows.filter(isRetryableOutboxRow);
+  return rows.filter(isSyncNoticeOutboxRow);
 }
 
 export async function listPendingTaskIds(username: string): Promise<string[]> {

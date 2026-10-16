@@ -119,12 +119,35 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
   return { flushed, failed, stateMismatches };
 }
 
-export function docsOutboxApiPath(row: OfflineOutboxRow): string | null {
+export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] {
+  switch (payload.op) {
+    case "rename":
+    case "trash":
+      return [
+        normalizeDocsAvailabilityPath(payload.from),
+        normalizeDocsAvailabilityPath(
+          nextPathAfterRename(payload.from, payload.destination, payload.to),
+        ),
+      ];
+    case "create":
+      return [normalizeDocsAvailabilityPath(payload.apiPath)];
+    case "star":
+      return [normalizeDocsAvailabilityPath(payload.path)];
+    default: {
+      const unreachable: never = payload;
+      return unreachable;
+    }
+  }
+}
+
+export function pathsForDocsOutboxRow(row: OfflineOutboxRow): string[] {
   const payload = parsePayload(row);
-  if (!payload) return null;
-  if (payload.op === "create") return normalizeDocsAvailabilityPath(payload.apiPath);
-  if (payload.op === "star") return normalizeDocsAvailabilityPath(payload.path);
-  return normalizeDocsAvailabilityPath(payload.from);
+  if (!payload) return [];
+  return pathsForDocsOutboxPayload(payload);
+}
+
+export function docsOutboxApiPath(row: OfflineOutboxRow): string | null {
+  return pathsForDocsOutboxRow(row)[0] ?? null;
 }
 
 /**

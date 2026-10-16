@@ -1,12 +1,13 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
+import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import { isYDocEmpty } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 /** Stable y-indexeddb room key for a drive virtual path (no leading slash). */
 export function docsCollabRoomKey(path: string): string {
-  return path.trim().replace(/^\/+/, "");
+  return normalizeOfflinePath(path);
 }
 
 /** y-indexeddb database name for a collab room (versioned to drop wiped local state). */
@@ -252,6 +253,24 @@ export function indexedDbNamesForRoom(roomKey: string): string[] {
  * Shared by Docs prune and Notes. Logout wipe reads the `custom` store
  * directly instead, so a stuck sync cannot hang sign-out.
  */
+/**
+ * Databases that already exist. `null` when `indexedDB.databases` is missing
+ * or rejects; callers then open a name without an existence check.
+ */
+export async function listExistingIndexedDatabaseNames(): Promise<ReadonlySet<string> | null> {
+  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
+  try {
+    const rows = await indexedDB.databases();
+    const names = new Set<string>();
+    for (const row of rows) {
+      if (row.name) names.add(row.name);
+    }
+    return names;
+  } catch {
+    return null;
+  }
+}
+
 export async function collabIndexedDbHasPendingServerSave(databaseName: string): Promise<boolean> {
   const ydoc = new Y.Doc();
   const persistence = new IndexeddbPersistence(databaseName, ydoc);

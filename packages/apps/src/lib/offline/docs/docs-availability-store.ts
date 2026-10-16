@@ -1,12 +1,13 @@
 import { rememberOfflineDocsUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import {
   docsAvailabilityTable,
   type OfflineDocsAvailabilityRow,
 } from "@/lib/offline/docs/docs-schema";
 
 export function normalizeDocsAvailabilityPath(apiPath: string): string {
-  return apiPath.trim().replace(/^\/+/, "");
+  return normalizeOfflinePath(apiPath);
 }
 
 export async function listDocsAvailability(

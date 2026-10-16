@@ -5,6 +5,7 @@ import {
   collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
+  listExistingIndexedDatabaseNames,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
@@ -21,23 +22,9 @@ function noteCollabLegacyIndexedDbKeys(room: string): string[] {
   return [room];
 }
 
-/**
- * Databases that already exist. `null` when `indexedDB.databases` is missing
- * or rejects; callers then open the legacy name without an existence check.
- */
+/** Note-room alias of `listExistingIndexedDatabaseNames`. */
 export async function listExistingNoteCollabDatabaseNames(): Promise<ReadonlySet<string> | null> {
-  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
-  let rows: IDBDatabaseInfo[];
-  try {
-    rows = await indexedDB.databases();
-  } catch {
-    return null;
-  }
-  const names = new Set<string>();
-  for (const row of rows) {
-    if (row.name) names.add(row.name);
-  }
-  return names;
+  return listExistingIndexedDatabaseNames();
 }
 
 function legacyNamesToOpen(

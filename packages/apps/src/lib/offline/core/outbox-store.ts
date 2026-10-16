@@ -64,9 +64,12 @@ function isFailedNonConflict(row: OfflineOutboxRow): boolean {
   return row.retries > 0 && Boolean(row.lastError) && row.lastError !== "stateMismatch";
 }
 
-/** Server rejected the mutation. Matches `failed (404)` / `failed (403)` style messages. */
+/**
+ * Server rejected the mutation. Flush paths record `failed (404)` or
+ * `failed (403)`. A bare 404 in a path or ticket number is not this.
+ */
 function isPermanentOutboxFailure(lastError: string): boolean {
-  return /\b(?:403|404)\b/.test(lastError);
+  return /failed \((?:403|404)\)/.test(lastError);
 }
 
 /**
@@ -78,17 +81,18 @@ export function isRetryableOutboxRow(row: OfflineOutboxRow): boolean {
 }
 
 /**
- * True when the server rejected the mutation with 403 or 404.
- * These stay visible in the Docs and Drive sync notice. They are not transient
- * retries and they are not revision conflicts (`stateMismatch`).
+ * True when the server rejected the mutation with `failed (403)` or `failed (404)`.
+ * These stay visible in the sync notices. They are not transient retries and
+ * they are not revision conflicts (`stateMismatch`).
  */
 export function isPermanentlyFailedOutboxRow(row: OfflineOutboxRow): boolean {
   return isFailedNonConflict(row) && isPermanentOutboxFailure(row.lastError ?? "");
 }
 
 /**
- * Rows the Docs and Drive sync notice lists: transient retries and permanent
- * 403/404 rejections. Revision conflicts stay on the conflict channel.
+ * Rows a sync notice lists: transient retries and permanent 403/404 rejections.
+ * Revision conflicts stay on the conflict channel. Docs, Drive, Calendar,
+ * Contacts, Notes, and Tasks use this.
  */
 export function isSyncNoticeOutboxRow(row: OfflineOutboxRow): boolean {
   return isRetryableOutboxRow(row) || isPermanentlyFailedOutboxRow(row);
