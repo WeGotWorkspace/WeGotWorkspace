@@ -139,6 +139,7 @@ bash tools/setup-docker-install.sh --local
 | `WGW_DB_PORT` | `3306` | MySQL port |
 | `WGW_DB_USERNAME` | `wgw` | Credentials passed to DB wait probe |
 | `WGW_DB_PASSWORD` | `wgw` | Credentials passed to DB wait probe |
+| `WGW_DB_DATABASE` | `wgw` (`.env.example`); `/var/wgw/content/db.sqlite` if unset | MySQL database name, or the SQLite file on the content volume. This value wins over `api.env`. Use the volume path when `COMPOSE_PROFILES=sqlite`. |
 | `MARIADB_ROOT_PASSWORD` | `wgw-root` | MariaDB root password |
 | `MARIADB_DATABASE` | `wgw` | Database created on first boot |
 | `MARIADB_USER` | `wgw` | Application database user |

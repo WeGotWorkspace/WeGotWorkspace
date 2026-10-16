@@ -191,6 +191,7 @@ jobs:
           sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=sqlite/' "$SMOKE_DIR/.env"
           sed -i 's/^WGW_WAIT_FOR_DB=.*/WGW_WAIT_FOR_DB=0/' "$SMOKE_DIR/.env"
           sed -i 's/^WGW_DB_HOST=.*/WGW_DB_HOST=/' "$SMOKE_DIR/.env"
+          sed -i 's|^WGW_DB_DATABASE=.*|WGW_DB_DATABASE=/var/wgw/content/db.sqlite|' "$SMOKE_DIR/.env"
           sed -i 's/^WGW_HTTP_PORT=.*/WGW_HTTP_PORT=18080/' "$SMOKE_DIR/.env"
           cd "$SMOKE_DIR"
           compose() { docker compose -f docker-compose.yml --env-file .env "$@"; }
@@ -216,7 +217,7 @@ jobs:
           CONTENT_VOL="$(docker volume ls -q | grep '_wgw-content$' | head -1)"
           [ -n "$CONTENT_VOL" ] || { echo "::error::wgw-content volume not found"; compose ps -a; docker volume ls; exit 1; }
           docker run --rm -v "${CONTENT_VOL}:/data" alpine:3.20 \
-            sh -c 'mkdir -p /data && date -Iseconds > /data/.installed'
+            sh -c 'mkdir -p /data && date -Iseconds > /data/.installed && touch /data/db.sqlite'
           if ! compose up -d --force-recreate; then
             compose logs migrator || true
             exit 1
@@ -282,9 +283,8 @@ jobs:
           python3 - << 'PY'
           import os, pathlib, subprocess
           tag = os.environ["GITHUB_REF_NAME"]
-          repo = os.environ["GITHUB_REPOSITORY"]
           body = subprocess.check_output(
-              ["gh", "release", "view", tag, "--repo", repo, "--json", "body", "--jq", ".body"],
+              ["gh", "release", "view", tag, "--json", "body", "--jq", ".body"],
               text=True,
           )
           marker = "## Install cells"
@@ -302,7 +302,7 @@ jobs:
           )
           pathlib.Path("/tmp/release-notes.md").write_text(f"{body}\n\n{section}", encoding="utf-8")
           PY
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file /tmp/release-notes.md
+          gh release edit "$TAG" --notes-file /tmp/release-notes.md
 
   cleanup:
     needs: prepare

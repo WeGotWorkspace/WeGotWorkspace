@@ -42,9 +42,10 @@ RUN corepack enable \
 
 FROM php:8.5-apache-bookworm
 
-# PHP 8.4+ unbundled ext-imap. Fetch the pinned tarball with curl: `pecl install imap`
-# looks up the channel release index and fails the image with "No releases available"
-# when that index is briefly unreachable.
+# PHP 8.4+ unbundled ext-imap. `pecl install imap` asks the PECL channel for a
+# release index and fails with `No releases available for package
+# "pecl.php.net/imap"` when that index lists no release (delisting or a channel
+# change). Fetch the pinned 1.0.3 tarball and check its sha256 before install.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
@@ -66,7 +67,8 @@ RUN apt-get update \
         intl \
         gmp \
         bcmath \
-    && curl -fsSL -o /tmp/imap.tgz https://pecl.php.net/get/imap-1.0.3.tgz \
+    && curl -fsSL --retry 3 --retry-all-errors --retry-delay 2 -o /tmp/imap.tgz https://pecl.php.net/get/imap-1.0.3.tgz \
+    && echo '0c2c0b1f94f299004be996b85a424e3d11ff65ac0a3c980db3213289a4a3faaf  /tmp/imap.tgz' | sha256sum -c - \
     && printf '\n' | pecl install /tmp/imap.tgz \
     && docker-php-ext-enable imap \
     && rm -f /tmp/imap.tgz \
