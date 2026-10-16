@@ -138,6 +138,26 @@ describe("JmapNotesAdapter", () => {
     expect(onRemoteNoteDestroyed).not.toHaveBeenCalled();
   });
 
+  it("rolls the note state back when a destroy is still pending", async () => {
+    const client = clientStub({ Notebook: "nb-1", Note: "n-1" });
+    const adapter = new JmapNotesAdapter({
+      client,
+      onRemoteNoteDestroyed: async () => "skipped-pending",
+    });
+    notebookChanges.mockImplementation(async () => {
+      client.setState("bob", "Notebook", "nb-2");
+      return { created: [], updated: [], destroyed: [], newState: "nb-2" };
+    });
+    noteChanges.mockImplementation(async () => {
+      client.setState("bob", "Note", "n-2");
+      return { created: [], updated: [], destroyed: ["n-gone"], newState: "n-2" };
+    });
+
+    await adapter.sync();
+
+    expect(client.getState("bob", "Note")).toBe("n-1");
+  });
+
   it("hands a full snapshot to onRefetchAll after cannotCalculateChanges", async () => {
     const onRefetchAll = vi.fn();
     const adapter = new JmapNotesAdapter({
