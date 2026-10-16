@@ -254,7 +254,10 @@ export type WgwDriveRootPath = DriveRootPath;
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;
 };
-export type WgwDriveDirectoryData = DriveDirectoryData;
+/** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */
+export type WgwDriveDirectoryData = Omit<DriveDirectoryData, "files"> & {
+  files: WgwDriveDirectoryEntry[];
+};
 export type WgwDriveGetDirRequest = DriveGetDirRequest;
 export type WgwDriveSearchRequest = DriveSearchRequest;
 export type WgwDriveChangeDirRequest = DriveChangeDirRequest;
