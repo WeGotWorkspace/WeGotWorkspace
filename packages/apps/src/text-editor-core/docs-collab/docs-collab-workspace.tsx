@@ -556,7 +556,9 @@ function DocsCollabWorkspaceInner({
     saveNow,
     onServerApplied: handleServerDocApplied,
   });
-  reportDocumentGoneRef.current = conflict.reportDocumentGone;
+  useEffect(() => {
+    reportDocumentGoneRef.current = conflict.reportDocumentGone;
+  }, [conflict.reportDocumentGone]);
   const dialogLabels =
     conflict.mode === "gone"
       ? {
