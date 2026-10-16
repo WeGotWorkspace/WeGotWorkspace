@@ -217,7 +217,10 @@ jobs:
           [ -n "$CONTENT_VOL" ] || { echo "::error::wgw-content volume not found"; compose ps -a; docker volume ls; exit 1; }
           docker run --rm -v "${CONTENT_VOL}:/data" alpine:3.20 \
             sh -c 'mkdir -p /data && date -Iseconds > /data/.installed'
-          compose up -d --force-recreate
+          if ! compose up -d --force-recreate; then
+            compose logs migrator || true
+            exit 1
+          fi
           compose logs migrator | tee /tmp/wgw-migrator-installed.log
           grep -q "Running wgw:schema-migrate" /tmp/wgw-migrator-installed.log
           echo "=== Config persistence: force-recreate web, health should remain ok ==="

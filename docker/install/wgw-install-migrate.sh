@@ -40,5 +40,32 @@ if [ ! -f "${API_ROOT}/artisan" ]; then
   exit 1
 fi
 
+CONFIG_VOL="${WGW_CONFIG_VOL:-/wgw-config-vol}"
+if [ -f "${CONFIG_VOL}/api.env" ]; then
+  if [ -d "${API_ROOT}/.env" ]; then
+    rm -rf "${API_ROOT}/.env"
+  fi
+  ln -sf "${CONFIG_VOL}/api.env" "${API_ROOT}/.env"
+fi
+
+# Laravel will not open a sqlite database that does not exist yet. The install
+# lock can land before db.sqlite (the release smoke plants only .installed).
+mkdir -p "$DATA_DIR"
+db_file="${DATA_DIR}/db.sqlite"
+driver=""
+if [ -f "${API_ROOT}/.env" ]; then
+  driver="$(grep -E '^WGW_DB_CONNECTION=' "${API_ROOT}/.env" | tail -1 | cut -d= -f2- | tr -d '[:space:]' || true)"
+fi
+if [ -z "$driver" ]; then
+  driver="${WGW_DB_CONNECTION:-sqlite}"
+fi
+if [ "$driver" = "sqlite" ] && [ ! -f "$db_file" ]; then
+  : > "$db_file"
+  chmod 660 "$db_file" || true
+  if [ "$(id -u)" = "0" ]; then
+    chown www-data:www-data "$db_file" || true
+  fi
+fi
+
 echo "[wgw-install-migrate] Running wgw:schema-migrate..."
 exec php "${API_ROOT}/artisan" wgw:schema-migrate
