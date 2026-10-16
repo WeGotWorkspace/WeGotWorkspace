@@ -122,7 +122,7 @@ export const DeleteNotebookChoice: Story = {
       screen.getByRole("dialog", { name: defaultNotesLabels.deleteNotebookHasNotesTitle }),
     ).toBeTruthy();
     const confirm = screen.getByRole("button", {
-      name: defaultNotesLabels.deleteNotebookMoveConfirm,
+      name: defaultNotesLabels.deleteNotebookMoveToConfirm(seedNotebooks[0]?.name ?? ""),
     });
     await expect(confirm).toBeEnabled();
     await userEvent.click(

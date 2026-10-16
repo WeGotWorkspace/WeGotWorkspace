@@ -354,7 +354,7 @@ describe("useNotesNotebookDelete", () => {
     expect(queued.filter((row) => row.op === "deleteNotebook")).toEqual([]);
   });
 
-  it("deletes an empty offline notebook without queueing purge-if-empty", async () => {
+  it("queues purge-if-empty for an empty offline notebook", async () => {
     await seedNotebookCache([keepNote]);
     setBrowserOnline(false);
 
@@ -374,7 +374,7 @@ describe("useNotesNotebookDelete", () => {
     expect(queued.map((row) => JSON.parse(row.payload) as { action?: { kind?: string } })).toEqual([
       expect.objectContaining({
         name: "notes-scratch",
-        action: { kind: "purge" },
+        action: { kind: "purge-if-empty" },
       }),
     ]);
     const cached = await readNotesBootstrapFromCache(cacheUsername);
@@ -408,9 +408,86 @@ describe("useNotesNotebookDelete", () => {
     });
 
     expect(shell.showMutationError).toHaveBeenCalledWith(
-      "A note in this notebook uses the same id as a note in the destination.",
+      "A note in this notebook uses the same id as another note. Pick a different notebook.",
     );
     expect(shell.setNotebookCollections).not.toHaveBeenCalled();
     expect(shell.setNotes).not.toHaveBeenCalled();
+  });
+
+  it("ignores a second confirm while the move is still running", async () => {
+    let releaseMove: (() => void) | undefined;
+    const deleteNotebook = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new NotesVjournalRequestError("Notebook contains notes.", 409, "notebookHasContents"),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseMove = resolve;
+          }),
+      );
+    const shell = shellStub({
+      operations: { ...shellStub().operations!, deleteNotebook },
+    });
+    const apiRef = { current: null as ReturnType<typeof useNotesNotebookDelete> | null };
+    render(<DeleteHarness shell={shell} apiRef={apiRef} />);
+
+    await act(async () => {
+      await apiRef.current?.requestDeleteNotebook("notes-scratch");
+    });
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Work" }));
+    const confirmName = "Move notes to “Work” and delete notebook";
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: confirmName }));
+    });
+
+    const confirm = screen.getByRole("button", { name: confirmName });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+
+    expect(deleteNotebook).toHaveBeenCalledTimes(2);
+    expect(deleteNotebook).toHaveBeenLastCalledWith("notes-scratch", {
+      kind: "move",
+      target: "notes-work",
+    });
+    await act(async () => {
+      releaseMove?.();
+    });
+  });
+
+  it("shows a read-only destination as its own error", async () => {
+    const deleteNotebook = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new NotesVjournalRequestError("Notebook contains notes.", 409, "notebookHasContents"),
+      )
+      .mockRejectedValueOnce(
+        new NotesVjournalRequestError("The destination notebook is read-only.", 403, "forbidden"),
+      );
+    const shell = shellStub({
+      operations: { ...shellStub().operations!, deleteNotebook },
+    });
+    const apiRef = { current: null as ReturnType<typeof useNotesNotebookDelete> | null };
+    render(<DeleteHarness shell={shell} apiRef={apiRef} />);
+
+    await act(async () => {
+      await apiRef.current?.requestDeleteNotebook("notes-scratch");
+    });
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Work" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Move/ }));
+    });
+
+    expect(shell.showMutationError).toHaveBeenCalledWith(
+      "That notebook is read-only. Pick another notebook.",
+    );
+    expect(shell.setNotebookCollections).not.toHaveBeenCalled();
   });
 });

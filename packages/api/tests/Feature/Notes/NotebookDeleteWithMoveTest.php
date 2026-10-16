@@ -10,6 +10,7 @@ use App\Models\NoteStar;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Notes\NotebookNotesMover;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
@@ -260,6 +261,29 @@ final class NotebookDeleteWithMoveTest extends WgwDatabaseTestCase
                 ->where('operation', 1)
                 ->count(),
         );
+    }
+
+    public function test_bulk_move_writes_only_the_destination_add_and_bumps_only_that_token(): void
+    {
+        $source = $this->createNotebook('bob', 'Source Only');
+        $dest = $this->createNotebook('bob', 'Dest Only');
+        $this->createNote('bob', $source, 'One');
+        $this->createNote('bob', $source, 'Two');
+        $sourceInstance = CalendarInstance::query()->where('uri', $source)->first();
+        $destInstance = CalendarInstance::query()->where('uri', $dest)->first();
+        $this->assertNotNull($sourceInstance);
+        $this->assertNotNull($destInstance);
+        $sourceCalendarId = (int) $sourceInstance->calendarid;
+        $destCalendarId = (int) $destInstance->calendarid;
+        $sourceToken = (int) DB::connection('wgw')->table('calendars')->where('id', $sourceCalendarId)->value('synctoken');
+        $destToken = (int) DB::connection('wgw')->table('calendars')->where('id', $destCalendarId)->value('synctoken');
+
+        app(NotebookNotesMover::class)->moveAll($sourceInstance, $destInstance);
+
+        $this->assertSame($sourceToken, (int) DB::connection('wgw')->table('calendars')->where('id', $sourceCalendarId)->value('synctoken'));
+        $this->assertSame(0, DB::connection('wgw')->table('calendarchanges')->where('calendarid', $sourceCalendarId)->where('operation', 3)->count());
+        $this->assertSame($destToken + 1, (int) DB::connection('wgw')->table('calendars')->where('id', $destCalendarId)->value('synctoken'));
+        $this->assertSame(2, DB::connection('wgw')->table('calendarchanges')->where('calendarid', $destCalendarId)->where('operation', 1)->count());
     }
 
     public function test_delete_with_move_aborts_when_destination_uid_collides(): void
