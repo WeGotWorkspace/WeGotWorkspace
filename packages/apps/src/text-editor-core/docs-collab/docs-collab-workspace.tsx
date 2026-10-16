@@ -80,7 +80,6 @@ import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 
 import "@/docs-core/src/docs-workspace.css";
 import "@/text-editor-core/docs-collab/docs-collab-review/docs-collab-review-panel.css";
@@ -521,9 +520,6 @@ function DocsCollabWorkspaceInner({
     (index: number) => {
       setActiveOutlineIndex(index);
       if (editor) focusOutlineHeading(editor, index);
-      if (isSidebarOverlayViewport()) {
-        setSidebarOpen(false);
-      }
     },
     [editor],
   );

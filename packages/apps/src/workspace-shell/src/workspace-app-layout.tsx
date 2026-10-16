@@ -6,6 +6,7 @@ import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
+import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
 import "@/workspace-shell/src/workspace-app-layout.css";
 
 type WorkspaceAppLayoutBaseProps = {
@@ -183,6 +184,7 @@ export function WorkspaceSidebarAccountFooter({
             type="button"
             className="workspace-sidebar-account-footer__settings-button"
             onClick={settingsItem.onClick}
+            {...sidebarSelectMarker}
           >
             <span className="workspace-sidebar-account-footer__settings-icon" aria-hidden>
               <Settings className="size-4" />
