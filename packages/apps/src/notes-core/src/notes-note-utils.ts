@@ -596,10 +596,11 @@ export function filterVisibleNotes(
           note.notebook.toLowerCase() === target.toLowerCase()) &&
         !isArchived;
     } else if (view.startsWith("tag:")) {
+      const target = normalizeTag(view.slice(4));
       inView =
         !note.sharedInbox &&
         !note.sharedNotebookGrant &&
-        note.tags.includes(view.slice(4)) &&
+        note.tags.some((tag) => normalizeTag(tag) === target) &&
         !isArchived;
     }
     if (!inView) return false;

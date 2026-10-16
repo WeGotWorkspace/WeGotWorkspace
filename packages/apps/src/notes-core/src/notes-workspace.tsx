@@ -1,4 +1,4 @@
-import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
@@ -21,7 +21,9 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
+import { IconButton } from "@/button/src/button";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
+import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
 import { NoteCollabChrome, NoteCollabSession } from "@/note-detail-view/src/note-text-editor-body";
 import { MultiSelectionView } from "@/multi-selection-view/src/multi-selection-view";
@@ -203,6 +205,7 @@ export function NotesWorkspace({
     moveToNotebook,
     moveActiveNoteToNotebook,
     assignTagToNotes,
+    renameTag,
     createNote,
     toggleStar,
     toggleArchive,
@@ -238,6 +241,7 @@ export function NotesWorkspace({
   });
 
   const [focusTitleAfterCreate, setFocusTitleAfterCreate] = useState(false);
+  const [renameTagDialog, setRenameTagDialog] = useState<{ tag: string } | null>(null);
   const beginCreateNote = useCallback(() => {
     createNote();
     setFocusTitleAfterCreate(true);
@@ -274,6 +278,7 @@ export function NotesWorkspace({
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
+    onRenameTag: (tag) => setRenameTagDialog({ tag }),
   });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -522,8 +527,8 @@ export function NotesWorkspace({
             {showTagsSection ? (
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
-                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag}>
+                  ({ tag, selected, onSelect, onRename, isDropTarget, ...dropHandlers }) => (
+                    <li key={tag} className="notes-sidebar-tags__row">
                       <button
                         type="button"
                         className={cn(
@@ -537,6 +542,14 @@ export function NotesWorkspace({
                       >
                         <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                       </button>
+                      <IconButton
+                        label={L.renameTagActionFor(tag)}
+                        icon={<Pencil className="size-3.5" aria-hidden />}
+                        size="xs"
+                        variant="ghost"
+                        className="notes-sidebar-tags__edit"
+                        onClick={onRename}
+                      />
                     </li>
                   ),
                 )}
@@ -750,6 +763,17 @@ export function NotesWorkspace({
       />
 
       {notebookDeleteDialog}
+      <NotesRenameTagDialog
+        open={renameTagDialog !== null}
+        tag={renameTagDialog?.tag ?? ""}
+        existingTags={tags}
+        labels={L}
+        onClose={() => setRenameTagDialog(null)}
+        onRename={(next) => {
+          if (renameTagDialog) renameTag(renameTagDialog.tag, next);
+        }}
+      />
+
       {confirmDialog}
     </TooltipProvider>
   );

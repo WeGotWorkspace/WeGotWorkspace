@@ -1,0 +1,9 @@
+@import "../../styles.css" reference;
+
+.notes-rename-tag-dialog__body {
+  @apply grid gap-2 py-2;
+}
+
+.notes-rename-tag-dialog__hint {
+  @apply text-sm text-muted-foreground;
+}
