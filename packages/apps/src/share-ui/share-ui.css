@@ -275,6 +275,11 @@
   min-height: var(--input-height);
 }
 
+/* Groups have no hue. Same UserAvatar tile as people; ink instead of accent green. */
+.share-principal-search-dropdown__mark {
+  --user-avatar-fg: var(--workspace-foreground);
+}
+
 .share-principal-search-dropdown__name {
   @apply min-w-0 flex-1 truncate;
 }
