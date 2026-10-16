@@ -5,10 +5,20 @@ declare(strict_types=1);
 namespace App\Services\Auth;
 
 use App\Models\ApiRefreshToken;
+use Closure;
+use Illuminate\Support\Str;
 
 final class RefreshTokenRepository
 {
+    /** Seconds after a rotation during which a still-live successor is replayed. */
+    public const ROTATION_GRACE_SECONDS = 60;
+
     public function __construct() {}
+
+    public static function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
+    }
 
     public function refreshTtl(): int
     {
@@ -18,67 +28,68 @@ final class RefreshTokenRepository
     /**
      * @param  'guest'|'user'|'admin'  $role
      */
-    public function issue(string $username, string $role): string
+    public function issue(string $username, string $role, ?string $familyId = null): string
     {
         $this->cleanupExpired();
-        $token = bin2hex(random_bytes(32));
-        $hash = hash('sha256', $token);
-        $expiresAt = time() + $this->refreshTtl();
 
-        ApiRefreshToken::query()->updateOrInsert(
-            ['token_hash' => $hash],
-            [
-                'username' => $username,
-                'role' => $role,
-                'expires_at' => $expiresAt,
-                'revoked' => 0,
-                'created_at' => time(),
-            ]
-        );
-
-        return $token;
+        return $this->store($username, $role, $familyId);
     }
 
     /**
-     * @return array{username: string, role: 'guest'|'user'|'admin'}|null
+     * Insert the successor for a rotation. consume() already swept, and this
+     * runs inside that transaction, so it must not sweep again.
      */
-    public function consume(string $token): ?array
+    public function issueRotated(string $username, string $role, string $familyId): string
     {
-        $this->cleanupExpired();
-        $hash = hash('sha256', $token);
-        $row = ApiRefreshToken::query()->where('token_hash', $hash)->first();
-        if ($row === null) {
-            return null;
-        }
-        if ((int) $row->expires_at <= time()) {
-            ApiRefreshToken::query()->where('token_hash', $hash)->delete();
-
-            return null;
-        }
-        if ((int) $row->revoked === 1) {
-            // RFC 9700: reuse of a rotated token signals theft; revoke entire chain
-            $this->revokeAllForUsername((string) $row->username);
-
-            return null;
-        }
-
-        ApiRefreshToken::query()->where('token_hash', $hash)->update(['revoked' => 1]);
-        $role = (string) $row->role;
-        if (! in_array($role, ['guest', 'user', 'admin'], true)) {
-            return null;
-        }
-
-        return [
-            'username' => (string) $row->username,
-            'role' => $role,
-        ];
+        return $this->store($username, $role, $familyId);
     }
 
-    public function revoke(string $token): void
+    /**
+     * Redeem a refresh token. A live token is rotated through $issueSuccessor.
+     * Presenting it again while that successor is still live, inside the grace
+     * window, returns the same successor. The replay is not consumed, so two
+     * holders can stay in step until the successor is rotated or revoked.
+     * After that, a later presentation revokes the family.
+     *
+     * @param  Closure(string, string): string  $issueSuccessor  (username, familyId): plaintext token
+     * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
+     */
+    public function consume(string $token, Closure $issueSuccessor): ?array
     {
         $this->cleanupExpired();
-        $hash = hash('sha256', $token);
-        ApiRefreshToken::query()->where('token_hash', $hash)->update(['revoked' => 1]);
+        $hash = self::hashToken($token);
+
+        return ApiRefreshToken::query()->getConnection()->transaction(
+            function () use ($hash, $issueSuccessor): ?array {
+                $row = ApiRefreshToken::query()->where('token_hash', $hash)->lockForUpdate()->first();
+                if ($row === null) {
+                    return null;
+                }
+                if ((int) $row->expires_at <= time()) {
+                    $row->delete();
+
+                    return null;
+                }
+                if ((int) $row->revoked === 1) {
+                    return $this->replayOrRevoke($row);
+                }
+
+                return $this->rotate($row, $issueSuccessor);
+            },
+        );
+    }
+
+    /**
+     * End the login chain that presented this token, including a successor
+     * issued for a response the client never received.
+     */
+    public function revoke(string $token): void
+    {
+        $row = ApiRefreshToken::query()->where('token_hash', self::hashToken($token))->first();
+        if ($row !== null) {
+            $this->revokeChain($row);
+        }
+        $this->cleanupExpired();
     }
 
     public function revokeAllForUsername(string $username): void
@@ -87,8 +98,194 @@ final class RefreshTokenRepository
         ApiRefreshToken::query()->where('username', $username)->update(['revoked' => 1]);
     }
 
+    public function revokeFamily(string $familyId): void
+    {
+        if ($familyId === '') {
+            return;
+        }
+
+        $this->cleanupExpired();
+        $this->markFamilyRevoked($familyId);
+    }
+
+    /**
+     * @param  Closure(string, string): string  $issueSuccessor
+     * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
+     */
+    private function rotate(ApiRefreshToken $row, Closure $issueSuccessor): ?array
+    {
+        $familyId = $this->familyIdOf($row);
+        $plain = $issueSuccessor((string) $row->username, $familyId);
+        $successorHash = self::hashToken($plain);
+        $claimed = ApiRefreshToken::query()
+            ->where('token_hash', $row->token_hash)
+            ->where('revoked', 0)
+            ->update([
+                'revoked' => 1,
+                'rotated_at' => time(),
+                'successor_hash' => $successorHash,
+                'successor_token' => ApiRefreshToken::sealSuccessorToken($plain),
+                'family_id' => $familyId,
+            ]);
+
+        if ($claimed !== 1) {
+            return $this->loseRotationRace($row->token_hash, $successorHash);
+        }
+
+        $successor = ApiRefreshToken::query()->where('token_hash', $successorHash)->first();
+
+        return $successor === null ? null : $this->pairFrom($successor, $plain);
+    }
+
+    /**
+     * The conditional claim lost. On MySQL, lockForUpdate() makes this unreachable:
+     * a concurrent revoker commits before the lock, and the first read already
+     * sees revoked = 1. SQLite ignores that row lock, so two writers can both
+     * pass the first read and the second update matches zero rows. Drop the
+     * orphan successor and take the replay-or-revoke path.
+     *
+     * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
+     */
+    private function loseRotationRace(string $presentedHash, string $orphanHash): ?array
+    {
+        ApiRefreshToken::query()->where('token_hash', $orphanHash)->delete();
+        $fresh = ApiRefreshToken::query()->where('token_hash', $presentedHash)->lockForUpdate()->first();
+        if ($fresh === null || (int) $fresh->revoked !== 1) {
+            return null;
+        }
+
+        return $this->replayOrRevoke($fresh);
+    }
+
+    /**
+     * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
+     */
+    private function replayOrRevoke(ApiRefreshToken $row): ?array
+    {
+        if ($this->withinGrace($row)) {
+            $successor = $this->liveSuccessor($row);
+            $plain = $row->openSuccessorToken();
+            if ($successor !== null && is_string($plain) && hash_equals($successor->token_hash, self::hashToken($plain))) {
+                return $this->pairFrom($successor, $plain);
+            }
+        }
+
+        $this->revokePresentedFamily($row);
+
+        return null;
+    }
+
+    private function revokePresentedFamily(ApiRefreshToken $row): void
+    {
+        $familyId = is_string($row->family_id) ? $row->family_id : '';
+        if ($familyId !== '') {
+            $this->markFamilyRevoked($familyId);
+
+            return;
+        }
+
+        $this->revokeAllForUsername((string) $row->username);
+    }
+
+    private function liveSuccessor(ApiRefreshToken $row): ?ApiRefreshToken
+    {
+        $hash = $row->successor_hash;
+        if (! is_string($hash) || $hash === '') {
+            return null;
+        }
+
+        $successor = ApiRefreshToken::query()->where('token_hash', $hash)->first();
+        if ($successor === null || (int) $successor->revoked === 1 || (int) $successor->expires_at <= time()) {
+            return null;
+        }
+
+        return $successor;
+    }
+
+    private function withinGrace(ApiRefreshToken $row): bool
+    {
+        if ($row->rotated_at === null) {
+            return false;
+        }
+
+        return time() - (int) $row->rotated_at <= self::ROTATION_GRACE_SECONDS;
+    }
+
+    private function familyIdOf(ApiRefreshToken $row): string
+    {
+        $familyId = $row->family_id;
+
+        return is_string($familyId) && $familyId !== '' ? $familyId : (string) Str::ulid();
+    }
+
+    /**
+     * @return array{username: string, role: 'guest'|'user'|'admin', refresh_token: string}|null
+     */
+    private function pairFrom(ApiRefreshToken $successor, string $refreshToken): ?array
+    {
+        $role = (string) $successor->role;
+        if (! in_array($role, ['guest', 'user', 'admin'], true)) {
+            return null;
+        }
+
+        return [
+            'username' => (string) $successor->username,
+            'role' => $role,
+            'refresh_token' => $refreshToken,
+        ];
+    }
+
+    private function markFamilyRevoked(string $familyId): void
+    {
+        ApiRefreshToken::query()->where('family_id', $familyId)->update(['revoked' => 1]);
+    }
+
+    private function revokeChain(ApiRefreshToken $row): void
+    {
+        $familyId = is_string($row->family_id) ? $row->family_id : '';
+        if ($familyId !== '') {
+            $this->markFamilyRevoked($familyId);
+
+            return;
+        }
+
+        $hashes = [(string) $row->token_hash];
+        if (is_string($row->successor_hash) && $row->successor_hash !== '') {
+            $hashes[] = $row->successor_hash;
+        }
+        ApiRefreshToken::query()->whereIn('token_hash', $hashes)->update(['revoked' => 1]);
+    }
+
+    private function store(string $username, string $role, ?string $familyId): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $familyId = $familyId !== null && $familyId !== '' ? $familyId : (string) Str::ulid();
+
+        ApiRefreshToken::query()->updateOrInsert(
+            ['token_hash' => self::hashToken($token)],
+            [
+                'username' => $username,
+                'role' => $role,
+                'expires_at' => time() + $this->refreshTtl(),
+                'revoked' => 0,
+                'created_at' => time(),
+                'family_id' => $familyId,
+                'rotated_at' => null,
+                'successor_hash' => null,
+                'successor_token' => null,
+            ],
+        );
+
+        return $token;
+    }
+
     private function cleanupExpired(): void
     {
-        ApiRefreshToken::query()->where('expires_at', '<=', time())->delete();
+        $now = time();
+        ApiRefreshToken::query()->where('expires_at', '<=', $now)->delete();
+        ApiRefreshToken::query()
+            ->whereNotNull('successor_token')
+            ->where('rotated_at', '<', $now - self::ROTATION_GRACE_SECONDS)
+            ->update(['successor_token' => null]);
     }
 }

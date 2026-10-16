@@ -25,7 +25,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `principals` | `App\Models\Principal` | DAV principals, profile `email` / `displayname` |
 | `groupmembers` | `App\Models\GroupMember` | Group membership join |
 | `app_settings` | `App\Models\AppSetting` | Key/value site settings (string PK `name`) |
-| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK) |
+| `api_refresh_tokens` | `App\Models\ApiRefreshToken` | JWT refresh tokens (`token_hash` PK). `family_id` is one login chain. `rotated_at` + `successor_hash` record a rotation; `successor_token` is the APP_KEY ciphertext of that successor and is cleared after the 60s replay window. |
 | `api_password_reset_tokens` | `App\Models\ApiPasswordResetToken` | Hashed one-time password-reset tokens (`token_hash` PK) |
 | `api_revoked_tokens` | `App\Models\ApiRevokedToken` | Revoked JWT JTIs |
 | `app_update_history` | `App\Models\AppUpdateHistory` | In-place update audit log |

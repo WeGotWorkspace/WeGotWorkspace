@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\UsesWgwConnection;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * Columns on the wgw table. Larastan does not see `$this->wgw()` migrations.
+ *
+ * successor_token is read and written only through the seal/open helpers.
  *
  * @property string $token_hash
  * @property string $username
@@ -16,6 +20,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $expires_at
  * @property int $revoked
  * @property int $created_at
+ * @property string|null $family_id
+ * @property int|null $rotated_at
+ * @property string|null $successor_hash
+ * @property string|null $successor_token
  */
 final class ApiRefreshToken extends Model
 {
@@ -39,5 +47,34 @@ final class ApiRefreshToken extends Model
         'expires_at',
         'revoked',
         'created_at',
+        'family_id',
+        'rotated_at',
+        'successor_hash',
     ];
+
+    /** @var list<string> */
+    protected $hidden = [
+        'successor_token',
+    ];
+
+    public static function sealSuccessorToken(string $token): string
+    {
+        return Crypt::encryptString($token);
+    }
+
+    public function openSuccessorToken(): ?string
+    {
+        $cipher = $this->successor_token;
+        if (! is_string($cipher) || $cipher === '') {
+            return null;
+        }
+
+        try {
+            $token = Crypt::decryptString($cipher);
+        } catch (DecryptException) {
+            return null;
+        }
+
+        return $token === '' ? null : $token;
+    }
 }
