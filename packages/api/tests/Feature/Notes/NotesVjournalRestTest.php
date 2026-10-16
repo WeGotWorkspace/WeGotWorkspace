@@ -591,9 +591,107 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         }
     }
 
+    public function test_status_only_patch_advances_updated_at_and_appears_in_changes(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Archive me',
+            'body' => 'body',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $updatedAt = (string) $created->json('updatedAt');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+        $since = (string) $this->asBob()
+            ->getJson('/api/v1/notes/items/changes?notebookId='.CalendarCollectionUris::NOTE_GENERAL)
+            ->assertOk()
+            ->json('newState');
+
+        sleep(1);
+
+        $patchedAt = (string) $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, ['status' => 'CANCELLED'])
+            ->assertOk()
+            ->json('updatedAt');
+        $this->assertGreaterThan($updatedAt, $patchedAt);
+
+        $changes = $this->asBob()
+            ->getJson('/api/v1/notes/items/changes?notebookId='.CalendarCollectionUris::NOTE_GENERAL.'&since='.$since)
+            ->assertOk()
+            ->json();
+        $this->assertContains($id, $changes['updated']);
+    }
+
+    public function test_categories_only_patch_advances_updated_at_and_appears_in_changes(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Tag me',
+            'body' => 'body',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $updatedAt = (string) $created->json('updatedAt');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+        $since = (string) $this->asBob()
+            ->getJson('/api/v1/notes/items/changes?notebookId='.CalendarCollectionUris::NOTE_GENERAL)
+            ->assertOk()
+            ->json('newState');
+
+        sleep(1);
+
+        $patchedAt = (string) $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, ['categoriesAdd' => ['focus']])
+            ->assertOk()
+            ->json('updatedAt');
+        $this->assertGreaterThan($updatedAt, $patchedAt);
+
+        $changes = $this->asBob()
+            ->getJson('/api/v1/notes/items/changes?notebookId='.CalendarCollectionUris::NOTE_GENERAL.'&since='.$since)
+            ->assertOk()
+            ->json();
+        $this->assertContains($id, $changes['updated']);
+    }
+
+    public function test_dtstamp_stays_the_creation_time_after_a_patch(): void
+    {
+        $created = $this->asBob()->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Stamp',
+            'body' => 'body',
+        ])->assertCreated();
+        $id = (string) $created->json('id');
+        $etag = (string) ($created->headers->get('ETag') ?? $created->json('etag'));
+        $before = CalendarObject::query()->where('uid', $id)->first();
+        $this->assertNotNull($before);
+        $dtstamp = $this->icsUtcStamp((string) $before->calendardata, 'DTSTAMP');
+        $this->assertNotNull($dtstamp);
+
+        sleep(1);
+
+        $this->asBob()->withHeaders(['If-Match' => $etag])
+            ->patchJson('/api/v1/notes/items/'.$id, ['title' => 'Stamp renamed'])
+            ->assertOk();
+
+        $before->refresh();
+        $ics = (string) $before->calendardata;
+        $this->assertSame($dtstamp, $this->icsUtcStamp($ics, 'DTSTAMP'));
+        $lastModified = $this->icsUtcStamp($ics, 'LAST-MODIFIED');
+        $this->assertNotNull($lastModified);
+        $this->assertGreaterThan($dtstamp, $lastModified);
+    }
+
     private function asBob()
     {
         return $this->withBearer($this->issueBearerTokenFor('bob'));
+    }
+
+    private function icsUtcStamp(string $ics, string $name): ?string
+    {
+        $pattern = '/(?:^|\r\n)'.preg_quote($name, '/').'(?:;[^:\r\n]*)?:([0-9]{8}T[0-9]{6}Z)/';
+        if (preg_match($pattern, $ics, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
     }
 
     private function restoreJmapNoteStatesTable(): void

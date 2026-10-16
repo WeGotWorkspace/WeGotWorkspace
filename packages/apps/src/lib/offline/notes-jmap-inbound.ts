@@ -1,6 +1,9 @@
 import type { Note } from "@/lib/models/note";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import { noteTagsEqual } from "@/notes-core/src/notes-note-utils";
 import {
+  getNoteFromCache,
+  listPendingNoteFields,
   listPendingNoteIds,
   removeNoteFromCache,
   removeNotebookFromCache,
@@ -15,21 +18,51 @@ async function pendingSet(username: string): Promise<Set<string>> {
 }
 
 /**
- * Ingest a remote note into Dexie. Pending outbox / pendingSync rows are
- * not overwritten; a clash still goes through `reportNotesSyncConflicts`.
+ * Ingest a remote note into Dexie. Only the fields this note has queued in the
+ * outbox are held back; everything else is adopted. A conflict is reported only
+ * when the inbound change actually touches a queued field (#1351).
  */
 export async function ingestRemoteNote(
   username: string,
   note: Note,
-): Promise<"upserted" | "skipped-pending"> {
+): Promise<"upserted" | "merged-pending" | "skipped-pending"> {
   if (!note.id) return "skipped-pending";
-  const pending = await pendingSet(username);
-  if (pending.has(note.id)) {
-    reportNotesSyncConflicts([note.id]);
-    return "skipped-pending";
+  const pendingFields = (await listPendingNoteFields(username)).get(note.id);
+  if (!pendingFields || pendingFields.size === 0) {
+    await upsertNoteInCache(username, note, false);
+    return "upserted";
   }
-  await upsertNoteInCache(username, note, false);
-  return "upserted";
+  const local = await getNoteFromCache(username, note.id);
+  if (!local) {
+    await upsertNoteInCache(username, note, true);
+    return "merged-pending";
+  }
+  const merged: Note = { ...note };
+  const conflicting: string[] = [];
+  if (pendingFields.has("title")) {
+    merged.title = local.title;
+    if (note.title !== local.title) conflicting.push("title");
+  }
+  if (pendingFields.has("tags")) {
+    merged.tags = local.tags;
+    if (!noteTagsEqual(note.tags, local.tags)) conflicting.push("tags");
+  }
+  if (pendingFields.has("starred")) {
+    merged.starred = local.starred;
+    if (note.starred !== local.starred) conflicting.push("starred");
+  }
+  if (pendingFields.has("archived")) {
+    merged.archived = local.archived;
+    if (note.archived !== local.archived) conflicting.push("archived");
+  }
+  if (pendingFields.has("notebook")) {
+    merged.notebook = local.notebook;
+    merged.notebookId = local.notebookId;
+    if (note.notebookId !== local.notebookId) conflicting.push("notebook");
+  }
+  await upsertNoteInCache(username, merged, true);
+  if (conflicting.length > 0) reportNotesSyncConflicts([note.id]);
+  return "merged-pending";
 }
 
 /** Drop a remotely destroyed note unless a local pending write still owns the id. */

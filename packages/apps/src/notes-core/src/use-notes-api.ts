@@ -176,6 +176,8 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
+  const livePollRunningRef = useRef(false);
+  const [livePollRunning, setLivePollRunning] = useState(false);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
@@ -216,6 +218,9 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
           void patchFromCache();
         });
       },
+      onSyncError: (error: unknown) => {
+        console.warn("[notes] live inbound poll failed", error);
+      },
     });
 
     let cancelled = false;
@@ -224,21 +229,30 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       .then(() => {
         if (cancelled) return;
         adapter.startPolling(ONLINE_CHANGES_POLL_MS);
+        livePollRunningRef.current = true;
+        setLivePollRunning(true);
       })
-      .catch(() => {
-        // Session missing notes capability — REST `/changes` fallback still runs below.
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // No notes JMAP capability, or the session failed. Live updates are off;
+        // the REST `/changes` interval below takes over (#1351).
+        console.warn("[notes] live inbound poll unavailable", error);
+        livePollRunningRef.current = false;
+        setLivePollRunning(false);
       });
 
     return () => {
       cancelled = true;
       adapter.stopPolling();
+      livePollRunningRef.current = false;
+      setLivePollRunning(false);
     };
   }, [offlineUsername, online, patchFromCache, phase]);
 
   useEffect(() => {
     if (!offlineUsername || !online || phase !== "ready") return;
     if (typeof window === "undefined") return;
-    if (wgwLiveApiEnabled()) return;
+    if (livePollRunning) return;
 
     let cancelled = false;
 
@@ -267,7 +281,15 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [applyInboundRefresh, listRefreshing, offlineUsername, online, phase, reconnectSyncing]);
+  }, [
+    applyInboundRefresh,
+    listRefreshing,
+    livePollRunning,
+    offlineUsername,
+    online,
+    phase,
+    reconnectSyncing,
+  ]);
 
   return {
     phase,

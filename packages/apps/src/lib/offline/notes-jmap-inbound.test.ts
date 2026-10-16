@@ -9,6 +9,8 @@ import {
 } from "@/lib/offline/notes-jmap-inbound";
 
 const listPending = vi.fn<() => Promise<string[]>>();
+const listPendingFields = vi.fn<() => Promise<Map<string, Set<string>>>>();
+const getCachedNote = vi.fn<(username: string, noteId: string) => Promise<Note | null>>();
 const upsert = vi.fn();
 const remove = vi.fn();
 const upsertNotebook = vi.fn();
@@ -22,6 +24,8 @@ const reportConflicts = vi.fn();
 
 vi.mock("@/lib/offline/notes-offline-store", () => ({
   listPendingNoteIds: () => listPending(),
+  listPendingNoteFields: () => listPendingFields(),
+  getNoteFromCache: (username: string, noteId: string) => getCachedNote(username, noteId),
   upsertNoteInCache: (...args: unknown[]) => upsert(...args),
   removeNoteFromCache: (...args: unknown[]) => remove(...args),
   upsertNotebookInCache: (...args: unknown[]) => upsertNotebook(...args),
@@ -48,6 +52,8 @@ const remote: Note = {
 describe("notes-jmap-inbound", () => {
   beforeEach(() => {
     listPending.mockReset();
+    listPendingFields.mockReset();
+    getCachedNote.mockReset();
     upsert.mockReset();
     remove.mockReset();
     upsertNotebook.mockReset();
@@ -55,6 +61,8 @@ describe("notes-jmap-inbound", () => {
     readCache.mockReset();
     reportConflicts.mockReset();
     listPending.mockResolvedValue([]);
+    listPendingFields.mockResolvedValue(new Map());
+    getCachedNote.mockResolvedValue(null);
     readCache.mockResolvedValue({ data: { notes: [] } });
   });
 
@@ -64,11 +72,45 @@ describe("notes-jmap-inbound", () => {
     expect(reportConflicts).not.toHaveBeenCalled();
   });
 
-  it("skips a pending local row and reports the conflict channel", async () => {
-    listPending.mockResolvedValue(["n-1"]);
-    await expect(ingestRemoteNote("ada", remote)).resolves.toBe("skipped-pending");
-    expect(upsert).not.toHaveBeenCalled();
+  it("merges an inbound tag change when the queued write is an archive", async () => {
+    listPendingFields.mockResolvedValue(new Map([["n-1", new Set(["archived"])]]));
+    getCachedNote.mockResolvedValue({ ...remote, tags: [], archived: true });
+    const inbound: Note = { ...remote, tags: ["focus"], archived: true };
+
+    await expect(ingestRemoteNote("ada", inbound)).resolves.toBe("merged-pending");
+
+    expect(upsert).toHaveBeenCalledWith(
+      "ada",
+      expect.objectContaining({ tags: ["focus"], archived: true }),
+      true,
+    );
+    expect(reportConflicts).not.toHaveBeenCalled();
+  });
+
+  it("reports a conflict when the inbound change touches a queued archive", async () => {
+    listPendingFields.mockResolvedValue(new Map([["n-1", new Set(["archived"])]]));
+    getCachedNote.mockResolvedValue({ ...remote, archived: true });
+    const inbound: Note = { ...remote, archived: false };
+
+    await expect(ingestRemoteNote("ada", inbound)).resolves.toBe("merged-pending");
+
+    expect(upsert).toHaveBeenCalledWith("ada", expect.objectContaining({ archived: true }), true);
     expect(reportConflicts).toHaveBeenCalledWith(["n-1"]);
+  });
+
+  it("does not report a conflict when the inbound value equals the queued local value", async () => {
+    listPendingFields.mockResolvedValue(new Map([["n-1", new Set(["title"])]]));
+    getCachedNote.mockResolvedValue({ ...remote, title: "Hello" });
+    const inbound: Note = { ...remote, title: "Hello", tags: ["from-server"] };
+
+    await expect(ingestRemoteNote("ada", inbound)).resolves.toBe("merged-pending");
+
+    expect(upsert).toHaveBeenCalledWith(
+      "ada",
+      expect.objectContaining({ title: "Hello", tags: ["from-server"] }),
+      true,
+    );
+    expect(reportConflicts).not.toHaveBeenCalled();
   });
 
   it("removes a remotely destroyed note that is not pending", async () => {
