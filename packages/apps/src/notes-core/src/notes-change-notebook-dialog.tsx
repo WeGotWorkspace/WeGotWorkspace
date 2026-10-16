@@ -39,6 +39,16 @@ export type NotesChangeNotebookDialogProps = {
   onClose: () => void;
   onNotebookChange: (notebook: NotesNotebookSelectItem) => void;
   onCreateNotebook?: () => void;
+  /** Overrides the default title (`labels.selectionMoveToNotebook`). */
+  title?: string;
+  /** Overrides the default confirm label (`labels.changeNotebookConfirm`). */
+  confirmLabel?: string | ((destinationName: string) => string);
+  /** When false, confirm is enabled even if the draft equals `value`. Default true. */
+  requireChange?: boolean;
+  /** Keeps confirm from firing again while the caller is still finishing. */
+  confirmDisabled?: boolean;
+  /** Third, destructive footer action — e.g. "Delete the notes too". */
+  destructiveAction?: { label: string; onAction: () => void };
 };
 
 function toSelectItem(value: NotesNotebookSelectValue): NotesNotebookSelectItem {
@@ -53,15 +63,24 @@ function NotesChangeNotebookDialogForm({
   onClose,
   onNotebookChange,
   onCreateNotebook,
+  confirmLabel,
+  requireChange = true,
+  confirmDisabled = false,
+  destructiveAction,
 }: Omit<
   NotesChangeNotebookDialogProps,
-  "open" | "description" | "contentClassName"
+  "open" | "description" | "contentClassName" | "title"
 >): ReactElement {
   const [draft, setDraft] = useState<NotesNotebookSelectItem>(
     createdNotebook ?? toSelectItem(value),
   );
-  const dirty = !notebookSelectionEquals(draft, value);
-  const confirmLabel = labels.changeNotebookConfirm || "Change";
+  const dirty = requireChange === false || !notebookSelectionEquals(draft, value);
+  const hasDestination = draft.id.trim() !== "" && draft.name.trim() !== "";
+  const canConfirm = dirty && hasDestination;
+  const confirmText =
+    typeof confirmLabel === "function"
+      ? confirmLabel(draft.name)
+      : confirmLabel || labels.changeNotebookConfirm || "Change";
 
   return (
     <>
@@ -76,14 +95,23 @@ function NotesChangeNotebookDialogForm({
         />
       </div>
       <DialogFooter>
+        {destructiveAction ? (
+          <Button
+            type="button"
+            variant="destructive"
+            className="notes-change-notebook-dialog__destructive"
+            label={destructiveAction.label}
+            onClick={destructiveAction.onAction}
+          />
+        ) : null}
         <Button type="button" variant="outline" label={labels.dialogCancel} onClick={onClose} />
         <Button
           type="button"
           variant="primary"
-          label={confirmLabel}
-          disabled={!dirty}
+          label={confirmText}
+          disabled={!canConfirm || confirmDisabled}
           onClick={() => {
-            if (!dirty) return;
+            if (!canConfirm || confirmDisabled) return;
             onNotebookChange(draft);
             onClose();
           }}
@@ -104,6 +132,11 @@ export function NotesChangeNotebookDialog({
   onClose,
   onNotebookChange,
   onCreateNotebook,
+  title,
+  confirmLabel,
+  requireChange,
+  confirmDisabled,
+  destructiveAction,
 }: NotesChangeNotebookDialogProps): ReactElement {
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -111,7 +144,7 @@ export function NotesChangeNotebookDialog({
         className={cn("notes-dialog-surface notes-change-notebook-dialog", contentClassName)}
       >
         <DialogHeader>
-          <DialogTitle>{labels.selectionMoveToNotebook}</DialogTitle>
+          <DialogTitle>{title ?? labels.selectionMoveToNotebook}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {open ? (
@@ -124,6 +157,10 @@ export function NotesChangeNotebookDialog({
             onClose={onClose}
             onNotebookChange={onNotebookChange}
             onCreateNotebook={onCreateNotebook}
+            confirmLabel={confirmLabel}
+            requireChange={requireChange}
+            confirmDisabled={confirmDisabled}
+            destructiveAction={destructiveAction}
           />
         ) : null}
       </DialogContent>

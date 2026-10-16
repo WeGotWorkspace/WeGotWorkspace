@@ -125,7 +125,7 @@ final class NoteRepository
         // Decision 7: room key = UID. Always mint so clients cannot aim at
         // another principal's collab room. Client-supplied `uid` is ignored.
         $uid = (string) Str::uuid();
-        $this->assertUidAvailable($uid);
+        $this->moveHelper->assertUidAvailable($uid);
 
         $note = [
             'id' => $uid,
@@ -219,7 +219,7 @@ final class NoteRepository
                 }
                 $this->collectionAccess->assertCollectionWritable($destination, 'This notebook is read-only.');
                 if ((int) $destination->calendarid !== (int) $object->calendarid) {
-                    $this->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
+                    $this->moveHelper->assertUidAvailable((string) $object->uid, (int) $object->calendarid);
                     $this->moveHelper->move($object, (int) $destination->calendarid);
                     $object->refresh();
                     $instance = $destination;
@@ -597,24 +597,6 @@ final class NoteRepository
         $normalized = NoteTag::normalizeStored($submitted);
         if (NoteTag::mergeForUpdate($submitted, $existing) !== $normalized) {
             throw new ApiHttpException(400, 'A tag may only use letters a-z and hyphen.', 'bad_request');
-        }
-    }
-
-    /**
-     * UID is the collab room key (Decision 7). Uniqueness is global across
-     * VJOURNAL objects so a minted or colliding id cannot enter another room.
-     * When $exceptCalendarId is set (MOVE), the source calendar is ignored.
-     */
-    private function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
-    {
-        $query = CalendarObject::query()
-            ->where('uid', $uid)
-            ->where('componenttype', 'VJOURNAL');
-        if ($exceptCalendarId !== null) {
-            $query->where('calendarid', '!=', $exceptCalendarId);
-        }
-        if ($query->exists()) {
-            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
         }
     }
 

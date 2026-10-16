@@ -6303,6 +6303,8 @@ export interface paths {
                 query?: {
                     /** @description Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
                     onDestroyRemoveContents?: boolean;
+                    /** @description Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
+                    moveNotesTo?: string;
                 };
                 header?: never;
                 path: {
@@ -11527,6 +11529,8 @@ export interface components {
         };
         NotebookDeleteOptions: {
             onDestroyRemoveContents?: boolean;
+            /** @description Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents. */
+            moveNotesTo?: string;
         };
         ChatChannel: {
             /** @description Channel collection id (CalDAV collection uri, chat-/dm- prefixed). */

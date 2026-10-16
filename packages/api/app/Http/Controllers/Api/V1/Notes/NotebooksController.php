@@ -47,13 +47,10 @@ final class NotebooksController
     public function destroy(NotebookDeleteRequest $request, string $notebookId): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
-        $options = $request->validated();
-        $queryFlag = $request->query('onDestroyRemoveContents');
-        if ($queryFlag === '1' || $queryFlag === 'true') {
-            $options['onDestroyRemoveContents'] = true;
-        }
 
-        return response()->json($this->notebooks->delete($principal['username'], $notebookId, $options));
+        return response()->json(
+            $this->notebooks->delete($principal['username'], $notebookId, $request->validated()),
+        );
     }
 
     public function changes(Request $request): JsonResponse

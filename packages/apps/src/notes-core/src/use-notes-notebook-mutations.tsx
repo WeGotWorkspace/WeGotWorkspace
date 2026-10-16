@@ -6,6 +6,7 @@ import type {
 } from "@/tasks-core/src/task-project-dialog";
 import { taskListDotColor } from "@/tasks-core/src/tasks-task-utils";
 import { notebookViewKey } from "@/notes-core/src/use-notes-sidebar-model";
+import { useNotesNotebookDelete } from "@/notes-core/src/use-notes-notebook-delete";
 import { notesWithRenamedNotebook } from "@/notes-core/src/notes-note-utils";
 import {
   canChangeNotebookOwner,
@@ -63,6 +64,12 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     showMutationError,
   } = shell;
   const [notebookDialog, setNotebookDialog] = useState<TaskProjectDialogState>(null);
+  const notebookDelete = useNotesNotebookDelete({
+    shell,
+    onCreateNotebook: () => setNotebookDialog({ mode: "create" }),
+    onFinished: () => setNotebookDialog(null),
+  });
+  const { requestDeleteNotebook, acceptCreatedNotebook, notebookDeleteDialog } = notebookDelete;
 
   const canManageNotebooks = Boolean(operations?.createNotebook && operations?.patchNotebook);
 
@@ -101,6 +108,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
         selectView(notebookViewKey(collection.id));
         show(L.toastNotebookCreated);
         setNotebookDialog(null);
+        acceptCreatedNotebook(collection);
         return collection;
       } catch {
         showMutationError();
@@ -109,6 +117,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     },
     [
       L.toastNotebookCreated,
+      acceptCreatedNotebook,
       operations,
       selectView,
       setNotebookCollections,
@@ -207,7 +216,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
       const current = notebookCollections.find((item) => item.id === notebookId);
       if (!current || !current.isSharee) return;
       try {
-        await operations.deleteNotebook(current.name, { kind: "purge" });
+        await operations.deleteNotebook(current.id, { kind: "purge" });
         setNotebookCollections((prev) => prev.filter((item) => item.id !== notebookId));
         if (view === notebookViewKey(notebookId) || view === `nb:${current.name}`) {
           selectView("all");
@@ -230,46 +239,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     ],
   );
 
-  const deleteNotebookCollection = useCallback(
-    async (notebookId: string) => {
-      if (!operations?.deleteNotebook) return;
-      const current = findNotebookCollection(notebookCollections, notebookId);
-      if (!current || !canDeleteNotebook(current)) return;
-      try {
-        await operations.deleteNotebook(current.name, { kind: "purge" });
-        const targetId = current.id;
-        setNotebookCollections((prev) =>
-          prev.filter((item) => item.id !== targetId && item.name !== current.name),
-        );
-        setNotebooks((prev) => prev.filter((name) => name !== current.name));
-        setNotes((prev) =>
-          prev.filter((note) => {
-            if (note.notebookId) return note.notebookId !== targetId;
-            return note.notebook !== current.name;
-          }),
-        );
-        if (view === notebookViewKey(notebookId) || view === `nb:${current.name}`) {
-          selectView("all");
-        }
-        show(L.toastNotebookDeleted(current.name));
-        setNotebookDialog(null);
-      } catch {
-        showMutationError();
-      }
-    },
-    [
-      L.toastNotebookDeleted,
-      notebookCollections,
-      operations,
-      selectView,
-      setNotebookCollections,
-      setNotebooks,
-      setNotes,
-      show,
-      showMutationError,
-      view,
-    ],
-  );
+  const deleteNotebookCollection = requestDeleteNotebook;
 
   const openCreateNotebookDialog = useCallback(() => {
     setNotebookDialog({ mode: "create" });
@@ -304,6 +274,7 @@ export function useNotesNotebookMutations({ shell }: UseNotesNotebookMutationsAr
     createNotebook,
     updateNotebook,
     deleteNotebookCollection,
+    notebookDeleteDialog,
     patchShareWith,
     removeSharedNotebook,
     notebooks,

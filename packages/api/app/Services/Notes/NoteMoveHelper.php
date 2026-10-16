@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
+use App\Exceptions\ApiHttpException;
 use App\Models\Calendar;
 use App\Models\CalendarChange;
 use App\Models\CalendarObject;
@@ -18,6 +19,23 @@ final class NoteMoveHelper
     public const OP_ADD = 1;
 
     public const OP_DELETE = 3;
+
+    /**
+     * UID is the collab room key. Uniqueness is global across VJOURNAL objects.
+     * When $exceptCalendarId is set (a move), the source calendar is ignored.
+     */
+    public function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
+    {
+        $query = CalendarObject::query()
+            ->where('uid', $uid)
+            ->where('componenttype', 'VJOURNAL');
+        if ($exceptCalendarId !== null) {
+            $query->where('calendarid', '!=', $exceptCalendarId);
+        }
+        if ($query->exists()) {
+            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
+        }
+    }
 
     public function move(CalendarObject $object, int $destinationCalendarId): void
     {
@@ -36,15 +54,46 @@ final class NoteMoveHelper
         });
     }
 
+    /**
+     * Write the destination ADD for a bulk move without advancing the synctoken.
+     * The source notebook is deleted in the same transaction, so no source row is written.
+     * The caller bumps the destination once after every note has moved.
+     */
+    public function moveWithoutTokenBump(
+        CalendarObject $object,
+        int $destinationCalendarId,
+        int $destinationSyncToken,
+    ): void {
+        $sourceCalendarId = (int) $object->calendarid;
+        if ($sourceCalendarId === $destinationCalendarId) {
+            return;
+        }
+
+        $this->writeChange($destinationCalendarId, (string) $object->uri, self::OP_ADD, $destinationSyncToken);
+        $object->calendarid = $destinationCalendarId;
+        $object->save();
+    }
+
+    public function bumpSyncToken(int $calendarId): void
+    {
+        $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
+        Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
+    }
+
     private function recordChange(int $calendarId, string $uri, int $operation): void
     {
         $synctoken = (int) Calendar::query()->whereKey($calendarId)->value('synctoken');
+        $this->writeChange($calendarId, $uri, $operation, $synctoken);
+        Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
+    }
+
+    private function writeChange(int $calendarId, string $uri, int $operation, int $synctoken): void
+    {
         CalendarChange::query()->create([
             'uri' => $uri,
             'synctoken' => $synctoken,
             'calendarid' => $calendarId,
             'operation' => $operation,
         ]);
-        Calendar::query()->whereKey($calendarId)->update(['synctoken' => $synctoken + 1]);
     }
 }

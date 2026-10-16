@@ -221,6 +221,7 @@ export function NotesWorkspace({
     createNotebookCollection,
     updateNotebookCollection,
     deleteNotebookCollection,
+    notebookDeleteDialog,
     patchNotebookShareWith,
     removeSharedNotebook,
     hiddenNotebookIds,
@@ -296,7 +297,10 @@ export function NotesWorkspace({
     );
   }, [active, ownedNotebooks, sharedNotebookRows]);
   const selectNotebooks = useMemo(
-    () => [...ownedNotebooks, ...sharedNotebookRows],
+    () =>
+      [...ownedNotebooks, ...sharedNotebookRows].filter(
+        (notebook) => !isViewOnlyNotebook(notebook),
+      ),
     [ownedNotebooks, sharedNotebookRows],
   );
   const pendingMoveAfterCreateRef = useRef<string[] | null>(null);
@@ -752,6 +756,7 @@ export function NotesWorkspace({
         contentClassName="notes-dialog-surface"
       />
 
+      {notebookDeleteDialog}
       <NotesRenameTagDialog
         open={renameTagDialog !== null}
         tag={renameTagDialog?.tag ?? ""}
@@ -762,7 +767,6 @@ export function NotesWorkspace({
           if (renameTagDialog) renameTag(renameTagDialog.tag, next);
         }}
       />
-
       {confirmDialog}
     </TooltipProvider>
   );

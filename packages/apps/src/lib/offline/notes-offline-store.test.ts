@@ -16,11 +16,13 @@ import {
   listPendingNoteFields,
   listPendingNoteIds,
   readNotesBootstrapFromCache,
+  readSyncToken,
   removeNotebookFromCache,
   removeNoteFromCache,
   upsertNoteBodyPreviewInCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
+  writeSyncToken,
 } from "@/lib/offline/notes-offline-store";
 
 const username = "bob";
@@ -47,8 +49,9 @@ const bootstrap = {
 
 describe("notes offline store", () => {
   beforeEach(async () => {
-    await writeNotesBootstrapToCache(username, bootstrap);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await notesNotesTable(db).clear();
+    await writeNotesBootstrapToCache(username, bootstrap);
     await db.outbox.clear();
   });
 
@@ -197,6 +200,63 @@ describe("notes offline store", () => {
 
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notes).toEqual([expect.objectContaining({ id: "note-1", title: "Local" })]);
+  });
+
+  it("rewrites notes to the destination, including pending rows, and drops both sync tokens", async () => {
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        ],
+        notebooks: ["Drafts", "Work"],
+        tags: ["essay"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", scope: "personal" },
+          { id: "notes-work", name: "Work", scope: "personal" },
+        ],
+      },
+    });
+    await upsertNoteInCache(
+      username,
+      {
+        ...note,
+        id: "note-pending",
+        notebook: "Drafts",
+        notebookId: "notes-drafts",
+        title: "Pending",
+      },
+      true,
+    );
+    await writeSyncToken(username, "notes-drafts", "src-token");
+    await writeSyncToken(username, "notes-work", "dst-token");
+
+    await removeNotebookFromCache(username, "notes-drafts", {
+      moveNotesTo: { id: "notes-work", name: "Work", scope: "personal" },
+    });
+
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Work"]);
+    expect(cached?.data.notebookCollections).toEqual([
+      expect.objectContaining({ id: "notes-work", name: "Work" }),
+    ]);
+    expect(
+      cached?.data.notes.map((item) => ({
+        id: item.id,
+        notebook: item.notebook,
+        notebookId: item.notebookId,
+      })),
+    ).toEqual(
+      expect.arrayContaining([
+        { id: "note-1", notebook: "Work", notebookId: "notes-work" },
+        { id: "note-2", notebook: "Work", notebookId: "notes-work" },
+        { id: "note-pending", notebook: "Work", notebookId: "notes-work" },
+      ]),
+    );
+    expect(cached?.data.notes).toHaveLength(3);
+    expect(await readSyncToken(username, "notes-drafts")).toBeNull();
+    expect(await readSyncToken(username, "notes-work")).toBeNull();
   });
 
   it("preserves pendingSync notes when bootstrap is rewritten from server", async () => {

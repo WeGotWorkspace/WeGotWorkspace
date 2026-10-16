@@ -1,5 +1,6 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
+import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
 import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
@@ -369,9 +370,18 @@ function noteBelongsToNotebook(
 export async function removeNotebookFromCache(
   username: string,
   notebookIdOrName: string,
-  options?: { keepPendingNotes?: boolean },
+  options?: {
+    keepPendingNotes?: boolean;
+    moveNotesTo?: {
+      id: string;
+      name: string;
+      scope?: "personal" | "group";
+      groupSlug?: string | null;
+    };
+  },
 ): Promise<void> {
   const keepPending = options?.keepPendingNotes !== false;
+  const moveNotesTo = options?.moveNotesTo;
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const books = notesNotebooksTable(db);
   const notes = notesNotesTable(db);
@@ -395,8 +405,18 @@ export async function removeNotebookFromCache(
       continue;
     }
     if (!noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)) continue;
+    if (moveNotesTo) {
+      await upsertNoteInCache(username, noteAfterNotebookMove(note, moveNotesTo), row.pendingSync);
+      continue;
+    }
     if (keepPending && row.pendingSync) continue;
     await notes.delete(row.id);
+  }
+  if (moveNotesTo) {
+    await db.meta.delete(metaKeyForNotebookState(moveNotesTo.id));
+    for (const id of matchedIds) {
+      await db.meta.delete(metaKeyForNotebookState(id));
+    }
   }
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) return;
@@ -404,9 +424,15 @@ export async function removeNotebookFromCache(
     (item) => !matchedIds.has(item.id) && !matchedNames.has(item.name),
   );
   cached.data.notebooks = cached.data.notebooks.filter((name) => !matchedNames.has(name));
-  cached.data.notes = cached.data.notes.filter(
-    (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
-  );
+  cached.data.notes = moveNotesTo
+    ? cached.data.notes.map((note) =>
+        noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)
+          ? noteAfterNotebookMove(note, moveNotesTo)
+          : note,
+      )
+    : cached.data.notes.filter(
+        (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
+      );
   await writeNotesBootstrapToCache(username, cached);
 }
 
