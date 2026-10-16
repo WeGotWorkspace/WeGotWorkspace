@@ -93,7 +93,7 @@ drains the outbox against `PATCH /notes/items/{uid}`.
 
 `PATCH /notes/items/{uid}` treats `body` as **optional**, but because Laravel's
 `ConvertEmptyStringsToNull` middleware normalizes `""`/`null` to a _present_
-value, the API only **preserves** the on-disk body when the `body` key is
+value, the API only **preserves** the VJOURNAL `DESCRIPTION` in `calendarobjects` when the `body` key is
 **absent entirely**. A request with `body: ""` or `body: null` is treated as
 "clear the body" and would wipe text written through the collab path.
 
@@ -110,23 +110,24 @@ once is correct.
 ### State decision: metadata `updatedAt` is body-edit-invariant
 
 The Notes API derives a note's `updatedAt` from VJOURNAL `LAST-MODIFIED` /
-`DTSTAMP` (and optional content mtime). A body-only `PATCH /notes/items/{uid}`
-updates `DESCRIPTION` and may refresh content mtime without treating the
-metadata outbox `ifInState` as stale.
+`DTSTAMP`. `contentUpdatedAt` is an optional projected content mtime for collab
+body saves, sent only when the API includes it — do not assume the field is
+populated. A body-only `PATCH /notes/items/{uid}` updates `DESCRIPTION` without
+treating the metadata outbox `ifInState` as stale.
 
 This closes a false-conflict seam: the offline metadata flush uses the note's
 `updatedAt`-at-enqueue as its `ifInState` guard and raises a `stateMismatch`
-when the server looks newer. Without the marker, the sequence _edit body
-(bumps mtime) → later flush a queued metadata change with a now-stale
-`ifInState`_ would falsely look "server newer". Notes no longer shows a
+when the server looks newer. Without that split, the sequence _edit body →
+later flush a queued metadata change with a now-stale `ifInState`_ would
+falsely look "server newer". Notes no longer shows a
 choice screen for that. The only prompt is an outside write
-([Decision 6](../../../docs/architecture/notes.md)). With the marker, a
-`stateMismatch` only ever reflects a genuine frontmatter divergence. (Consequence: body edits no longer re-sort the note list by
+([Decision 6](../../../docs/architecture/notes.md)). With that split, a
+`stateMismatch` only ever reflects a genuine metadata divergence (an outside write). (Consequence: body edits no longer re-sort the note list by
 modified time; body freshness is surfaced by the collab pending-sync dot,
 [`use-docs-collab-pending-sync.ts`](../src/text-editor-core/docs-collab/use-docs-collab-pending-sync.ts),
-not by `updatedAt`.) Legacy notes that predate the marker fall back to file
-mtime, and the first collab save freezes the marker at the pre-write mtime so
-even they do not trip the guard.
+not by `updatedAt`.) Notes that lack `LAST-MODIFIED` and `DTSTAMP` fall back to
+`calendarobjects.lastmodified`. There is no file mtime and no frontmatter
+marker on the VJOURNAL store.
 
 ### History
 
@@ -134,8 +135,8 @@ VJOURNAL + Dexie inbound **supersedes the body-offline portion of #225**
 ([Notes whole-entity offline](https://github.com/WeGotWorkspace/wegotworkspace/issues/225)),
 which originally pushed body, title, tags, and starred through a single
 debounced upsert + outbox + binary conflict dialog. #225 still correctly
-describes the **metadata** Dexie domain; only body editing moved to the Docs
-Yjs path. See the alignment epic [#234](https://github.com/WeGotWorkspace/wegotworkspace/issues/234),
+describes the **metadata** Dexie domain; only body editing moved to a Yjs
+collab session keyed by the VJOURNAL `UID`. See the alignment epic [#234](https://github.com/WeGotWorkspace/wegotworkspace/issues/234),
 the body collab stack [#230](https://github.com/WeGotWorkspace/wegotworkspace/issues/230),
 the editor/mutation wiring [#237](https://github.com/WeGotWorkspace/wegotworkspace/issues/237),
 and the metadata outbox + slim conflict handling [#238](https://github.com/WeGotWorkspace/wegotworkspace/issues/238).

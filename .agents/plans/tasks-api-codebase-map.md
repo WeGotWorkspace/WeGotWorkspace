@@ -364,11 +364,11 @@ When picking up a chunk, load:
 
 ### Do NOT use (Notes / Flysystem)
 
-Tasks are **VTODO in CalDAV `calendarobjects`**, not markdown files on Flysystem.
+Tasks are **VTODO** in CalDAV `calendarobjects`. Notes are **VJOURNAL** in VJOURNAL-only collections. Same table, different component and collection. **Notes resolve by `uid`; Tasks resolve by `uri`** ([notes.md](../../docs/architecture/notes.md) Decision 3).
 
 | Anti-pattern | Why |
 |--------------|-----|
-| `app/Services/Notes/NoteRepository.php` | Persists notes via `WgwStorage` / Flysystem — wrong store |
+| `app/Services/Notes/NoteRepository.php` | VJOURNAL store looked up by `uid` — Tasks must resolve by `uri`, not copy that identity |
 | `app/Http/Controllers/Api/V1/Notes/ItemsController.php` | Notes domain; only `/items` path naming is analogous |
 | `.agents/skills/api/storage-flysystem.md` | Files/WebDAV storage — not CalDAV calendar blobs |
 
