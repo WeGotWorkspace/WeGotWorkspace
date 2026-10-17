@@ -183,7 +183,13 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
           await removeOutboxMutation(username, row.id);
         } else {
           if (conflictId) conflicts.push(conflictId);
-          await markOutboxError(username, row.id, "conflict");
+          const notFound = error instanceof JmapSetItemError && error.setError.type === "notFound";
+          await markOutboxError(
+            username,
+            row.id,
+            "conflict",
+            notFound ? httpStatusFromFlushError(error) : undefined,
+          );
         }
         continue;
       }

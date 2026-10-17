@@ -1,9 +1,10 @@
 import { JmapSetItemError } from "@/lib/jmap-client";
 
 /**
- * HTTP status for a flush failure. A JMAP `/set` rejection has no HTTP status:
- * `notFound` is 404 and `forbidden` is 403. Other set types stay unset.
- * Request errors keep their `.status`.
+ * HTTP status for a flush failure. Request errors keep their `.status`.
+ * A JMAP `/set` `forbidden` is 403; Calendar and Contacts reach that in the
+ * catch-all. `notFound` maps to 404 as defensive coverage. Other set types
+ * stay unset.
  */
 export function httpStatusFromFlushError(error: unknown): number | undefined {
   if (error instanceof JmapSetItemError) {

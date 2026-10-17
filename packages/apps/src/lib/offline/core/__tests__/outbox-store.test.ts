@@ -93,6 +93,43 @@ describe("core outbox store", () => {
     const [conflicted] = await listOutboxMutations(username);
     expect(isRetryableOutboxRow(conflicted!)).toBe(false);
     expect(isPermanentlyFailedOutboxRow(conflicted!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(conflicted!)).toBe(false);
+
+    await enqueueOutboxMutation(username, {
+      id: "calendar-conflict",
+      domain: "calendars",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "calendar-gone",
+      domain: "calendars",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "task-etag",
+      domain: "tasks",
+      op: "update",
+      payload: "{}",
+    });
+    await markOutboxError(username, "calendar-conflict", "conflict");
+    await markOutboxError(username, "calendar-gone", "conflict", 404);
+    await markOutboxError(username, "task-etag", "etagMismatch");
+
+    const byId = Object.fromEntries(
+      (await listOutboxMutations(username)).map((row) => [row.id, row]),
+    );
+    expect(isRetryableOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isRetryableOutboxRow(byId["calendar-gone"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["calendar-gone"]!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId["calendar-gone"]!)).toBe(true);
+    expect(byId["calendar-gone"]?.lastStatus).toBe(404);
+    expect(isRetryableOutboxRow(byId["task-etag"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["task-etag"]!)).toBe(false);
+    expect(byId["task-etag"]?.lastStatus).toBeUndefined();
   });
 
   it("splits transient retries from permanent 403 and 404 rejections", async () => {

@@ -71,12 +71,16 @@ export async function markOutboxError(
   await db.outbox.put(next);
 }
 
+const CONFLICT_OUTBOX_ERRORS = new Set(["stateMismatch", "conflict", "etagMismatch"]);
+
 /**
- * Only `"stateMismatch"` counts as a conflict here. Calendar writes `"conflict"`
- * and Tasks writes `"etagMismatch"`. Those two still count as failed rows.
+ * Conflict rows are not transient retries. Flush paths spell that three ways:
+ * `"stateMismatch"`, `"conflict"`, and `"etagMismatch"`.
  */
 function isFailedNonConflict(row: OfflineOutboxRow): boolean {
-  return row.retries > 0 && Boolean(row.lastError) && row.lastError !== "stateMismatch";
+  return (
+    row.retries > 0 && Boolean(row.lastError) && !CONFLICT_OUTBOX_ERRORS.has(row.lastError ?? "")
+  );
 }
 
 /**
@@ -101,11 +105,14 @@ export function isRetryableOutboxRow(row: OfflineOutboxRow): boolean {
 
 /**
  * True when the server rejected the mutation with HTTP 403 or 404.
- * These stay visible in the sync notices. They are not transient retries and
- * they are not revision conflicts (`stateMismatch`).
+ * These stay visible in the sync notices. They are not transient retries.
+ * `"stateMismatch"` and `"etagMismatch"` stay conflicts with no permanent
+ * status. A `"conflict"` row is permanent only when `lastStatus` says so.
  */
 export function isPermanentlyFailedOutboxRow(row: OfflineOutboxRow): boolean {
-  return isFailedNonConflict(row) && isPermanentOutboxFailure(row);
+  if (!(row.retries > 0 && row.lastError)) return false;
+  if (row.lastError === "stateMismatch" || row.lastError === "etagMismatch") return false;
+  return isPermanentOutboxFailure(row);
 }
 
 /**
