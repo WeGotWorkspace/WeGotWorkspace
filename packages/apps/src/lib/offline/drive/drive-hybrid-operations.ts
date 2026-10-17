@@ -50,6 +50,7 @@ import {
   downloadOfflineDriveFile,
   readOfflineDriveFileBlob,
 } from "@/lib/offline/drive/drive-offline-read";
+import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 import {
   rememberOfflineDriveUsername,
@@ -64,8 +65,14 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
 
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<DriveOutboxFlushResult>();
 
+async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushResult> {
+  const result = await flushDriveOutbox(username);
+  reportDriveSyncConflicts(result.stateMismatches);
+  return result;
+}
+
 function runnerFor(username: string): ConnectivitySyncRunner<DriveOutboxFlushResult> {
-  return syncRunnerRegistry.getOrCreate(username, async () => flushDriveOutbox(username));
+  return syncRunnerRegistry.getOrCreate(username, async () => flushDriveOutboxTask(username));
 }
 
 export function getDriveSyncRunner(

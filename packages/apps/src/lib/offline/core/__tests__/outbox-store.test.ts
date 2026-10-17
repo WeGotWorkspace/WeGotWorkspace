@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   enqueueOutboxMutation,
+  isPermanentlyFailedOutboxRow,
   isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutations,
   listOutboxMutationsForDomain,
   markOutboxError,
@@ -90,5 +92,124 @@ describe("core outbox store", () => {
     await markOutboxError(username, "a", "stateMismatch");
     const [conflicted] = await listOutboxMutations(username);
     expect(isRetryableOutboxRow(conflicted!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(conflicted!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(conflicted!)).toBe(false);
+
+    await enqueueOutboxMutation(username, {
+      id: "calendar-conflict",
+      domain: "calendars",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "calendar-gone",
+      domain: "calendars",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "task-etag",
+      domain: "tasks",
+      op: "update",
+      payload: "{}",
+    });
+    await markOutboxError(username, "calendar-conflict", "conflict");
+    await markOutboxError(username, "calendar-gone", "conflict", 404);
+    await markOutboxError(username, "task-etag", "etagMismatch");
+
+    const byId = Object.fromEntries(
+      (await listOutboxMutations(username)).map((row) => [row.id, row]),
+    );
+    expect(isRetryableOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(byId["calendar-conflict"]!)).toBe(false);
+    expect(isRetryableOutboxRow(byId["calendar-gone"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["calendar-gone"]!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId["calendar-gone"]!)).toBe(true);
+    expect(byId["calendar-gone"]?.lastStatus).toBe(404);
+    expect(isRetryableOutboxRow(byId["task-etag"]!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId["task-etag"]!)).toBe(false);
+    expect(byId["task-etag"]?.lastStatus).toBeUndefined();
+  });
+
+  it("splits transient retries from permanent 403 and 404 rejections", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "transient",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "missing",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "forbidden",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "transient", "network down");
+    await markOutboxError(username, "missing", "GET failed (404)");
+    await markOutboxError(username, "forbidden", "PATCH failed (403)");
+
+    const rows = await listOutboxMutations(username);
+    const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+
+    expect(isRetryableOutboxRow(byId.transient!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(byId.transient!)).toBe(false);
+    expect(isRetryableOutboxRow(byId.missing!)).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(byId.missing!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(byId.forbidden!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.transient!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.missing!)).toBe(true);
+    expect(isSyncNoticeOutboxRow(byId.forbidden!)).toBe(true);
+
+    await enqueueOutboxMutation(username, {
+      id: "path-404",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "path-404", "could not write notes/404.md");
+    const [loose] = (await listOutboxMutations(username)).filter((row) => row.id === "path-404");
+    expect(isRetryableOutboxRow(loose!)).toBe(true);
+    expect(isPermanentlyFailedOutboxRow(loose!)).toBe(false);
+    expect(isSyncNoticeOutboxRow(loose!)).toBe(true);
+    expect(loose?.lastStatus).toBeUndefined();
+  });
+
+  it("prefers lastStatus over the flush text", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "card",
+      domain: "contacts",
+      op: "update",
+      payload: "{}",
+    });
+    await enqueueOutboxMutation(username, {
+      id: "retry",
+      domain: "drive",
+      op: "upload",
+      payload: "{}",
+    });
+    await markOutboxError(username, "card", "ContactCard/get did not return card-1", 404);
+    await markOutboxError(username, "retry", "GET failed (404)", 500);
+
+    const rows = await listOutboxMutations(username);
+    const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+    expect(byId.card?.lastStatus).toBe(404);
+    expect(isPermanentlyFailedOutboxRow(byId.card!)).toBe(true);
+    expect(isRetryableOutboxRow(byId.card!)).toBe(false);
+    expect(byId.retry?.lastStatus).toBe(500);
+    expect(isPermanentlyFailedOutboxRow(byId.retry!)).toBe(false);
+    expect(isRetryableOutboxRow(byId.retry!)).toBe(true);
+
+    await markOutboxError(username, "card", "network down");
+    const cleared = (await listOutboxMutations(username)).find((row) => row.id === "card");
+    expect(cleared?.lastStatus).toBeUndefined();
+    expect(isPermanentlyFailedOutboxRow(cleared!)).toBe(false);
+    expect(isRetryableOutboxRow(cleared!)).toBe(true);
   });
 });

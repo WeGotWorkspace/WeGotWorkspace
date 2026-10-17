@@ -1,6 +1,7 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,
   markOutboxError,
@@ -102,7 +103,7 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
       flushed += 1;
     } catch (error) {
       failed += 1;
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       const message = error instanceof Error ? error.message : String(error);
       const isStateMismatch =
         status === 409 || status === 412 || /precondition failed/i.test(message);
@@ -110,24 +111,48 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
         const path = driveOutboxApiPath(row);
         if (path) stateMismatches.push(path);
       }
-      await markOutboxError(username, row.id, message);
+      await markOutboxError(username, row.id, message, status);
     }
   }
 
   return { flushed, failed, stateMismatches };
 }
 
-export function driveOutboxApiPath(row: OfflineOutboxRow): string | null {
-  const payload = parsePayload(row);
-  if (!payload) return null;
-  if (payload.op === "upload") {
-    const parent = normalizeApiVirtualPath(payload.cwd);
-    return normalizeDriveAvailabilityPath(
-      parent === "/" ? `/${payload.name}` : `${parent}/${payload.name}`,
-    );
+export function pathsForDriveOutboxPayload(payload: DriveOutboxPayload): string[] {
+  switch (payload.op) {
+    case "rename":
+    case "trash":
+      return [
+        normalizeDriveAvailabilityPath(payload.from),
+        normalizeDriveAvailabilityPath(
+          nextPathAfterRename(payload.from, payload.destination, payload.to),
+        ),
+      ];
+    case "upload": {
+      const parent = normalizeApiVirtualPath(payload.cwd);
+      return [
+        normalizeDriveAvailabilityPath(
+          parent === "/" ? `/${payload.name}` : `${parent}/${payload.name}`,
+        ),
+      ];
+    }
+    case "star":
+      return [normalizeDriveAvailabilityPath(payload.path)];
+    default: {
+      const unreachable: never = payload;
+      return unreachable;
+    }
   }
-  if (payload.op === "star") return normalizeDriveAvailabilityPath(payload.path);
-  return normalizeDriveAvailabilityPath(payload.from);
+}
+
+export function pathsForDriveOutboxRow(row: OfflineOutboxRow): string[] {
+  const payload = parsePayload(row);
+  if (!payload) return [];
+  return pathsForDriveOutboxPayload(payload);
+}
+
+export function driveOutboxApiPath(row: OfflineOutboxRow): string | null {
+  return pathsForDriveOutboxRow(row)[0] ?? null;
 }
 
 export async function removeOutboxMutationsForDrivePath(
