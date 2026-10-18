@@ -1,11 +1,15 @@
 # Commercial license
 
-This project is also available under a paid commercial license for organizations that:
+WeGotWorkspace is licensed under `AGPL-3.0-or-later` (`LICENSE`). Every feature is free to use, modify, and host — including as a hosted service, as long as your users can get the corresponding source code (AGPL section 13).
 
-- provide hosted/SaaS services with this software, and/or
-- want to distribute modified versions without AGPL copyleft obligations.
+A commercial license is available for organizations that want to:
 
-Without a commercial agreement, use remains under `AGPL-3.0-or-later` (`LICENSE`).
+- embed or integrate WeGotWorkspace in a closed-source product, and/or
+- distribute modified versions without AGPL obligations (OEM).
+
+Support/SLA and partner agreements for hosting companies are offered separately. Contact us at the address below.
+
+Third-party components keep their own licenses; see `THIRD_PARTY_NOTICES.md`.
 
 **WeGotWorkspace B.V.** (KvK 42131906, RSIN 869865924)  
 Dorpsstraat 65, 1452PH Ilpendam, The Netherlands  

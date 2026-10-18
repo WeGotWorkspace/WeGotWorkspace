@@ -45,7 +45,7 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 
 - [Getting started](docs/getting-started.md) — path picker
 - [Plugins](docs/plugins.md) — separate from core deploy — not available in the beta
-- [License](LICENSE) / [Commercial](COMMERCIAL-LICENSE.md)
+- [License](LICENSE) / [Commercial](COMMERCIAL-LICENSE.md) — every feature is free and open source (AGPL). Paid: hosted WeGotWorkspace, infrastructure shared hosting cannot run (e.g. TURN, LiveKit), and support/SLA for hosting partners
 
 ### Contributing
 
