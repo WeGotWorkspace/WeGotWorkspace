@@ -127,13 +127,16 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
             ->assertStatus(304);
     }
 
-    public function test_the_next_app_save_clears_the_flag(): void
+    public function test_the_next_acknowledged_app_save_clears_the_flag(): void
     {
         $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
         $this->dav('PUT', '/files/users/alice/together.md', "# Outside\n")->assertSuccessful();
 
         $this->withBearer($this->token)
-            ->putCollaboration($this->documentUrl(), "# Outside\n", "\x04", ['If-Match' => $etag])
+            ->putCollaboration($this->documentUrl(), "# Outside\n", "\x04", [
+                'If-Match' => $etag,
+                CollabExternalWrite::HEADER => $this->seenTextEtag(),
+            ])
             ->assertOk();
 
         $this->readYjs()->assertOk()->assertHeaderMissing(CollabExternalWrite::HEADER);
@@ -235,6 +238,82 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
         $this->assertNotNull(DocYjsState::query()->where('storage_key', 'users/alice/axbz/two.md')->first());
     }
 
+    /**
+     * A client with the document open still holds the current sidecar tag.
+     * Its next autosave must not write over the outside edit unseen.
+     */
+    public function test_a_save_over_an_outside_edit_is_refused(): void
+    {
+        $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+        $this->dav('PUT', '/files/users/alice/together.md', "# Outside\n")->assertSuccessful();
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Doc, edited\n", "\x05", ['If-Match' => $etag])
+            ->assertStatus(409)
+            ->assertExactJson(['error' => 'external_write']);
+
+        $this->assertSame("# Outside\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
+        $this->assertSame(self::YJS, Storage::disk('wgw_files')->get(self::SIDECAR_KEY));
+    }
+
+    public function test_a_save_that_names_the_outside_text_it_saw_is_accepted(): void
+    {
+        $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+        $this->dav('PUT', '/files/users/alice/together.md', "# Outside\n")->assertSuccessful();
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Doc, kept\n", "\x05", [
+                'If-Match' => $etag,
+                CollabExternalWrite::HEADER => $this->seenTextEtag(),
+            ])
+            ->assertOk();
+
+        $this->assertSame("# Doc, kept\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
+        $this->readYjs()->assertOk()->assertHeaderMissing(CollabExternalWrite::HEADER);
+    }
+
+    public function test_a_save_that_saw_an_older_outside_text_is_refused(): void
+    {
+        $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+        $this->dav('PUT', '/files/users/alice/together.md', "# Outside\n")->assertSuccessful();
+        $seen = $this->seenTextEtag();
+        $this->dav('PUT', '/files/users/alice/together.md', "# Outside again\n")->assertSuccessful();
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Doc, kept\n", "\x05", [
+                'If-Match' => $etag,
+                CollabExternalWrite::HEADER => $seen,
+            ])
+            ->assertStatus(409);
+
+        $this->assertSame("# Outside again\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
+    }
+
+    public function test_a_save_without_a_row_is_not_refused(): void
+    {
+        $this->seedWithoutRow();
+        Storage::disk('wgw_files')->put(self::DOCUMENT_KEY, '# changed on disk');
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Doc\n", "\x05", [
+                'If-Match' => '"'.sha1('yjs-bytes').'"',
+            ])
+            ->assertOk();
+    }
+
+    public function test_a_save_is_not_refused_by_a_row_for_another_sidecar(): void
+    {
+        $this->saveThroughTheApp("# Doc\n");
+        Storage::disk('wgw_files')->put(self::SIDECAR_KEY, "\x09\x09");
+        Storage::disk('wgw_files')->put(self::DOCUMENT_KEY, "# Saved, row not yet written\n");
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Doc\n", "\x05", [
+                'If-Match' => '"'.sha1("\x09\x09").'"',
+            ])
+            ->assertOk();
+    }
+
     public function test_a_rename_carries_the_row_and_is_not_a_content_change(): void
     {
         $this->saveThroughTheApp("# Doc\n");
@@ -305,6 +384,12 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
         return $this->withBearer($this->token)
             ->putCollaboration($this->documentUrl($room), $markdown, self::YJS)
             ->assertOk();
+    }
+
+    /** The markdown entity tag the client saw when it showed the outside text. */
+    private function seenTextEtag(): string
+    {
+        return (string) $this->withBearer($this->token)->get($this->documentUrl())->headers->get('ETag');
     }
 
     private function seedWithoutRow(): void
