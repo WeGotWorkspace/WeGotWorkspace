@@ -71,6 +71,25 @@ describe("toRtcConfig", () => {
     expect(config.iceServers?.[0]?.urls).toContain("turn:turn.example.com:3478?transport=udp");
   });
 
+  it("caps STUN and TURN at three urls each, after removing duplicates", () => {
+    const stunUrls = ["a", "a", "b", "c", "d"].map((host) => `stun:${host}.example:3478`).join(",");
+    const manyTurn = {
+      ...turn,
+      urls: Array.from({ length: 22 }, (_, index) => `turn:relay${index}.example:3478`),
+    };
+    const config = toRtcConfig({ ...baseSettings, stunUrls }, "direct", { turn: manyTurn });
+    expect(config.iceServers?.[0]?.urls).toEqual([
+      "stun:a.example:3478",
+      "stun:b.example:3478",
+      "stun:c.example:3478",
+    ]);
+    expect(config.iceServers?.[1]?.urls).toEqual([
+      "turn:relay0.example:3478",
+      "turn:relay1.example:3478",
+      "turn:relay2.example:3478",
+    ]);
+  });
+
   it("allows collab pool size override", () => {
     const config = toRtcConfig(baseSettings, "direct", { iceCandidatePoolSize: 2 });
     expect(config.iceCandidatePoolSize).toBe(2);

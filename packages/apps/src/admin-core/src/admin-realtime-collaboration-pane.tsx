@@ -1,5 +1,7 @@
 import { Button } from "@/button/src/button";
 import { Card } from "@/card/src/card";
+import { AdminIceUrlList } from "@/admin-core/src/admin-ice-url-list";
+import { splitIceUrlRows } from "@/admin-core/src/admin-settings-form-utils";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -16,40 +18,33 @@ export function AdminRealtimeCollaborationPane({
   controller,
 }: AdminRealtimeCollaborationPaneProps) {
   const relayReady =
-    controller.settingsForm.turnSecretSet && controller.settingsForm.turnUrls.trim() !== "";
+    controller.settingsForm.turnSecretSet &&
+    splitIceUrlRows(controller.settingsForm.turnUrls).some((url) => url !== "");
   return (
     <>
       <Card title="WebRTC ICE servers">
         <p className="mb-3 text-sm text-muted-foreground">
           ICE servers improve real-time reliability by helping peers discover the best route through
           NATs and firewalls. Configure STUN for direct path discovery and TURN as a relay fallback
-          when direct peer-to-peer connections are blocked. Enter multiple URLs as a comma-separated
-          list.
+          when direct peer-to-peer connections are blocked. Add up to three URLs of each kind, one
+          per field.
         </p>
-        <FormField htmlFor="admin-realtime-stun-urls" label="STUN URLs">
-          <Input
+        <FormField htmlFor="admin-realtime-stun-urls-1" label="STUN URLs">
+          <AdminIceUrlList
             id="admin-realtime-stun-urls"
+            label="STUN URLs"
+            itemLabel="STUN URL"
             value={controller.settingsForm.stunUrls}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                stunUrls: value,
-              }));
-            }}
+            onChange={(stunUrls) => controller.setSettingsForm((prev) => ({ ...prev, stunUrls }))}
           />
         </FormField>
-        <FormField htmlFor="admin-realtime-turn-urls" label="TURN URLs">
-          <Input
+        <FormField htmlFor="admin-realtime-turn-urls-1" label="TURN URLs">
+          <AdminIceUrlList
             id="admin-realtime-turn-urls"
+            label="TURN URLs"
+            itemLabel="TURN URL"
             value={controller.settingsForm.turnUrls}
-            onChange={(event) => {
-              const value = event.target.value;
-              controller.setSettingsForm((prev) => ({
-                ...prev,
-                turnUrls: value,
-              }));
-            }}
+            onChange={(turnUrls) => controller.setSettingsForm((prev) => ({ ...prev, turnUrls }))}
           />
         </FormField>
         <FormField htmlFor="admin-realtime-turn-secret" label="TURN shared secret">

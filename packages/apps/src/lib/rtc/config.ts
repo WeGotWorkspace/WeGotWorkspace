@@ -7,6 +7,17 @@ export type ToRtcConfigOptions = {
   turn?: TurnCredentials | null;
 };
 
+/**
+ * Each url costs its own STUN binding or TURN allocation, and gathering waits
+ * on all of them. A provider's full list (20+ urls) stalls gathering at zero
+ * candidates, so only the first few of each kind are used.
+ */
+export const MAX_ICE_URLS_PER_KIND = 3;
+
+function firstUnique(urls: readonly string[]): string[] {
+  return [...new Set(urls)].slice(0, MAX_ICE_URLS_PER_KIND);
+}
+
 export function normalizeIceUrl(raw: string, defaultScheme: "stun" | "turn"): string {
   const value = raw.trim();
   if (value === "") return "";
@@ -36,11 +47,11 @@ export function toRtcConfig(
     : [];
   // Relay-only transport is pointless without credentials to reach the relay.
   const forceRelay = (settings.forceRelay || mode === "relay") && turnUrls.length > 0;
-  const stunUrls = parseUrlList(settings.stunUrls, "stun");
+  const stunUrls = firstUnique(parseUrlList(settings.stunUrls, "stun"));
   const iceServers: RTCIceServer[] = [];
   const turnServer: RTCIceServer | null =
     turn && turnUrls.length > 0
-      ? { urls: [...new Set(turnUrls)], username: turn.username, credential: turn.credential }
+      ? { urls: firstUnique(turnUrls), username: turn.username, credential: turn.credential }
       : null;
 
   if (forceRelay) {
@@ -49,7 +60,7 @@ export function toRtcConfig(
     }
   } else {
     if (stunUrls.length > 0) {
-      iceServers.push({ urls: [...new Set(stunUrls)] });
+      iceServers.push({ urls: stunUrls });
     }
     if (turnServer) {
       iceServers.push(turnServer);

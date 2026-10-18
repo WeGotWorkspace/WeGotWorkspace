@@ -4,6 +4,7 @@ import { AdminRealtimeCollaborationPane } from "@/admin-core/src/admin-realtime-
 import { useAdminPaneStoryController } from "@/admin-core/stories/admin-pane-stories.harness";
 import { AdminStoryScope } from "@/admin-core/stories/admin-story-scope";
 import type { AdminSettingsFormState } from "@/admin-core/src/admin-settings-form-utils";
+import { TooltipProvider } from "@/ui/tooltip";
 
 afterEach(() => {
   cleanup();
@@ -15,9 +16,11 @@ function RealtimePaneHarness({ form }: { form?: Partial<AdminSettingsFormState> 
     ? { ...controller, settingsForm: { ...controller.settingsForm, ...form } }
     : controller;
   return (
-    <AdminStoryScope>
-      <AdminRealtimeCollaborationPane controller={patched} />
-    </AdminStoryScope>
+    <TooltipProvider delayDuration={0}>
+      <AdminStoryScope>
+        <AdminRealtimeCollaborationPane controller={patched} />
+      </AdminStoryScope>
+    </TooltipProvider>
   );
 }
 
@@ -25,11 +28,11 @@ describe("AdminRealtimeCollaborationPane", () => {
   it("updates STUN and TURN fields when the user types", () => {
     render(<RealtimePaneHarness />);
 
-    const stunUrls = screen.getByLabelText("STUN URLs");
+    const stunUrls = screen.getByLabelText("STUN URL 1");
     fireEvent.change(stunUrls, { target: { value: "stun:typed.test:3478" } });
     expect(screen.getByDisplayValue("stun:typed.test:3478")).toBeTruthy();
 
-    const turnUrls = screen.getByLabelText("TURN URLs");
+    const turnUrls = screen.getByLabelText("TURN URL 1");
     fireEvent.change(turnUrls, { target: { value: "turn:typed.test:3478" } });
     expect(screen.getByDisplayValue("turn:typed.test:3478")).toBeTruthy();
 
