@@ -141,19 +141,19 @@ Harmless normalizations (not findings): 3.0 `TYPE=INTERNET` and `TYPE=VOICE` are
 
 | ID | Short name | Severity |
 |---|---|---|
-| CT-1 | Only the last ungrouped ADR survives | High (addresses deleted) |
-| CT-2 | Apple item groups collide; labels move | High (user-visible corruption, compounds) |
-| CT-4 | Year-less birthday becomes 1604 | High (very common on iPhone) |
-| CT-5 | Unknown values re-escaped on every edit | High (compounds; breaks CLIENTPIDMAP) |
-| CT-3 | Labels on related names, dates, URLs lost | Medium–High |
-| CT-6 | vCard 3.0 `type=pref` ignored | Medium (default email/phone lost) |
-| CT-10 | Context change merges instead of replaces; PatchObject ignored | Medium (edit silently not applied) |
-| CT-7 | Unmodelled params on known properties dropped | Medium (fixed structurally by A0) |
-| CT-8 | `tel:` URI, GEO param, RELATED text corrupted | Medium (invalid vCard) |
-| CT-9 | Multi-value NICKNAME collapses | Low–Medium |
-| CT-11 | ADR LABEL duplicated into X-ABLabel | Low–Medium |
-| CT-12 | TZ moved into an ADR parameter | Low |
-| CT-13 | ANNIVERSARY time dropped | Low |
+| CT-1 [#1419](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1419) | Only the last ungrouped ADR survives | High (addresses deleted) |
+| CT-2 [#1420](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1420) | Apple item groups collide; labels move | High (user-visible corruption, compounds) |
+| CT-4 [#1421](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1421) | Year-less birthday becomes 1604 | High (very common on iPhone) |
+| CT-5 [#1422](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1422) | Unknown values re-escaped on every edit | High (compounds; breaks CLIENTPIDMAP) |
+| CT-3 [#1423](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1423) | Labels on related names, dates, URLs lost | Medium–High |
+| CT-6 [#1424](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1424) | vCard 3.0 `type=pref` ignored | Medium (default email/phone lost) |
+| CT-10 [#1425](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1425) | Context change merges instead of replaces; PatchObject ignored | Medium (edit silently not applied) |
+| CT-7 [#1426](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1426) | Unmodelled params on known properties dropped | Medium (fixed structurally by A0) |
+| CT-8 [#1427](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1427) | `tel:` URI, GEO param, RELATED text corrupted | Medium (invalid vCard) |
+| CT-9 [#1428](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1428) | Multi-value NICKNAME collapses | Low–Medium |
+| CT-11 [#1429](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1429) | ADR LABEL duplicated into X-ABLabel | Low–Medium |
+| CT-12 [#1430](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1430) | TZ moved into an ADR parameter | Low |
+| CT-13 [#1431](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1431) | ANNIVERSARY time dropped | Low |
 
 ### B — properties UI, MCP or clients plausibly need (fix on demand)
 
@@ -173,6 +173,12 @@ Harmless normalizations (not findings): 3.0 `TYPE=INTERNET` and `TYPE=VOICE` are
 `JSPROP`/`JSPTR` for unknown JSContact properties, PHONETIC/SCRIPT parameters beyond B, `localizations` PatchObjects for non-name properties, Card `version: "2.0"` features (RFC 9982 beyond `uid`), `Resource.label` on media, `CalendarScale` other than gregorian, `PartialDate.calendarScale`. With A0 in place these all survive a CardDAV round-trip as opaque vCard, even though JMAP never exposes them.
 
 ---
+
+## Filed
+
+Tracked in milestone [CardDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/12): Goal #1390, Epic #1417, A0-C #1418. Spec-conformance Tasks B-C1–B-C3: #1432–#1434 (no milestone). Contacts got their own milestone and Goal instead of joining the calendar one.
+
+The drafts below are what was filed.
 
 ## Proposed milestone: `CalDAV/CardDAV interop hardening`
 

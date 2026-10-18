@@ -187,7 +187,7 @@ Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` read
 
 | ID | Finding | Severity |
 |---|---|---|
-| NT-1 | A body edit collapses several DESCRIPTIONs (allowed in VJOURNAL, RFC 5545 §3.6.3) into one and drops their parameters (LANGUAGE, ALTREP). Pinned by `test_nt1_*`. | Low (few clients write more than one) |
+| NT-1 [#1410](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1410) | A body edit collapses several DESCRIPTIONs (allowed in VJOURNAL, RFC 5545 §3.6.3) into one and drops their parameters (LANGUAGE, ALTREP). Pinned by `test_nt1_*`. | Low (few clients write more than one) |
 
 **Not covered here:** the body goes through the TipTap editor and back to markdown in the client. A note written by another app can come back with different markdown syntax (list markers, blank lines) after one WGW edit. No text is lost, but the bytes change. That is a client-side codec question and needs a test in `packages/apps`.
 
@@ -199,23 +199,23 @@ Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` read
 
 | ID | Short name | Severity |
 |---|---|---|
-| RT-1 | URL/CONFERENCE rewritten as WGW Meet; dial-in and labels lost | High (user-visible corruption) |
-| RT-4 | Scheduling params dropped; non-mailto addresses corrupted | High (duplicate iTIP mail) |
-| RT-5 | VALARM identity, acknowledgement, snooze and extras lost | High (alarms re-fire on all devices) |
-| RT-T1 | Task RELATED-TO collapse | High (subtask trees break) |
-| RT-6 | Cross-zone DTEND moved | High (wrong times) |
-| RT-3 | ATTACH params dropped; binary corrupted | Medium |
-| RT-7 | RDATE lost when overrides exist | Medium |
-| RT-8 | Override VEVENT extras lost | Medium |
-| RT-10 | Map edits don't remove entries; PatchObject ignored | Medium (edit silently not applied) |
-| RT-11 | `color` dropped | Medium |
-| RT-T2 | Task SEQUENCE dropped | Medium |
-| RT-T3 | Invalid all-day RECURRENCE-ID on task overrides | Medium (invalid ICS) |
-| RT-T4 | Task override data lost and master data copied in | Medium |
-| RT-T5 | Task participant params dropped | Medium |
-| RT-T6 | Task VALARM DESCRIPTION/UID lost | Low–Medium (invalid DISPLAY alarm) |
-| RT-2 | `icsProps` loses params, repeats and list values | Medium (fixed structurally by A0) |
-| RT-9 | VCALENDAR-level properties dropped | Low |
+| RT-1 [#1393](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1393) | URL/CONFERENCE rewritten as WGW Meet; dial-in and labels lost | High (user-visible corruption) |
+| RT-4 [#1394](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1394) | Scheduling params dropped; non-mailto addresses corrupted | High (duplicate iTIP mail) |
+| RT-5 [#1395](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1395) | VALARM identity, acknowledgement, snooze and extras lost | High (alarms re-fire on all devices) |
+| RT-T1 [#1396](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1396) | Task RELATED-TO collapse | High (subtask trees break) |
+| RT-6 [#1397](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1397) | Cross-zone DTEND moved | High (wrong times) |
+| RT-3 [#1398](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1398) | ATTACH params dropped; binary corrupted | Medium |
+| RT-7 [#1399](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1399) | RDATE lost when overrides exist | Medium |
+| RT-8 [#1400](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1400) | Override VEVENT extras lost | Medium |
+| RT-10 [#1401](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1401) | Map edits don't remove entries; PatchObject ignored | Medium (edit silently not applied) |
+| RT-11 [#1402](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1402) | `color` dropped | Medium |
+| RT-T2 [#1403](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1403) | Task SEQUENCE dropped | Medium |
+| RT-T3 [#1404](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1404) | Invalid all-day RECURRENCE-ID on task overrides | Medium (invalid ICS) |
+| RT-T4 [#1405](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1405) | Task override data lost and master data copied in | Medium |
+| RT-T5 [#1406](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1406) | Task participant params dropped | Medium |
+| RT-T6 [#1408](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1408) | Task VALARM DESCRIPTION/UID lost | Low–Medium (invalid DISPLAY alarm) |
+| RT-2 [#1407](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1407) | `icsProps` loses params, repeats and list values | Medium (fixed structurally by A0) |
+| RT-9 [#1409](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1409) | VCALENDAR-level properties dropped | Low |
 
 ### B — properties UI, MCP or clients plausibly need (fix on demand)
 
@@ -238,6 +238,12 @@ Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` read
 `method`, `prodId` as a writable property, `locale`, `localizations`, `useDefaultAlerts`, `replyTo` beyond the organizer address, `requestStatus`, `recurrenceIdTimeZone`, `rscale`/`skip`, `UnknownTrigger`, structured `TimeZone`/`TimeZoneRule` (`icsDefinition` is lossless), Group objects (§5.3), Link `cid`/`size`/`display`/`title`, Location `locationTypes`/`relativeTo`, Participant `invitedBy`/`memberOf`/`locationId`/per-participant progress. With A0 in place these all survive a CalDAV round-trip as opaque ICS, even though JMAP never exposes them.
 
 ---
+
+## Filed
+
+Tracked in milestone [CalDAV interop hardening](https://github.com/WeGotWorkspace/WeGotWorkspace/milestone/11): Goal #1389, Epic #1391, A0 #1392. Spec-conformance Tasks B1–B6: #1411–#1416 (no milestone). NT-1 is #1410.
+
+The drafts below are what was filed.
 
 ## Proposed milestone: `calendar interop hardening`
 
