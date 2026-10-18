@@ -177,6 +177,7 @@ export function useMeetCallSession({
         setRelayTiles((current) => ({ ...current, [tile.peerId]: tile.message }));
       }
     },
+    cameraWanted: () => room.videoOnRef.current && !cameraBlockedRef.current,
     onVideoLimits: (limits) => {
       const blocked = limits.maxVideoProfile === "audio";
       cameraBlockedRef.current = blocked;

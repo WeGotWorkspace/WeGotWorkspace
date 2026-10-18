@@ -78,6 +78,8 @@ export type SenderApply = {
   screen: boolean;
   screenMode: ScreenOptimize;
   lowData: boolean;
+  /** The user's camera toggle. Absent means unknown: never switch the camera on. */
+  cameraOn?: boolean;
 };
 
 export { selectedPairIsRelay } from "@/lib/rtc/stats";
@@ -94,7 +96,10 @@ export async function applyVideoSender(sender: RTCRtpSender, apply: SenderApply)
     track.enabled = false;
     return;
   }
-  track.enabled = true;
+  // This runs on every connect and ICE change. Only resume a camera the user
+  // still wants (an audio-only relay pair that turned direct); never switch on
+  // a camera the user switched off.
+  if (!apply.screen && apply.cameraOn === true) track.enabled = true;
 
   const spec = VIDEO_PROFILE_SPECS[apply.screen ? apply.profile : apply.profile];
   const params = sender.getParameters();

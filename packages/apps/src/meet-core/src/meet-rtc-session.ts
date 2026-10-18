@@ -37,6 +37,8 @@ export type MeetRtcSessionOptions = {
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   /** Join delivered `rtc.limits`. `audio` has already disabled camera sending. */
   onVideoLimits?: (limits: VideoLimits) => void;
+  /** The user's camera toggle, so a profile change never switches it on. */
+  cameraWanted?: () => boolean;
   /** Text from the negotiated Meet data channel. The sender is the remote peer id. */
   onMeetData?: (remoteId: string, data: string) => void;
   /** Guest path: read room ICE settings once the join returns a session key. */
@@ -150,6 +152,7 @@ export class MeetRtcSession {
             this.remotePeerCount(),
             this.limits ?? DEFAULT_VIDEO_LIMITS,
             this.encoding,
+            this.options.cameraWanted?.() ?? false,
           );
         } catch {
           // A sender that is not ready yet is applied again on the next connect.

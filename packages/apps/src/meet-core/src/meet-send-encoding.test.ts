@@ -90,6 +90,30 @@ describe("applyMeetSendEncodings", () => {
     expect(direct.createOffer).not.toHaveBeenCalled();
   });
 
+  it("keeps a camera the user switched off disabled when the encoding is applied again", async () => {
+    const video = sender();
+    video.track.enabled = false;
+    const direct = connection(false, video);
+    await applyMeetSendEncodings([direct.pc], 1, limits, {
+      lowData: false,
+      screenMode: "text",
+      screenTrackId: null,
+    });
+    expect(video.track.enabled).toBe(false);
+  });
+
+  it("resumes a wanted camera once an audio-only relay pair turns direct", async () => {
+    const video = sender();
+    const audioOverRelay: VideoLimits = { maxVideoProfile: "p720", maxVideoProfileRelay: "audio" };
+    const prefs = { lowData: false, screenMode: "text" as const, screenTrackId: null };
+
+    await applyMeetSendEncodings([connection(true, video).pc], 1, audioOverRelay, prefs, true);
+    expect(video.track.enabled).toBe(false);
+
+    await applyMeetSendEncodings([connection(false, video).pc], 1, audioOverRelay, prefs, true);
+    expect(video.track.enabled).toBe(true);
+  });
+
   it("disables the camera sender when the instance ceiling is audio", async () => {
     const video = sender();
     const direct = connection(false, video);

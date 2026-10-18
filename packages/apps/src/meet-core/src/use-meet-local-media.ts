@@ -118,6 +118,15 @@ export function useMeetLocalMedia({
 
   const cameraAllowed = useCallback(() => cameraBlockedRef?.current !== true, [cameraBlockedRef]);
 
+  /**
+   * What the user wants right now. Read after every `getUserMedia`: the prompt
+   * can stay open for seconds, and the toggles may have changed meanwhile.
+   */
+  const currentMediaWanted = useCallback(
+    () => ({ mic: micOnRef.current, video: videoOnRef.current && cameraAllowed() }),
+    [cameraAllowed, micOnRef, videoOnRef],
+  );
+
   const ensureLocalMedia = useCallback(async () => {
     const mic = micOnRef.current;
     const video = videoOnRef.current && cameraAllowed();
@@ -135,7 +144,7 @@ export function useMeetLocalMedia({
           await replaceVideoTrackOnAllPeers(track);
         }
       }
-      syncMeetLocalTrackEnabled(localStreamRef.current, { mic, video });
+      syncMeetLocalTrackEnabled(localStreamRef.current, currentMediaWanted());
       return localStreamRef.current;
     }
     const stream = await navigator.mediaDevices.getUserMedia(
@@ -148,13 +157,14 @@ export function useMeetLocalMedia({
     );
     localStreamRef.current = stream;
     cameraTrackRef.current = stream.getVideoTracks()[0] ?? null;
-    syncMeetLocalTrackEnabled(stream, { mic, video });
+    syncMeetLocalTrackEnabled(stream, currentMediaWanted());
     if (localVideoRef.current) localVideoRef.current.srcObject = stream;
     await refreshDeviceList();
     return stream;
   }, [
     cameraAllowed,
     cameraTrackRef,
+    currentMediaWanted,
     localStreamRef,
     micOnRef,
     refreshDeviceList,
@@ -209,8 +219,9 @@ export function useMeetLocalMedia({
       const next = !prev;
       if (next && (localStreamRef.current?.getVideoTracks().length ?? 0) === 0) {
         void ensureLocalMedia().then((stream) => {
-          syncMeetLocalTrackEnabled(stream, { mic: micOnRef.current, video: true });
-          void announceMediaPresence(micOnRef.current, true);
+          const wanted = currentMediaWanted();
+          syncMeetLocalTrackEnabled(stream, wanted);
+          void announceMediaPresence(wanted.mic, wanted.video);
         });
         return next;
       }
@@ -223,6 +234,7 @@ export function useMeetLocalMedia({
   }, [
     announceMediaPresence,
     cameraAllowed,
+    currentMediaWanted,
     ensureLocalMedia,
     localStreamRef,
     micOnRef,
@@ -342,7 +354,7 @@ export function useMeetLocalMedia({
         });
         const track = updated.getAudioTracks()[0];
         if (!track) return;
-        track.enabled = micOn;
+        track.enabled = micOnRef.current;
         const previous = stream.getAudioTracks()[0];
         if (previous && previous.id !== track.id) {
           stream.removeTrack(previous);
@@ -357,7 +369,7 @@ export function useMeetLocalMedia({
     },
     [
       localStreamRef,
-      micOn,
+      micOnRef,
       refreshDeviceList,
       replaceAudioTrackOnAllPeers,
       setError,
@@ -377,7 +389,7 @@ export function useMeetLocalMedia({
         });
         const track = updated.getVideoTracks()[0];
         if (!track) return;
-        track.enabled = videoOn;
+        track.enabled = currentMediaWanted().video;
         const previous = stream.getVideoTracks()[0];
         if (previous && previous.id !== track.id) {
           stream.removeTrack(previous);
@@ -396,15 +408,24 @@ export function useMeetLocalMedia({
     },
     [
       cameraTrackRef,
+      currentMediaWanted,
       localStreamRef,
       refreshDeviceList,
       replaceVideoTrackOnAllPeers,
       screenOn,
       setError,
       setSelectedCamId,
-      videoOn,
     ],
   );
+
+  // A toggle switched off from anywhere (instance video limit, call reset) must
+  // stop sending. Only ever switches off: turning a device on needs the user.
+  useEffect(() => {
+    const stream = localStreamRef.current;
+    if (!stream) return;
+    if (!micOn) for (const track of stream.getAudioTracks()) track.enabled = false;
+    if (!videoOn) for (const track of stream.getVideoTracks()) track.enabled = false;
+  }, [localStreamRef, micOn, videoOn]);
 
   const getLocalStream = useCallback(() => localStreamRef.current, [localStreamRef]);
 
