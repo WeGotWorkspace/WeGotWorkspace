@@ -375,9 +375,15 @@ final class ConversionSupport
      * @param  array<string, mixed>  $date
      * @return array{0: string, 1: array<string, string>}
      */
-    public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
+    public static function anniversaryDateToVCardValue(array $date, string $propertyName, string $version = '4.0'): array
     {
-        return ConversionUidNameMethods::anniversaryDateToVCardValue($date, $propertyName);
+        [$value, $params] = ConversionUidNameMethods::anniversaryDateToVCardValue($date, $propertyName);
+        if ($version === '3.0' && str_starts_with($value, '--')) {
+            // vCard 3.0 has no year-less date; write Apple's placeholder form (CT-4, #1421).
+            return ['1604-'.substr($value, 2, 2).'-'.substr($value, 4, 2), ['x-apple-omit-year' => '1604']];
+        }
+
+        return [$value, $params];
     }
 
     /**

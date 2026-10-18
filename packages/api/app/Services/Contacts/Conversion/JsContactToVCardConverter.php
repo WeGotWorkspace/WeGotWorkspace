@@ -569,7 +569,7 @@ final class JsContactToVCardConverter
                 'wedding' => 'ANNIVERSARY',
                 default => 'BDAY',
             };
-            [$value, $dateParams] = ConversionSupport::anniversaryDateToVCardValue($entry['date'], $propertyName);
+            [$value, $dateParams] = ConversionSupport::anniversaryDateToVCardValue($entry['date'], $propertyName, (string) ($vcard->VERSION ?? '4.0'));
             $params = array_merge(['prop-id' => $id], $dateParams);
             $vcard->add($propertyName, $value, $params);
 

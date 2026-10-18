@@ -97,13 +97,36 @@ final class JsContactRoundTripLossTest extends TestCase
         }
     }
 
-    /** CT-4 (fixed for unrelated edits by #1418): Apple's year-less birthday keeps X-APPLE-OMIT-YEAR. */
-    public function test_ct4_apple_yearless_birthday_survives_an_edit(): void
+    /** CT-4 (fixed by #1418 and #1421): Apple's year-less birthday is read without a year and stays year-less. */
+    public function test_ct4_apple_yearless_birthday_is_read_and_written_without_year(): void
     {
-        $out = $this->edit($this->vcard('3.0', "FN:Apple Bday\r\nN:Bday;Apple;;;\r\n"
-            ."BDAY;X-APPLE-OMIT-YEAR=1604:1604-05-17\r\n"));
+        $vcard = $this->vcard('3.0', "FN:Apple Bday\r\nN:Bday;Apple;;;\r\n"
+            ."BDAY;X-APPLE-OMIT-YEAR=1604:1604-05-17\r\n");
 
-        $this->assertStringContainsString("BDAY;X-APPLE-OMIT-YEAR=1604:1604-05-17\r\n", $out);
+        $anniversaries = $this->converter->cardFromVCard($vcard)['anniversaries'];
+        $id = array_key_first($anniversaries);
+        $this->assertSame(['@type' => 'PartialDate', 'month' => 5, 'day' => 17], $anniversaries[$id]['date']);
+
+        $this->assertStringContainsString("BDAY;X-APPLE-OMIT-YEAR=1604:1604-05-17\r\n", $this->edit($vcard));
+
+        $moved = $this->edit($vcard, ['anniversaries' => [$id => [
+            '@type' => 'Anniversary', 'kind' => 'birth', 'date' => ['@type' => 'PartialDate', 'month' => 6, 'day' => 2],
+        ]]]);
+        $this->assertMatchesRegularExpression('/BDAY;[^\r]*X-APPLE-OMIT-YEAR=1604[^\r]*:1604-06-02\r\n/i', $moved);
+    }
+
+    /** CT-4 (#1421): on vCard 4.0 a year-less birthday is written as --MMDD. */
+    public function test_ct4_yearless_birthday_on_vcard4_uses_dash_dash(): void
+    {
+        $vcard = $this->vcard('4.0', "FN:Bday Four\r\nBDAY;VALUE=date:--0517\r\n");
+        $id = array_key_first($this->converter->cardFromVCard($vcard)['anniversaries']);
+
+        $out = $this->edit($vcard, ['anniversaries' => [$id => [
+            '@type' => 'Anniversary', 'kind' => 'birth', 'date' => ['@type' => 'PartialDate', 'month' => 6, 'day' => 2],
+        ]]]);
+
+        $this->assertStringContainsString(':--0602', $out);
+        $this->assertStringNotContainsString('X-APPLE-OMIT-YEAR', $out);
     }
 
     /**
