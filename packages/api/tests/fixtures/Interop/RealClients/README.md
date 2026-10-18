@@ -5,7 +5,7 @@ Captured on 2026-10-18 against the local Docker HTTPS stack (`https://wegotworks
 | Pair | Client | WGW edit | Findings shown |
 |---|---|---|---|
 | `apple-calendar-macos26-event` | Apple Calendar, macOS 26.6.2 (`dataaccessd`) | `CalendarEvent/set` title only | RT-1 (URL becomes a WGW Meet `CONFERENCE` + `X-GOOGLE-CONFERENCE`), RT-5 (VALARM `UID`/`X-WR-ALARMUID` dropped), RT-9 (`CALSCALE` dropped, `PRODID` replaced), LAST-MODIFIED not bumped |
-| `apple-reminders-macos26-todo` | Apple Reminders, macOS 26.6.2 (`remindd`, CalDAV list) | `PATCH /api/v1/tasks/items/{id}` title only | RT-T6 (VALARM `UID`/`X-WR-ALARMUID` dropped), VTIMEZONE replaced by a generated one with `TZUNTIL:2028…` |
+| `apple-reminders-macos26-todo` | Apple Reminders, macOS 26.6.2 (`remindd`, CalDAV list) | `PATCH /api/v1/tasks/items/{id}` title only | RT-T6 (VALARM `UID`/`X-WR-ALARMUID` dropped), VTIMEZONE replaced by a generated one with `TZUNTIL:2028…` (RT-T8, #1435) |
 | `thunderbird158-card` | Thunderbird 158 (CardDAV) | `ContactCard/set` name only | CT-1 (second ungrouped ADR deleted; it was already invisible in WGW on read), 7-part `N` written to a vCard 3.0 card |
 
 Notes:

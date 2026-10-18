@@ -216,6 +216,7 @@ Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` read
 | RT-T6 [#1408](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1408) | Task VALARM DESCRIPTION/UID lost | Low–Medium (invalid DISPLAY alarm) |
 | RT-2 [#1407](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1407) | `icsProps` loses params, repeats and list values | Medium (fixed structurally by A0) |
 | RT-9 [#1409](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1409) | VCALENDAR-level properties dropped | Low |
+| RT-T8 [#1435](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1435) | Task VTIMEZONE regenerated with `TZUNTIL` 2028 (found in the real-client run) | Low |
 
 ### B — properties UI, MCP or clients plausibly need (fix on demand)
 
