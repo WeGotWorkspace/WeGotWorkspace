@@ -229,14 +229,14 @@ export async function resolveFileNodeId(
       root = longestSharedRoot(session, target);
     }
     if (!root || !session.cache.nodeIdForPath(root)) {
-      throw new Error(`Unsupported drive path: ${normalized}`);
+      throw new UnsupportedDrivePathError(normalized);
     }
     prefix = root;
     rest = target.slice(root.length).split("/").filter(Boolean);
   }
 
   let parentId = session.cache.nodeIdForPath(prefix);
-  if (!parentId) throw new Error(`FileNode not found: ${prefix}`);
+  if (!parentId) throw new FileNodeNotFoundError(prefix);
   let current = prefix;
   for (const name of rest) {
     const got = await session.fileNodes.queryAndGetFileNodes(
@@ -245,7 +245,7 @@ export async function resolveFileNodeId(
       { signal },
     );
     const node = got.list[0];
-    if (!node) throw new Error(`FileNode not found: ${current}/${name}`);
+    if (!node) throw new FileNodeNotFoundError(`${current}/${name}`);
     current = `${current}/${name}`;
     session.cache.remember(current, node);
     parentId = node.id;
@@ -290,7 +290,9 @@ export async function listFileNodeEntries(
 
 export async function fetchDriveUser(opts?: { signal?: AbortSignal }): Promise<WgwDriveUserData> {
   const res = await wgwFetch("/files/context", { signal: opts?.signal });
-  if (!res.ok) throw new Error(`GET /files/context failed (${res.status})`);
+  if (!res.ok) {
+    throw new DriveTransportError(`GET /files/context failed (${res.status})`, res.status);
+  }
   const payload = (await wgwReadJson(res)) as WgwDriveUserResponse;
   return payload.data;
 }
@@ -357,7 +359,9 @@ export async function uploadJmapBlob(
     body: contents,
     signal,
   });
-  if (!res.ok) throw new Error(`POST /jmap/upload failed (${res.status})`);
+  if (!res.ok) {
+    throw new DriveTransportError(`POST /jmap/upload failed (${res.status})`, res.status);
+  }
   const payload = (await res.json()) as { blobId?: string };
   if (!payload.blobId) throw new Error("JMAP upload returned no blobId");
   return payload.blobId;
@@ -384,7 +388,9 @@ export async function downloadFileNodeBlob(
     type: node.type || "application/octet-stream",
   });
   const res = await wgwFetch(toApiRelativePath(url), { signal });
-  if (!res.ok) throw new Error(`GET /jmap/download failed (${res.status})`);
+  if (!res.ok) {
+    throw new DriveTransportError(`GET /jmap/download failed (${res.status})`, res.status);
+  }
   return res.blob();
 }
 
