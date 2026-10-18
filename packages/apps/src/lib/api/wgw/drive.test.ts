@@ -37,6 +37,7 @@ import {
 import {
   DriveTransportError,
   FileNodeNotFoundError,
+  FileNodeRootUnavailableError,
   UnsupportedDrivePathError,
 } from "@/lib/api/wgw/drive-jmap";
 
@@ -468,14 +469,22 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     });
   });
 
-  it("reports a missing home root as 404", async () => {
+  it("reports a missing home root without an HTTP status", async () => {
     hideHomeNode = true;
     const ops = createWgwDriveOperations("/users/bob");
-    await expect(ops.listDirectory("/users/bob")).rejects.toMatchObject({
-      name: "FileNodeNotFoundError",
-      status: 404,
-      message: "FileNode not found: /users/bob",
+    const error = await ops.listDirectory("/users/bob").then(
+      () => {
+        throw new Error("expected listDirectory to reject");
+      },
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(FileNodeRootUnavailableError);
+    expect(error).not.toBeInstanceOf(FileNodeNotFoundError);
+    expect(error).toMatchObject({
+      name: "FileNodeRootUnavailableError",
+      message: "FileNode root unavailable: /users/bob",
     });
+    expect((error as { status?: number }).status).toBeUndefined();
   });
 
   it("carries the HTTP status when context, upload, or download fails", async () => {
