@@ -24,6 +24,9 @@ export type PrincipalLinkOpenListener = (username: string, principalPeerId: stri
 /** Default wait for the suite principal mesh to finish signaling join before collab dials. */
 export const PRINCIPAL_JOIN_WAIT_MS = 8000;
 
+/** One principal wake per user in this window, so a user without a principal link cannot loop. */
+export const PRINCIPAL_WAKE_COOLDOWN_MS = 5_000;
+
 export class PrincipalLinkRegistry {
   private readonly links = new Map<string, PrincipalLink>();
 
@@ -40,6 +43,10 @@ export class PrincipalLinkRegistry {
   private principalJoinAttempted = false;
 
   private readonly principalJoinWaiters = new Set<() => void>();
+
+  private principalPoller: (() => void) | null = null;
+
+  private readonly principalWokenAt = new Map<string, number>();
 
   registerLink(link: PrincipalLink): void {
     const wasLive = this.links.has(link.principalPeerId);
@@ -150,6 +157,24 @@ export class PrincipalLinkRegistry {
     return () => {
       this.linkOpenListeners.delete(listener);
     };
+  }
+
+  /** The principal session's poll kick, or null when no principal session is joined. */
+  setPrincipalPoller(poll: (() => void) | null): void {
+    this.principalPoller = poll;
+  }
+
+  /**
+   * A collab room shows a new peer of this user. Their principal offer may be
+   * waiting on the server while our principal poll idles at 20 s, so poll now.
+   */
+  requestPrincipalPoll(username: string, now = Date.now()): boolean {
+    if (!username || !this.principalPoller) return false;
+    const last = this.principalWokenAt.get(username);
+    if (last !== undefined && now - last < PRINCIPAL_WAKE_COOLDOWN_MS) return false;
+    this.principalWokenAt.set(username, now);
+    this.principalPoller();
+    return true;
   }
 
   /** Called when the suite principal RTC session completes signaling join. */

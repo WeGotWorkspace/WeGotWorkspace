@@ -112,6 +112,32 @@ describe("PrincipalLinkRegistry", () => {
   });
 });
 
+describe("PrincipalLinkRegistry principal wake", () => {
+  it("kicks the principal poll once per user inside the cooldown", () => {
+    const registry = new PrincipalLinkRegistry();
+    const poll = vi.fn();
+    registry.setPrincipalPoller(poll);
+
+    expect(registry.requestPrincipalPoll("ann", 0)).toBe(true);
+    expect(registry.requestPrincipalPoll("ann", 4_999)).toBe(false);
+    expect(registry.requestPrincipalPoll("bob", 4_999)).toBe(true);
+    expect(registry.requestPrincipalPoll("ann", 5_000)).toBe(true);
+    expect(poll).toHaveBeenCalledTimes(3);
+  });
+
+  it("does nothing without a principal session or a username", () => {
+    const registry = new PrincipalLinkRegistry();
+    expect(registry.requestPrincipalPoll("ann", 0)).toBe(false);
+
+    const poll = vi.fn();
+    registry.setPrincipalPoller(poll);
+    expect(registry.requestPrincipalPoll("", 0)).toBe(false);
+    registry.setPrincipalPoller(null);
+    expect(registry.requestPrincipalPoll("ann", 0)).toBe(false);
+    expect(poll).not.toHaveBeenCalled();
+  });
+});
+
 describe("principal link registry singleton", () => {
   it("resets between tests", () => {
     getPrincipalLinkRegistry().registerLink({

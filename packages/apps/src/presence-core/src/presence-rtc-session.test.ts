@@ -22,6 +22,7 @@ const captured = vi.hoisted(() => ({
     broadcastJson: vi.fn(),
     join: vi.fn(async () => ({ peerId: "me" })),
     leave: vi.fn(async () => undefined),
+    kickPoll: vi.fn(),
   },
 }));
 
@@ -162,5 +163,29 @@ describe("PresenceRtcSession principal link publishing", () => {
     captured.mesh.getDataChannel.mockReturnValue({ readyState: "open" });
     captured.bindingOptions?.onOpen("prin-wouter");
     expect(captured.pollIntervals?.steadyMs).toBe(20_000);
+  });
+});
+
+describe("PresenceRtcSession principal wake", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("lets a collab room wake the principal poll while joined", async () => {
+    const registry = new PrincipalLinkRegistry();
+    const session = new PresenceRtcSession({
+      room: "workspace",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      linkRegistry: registry,
+    });
+    expect(registry.requestPrincipalPoll("wouter", 0)).toBe(false);
+
+    await session.join("Admin");
+    expect(registry.requestPrincipalPoll("wouter", 0)).toBe(true);
+    expect(captured.mesh.kickPoll).toHaveBeenCalledTimes(1);
+
+    await session.leave();
+    expect(registry.requestPrincipalPoll("ann", 0)).toBe(false);
+    expect(captured.mesh.kickPoll).toHaveBeenCalledTimes(1);
   });
 });

@@ -148,12 +148,14 @@ export class PresenceRtcSession implements PresenceMeshSession {
   }
 
   async join(name: string): Promise<{ peerId: string; superseded?: true }> {
+    this.registry.setPrincipalPoller(() => this.mesh.kickPoll());
     const joined = await this.mesh.join({ name });
     if (joined.superseded) return { peerId: "", superseded: true };
     return { peerId: joined.peerId };
   }
 
   async leave(): Promise<void> {
+    this.registry.setPrincipalPoller(null);
     this.registry.retain(new Set());
     await this.mesh.leave();
   }
