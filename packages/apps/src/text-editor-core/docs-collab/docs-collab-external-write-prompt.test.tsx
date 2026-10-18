@@ -156,18 +156,21 @@ async function markUnsavedWork(room: string): Promise<void> {
 }
 
 /** The same wiring as `DocsCollabWorkspace`. */
-function renderDocsWorkspaceHooks(urls: DocsCollabUrls) {
-  return renderHook(() => {
-    const request = useDocsExternalWriteRequest(urls);
-    const collab = useDocsCollab({ userName: "Alex", autoJoin: true, urls: request.urls, wire });
-    const prompt = useDocsExternalWritePrompt({
-      request,
-      room: urls.room,
-      ydoc: collab.session?.ydoc ?? null,
-      resolveExternalWrite: collab.resolveExternalWrite,
-    });
-    return { collab, prompt };
-  });
+function renderDocsWorkspaceHooks(initialUrls: DocsCollabUrls) {
+  return renderHook(
+    ({ urls }) => {
+      const request = useDocsExternalWriteRequest(urls);
+      const collab = useDocsCollab({ userName: "Alex", autoJoin: true, urls: request.urls, wire });
+      const prompt = useDocsExternalWritePrompt({
+        request,
+        room: urls.room,
+        ydoc: collab.session?.ydoc ?? null,
+        resolveExternalWrite: collab.resolveExternalWrite,
+      });
+      return { collab, prompt, request };
+    },
+    { initialProps: { urls: initialUrls } },
+  );
 }
 
 function documentText(result: { current: { collab: ReturnType<typeof useDocsCollab> } }) {
@@ -387,6 +390,111 @@ describe("Docs external write (#1349)", () => {
       expect(result.current.collab.docStatus).not.toMatch(/save failed/i);
     }, 15_000);
   });
+
+  it("keeps Keep my edits disabled when a second outside edit lands during the answer", async () => {
+    let version = 1;
+    let raced = false;
+    const puts: RefusedPut[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), { status: 200, headers: { ETag: '"sidecar"' } });
+        }
+        if (method === "PUT") {
+          const headers = (init?.headers ?? {}) as Record<string, string>;
+          const seen = headers["X-Wgw-External-Write"];
+          puts.push({ markdown: markdownFromFramedSave(init?.body), seen });
+          if (seen === `"t${version}"` && !(version === 1 && !raced)) {
+            return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+          }
+          if (seen === '"t1"') {
+            raced = true;
+            version = 2;
+          }
+          return new Response(JSON.stringify({ error: "external_write" }), { status: 409 });
+        }
+        return new Response(`Outside text ${version}.`, {
+          status: 200,
+          headers: { "Content-Type": "text/markdown", ETag: `"t${version}"` },
+        });
+      }),
+    );
+    const { result } = renderDocsWorkspaceHooks(docsUrls("docs/open-chain.md"));
+    await waitFor(() => expect(result.current.collab.session).not.toBeNull(), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+    act(() => typeLocally(result.current.collab.session!.ydoc, LOCAL_TEXT));
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+    await waitFor(() => expect(result.current.request.detail?.markdown).toBe("Outside text 1."));
+
+    act(() => result.current.prompt.useOutside());
+
+    await waitFor(() => expect(result.current.request.detail?.markdown).toBe("Outside text 2."));
+    await waitFor(() => expect(result.current.prompt.busy).toBe(false));
+    // The local edits are already gone: Keep my edits would save text 1 as "mine".
+    expect(result.current.prompt.keepLocalDisabled).toBe(true);
+
+    act(() => result.current.prompt.useOutside());
+    await waitFor(() => expect(result.current.prompt.open).toBe(false));
+    expect(puts.at(-1)).toEqual({ markdown: "Outside text 2.", seen: '"t2"' });
+  }, 15_000);
+
+  it("never sends one document's outside-text tag with another document's save", async () => {
+    const puts: Array<{ url: string; seen: string | undefined }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        const isFirst = url.includes(encodeURIComponent("docs/tag-first.md"));
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), { status: 200, headers: { ETag: '"sidecar"' } });
+        }
+        if (method === "PUT") {
+          const headers = (init?.headers ?? {}) as Record<string, string>;
+          puts.push({ url, seen: headers["X-Wgw-External-Write"] });
+          if (isFirst) {
+            return new Response(JSON.stringify({ error: "external_write" }), { status: 409 });
+          }
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(OUTSIDE_TEXT, {
+          status: 200,
+          headers: { "Content-Type": "text/markdown", ETag: OUTSIDE_TAG },
+        });
+      }),
+    );
+    const first = docsUrls("docs/tag-first.md");
+    const second = docsUrls("docs/tag-second.md");
+    const { result, rerender } = renderDocsWorkspaceHooks(first);
+    await waitFor(() => expect(result.current.collab.session).not.toBeNull(), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+    act(() => typeLocally(result.current.collab.session!.ydoc, LOCAL_TEXT));
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+    await waitFor(() => expect(result.current.prompt.open).toBe(true));
+
+    rerender({ urls: second });
+    await waitFor(() => expect(result.current.collab.session?.ydoc).not.toBe(undefined));
+    await waitFor(() => expect(result.current.prompt.open).toBe(false));
+    await waitFor(() => expect(result.current.collab.joined).toBe(true), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+    act(() => typeLocally(result.current.collab.session!.ydoc, "Typed in the second document."));
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+
+    const secondPuts = puts.filter((put) =>
+      put.url.includes(encodeURIComponent("docs/tag-second.md")),
+    );
+    expect(secondPuts.length).toBeGreaterThan(0);
+    expect(secondPuts.every((put) => put.seen === undefined)).toBe(true);
+  }, 15_000);
 
   it("shows a prompt that Escape cannot dismiss", () => {
     const labels = docsLabels.externalWriteDialog;
