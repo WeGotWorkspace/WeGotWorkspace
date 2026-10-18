@@ -39,6 +39,7 @@ export const NOTES_OFFLINE_VERSION = {
 export const DOCS_OFFLINE_VERSION = {
   listingTables: 20,
   availabilityTables: 21,
+  availabilityNodeId: 22,
 } as const;
 
 /** Drive version steps within the drive block (30–39). */
@@ -46,6 +47,7 @@ export const DRIVE_OFFLINE_VERSION = {
   entriesTables: 30,
   contentTables: 31,
   availabilityTables: 32,
+  entryNodeId: 33,
 } as const;
 
 /** Tasks version steps within the tasks block (40–49). */

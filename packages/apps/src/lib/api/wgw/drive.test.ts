@@ -281,6 +281,10 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     const ops = createWgwDriveOperations("/users/bob");
     const listed = await ops.listDirectory("/users/bob");
     expect(listed.directory.files.some((entry) => entry.name === "Docs")).toBe(true);
+    expect(listed.directory.files.find((entry) => entry.name === "Docs")?.nodeId).toBe(DOCS_ID);
+    expect(listed.directory.files.find((entry) => entry.name === "readme.md")?.nodeId).toBe(
+      FILE_ID,
+    );
 
     await ops.createFolder({ cwd: "/users/bob", name: "Docs" }, { refreshState: false });
 
@@ -347,6 +351,7 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     const ops = createWgwDriveOperations("/users/bob/Test");
     const listed = await ops.listDirectory("/users/bob/Test");
     expect(listed.directory.files[0]?.name).toBe("readme.md");
+    expect(listed.directory.files[0]?.nodeId).toBeUndefined();
     expect(listed.user.role).toBe("guest");
     const blob = await ops.readFileBlob("/users/bob/Test/readme.md");
     expect(await blob.text()).toBe("guest");

@@ -283,6 +283,11 @@ function createSharedDriveOperations(): Pick<
   };
 }
 
+/**
+ * Guests list over REST `/files/children`, which has no FileNode id.
+ * Offline sync never runs for a guest (`useDriveAPI` skips that session),
+ * so this route leaves `nodeId` empty instead of growing a guest cache.
+ */
 function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
   let cwd = normalizePath(initialCwd);
   const shared = createSharedDriveOperations();
