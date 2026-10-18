@@ -23,9 +23,10 @@ A client that has a note open no longer writes over an outside CalDAV edit on it
 ## Technical constraints
 
 - **Refusal:** inside the existing `lockForUpdate` transaction, after `assertStatePrecondition`. A stored `note_yjs_state` row with `NoteYjsProjection::isExternalContentWrite()` true refuses with 409 and the code `external_write`. The error message is also `external_write`, so the body's `error` field matches the #1380 contract and the shared client classifier. No row, or a metadata-only journal change (same content hash), saves as today.
-- **Acknowledgement tag:** the content tag `"<sha1(DESCRIPTION \0 SUMMARY)>"`, the same hash `NoteYjsProjection::hashContent()` stores in `content_etag`. It is not the VJOURNAL ETag, so a tag, move, or archive while the dialog is up does not ask again. The tag must name the current content exactly; `*` and an empty value are refused.
+- **Acknowledgement tag:** the content tag `"<sha1(DESCRIPTION \0 SUMMARY)>"`, the same hash `NoteYjsProjection::hashContent()` stores in `content_etag`. It is not the VJOURNAL ETag, so a tag, move, or archive while the dialog is up does not ask again. The header is read like an entity-tag list (comma-separated, optional `W/`), and one entry must be the current content tag. A `*`, an empty value, or only older tags are refused.
 - **Where the client gets the tag:** `GET /notes/items/{id}` adds `contentEtag` to the Note JSON. `loadCollabText` uses a JSON `contentEtag` when present and the response `ETag` otherwise. That is a representation rule, not an app branch, so the #1313 test still holds.
 - **Client:** `NoteCollabSession` uses `useDocsExternalWriteRequest` and `useDocsExternalWritePrompt` from `text-editor-core/docs-collab`. The question is tied to its room, a failed answer keeps the dialog and the hold, and Keep my edits is disabled once outside text replaced the local note in the question chain. The refusal, pending-offline, and reconnect handling are the shared #1380 paths.
+- **Format:** a note is always markdown. `NoteCollabSession` sets `documentFormat: "markdown"` on its collab urls, and the join path and the prompt resolve the format through `collabFormatForUrls`, so a UID ending in `.json`, `.xml` or `.html` is not seeded or rebuilt as plain text.
 
 ## Edge cases
 
