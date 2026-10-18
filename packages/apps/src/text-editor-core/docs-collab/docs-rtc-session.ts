@@ -4,7 +4,10 @@ import { peekNetClass } from "@/lib/rtc/net-probe";
 import { createDataBinding } from "@/lib/rtc/session/bindings";
 import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
-import type { PrincipalLinkRegistry } from "@/lib/rtc/session/principal-link-registry";
+import {
+  getPrincipalLinkRegistry,
+  type PrincipalLinkRegistry,
+} from "@/lib/rtc/session/principal-link-registry";
 import { needsRelayPrecheck } from "@/lib/rtc/session/relay-policy";
 import { requestRelay, type RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 import {
@@ -153,6 +156,8 @@ export class DocsRtcSession {
 
   private readonly reuse: DocsCollabPrincipalReuse;
 
+  private readonly principalLinks: PrincipalLinkRegistry;
+
   /** Collab peer ids that have appeared in a signaling roster while reused. */
   private readonly seenReusedRosterIds = new Set<string>();
 
@@ -244,9 +249,10 @@ export class DocsRtcSession {
       : async () => null;
     if (publishedJwk) void resolveTicketKey(publishedJwk.kid);
 
+    this.principalLinks = options.reuseRegistry ?? getPrincipalLinkRegistry();
     this.reuse = new DocsCollabPrincipalReuse({
       room: options.room,
-      registry: options.reuseRegistry,
+      registry: this.principalLinks,
       getMyCollabPeerId: () => this.mesh.getMyId(),
       getMyName: () => this.myName,
       onDcOpen: (remoteId) => {
@@ -308,7 +314,9 @@ export class DocsRtcSession {
         this.noteOwnAccessFromPoll(data);
         this.reuse.considerRoster(data.peers, this.mesh.getMyId());
         this.dropStaleReusedPeers(data.peers);
-        this.gossipNewRosterPeers(data.peers);
+        const added = this.takeNewRosterPeers(data.peers);
+        this.gossipNewRosterPeers(added);
+        this.wakePrincipalFor(added);
         const messages = mailboxMessages(data);
         this.http?.ingest(messages);
         this.http?.evaluate();
@@ -482,23 +490,43 @@ export class DocsRtcSession {
     }
   }
 
+  /** Roster peers this poll shows that the previous poll did not. */
+  private takeNewRosterPeers(rosterPeers: RtcPeerDescriptor[]): RtcPeerDescriptor[] {
+    const myId = this.mesh.getMyId();
+    const others = rosterPeers.filter((peer) => peer.id !== myId);
+    const added = others.filter((peer) => !this.knownRosterIds.has(peer.id));
+    this.knownRosterIds.clear();
+    for (const peer of others) this.knownRosterIds.add(peer.id);
+    return added;
+  }
+
   /**
    * Gossip discovery send side: when a roster poll reveals peers we have not
    * seen before, forward them over the already-open data channels so connected
    * peers do not wait out their own idle poll cycle. Best effort — peers
    * without an open channel simply rely on their normal poll.
    */
-  private gossipNewRosterPeers(rosterPeers: DocsCollabMeshPeer[]): void {
-    const myId = this.mesh.getMyId();
-    const others = rosterPeers.filter((peer) => peer.id !== myId);
-    const added = others.filter((peer) => !this.knownRosterIds.has(peer.id));
-    this.knownRosterIds.clear();
-    for (const peer of others) this.knownRosterIds.add(peer.id);
+  private gossipNewRosterPeers(added: readonly RtcPeerDescriptor[]): void {
     if (added.length === 0) return;
     this.broadcast({
       type: "peer-hint",
       peers: added.map(({ id, name }) => ({ id, name })),
     });
+  }
+
+  /**
+   * A new collab peer of a signed-in user is usually a fresh tab. Its principal
+   * offer waits for our idle principal poll (20 s), so reuse cannot hit until
+   * then. Wake that poll. The registry limits it to once per user per 5 s.
+   */
+  private wakePrincipalFor(added: readonly RtcPeerDescriptor[]): void {
+    for (const peer of added) {
+      if (!peer.user || !this.principalLinks.requestPrincipalPoll(peer.user)) continue;
+      rtcLog({ channel: "collab", peerId: this.mesh.getMyId() }, "principal-wake", {
+        remoteId: peer.id,
+        username: peer.user,
+      });
+    }
   }
 
   onMessage(listener: MeshListener): () => void {
