@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/wgw/notes";
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
@@ -78,6 +79,7 @@ function noteMetadataUpsertRequest(
   return {
     id: noteId,
     notebook: metadata.notebook,
+    ...(metadata.notebookId ? { notebookId: metadata.notebookId } : {}),
     ...(metadata.title !== undefined ? { title: metadata.title } : {}),
     ...(metadata.tags !== undefined ? { tags: metadata.tags } : {}),
     ...(metadata.tagsAdd !== undefined ? { tagsAdd: metadata.tagsAdd } : {}),
@@ -87,15 +89,6 @@ function noteMetadataUpsertRequest(
     ...(metadata.groupSlug?.trim() ? { groupSlug: metadata.groupSlug.trim() } : {}),
     ...(etag ? { etag } : {}),
   };
-}
-
-function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
-  mode: "archive" | "move" | "purge";
-  target?: string;
-} {
-  if (action.kind === "archive") return { mode: "archive" };
-  if (action.kind === "purge") return { mode: "purge" };
-  return { mode: "move", target: action.target };
 }
 
 export async function flushNotesOutbox(username: string): Promise<OutboxFlushResult> {
@@ -208,14 +201,16 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
         await renameNotebook(String(payload.from ?? ""), String(payload.to ?? ""));
       } else if (row.op === "deleteNotebook") {
         const action = payload.action as DeleteNotebookAction;
-        await deleteNotebook(String(payload.name ?? ""), notebookDeleteBodyForAction(action));
+        await deleteNotebook(String(payload.name ?? ""), action);
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

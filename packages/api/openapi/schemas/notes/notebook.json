@@ -155,6 +155,10 @@
     "properties": {
       "onDestroyRemoveContents": {
         "type": "boolean"
+      },
+      "moveNotesTo": {
+        "type": "string",
+        "description": "Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents."
       }
     }
   }

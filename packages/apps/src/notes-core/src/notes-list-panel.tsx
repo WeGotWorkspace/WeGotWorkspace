@@ -9,11 +9,13 @@ import {
 import { Archive, Circle, Eye, Share2, Star, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ListItem } from "@/list-item/src/list-item";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
 import type { Note } from "@/lib/models/note";
 import { formatNoteDateForList } from "@/notes-core/src/notes-date-utils";
 import {
+  NOTE_LIST_EMPTY_TITLE,
   noteListExcerpt,
   noteListTitle,
   noteListLocationLabel,
@@ -32,29 +34,31 @@ import { bindItemDragHandlers } from "@/list-item/src/use-delegated-list-item-ev
 import { WorkspaceSwipeList } from "@/workspace-swipe-list/src/workspace-swipe-list";
 import "@/notes-core/src/notes-list-panel.css";
 
-function NotesListLocation({
-  note,
-  labels,
+function NotesListNotebookMark({
+  location,
   notebookColor,
-  notebookCollections,
 }: {
-  note: Note;
-  labels: NotesUILabels;
+  location: string;
   notebookColor?: string | null;
-  notebookCollections: NotesNotebookCollection[];
 }) {
-  const location = noteListLocationLabel(note, labels, notebookCollections);
-  if (!location) return null;
   return (
-    <span
-      className="notes-list-panel__notebook"
-      style={
-        { "--collection-row-color": notebookDotColor({ color: notebookColor }) } as CSSProperties
-      }
-    >
-      <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
-      <span className="notes-list-panel__notebook-name">{location}</span>
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="notes-list-panel__notebook"
+          role="img"
+          aria-label={location}
+          style={
+            {
+              "--collection-row-color": notebookDotColor({ color: notebookColor }),
+            } as CSSProperties
+          }
+        >
+          <NotesNotebookColorIcon className="notes-list-panel__notebook-icon" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{location}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -260,23 +264,27 @@ function NotesListRows({
         const showViewOnly = noteShowsViewOnlyBadge(note);
         const canArchive = noteAllowsStructureManage(note);
         const notebookColor = notebookDisplayColor(note, notebookCollections);
+        const location = noteListLocationLabel(note, L, notebookCollections ?? []);
         const excerpt = noteListExcerpt(note);
         return (
           <ListItem
             key={note.id}
             id={note.id}
-            title={noteListTitle(note)}
-            subtitle={
-              <NotesListLocation
-                note={note}
-                labels={L}
-                notebookColor={notebookColor}
-                notebookCollections={notebookCollections ?? []}
-              />
-            }
+            title={note.title?.trim() ? noteListTitle(note) : ""}
+            emptyTitle={NOTE_LIST_EMPTY_TITLE}
+            subtitle={null}
+            metaPosition="below"
             date={formatNoteDateForList(note.date)}
+            showEmptyText
             text={excerpt ? <span className="notes-list-panel__excerpt">{excerpt}</span> : null}
             icons={[
+              location ? (
+                <NotesListNotebookMark
+                  key="notebook"
+                  location={location}
+                  notebookColor={notebookColor}
+                />
+              ) : null,
               isPendingSync ? (
                 <span
                   key="pending"

@@ -244,10 +244,31 @@ describe("deleteNotebook", () => {
   });
 
   it("purges via query-param onDestroyRemoveContents", async () => {
-    await deleteNotebook("Scratch", { mode: "purge" });
+    await deleteNotebook("notes-scratch", { kind: "purge" });
     expect(deleteVjournalNotebook).toHaveBeenCalledWith(
       "notes-scratch",
       expect.objectContaining({ onDestroyRemoveContents: true }),
     );
+  });
+
+  it("forwards moveNotesTo by notebook id and does not purge", async () => {
+    vi.mocked(listNotebooks).mockResolvedValue([
+      { id: "notes-scratch", name: "Scratch" },
+      { id: "notes-work", name: "Work" },
+    ]);
+    await deleteNotebook("notes-scratch", { kind: "move", target: "notes-work" });
+    expect(deleteVjournalNotebook).toHaveBeenCalledWith(
+      "notes-scratch",
+      expect.objectContaining({ moveNotesTo: "notes-work" }),
+    );
+    const options = vi.mocked(deleteVjournalNotebook).mock.calls[0]?.[1];
+    expect(options?.onDestroyRemoveContents).not.toBe(true);
+  });
+
+  it("sends purge-if-empty without onDestroyRemoveContents or moveNotesTo", async () => {
+    await deleteNotebook("Scratch", { kind: "purge-if-empty" });
+    const options = vi.mocked(deleteVjournalNotebook).mock.calls[0]?.[1];
+    expect(options?.onDestroyRemoveContents).not.toBe(true);
+    expect(options?.moveNotesTo).toBeUndefined();
   });
 });

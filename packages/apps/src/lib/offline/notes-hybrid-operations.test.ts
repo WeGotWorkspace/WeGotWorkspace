@@ -744,7 +744,7 @@ describe("fetchNotesHybridBootstrap", () => {
     const operations = createHybridNotesOperations(username);
     await operations.deleteNotebook("EmptyGhost", { kind: "purge" });
 
-    expect(deleteNotebook).toHaveBeenCalledWith("EmptyGhost", { mode: "purge" }, undefined);
+    expect(deleteNotebook).toHaveBeenCalledWith("EmptyGhost", { kind: "purge" }, undefined);
     expect((await readNotesBootstrapFromCache(username))?.data.notebooks).toEqual(["Drafts"]);
   });
 
@@ -774,6 +774,48 @@ describe("fetchNotesHybridBootstrap", () => {
     const cached = await readNotesBootstrapFromCache(username);
     expect(cached?.data.notebooks).toEqual(["Drafts"]);
     expect(cached?.data.notes.map((item) => item.id)).toEqual(["keep"]);
+  });
+
+  it("rewrites notes onto the destination when a notebook delete moves them", async () => {
+    const { deleteNotebook } = await import("@/lib/api/wgw/notes");
+    vi.mocked(deleteNotebook).mockResolvedValue(undefined);
+
+    await writeNotesBootstrapToCache(username, {
+      ...bootstrap,
+      data: {
+        notes: [
+          { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
+          { ...note, id: "moved", notebook: "Scratch", notebookId: "notes-scratch" },
+        ],
+        notebooks: ["Drafts", "Scratch"],
+        tags: [],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts", scope: "personal" },
+          { id: "notes-scratch", name: "Scratch", scope: "personal" },
+        ],
+      },
+    });
+
+    const operations = createHybridNotesOperations(username);
+    await operations.deleteNotebook("notes-scratch", { kind: "move", target: "notes-drafts" });
+
+    expect(deleteNotebook).toHaveBeenCalledWith(
+      "notes-scratch",
+      { kind: "move", target: "notes-drafts" },
+      undefined,
+    );
+    const cached = await readNotesBootstrapFromCache(username);
+    expect(cached?.data.notebooks).toEqual(["Drafts"]);
+    expect(cached?.data.notes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "keep", notebook: "Drafts", notebookId: "notes-drafts" }),
+        expect.objectContaining({ id: "moved", notebook: "Drafts", notebookId: "notes-drafts" }),
+      ]),
+    );
+    expect(cached?.data.notes).toHaveLength(2);
+    expect(cached?.data.notebookCollections).toEqual([
+      expect.objectContaining({ id: "notes-drafts", name: "Drafts" }),
+    ]);
   });
 
   it("createNotebook upserts color without dropping sibling notebooks", async () => {

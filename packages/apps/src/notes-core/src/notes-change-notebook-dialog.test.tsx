@@ -155,4 +155,67 @@ describe("NotesChangeNotebookDialog", () => {
     expect(onNotebookChange).toHaveBeenCalledWith(createdNotebook);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("uses title and confirmLabel when those props are set", () => {
+    renderDialog({
+      title: defaultNotesLabels.deleteNotebookHasNotesTitle,
+      confirmLabel: defaultNotesLabels.deleteNotebookMoveToConfirm,
+    });
+
+    expect(
+      screen.getByRole("dialog", { name: defaultNotesLabels.deleteNotebookHasNotesTitle }),
+    ).toBeTruthy();
+    const expected = defaultNotesLabels.deleteNotebookMoveToConfirm("Drafts");
+    const confirm = screen.getByRole("button", { name: expected });
+    expect(confirm.textContent).toBe(expected);
+  });
+
+  it("enables confirm on an unchanged draft when requireChange is false", () => {
+    const { onNotebookChange, onClose } = renderDialog({ requireChange: false });
+    const confirm = screen.getByRole("button", { name: "Change" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(confirm);
+    expect(onNotebookChange).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "nb-drafts", name: "Drafts" }),
+    );
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables confirm when requireChange is false and there is no destination", () => {
+    const { onNotebookChange, onClose } = renderDialog({
+      notebooks: [],
+      value: { name: "" },
+      requireChange: false,
+    });
+    const confirm = screen.getByRole("button", { name: "Change" });
+    expect((confirm as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(confirm);
+    expect(onNotebookChange).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("fires the destructive action without moving", () => {
+    const onDeleteNotes = vi.fn();
+    const { onNotebookChange, onClose } = renderDialog({
+      destructiveAction: {
+        label: defaultNotesLabels.deleteNotebookDeleteNotesToo,
+        onAction: onDeleteNotes,
+      },
+    });
+
+    const destructive = screen.getByRole("button", {
+      name: defaultNotesLabels.deleteNotebookDeleteNotesToo,
+    });
+    const footerButtons = [...document.querySelectorAll(".ui-modal-footer button")].map((button) =>
+      button.textContent?.trim(),
+    );
+    expect(footerButtons[0]).toBe(defaultNotesLabels.deleteNotebookDeleteNotesToo);
+
+    fireEvent.click(destructive);
+    expect(onDeleteNotes).toHaveBeenCalledTimes(1);
+    expect(onNotebookChange).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

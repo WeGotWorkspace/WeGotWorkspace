@@ -573,7 +573,7 @@ describe("useNotesNotebookMutations", () => {
     fireEvent.click(screen.getByRole("button", { name: defaultNotesLabels.dialogDelete }));
 
     await waitFor(() => {
-      expect(deleteNotebook).toHaveBeenCalledWith("General", { kind: "purge" });
+      expect(deleteNotebook).toHaveBeenCalledWith("notes-general", { kind: "purge-if-empty" });
     });
   });
 

@@ -1,9 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import type {
-  DeleteNotebookAction,
-  NotesAPIOperations,
-  NotesNotebookCollection,
-} from "@/notes-core/src/notes-types";
+import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
@@ -114,13 +110,23 @@ async function renameCachedNotebook(username: string, from: string, to: string):
   await writeNotesBootstrapToCache(username, cached);
 }
 
-function notebookDeleteBodyForAction(action: DeleteNotebookAction): {
-  mode: "archive" | "move" | "purge";
-  target?: string;
+function cachedMoveTarget(
+  collections: readonly NotesNotebookCollection[] | undefined,
+  target: string,
+): {
+  id: string;
+  name: string;
+  scope?: "personal" | "group";
+  groupSlug?: string | null;
 } {
-  if (action.kind === "archive") return { mode: "archive" };
-  if (action.kind === "purge") return { mode: "purge" };
-  return { mode: "move", target: action.target };
+  const match = collections?.find((item) => item.id === target || item.name === target);
+  if (!match) return { id: target, name: target };
+  return {
+    id: match.id,
+    name: match.name,
+    ...(match.scope ? { scope: match.scope } : {}),
+    ...(match.groupSlug !== undefined ? { groupSlug: match.groupSlug } : {}),
+  };
 }
 
 function baseUpdatedAt(note: Note): string | undefined {
@@ -194,19 +200,47 @@ function sameTags(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((tag, index) => tag === right[index]);
 }
 
+function notebookMoved(previous: Note, note: Note): boolean {
+  const prevId = previous.notebookId?.trim() ?? "";
+  const nextId = note.notebookId?.trim() ?? "";
+  if (prevId !== "" && nextId !== "" && prevId !== nextId) return true;
+  const prevName = previous.notebook.trim();
+  const nextName = note.notebook.trim();
+  return prevName !== "" && nextName !== "" && prevName !== nextName;
+}
+
 /** Which snapshot fields this write is allowed to put on the PATCH. */
 function metadataSelection(
   previous: Note | undefined,
   note: Note,
   hasDelta: boolean,
-): { includeTitle: boolean; includeTags: boolean } {
+): {
+  includeTitle: boolean;
+  includeTags: boolean;
+  includeStarred: boolean;
+  includeNotebook: boolean;
+} {
   if (isLocalTempNoteId(note.id)) {
-    return { includeTitle: note.title !== undefined, includeTags: !hasDelta };
+    return {
+      includeTitle: note.title !== undefined,
+      includeTags: !hasDelta,
+      includeStarred: note.starred !== undefined,
+      includeNotebook: false,
+    };
   }
-  if (!previous) return { includeTitle: false, includeTags: false };
+  if (!previous) {
+    return {
+      includeTitle: false,
+      includeTags: false,
+      includeStarred: false,
+      includeNotebook: false,
+    };
+  }
   return {
     includeTitle: note.title !== previous.title,
     includeTags: !hasDelta && !sameTags(previous.tags, note.tags),
+    includeStarred: (note.starred ?? false) !== (previous.starred ?? false),
+    includeNotebook: notebookMoved(previous, note),
   };
 }
 
@@ -618,8 +652,17 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
     },
     deleteNotebook: async (name, action, opts) => {
+      const cached = await readNotesBootstrapFromCache(username);
+      const moveNotesTo =
+        action.kind === "move"
+          ? cachedMoveTarget(cached?.data.notebookCollections, action.target)
+          : undefined;
+      const cacheOptions = {
+        keepPendingNotes: false as const,
+        ...(moveNotesTo ? { moveNotesTo } : {}),
+      };
       if (!readBrowserOnline()) {
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await removeNotebookFromCache(username, name, cacheOptions);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -629,12 +672,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         return;
       }
       try {
-        await deleteNotebookApi(name, notebookDeleteBodyForAction(action), opts);
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await deleteNotebookApi(name, action, opts);
+        await removeNotebookFromCache(username, name, cacheOptions);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await removeNotebookFromCache(username, name, { keepPendingNotes: false });
+        await removeNotebookFromCache(username, name, cacheOptions);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,

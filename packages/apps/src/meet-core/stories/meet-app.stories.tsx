@@ -241,7 +241,7 @@ export const CallChromeStaysOnChannel: Story = {
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
 
-    await userEvent.click(canvas.getByRole("button", { name: /# random/i }));
+    await userEvent.click(canvas.getByRole("button", { name: /^random/i }));
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: meetLabels.devices }),
@@ -252,7 +252,7 @@ export const CallChromeStaysOnChannel: Story = {
     await expect(canvas.queryByRole("button", { name: meetLabels.leave })).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
 
-    await userEvent.click(canvas.getByRole("button", { name: /# design/i }));
+    await userEvent.click(canvas.getByRole("button", { name: /^design/i }));
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },
@@ -275,7 +275,7 @@ export const ParkedCallChrome: Story = {
     ).not.toBeInTheDocument();
     await expect(canvas.queryByText(meetLabels.meetingStarted)).not.toBeInTheDocument();
 
-    await userEvent.click(canvas.getByRole("button", { name: /# design/i }));
+    await userEvent.click(canvas.getByRole("button", { name: /^design/i }));
     await expect(canvas.getByRole("button", { name: meetLabels.leave })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: meetLabels.devices })).toBeInTheDocument();
   },

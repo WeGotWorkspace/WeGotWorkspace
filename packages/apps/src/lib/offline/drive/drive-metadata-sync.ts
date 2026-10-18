@@ -3,10 +3,8 @@ import type { WgwDriveDirectoryEntry } from "@/lib/api/wgw/types";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { stampDocsAvailabilityNodeIds } from "@/lib/offline/docs/docs-availability-store";
-import {
-  upsertDriveEntries,
-  writeDriveBootstrapToCache,
-} from "@/lib/offline/drive/drive-directory-offline-store";
+import { writeDriveBootstrapToCache } from "@/lib/offline/drive/drive-directory-offline-store";
+import { applyFetchedDirectorySnapshot } from "@/lib/offline/drive/drive-fetched-set-prune";
 import type { DriveAppBootstrap } from "@/drive-core/src/drive-types";
 import { normalizeApiVirtualPath as normalizePath } from "@/lib/files/api-path";
 
@@ -47,11 +45,13 @@ async function fetchDirectoryEntries(
   return listFileNodeEntries(session, dir, username, { signal });
 }
 
+/** Snapshot the listing (upsert + prune), then stamp node ids on Docs pins. */
 async function cacheDirectoryEntries(
   username: string,
+  parentPath: string,
   entries: readonly WgwDriveDirectoryEntry[],
 ): Promise<void> {
-  await upsertDriveEntries(username, entries);
+  await applyFetchedDirectorySnapshot(username, parentPath, entries);
   await stampDocsAvailabilityNodeIds(username, entries);
 }
 
@@ -115,7 +115,8 @@ export async function syncDriveMetadataTree(
     progress.total += 1;
     try {
       const entries = await fetchDirectoryEntries(username, dir, signal);
-      await cacheDirectoryEntries(username, entries);
+      // Do not prune in the catch below: only a successful listing is a snapshot.
+      await cacheDirectoryEntries(username, dir, entries);
       for (const entry of entries) {
         if (entry.type === "dir") {
           queue.push(normalizePath(entry.path));
@@ -142,5 +143,5 @@ export async function refreshDriveDirectoryCache(
 ): Promise<void> {
   if (!getConnectivitySnapshot()) return;
   const entries = await fetchDirectoryEntries(username, parentPath, signal);
-  await cacheDirectoryEntries(username, entries);
+  await cacheDirectoryEntries(username, parentPath, entries);
 }

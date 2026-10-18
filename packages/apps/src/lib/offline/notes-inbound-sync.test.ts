@@ -13,6 +13,7 @@ const listNotes = vi.fn();
 const readToken = vi.fn();
 const writeToken = vi.fn();
 const readCache = vi.fn();
+const blockingIds = vi.fn<() => Promise<Set<string>>>();
 const ingestNote = vi.fn();
 const ingestNoteDestroyed = vi.fn();
 const ingestNotebook = vi.fn();
@@ -49,6 +50,7 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
   readSyncToken: (...args: unknown[]) => readToken(...args),
   writeSyncToken: (...args: unknown[]) => writeToken(...args),
   readNotesBootstrapFromCache: () => readCache(),
+  listNoteIdsBlockingSyncToken: () => blockingIds(),
 }));
 
 vi.mock("@/lib/offline/notes-jmap-inbound", () => ({
@@ -69,11 +71,13 @@ describe("syncNotesInboundFromRest", () => {
     readToken.mockReset();
     writeToken.mockReset();
     readCache.mockReset();
+    blockingIds.mockReset();
     ingestNote.mockReset();
     ingestNoteDestroyed.mockReset();
     ingestNotebook.mockReset();
     ingestNotebookDestroyed.mockReset();
     readToken.mockResolvedValue("tok-1");
+    blockingIds.mockResolvedValue(new Set());
     readCache.mockResolvedValue({
       data: { notebookCollections: [{ id: "notes-general", name: "General" }], notes: [] },
     });
@@ -225,5 +229,53 @@ describe("syncNotesInboundFromRest", () => {
 
     expect(ingestNotebookDestroyed).toHaveBeenCalledWith("ada", "notes-gone");
     expect(listNoteChanges).toHaveBeenCalledWith("notes-general", "tok-1");
+  });
+
+  it("does not advance the sync token when a destroy is still pending", async () => {
+    blockingIds.mockResolvedValue(new Set(["n-skipped"]));
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "note-tok-2",
+      created: [],
+      updated: [],
+      destroyed: ["n-skipped"],
+    });
+    ingestNoteDestroyed.mockResolvedValue("skipped-pending");
+
+    const result = await syncNotesInboundFromRest("ada");
+
+    expect(result.changed).toBe(false);
+    expect(writeToken).toHaveBeenCalledWith("ada", NOTES_NOTEBOOKS_TOKEN_KEY, "tok-2");
+    expect(writeToken).not.toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
+  });
+
+  it("advances the sync token when the skipped destroy is a non-retryable stateMismatch", async () => {
+    blockingIds.mockResolvedValue(new Set());
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "note-tok-2",
+      created: [],
+      updated: [],
+      destroyed: ["n-stuck"],
+    });
+    ingestNoteDestroyed.mockResolvedValue("skipped-pending");
+
+    await syncNotesInboundFromRest("ada");
+
+    expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
   });
 });

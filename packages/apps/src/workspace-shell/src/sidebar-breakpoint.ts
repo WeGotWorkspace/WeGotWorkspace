@@ -15,3 +15,16 @@ export const SIDEBAR_OVERLAY_MEDIA_QUERY = `(max-width: calc(${SIDEBAR_DOCKED_MI
 export function isSidebarOverlayViewport(): boolean {
   return typeof window !== "undefined" && window.matchMedia(SIDEBAR_OVERLAY_MEDIA_QUERY).matches;
 }
+
+/** Selection row (nav item, collection, settings entry). Not edit, visibility, or rename. */
+export const sidebarSelectMarker = { "data-sidebar-select": "" } as const;
+
+export function sidebarSelectClickDismisses(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest("[data-sidebar-select]") !== null;
+}
+
+/** Close the overlay drawer. No-op while the sidebar is docked. */
+export function dismissSidebarOverlay(close: () => void): void {
+  if (!isSidebarOverlayViewport()) return;
+  close();
+}

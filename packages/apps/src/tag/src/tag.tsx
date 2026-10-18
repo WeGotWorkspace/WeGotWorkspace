@@ -29,11 +29,6 @@ export type TagProps = {
     backgroundColor?: string;
     color?: string;
   };
-  /**
-   * Address-book / collection swatch. Sets `--collection-row-color` and tints
-   * the chip from that token (same contract as sidebar group icons).
-   */
-  collectionTint?: string;
   className?: string;
   /** Trailing mark inside the chip (for example a presence pip beside the label). */
   end?: ReactNode;
@@ -47,7 +42,6 @@ export type TagItem = {
   icon?: ReactNode;
   /** When `false`, the chip stays even if the group is editable. */
   removable?: boolean;
-  collectionTint?: string;
 };
 
 export function normalizeTagItems(tags: ReadonlyArray<string | TagItem>): TagItem[] {
@@ -62,37 +56,22 @@ export function Tag({
   removeAriaLabel,
   size = "md",
   colors,
-  collectionTint,
   className,
   end,
 }: TagProps) {
-  const tagStyle: CSSProperties | undefined =
-    colors || collectionTint
-      ? ({
-          ...(collectionTint ? { "--collection-row-color": collectionTint } : {}),
-          ...(colors
-            ? {
-                "--tag-bg":
-                  colors.backgroundColor ??
-                  "color-mix(in oklab, var(--workspace-foreground) 8%, transparent)",
-                "--tag-fg": colors.color ?? "var(--workspace-foreground)",
-              }
-            : {}),
-        } as CSSProperties)
-      : undefined;
+  const tagStyle: CSSProperties | undefined = colors
+    ? ({
+        "--tag-bg":
+          colors.backgroundColor ??
+          "color-mix(in oklab, var(--workspace-foreground) 8%, transparent)",
+        "--tag-fg": colors.color ?? "var(--workspace-foreground)",
+      } as CSSProperties)
+    : undefined;
 
   return (
-    <span
-      className={cn(
-        "tag group",
-        size === "lg" && "tag--size-lg",
-        collectionTint && "tag--collection-tint",
-        className,
-      )}
-      style={tagStyle}
-    >
+    <span className={cn("tag group", size === "lg" && "tag--size-lg", className)} style={tagStyle}>
       {icon ? <span className="tag__icon">{icon}</span> : null}
-      <span className="truncate">{label}</span>
+      <span className="tag__label truncate">{label}</span>
       {end}
       {removable && onRemove ? (
         <Tooltip>
@@ -220,8 +199,10 @@ function TagAddField({
   const listId = useId();
   const hintId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const ignoreBlurRef = useRef(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
+  const [focusTick, setFocusTick] = useState(0);
   const appliedIds = new Set(appliedTags.map((item) => item.id));
   const appliedLabels = new Set(appliedTags.map((item) => item.label.toLowerCase()));
   const options = buildTagSuggestions(
@@ -243,7 +224,13 @@ function TagAddField({
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+    // Clear after the commit turn so a blur caused by the add itself does not
+    // dismiss the field, while a later click-away still does.
+    const timer = window.setTimeout(() => {
+      ignoreBlurRef.current = false;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [focusTick]);
 
   useEffect(() => {
     setHighlight(0);
@@ -260,6 +247,11 @@ function TagAddField({
       return;
     }
     onConfirm(value);
+    setQuery("");
+    // A successful add must not dismiss the field. Ignore the blur that the
+    // re-render can emit, then put the caret back for the next tag.
+    ignoreBlurRef.current = true;
+    setFocusTick((tick) => tick + 1);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -311,6 +303,10 @@ function TagAddField({
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={onKeyDown}
         onBlur={() => {
+          if (ignoreBlurRef.current) {
+            inputRef.current?.focus();
+            return;
+          }
           if (!query.trim()) onCancel();
         }}
       />
@@ -380,22 +376,6 @@ export function TagGroup({
       className={cn("tag-group", size === "lg" && "tag-group--size-lg", className)}
       style={style}
     >
-      {items.map((item) => {
-        const removable = !readonly && item.removable !== false && !!onRemoveTag;
-        return (
-          <Tag
-            key={item.id}
-            label={item.label}
-            icon={item.icon ?? defaultIcon}
-            size={size}
-            colors={item.colors ?? tagColors}
-            collectionTint={item.collectionTint}
-            removable={removable}
-            onRemove={removable ? () => onRemoveTag(item.id) : undefined}
-            removeAriaLabel={removeAriaLabelFor?.(item.label) ?? `Remove tag ${item.label}`}
-          />
-        );
-      })}
       {canAdd && adding ? (
         <TagAddField
           suggestions={suggestionItems}
@@ -407,7 +387,6 @@ export function TagGroup({
           ariaLabel={addAriaLabel}
           onConfirm={(idOrLabel) => {
             onAddTag(idOrLabel);
-            closeAdd();
           }}
           onCancel={closeAdd}
         />
@@ -423,6 +402,21 @@ export function TagGroup({
           <span>{addAriaLabel}</span>
         </button>
       ) : null}
+      {items.map((item) => {
+        const removable = !readonly && item.removable !== false && !!onRemoveTag;
+        return (
+          <Tag
+            key={item.id}
+            label={item.label}
+            icon={item.icon ?? defaultIcon}
+            size={size}
+            colors={item.colors ?? tagColors}
+            removable={removable}
+            onRemove={removable ? () => onRemoveTag(item.id) : undefined}
+            removeAriaLabel={removeAriaLabelFor?.(item.label) ?? `Remove tag ${item.label}`}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -1,15 +1,18 @@
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "@/app-sidebar/src/app-sidebar";
+import { CollectionSidebarRow } from "@/collection-sidebar/src/collection-sidebar-row";
+import { MenuItem } from "@/menu-item/src/menu-item";
 import { NotificationsInboxValueProvider } from "@/notifications-core/src/notifications-inbox-context";
 import { WorkspaceAppIcon } from "@/lib/workspace-app-icon";
+import { TooltipProvider } from "@/ui/tooltip";
 
-function stubMatchMedia() {
+function stubMatchMedia(matches = false) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     configurable: true,
     value: (query: string) => ({
-      matches: false,
+      matches,
       media: query,
       onchange: null,
       addListener: () => {},
@@ -104,5 +107,76 @@ describe("WorkspaceAppIcon switch-trigger memo", () => {
     rerender(<Parent tick={1} />);
     rerender(<Parent tick={2} />);
     expect(container.querySelector(".workspace-app-icon--switch-trigger")).toBe(icon);
+  });
+});
+
+describe("AppSidebar overlay dismiss", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  function renderSidebar(onCloseMobile: () => void) {
+    return render(
+      <TooltipProvider>
+        <AppSidebar open onCloseMobile={onCloseMobile}>
+          <ul>
+            <li>
+              <MenuItem label="All items" onClick={() => undefined} />
+            </li>
+            <CollectionSidebarRow
+              name="Work"
+              color="#0ea5e9"
+              visible
+              onSelect={() => undefined}
+              onToggleVisibility={() => undefined}
+              onEdit={() => undefined}
+              editLabel="Edit Work"
+            />
+            <CollectionSidebarRow
+              name="Due"
+              color="#0ea5e9"
+              visible
+              onToggleVisibility={() => undefined}
+            />
+          </ul>
+          <button type="button">New note</button>
+        </AppSidebar>
+      </TooltipProvider>,
+    );
+  }
+
+  it("closes the overlay when a nav or collection row is tapped", () => {
+    stubMatchMedia(true);
+    const onCloseMobile = vi.fn();
+    renderSidebar(onCloseMobile);
+
+    fireEvent.click(screen.getByRole("button", { name: "All items" }));
+    fireEvent.click(screen.getByRole("button", { name: "Work" }));
+
+    expect(onCloseMobile).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not close the overlay for edit, visibility, unlabeled rows, or the new button", () => {
+    stubMatchMedia(true);
+    const onCloseMobile = vi.fn();
+    renderSidebar(onCloseMobile);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Work" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Hide Work" }));
+    fireEvent.click(screen.getByRole("button", { name: "Due" }));
+    fireEvent.click(screen.getByRole("button", { name: "New note" }));
+
+    expect(onCloseMobile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the docked sidebar open when a row is clicked", () => {
+    stubMatchMedia(false);
+    const onCloseMobile = vi.fn();
+    renderSidebar(onCloseMobile);
+
+    fireEvent.click(screen.getByRole("button", { name: "All items" }));
+    fireEvent.click(screen.getByRole("button", { name: "Work" }));
+
+    expect(onCloseMobile).not.toHaveBeenCalled();
   });
 });

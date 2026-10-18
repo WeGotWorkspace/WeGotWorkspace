@@ -34,6 +34,12 @@ import {
   fetchDriveLiveBootstrap,
   resetDriveJmapSessionForTests,
 } from "@/lib/api/wgw/drive";
+import {
+  DriveTransportError,
+  FileNodeNotFoundError,
+  FileNodeRootUnavailableError,
+  UnsupportedDrivePathError,
+} from "@/lib/api/wgw/drive-jmap";
 
 const ACCOUNT_ID = "bob";
 const HOME_ID = "fn-home";
@@ -42,6 +48,10 @@ const FILE_ID = "fn-readme";
 const SHARE_ROOT_ID = "fn-share-root";
 const SHARE_CHILD_ID = "fn-share-plan";
 let sharedRootPath = "/users/alice/workspace";
+let hideHomeNode = false;
+let filesContextStatus = 200;
+let uploadStatus = 201;
+let downloadStatus = 200;
 
 function jmapSessionBody() {
   return {
@@ -166,9 +176,10 @@ function handleJmap(body: JmapRequest) {
         name?: string;
       };
       let ids: string[] = [];
-      if (filter.isTopLevel) ids = [HOME_ID];
+      if (filter.isTopLevel) ids = hideHomeNode ? [] : [HOME_ID];
       else if (filter.parentId === HOME_ID && filter.name === "Docs") ids = [DOCS_ID];
       else if (filter.parentId === HOME_ID && filter.name === "readme.md") ids = [FILE_ID];
+      else if (filter.name) ids = [];
       else if (filter.parentId === HOME_ID) ids = [DOCS_ID, FILE_ID];
       else if (filter.parentId === SHARE_ROOT_ID) ids = [SHARE_CHILD_ID];
       lastQueryIds = ids;
@@ -209,10 +220,10 @@ function mockSignedInFetch() {
       return jsonResponse(handleJmap(body));
     }
     if (path === "/jmap/upload/bob") {
-      return jsonResponse({ blobId: "jb-uploaded", type: "text/plain", size: 1 }, 201);
+      return jsonResponse({ blobId: "jb-uploaded", type: "text/plain", size: 1 }, uploadStatus);
     }
     if (path.startsWith("/jmap/download/")) {
-      return new Response("hello", { status: 200 });
+      return new Response(downloadStatus === 200 ? "hello" : "nope", { status: downloadStatus });
     }
     if (path === "/files/shared-with-me" || path.startsWith("/files/shared-with-me?")) {
       return jsonResponse({
@@ -226,9 +237,12 @@ function mockSignedInFetch() {
       });
     }
     if (path === "/files/context") {
-      return jsonResponse({
-        data: { username: ACCOUNT_ID, name: "Bob", role: "user", roots: ["/users", "/groups"] },
-      });
+      return jsonResponse(
+        {
+          data: { username: ACCOUNT_ID, name: "Bob", role: "user", roots: ["/users", "/groups"] },
+        },
+        filesContextStatus,
+      );
     }
     if (path.startsWith("/files/children") || path.startsWith("/files/directories")) {
       throw new Error(`signed-in ops must not call ${path}`);
@@ -253,6 +267,10 @@ describe("createWgwDriveOperations FileNode cutover", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sharedRootPath = "/users/alice/workspace";
+    hideHomeNode = false;
+    filesContextStatus = 200;
+    uploadStatus = 201;
+    downloadStatus = 200;
     resetDriveJmapSessionForTests();
     wgwIsGuestSession.mockReturnValue(false);
     wgwGuestSharePath.mockReturnValue(null);
@@ -413,15 +431,95 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     const renamed = await ops.listDirectory("/users/alice/workspace-renamed");
     expect(renamed.directory.files.map((entry) => entry.name)).toEqual(["plan.md"]);
 
-    await expect(ops.listDirectory("/users/alice/workspace/plan.md")).rejects.toThrow(
-      /Unsupported drive path/,
+    await expect(ops.listDirectory("/users/alice/workspace/plan.md")).rejects.toBeInstanceOf(
+      UnsupportedDrivePathError,
     );
   });
 
   it("rejects an unknown foreign path", async () => {
     const ops = createWgwDriveOperations("/users/bob");
-    await expect(ops.listDirectory("/users/carol/secret")).rejects.toThrow(
-      /Unsupported drive path/,
+    await expect(ops.listDirectory("/users/carol/secret")).rejects.toMatchObject({
+      name: "UnsupportedDrivePathError",
+      status: 404,
+    });
+  });
+
+  it("reports a missing FileNode as 404 for list, rename, trash, and upload", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const missing = "/users/bob/gone.md";
+    const file = new File(["x"], "note.md", { type: "text/markdown" });
+
+    await expect(ops.listDirectory(missing)).rejects.toMatchObject({
+      name: "FileNodeNotFoundError",
+      status: 404,
+      message: `FileNode not found: ${missing}`,
+    });
+    await expect(
+      ops.renameItem({ from: missing, destination: "/users/bob", to: "kept.md" }),
+    ).rejects.toBeInstanceOf(FileNodeNotFoundError);
+    await expect(ops.deleteItems([missing])).rejects.toMatchObject({ status: 404 });
+    await expect(ops.uploadFiles({ cwd: missing, files: [file] })).rejects.toMatchObject({
+      status: 404,
+    });
+    await expect(
+      ops.renameItem({
+        from: "/users/bob/readme.md",
+        destination: "/users/bob/missing-dir",
+        to: "readme.md",
+      }),
+    ).rejects.toMatchObject({
+      name: "FileNodeNotFoundError",
+      status: 404,
+      message: "FileNode not found: /users/bob/missing-dir",
+    });
+  });
+
+  it("reports a missing home root without an HTTP status", async () => {
+    hideHomeNode = true;
+    const ops = createWgwDriveOperations("/users/bob");
+    const error = await ops.listDirectory("/users/bob").then(
+      () => {
+        throw new Error("expected listDirectory to reject");
+      },
+      (caught: unknown) => caught,
     );
+    expect(error).toBeInstanceOf(FileNodeRootUnavailableError);
+    expect(error).not.toBeInstanceOf(FileNodeNotFoundError);
+    expect(error).toMatchObject({
+      name: "FileNodeRootUnavailableError",
+      message: "FileNode root unavailable: /users/bob",
+    });
+    expect((error as { status?: number }).status).toBeUndefined();
+  });
+
+  it("carries the HTTP status when context, upload, or download fails", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const file = new File(["x"], "note.md", { type: "text/markdown" });
+
+    filesContextStatus = 503;
+    await expect(ops.listDirectory("/users/bob")).rejects.toMatchObject({
+      name: "DriveTransportError",
+      status: 503,
+      message: "GET /files/context failed (503)",
+    });
+
+    filesContextStatus = 200;
+    resetDriveJmapSessionForTests();
+    uploadStatus = 413;
+    await expect(ops.uploadFiles({ cwd: "/users/bob", files: [file] })).rejects.toBeInstanceOf(
+      DriveTransportError,
+    );
+    await expect(ops.uploadFiles({ cwd: "/users/bob", files: [file] })).rejects.toMatchObject({
+      status: 413,
+      message: "POST /jmap/upload failed (413)",
+    });
+
+    uploadStatus = 201;
+    downloadStatus = 502;
+    await expect(ops.readFileBlob("/users/bob/readme.md")).rejects.toMatchObject({
+      name: "DriveTransportError",
+      status: 502,
+      message: "GET /jmap/download failed (502)",
+    });
   });
 });

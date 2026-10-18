@@ -38,4 +38,18 @@ describe("control height tokens", () => {
     expect(inputCss).toMatch(/\.select-trigger--size-xl[\s\S]*--control-height-xl/);
     expect(inputCss).toMatch(/\.control-surface--size-xs[\s\S]*--control-height-xs/);
   });
+
+  it("raises sm/md height on phone text fields and leaves :root at the desktop scale", () => {
+    const phone = styles.slice(styles.indexOf("@media (max-width: 767px)"));
+    expect(phone).toMatch(
+      /\.input,\s*\.input__field,\s*\.textarea,\s*\.tag-group__input\s*\{[^}]*--control-height-sm:\s*2\.5rem;[^}]*--control-height-md:\s*2\.75rem;/,
+    );
+    expect(phone).not.toMatch(/:root\s*\{[^}]*--control-height-(?:sm|md)/);
+
+    const root = styles.match(/:root\s*\{([\s\S]*?)\n\}/);
+    expect(root?.[1]).toMatch(/--control-height-sm:\s*2rem;/);
+    expect(root?.[1]).toMatch(/--control-height-md:\s*2\.25rem;/);
+    expect(root?.[1]).not.toMatch(/--control-height-sm:\s*2\.5rem/);
+    expect(root?.[1]).not.toMatch(/--control-height-md:\s*2\.75rem/);
+  });
 });

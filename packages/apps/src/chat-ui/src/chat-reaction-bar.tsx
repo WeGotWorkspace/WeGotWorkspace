@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Smile } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import type { ChatReaction } from "@/chat-ui/src/chat-types";
@@ -37,6 +37,7 @@ export function ChatReactionBar({
   onToggleReaction,
   className,
 }: ChatReactionBarProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const visibleReactions = useMemo(
     () =>
       reactions
@@ -69,7 +70,7 @@ export function ChatReactionBar({
           </button>
         );
       })}
-      <Popover>
+      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
@@ -96,6 +97,7 @@ export function ChatReactionBar({
                 onClick={(event) => {
                   event.stopPropagation();
                   onToggleReaction(emoji);
+                  setPickerOpen(false);
                 }}
               >
                 {emoji}

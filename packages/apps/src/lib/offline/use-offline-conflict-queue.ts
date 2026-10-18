@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type SetConflictListener<T> = (listener: ((ids: T[]) => void) | undefined) => void;
 
@@ -25,8 +25,7 @@ export function useOfflineConflictQueue<T>({
     return () => setListener(undefined);
   }, [onConflicts, setListener]);
 
-  return {
-    conflicts,
-    clearConflicts: () => setConflicts([]),
-  };
+  const clearConflicts = useCallback(() => setConflicts([]), []);
+
+  return { conflicts, clearConflicts };
 }

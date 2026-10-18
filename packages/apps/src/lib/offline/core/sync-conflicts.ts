@@ -4,7 +4,7 @@ export type SyncConflictListener<TId> = (ids: TId[]) => void;
 export type SyncConflictChannel<TId> = {
   /** Register (or clear, with `undefined`) the active conflict listener. */
   setListener: (next: SyncConflictListener<TId> | undefined) => void;
-  /** Notify the listener of conflicted ids. No-op for an empty list. */
+  /** Notify the listener. An empty list clears, so a resolved conflict can turn the notice off. */
   report: (ids: TId[]) => void;
 };
 
@@ -20,7 +20,6 @@ export function createSyncConflictChannel<TId>(): SyncConflictChannel<TId> {
       listener = next;
     },
     report(ids) {
-      if (ids.length === 0) return;
       listener?.(ids);
     },
   };

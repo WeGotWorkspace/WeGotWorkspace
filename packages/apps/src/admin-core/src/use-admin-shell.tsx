@@ -8,7 +8,7 @@ import {
   type AdminSettingsFormState,
 } from "@/admin-core/src/admin-settings-form-utils";
 import { useAdminSidebarModel } from "@/admin-core/src/use-admin-sidebar-model";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 
 export type UseAdminShellArgs = Pick<
   AdminWorkspaceProps,
@@ -169,9 +169,7 @@ export function useAdminShell({
       setInternalSection(resolved);
     }
     onSectionChange?.(resolved);
-    if (isSidebarOverlayViewport()) {
-      setSidebarOpen(false);
-    }
+    dismissSidebarOverlay(() => setSidebarOpen(false));
   };
 
   return {

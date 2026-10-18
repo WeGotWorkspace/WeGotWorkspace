@@ -1,0 +1,6 @@
+@import "../../styles.css" reference;
+
+/* Name field and the folder browser are siblings in the modal body. */
+.drive-create-markdown-dialog .ui-modal-body {
+  @apply flex flex-col gap-4;
+}

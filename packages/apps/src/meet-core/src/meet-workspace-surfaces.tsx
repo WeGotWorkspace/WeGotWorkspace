@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Hash } from "lucide-react";
+import { CollectionState } from "@/collection-state/src/collection-state";
 import { cn } from "@/lib/utils";
 import { meetLabels } from "@/meet-core/src/meet-labels";
 
@@ -42,7 +44,13 @@ export function MeetWorkspaceMainSurfaces({
   stage?: ReactNode;
 }) {
   if (!open) {
-    return <div className="meet-workspace__chat-empty">{meetLabels.emptyChannelMain}</div>;
+    return (
+      <div className="meet-workspace__chat-empty collection-state-host">
+        <CollectionState icon={<Hash className="size-12" />}>
+          {meetLabels.emptyChannelMain}
+        </CollectionState>
+      </div>
+    );
   }
   return (
     <div className="meet-workspace__surfaces">

@@ -2191,6 +2191,10 @@
         "properties": {
           "onDestroyRemoveContents": {
             "type": "boolean"
+          },
+          "moveNotesTo": {
+            "type": "string",
+            "description": "Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents."
           }
         }
       },
@@ -6747,6 +6751,15 @@
               "type": "boolean"
             },
             "description": "Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped."
+          },
+          {
+            "name": "moveNotesTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped."
           }
         ],
         "requestBody": {

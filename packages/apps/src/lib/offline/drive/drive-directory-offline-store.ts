@@ -10,11 +10,12 @@ import {
 } from "@/lib/offline/drive/drive-schema";
 import type { DriveAppBootstrap, DriveUIData } from "@/drive-core/src/drive-types";
 import { parentAndName } from "@/lib/files/api-path";
+import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 
 const DRIVE_BOOTSTRAP_META_KEY = "drive:bootstrap";
 
 export function normalizeDriveEntryPath(path: string): string {
-  return path.trim().replace(/^\/+/, "");
+  return normalizeOfflinePath(path);
 }
 
 function parseEntryRow(row: OfflineDriveEntryRow): WgwDriveDirectoryEntry {

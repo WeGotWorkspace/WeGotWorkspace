@@ -1,5 +1,5 @@
 import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
-import { MessageSquare, Video } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { meetCallBarMeta } from "@/meet-core/src/meet-call-bar";
 import { MeetCallKnockQueue, MeetCallKnockWaiting } from "@/meet-core/src/meet-call-knock";
@@ -180,9 +180,6 @@ export function MeetCallExpanded({
               </div>
             ) : null}
             <div className="meet-call-stage__brand">
-              <span className="meet-call-stage__mark" aria-hidden>
-                <Video className="meet-workspace__header-kind-icon" />
-              </span>
               <div className="meet-call-stage__copy">
                 <h2 className="meet-call-stage__title">{title}</h2>
                 <p className="meet-call-stage__meta">

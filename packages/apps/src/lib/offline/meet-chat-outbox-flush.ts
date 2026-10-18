@@ -7,6 +7,7 @@ import {
   sendChatMessage,
   toggleChatReaction,
 } from "@/lib/api/wgw/meet-chat";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { resolveRestChannelId } from "@/lib/offline/meet-chat/meet-chat-dm-resolve";
 import {
   listMeetChatOutbox,
@@ -118,6 +119,7 @@ export async function flushMeetChatOutbox(username: string): Promise<MeetChatOut
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        httpStatusFromFlushError(error),
       );
     }
   }

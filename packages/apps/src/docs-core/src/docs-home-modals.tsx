@@ -162,7 +162,6 @@ export function DocsHomeModals({
           labels={driveLabels}
           defaultName={createDialog.createDialogDefaultName}
           initialBrowsePath={DRIVE_FOLDER_PICKER_ROOT}
-          initialSelectedPath={createDialog.createDialogBrowsePath}
           files={files}
           groupPaths={groupPaths}
           view={createDialog.createDialogView}

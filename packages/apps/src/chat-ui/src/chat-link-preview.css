@@ -52,5 +52,5 @@
 
 .chat-link-preview__link {
   @apply truncate text-xs underline-offset-2 hover:underline;
-  color: var(--chat-accent, #1d4ed8);
+  color: var(--chat-accent, var(--workspace-accent));
 }

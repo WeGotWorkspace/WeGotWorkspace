@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { sidebarSelectMarker } from "@/workspace-shell/src/sidebar-breakpoint";
 import "@/menu-item/src/menu-item.css";
 
 /** Semantic severity for destructive / warning menu rows (hover wash + fg). */
@@ -55,6 +56,7 @@ export const MenuItem = React.forwardRef<
   const hasDescription = Boolean(description);
   const interactive =
     !disabled && Boolean(to || onClick || onDragEnter || onDragOver || onDragLeave || onDrop);
+  const selectMarker = to || onClick ? sidebarSelectMarker : undefined;
 
   const surfaceClass = isDropTarget
     ? "menu-item--surface-drop"
@@ -100,7 +102,12 @@ export const MenuItem = React.forwardRef<
 
   if (to != null) {
     return (
-      <Link ref={ref as React.ForwardedRef<HTMLAnchorElement>} to={to} className={sharedClass}>
+      <Link
+        ref={ref as React.ForwardedRef<HTMLAnchorElement>}
+        to={to}
+        className={sharedClass}
+        {...selectMarker}
+      >
         {row}
       </Link>
     );
@@ -116,6 +123,7 @@ export const MenuItem = React.forwardRef<
       type="button"
       disabled={disabled}
       onClick={onClick}
+      {...selectMarker}
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

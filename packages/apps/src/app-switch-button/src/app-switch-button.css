@@ -39,34 +39,27 @@
 
 .app-switch-button__label {
   /*
-   * In-app AppSwitch: serif face (We Got Serif) at 2xl; sentence/title case
-   * from the data — no uppercase lockup text.
+   * In-app AppSwitch: sans at 600 / xl; sentence/title case from the data —
+   * no uppercase lockup text.
    */
-  @apply font-serif text-2xl flex min-w-0 flex-col items-start text-left font-normal;
+  @apply font-sans text-xl flex min-w-0 flex-col items-start text-left font-semibold;
   color: var(--app-switch-label-color, currentColor);
 }
 
 .app-switch-button__label-name {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex min-w-0 items-center gap-2 tracking-tight;
 }
 
 .app-switch-button__chevron {
-  /* In-flow next to the name; subtle so it does not compete with the serif title. */
-  @apply shrink-0 transition-transform text-sm;
+  /* Same face and color as the app name; the small-triangle glyph needs a larger size. */
+  @apply shrink-0 text-2xl;
   line-height: 1;
-  color: var(
-    --app-switch-chevron-color,
-    color-mix(in oklab, var(--app-switch-label-color, currentColor) 28%, transparent)
-  );
-}
-
-.app-switch-button__trigger[data-state="open"] .app-switch-button__chevron {
-  @apply rotate-180;
+  color: var(--app-switch-label-color, currentColor);
 }
 
 /**
  * Suite lockup (Home AppSwitch + BrandLockup on Login / Installer).
- * Suite mark + SVG wordmark — not the in-app serif title.
+ * Suite mark + SVG wordmark — not the in-app sans title.
  * Icon size stays on the base `.app-switch-button__icon` md control height.
  */
 .app-switch-button__trigger--workspace {
@@ -75,7 +68,7 @@
 
 .app-switch-button__trigger--workspace .app-switch-button__label--wordmark {
   @apply flex min-w-0 flex-row items-center gap-2 font-sans;
-  /* Reset in-app serif / text-2xl — wordmark owns its own size. */
+  /* Reset in-app text-xl — wordmark owns its own size. */
   font-size: inherit;
   line-height: 1;
 }
@@ -96,4 +89,8 @@
   @apply min-w-48 p-1.5;
   user-select: none;
   border-color: color-mix(in oklab, currentColor 25%, transparent);
+}
+
+.app-switch-button__menu .menu-item__label {
+  @apply font-sans font-medium;
 }

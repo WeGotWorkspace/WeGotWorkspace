@@ -6303,6 +6303,8 @@ export interface paths {
                 query?: {
                     /** @description Same as NotebookDeleteOptions.onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
                     onDestroyRemoveContents?: boolean;
+                    /** @description Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents. Query is the reliable client path; DELETE bodies are often dropped. */
+                    moveNotesTo?: string;
                 };
                 header?: never;
                 path: {
@@ -8768,15 +8770,6 @@ export interface components {
             distReady: boolean;
             baseUri: string;
         };
-        NotesStateResponse: {
-            baseUri: string;
-            username: string;
-            displayName: string;
-            logoutUrl: string;
-            notesPath: string;
-            filesEnabled: boolean;
-            distReady: boolean;
-        };
         NoteTagList: string[];
         NoteItem: {
             id: string;
@@ -10811,7 +10804,7 @@ export interface components {
             list: components["schemas"]["SearchDocumentSyncDto"][];
         };
         /**
-         * @description Share access level for a grant or default access. Note paths (…/.notes/…) accept view|edit only; comment, legacy review, and full are rejected.
+         * @description Share access level for a grant or default access. Leftover Drive path grants under …/.notes/… accept view|edit only; comment, legacy review, and full are rejected. Those paths are old path grants, not the Notes store.
          * @enum {string}
          */
         DriveShareAccess: "view" | "comment" | "review" | "edit" | "full";
@@ -11097,47 +11090,6 @@ export interface components {
         };
         DriveShareByPrincipalDataResponse: {
             data: components["schemas"]["DriveShareByPrincipal"];
-        };
-        NotesSharedNoteEntry: {
-            /** @description Virtual drive path of the shared note (…/.notes/{notebook}/{id}.md). */
-            path: string;
-            id: string;
-            notebook: string;
-            /** @description List preview for the shared note. Prefer on-disk body text (Notes has no separate title field); frontmatter title is used only when the body is empty and is not the placeholder Untitled or the note id. Empty when there is no usable preview — never a raw note id such as local-*. */
-            title: string;
-            /** @description Tags from the note markdown frontmatter. Empty when the file is missing or has no tags. */
-            tags: components["schemas"]["NoteTagList"];
-            /** @description Username or group slug that owns the note tree. */
-            owner: string;
-            /** @enum {string} */
-            scope: "personal" | "group";
-            groupSlug: string | null;
-            access: components["schemas"]["DriveShareAccess"];
-            myRights: components["schemas"]["DriveRights"];
-            /** @description Present when access is via a group grant (groups/{slug}). */
-            viaGroup?: string;
-        };
-        NotesSharedWithMeResponse: {
-            items: components["schemas"]["NotesSharedNoteEntry"][];
-        };
-        NotesSharedNotebookEntry: {
-            /** @description Virtual drive path of the shared notebook directory (…/.notes/{notebook}). */
-            path: string;
-            notebook: string;
-            /** @description Username or group slug that owns the notebook tree. */
-            owner: string;
-            /** @enum {string} */
-            scope: "personal" | "group";
-            groupSlug: string | null;
-            access: components["schemas"]["DriveShareAccess"];
-            myRights: components["schemas"]["DriveRights"];
-            /** @description Present when access is via a group grant (groups/{slug}). */
-            viaGroup?: string;
-        };
-        NotesSharedNotebooksResponse: {
-            items: components["schemas"]["NotesSharedNotebookEntry"][];
-            /** @description Compat empty array — personal ACL notebook-directory shares were removed. Group-membership notes come from GET /notes/items. */
-            notes?: components["schemas"]["NotesSharedNoteEntry"][];
         };
         CalendarRecurrenceNDay: {
             /** @constant */
@@ -11577,6 +11529,8 @@ export interface components {
         };
         NotebookDeleteOptions: {
             onDestroyRemoveContents?: boolean;
+            /** @description Destination notebook id. Every note is moved there before the notebook is deleted. Mutually exclusive with onDestroyRemoveContents. */
+            moveNotesTo?: string;
         };
         ChatChannel: {
             /** @description Channel collection id (CalDAV collection uri, chat-/dm- prefixed). */

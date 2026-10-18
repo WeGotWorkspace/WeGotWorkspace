@@ -201,14 +201,29 @@ describe("workspace token core", () => {
     expect(sst).toContain("--list-sticky-header-color: var(--workspace-foreground)");
   });
 
-  it("paints the switch on-state from the accent pair", () => {
+  it("paints switch tracks from text ink, with one shared off tint", () => {
     const css = readFileSync(join(srcRoot, "ui/switch.css"), "utf8");
     const derive = readFileSync(join(srcRoot, "workspace-shell/src/workspace-derive.css"), "utf8");
     expect(css).toContain("appearance: none");
+    expect(css).toContain("background-color: var(--switch-on-bg, var(--workspace-foreground))");
     expect(css).toContain(
       "background-color: var(--switch-on-thumb-bg, var(--workspace-accent-foreground))",
     );
+    expect(derive).toContain("--switch-on-bg: var(--workspace-foreground)");
+    expect(derive).not.toContain("--switch-on-bg: var(--workspace-accent)");
     expect(derive).toContain("--switch-on-thumb-bg: var(--workspace-accent-foreground)");
+    expect(derive).toContain("oklch(from var(--workspace-surface) l 0 none)");
+
+    const offenders: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (rel === "workspace-shell/src/workspace-derive.css" || rel === "ui/switch.css") continue;
+      const text = readFileSync(file, "utf8");
+      if (text.includes("--switch-on-bg:") || text.includes("--switch-off-bg:")) {
+        offenders.push(rel);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it("lets month day-number buttons inherit header ink (UA ButtonText is dark)", () => {
@@ -240,6 +255,39 @@ describe("workspace token core", () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("rejects literal colors in component CSS, including var() fallbacks", () => {
+    const literal = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\blight-dark\(/;
+    /**
+     * File allowlist. Everything else, including hex inside `var(--token, …)`, fails.
+     * Story fixtures pin demo palettes and are not product chrome.
+     */
+    const allow = new Map<string, string>([
+      ["styles.css", "Tier-1 primitives."],
+      ["user-avatar/src/user-avatar.css", "Identity hues for the avatar palette."],
+      ["meet-core/src/meet-workspace.css", "TODO: migrate the Meet palette off literals."],
+      [
+        "meet-core/src/meet-channel-dialog.css",
+        "Meet pair; same palette migration as meet-workspace.css.",
+      ],
+      [
+        "meet-core/src/meet-call-mini-player.css",
+        "Meet dark ink; same palette migration as meet-workspace.css.",
+      ],
+    ]);
+    const leaks: string[] = [];
+    for (const file of walkCss(srcRoot)) {
+      const rel = relative(srcRoot, file);
+      if (rel.startsWith("lib/calendar-elements/")) continue;
+      if (rel.endsWith(".stories.css")) continue;
+      if (allow.has(rel)) continue;
+      const css = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+      for (const [index, line] of css.split("\n").entries()) {
+        if (literal.test(line)) leaks.push(`${rel}:${index + 1} ${line.trim()}`);
+      }
+    }
+    expect(leaks).toEqual([]);
   });
 });
 

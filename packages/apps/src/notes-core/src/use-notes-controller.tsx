@@ -6,6 +6,7 @@ import { useNotesList } from "./use-notes-list";
 import { useNotesMutations } from "./use-notes-mutations";
 import { useNotesNotebookMutations } from "./use-notes-notebook-mutations";
 import { useNotesShell } from "./use-notes-shell";
+import { useNotesTagRename, useNotesTagRenameCollaborators } from "./use-notes-tag-rename";
 
 type UseNotesControllerArgs = {
   data: NotesUIData;
@@ -54,6 +55,12 @@ export function useNotesController({
   );
   const mutations = useNotesMutations({ shell, list });
   const notebookMutations = useNotesNotebookMutations({ shell });
+  const tagRenameCollaborators = useNotesTagRenameCollaborators(shell, list);
+  const { renameTag } = useNotesTagRename({
+    shell,
+    queueMutation: list.queueMutation,
+    ...tagRenameCollaborators,
+  });
 
   useWorkspaceListKeyboardShortcuts({
     searchInputRef: shell.searchInputRef,
@@ -80,6 +87,7 @@ export function useNotesController({
     createNotebookCollection: notebookMutations.createNotebook,
     updateNotebookCollection: notebookMutations.updateNotebook,
     deleteNotebookCollection: notebookMutations.deleteNotebookCollection,
+    notebookDeleteDialog: notebookMutations.notebookDeleteDialog,
     patchNotebookShareWith: notebookMutations.patchShareWith,
     removeSharedNotebook: notebookMutations.removeSharedNotebook,
     tags: shell.tags,
@@ -120,13 +128,13 @@ export function useNotesController({
     moveToNotebook: mutations.moveToNotebook,
     moveActiveNoteToNotebook: mutations.moveActiveNoteToNotebook,
     assignTagToNotes: mutations.assignTagToNotes,
+    renameTag,
     createNote: mutations.createNote,
     toggleStar: mutations.toggleStar,
     toggleArchive: mutations.toggleArchive,
     requestDeleteSelected: mutations.requestDeleteSelected,
     openDeleteConfirm: mutations.openDeleteConfirm,
     renameNotebook: mutations.renameNotebook,
-    deleteNotebook: mutations.deleteNotebook,
     toggleNoteTag: mutations.toggleNoteTag,
     addNoteTag: mutations.addNoteTag,
     updateNote: mutations.updateNote,

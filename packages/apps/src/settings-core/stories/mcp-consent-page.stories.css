@@ -4,7 +4,6 @@
   @apply flex justify-center p-6 md:p-10;
   min-height: 100dvh;
   background-color: var(--workspace-main-bg, var(--workspace-surface));
-  --switch-on-bg: var(--workspace-home-bg, #1b1d3a);
   --card-surface-bg: var(--workspace-surface);
 }
 

@@ -4,7 +4,7 @@
 
 .calendar-invitation-card {
   @apply min-w-0 max-w-full;
-  --docs-collab-card-accent: var(--workspace-accent, #962fa8);
+  --docs-collab-card-accent: var(--workspace-accent);
   /* Isolate the Lit card from timeline stack vars so flow width stays 100%. */
   --_lc-days: 1;
   --_lc-width: 1;

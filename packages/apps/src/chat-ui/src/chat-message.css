@@ -77,7 +77,10 @@
 
 .chat-message__body mark {
   @apply rounded-sm px-0.5;
-  background-color: var(--chat-mention-bg, color-mix(in oklab, #eab308 32%, transparent));
+  background-color: var(
+    --chat-mention-bg,
+    color-mix(in oklab, var(--color-warning) 32%, transparent)
+  );
   color: inherit;
 }
 
@@ -115,7 +118,7 @@
 
 .chat-message__replies:hover,
 .chat-message__replies:focus-visible {
-  color: var(--chat-accent, #0e7490);
+  color: var(--chat-accent, var(--workspace-accent));
   text-decoration: underline;
 }
 
@@ -123,19 +126,30 @@
   @apply mt-1;
 }
 
+/* Actions stay absolute; this wrap is their containing block when chips exist,
+   so top-full sits under the chips instead of over them. */
+.chat-message__reactions-wrap {
+  @apply relative;
+}
+
 .chat-message .chat-reaction-bar__reaction--add {
   @apply hidden;
 }
 
 .chat-message__actions {
-  /* Anchored under the last line, painting over replies and reactions.
-     Opaque surface, so the overlay reads as the bar rather than a mix. */
-  @apply absolute start-0 top-full z-[1] hidden items-center gap-0 rounded-md border px-0.5 shadow-sm;
-  border-color: var(
-    --chat-border,
-    color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
-  );
-  background-color: var(--chat-action-surface, var(--workspace-surface));
+  /* Same paper as the emoji picker (PopoverContent + overlay-paper): radius, hairline, shadow. */
+  @apply absolute start-0 top-full z-[1] hidden items-center gap-0.5 rounded-md border p-1.5 shadow-md;
+  color: var(--popover-foreground, var(--workspace-foreground));
+}
+
+.chat-message__actions .button--variant-ghost {
+  @apply size-8 bg-transparent shadow-none;
+}
+
+.chat-message__actions .button--variant-ghost:hover,
+.chat-message__actions .button--variant-ghost:focus-visible,
+.chat-message__actions .button--variant-ghost[data-state="open"] {
+  background-color: var(--chat-hover, var(--button-outline-hover-background));
 }
 
 .chat-message:hover .chat-message__actions,

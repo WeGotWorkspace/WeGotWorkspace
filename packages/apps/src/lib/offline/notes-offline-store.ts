@@ -1,10 +1,11 @@
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
+import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
 import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
-  isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
@@ -41,6 +42,8 @@ const META_GROUPS = "notes:groups";
  */
 export type NoteUpsertMetadata = {
   notebook: string;
+  /** REST collection id. Preferred over `notebook` when resolving the target. */
+  notebookId?: string;
   title?: string;
   /** Full replace. Absent when this write is a tag delta or leaves tags alone. */
   tags?: string[];
@@ -56,7 +59,23 @@ export type NoteUpsertMetadata = {
 export type NoteMetadataSelection = {
   includeTitle?: boolean;
   includeTags?: boolean;
+  /** True only when this write changes the star. */
+  includeStarred?: boolean;
+  /** True only when this write moves the note to another notebook. */
+  includeNotebook?: boolean;
 };
+
+/** Fields this outbox row actually changes. Not inferred from metadata keys. */
+export type NotePendingField = "title" | "tags" | "starred" | "archived" | "notebook" | "delete";
+
+const NOTE_PENDING_FIELDS: readonly NotePendingField[] = [
+  "title",
+  "tags",
+  "starred",
+  "archived",
+  "notebook",
+  "delete",
+];
 
 export type NoteTagDelta = {
   tagsAdd?: string[];
@@ -67,6 +86,8 @@ export type NotesUpsertPayload = {
   noteId: string;
   metadata: NoteUpsertMetadata;
   tempNoteId?: string;
+  /** Real changes in this write. Unioned when two upserts coalesce. */
+  fields?: NotePendingField[];
 };
 
 /** Pull only the outbox-tracked metadata fields off a note (drops body/excerpt). */
@@ -78,6 +99,7 @@ export function extractNoteMetadata(
   const includeTitle = selection ? selection.includeTitle === true : note.title !== undefined;
   return {
     notebook: note.notebook,
+    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(includeTitle && note.title !== undefined ? { title: note.title } : {}),
     ...(includeTags ? { tags: note.tags } : {}),
     ...(note.starred !== undefined ? { starred: note.starred } : {}),
@@ -269,6 +291,18 @@ export async function upsertNoteInCache(
   await notesNotesTable(db).put(noteRow(note, pendingSync));
 }
 
+/** One cached note, or null when the id is absent or the row is unreadable. */
+export async function getNoteFromCache(username: string, noteId: string): Promise<Note | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await notesNotesTable(db).get(noteId);
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data) as Note;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Update the Dexie list-preview body without touching metadata `pendingSync`.
  * Body is owned by the collab document — this must not stamp unsynced metadata.
@@ -336,9 +370,18 @@ function noteBelongsToNotebook(
 export async function removeNotebookFromCache(
   username: string,
   notebookIdOrName: string,
-  options?: { keepPendingNotes?: boolean },
+  options?: {
+    keepPendingNotes?: boolean;
+    moveNotesTo?: {
+      id: string;
+      name: string;
+      scope?: "personal" | "group";
+      groupSlug?: string | null;
+    };
+  },
 ): Promise<void> {
   const keepPending = options?.keepPendingNotes !== false;
+  const moveNotesTo = options?.moveNotesTo;
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const books = notesNotebooksTable(db);
   const notes = notesNotesTable(db);
@@ -362,8 +405,18 @@ export async function removeNotebookFromCache(
       continue;
     }
     if (!noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)) continue;
+    if (moveNotesTo) {
+      await upsertNoteInCache(username, noteAfterNotebookMove(note, moveNotesTo), row.pendingSync);
+      continue;
+    }
     if (keepPending && row.pendingSync) continue;
     await notes.delete(row.id);
+  }
+  if (moveNotesTo) {
+    await db.meta.delete(metaKeyForNotebookState(moveNotesTo.id));
+    for (const id of matchedIds) {
+      await db.meta.delete(metaKeyForNotebookState(id));
+    }
   }
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) return;
@@ -371,9 +424,15 @@ export async function removeNotebookFromCache(
     (item) => !matchedIds.has(item.id) && !matchedNames.has(item.name),
   );
   cached.data.notebooks = cached.data.notebooks.filter((name) => !matchedNames.has(name));
-  cached.data.notes = cached.data.notes.filter(
-    (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
-  );
+  cached.data.notes = moveNotesTo
+    ? cached.data.notes.map((note) =>
+        noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)
+          ? noteAfterNotebookMove(note, moveNotesTo)
+          : note,
+      )
+    : cached.data.notes.filter(
+        (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
+      );
   await writeNotesBootstrapToCache(username, cached);
 }
 
@@ -396,7 +455,7 @@ export async function dropLocalNoteAfterServerGone(
 
 export async function listFailedNotesOutbox(username: string): Promise<OfflineOutboxRow[]> {
   const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
-  return rows.filter(isRetryableOutboxRow);
+  return rows.filter(isSyncNoticeOutboxRow);
 }
 
 export async function listPendingNoteIds(username: string): Promise<string[]> {
@@ -405,6 +464,39 @@ export async function listPendingNoteIds(username: string): Promise<string[]> {
     .filter((row) => row.pendingSync)
     .toArray();
   return rows.map((row) => row.id);
+}
+
+function isNotePendingField(value: unknown): value is NotePendingField {
+  return typeof value === "string" && (NOTE_PENDING_FIELDS as readonly string[]).includes(value);
+}
+
+/** Fields the outbox recorded at enqueue time, so an inbound change to any
+ *  other field can still be ingested (#1351). Key presence is not a change. */
+export async function listPendingNoteFields(
+  username: string,
+): Promise<Map<string, Set<NotePendingField>>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  const out = new Map<string, Set<NotePendingField>>();
+  for (const row of rows) {
+    let payload: { noteId?: unknown; fields?: unknown } | null = null;
+    try {
+      payload = JSON.parse(row.payload) as { noteId?: unknown; fields?: unknown };
+    } catch {
+      continue;
+    }
+    const noteId = typeof payload?.noteId === "string" ? payload.noteId : null;
+    if (!noteId) continue;
+    const fields = out.get(noteId) ?? new Set<NotePendingField>();
+    if (row.op === "archive" || row.op === "restore") fields.add("archived");
+    if (row.op === "delete") fields.add("delete");
+    if (Array.isArray(payload?.fields)) {
+      for (const field of payload.fields) {
+        if (isNotePendingField(field)) fields.add(field);
+      }
+    }
+    out.set(noteId, fields);
+  }
+  return out;
 }
 
 export async function readSyncToken(username: string, notebook: string): Promise<string | null> {
@@ -420,6 +512,32 @@ export async function writeSyncToken(
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await db.meta.put({ key: metaKeyForNotebookState(notebook), value: token });
+}
+
+/** Note ids with any outbox row, including a non-retryable `stateMismatch`. */
+export async function listOutboxNoteIds(username: string): Promise<Set<string>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const noteId = notesOutboxNoteId(row);
+    if (noteId) ids.add(noteId);
+  }
+  return ids;
+}
+
+/**
+ * Note ids whose outbox still has a retryable row. A `stateMismatch` row stays
+ * queued but must not pin a notebook sync token until `cannotCalculateChanges`.
+ */
+export async function listNoteIdsBlockingSyncToken(username: string): Promise<Set<string>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  const blocking = new Set<string>();
+  for (const row of rows) {
+    if (row.lastError === "stateMismatch") continue;
+    const noteId = notesOutboxNoteId(row);
+    if (noteId) blocking.add(noteId);
+  }
+  return blocking;
 }
 
 /** Note id targeted by an outbox row (upsert/delete `noteId`, or create `tempNoteId`). */
@@ -524,11 +642,29 @@ function mergeNoteUpsertPayloads(
     delete metadata.tagsRemove;
     Object.assign(metadata, merged);
   }
+  const fields = [
+    ...new Set<NotePendingField>([...(existing.fields ?? []), ...(incoming.fields ?? [])]),
+  ];
   return {
     noteId: incoming.noteId,
     metadata,
     tempNoteId: incoming.tempNoteId ?? existing.tempNoteId,
+    ...(fields.length > 0 ? { fields } : {}),
   };
+}
+
+function fieldsForUpsert(
+  selection: NoteMetadataSelection | undefined,
+  tagDelta: NoteTagDelta | undefined,
+): NotePendingField[] {
+  const fields = new Set<NotePendingField>();
+  const includeTitle = selection ? selection.includeTitle === true : true;
+  const includeTags = selection ? selection.includeTags === true : true;
+  if (includeTitle) fields.add("title");
+  if (includeTags || hasTagDelta(tagDelta ?? {})) fields.add("tags");
+  if (selection?.includeStarred) fields.add("starred");
+  if (selection?.includeNotebook) fields.add("notebook");
+  return [...fields];
 }
 
 /** Merges pending upsert rows for the same note so flush sends one metadata-only payload. */
@@ -544,12 +680,13 @@ export async function enqueueCoalescedNoteUpdate(
   const metadata = tagDelta
     ? metadataWithTagDelta(extractNoteMetadata(note, selection), tagDelta)
     : extractNoteMetadata(note, selection);
+  const fields = fieldsForUpsert(selection, tagDelta);
   await enqueueCoalescedOutboxUpdate<NotesUpsertPayload>({
     username,
     domain: NOTES_DOMAIN,
     op: "upsert",
     entityId: noteId,
-    patch: { noteId, metadata, tempNoteId },
+    patch: { noteId, metadata, tempNoteId, ...(fields.length > 0 ? { fields } : {}) },
     ifInState: baseUpdatedAt,
     mergePatches: mergeNoteUpsertPayloads,
     entityIdFromRow: notesOutboxNoteId,

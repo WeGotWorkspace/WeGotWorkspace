@@ -93,3 +93,42 @@ export const Default: Story = {
     await expect(args.onNotebookChange).toHaveBeenCalledOnce();
   },
 };
+
+const onDeleteNotes = fn();
+
+export const DeleteNotebookChoice: Story = {
+  tags: ["vitest-ci"],
+  render: (args) => (
+    <NotesChangeNotebookDialog
+      open
+      notebooks={seedNotebooks}
+      value={seedNotebooks[0] ?? { id: "journal", name: "The Journal" }}
+      labels={defaultNotesLabels}
+      title={defaultNotesLabels.deleteNotebookHasNotesTitle}
+      description={defaultNotesLabels.deleteNotebookHasNotesDescription}
+      confirmLabel={defaultNotesLabels.deleteNotebookMoveToConfirm}
+      requireChange={false}
+      destructiveAction={{
+        label: defaultNotesLabels.deleteNotebookDeleteNotesToo,
+        onAction: onDeleteNotes,
+      }}
+      onClose={() => {}}
+      onNotebookChange={args.onNotebookChange}
+    />
+  ),
+  play: async ({ args }) => {
+    onDeleteNotes.mockClear();
+    await expect(
+      screen.getByRole("dialog", { name: defaultNotesLabels.deleteNotebookHasNotesTitle }),
+    ).toBeTruthy();
+    const confirm = screen.getByRole("button", {
+      name: defaultNotesLabels.deleteNotebookMoveToConfirm(seedNotebooks[0]?.name ?? ""),
+    });
+    await expect(confirm).toBeEnabled();
+    await userEvent.click(
+      screen.getByRole("button", { name: defaultNotesLabels.deleteNotebookDeleteNotesToo }),
+    );
+    await expect(onDeleteNotes).toHaveBeenCalledOnce();
+    await expect(args.onNotebookChange).not.toHaveBeenCalled();
+  },
+};

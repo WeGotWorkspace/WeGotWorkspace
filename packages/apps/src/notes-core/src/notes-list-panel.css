@@ -50,7 +50,7 @@
 }
 
 .notes-list-panel__notebook {
-  @apply inline-flex max-w-full min-w-0 items-center gap-1.5;
+  @apply inline-flex shrink-0 items-center justify-center;
 }
 
 .notes-list-panel__notebook-icon {
@@ -59,10 +59,6 @@
 
 .notes-list-panel__excerpt {
   @apply block truncate;
-}
-
-.notes-list-panel__notebook-name {
-  @apply truncate min-w-0 font-medium;
 }
 
 .notes-list-panel__list {

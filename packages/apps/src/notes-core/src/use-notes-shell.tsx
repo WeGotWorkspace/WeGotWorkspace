@@ -4,7 +4,7 @@ import { useAppToast } from "@/hooks/use-app-toast";
 import { useStarredMap } from "@/hooks/use-starred-map";
 import type { Note } from "@/lib/models/note";
 import type { WorkspaceAppHandle } from "@/workspace-app/src/workspace-app";
-import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
+import { dismissSidebarOverlay } from "@/workspace-shell/src/sidebar-breakpoint";
 import { mergeNotesLabels, type NotesUILabels } from "./notes-labels";
 import {
   enrichNote,
@@ -181,19 +181,11 @@ export function useNotesShell({
   }, [notes, setStarred]);
 
   useEffect(() => {
-    setArchived((prev) => {
-      const next: Record<string, boolean> = {};
-      for (const note of notes) {
-        if (note.archived) next[note.id] = true;
-      }
-      // Keep optimistic archive flags when a stale bootstrap refresh has not
-      // caught up on the row yet (same pattern as mergeBootstrapNotesPreservingOptimistic).
-      for (const [id, value] of Object.entries(prev)) {
-        if (!value || next[id]) continue;
-        if (notes.some((note) => note.id === id)) next[id] = true;
-      }
-      return next;
-    });
+    const next: Record<string, boolean> = {};
+    for (const note of notes) {
+      if (note.archived) next[note.id] = true;
+    }
+    setArchived(next);
   }, [notes, setArchived]);
 
   const viewLabel = useMemo(() => {
@@ -210,14 +202,12 @@ export function useNotesShell({
     return L.fallbackViewTitle;
   }, [L, notebookCollections, view]);
 
-  const canCreateNote = notesCanCreateInView(view);
+  const canCreateNote = notesCanCreateInView(view, notebookCollections);
 
   const selectView = useCallback((nextView: string) => {
     setView(nextView);
     workspaceLayoutRef.current?.closeMobileDetail();
-    if (isSidebarOverlayViewport()) {
-      workspaceLayoutRef.current?.closeSidebar();
-    }
+    dismissSidebarOverlay(() => workspaceLayoutRef.current?.closeSidebar());
   }, []);
 
   const viewSyncedRef = useRef(false);

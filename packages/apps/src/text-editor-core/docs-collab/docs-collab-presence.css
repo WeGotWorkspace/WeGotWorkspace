@@ -15,22 +15,9 @@
 /* Mark outline only — no wrapper cream/background ring (avoids double border). */
 
 .docs-collab-presence__avatar--connecting {
-  --user-avatar-bg: color-mix(
-    in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-foreground)) 14%,
-    transparent
-  );
-  --user-avatar-fg: color-mix(
-    in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-foreground)) 72%,
-    var(--workspace-foreground)
-  );
-  --user-avatar-border-width: 1px;
-  --user-avatar-border: color-mix(
-    in oklab,
-    var(--docs-collab-presence-accent, var(--workspace-foreground)) 38%,
-    transparent
-  );
+  /* Same theme wash as idle marks. Dashed stroke is the only connecting cue. */
+  --user-avatar-bg: var(--button-outline-hover-background);
+  --user-avatar-fg: var(--workspace-foreground);
 }
 
 .docs-collab-presence__avatar--connecting .user-avatar__mark {
@@ -38,8 +25,8 @@
 }
 
 .docs-collab-presence__avatar--warning {
-  --user-avatar-bg: color-mix(in oklab, #c2410c 14%, transparent);
-  --user-avatar-fg: color-mix(in oklab, #c2410c 75%, var(--workspace-foreground));
+  --user-avatar-bg: color-mix(in oklab, var(--color-warning) 14%, transparent);
+  --user-avatar-fg: color-mix(in oklab, var(--color-warning) 75%, var(--workspace-foreground));
   --user-avatar-border-width: 1px;
-  --user-avatar-border: color-mix(in oklab, #c2410c 42%, transparent);
+  --user-avatar-border: color-mix(in oklab, var(--color-warning) 42%, transparent);
 }
