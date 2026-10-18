@@ -50,6 +50,7 @@ import { useOfflineBodySyncProgress } from "@/lib/offline/use-offline-body-sync-
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
@@ -247,6 +248,7 @@ export function DocsHomeWorkspace({
     retryLabel: labels.retrySync,
     onRetry: retryFailedOutbox,
   });
+  useDriveFileNodeInbound(offlineUsername, outboxNoticeKey);
 
   const readBodySyncProgress = useCallback(() => {
     if (!offlineUsername) {

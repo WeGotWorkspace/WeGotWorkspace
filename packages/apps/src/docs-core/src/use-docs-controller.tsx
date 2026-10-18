@@ -5,11 +5,9 @@ import { parentAndName } from "@/lib/files/api-path";
 import { markdownToPlainText } from "@/lib/models/note-body-markdown";
 import { mergeDocsLabels, type DocsUILabels } from "@/docs-core/src/docs-labels";
 import type { DocsAPIOperations, DocsDocument } from "@/docs-core/src/docs-types";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
-import { migrateCollabPersistence } from "@/text-editor-core/docs-collab";
 
 type UseDocsControllerArgs = {
   filePath: string | null;
@@ -231,13 +229,6 @@ export function useDocsController({
     setRenamePending(true);
     try {
       const nextPath = await operations.renameFile(path, nextName);
-      if (isDocsCollabEditablePath(path) && isDocsCollabEditablePath(nextPath)) {
-        try {
-          await migrateCollabPersistence(path.replace(/^\/+/, ""), nextPath.replace(/^\/+/, ""));
-        } catch (error) {
-          console.warn("[docs-collab] persistence migration failed after rename", error);
-        }
-      }
       setDocument((current) =>
         current ? { ...current, apiPath: nextPath, fileName: nextName } : current,
       );

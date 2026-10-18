@@ -16,6 +16,7 @@ import {
 } from "@/lib/offline/docs/docs-pin-hydrate";
 import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { upsertDocsListingResult } from "@/lib/offline/docs-listing-offline-store";
+import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 
 export async function makeDocsOfflineAvailable(
   username: string,
@@ -27,7 +28,8 @@ export async function makeDocsOfflineAvailable(
     throw new Error("Only editable text files can be made available offline.");
   }
   await hydrateDocsCollabForOffline({ apiPath: room });
-  await writeDocsAvailability(username, { id: room, location });
+  const nodeId = await readCachedDriveNodeId(username, room);
+  await writeDocsAvailability(username, { id: room, location, nodeId });
   await markDocsAvailabilitySynced(username, room);
 }
 

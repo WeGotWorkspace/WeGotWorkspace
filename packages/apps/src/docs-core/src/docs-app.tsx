@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
@@ -31,6 +32,7 @@ import { createWgwDriveShareOperations } from "@/lib/api/wgw/drive-shares";
 import { createMockDriveShareOperations } from "@/lib/api/mock/drive-share-mock";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { queueNewDocsOfflineDocument } from "@/lib/offline/docs/docs-offline-pin-core";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import { useOfflinePendingToast } from "@/lib/offline/use-offline-sync-toast";
 import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
@@ -55,6 +57,15 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const filePath = useMemo(
     () => docsApiPathFromSearch(parseDocsRouteSearch(search as Record<string, unknown>).file),
     [search],
+  );
+  const offlineUsername = resolveDocsOfflineUsername(session.user.username);
+  const [editorInboundKey, setEditorInboundKey] = useState(0);
+  useDriveFileNodeInbound(filePath ? offlineUsername : undefined, editorInboundKey);
+  useOnReconnect(
+    useCallback(() => {
+      if (!filePath) return;
+      setEditorInboundKey((key) => key + 1);
+    }, [filePath]),
   );
 
   useNotificationsMarkReadOnConsume({
@@ -182,8 +193,11 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       documentUrl,
       yjsUrl,
       room,
+      onPersistForbidden: () => {
+        showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
+      },
     };
-  }, [collabAuthToken, filePath, showCollab]);
+  }, [collabAuthToken, filePath, showCollab, showError]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 

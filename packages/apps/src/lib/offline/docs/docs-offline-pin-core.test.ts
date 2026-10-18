@@ -20,18 +20,23 @@ vi.mock("@/lib/offline/docs/docs-pin-hydrate", async (importOriginal) => {
   };
 });
 
-vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", () => ({
-  clearDocsCollabOfflinePersistence: vi.fn(async (apiPath: string) => {
-    const room = apiPath.replace(/^\/+/, "");
-    const ydoc = new Y.Doc();
-    const persistence = new IndexeddbPersistence(room, ydoc);
-    await persistence.whenSynced;
-    await persistence.clearData();
-    await persistence.destroy();
-    ydoc.destroy();
-  }),
-  migrateCollabPersistence: vi.fn(),
-}));
+vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/text-editor-core/docs-collab/docs-collab-persistence")>();
+  return {
+    ...actual,
+    clearDocsCollabOfflinePersistence: vi.fn(async (apiPath: string) => {
+      const room = apiPath.replace(/^\/+/, "");
+      const ydoc = new Y.Doc();
+      const persistence = new IndexeddbPersistence(room, ydoc);
+      await persistence.whenSynced;
+      await persistence.clearData();
+      await persistence.destroy();
+      ydoc.destroy();
+    }),
+    migrateCollabPersistence: vi.fn(),
+  };
+});
 
 import { hydrateDocsCollabForOffline } from "@/lib/offline/docs/docs-pin-hydrate";
 import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -40,6 +45,9 @@ import {
   migrateDocsAvailabilityPath,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
+import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
+import "@/lib/offline/drive/drive-schema";
 import {
   makeDocsOfflineAvailable,
   removeDocsOfflineCopy,
@@ -70,6 +78,24 @@ describe("docs offline pin core", () => {
     expect(isYDocEmpty(ydoc)).toBe(false);
     await persistence.destroy();
     ydoc.destroy();
+  });
+
+  it("records the cached FileNode id on a new pin", async () => {
+    await upsertDriveEntry(username, {
+      type: "file",
+      path: `/${apiPath}`,
+      name: "pinned.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+      nodeId: "fn-pinned",
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive");
+
+    const rows = await listDocsAvailability(username);
+    expect(rows.find((row) => row.id === apiPath)?.nodeId).toBe("fn-pinned");
   });
 
   it("remove clears persistence and availability row", async () => {

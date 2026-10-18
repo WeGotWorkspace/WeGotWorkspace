@@ -61,6 +61,10 @@ export type DocsCollabUrls = {
   roomNotPersistent?: boolean;
   onPersistForbidden?: () => void;
   /**
+   * The server answered 404. Retrying the save stops. The local copy stays.
+   */
+  onDocumentGone?: () => void;
+  /**
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */
@@ -99,6 +103,9 @@ export type UseDocsCollabOptions = {
   seedContent?: string;
 };
 
+/** Why a save stopped for good. `forbidden` lifts on reconnect; the others stay. */
+export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large";
+
 export type DocsCollabSessionRefs = {
   meshRef: MutableRefObject<DocsRtcSession | null>;
   ydocRef: MutableRefObject<Y.Doc | null>;
@@ -121,6 +128,7 @@ export type DocsCollabSessionRefs = {
   saveInFlightRef: MutableRefObject<boolean>;
   saveRetryMsRef: MutableRefObject<number>;
   nextSaveAttemptAtRef: MutableRefObject<number>;
+  saveTerminalKindRef: MutableRefObject<DocsCollabSaveTerminalKind | null>;
   localDirtySinceLastSaveRef: MutableRefObject<boolean>;
   pendingServerSaveRef: MutableRefObject<boolean>;
   /** While set, a save must not replace an outside edit the person has not chosen. */

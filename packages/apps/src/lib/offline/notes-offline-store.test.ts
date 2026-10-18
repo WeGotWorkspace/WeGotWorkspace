@@ -479,7 +479,9 @@ describe("notes offline store", () => {
       payload: JSON.stringify({ noteId: local.id }),
     });
 
-    await ingestRemoteNote(username, { ...local, title: "From server" });
+    await expect(ingestRemoteNote(username, { ...local, title: "From server" })).resolves.toBe(
+      "skipped-pending",
+    );
 
     const cached = await getNoteFromCache(username, local.id);
     expect(cached?.title).toBe("Local title");

@@ -128,6 +128,23 @@ describe("loadBootstrapInParallel", () => {
     expect(fetchSnapshot).toHaveBeenCalledTimes(1);
   });
 
+  it("stops retrying a snapshot as soon as the document is gone", async () => {
+    const sleep = vi.fn(async (_ms: number) => undefined);
+    const fetchSnapshot = vi.fn(async () => {
+      throw Object.assign(new Error("Could not load snapshot (404)"), { status: 404 });
+    });
+
+    const load = await loadBootstrapInParallel({
+      loadMarkdown: async () => "# Doc",
+      fetchSnapshot,
+      sleep,
+    });
+
+    expect(load.snapshot.kind).toBe("failed");
+    expect(fetchSnapshot).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
   it("stops retrying as soon as the snapshot loads", async () => {
     const update = Y.encodeStateAsUpdate(docWithText("server"));
     let attempts = 0;

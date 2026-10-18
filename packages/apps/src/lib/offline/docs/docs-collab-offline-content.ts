@@ -2,8 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import {
-  docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
+  docsCollabReadNames,
   docsCollabRoomKey,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
@@ -30,18 +29,16 @@ async function readCollabRoomContent(roomKey: string, apiPath: string): Promise<
 
 /**
  * Headlessly read markdown/text from a collab y-indexeddb room (no TipTap UI).
- * Tries the normalized room key, then a legacy leading-slash key.
+ * Tries the identity database when the cache knows the FileNode id, then the
+ * path-keyed `:v2` name and pre-v2 names.
  */
 export async function readCollabOfflineContent(apiPath: string): Promise<string | null> {
   const room = docsCollabRoomKey(apiPath);
   if (!room || !isDocsCollabEditablePath(room)) return null;
 
-  const content = await readCollabRoomContent(docsCollabIndexedDbKey(room), apiPath);
-  if (content != null) return content;
-
-  for (const legacyKey of docsCollabLegacyIndexedDbKeys(room)) {
-    const legacyContent = await readCollabRoomContent(legacyKey, apiPath);
-    if (legacyContent != null) return legacyContent;
+  for (const name of await docsCollabReadNames(room)) {
+    const content = await readCollabRoomContent(name, apiPath);
+    if (content != null) return content;
   }
   return null;
 }

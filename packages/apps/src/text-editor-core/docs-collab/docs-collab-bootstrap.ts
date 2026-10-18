@@ -1,6 +1,7 @@
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
 import type { YjsSnapshot } from "./docs-collab-server-io";
+import { isCollabDocumentGoneError } from "./docs-collab-utils";
 
 /** Backoff for a snapshot that failed for any reason other than "no sidecar". */
 export const SNAPSHOT_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
@@ -75,6 +76,7 @@ async function loadSnapshotWithRetry(
       lastError = error;
       onAttemptFailed(error);
       if (!isCurrent()) break;
+      if (isCollabDocumentGoneError(error)) break;
     }
   }
 

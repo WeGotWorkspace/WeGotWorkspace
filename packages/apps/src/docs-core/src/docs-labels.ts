@@ -30,6 +30,19 @@ export const docsLabels = {
     `"${title}" changed on the server while you were offline. Keep your version or use the server copy?`,
   conflictKeepMine: "Keep mine",
   conflictUseServer: "Use server",
+  documentGoneTitle: "This document no longer exists",
+  documentGoneDescription: "It was deleted on the server. Your local copy is still here.",
+  documentGoneKeep: "Keep local copy",
+  documentGoneClose: "Dismiss",
+  accessLostTitle: "Access lost",
+  accessLostMessage:
+    "You no longer have access to this document. Your local copy is still on this device.",
+  keptUnsavedDocumentTitle: "A document was removed on the server",
+  /** `shownPaths` is the comma-separated list; `count` picks singular or plural. */
+  keptUnsavedDocumentMessage: (shownPaths: string, count: number) =>
+    count === 1
+      ? `Your unsaved copy of ${shownPaths} is still here.`
+      : `Your unsaved copies are still here: ${shownPaths}.`,
   /** The conflict dialog's labels when the file changed outside the app (#1349). */
   externalWriteDialog: {
     conflictTitle: "Changed outside the app",

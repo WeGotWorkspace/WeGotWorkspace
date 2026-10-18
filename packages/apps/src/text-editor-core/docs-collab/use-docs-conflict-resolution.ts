@@ -22,7 +22,10 @@ export type DocsConflictResolutionInput = {
 
 export type DocsConflictResolution = {
   open: boolean;
+  /** `"gone"` reuses this dialog for a deleted document. Both actions keep the local copy. */
+  mode: "conflict" | "gone";
   setOpen: (open: boolean) => void;
+  reportDocumentGone: () => void;
   /** A resolution is in flight — keeps both dialog buttons busy. */
   busy: boolean;
   keepLocal: () => void;
@@ -41,36 +44,60 @@ export function useDocsConflictResolution({
   saveNow,
   onServerApplied,
 }: DocsConflictResolutionInput): DocsConflictResolution {
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"conflict" | "gone" | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setDocsSyncConflictListener((paths) => {
-      if (paths.includes(room ?? "")) setOpen(true);
+      if (paths.includes(room ?? "")) setMode("conflict");
     });
     return () => setDocsSyncConflictListener(undefined);
   }, [room]);
 
+  const setOpen = useCallback((open: boolean) => {
+    setMode(open ? "conflict" : null);
+  }, []);
+
+  const reportDocumentGone = useCallback(() => {
+    setMode("gone");
+  }, []);
+
   const keepLocal = useCallback(() => {
+    if (mode === "gone") {
+      setMode(null);
+      return;
+    }
     setBusy(true);
     void resolveDocsConflictKeepLocal(saveNow)
       .then(() => {
-        setOpen(false);
+        setMode(null);
         reportDocsSyncConflicts([]);
       })
       .finally(() => setBusy(false));
-  }, [saveNow]);
+  }, [mode, saveNow]);
 
   const useServer = useCallback(() => {
+    if (mode === "gone") {
+      setMode(null);
+      return;
+    }
     if (!ydoc || !yjsUrl) return;
     setBusy(true);
     void resolveDocsConflictUseServer(ydoc, yjsUrl, authToken, room)
       .then(() => {
-        setOpen(false);
+        setMode(null);
         onServerApplied();
       })
       .finally(() => setBusy(false));
-  }, [authToken, onServerApplied, room, ydoc, yjsUrl]);
+  }, [authToken, mode, onServerApplied, room, ydoc, yjsUrl]);
 
-  return { open, setOpen, busy, keepLocal, useServer };
+  return {
+    open: mode !== null,
+    mode: mode ?? "conflict",
+    setOpen,
+    reportDocumentGone,
+    busy,
+    keepLocal,
+    useServer,
+  };
 }

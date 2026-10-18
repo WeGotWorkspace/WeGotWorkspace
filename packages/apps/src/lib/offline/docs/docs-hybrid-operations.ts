@@ -14,12 +14,12 @@ import {
 } from "@/lib/offline/core/connectivity-sync-runner";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
 import {
-  migrateDocsAvailabilityPath,
   normalizeDocsAvailabilityPath,
   readDocsAvailability,
   removeDocsAvailability,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
+import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
 import { DOCS_DOMAIN, type OfflineDocsAvailabilityRow } from "@/lib/offline/docs/docs-schema";
 import type { DocsOutboxPayload } from "@/lib/offline/docs/docs-outbox-flush";
 import {
@@ -47,11 +47,9 @@ import {
   readDocsStarredPaths,
   writeDocsStarredPaths,
 } from "@/lib/offline/docs/docs-stars-store";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import {
   captureDocsCollabOfflinePersistence,
   clearDocsCollabOfflinePersistence,
-  migrateCollabPersistence,
   restoreDocsCollabOfflinePersistence,
   type DocsCollabOfflinePersistenceSnapshot,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -167,19 +165,7 @@ async function applyOnlineRenameSideEffects(
   destination: string,
   to: string,
 ): Promise<void> {
-  const oldPath = normalizeDocsAvailabilityPath(from);
-  const normalizedDest = normalizeApiVirtualPath(destination);
-  const newPath = normalizeDocsAvailabilityPath(
-    normalizedDest === "/" ? `/${to}` : `${normalizedDest}/${to}`,
-  );
-  if (isDocsCollabEditablePath(oldPath) && isDocsCollabEditablePath(newPath)) {
-    try {
-      await migrateCollabPersistence(oldPath, newPath);
-    } catch (error) {
-      console.warn("[docs-hybrid] collab persistence migration failed", error);
-    }
-  }
-  await migrateDocsAvailabilityPath(username, oldPath, newPath);
+  await applyDriveSidecarPathMigration(username, from, destination, to);
 }
 
 export function createHybridDocsDriveOperations(username: string): DriveAPIOperations {

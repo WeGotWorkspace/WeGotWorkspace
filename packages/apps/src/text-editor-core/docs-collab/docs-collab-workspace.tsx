@@ -203,6 +203,16 @@ function DocsCollabWorkspaceInner({
   docApiPath?: string;
 }) {
   const labels = docsLabels;
+  const reportDocumentGoneRef = useRef<() => void>(() => undefined);
+  const sessionUrls = useMemo(() => {
+    if (!urls) return undefined;
+    return {
+      ...urls,
+      onDocumentGone: () => {
+        reportDocumentGoneRef.current();
+      },
+    };
+  }, [urls]);
   const formatBarMode = resolveDocsCollabFormatBarMode(permissions);
   const session = useMemo(
     () => ({
@@ -216,7 +226,7 @@ function DocsCollabWorkspaceInner({
     [userName],
   );
 
-  const externalWriteRequest = useDocsExternalWriteRequest(urls);
+  const externalWriteRequest = useDocsExternalWriteRequest(sessionUrls);
   const {
     session: collabSession,
     peers,
@@ -556,6 +566,18 @@ function DocsCollabWorkspaceInner({
     resolveExternalWrite,
     onOutsideApplied: handleServerDocApplied,
   });
+  useEffect(() => {
+    reportDocumentGoneRef.current = conflict.reportDocumentGone;
+  }, [conflict.reportDocumentGone]);
+  const dialogLabels =
+    conflict.mode === "gone"
+      ? {
+          conflictTitle: labels.documentGoneTitle,
+          conflictDescription: () => labels.documentGoneDescription,
+          conflictKeepMine: labels.documentGoneKeep,
+          conflictUseServer: labels.documentGoneClose,
+        }
+      : labels;
 
   useEffect(() => {
     if (!sourceLockedByCollab || !viewSource) return;
@@ -736,7 +758,7 @@ function DocsCollabWorkspaceInner({
           open={conflict.open}
           documentTitle={resolvedDocumentTitle}
           busy={conflict.busy}
-          labels={labels}
+          labels={dialogLabels}
           onKeepLocal={conflict.keepLocal}
           onUseServer={conflict.useServer}
           onOpenChange={conflict.setOpen}
