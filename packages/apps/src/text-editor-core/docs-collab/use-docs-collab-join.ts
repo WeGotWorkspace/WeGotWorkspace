@@ -37,6 +37,7 @@ import {
 import {
   DOC_STATUS_DOCUMENT_GONE,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
+  DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
   DOC_STATUS_SNAPSHOT_UNAVAILABLE,
 } from "./docs-collab-status";
@@ -110,6 +111,11 @@ export function useDocsCollabJoin({
   /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */
   const [snapshotPreview, setSnapshotPreview] = useState<string | null>(null);
   const meshJoinInFlightRef = useRef<object | null>(null);
+  /**
+   * What the local copy held once IndexedDB finished loading. Only that can be
+   * a stale seed; the server bootstrap keeps everything this session added.
+   */
+  const loadedStateRef = useRef<{ ydoc: Y.Doc; stateVector: Map<number, number> } | null>(null);
   const serverJoinStartedRef = useRef(false);
   const markDocReady = useCallback(() => {
     // A peer can fill the doc after a failed sidecar already showed the preview.
@@ -165,6 +171,7 @@ export function useDocsCollabJoin({
     refs.persistenceRef.current = null;
     void persistence?.destroy();
     refs.ydocRef.current = null;
+    loadedStateRef.current = null;
     refs.awarenessRef.current = null;
     const reset = createTeardownResetState();
     refs.seedDoneRef.current = reset.seedDone;
@@ -319,6 +326,8 @@ export function useDocsCollabJoin({
       }
 
       let settlement: "adopted" | "rebuilt" | "prompted" | "other" = "other";
+      let restoredLocalState = false;
+      let keptLocalEdits = false;
       if (snapshot.kind === "snapshot") {
         const pendingLocalWork =
           refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
@@ -340,10 +349,21 @@ export function useDocsCollabJoin({
             hasServerSnapshot: true,
             pendingServerSave: refs.pendingServerSaveRef.current,
           });
+          // Edits made in this tab before the snapshot landed survive the
+          // adoption below and still have to reach the server.
+          keptLocalEdits = refs.localDirtySinceLastSaveRef.current;
           if (adoption === "adopt-server") {
-            adoptServerSnapshot(ydoc, snapshot.update, SERVER_ORIGIN);
+            // No local load for this doc means nothing in it can be a stale seed.
+            const loaded = loadedStateRef.current;
+            restoredLocalState = adoptServerSnapshot(
+              ydoc,
+              snapshot.update,
+              SERVER_ORIGIN,
+              loaded?.ydoc === ydoc ? loaded.stateVector : new Map(),
+            );
           } else {
             Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
+            restoredLocalState = true;
           }
           if (markSeedDoneAfterSnapshot(ydoc)) {
             refs.seedDoneRef.current = true;
@@ -365,7 +385,7 @@ export function useDocsCollabJoin({
       // would let a later mesh seed replace that document.
       refs.pendingMarkdownRef.current = settlement === "prompted" ? "" : seed;
       refs.lastKnownMarkdownRef.current = settlement === "prompted" ? "" : markdown;
-      if (settlement === "rebuilt") {
+      if (settlement === "rebuilt" || keptLocalEdits) {
         refs.localDirtySinceLastSaveRef.current = true;
         refs.lastSuccessfulSaveSignatureRef.current = null;
         await updatePendingState(true, false);
@@ -387,8 +407,11 @@ export function useDocsCollabJoin({
         }
       } else if (settlement === "rebuilt") {
         setDocStatus(DOC_STATUS_LOADED_SHARED_DOCUMENT);
-      } else if (hadSnapshot && settlement === "adopted") {
+      } else if (hadSnapshot && settlement === "adopted" && restoredLocalState) {
         setDocStatus(DOC_STATUS_RESTORED_WORKING_VERSION);
+      } else if (hadSnapshot && settlement === "adopted") {
+        // A plain open: the local copy already matched the server.
+        setDocStatus((prev) => (prev === DOC_STATUS_LOADING_DOCUMENT ? "" : prev));
       }
 
       flushMeshSyncIfHydrated();
@@ -508,6 +531,11 @@ export function useDocsCollabJoin({
       database.nodeId ? docsCollabPathKeyedSources(room) : undefined,
     );
 
+    loadedStateRef.current = {
+      ydoc,
+      stateVector: Y.decodeStateVector(Y.encodeStateVector(ydoc)),
+    };
+
     const pendingSave = await persistence.get(PENDING_SERVER_SAVE_KEY);
     if (pendingSave) {
       await updatePendingState(true, false);
@@ -577,7 +605,7 @@ export function useDocsCollabJoin({
       return;
     }
 
-    setDocStatus("Loading document…");
+    setDocStatus(DOC_STATUS_LOADING_DOCUMENT);
 
     void (async () => {
       let authToken: string | undefined;
