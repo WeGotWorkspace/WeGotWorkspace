@@ -3,11 +3,9 @@ import { createRtcSession } from "@/lib/rtc/session/create-rtc-session";
 import { meetDcPokeFrame } from "@/lib/rtc/session/meet-data-channel";
 import { createMeshMeetRoomChat, type MeetRoomChatMessage } from "@/lib/rtc/session/meet-room-chat";
 import type { RtcPeerMesh } from "@/lib/rtc/session/peer-mesh";
-import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import type { HttpSignalingFetch, HttpSignalingPollResult } from "@/lib/rtc/signaling/http-client";
 import type { RtcPeerDescriptor, RtcSettings } from "@/lib/rtc/types";
 import { announceMeetJoin } from "@/meet-core/src/meet-join-hint";
-import { sanitizeRtcSdp } from "@/meet-core/src/meet-rtc-sdp";
 import {
   applyMeetSendEncodings,
   cameraSendingDisabled,
@@ -20,22 +18,6 @@ import {
   type VideoLimits,
 } from "@/meet-core/src/meet-video-sender";
 import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
-
-function formatMeetInboundDescription(
-  payload: unknown,
-  fallbackType: RTCSdpType,
-): RTCSessionDescriptionInit | null {
-  const raw = toSessionDescriptionPayload(payload, fallbackType);
-  if (!raw || typeof raw.sdp !== "string") return raw;
-  return { ...raw, sdp: sanitizeRtcSdp(raw.sdp) };
-}
-
-/** Leave local descriptions untouched — sanitizing outbound SDP strips SSRC lines and can break senders. */
-function formatMeetOutboundDescription(
-  description: RTCSessionDescriptionInit,
-): RTCSessionDescriptionInit {
-  return description;
-}
 
 export type MeetRtcSessionOptions = {
   rtcSettings: RtcSettings;
@@ -92,8 +74,6 @@ export class MeetRtcSession {
         apiBase: this.options.apiBase,
         fetchImpl: this.options.fetchImpl,
       },
-      formatInboundDescription: formatMeetInboundDescription,
-      formatOutboundDescription: formatMeetOutboundDescription,
       shouldConnectToPeer: this.options.shouldConnectToPeer,
       shouldHandleRtcSignals: this.options.shouldHandleRtcSignals,
       shouldAcceptOffer: this.options.shouldAcceptOffer,
