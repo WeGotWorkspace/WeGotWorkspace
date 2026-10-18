@@ -39,6 +39,14 @@ const STALE_ETAG = '"rev-stale"';
 const LOCAL = "kept local text";
 const SERVER = "server text";
 
+function sidecarUpdate(): Uint8Array {
+  const doc = new Y.Doc();
+  doc.getText("sidecar").insert(0, SERVER);
+  const update = Y.encodeStateAsUpdate(doc);
+  doc.destroy();
+  return update;
+}
+
 type SnapshotMode = "serve" | "status";
 
 type PutRecord = {
@@ -54,9 +62,12 @@ type FakeDocument = {
   revision: number;
   snapshotMode: SnapshotMode;
   snapshotStatus: number;
+  /** Bump the revision after a snapshot GET, so the remembered etag is already stale. */
+  advanceRevisionAfterSnapshot: boolean;
 };
 
 function etagFor(document: FakeDocument): string | null {
+  // A 0-byte sidecar exists too.
   return document.yjs ? `"rev-${document.revision}"` : null;
 }
 
@@ -97,6 +108,7 @@ function createFakeServer(initial: Partial<FakeDocument> = {}) {
     revision: 0,
     snapshotMode: "serve",
     snapshotStatus: 204,
+    advanceRevisionAfterSnapshot: false,
     ...initial,
   };
   const puts: PutRecord[] = [];
@@ -111,9 +123,12 @@ function createFakeServer(initial: Partial<FakeDocument> = {}) {
         });
       }
       if (!document.yjs) return new Response(null, { status: 204 });
-      return new Response(document.yjs as unknown as BodyInit, {
+      const etag = etagFor(document)!;
+      const body = document.yjs;
+      if (document.advanceRevisionAfterSnapshot) document.revision += 1;
+      return new Response(body as unknown as BodyInit, {
         status: 200,
-        headers: { ETag: etagFor(document)! },
+        headers: { ETag: etag },
       });
     }
     if (method !== "PUT") return new Response("not found", { status: 404 });
@@ -290,6 +305,51 @@ describe("Docs conflict Keep mine", () => {
     // the promise does not reject. Flip these four assertions when that lands.
     expect(kept).toEqual([
       { ifMatch: STALE_ETAG, ifNoneMatch: undefined, markdown: LOCAL, status: 412 },
+    ]);
+    expect(result.current.conflict.open).toBe(true);
+    expect(server.document.markdown).toBe(SERVER);
+    expect(rejections).toHaveLength(1);
+    expect(rejections[0]).toMatchObject({ status: 412 });
+  });
+
+  it("keeps the dialog open when the refreshed etag is still refused", async () => {
+    // Reachable route: the first save is 412, the reload applies, the snapshot
+    // etag is remembered, and the second save is 412 again. Keep mine then
+    // runs with canRemerge false, so it sends that fresh If-Match and does not
+    // reload. The sidecar moves after the GET, which is why the fresh etag misses.
+    const freshEtag = '"rev-2"';
+    const server = createFakeServer({
+      markdown: SERVER,
+      yjs: sidecarUpdate(),
+      revision: 2,
+      snapshotMode: "serve",
+      advanceRevisionAfterSnapshot: true,
+    });
+    vi.stubGlobal("fetch", vi.fn(server.handle));
+    rememberSidecarEtag(ROOM, STALE_ETAG);
+
+    const { result } = renderHook(() => useKeepLocalHarness(markdown));
+    markEdited(result, markdown, LOCAL);
+    await saveUntilConflict(result);
+    expect(server.puts).toEqual([
+      { ifMatch: STALE_ETAG, ifNoneMatch: undefined, markdown: LOCAL, status: 412 },
+      { ifMatch: freshEtag, ifNoneMatch: undefined, markdown: LOCAL, status: 412 },
+    ]);
+    const putsBeforeKeep = server.puts.length;
+
+    const rejections = await trackRejections(async () => {
+      act(() => {
+        result.current.conflict.keepLocal();
+      });
+      await waitFor(() => expect(result.current.conflict.busy).toBe(false));
+    });
+
+    const kept = server.puts.slice(putsBeforeKeep);
+    // Correct outcome: Keep mine writes the local version, the dialog closes,
+    // the server stores that version, and the promise does not reject. Flip
+    // these assertions when that lands. The If-Match stays the refreshed one.
+    expect(kept).toEqual([
+      { ifMatch: freshEtag, ifNoneMatch: undefined, markdown: LOCAL, status: 412 },
     ]);
     expect(result.current.conflict.open).toBe(true);
     expect(server.document.markdown).toBe(SERVER);
