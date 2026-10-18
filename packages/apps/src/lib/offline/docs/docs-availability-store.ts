@@ -25,18 +25,25 @@ export async function readDocsAvailability(
   return docsAvailabilityTable(db).get(normalizeDocsAvailabilityPath(apiPath));
 }
 
+/**
+ * Write a pin. `nodeId` is the document identity; a rewrite without one keeps
+ * the id already stored, so re-pinning never forgets which document it is.
+ */
 export async function writeDocsAvailability(
   username: string,
   row: Pick<OfflineDocsAvailabilityRow, "id" | "location"> &
-    Partial<Pick<OfflineDocsAvailabilityRow, "pinnedAt" | "lastSyncedAt">>,
+    Partial<Pick<OfflineDocsAvailabilityRow, "pinnedAt" | "lastSyncedAt" | "nodeId">>,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = docsAvailabilityTable(db);
   const id = normalizeDocsAvailabilityPath(row.id);
-  await docsAvailabilityTable(db).put({
+  const nodeId = row.nodeId?.trim() || (await table.get(id))?.nodeId;
+  await table.put({
     id,
     location: row.location,
     pinnedAt: row.pinnedAt ?? Date.now(),
     lastSyncedAt: row.lastSyncedAt ?? null,
+    ...(nodeId ? { nodeId } : {}),
   });
   rememberOfflineDocsUsername(username);
 }
@@ -75,6 +82,29 @@ export async function stampDocsAvailabilityNodeIds(
     pins.set(id, next);
     await table.put(next);
   }
+}
+
+/**
+ * Move every pin of a FileNode to `newPath`, matched on `nodeId` rather than
+ * on the path the pin was stored under. A pin whose path went stale still
+ * follows its document.
+ */
+export async function moveDocsAvailabilityForNode(
+  username: string,
+  nodeId: string,
+  newPath: string,
+): Promise<void> {
+  const id = nodeId.trim();
+  if (!id) return;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = docsAvailabilityTable(db);
+  const newId = normalizeDocsAvailabilityPath(newPath);
+  const pins = await table.where("nodeId").equals(id).toArray();
+  const stale = pins.filter((pin) => pin.id !== newId);
+  if (stale.length === 0) return;
+  const kept = pins.find((pin) => pin.id === newId) ?? stale[0]!;
+  await table.put({ ...kept, id: newId, nodeId: id });
+  for (const pin of stale) await table.delete(pin.id);
 }
 
 export async function migrateDocsAvailabilityPath(
