@@ -7,7 +7,7 @@ A commercial license is available for organizations that want to:
 - embed or integrate WeGotWorkspace in a closed-source product, and/or
 - distribute modified versions without AGPL obligations (OEM).
 
-Support/SLA and partner agreements for hosting companies are offered separately. Contact us at the address below.
+For support/SLA or partner agreements for hosting companies, contact us at the address below.
 
 Third-party components keep their own licenses; see `THIRD_PARTY_NOTICES.md`.
 
