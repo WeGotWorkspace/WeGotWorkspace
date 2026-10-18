@@ -141,6 +141,7 @@ final class DocCollabDocumentService
         try {
             $this->assertSidecarPrecondition($request, $sidecarKey, $yjsBytes !== null);
             $previousSidecar = $this->readSidecarBytes($sidecarKey);
+            $this->assertNoUnseenExternalWrite($request, $documentKey, $previousSidecar);
             $wroteSidecar = false;
             if ($yjsBytes !== null) {
                 $disk->put($sidecarKey, $yjsBytes);
@@ -251,6 +252,30 @@ final class DocCollabDocumentService
         }
 
         $disk->put($sidecarKey, $previous);
+    }
+
+    /**
+     * #1349: a client that holds the current sidecar tag would still write
+     * over an outside edit it never saw. While the stored markdown is not
+     * the text this sidecar was saved with, a save must name the text it saw
+     * in `X-Wgw-External-Write` (that representation's entity tag). A newer
+     * outside edit makes that tag stale, so it is refused again.
+     */
+    private function assertNoUnseenExternalWrite(
+        Request $request,
+        string $documentKey,
+        ?string $sidecar,
+    ): void {
+        if ($sidecar === null || ! $this->states->isExternalWrite($documentKey, $sidecar)) {
+            return;
+        }
+
+        $seen = trim((string) $request->headers->get(CollabExternalWrite::HEADER, ''));
+        if ($seen !== '' && $this->etagSatisfies($seen, $this->states->storedTextEtag($documentKey))) {
+            return;
+        }
+
+        $this->fail('external_write', 409);
     }
 
     /**

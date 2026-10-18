@@ -14528,6 +14528,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "X-Wgw-External-Write",
+                        "in": "header",
+                        "required": false,
+                        "description": "Entity tag of the text representation the client saw after the document changed outside the app: the markdown `ETag` from `GET /files/collaboration` (sha1 of the markdown bytes). Required to save while the stored text is not the text the sidecar was saved with; without it, or with a tag for an older text, the save is refused with 409 `external_write`.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -14554,6 +14563,16 @@
                     },
                     "404": {
                         "description": "Unknown path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "`external_write` — the stored text changed outside the app since the sidecar was saved, and the request did not name that text in `X-Wgw-External-Write`. Nothing is written. Load the text, let the person choose, then save with its entity tag. Not a sidecar divergence: reloading the sidecar does not resolve it.",
                         "content": {
                             "application/json": {
                                 "schema": {

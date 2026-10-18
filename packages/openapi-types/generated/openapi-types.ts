@@ -2872,6 +2872,8 @@ export interface paths {
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
+                    /** @description Entity tag of the text representation the client saw after the document changed outside the app: the markdown `ETag` from `GET /files/collaboration` (sha1 of the markdown bytes). Required to save while the stored text is not the text the sidecar was saved with; without it, or with a tag for an older text, the save is refused with 409 `external_write`. */
+                    "X-Wgw-External-Write"?: string;
                 };
                 path?: never;
                 cookie?: never;
@@ -2898,6 +2900,15 @@ export interface paths {
                 };
                 /** @description Unknown path */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `external_write` — the stored text changed outside the app since the sidecar was saved, and the request did not name that text in `X-Wgw-External-Write`. Nothing is written. Load the text, let the person choose, then save with its entity tag. Not a sidecar divergence: reloading the sidecar does not resolve it. */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

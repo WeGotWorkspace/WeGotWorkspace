@@ -89,6 +89,12 @@ final class DocYjsStateStore
         return ! hash_equals($row->content_etag, $this->storedHash('sha256', $documentKey));
     }
 
+    /** The entity tag of the markdown representation: sha1 of the stored bytes. */
+    public function storedTextEtag(string $documentKey): string
+    {
+        return '"'.$this->storedHash('sha1', $documentKey).'"';
+    }
+
     /**
      * Streamed: a DAV write may leave a document far larger than a collab
      * save allows, and the read must not load it to compare a hash. A
