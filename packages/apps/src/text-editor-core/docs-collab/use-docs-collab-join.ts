@@ -171,6 +171,7 @@ export function useDocsCollabJoin({
     refs.localDirtySinceLastSaveRef.current = reset.localDirtySinceLastSave;
     refs.pendingServerSaveRef.current = reset.pendingServerSave;
     refs.externalWriteHoldRef.current = false;
+    refs.externalWriteSeenRef.current = null;
     refs.markdownOverrideRef.current = null;
     refs.lastKnownMarkdownRef.current = reset.lastKnownMarkdown;
     refs.lastSuccessfulSaveSignatureRef.current = reset.lastSuccessfulSaveSignature;

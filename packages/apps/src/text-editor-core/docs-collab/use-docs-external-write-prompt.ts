@@ -77,7 +77,12 @@ export function useDocsExternalWritePrompt({
   const [busy, setBusy] = useState(false);
   const [appliedOutside, setAppliedOutside] = useState<ExternalWriteDetail | null>(null);
   const { detail, clear } = request;
-  const keepLocalDisabled = detail !== null && appliedOutside === detail;
+  // Set for the whole question chain: a second outside edit during the
+  // answer asks again, and the local edits are still gone.
+  const keepLocalDisabled = detail !== null && appliedOutside !== null;
+  useEffect(() => {
+    if (detail === null) setAppliedOutside(null);
+  }, [detail]);
 
   const answer = useCallback(
     (suppliedMarkdown: string | null) => {
