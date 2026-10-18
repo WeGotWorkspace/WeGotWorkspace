@@ -10,9 +10,15 @@ import {
   sidecarPrecondition,
 } from "./docs-collab-etag";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
+import {
+  decideExternalWrite,
+  EXTERNAL_WRITE_HEADER,
+  replaceDocumentWithExternalText,
+} from "./docs-collab-external-write";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import {
   fetchYjsSnapshot,
+  loadCollabText,
   loadMarkdown,
   loadYjsSnapshot,
   saveDocument,
@@ -23,12 +29,9 @@ import { SERVER_ORIGIN } from "./docs-collab-utils";
 /**
  * One scenario table for Notes and Docs. The fake server is the same kind of
  * stand-in as `docs-collab-concurrent-save.test.ts`: ETag, If-Match,
- * If-None-Match, 412, and 428. No real backend. The table has no per-app branch.
- *
- * An external writer is not in this table. Detection exists only for Notes.
- * Docs has no journal and no `X-Wgw-External-Write` until N9/N10. The row
- * comes back when Docs has the same mechanism. This suite does not replace
- * the existing `docs-collab-*` tests.
+ * If-None-Match, 412, 428, and `X-Wgw-External-Write`. No real backend. The
+ * table has no per-app branch. This suite does not replace the existing
+ * `docs-collab-*` tests.
  */
 type StoredDocument = {
   markdown: string;
@@ -41,9 +44,12 @@ type CollabApp = {
   createDocument(): Promise<{ id: string; urls: DocsCollabUrls }>;
   /** Reads what is stored on the server, independent of the client. */
   readStored(id: string): Promise<StoredDocument>;
+  /** Writes the text from outside the app, the way a CalDAV or WebDAV client would. */
+  writeExternally(id: string, markdown: string): Promise<void>;
 };
 
-type ServerDocument = StoredDocument & { revision: number };
+/** `savedMarkdown` is the text the last collab save linked the state to. */
+type ServerDocument = StoredDocument & { revision: number; savedMarkdown: string };
 
 type UrlMatch = { id: string; yjs: boolean } | null;
 
@@ -106,10 +112,9 @@ function createCollabFakeServer(options: {
     const method = init?.method ?? "GET";
     if (method === "GET" && matched.yjs) {
       if (!document.yjs) return new Response(null, { status: 204 });
-      return new Response(document.yjs as unknown as BodyInit, {
-        status: 200,
-        headers: { ETag: etagFor(document)! },
-      });
+      const headers: Record<string, string> = { ETag: etagFor(document)! };
+      if (document.markdown !== document.savedMarkdown) headers[EXTERNAL_WRITE_HEADER] = "1";
+      return new Response(document.yjs as unknown as BodyInit, { status: 200, headers });
     }
     if (method === "GET") return options.markdownResponse(document.markdown);
     if (method !== "PUT") return new Response("method not allowed", { status: 405 });
@@ -131,14 +136,17 @@ function createCollabFakeServer(options: {
       document.yjs = body.yjs.slice();
       document.revision += 1;
     }
-    if (typeof body.markdown === "string") document.markdown = body.markdown;
+    if (typeof body.markdown === "string") {
+      document.markdown = body.markdown;
+      document.savedMarkdown = body.markdown;
+    }
     return new Response("{}", { status: 200, headers: { ETag: etagFor(document)! } });
   };
 
   return {
     handle,
     create(id: string): void {
-      documents.set(id, { markdown: "", yjs: null, revision: 0 });
+      documents.set(id, { markdown: "", yjs: null, revision: 0, savedMarkdown: "" });
     },
     read(id: string): StoredDocument {
       const document = documents.get(id);
@@ -147,6 +155,12 @@ function createCollabFakeServer(options: {
         markdown: document.markdown,
         yjs: document.yjs ? document.yjs.slice() : null,
       };
+    },
+    /** The text changes; the stored state and its tag do not. */
+    writeExternal(id: string, markdown: string): void {
+      const document = documents.get(id);
+      if (!document) throw new Error(`missing document ${id}`);
+      document.markdown = markdown;
     },
   };
 }
@@ -208,6 +222,9 @@ function createDocsCollabApp(): CollabApp {
     async readStored(id) {
       return server.read(id);
     },
+    async writeExternally(id, markdown) {
+      server.writeExternal(id, markdown);
+    },
   };
 }
 
@@ -249,6 +266,9 @@ function createNotesCollabApp(): CollabApp {
     },
     async readStored(id) {
       return server.read(id);
+    },
+    async writeExternally(id, markdown) {
+      server.writeExternal(id, markdown);
     },
   };
 }
@@ -467,6 +487,42 @@ const scenarios: Scenario[] = [
       Y.applyUpdate(settled, stored.yjs!);
       const text = readContentFromYDoc(settled, "markdown");
       expect(text.split(UNSIDECARRED_MARKER).length - 1).toBe(1);
+    },
+  },
+  {
+    name: "an external writer changes the content",
+    async run(app) {
+      const { id, urls } = await app.createDocument();
+      const room = requireRoom(urls);
+      const author = await openClient(urls);
+      edit(author, "saved in the app");
+      await save(urls, author, "saved in the app");
+      const stateBefore = (await app.readStored(id)).yjs;
+
+      await app.writeExternally(id, "Written outside the app.");
+
+      const flagged = await fetchYjsSnapshot(urls.yjsUrl);
+      expect(flagged.externalWrite).toBe(true);
+      expect((await app.readStored(id)).yjs).toEqual(stateBefore);
+      // With unsaved work the person is asked and nothing is written yet.
+      const putsBefore = documentPuts(urls.documentUrl).length;
+      expect(decideExternalWrite(true, true)).toBe("prompt");
+      expect(documentPuts(urls.documentUrl)).toHaveLength(putsBefore);
+
+      // Without it, the document is rebuilt from the outside text and saved.
+      expect(decideExternalWrite(true, false)).toBe("rebuild");
+      const text = await loadCollabText(urls.documentUrl);
+      const rebuilt = new Y.Doc();
+      replaceDocumentWithExternalText(rebuilt, text.markdown, text.title, "markdown");
+      rememberSidecarEtag(room, flagged.etag);
+      await save(urls, rebuilt, text.markdown);
+
+      const stored = await app.readStored(id);
+      expect(stored.markdown).toBe("Written outside the app.");
+      const settled = new Y.Doc();
+      Y.applyUpdate(settled, stored.yjs!);
+      expect(readContentFromYDoc(settled, "markdown")).toContain("Written outside the app.");
+      expect((await fetchYjsSnapshot(urls.yjsUrl)).externalWrite).toBe(false);
     },
   },
 ];
