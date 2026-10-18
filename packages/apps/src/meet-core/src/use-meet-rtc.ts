@@ -23,6 +23,7 @@ export type UseMeetRtcOptions = {
   onPeerConnected: (remoteId: string) => void;
   onRelayOutcome?: (remoteId: string, name: string, outcome: RelayRequestOutcome) => void;
   onVideoLimits?: (limits: VideoLimits) => void;
+  cameraWanted?: () => boolean;
   onMeetData?: (remoteId: string, data: string) => void;
   /** Guest path: read room ICE settings once the join returns a session key. */
   refreshRtcSettings?: (input: { sessionKey: string }) => Promise<RtcSettings | null>;
@@ -50,6 +51,7 @@ function createSession(options: UseMeetRtcOptions): MeetRtcSession {
     onPeerConnected: options.onPeerConnected,
     onRelayOutcome: options.onRelayOutcome,
     onVideoLimits: options.onVideoLimits,
+    cameraWanted: options.cameraWanted,
     onMeetData: options.onMeetData,
     refreshRtcSettings: options.refreshRtcSettings,
     onRtcSettings: options.onRtcSettings,

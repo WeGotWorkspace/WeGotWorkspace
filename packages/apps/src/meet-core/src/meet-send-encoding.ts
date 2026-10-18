@@ -29,6 +29,7 @@ export async function applyMeetSendEncodings(
   remotePeers: number,
   limits: VideoLimits,
   prefs: MeetEncodingPrefs,
+  cameraOn = false,
 ): Promise<void> {
   await Promise.all(
     connections.map(async (pc) => {
@@ -49,6 +50,7 @@ export async function applyMeetSendEncodings(
         screenMode: prefs.screenMode,
         lowData: prefs.lowData,
         screenTrackId: prefs.screenTrackId,
+        cameraOn,
       });
     }),
   );
