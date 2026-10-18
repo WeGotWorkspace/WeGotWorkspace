@@ -45,7 +45,7 @@ import { isCollabDocumentGoneError } from "./docs-collab-utils";
 import type { DocsCollabSession, DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 import {
   BC_TAB_ORIGIN,
-  collabDocumentFormat,
+  collabFormatForUrls,
   colorForName,
   docSignature,
   isRemoteUpdateOrigin,
@@ -105,7 +105,7 @@ export function useDocsCollabJoin({
     flushMeshSyncIfHydrated,
   } = mesh;
   const { updatePendingState, flushPendingSaveIfReady } = save;
-  const documentFormat = collabDocumentFormat(room);
+  const documentFormat = collabFormatForUrls({ room, documentFormat: urls.documentFormat });
   const [session, setSession] = useState<DocsCollabSession | null>(null);
   const [joined, setJoined] = useState(false);
   /** Markdown shown read-only while a failed sidecar must not enter the Y.Doc. */

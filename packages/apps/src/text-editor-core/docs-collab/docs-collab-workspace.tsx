@@ -561,7 +561,6 @@ function DocsCollabWorkspaceInner({
   });
   const externalWrite = useDocsExternalWritePrompt({
     request: externalWriteRequest,
-    room: urls?.room,
     ydoc: collabSession?.ydoc ?? null,
     resolveExternalWrite,
     onOutsideApplied: handleServerDocApplied,

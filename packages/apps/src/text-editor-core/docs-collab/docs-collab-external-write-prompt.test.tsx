@@ -163,7 +163,6 @@ function renderDocsWorkspaceHooks(initialUrls: DocsCollabUrls) {
       const collab = useDocsCollab({ userName: "Alex", autoJoin: true, urls: request.urls, wire });
       const prompt = useDocsExternalWritePrompt({
         request,
-        room: urls.room,
         ydoc: collab.session?.ydoc ?? null,
         resolveExternalWrite: collab.resolveExternalWrite,
       });

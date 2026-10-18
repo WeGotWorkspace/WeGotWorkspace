@@ -109,8 +109,11 @@ export function NoteCollabSession({
   onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {
+  // A note is always markdown. Its room is a UID, which may end in what looks
+  // like a plain-text extension (`…@host.json`).
+  const noteUrls = useMemo(() => ({ ...urls, documentFormat: "markdown" as const }), [urls]);
   // The same question chain Docs uses: tied to this room, held until an answer saves.
-  const externalWriteRequest = useDocsExternalWriteRequest(urls);
+  const externalWriteRequest = useDocsExternalWriteRequest(noteUrls);
   const collab = useDocsCollab({
     userName,
     autoJoin: true,
@@ -184,7 +187,6 @@ export function NoteCollabSession({
   const onOutsideApplied = useCallback(() => syncBodyPreview("hydrate"), [syncBodyPreview]);
   const externalWrite = useDocsExternalWritePrompt({
     request: externalWriteRequest,
-    room: urls.room,
     ydoc: collab.session?.ydoc ?? null,
     resolveExternalWrite: collab.resolveExternalWrite,
     onOutsideApplied,

@@ -2,6 +2,7 @@ import type { MutableRefObject } from "react";
 import type { IndexeddbPersistence } from "y-indexeddb";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import type * as Y from "yjs";
+import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import type { DocsCollabAccess } from "./docs-collab-access";
 import type { DocsCollabWireOperations } from "./docs-collab-wire";
 import type { DocsRtcSession } from "./docs-rtc-session";
@@ -59,6 +60,11 @@ export type DocsCollabUrls = {
    * does not write until this is false.
    */
   roomNotPersistent?: boolean;
+  /**
+   * How the text is seeded and rebuilt. Without it the room's file name
+   * decides, which fits a Drive path but not an id such as a note UID.
+   */
+  documentFormat?: TextEditorContentFormat;
   onPersistForbidden?: () => void;
   /**
    * The server answered 404. Retrying the save stops. The local copy stays.
