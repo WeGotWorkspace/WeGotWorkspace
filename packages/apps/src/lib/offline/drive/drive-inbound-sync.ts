@@ -17,21 +17,14 @@ import {
   readDriveBootstrapFromCache,
   upsertDriveEntry,
 } from "@/lib/offline/drive/drive-directory-offline-store";
+import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
 import {
   deleteDriveEntryByPath,
-  listKeptUnsavedDocumentPaths,
   retainOrDropLocalDocument,
 } from "@/lib/offline/drive/drive-local-document";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
-import {
-  docsCollabIndexedDbKey,
-  docsCollabLegacyIndexedDbKeys,
-  docsCollabRoomKey,
-  migrateCollabPersistence,
-} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 /** Meta key for the FileNode/changes `sinceState`. One token per account. */
 export const DRIVE_FILE_NODE_SYNC_TOKEN_KEY = "drive:file-node-sync-state";
@@ -262,6 +255,10 @@ async function moveCachedNodeToPath(
   return "moved";
 }
 
+/**
+ * Pins and blobs of a descendant follow the new path. The collab database does
+ * not move: Docs keys it on the FileNode id, which a rename keeps.
+ */
 async function migrateDescendantSidecars(
   username: string,
   oldPath: string,
@@ -271,13 +268,6 @@ async function migrateDescendantSidecars(
   await migrateDocsAvailabilityPath(username, oldPath, newPath);
   await migrateDriveAvailabilityPath(username, oldPath, newPath);
   await migrateDriveContentBlobPath(username, oldPath, newPath);
-  if (!isDocsCollabEditablePath(oldPath) || !isDocsCollabEditablePath(newPath)) return;
-  if (!(await collabDatabaseExists(oldPath))) return;
-  try {
-    await migrateCollabPersistence(oldPath, newPath);
-  } catch (error) {
-    console.warn("[drive-inbound] descendant collab migration failed", error);
-  }
 }
 
 async function resolveNodePath(
@@ -396,18 +386,6 @@ function accountDb(username: string) {
 
 function normalizePath(path: string): string {
   return path.trim().replace(/^\/+/, "");
-}
-
-async function collabDatabaseExists(apiPath: string): Promise<boolean> {
-  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return true;
-  try {
-    const room = docsCollabRoomKey(apiPath);
-    const names = new Set([docsCollabIndexedDbKey(room), ...docsCollabLegacyIndexedDbKeys(room)]);
-    const rows = await indexedDB.databases();
-    return rows.some((row) => row.name != null && names.has(row.name));
-  } catch {
-    return true;
-  }
 }
 
 function isCannotCalculateChanges(error: unknown): boolean {

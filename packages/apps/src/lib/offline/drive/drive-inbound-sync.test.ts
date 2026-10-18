@@ -58,7 +58,7 @@ import {
   readDriveSyncToken,
   syncDriveInboundFromFileNodes,
 } from "@/lib/offline/drive/drive-inbound-sync";
-import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-local-document";
+import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
 
 const username = "ada";
 
