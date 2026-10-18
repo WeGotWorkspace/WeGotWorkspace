@@ -41,6 +41,7 @@ import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { getDriveSyncRunner } from "@/lib/offline/drive/drive-hybrid-operations";
 import { setDriveSyncConflictListener } from "@/lib/offline/drive/drive-sync-conflicts";
 import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
+import { useDriveFileNodeInbound } from "@/lib/offline/drive/use-drive-file-node-inbound";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
 import type { DriveFile } from "@/drive-core/src/drive-models";
@@ -176,6 +177,7 @@ export function DriveWorkspace({
     retryLabel: driveLabels.retrySync,
     onRetry: retryFailedOutbox,
   });
+  useDriveFileNodeInbound(offlineEnabled ? offlineUsername : null, outboxNoticeKey);
 
   useOfflineSyncToast(syncing, driveLabels.toastSynced);
   const { primarySidebarItems, groupSidebarItems } = useDriveSidebarModel({

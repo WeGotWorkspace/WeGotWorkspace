@@ -5,6 +5,7 @@ import {
   collabDocumentFormat,
   docSignature,
   IDB_ORIGIN,
+  isCollabDocumentGoneError,
   isCollabPayloadTooLarge,
   isCollabPreconditionFailed,
   isRemoteUpdateOrigin,
@@ -36,6 +37,15 @@ describe("docs-collab-utils", () => {
   it("treats 428 and precondition_required as a server divergence", () => {
     expect(isServerDivergenceError(Object.assign(new Error("stale"), { status: 428 }))).toBe(true);
     expect(isServerDivergenceError(new Error("precondition_required"))).toBe(true);
+  });
+
+  it("treats 404 as a gone document", () => {
+    expect(isCollabDocumentGoneError(Object.assign(new Error("missing"), { status: 404 }))).toBe(
+      true,
+    );
+    expect(isCollabDocumentGoneError(new Error("GET failed (404)"))).toBe(true);
+    expect(isCollabDocumentGoneError(new Error("GET failed (500)"))).toBe(false);
+    expect(isServerDivergenceError(new Error("GET failed (404)"))).toBe(false);
   });
 
   it("treats 413 as a permanent save failure", () => {

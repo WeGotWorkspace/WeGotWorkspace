@@ -14,9 +14,18 @@ import {
   saveSuccessState,
   shouldMarkPendingWhenUnsaved,
 } from "./docs-collab-save-queue";
-import { DOC_STATUS_NOTE_TOO_LARGE } from "./docs-collab-status";
+import {
+  DOC_STATUS_ACCESS_LOST,
+  DOC_STATUS_DOCUMENT_GONE,
+  DOC_STATUS_NOTE_TOO_LARGE,
+} from "./docs-collab-status";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
-import { collabErrorStatus, docSignature, isCollabPayloadTooLarge } from "./docs-collab-utils";
+import {
+  collabErrorStatus,
+  docSignature,
+  isCollabDocumentGoneError,
+  isCollabPayloadTooLarge,
+} from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type UseDocsCollabSaveOptions = {
@@ -80,6 +89,7 @@ export function useDocsCollabSave({
 
   const persistToServer = useCallback(async (): Promise<void> => {
     // First, before the offline pending mark. persistCollabSave checks it too.
+    if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (urls.roomNotPersistent) return;
     if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
@@ -128,6 +138,7 @@ export function useDocsCollabSave({
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
       refs.localDirtySinceLastSaveRef.current = success.localDirtySinceLastSave ?? false;
       refs.lastSuccessfulSaveSignatureRef.current = success.lastSuccessfulSaveSignature ?? null;
+      refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = success.saveRetryMs ?? 0;
       refs.nextSaveAttemptAtRef.current = success.nextSaveAttemptAt ?? 0;
       await updatePendingState(false, false);
@@ -136,14 +147,21 @@ export function useDocsCollabSave({
       urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
       refs.saveFailedRef.current = true;
-      if (urls.onPersistForbidden && collabErrorStatus(err) === 403) {
-        urls.onPersistForbidden();
-      }
-      if (isCollabPayloadTooLarge(err)) {
+      const terminal = terminalSaveFailure(err);
+      if (terminal) {
+        refs.saveTerminalKindRef.current = terminal;
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
         await updatePendingState(true, true);
-        setDocStatus(DOC_STATUS_NOTE_TOO_LARGE);
+        if (terminal === "gone") {
+          urls.onDocumentGone?.();
+          setDocStatus(DOC_STATUS_DOCUMENT_GONE);
+        } else if (terminal === "forbidden") {
+          urls.onPersistForbidden?.();
+          setDocStatus(DOC_STATUS_ACCESS_LOST);
+        } else {
+          setDocStatus(DOC_STATUS_NOTE_TOO_LARGE);
+        }
         throw err;
       }
       const failure = saveFailureState(refs.saveRetryMsRef.current);
@@ -224,6 +242,13 @@ export function useDocsCollabSave({
 }
 
 export { SAVE_DELAY_MS };
+
+function terminalSaveFailure(error: unknown): "gone" | "forbidden" | "too-large" | null {
+  if (isCollabDocumentGoneError(error)) return "gone";
+  if (collabErrorStatus(error) === 403) return "forbidden";
+  if (isCollabPayloadTooLarge(error)) return "too-large";
+  return null;
+}
 
 /**
  * A reconnect can apply the server Y.Doc before the editor view catches up.

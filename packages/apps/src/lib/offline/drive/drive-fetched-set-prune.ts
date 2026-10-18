@@ -269,7 +269,8 @@ async function removePrunedFile(
   return true;
 }
 
-async function rememberKeptUnsavedDocuments(
+/** Add paths to the kept-unsaved list that both home notices read. */
+export async function rememberKeptUnsavedDocuments(
   username: string,
   paths: readonly string[],
 ): Promise<void> {
