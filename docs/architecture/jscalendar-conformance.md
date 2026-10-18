@@ -181,6 +181,16 @@ Pinned by existing tests or confirmed while probing:
 - VTIMEZONE definitions, through `timeZones[*].icsDefinition`.
 - Sibling VEVENTs in multi-VEVENT objects (composite ids, `updateVEventInIcs`).
 
+### Notes (VJOURNAL)
+
+Notes do not have the rebuild problem. `NoteJournalConverter::mergeIntoIcs` reads the stored VJOURNAL and touches only SUMMARY, DESCRIPTION, CATEGORIES and STATUS. Both the REST save (`NoteRepository`) and the collaborative save (`NoteCollaborativeWrite`) use it. `NoteRoundTripTest` pins that ATTACH, RELATED-TO, ATTENDEE, COLOR, X-* properties with parameters and calendar-level properties survive a title edit. This is the pattern A0 proposes for events and tasks.
+
+| ID | Finding | Severity |
+|---|---|---|
+| NT-1 | A body edit collapses several DESCRIPTIONs (allowed in VJOURNAL, RFC 5545 §3.6.3) into one and drops their parameters (LANGUAGE, ALTREP). Pinned by `test_nt1_*`. | Low (few clients write more than one) |
+
+**Not covered here:** the body goes through the TipTap editor and back to markdown in the client. A note written by another app can come back with different markdown syntax (list markers, blank lines) after one WGW edit. No text is lost, but the bytes change. That is a client-side codec question and needs a test in `packages/apps`.
+
 ---
 
 ## Classification
