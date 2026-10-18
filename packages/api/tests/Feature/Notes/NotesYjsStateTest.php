@@ -546,14 +546,14 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $this->assertSame(self::BINARY, $state->getContent());
         $this->assertSame($before['bytes'], $this->storedState($note['id'])['bytes']);
 
-        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
+        $seen = (string) $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
             ->assertOk()
-            ->assertJsonPath('body', 'from outside');
+            ->assertJsonPath('body', 'from outside')->json('contentEtag');
 
         $this->putState($note['id'], [
             'markdown' => 'from outside',
             'yjs' => [4, 5, 6],
-        ], ['If-Match' => $stateEtag])->assertOk();
+        ], ['If-Match' => $stateEtag, CollabExternalWrite::HEADER => $seen])->assertOk();
 
         $again = $this->asUser('bob')
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
