@@ -1,5 +1,6 @@
 export const TRANSIENT_DOC_STATUS_DISMISS_MS = 4000;
 
+export const DOC_STATUS_LOADING_DOCUMENT = "Loading document…";
 export const DOC_STATUS_LOADED_SHARED_DOCUMENT = "Loaded shared document";
 export const DOC_STATUS_RESTORED_WORKING_VERSION = "Restored working version";
 export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";

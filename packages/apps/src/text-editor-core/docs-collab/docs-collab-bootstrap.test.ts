@@ -16,6 +16,17 @@ function docWithText(text: string): Y.Doc {
   return ydoc;
 }
 
+function appendParagraph(ydoc: Y.Doc, text: string): void {
+  const fragment = ydoc.getXmlFragment("default");
+  const node = new Y.XmlElement("paragraph");
+  node.insert(0, [new Y.XmlText(text)]);
+  fragment.insert(fragment.length, [node]);
+}
+
+function stateVector(ydoc: Y.Doc): Map<number, number> {
+  return Y.decodeStateVector(Y.encodeStateVector(ydoc));
+}
+
 function fragmentText(ydoc: Y.Doc): string {
   return ydoc.getXmlFragment("default").toString();
 }
@@ -270,5 +281,53 @@ describe("adoptServerSnapshot", () => {
     expect(text).toContain("server copy");
     expect(text).toContain("extra server line");
     expect(text).not.toContain("local seed");
+  });
+
+  it("keeps text typed after the local copy loaded and drops the stale seed", () => {
+    const stored = docWithText("local seed");
+    const local = new Y.Doc();
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(stored));
+    const loaded = stateVector(local);
+    appendParagraph(local, "typed after load");
+    const serverUpdate = Y.encodeStateAsUpdate(docWithText("server copy"));
+
+    adoptServerSnapshot(local, serverUpdate, "server", loaded);
+
+    const text = fragmentText(local);
+    expect(text).toContain("server copy");
+    expect(text).toContain("typed after load");
+    expect(text).not.toContain("local seed");
+  });
+
+  it("keeps later edits by the same client that wrote the stale seed", () => {
+    const local = docWithText("local seed");
+    const loaded = stateVector(local);
+    appendParagraph(local, "typed after load");
+    const serverUpdate = Y.encodeStateAsUpdate(docWithText("server copy"));
+
+    adoptServerSnapshot(local, serverUpdate, "server", loaded);
+
+    const text = fragmentText(local);
+    expect(text).toContain("server copy");
+    expect(text).toContain("typed after load");
+    expect(text).not.toContain("local seed");
+  });
+
+  it("reports whether it dropped local state", () => {
+    const serverDoc = docWithText("shared paragraph");
+    const serverUpdate = Y.encodeStateAsUpdate(serverDoc);
+
+    const same = new Y.Doc();
+    Y.applyUpdate(same, serverUpdate);
+    expect(adoptServerSnapshot(same, serverUpdate, "server", stateVector(same))).toBe(false);
+
+    const stale = docWithText("local seed");
+    expect(adoptServerSnapshot(stale, serverUpdate, "server", stateVector(stale))).toBe(true);
+
+    const edited = new Y.Doc();
+    Y.applyUpdate(edited, serverUpdate);
+    const loaded = stateVector(edited);
+    appendParagraph(edited, "typed after load");
+    expect(adoptServerSnapshot(edited, serverUpdate, "server", loaded)).toBe(false);
   });
 });

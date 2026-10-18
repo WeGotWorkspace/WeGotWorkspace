@@ -4,10 +4,13 @@ import { act, renderHook } from "@testing-library/react";
 import * as decoding from "lib0/decoding";
 import { useCallback, useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { IndexeddbPersistence } from "y-indexeddb";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import { resetDocsCollabMeshLingerForTests } from "./docs-collab-mesh-linger";
 import { encodeUpdateBroadcast } from "./docs-collab-mesh-sync";
+import { resolveDocsCollabDatabase } from "./docs-collab-persistence";
+import { DOC_STATUS_RESTORED_WORKING_VERSION } from "./docs-collab-status";
 import { isYDocEmpty } from "./docs-collab-utils";
 import {
   DEFAULT_DOCS_COLLAB_URLS,
@@ -86,7 +89,16 @@ function withSender(msg: DocsCollabMeshMessage, id: string, name: string): DocsC
   return msg;
 }
 
-function useEchoSession(userName: string): {
+type EchoSessionOptions = {
+  room?: string;
+  onDocStatus?: (status: string | ((prev: string) => string)) => void;
+  updatePendingState?: (pending: boolean, failed?: boolean) => Promise<void>;
+};
+
+function useEchoSession(
+  userName: string,
+  { room = ROOM, onDocStatus, updatePendingState }: EchoSessionOptions = {},
+): {
   refs: DocsCollabSessionRefs;
   handleMeshMessage: (msg: DocsCollabMeshMessage) => void;
   applyServerBootstrap: (generation: number, authToken: string | undefined) => Promise<void>;
@@ -104,25 +116,25 @@ function useEchoSession(userName: string): {
   const trySeedFromFile = useCallback(() => {
     trySeedFromFileRef.current();
   }, []);
-  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room: ROOM };
+  const urls = { ...DEFAULT_DOCS_COLLAB_URLS, room };
   const mesh = useDocsCollabMesh({
     refs,
-    room: ROOM,
+    room,
     urls,
     markDocReady,
     trySeedFromFile,
   });
   const join = useDocsCollabJoin({
     refs,
-    room: ROOM,
+    room,
     urls,
     userName,
     mesh,
     save: {
-      updatePendingState: async () => undefined,
+      updatePendingState: updatePendingState ?? (async () => undefined),
       flushPendingSaveIfReady: () => undefined,
     },
-    setDocStatus: () => undefined,
+    setDocStatus: onDocStatus ?? (() => undefined),
     setLastSavedAt: () => undefined,
     setPendingSync: () => undefined,
     setFailedSync: () => undefined,
@@ -422,5 +434,153 @@ describe("useDocsCollabJoin teardown", () => {
     doc.destroy();
     hook.unmount();
     resetDocsCollabMeshLingerForTests();
+  });
+});
+
+describe("useDocsCollabJoin server bootstrap", () => {
+  /** Writes `doc` into the room's IndexedDB copy, as an earlier visit would have. */
+  async function storeLocalCopy(room: string, doc: Y.Doc): Promise<void> {
+    const database = await resolveDocsCollabDatabase(room);
+    const persistence = new IndexeddbPersistence(database.name, new Y.Doc());
+    await persistence.whenSynced;
+    Y.applyUpdate(persistence.doc, Y.encodeStateAsUpdate(doc));
+    await persistence.destroy();
+  }
+
+  function stubServer(snapshot: Y.Doc, markdown: string): void {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).includes("format=yjs")) {
+          return new Response(Y.encodeStateAsUpdate(snapshot) as unknown as BodyInit, {
+            status: 200,
+            headers: { ETag: '"sidecar-1"' },
+          });
+        }
+        return new Response(markdown, { status: 200 });
+      }),
+    );
+  }
+
+  function renderJoinedSession(room: string) {
+    const statuses: string[] = [];
+    let current = "";
+    const pendingCalls: boolean[] = [];
+    const hook = renderHook(() =>
+      useEchoSession("Ada", {
+        room,
+        onDocStatus: (status) => {
+          current = typeof status === "function" ? status(current) : status;
+          statuses.push(current);
+        },
+        updatePendingState: async (pending) => {
+          pendingCalls.push(pending);
+        },
+      }),
+    );
+    return { hook, statuses, pendingCalls };
+  }
+
+  async function bootstrap(hook: ReturnType<typeof renderJoinedSession>["hook"]): Promise<void> {
+    const refs = hook.result.current.refs;
+    await act(async () => {
+      await hook.result.current.applyServerBootstrap(refs.joinGenerationRef.current, "token");
+    });
+  }
+
+  function closeSession(hook: ReturnType<typeof renderJoinedSession>["hook"]): void {
+    act(() => {
+      hook.result.current.teardown();
+    });
+    hook.unmount();
+    resetDocsCollabMeshLingerForTests();
+    vi.unstubAllGlobals();
+  }
+
+  it("keeps characters typed before the server snapshot lands", async () => {
+    const room = "docs/bootstrap-early-typing.md";
+    const server = new Y.Doc();
+    writeBody(server, "Line two");
+    await storeLocalCopy(room, server);
+    stubServer(server, "Line two\n");
+    const { hook, statuses, pendingCalls } = renderJoinedSession(room);
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+    expect(bodyText(local)).toBe("Line two");
+
+    const paragraph = local.getXmlFragment("default").get(0) as Y.XmlElement;
+    (paragraph.get(0) as Y.XmlText).insert(8, " [early]");
+    await bootstrap(hook);
+
+    expect(bodyText(local)).toBe("Line two [early]");
+    // The kept edit still has to reach the server, also after a reload.
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    expect(pendingCalls).toContain(true);
+    // Nothing local was dropped, so this is a plain open.
+    expect(statuses).not.toContain(DOC_STATUS_RESTORED_WORKING_VERSION);
+
+    closeSession(hook);
+    server.destroy();
+  });
+
+  it("drops a stale local seed but keeps what was typed on top of it", async () => {
+    const room = "docs/bootstrap-stale-seed.md";
+    const stale = new Y.Doc();
+    writeBody(stale, "local seed");
+    await storeLocalCopy(room, stale);
+    const server = new Y.Doc();
+    writeBody(server, "server copy");
+    stubServer(server, "server copy\n");
+    const { hook, statuses } = renderJoinedSession(room);
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+    expect(bodyText(local)).toBe("local seed");
+
+    writeBody(local, "typed early");
+    await bootstrap(hook);
+
+    const text = local.getXmlFragment("default").toString();
+    expect(text).toContain("server copy");
+    expect(text).toContain("typed early");
+    expect(text).not.toContain("local seed");
+    expect(statuses).toContain(DOC_STATUS_RESTORED_WORKING_VERSION);
+
+    closeSession(hook);
+    stale.destroy();
+    server.destroy();
+  });
+
+  it("does not announce a restored version on a plain open", async () => {
+    const room = "docs/bootstrap-plain-open.md";
+    const server = new Y.Doc();
+    writeBody(server, "Line one");
+    await storeLocalCopy(room, server);
+    stubServer(server, "Line one\n");
+    const { hook, statuses, pendingCalls } = renderJoinedSession(room);
+
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    await bootstrap(hook);
+
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+    expect(bodyText(local)).toBe("Line one");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(false);
+    expect(pendingCalls).not.toContain(true);
+    expect(statuses).not.toContain(DOC_STATUS_RESTORED_WORKING_VERSION);
+    // The loading line must not stay behind once the document is in.
+    expect(statuses.at(-1)).toBe("");
+
+    closeSession(hook);
+    server.destroy();
   });
 });
