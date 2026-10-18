@@ -39,6 +39,7 @@ final class NoteCollaborativeWrite
         array $body,
         ?string $ifMatch,
         ?string $ifNoneMatch,
+        ?string $externalWriteSeen = null,
     ): string {
         $located = $this->notes->findAccessibleNote($username, $noteId);
         if ($located === null) {
@@ -55,6 +56,7 @@ final class NoteCollaborativeWrite
             $bytes,
             $ifMatch,
             $ifNoneMatch,
+            $externalWriteSeen,
         ): array {
             $object = CalendarObject::query()
                 ->whereKey($located['object']->getKey())
@@ -71,6 +73,7 @@ final class NoteCollaborativeWrite
                 ? null
                 : DocCollabDocumentService::sidecarEtag($this->binaryString($stored->getAttributes()['state'] ?? $stored->state));
             $this->assertStatePrecondition($ifMatch, $ifNoneMatch, $storedEtag);
+            $this->assertNoUnseenExternalWrite($stored, $object, $externalWriteSeen);
 
             $instance = $located['instance'];
             $patch = ['body' => $body['markdown']];
@@ -110,6 +113,28 @@ final class NoteCollaborativeWrite
         $this->notes->indexObject($username, $written['instance'], $written['object']);
 
         return $written['etag'];
+    }
+
+    /**
+     * #1381: a client that holds the current state tag would still write over
+     * an outside CalDAV edit it never saw. While SUMMARY or DESCRIPTION is not
+     * the text the state was written from, the save must name the content it
+     * saw in `X-Wgw-External-Write`. A metadata-only change does not refuse.
+     */
+    private function assertNoUnseenExternalWrite(
+        ?NoteYjsState $stored,
+        CalendarObject $object,
+        ?string $externalWriteSeen,
+    ): void {
+        if ($stored === null || ! $this->yjsProjection->isExternalContentWrite($stored, $object)) {
+            return;
+        }
+        if ($this->yjsProjection->namesContent((string) $externalWriteSeen, $object)) {
+            return;
+        }
+
+        // The message is the code too: the shared client reads `error`.
+        throw new ApiHttpException(409, 'external_write', 'external_write');
     }
 
     private function assertStatePrecondition(?string $ifMatch, ?string $ifNoneMatch, ?string $storedEtag): void

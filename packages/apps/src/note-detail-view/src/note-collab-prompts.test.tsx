@@ -1,10 +1,14 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab/docs-collab-types";
 
 const harness = vi.hoisted(() => ({
   prompt: false,
+  outsideMarkdown: "from outside",
+  answerFails: false,
+  session: null as { ydoc: unknown } | null,
 }));
 
 vi.mock("@/text-editor-core/docs-collab", async () => {
@@ -13,14 +17,16 @@ vi.mock("@/text-editor-core/docs-collab", async () => {
     useDocsCollab: (options: { urls?: DocsCollabUrls }) => {
       React.useEffect(() => {
         if (!harness.prompt) return;
-        options.urls?.onExternalWrite?.({ markdown: "from outside", title: "Outside" });
+        options.urls?.onExternalWrite?.({ markdown: harness.outsideMarkdown, title: "Outside" });
       }, [options.urls]);
       return {
         onMarkdownChange: vi.fn(),
         registerMarkdownGetter: vi.fn(),
-        session: null,
+        session: harness.session,
         scheduleSave: vi.fn(),
-        resolveExternalWrite: vi.fn(async () => undefined),
+        resolveExternalWrite: vi.fn(async () => {
+          if (harness.answerFails) throw new Error("HTTP 503");
+        }),
         peers: [],
         connectingPeers: [],
         warningPeers: [],
@@ -42,11 +48,11 @@ const urls: DocsCollabUrls = {
   room: "n1",
 };
 
-function renderSession() {
+function renderSession(sessionUrls: DocsCollabUrls = urls) {
   return render(
     <NoteCollabSession
       userName="Alex"
-      urls={urls}
+      urls={sessionUrls}
       initialMarkdown="local draft"
       localDisplayName="Alex"
       documentTitle="Shopping"
@@ -59,6 +65,55 @@ function renderSession() {
 describe("NoteCollabSession prompts", () => {
   beforeEach(() => {
     harness.prompt = false;
+    harness.answerFails = false;
+    harness.session = null;
+    harness.outsideMarkdown = "from outside";
+  });
+
+  it("rebuilds the outside version as markdown even when the note UID ends in .json", async () => {
+    harness.prompt = true;
+    harness.outsideMarkdown = "# Outside heading";
+    const ydoc = new Y.Doc();
+    harness.session = { ydoc };
+    renderSession({ ...urls, room: "n1@host.json" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
+
+    await waitFor(() => expect(ydoc.getXmlFragment("default").toString()).toContain("<heading"));
+  });
+
+  it("keeps the dialog usable when the save behind Keep my edits fails", async () => {
+    harness.prompt = true;
+    harness.answerFails = true;
+    renderSession();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Keep my edits" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.getByRole("dialog", { name: "Changed outside the app" })).toBeTruthy();
+  });
+
+  it("disables Keep my edits once the outside version replaced the note, even if its save failed", async () => {
+    harness.prompt = true;
+    harness.answerFails = true;
+    harness.session = { ydoc: new Y.Doc() };
+    renderSession();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Use the outside version" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.getByRole("dialog", { name: "Changed outside the app" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Keep my edits" })).toHaveProperty("disabled", true);
   });
 
   it("shows the outside-write prompt and not the retired choice screen", async () => {
