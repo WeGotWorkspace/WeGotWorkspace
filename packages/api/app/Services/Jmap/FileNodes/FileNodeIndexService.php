@@ -7,6 +7,7 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
 use App\Services\Collab\CollabSidecarMover;
+use App\Services\Collab\DocYjsStateStore;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StorageKeyClass;
@@ -31,6 +32,7 @@ final class FileNodeIndexService
         private readonly SearchIndexerService $search,
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly CollabSidecarMover $sidecars,
+        private readonly DocYjsStateStore $sidecarLinks,
     ) {}
 
     // ---------------------------------------------------------------
@@ -356,6 +358,7 @@ final class FileNodeIndexService
     public function recordMoveWithSidecar(string $fromKey, string $toKey): ?JmapFileNode
     {
         $this->sidecars->moveWithDocument($fromKey, $toKey);
+        $this->sidecarLinks->moveWithDocument($fromKey, $toKey);
 
         return $this->recordMove($fromKey, $toKey);
     }
@@ -367,6 +370,7 @@ final class FileNodeIndexService
     public function recordDeleteWithSidecar(string $key): void
     {
         $this->sidecars->deleteWithDocument($key);
+        $this->sidecarLinks->deleteWithDocument($key);
         $this->recordDelete($key);
     }
 

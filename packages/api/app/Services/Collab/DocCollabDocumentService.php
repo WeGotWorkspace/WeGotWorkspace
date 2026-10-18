@@ -35,6 +35,7 @@ final class DocCollabDocumentService
         private StoragePaths $paths,
         private DriveShareAuthorizer $authorizer,
         private FileNodeIndexService $fileNodes,
+        private DocYjsStateStore $states,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -56,9 +57,12 @@ final class DocCollabDocumentService
     }
 
     /**
-     * @return non-empty-string|null null when sidecar is missing or empty
+     * `externalWrite` is set when the markdown on disk is not the text this
+     * sidecar was saved with (#1349).
+     *
+     * @return array{bytes: non-empty-string, externalWrite: bool}|null null when sidecar is missing or empty
      */
-    public function getYjsBinary(Request $request, mixed $room): ?string
+    public function getYjsSnapshot(Request $request, mixed $room): ?array
     {
         $virtual = $this->resolveReadablePath($request, $room);
         $key = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
@@ -77,7 +81,10 @@ final class DocCollabDocumentService
             return null;
         }
 
-        return $contents;
+        return [
+            'bytes' => $contents,
+            'externalWrite' => $this->states->isExternalWrite($this->paths->virtualToStorageKey($virtual)),
+        ];
     }
 
     /**
@@ -148,6 +155,7 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
+                $this->recordSidecarLink($documentKey, $markdown, $yjsBytes ?? $previousSidecar);
                 try {
                     $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
                 } catch (\Throwable $e) {
@@ -159,12 +167,34 @@ final class DocCollabDocumentService
                     'written',
                     'files/'.$documentKey,
                 );
+            } elseif ($yjsBytes !== null) {
+                $this->recordSidecarLink($documentKey, null, $yjsBytes);
             }
         } finally {
             $this->releaseDocumentLock($lock);
         }
 
         return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
+    }
+
+    /**
+     * #1349: which markdown the sidecar now belongs to. The bytes are already
+     * on disk, so a failed row write logs and does not fail the save.
+     */
+    private function recordSidecarLink(string $documentKey, ?string $markdown, ?string $sidecar): void
+    {
+        if ($sidecar === null) {
+            return;
+        }
+        try {
+            if ($markdown === null) {
+                $this->states->recordSidecar($documentKey, $sidecar);
+            } else {
+                $this->states->record($documentKey, $markdown, $sidecar);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('doc_yjs_state_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+        }
     }
 
     /**

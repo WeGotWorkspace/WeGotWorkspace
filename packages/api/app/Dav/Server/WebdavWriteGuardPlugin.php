@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Dav\Server;
 
 use App\Services\Collab\CollabSidecarPaths;
+use App\Services\Collab\DocYjsStateStore;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -32,6 +33,7 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
     public function __construct(
         private WgwStorage $storage,
         private StoragePaths $paths,
+        private DocYjsStateStore $sidecarLinks,
     ) {}
 
     public function initialize(Server $server): void
@@ -164,13 +166,12 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden(self::message());
         }
 
-        // Refuse a write that replaces the bytes of a collaborative document.
-        // Moving, copying, or deleting the document itself stays allowed:
-        // those are explicit, and a renamed file rebuilds its Yjs state from
-        // the markdown. A move or copy onto the document is rejected above.
-        if (in_array($method, ['PUT', 'PATCH'], true)
-            && $this->hasCollabSidecar($path)) {
-            throw new Forbidden('This document is edited collaboratively; write it through the app.');
+        // A write that replaces the bytes of a collaborative document is
+        // allowed (#1349). The next yjs read sees the markdown no longer
+        // matches the sidecar. A document saved before that link existed gets
+        // it now, from the text the sidecar was saved with.
+        if (in_array($method, ['PUT', 'PATCH'], true)) {
+            $this->linkSidecarBeforeExternalWrite($path);
         }
     }
 
@@ -180,23 +181,39 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
      */
     private function hasCollabSidecar(string $davPath): bool
     {
+        $keys = $this->collabKeys($davPath);
+
+        return $keys !== null && $this->storage->files()->fileExists($keys['sidecar']);
+    }
+
+    private function linkSidecarBeforeExternalWrite(string $davPath): void
+    {
+        $keys = $this->collabKeys($davPath);
+        if ($keys !== null) {
+            $this->sidecarLinks->recordBeforeExternalWrite($keys['document'], $keys['sidecar']);
+        }
+    }
+
+    /**
+     * @return array{document: string, sidecar: string}|null
+     */
+    private function collabKeys(string $davPath): ?array
+    {
         $davPath = trim($davPath, '/');
         if (! str_starts_with($davPath, 'files/')) {
-            return false;
+            return null;
         }
         $key = substr($davPath, strlen('files/'));
-        if ($key === '') {
-            return false;
-        }
-        if (CollabSidecarPaths::isSidecarName(basename($key))) {
-            return false;
+        if ($key === '' || CollabSidecarPaths::isSidecarName(basename($key))) {
+            return null;
         }
 
-        $sidecarKey = $this->paths->virtualToStorageKey(
-            CollabSidecarPaths::sidecarVirtualPath($this->paths, $key),
-        );
-
-        return $this->storage->files()->fileExists($sidecarKey);
+        return [
+            'document' => $this->paths->virtualToStorageKey('/'.$key),
+            'sidecar' => $this->paths->virtualToStorageKey(
+                CollabSidecarPaths::sidecarVirtualPath($this->paths, $key),
+            ),
+        ];
     }
 
     private static function normalizePath(string $path): string

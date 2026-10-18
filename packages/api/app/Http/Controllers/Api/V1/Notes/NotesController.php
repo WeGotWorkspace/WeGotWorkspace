@@ -11,9 +11,9 @@ use App\Http\Requests\Api\V1\NoteCreateRequest;
 use App\Http\Requests\Api\V1\NotePatchRequest;
 use App\Http\Support\JmapResourceResponse;
 use App\Http\Support\OptimisticConcurrency;
+use App\Services\Collab\CollabExternalWrite;
 use App\Services\Notes\NoteCollaborativeWrite;
 use App\Services\Notes\NoteRepository;
-use App\Services\Notes\NoteYjsProjection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -165,7 +165,7 @@ final class NotesController
         if ($snapshot['externalWrite']) {
             // A 304 would hide the signal. The state bytes are unchanged, and
             // the client must still see that they are not an ancestor.
-            $headers[NoteYjsProjection::EXTERNAL_WRITE_HEADER] = '1';
+            $headers[CollabExternalWrite::HEADER] = '1';
         }
 
         $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
