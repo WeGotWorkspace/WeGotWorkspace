@@ -294,3 +294,24 @@
 .admin-workspace .admin-security-warnings {
   @apply mb-4 flex flex-col gap-3;
 }
+
+/* --- ICE url lists (realtime collaboration) --- */
+:is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list {
+  @apply flex flex-col gap-2;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list__row {
+  @apply flex items-center gap-2;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list__input {
+  @apply min-w-0 flex-1;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list__hint {
+  @apply text-sm text-muted-foreground;
+}
+
+:is(.admin-workspace, .admin-dialog-surface) .admin-ice-url-list__warning {
+  @apply text-sm text-destructive;
+}

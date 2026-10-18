@@ -7,6 +7,12 @@ export const IMIP_HOURLY_LIMIT_DEFAULT = 100;
 /** Matches CalendarImipService::DAILY_LIMIT_DEFAULT. The server applies the same fallback. */
 export const IMIP_DAILY_LIMIT_DEFAULT = 300;
 
+/** Older settings may separate urls with commas, newlines, or both. */
+export function splitIceUrlRows(value: string): string[] {
+  if (value.trim() === "") return [];
+  return value.split(/[\n\r,]/).map((row) => row.trim());
+}
+
 export function normalizeImipDailyLimit(raw: string): number {
   const parsed = Number(raw.trim());
   if (!Number.isFinite(parsed) || parsed < 1) {
