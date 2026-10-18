@@ -7,15 +7,13 @@ import {
   type RelayRequestClient,
   type RelayRequestOutcome,
 } from "@/lib/rtc/session/relay-request";
+import {
+  credentialIsStale,
+  refreshLeadMs,
+  type IssuedTurn,
+} from "@/lib/rtc/session/room-relay-credential";
 import { selectedPairIsRelay } from "@/lib/rtc/stats";
 import type { RtcSettings, TurnCredentials } from "@/lib/rtc/types";
-
-/** Re-mint this long before the server-supplied `ttl` elapses. */
-const REFRESH_LEAD_MS = 60_000;
-
-function refreshLeadMs(ttlMs: number): number {
-  return Math.min(REFRESH_LEAD_MS, Math.floor(ttlMs / 2));
-}
 
 export type MeshRelayPorts = {
   enabled: () => boolean;
@@ -67,6 +65,12 @@ export class MeshRelay {
 
   credentials(): TurnCredentials | null {
     return this.credentialsAreStale() ? null : this.turn;
+  }
+
+  /** The live credential and its mint time, so the Docs fallback can reuse it. */
+  issuedCredentials(): IssuedTurn | null {
+    const turn = this.credentials();
+    return turn ? { turn, issuedAtMs: this.issuedAtMs } : null;
   }
 
   hasRequested(remoteId: string): boolean {
@@ -164,12 +168,9 @@ export class MeshRelay {
     });
   }
 
-  /** `ttl` is seconds from the relay response, not a client constant. */
   private credentialsAreStale(now = this.now()): boolean {
     if (!this.turn) return false;
-    const ttlMs = this.turn.ttl * 1000;
-    if (!Number.isFinite(ttlMs) || ttlMs <= 0) return true;
-    return now >= this.issuedAtMs + Math.max(0, ttlMs - refreshLeadMs(ttlMs));
+    return credentialIsStale({ turn: this.turn, issuedAtMs: this.issuedAtMs }, now);
   }
 
   private armRefresh(ttlSeconds: number): void {

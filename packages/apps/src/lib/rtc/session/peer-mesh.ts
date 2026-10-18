@@ -28,6 +28,7 @@ import type {
   HttpSignalingPollResult,
 } from "@/lib/rtc/signaling/http-client";
 import type { RelayReason } from "@/lib/rtc/session/relay-request";
+import { RoomRelayCredential } from "@/lib/rtc/session/room-relay-credential";
 import { MeshPeerDialer } from "@/lib/rtc/session/mesh-peer-dialer";
 import { MeshPeerRegistry, type MeshPeerEntry } from "@/lib/rtc/session/mesh-peer-registry";
 import { MeshPollLoop } from "@/lib/rtc/session/mesh-poll-loop";
@@ -95,6 +96,9 @@ export class RtcPeerMesh {
   private localNet: NetClass | undefined;
   private iceOut: IceOutbound | null = null;
   private meshRelay: MeshRelay | null = null;
+  private readonly roomRelay = new RoomRelayCredential({
+    shared: () => this.meshRelay?.issuedCredentials() ?? null,
+  });
   private recovery: IceRecovery | null = null;
   private networkUnsubscribe: (() => void) | null = null;
 
@@ -314,20 +318,24 @@ export class RtcPeerMesh {
     this.retryRoomPeerConnections();
   }
 
+  /** Docs relay ask. Reuses the precheck credential and shares a mint in flight. */
   postRelay(body: {
     target: string;
     reason: RelayReason;
     net?: NetClass;
   }): Promise<{ turn: TurnCredentials }> {
-    if (!this.myId) return Promise.reject(new Error("not_joined"));
-    return this.options.signaling.relay({
-      room: this.options.room,
-      peerId: this.myId,
-      target: body.target,
-      reason: body.reason,
-      net: body.net,
-      sessionKey: this.sessionKey ?? undefined,
-    });
+    const peerId = this.myId;
+    if (!peerId) return Promise.reject(new Error("not_joined"));
+    return this.roomRelay.request(() =>
+      this.options.signaling.relay({
+        room: this.options.room,
+        peerId,
+        target: body.target,
+        reason: body.reason,
+        net: body.net,
+        sessionKey: this.sessionKey ?? undefined,
+      }),
+    );
   }
 
   private removePeer(remoteId: string, reason: "bye" | "roster" | "local" = "local"): void {

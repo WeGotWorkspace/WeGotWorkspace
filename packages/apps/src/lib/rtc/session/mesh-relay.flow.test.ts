@@ -155,6 +155,27 @@ describe("mesh relay requests", () => {
     await mesh.leave();
   });
 
+  it("a Docs relay ask after a force-relay join reuses the precheck credential", async () => {
+    const { mesh, relay } = meshWith("open", { forceRelay: true, channel: "collab" });
+    await mesh.join({ name: "Host", peerId: "peer-z" });
+    const response = await mesh.postRelay({ target: "peer-a", reason: "timeout" });
+    expect(response.turn).toMatchObject({ credential: "cred" });
+    expect(relay).toHaveBeenCalledTimes(1);
+    await mesh.leave();
+  });
+
+  it("Docs relay asks for several peers share one mint", async () => {
+    const { mesh, relay } = meshWith("symmetric", { channel: "collab" });
+    await mesh.join({ name: "Host", peerId: "peer-z" });
+    await Promise.all([
+      mesh.postRelay({ target: "peer-a", reason: "timeout" }),
+      mesh.postRelay({ target: "peer-b", reason: "timeout" }),
+    ]);
+    await mesh.postRelay({ target: "peer-c", reason: "timeout" });
+    expect(relay).toHaveBeenCalledTimes(1);
+    await mesh.leave();
+  });
+
   it("requests relay once when a pair fails", async () => {
     const { mesh, relay } = meshWith("unknown");
     await mesh.join({ name: "Host", peerId: "peer-z" });
