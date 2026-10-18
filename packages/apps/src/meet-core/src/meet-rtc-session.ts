@@ -19,13 +19,6 @@ import {
 } from "@/meet-core/src/meet-video-sender";
 import type { RelayRequestOutcome } from "@/lib/rtc/session/relay-request";
 
-/** Leave local descriptions untouched — sanitizing outbound SDP strips SSRC lines and can break senders. */
-function formatMeetOutboundDescription(
-  description: RTCSessionDescriptionInit,
-): RTCSessionDescriptionInit {
-  return description;
-}
-
 export type MeetRtcSessionOptions = {
   rtcSettings: RtcSettings;
   apiBase?: string;
@@ -81,7 +74,6 @@ export class MeetRtcSession {
         apiBase: this.options.apiBase,
         fetchImpl: this.options.fetchImpl,
       },
-      formatOutboundDescription: formatMeetOutboundDescription,
       shouldConnectToPeer: this.options.shouldConnectToPeer,
       shouldHandleRtcSignals: this.options.shouldHandleRtcSignals,
       shouldAcceptOffer: this.options.shouldAcceptOffer,
