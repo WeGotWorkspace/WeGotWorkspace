@@ -63,13 +63,11 @@ final class DocYjsStateStore
             return;
         }
 
-        $markdown = $disk->fileExists($documentKey) ? $disk->get($documentKey) : '';
-        $sidecar = $disk->get($sidecarKey);
         DocYjsState::query()->insertOrIgnore([
             'storage_key' => $documentKey,
             'storage_key_hash' => self::keyHash($documentKey),
-            'content_etag' => self::contentEtag(is_string($markdown) ? $markdown : ''),
-            'sidecar_etag' => sha1(is_string($sidecar) ? $sidecar : ''),
+            'content_etag' => $this->storedHash('sha256', $documentKey),
+            'sidecar_etag' => $this->storedHash('sha1', $sidecarKey),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -88,10 +86,28 @@ final class DocYjsStateStore
             return false;
         }
 
-        $disk = $this->storage->files();
-        $markdown = $disk->fileExists($documentKey) ? $disk->get($documentKey) : '';
+        return ! hash_equals($row->content_etag, $this->storedHash('sha256', $documentKey));
+    }
 
-        return ! hash_equals($row->content_etag, self::contentEtag(is_string($markdown) ? $markdown : ''));
+    /**
+     * Streamed: a DAV write may leave a document far larger than a collab
+     * save allows, and the read must not load it to compare a hash. A
+     * missing file hashes as empty text.
+     */
+    private function storedHash(string $algorithm, string $key): string
+    {
+        $context = hash_init($algorithm);
+        $disk = $this->storage->files();
+        $stream = $disk->fileExists($key) ? $disk->readStream($key) : null;
+        if (is_resource($stream)) {
+            try {
+                hash_update_stream($context, $stream);
+            } finally {
+                fclose($stream);
+            }
+        }
+
+        return hash_final($context);
     }
 
     /** Best-effort, like the sidecar it follows. */
