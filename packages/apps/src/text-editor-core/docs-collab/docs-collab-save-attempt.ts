@@ -22,6 +22,8 @@ export type CollabSaveAttempt = {
    * back if the save fails, so a later retry still has it.
    */
   markdownOverrideRef?: { current: string | null };
+  /** Entity tag of the outside text the person was shown, if any. */
+  externalWriteSeen?: string | null;
 };
 
 export type CollabSaveAttemptResult = { status: "skipped" } | { status: "saved"; markdown: string };
@@ -48,6 +50,7 @@ export async function persistCollabSave(
       input.ydoc,
       input.authToken,
       sidecarPrecondition(input.room),
+      input.externalWriteSeen ?? null,
     );
     rememberSidecarEtag(input.room, etag);
   };

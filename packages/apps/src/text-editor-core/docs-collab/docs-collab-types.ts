@@ -131,6 +131,8 @@ export type DocsCollabSessionRefs = {
   saveTerminalKindRef: MutableRefObject<DocsCollabSaveTerminalKind | null>;
   localDirtySinceLastSaveRef: MutableRefObject<boolean>;
   pendingServerSaveRef: MutableRefObject<boolean>;
+  /** Entity tag of the outside text this client showed; the next save names it. */
+  externalWriteSeenRef: MutableRefObject<string | null>;
   /** While set, a save must not replace an outside edit the person has not chosen. */
   externalWriteHoldRef: MutableRefObject<boolean>;
   /** Markdown to store instead of the editor view, for one save. */

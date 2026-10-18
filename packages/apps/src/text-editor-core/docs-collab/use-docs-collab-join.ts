@@ -240,12 +240,14 @@ export function useDocsCollabJoin({
       const action = decideExternalWrite(snapshot.externalWrite === true, pendingLocalWork);
       if (action === "prompt") {
         const text = await loadCollabText(urls.documentUrl, authToken);
+        refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
         urls.onExternalWrite?.({ markdown: text.markdown, title: text.title });
         return false;
       }
       if (action === "rebuild") {
         const text = await loadCollabText(urls.documentUrl, authToken);
+        refs.externalWriteSeenRef.current = text.etag ?? null;
         replaceDocumentWithExternalText(ydoc, text.markdown, text.title, documentFormat);
         refs.markdownOverrideRef.current = text.markdown;
         refs.externalWriteHoldRef.current = false;
@@ -269,10 +271,12 @@ export function useDocsCollabJoin({
       if (!ydoc || !isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
 
       let loadedTitle: string | null = null;
+      let loadedEtag: string | null = null;
       const load = await loadBootstrapInParallel({
         loadMarkdown: async () => {
           const text = await loadCollabText(urls.documentUrl, authToken);
           loadedTitle = text.title;
+          loadedEtag = text.etag ?? null;
           return text.markdown;
         },
         fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, authToken),
@@ -319,6 +323,7 @@ export function useDocsCollabJoin({
           refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
         const action = decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
         rememberSidecarEtag(room, snapshot.etag);
+        if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {
           refs.externalWriteHoldRef.current = true;
           urls.onExternalWrite?.({ markdown: load.markdown, title: loadedTitle });

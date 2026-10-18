@@ -33,6 +33,7 @@ export function useDocsCollabSessionRefs(
   const localDirtySinceLastSaveRef = useRef(false);
   const pendingServerSaveRef = useRef(false);
   const externalWriteHoldRef = useRef(false);
+  const externalWriteSeenRef = useRef<string | null>(null);
   const markdownOverrideRef = useRef<string | null>(null);
   const lastKnownMarkdownRef = useRef("");
   const lastSuccessfulSaveSignatureRef = useRef<string | null>(null);
@@ -67,6 +68,7 @@ export function useDocsCollabSessionRefs(
       localDirtySinceLastSaveRef,
       pendingServerSaveRef,
       externalWriteHoldRef,
+      externalWriteSeenRef,
       markdownOverrideRef,
       lastKnownMarkdownRef,
       lastSuccessfulSaveSignatureRef,

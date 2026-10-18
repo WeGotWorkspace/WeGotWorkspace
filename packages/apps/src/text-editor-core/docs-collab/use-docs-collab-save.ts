@@ -25,7 +25,9 @@ import {
   docSignature,
   isCollabDocumentGoneError,
   isCollabPayloadTooLarge,
+  isExternalWriteRefusal,
 } from "./docs-collab-utils";
+import { askAboutRefusedSave } from "./docs-collab-external-write-refusal";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type UseDocsCollabSaveOptions = {
@@ -130,9 +132,11 @@ export function useDocsCollabSave({
         remergeAttempted: conflictRemergeAttemptedRef,
         markdownAfterMerge: () => (getMd ? markdownForSave(ydoc, getMd()) : markdown),
         markdownOverrideRef: refs.markdownOverrideRef,
+        externalWriteSeen: refs.externalWriteSeenRef.current,
       });
       if (persisted.status === "skipped") return;
       savedMarkdown = persisted.markdown;
+      refs.externalWriteSeenRef.current = null;
       markRoomServerSuccess(room);
       refs.saveFailedRef.current = false;
       const success = saveSuccessState(docSignature(savedMarkdown, ydoc));
@@ -146,6 +150,12 @@ export function useDocsCollabSave({
       setDocStatus("");
       urls.onPersistSuccess?.(savedMarkdown);
     } catch (err) {
+      // Not a failure to retry: the save stays pending until a person chooses.
+      if (isExternalWriteRefusal(err) && (await askAboutRefusedSave({ refs, urls }))) {
+        await updatePendingState(true, false);
+        setDocStatus("");
+        throw err;
+      }
       refs.saveFailedRef.current = true;
       const terminal = terminalSaveFailure(err);
       if (terminal) {

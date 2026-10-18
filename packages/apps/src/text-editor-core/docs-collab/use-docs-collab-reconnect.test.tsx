@@ -47,6 +47,7 @@ function sessionRefs(
     localDirtySinceLastSaveRef: ref(false),
     pendingServerSaveRef: ref(true),
     externalWriteHoldRef: ref(false),
+    externalWriteSeenRef: ref<string | null>(null),
     markdownOverrideRef: ref(null),
     lastKnownMarkdownRef: ref(""),
     lastSuccessfulSaveSignatureRef: ref(null),

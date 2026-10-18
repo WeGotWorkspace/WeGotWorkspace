@@ -54,6 +54,7 @@ function sessionRefs(): DocsCollabSessionRefs {
     localDirtySinceLastSaveRef: ref(true),
     pendingServerSaveRef: ref(false),
     externalWriteHoldRef: ref(false),
+    externalWriteSeenRef: ref<string | null>(null),
     markdownOverrideRef: ref(null),
     lastKnownMarkdownRef: ref(""),
     lastSuccessfulSaveSignatureRef: ref(null),
