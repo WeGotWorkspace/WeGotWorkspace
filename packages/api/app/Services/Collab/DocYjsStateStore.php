@@ -75,11 +75,16 @@ final class DocYjsStateStore
         ]);
     }
 
-    /** No row is a normal state: nothing is known, so nothing is flagged. */
-    public function isExternalWrite(string $documentKey): bool
+    /**
+     * No row is a normal state: nothing is known, so nothing is flagged. A
+     * row written for another sidecar says nothing about this one either:
+     * a save between its sidecar write and its row write, or a failed row
+     * write. Only a matching sidecar makes the markdown hash meaningful.
+     */
+    public function isExternalWrite(string $documentKey, string $sidecarBytes): bool
     {
         $row = $this->find($documentKey);
-        if ($row === null) {
+        if ($row === null || ! hash_equals($row->sidecar_etag, sha1($sidecarBytes))) {
             return false;
         }
 
@@ -149,8 +154,9 @@ final class DocYjsStateStore
     }
 
     /**
-     * Exact key plus everything under `key/`. SQL narrows by prefix; the
-     * byte-exact check stays in PHP because a MySQL collation may fold case.
+     * Exact key plus everything under `key/`. SQL narrows by an indexed
+     * prefix; the byte-exact check stays in PHP because a MySQL collation
+     * may fold case.
      *
      * @return Collection<int, DocYjsState>
      */
@@ -161,12 +167,18 @@ final class DocYjsStateStore
         return DocYjsState::query()
             ->where(function ($query) use ($key, $prefix): void {
                 $query->where('storage_key_hash', self::keyHash($key))
-                    ->orWhereRaw('substr(storage_key, 1, ?) = ?', [mb_strlen($prefix), $prefix]);
+                    ->orWhereRaw("storage_key like ? escape '!'", [self::likePrefix($prefix)]);
             })
             ->get()
             ->filter(fn (DocYjsState $row): bool => $row->storage_key === $key
                 || str_starts_with($row->storage_key, $prefix))
             ->values();
+    }
+
+    /** `!` as the escape character reads the same on SQLite, MySQL, and PostgreSQL. */
+    private static function likePrefix(string $prefix): string
+    {
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $prefix).'%';
     }
 
     private static function keyHash(string $key): string

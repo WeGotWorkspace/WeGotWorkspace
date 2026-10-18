@@ -12,6 +12,7 @@ use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
+use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\DriveShareMovePlugin;
 use App\Dav\Server\DriveStarPathPlugin;
 use App\Dav\Server\EventDispatchPlugin;
@@ -111,6 +112,7 @@ final class SabreServerFactory
 
         $server->addPlugin($authPlugin);
         $server->addPlugin(app(WebdavWriteGuardPlugin::class));
+        $server->addPlugin(app(DocYjsStateDavPlugin::class));
         $server->addPlugin(new SearchIndexPlugin($this->searchIndexer));
         $server->addPlugin(new FileNodeIndexPlugin($this->fileNodeIndex, $this->docAttachments));
         $server->addPlugin(new DriveStarPathPlugin($this->stars, $this->paths));

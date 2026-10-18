@@ -83,7 +83,7 @@ final class DocCollabDocumentService
 
         return [
             'bytes' => $contents,
-            'externalWrite' => $this->states->isExternalWrite($this->paths->virtualToStorageKey($virtual)),
+            'externalWrite' => $this->states->isExternalWrite($this->paths->virtualToStorageKey($virtual), $contents),
         ];
     }
 
@@ -155,7 +155,7 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
-                $this->recordSidecarLink($documentKey, $markdown, $yjsBytes ?? $previousSidecar);
+                $this->recordSidecarLink($documentKey, $markdown, $yjsBytes);
                 try {
                     $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
                 } catch (\Throwable $e) {
@@ -178,8 +178,10 @@ final class DocCollabDocumentService
     }
 
     /**
-     * #1349: which markdown the sidecar now belongs to. The bytes are already
-     * on disk, so a failed row write logs and does not fail the save.
+     * #1349: which markdown the sidecar now belongs to. Only a save that
+     * writes the sidecar links it: a markdown-only save leaves the old row,
+     * so the next read still flags the new text. The bytes are already on
+     * disk, so a failed row write logs and does not fail the save.
      */
     private function recordSidecarLink(string $documentKey, ?string $markdown, ?string $sidecar): void
     {
