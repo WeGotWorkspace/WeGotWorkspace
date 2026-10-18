@@ -23,6 +23,37 @@ import type {
 
 export const JMAP_MAX_SIZE_UPLOAD_DEFAULT = 25_000_000;
 
+/** The path walked off the server. Status 404 so a queued mutation is not retried. */
+export class FileNodeNotFoundError extends Error {
+  readonly status = 404;
+
+  constructor(path: string) {
+    super(`FileNode not found: ${path}`);
+    this.name = "FileNodeNotFoundError";
+  }
+}
+
+/** Path is outside home, group roots, and shared roots. 404 keeps a queued mutation permanent. */
+export class UnsupportedDrivePathError extends Error {
+  readonly status = 404;
+
+  constructor(path: string) {
+    super(`Unsupported drive path: ${path}`);
+    this.name = "UnsupportedDrivePathError";
+  }
+}
+
+/** HTTP failure from Drive context or an RFC 8620 blob endpoint. */
+export class DriveTransportError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "DriveTransportError";
+    this.status = status;
+  }
+}
+
 export type DriveJmapSession = {
   client: JmapClient;
   fileNodes: JmapFileNodesClient;
