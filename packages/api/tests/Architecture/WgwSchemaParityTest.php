@@ -43,6 +43,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'addressbook_share_dismissals',
             'note_stars',
             'note_yjs_state',
+            'doc_yjs_state',
             'oauth_clients',
             'oauth_auth_codes',
             'oauth_access_tokens',
