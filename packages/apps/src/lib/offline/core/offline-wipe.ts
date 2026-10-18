@@ -4,8 +4,11 @@ import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-
 const OFFLINE_DB_PREFIX = "wgw-offline-";
 const OFFLINE_STORAGE_PREFIX = "wgw.offline.";
 const OFFLINE_USERNAME_SUFFIX = ".username";
-/** y-indexeddb room name from `docsCollabIndexedDbKey`. Nothing else on this origin uses it. */
+/** Notes and the Docs path-key fallback. Nothing else on this origin uses it. */
 const COLLAB_DB_SUFFIX = ":v2";
+/** Docs identity database (`nodeId` + `:v3`). Notes does not use this suffix. */
+const DOCS_IDENTITY_DB_SUFFIX = ":v3";
+const DRIVE_ENTRIES_STORE = "drive_entries";
 const NOTES_STORE = "notes_notes";
 const DOCS_STORE = "docs_availability";
 const OUTBOX_STORE = "outbox";
@@ -144,8 +147,12 @@ async function collectWipeTargets(): Promise<WipeTargets> {
   for (const roomKey of await roomKeysFromAccountDatabases(accountNames)) {
     addCollabNames(collabNames, roomKey);
   }
+  for (const nodeId of await nodeIdsFromAccountDatabases(accountNames)) {
+    collabNames.add(`${nodeId}${DOCS_IDENTITY_DB_SUFFIX}`);
+  }
   if (listed) {
     for (const name of listed) {
+      if (isDocsIdentityDatabaseName(name)) collabNames.add(name);
       const roomKey = roomKeyFromListedCollabDatabase(name);
       if (roomKey) addCollabNames(collabNames, roomKey);
     }
@@ -203,10 +210,45 @@ function addCollabNames(names: Set<string>, roomKey: string): void {
   names.add(`/${room}`);
 }
 
+function isDocsIdentityDatabaseName(name: string): boolean {
+  return name.endsWith(DOCS_IDENTITY_DB_SUFFIX) && !name.startsWith(OFFLINE_DB_PREFIX);
+}
+
 function roomKeyFromListedCollabDatabase(name: string): string | null {
   if (!name.endsWith(COLLAB_DB_SUFFIX) || name.startsWith(OFFLINE_DB_PREFIX)) return null;
   const room = name.slice(0, -COLLAB_DB_SUFFIX.length);
   return room ? room : null;
+}
+
+async function nodeIdsFromAccountDatabases(accountNames: string[]): Promise<string[]> {
+  const ids: string[] = [];
+  for (const name of accountNames) {
+    try {
+      ids.push(...(await readNodeIds(name, DOCS_STORE)));
+      ids.push(...(await readNodeIds(name, DRIVE_ENTRIES_STORE)));
+    } catch (error) {
+      appendLogoutStepFailure("collab-rooms", error);
+    }
+  }
+  return ids;
+}
+
+function readNodeIds(databaseName: string, storeName: string): Promise<string[]> {
+  const missing: string[] = [];
+  return openStore(databaseName, storeName, missing, (store, done, fail) => {
+    const request = store.getAll();
+    request.onerror = () => fail(request.error ?? new Error(`read ${storeName} failed`));
+    request.onsuccess = () => {
+      const rows = Array.isArray(request.result) ? request.result : [];
+      done(
+        rows.flatMap((row) => {
+          if (!row || typeof row !== "object" || !("nodeId" in row)) return [];
+          const nodeId = row.nodeId;
+          return typeof nodeId === "string" && nodeId.trim() ? [nodeId.trim()] : [];
+        }),
+      );
+    };
+  });
 }
 
 /** One room counts once, even when both the `:v2` database and a legacy name have the flag. */
@@ -222,7 +264,9 @@ async function countPendingCollabRooms(databaseNames: string[]): Promise<number>
 function collabRoomKeyFromDatabaseName(name: string): string {
   const withoutVersion = name.endsWith(COLLAB_DB_SUFFIX)
     ? name.slice(0, -COLLAB_DB_SUFFIX.length)
-    : name;
+    : name.endsWith(DOCS_IDENTITY_DB_SUFFIX)
+      ? name.slice(0, -DOCS_IDENTITY_DB_SUFFIX.length)
+      : name;
   return withoutVersion.replace(/^\/+/, "");
 }
 

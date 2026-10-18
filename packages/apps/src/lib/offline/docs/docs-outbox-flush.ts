@@ -1,7 +1,6 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { parentAndName } from "@/lib/files/api-path";
-import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,
@@ -9,13 +8,12 @@ import {
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { normalizeDocsAvailabilityPath } from "@/lib/offline/docs/docs-availability-store";
 import {
-  migrateDocsAvailabilityPath,
-  normalizeDocsAvailabilityPath,
-} from "@/lib/offline/docs/docs-availability-store";
+  applyDriveSidecarPathMigration,
+  nextPathAfterRename,
+} from "@/lib/offline/shared/drive-sidecar-mutations";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
-import { migrateCollabPersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";
-import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 
 export type DocsOutboxPayload =
   | { op: "rename"; from: string; destination: string; to: string }
@@ -38,27 +36,13 @@ function parsePayload(row: OfflineOutboxRow): DocsOutboxPayload | null {
   }
 }
 
-function nextPathAfterRename(from: string, destination: string, to: string): string {
-  const normalizedDest = normalizeApiVirtualPath(destination);
-  return normalizedDest === "/" ? `/${to}` : `${normalizedDest}/${to}`;
-}
-
 async function applyRenameSideEffects(
   username: string,
   from: string,
   destination: string,
   to: string,
 ): Promise<void> {
-  const oldPath = normalizeDocsAvailabilityPath(from);
-  const newPath = normalizeDocsAvailabilityPath(nextPathAfterRename(from, destination, to));
-  if (isDocsCollabEditablePath(oldPath) && isDocsCollabEditablePath(newPath)) {
-    try {
-      await migrateCollabPersistence(oldPath, newPath);
-    } catch (error) {
-      console.warn("[docs-offline] collab persistence migration failed", error);
-    }
-  }
-  await migrateDocsAvailabilityPath(username, oldPath, newPath);
+  await applyDriveSidecarPathMigration(username, from, destination, to);
 }
 
 export async function flushDocsOutbox(username: string): Promise<OutboxFlushResult> {

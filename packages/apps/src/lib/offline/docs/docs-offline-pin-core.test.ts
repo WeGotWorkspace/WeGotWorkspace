@@ -20,18 +20,23 @@ vi.mock("@/lib/offline/docs/docs-pin-hydrate", async (importOriginal) => {
   };
 });
 
-vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", () => ({
-  clearDocsCollabOfflinePersistence: vi.fn(async (apiPath: string) => {
-    const room = apiPath.replace(/^\/+/, "");
-    const ydoc = new Y.Doc();
-    const persistence = new IndexeddbPersistence(room, ydoc);
-    await persistence.whenSynced;
-    await persistence.clearData();
-    await persistence.destroy();
-    ydoc.destroy();
-  }),
-  migrateCollabPersistence: vi.fn(),
-}));
+vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/text-editor-core/docs-collab/docs-collab-persistence")>();
+  return {
+    ...actual,
+    clearDocsCollabOfflinePersistence: vi.fn(async (apiPath: string) => {
+      const room = apiPath.replace(/^\/+/, "");
+      const ydoc = new Y.Doc();
+      const persistence = new IndexeddbPersistence(room, ydoc);
+      await persistence.whenSynced;
+      await persistence.clearData();
+      await persistence.destroy();
+      ydoc.destroy();
+    }),
+    migrateCollabPersistence: vi.fn(),
+  };
+});
 
 import { hydrateDocsCollabForOffline } from "@/lib/offline/docs/docs-pin-hydrate";
 import { clearDocsCollabOfflinePersistence } from "@/text-editor-core/docs-collab/docs-collab-persistence";

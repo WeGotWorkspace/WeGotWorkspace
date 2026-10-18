@@ -24,6 +24,7 @@ import {
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import {
   collabIndexedDbHasPendingServerSave,
+  DOCS_COLLAB_IDENTITY_DB_VERSION,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
   indexedDbNamesForRoom,
@@ -116,9 +117,11 @@ export async function listKeptUnsavedDocumentPaths(username: string): Promise<st
   const stored = parsePathList(raw);
   if (stored.length === 0) return [];
   const existingDatabaseNames = await listExistingIndexedDatabaseNames();
+  const table = driveEntriesTable(offlineDbForAccount(offlineAccountKeyFromUsername(username)));
   const stillKept: string[] = [];
   for (const path of stored) {
-    if (await documentHasPendingServerSave(path, async () => existingDatabaseNames)) {
+    const row = (await table.get(path)) ?? { id: path };
+    if (await documentHasPendingServerSave(row, table, async () => existingDatabaseNames)) {
       stillKept.push(path);
     }
   }
@@ -151,6 +154,8 @@ type PruneBuckets = {
 
 type DatabaseNames = () => Promise<ReadonlySet<string> | null>;
 
+type PrunedRow = Pick<OfflineDriveEntryRow, "id" | "nodeId">;
+
 async function dropMissingRow(
   username: string,
   row: OfflineDriveEntryRow,
@@ -160,7 +165,7 @@ async function dropMissingRow(
   buckets: PruneBuckets,
 ): Promise<void> {
   if (isCoveredByOpenOutbox(row.id, protectedPaths)) return;
-  if (await documentHasPendingServerSave(row.id, databaseNames)) {
+  if (await documentHasPendingServerSave(row, table, databaseNames)) {
     buckets.keptUnsavedPaths.push(row.id);
     return;
   }
@@ -168,7 +173,7 @@ async function dropMissingRow(
     await dropMissingDirectory(username, row, table, databaseNames, protectedPaths, buckets);
     return;
   }
-  if (await removePrunedFile(username, row.id)) buckets.removedPaths.push(row.id);
+  if (await removePrunedFile(username, row, table)) buckets.removedPaths.push(row.id);
 }
 
 async function dropMissingDirectory(
@@ -186,7 +191,7 @@ async function dropMissingDirectory(
       keepWithAncestors(keepIds, descendant.id, row.id);
       continue;
     }
-    if (await documentHasPendingServerSave(descendant.id, databaseNames)) {
+    if (await documentHasPendingServerSave(descendant, table, databaseNames)) {
       buckets.keptUnsavedPaths.push(descendant.id);
       keepWithAncestors(keepIds, descendant.id, row.id);
     }
@@ -194,7 +199,7 @@ async function dropMissingDirectory(
 
   for (const descendant of descendants) {
     if (descendant.type === "dir" || keepIds.has(descendant.id)) continue;
-    if (await removePrunedFile(username, descendant.id)) {
+    if (await removePrunedFile(username, descendant, table)) {
       buckets.removedPaths.push(descendant.id);
     } else {
       keepWithAncestors(keepIds, descendant.id, row.id);
@@ -246,9 +251,14 @@ function parentId(id: string): string {
  * A Docs path also drops its pin and collab database. Returns false when a
  * collab database delete is blocked or errors, and leaves that row in place.
  */
-async function removePrunedFile(username: string, apiPath: string): Promise<boolean> {
+async function removePrunedFile(
+  username: string,
+  row: PrunedRow,
+  table: DriveEntries,
+): Promise<boolean> {
+  const apiPath = row.id;
   if (isDocsCollabEditablePath(apiPath)) {
-    const deleted = await dropCollabDatabase(apiPath);
+    const deleted = await dropCollabDatabase(apiPath, await identityDatabaseFor(row, table));
     if (!deleted) return false;
     await removeDocsAvailability(username, apiPath);
   }
@@ -286,28 +296,43 @@ function parsePathList(raw: string | null): string[] {
   }
 }
 
+/**
+ * `{nodeId}:v3` of a pruned row, or null. When another cached row carries the
+ * same id, the document was renamed or moved: its database belongs to that
+ * path now, so the pruned row neither keeps nor drops it.
+ */
+async function identityDatabaseFor(row: PrunedRow, table: DriveEntries): Promise<string | null> {
+  if (!row.nodeId) return null;
+  const owners = await table.where("nodeId").equals(row.nodeId).primaryKeys();
+  if (owners.some((id) => id !== row.id)) return null;
+  return docsCollabIndexedDbKey(row.nodeId, DOCS_COLLAB_IDENTITY_DB_VERSION);
+}
+
 async function documentHasPendingServerSave(
-  apiPath: string,
+  row: PrunedRow,
+  table: DriveEntries,
   databaseNames: DatabaseNames,
 ): Promise<boolean> {
-  const room = docsCollabRoomKey(apiPath);
+  const room = docsCollabRoomKey(row.id);
   if (!room || !isDocsCollabEditablePath(room)) return false;
   const known = await databaseNames();
-  const names = indexedDbNamesForRoom(room);
+  const identity = await identityDatabaseFor(row, table);
+  const names = identity ? [identity, ...indexedDbNamesForRoom(room)] : indexedDbNamesForRoom(room);
   const toOpen =
-    known == null ? [docsCollabIndexedDbKey(room)] : names.filter((name) => known.has(name));
+    known == null
+      ? [...(identity ? [identity] : []), docsCollabIndexedDbKey(room)]
+      : names.filter((name) => known.has(name));
   for (const name of toOpen) {
     if (await collabIndexedDbHasPendingServerSave(name)) return true;
   }
   return false;
 }
 
-async function dropCollabDatabase(apiPath: string): Promise<boolean> {
+async function dropCollabDatabase(apiPath: string, identity: string | null): Promise<boolean> {
   const room = docsCollabRoomKey(apiPath);
   if (!room) return true;
-  const results = await Promise.all(
-    indexedDbNamesForRoom(room).map((name) => deleteIndexedDatabase(name)),
-  );
+  const names = identity ? [identity, ...indexedDbNamesForRoom(room)] : indexedDbNamesForRoom(room);
+  const results = await Promise.all(names.map((name) => deleteIndexedDatabase(name)));
   return results.every(Boolean);
 }
 

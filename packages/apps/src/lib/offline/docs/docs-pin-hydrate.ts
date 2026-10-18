@@ -4,8 +4,10 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
-  docsCollabIndexedDbKey,
+  docsCollabPathKeyedSources,
   docsCollabRoomKey,
+  migrateDocsCollabPendingSaveFromLegacy,
+  resolveDocsCollabDatabase,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import { loadBootstrapInParallel } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
@@ -46,10 +48,18 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
   if (!isDocsCollabEditablePath(room)) return;
 
   const documentFormat = collabDocumentFormat(room);
+  const database = await resolveDocsCollabDatabase(room);
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
+  const persistence = new IndexeddbPersistence(database.name, ydoc);
   try {
     await persistence.whenSynced;
+    if (database.nodeId) {
+      await migrateDocsCollabPendingSaveFromLegacy(
+        room,
+        persistence,
+        docsCollabPathKeyedSources(room),
+      );
+    }
     if (isYDocEmpty(ydoc)) {
       applyContentSeedToYDoc(ydoc, "", documentFormat);
     }
@@ -74,11 +84,19 @@ export async function hydrateDocsCollabForOffline({
 
   const urls = buildDocsCollabUrlsForPath(room);
   const documentFormat = collabDocumentFormat(room);
+  const database = await resolveDocsCollabDatabase(room);
   const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(docsCollabIndexedDbKey(room), ydoc);
+  const persistence = new IndexeddbPersistence(database.name, ydoc);
 
   try {
     await persistence.whenSynced;
+    if (database.nodeId) {
+      await migrateDocsCollabPendingSaveFromLegacy(
+        room,
+        persistence,
+        docsCollabPathKeyedSources(room),
+      );
+    }
 
     if (getConnectivitySnapshot()) {
       const resolvedAuthToken =

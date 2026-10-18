@@ -32,6 +32,7 @@ import {
   driveEntriesTable,
 } from "@/lib/offline/drive/drive-schema";
 import {
+  DOCS_COLLAB_IDENTITY_DB_VERSION,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -39,7 +40,11 @@ import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-
 
 const username = "alice";
 
-function entry(path: string, type: "file" | "dir" = "file"): WgwDriveDirectoryEntry {
+function entry(
+  path: string,
+  type: "file" | "dir" = "file",
+  nodeId?: string,
+): WgwDriveDirectoryEntry {
   const name = path.split("/").pop() ?? path;
   return {
     type,
@@ -49,7 +54,22 @@ function entry(path: string, type: "file" | "dir" = "file"): WgwDriveDirectoryEn
     time: 1,
     permissions: 0,
     myRights: fullDriveMyRights,
+    ...(nodeId ? { nodeId } : {}),
   };
+}
+
+function identityDatabaseName(nodeId: string): string {
+  return docsCollabIndexedDbKey(nodeId, DOCS_COLLAB_IDENTITY_DB_VERSION);
+}
+
+async function seedIdentityDatabase(nodeId: string, pending: boolean): Promise<void> {
+  const ydoc = new Y.Doc();
+  ydoc.getText("body").insert(0, "local work");
+  const persistence = new IndexeddbPersistence(identityDatabaseName(nodeId), ydoc);
+  await persistence.whenSynced;
+  if (pending) await persistence.set(PENDING_SERVER_SAVE_KEY, 1);
+  await persistence.destroy();
+  ydoc.destroy();
 }
 
 async function seedPendingSave(apiPath: string): Promise<void> {
@@ -134,6 +154,49 @@ describe("applyFetchedDirectorySnapshot", () => {
       "users/alice/unsaved.md",
     ]);
     expect(await databaseNames()).toContain(docsCollabIndexedDbKey(room));
+  });
+
+  it("keeps a pruned document whose identity database still has unsaved work", async () => {
+    const path = "/users/alice/identity-unsaved.md";
+    await upsertDriveEntry(username, entry(path, "file", "fn-unsaved"));
+    await seedIdentityDatabase("fn-unsaved", true);
+
+    const result = await applyFetchedDirectorySnapshot(username, "/users/alice", []);
+
+    expect(result.keptUnsavedPaths).toEqual(["users/alice/identity-unsaved.md"]);
+    expect(await databaseNames()).toContain(identityDatabaseName("fn-unsaved"));
+    await expect(listKeptUnsavedDocumentPaths(username)).resolves.toEqual([
+      "users/alice/identity-unsaved.md",
+    ]);
+  });
+
+  it("drops the identity database of a deleted document with no local work", async () => {
+    const path = "/users/alice/identity-gone.md";
+    await upsertDriveEntry(username, entry(path, "file", "fn-gone"));
+    await seedIdentityDatabase("fn-gone", false);
+
+    const result = await applyFetchedDirectorySnapshot(username, "/users/alice", []);
+
+    expect(result.removedPaths).toEqual(["users/alice/identity-gone.md"]);
+    expect(await databaseNames()).not.toContain(identityDatabaseName("fn-gone"));
+  });
+
+  it("leaves the identity database to the new path after a remote rename", async () => {
+    await upsertDriveEntry(username, entry("/users/alice/before.md", "file", "fn-moved"));
+    await seedIdentityDatabase("fn-moved", true);
+
+    const result = await applyFetchedDirectorySnapshot(username, "/users/alice", [
+      entry("/users/alice/after.md", "file", "fn-moved"),
+    ]);
+
+    // The unsaved work belongs to after.md now: before.md is not kept for it.
+    expect(result.keptUnsavedPaths).toEqual([]);
+    expect(result.removedPaths).toEqual(["users/alice/before.md"]);
+    expect(await databaseNames()).toContain(identityDatabaseName("fn-moved"));
+    const paths = (await readDirectoryEntriesFromCache(username, "/users/alice")).map(
+      (row) => row.path,
+    );
+    expect(paths).toEqual(["/users/alice/after.md"]);
   });
 
   it("does not prune the requested folder when a listing entry belongs elsewhere, and still stores that entry", async () => {
