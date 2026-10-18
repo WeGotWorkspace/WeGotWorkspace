@@ -396,11 +396,19 @@ final class CalendarEventMutationSupport
             $this->calendars->assertEventWritable($targetInstance);
             $eventPayload['calendarIds'] = [$this->calendars->apiIdForInstance($targetInstance) => true];
 
+            $baselinePayload = $this->scheduling->withOrganizer(
+                $username,
+                $this->normalizeEventPayload($existingEvent, $existingEvent),
+            );
+            $baselinePayload['id'] = $eventPayload['id'];
+            $baselinePayload['uid'] = $eventPayload['uid'];
+            $baselinePayload['calendarIds'] = $eventPayload['calendarIds'];
+
             $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
             $ics = $this->scheduling->persistableIcs(
                 $username,
                 $raw,
-                $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid']),
+                $this->mapper->updateIcs($raw, $eventPayload, $located['veventUid'], $baselinePayload),
             );
             $this->assertRecurrenceAllowed($ics);
             $sourceBackendId = $this->calBackendCalendarId($instance);

@@ -6,6 +6,7 @@ namespace Tests\Unit\Tasks;
 
 use App\Services\Tasks\Conversion\ConversionSupport;
 use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
+use App\Services\VObject\ICalendarInPlacePatcher;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -17,7 +18,8 @@ use PHPUnit\Framework\TestCase;
  *
  * These tests pin CURRENT (lossy) behavior so the gaps in
  * docs/architecture/jscalendar-conformance.md stay provable. The fix for a
- * finding (RT-Tn) flips the matching assertions.
+ * finding (RT-Tn) flips the matching assertions. Tests named `*_survive_*`
+ * pin findings that #1392 fixed for unrelated edits.
  */
 final class TaskRoundTripLossTest extends TestCase
 {
@@ -29,27 +31,26 @@ final class TaskRoundTripLossTest extends TestCase
         $this->converter = new IcsJmapTaskConverter;
     }
 
-    /** RT-T1: several RELATED-TO collapse into one, RELTYPE is dropped — subtask links break. */
-    public function test_rt_t1_related_to_links_collapse_and_lose_reltype(): void
+    /** RT-T1 (fixed by #1392): every RELATED-TO keeps its RELTYPE. */
+    public function test_rt_t1_related_to_links_survive_a_title_edit(): void
     {
         $out = $this->patchTitle($this->todo(
             "RELATED-TO;RELTYPE=CHILD:c1\r\nRELATED-TO;RELTYPE=CHILD:c2\r\nRELATED-TO;RELTYPE=PARENT:p0\r\n"
         ));
 
-        $this->assertSame(1, substr_count($out, 'RELATED-TO'));
-        $this->assertStringNotContainsString('RELTYPE', $out);
-        $this->assertStringNotContainsString(':c1', $out);
-        $this->assertStringNotContainsString(':c2', $out);
+        $this->assertStringContainsString("RELATED-TO;RELTYPE=CHILD:c1\r\n", $out);
+        $this->assertStringContainsString("RELATED-TO;RELTYPE=CHILD:c2\r\n", $out);
+        $this->assertStringContainsString("RELATED-TO;RELTYPE=PARENT:p0\r\n", $out);
     }
 
-    /** RT-T2: SEQUENCE is treated as known but never read or written. */
-    public function test_rt_t2_sequence_is_dropped(): void
+    /** RT-T2 (kept on unrelated edits by #1392): SEQUENCE survives. Bumping it is RT-T2's own fix. */
+    public function test_rt_t2_sequence_survives_a_title_edit(): void
     {
-        $this->assertStringNotContainsString('SEQUENCE', $this->patchTitle($this->todo("SEQUENCE:3\r\n")));
+        $this->assertStringContainsString("SEQUENCE:3\r\n", $this->patchTitle($this->todo("SEQUENCE:3\r\n")));
     }
 
-    /** RT-T3: an all-day RECURRENCE-ID is written without VALUE=DATE. */
-    public function test_rt_t3_all_day_recurrence_id_loses_value_date(): void
+    /** RT-T3 (fixed for unrelated edits by #1392): the stored all-day RECURRENCE-ID keeps VALUE=DATE. */
+    public function test_rt_t3_all_day_recurrence_id_survives_a_title_edit(): void
     {
         $out = $this->patchTitle($this->todo(
             "RRULE:FREQ=MONTHLY;COUNT=3\r\n",
@@ -57,11 +58,12 @@ final class TaskRoundTripLossTest extends TestCase
             ."SUMMARY:Parent\r\nDUE;VALUE=DATE:20260721\r\nEND:VTODO\r\n",
         ));
 
-        $this->assertStringContainsString("RECURRENCE-ID:20260720\r\n", $out);
+        $this->assertStringContainsString("RECURRENCE-ID;VALUE=DATE:20260720\r\n", $out);
+        $this->assertSame(1, substr_count($out, 'RECURRENCE-ID'));
     }
 
-    /** RT-T4: an override VTODO loses its own X-props and inherits master-only properties. */
-    public function test_rt_t4_override_loses_own_props_and_inherits_master_rdate(): void
+    /** RT-T4 (fixed by #1392): an override keeps its own X-props and gets no master-only properties. */
+    public function test_rt_t4_override_survives_a_title_edit(): void
     {
         $out = $this->patchTitle($this->todo(
             "RRULE:FREQ=MONTHLY;COUNT=3\r\nRDATE;VALUE=DATE:20260901\r\n",
@@ -69,34 +71,33 @@ final class TaskRoundTripLossTest extends TestCase
             ."SUMMARY:Parent\r\nDUE;VALUE=DATE:20260721\r\nX-OVR:1\r\nEND:VTODO\r\n",
         ));
 
-        $this->assertStringNotContainsString('X-OVR', $out);
-        $this->assertSame(2, substr_count($out, 'RDATE'));
+        $this->assertStringContainsString("X-OVR:1\r\n", $out);
+        $this->assertSame(1, substr_count($out, 'RDATE'));
     }
 
-    /** RT-T5: ATTENDEE/ORGANIZER parameters other than CN/PARTSTAT are dropped; CN falls back to the address. */
-    public function test_rt_t5_participant_parameters_are_dropped(): void
+    /** RT-T5 (fixed for unrelated edits by #1392): participant parameters survive, CN is not invented. */
+    public function test_rt_t5_participant_parameters_survive_a_title_edit(): void
     {
         $out = $this->patchTitle($this->todo(
             "ORGANIZER;SCHEDULE-AGENT=CLIENT:mailto:org@ex.com\r\n"
             ."ATTENDEE;CN=Bob;ROLE=OPT-PARTICIPANT;RSVP=TRUE;CUTYPE=GROUP;PARTSTAT=NEEDS-ACTION:mailto:bob@ex.com\r\n"
         ));
 
-        foreach (['SCHEDULE-AGENT', 'ROLE=OPT-PARTICIPANT', 'RSVP', 'CUTYPE'] as $lost) {
-            $this->assertStringNotContainsString($lost, $out, $lost.' is expected to be lost today');
+        foreach (['SCHEDULE-AGENT=CLIENT', 'ROLE=OPT-PARTICIPANT', 'RSVP=TRUE', 'CUTYPE=GROUP'] as $kept) {
+            $this->assertStringContainsString($kept, $out);
         }
-        $this->assertStringContainsString('ORGANIZER;CN=org@ex.com:mailto:org@ex.com', $out);
+        $this->assertStringNotContainsString('CN=org@ex.com', $out);
     }
 
-    /** RT-T6: VALARM DESCRIPTION and UID are dropped; DISPLAY is written without the required DESCRIPTION. */
-    public function test_rt_t6_display_alarm_loses_description_and_uid(): void
+    /** RT-T6 (fixed for unrelated edits by #1392): a DISPLAY alarm keeps DESCRIPTION and UID. */
+    public function test_rt_t6_display_alarm_survives_a_title_edit(): void
     {
         $out = $this->patchTitle($this->todo(
             "BEGIN:VALARM\r\nUID:al1\r\nACTION:DISPLAY\r\nTRIGGER;RELATED=END:-PT1H\r\nDESCRIPTION:Due soon\r\nEND:VALARM\r\n"
         ));
 
-        $this->assertStringContainsString('ACTION:DISPLAY', $out);
-        $this->assertStringNotContainsString('DESCRIPTION', $out);
-        $this->assertStringNotContainsString('UID:al1', $out);
+        $this->assertStringContainsString("DESCRIPTION:Due soon\r\n", $out);
+        $this->assertStringContainsString("UID:al1\r\n", $out);
     }
 
     /** RT-T7: the tasks wire shape keeps the pre-RFC 8984 names for progress. */
@@ -116,11 +117,15 @@ final class TaskRoundTripLossTest extends TestCase
             .$masterBody."END:VTODO\r\n".$extraComponents."END:VCALENDAR\r\n";
     }
 
-    /** Mirrors TaskRepository::patch for a single-VTODO object. */
+    /** Mirrors TaskRepository::patch for a single-VTODO object, including the in-place patch (#1392). */
     private function patchTitle(string $ics): string
     {
         $existing = $this->converter->tasksFromIcs($ics, 't1.ics', 'inbox')[0];
 
-        return $this->converter->icsFromTask(ConversionSupport::deepMergeTaskPatch($existing, ['title' => 'Renamed']));
+        return ICalendarInPlacePatcher::patch(
+            $ics,
+            $this->converter->icsFromTask($existing),
+            $this->converter->icsFromTask(ConversionSupport::deepMergeTaskPatch($existing, ['title' => 'Renamed'])),
+        );
     }
 }
