@@ -38,6 +38,7 @@ vi.mock("./docs-rtc-session", () => ({
     getMyName = vi.fn(() => "Alex");
     clearMessageListeners = vi.fn();
     sendTo = vi.fn();
+    noteLocalUpdate = vi.fn();
   },
 }));
 
@@ -92,6 +93,47 @@ function serveExternalWrite(puts: string[], saveStatus = 200) {
       });
     }),
   );
+}
+
+const OUTSIDE_TAG = '"outside-text"';
+
+type RefusedPut = { markdown: string; seen: string | undefined };
+
+/**
+ * The read is clean: the edit lands while the document is already open.
+ * A save that does not name the outside text it saw is refused.
+ */
+function serveOutsideEditWhileOpen(puts: RefusedPut[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url.includes("format=yjs")) {
+        return new Response(staleState(), { status: 200, headers: { ETag: '"sidecar"' } });
+      }
+      if (method === "PUT") {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        const seen = headers["X-Wgw-External-Write"];
+        puts.push({ markdown: markdownFromFramedSave(init?.body), seen });
+        if (seen !== OUTSIDE_TAG) {
+          return new Response(JSON.stringify({ error: "external_write" }), { status: 409 });
+        }
+        return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+      }
+      return new Response(OUTSIDE_TEXT, {
+        status: 200,
+        headers: { "Content-Type": "text/markdown", ETag: OUTSIDE_TAG },
+      });
+    }),
+  );
+}
+
+function typeLocally(ydoc: Y.Doc, text: string): void {
+  const paragraph = new Y.XmlElement("paragraph");
+  paragraph.insert(0, [new Y.XmlText(text)]);
+  const fragment = ydoc.getXmlFragment("default");
+  fragment.insert(fragment.length, [paragraph]);
 }
 
 function markdownFromFramedSave(body: BodyInit | null | undefined): string {
@@ -264,6 +306,87 @@ describe("Docs external write (#1349)", () => {
     });
     expect(puts).toHaveLength(failedPuts);
   }, 15_000);
+
+  describe("an outside edit while the document is open", () => {
+    async function openAndEdit(room: string, puts: RefusedPut[]) {
+      serveOutsideEditWhileOpen(puts);
+      const hooks = renderDocsWorkspaceHooks(docsUrls(room));
+      const { result } = hooks;
+      await waitFor(() => expect(result.current.collab.session).not.toBeNull(), {
+        timeout: 5000,
+      });
+      act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+      act(() => typeLocally(result.current.collab.session!.ydoc, LOCAL_TEXT));
+      await act(async () => {
+        await result.current.collab.saveNow().catch(() => undefined);
+      });
+      return hooks;
+    }
+
+    it("asks instead of overwriting, and writes nothing while asking", async () => {
+      const puts: RefusedPut[] = [];
+      const { result } = await openAndEdit("docs/open-refused.md", puts);
+
+      await waitFor(() => expect(result.current.prompt.open).toBe(true));
+      expect(puts).toHaveLength(1);
+      expect(puts[0]?.seen).toBeUndefined();
+      expect(result.current.collab.docStatus).not.toMatch(/save failed/i);
+
+      await act(async () => {
+        await result.current.collab.saveNow().catch(() => undefined);
+      });
+      expect(puts).toHaveLength(1);
+    }, 15_000);
+
+    it("Keep my edits saves the local text and names the outside text it saw", async () => {
+      const puts: RefusedPut[] = [];
+      const { result } = await openAndEdit("docs/open-keep.md", puts);
+      await waitFor(() => expect(result.current.prompt.open).toBe(true));
+
+      act(() => result.current.prompt.keepLocal());
+
+      await waitFor(() => expect(result.current.prompt.open).toBe(false));
+      expect(puts.at(-1)?.seen).toBe(OUTSIDE_TAG);
+      expect(puts.at(-1)?.markdown).toContain(LOCAL_TEXT);
+      expect(documentText(result)).toContain(LOCAL_TEXT);
+    }, 15_000);
+
+    it("Use the outside version replaces the document and saves it", async () => {
+      const puts: RefusedPut[] = [];
+      const { result } = await openAndEdit("docs/open-outside.md", puts);
+      await waitFor(() => expect(result.current.prompt.open).toBe(true));
+
+      act(() => result.current.prompt.useOutside());
+
+      await waitFor(() => expect(result.current.prompt.open).toBe(false));
+      expect(puts.at(-1)).toEqual({ markdown: OUTSIDE_TEXT, seen: OUTSIDE_TAG });
+      expect(documentText(result)).toContain(OUTSIDE_TEXT);
+      expect(documentText(result)).not.toContain(LOCAL_TEXT);
+    }, 15_000);
+
+    it("ends a pending offline save in the prompt, not in a retry loop", async () => {
+      const room = "docs/open-offline.md";
+      await markUnsavedWork(room);
+      const puts: RefusedPut[] = [];
+      serveOutsideEditWhileOpen(puts);
+
+      const { result } = renderDocsWorkspaceHooks(docsUrls(room));
+      await waitFor(() => expect(result.current.collab.session).not.toBeNull(), {
+        timeout: 5000,
+      });
+      act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+      await act(async () => {
+        await result.current.collab.saveNow().catch(() => undefined);
+      });
+
+      await waitFor(() => expect(result.current.prompt.open).toBe(true));
+      const refused = puts.length;
+      await act(() => new Promise((resolve) => setTimeout(resolve, 2500)));
+      expect(puts).toHaveLength(refused);
+      expect(result.current.collab.pendingSync).toBe(true);
+      expect(result.current.collab.docStatus).not.toMatch(/save failed/i);
+    }, 15_000);
+  });
 
   it("shows a prompt that Escape cannot dismiss", () => {
     const labels = docsLabels.externalWriteDialog;
