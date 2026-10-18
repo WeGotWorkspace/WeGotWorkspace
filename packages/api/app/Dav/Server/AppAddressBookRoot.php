@@ -51,7 +51,10 @@ final class AppAddressBookRoot extends AddressBookRoot
             throw new DAV\Exception\NotFound('Principal with name '.$name.' not found');
         }
         $current = $this->authPlugin->getCurrentPrincipal();
-        if ($current === null || $current === '' || ($principalInfo['uri'] ?? '') !== $current) {
+        // No principal yet: return the home so the ACL plugin answers with a
+        // 401 challenge, like the calendar root. A 404 here makes Apple Contacts
+        // treat the home as missing and abort its sync (#1437).
+        if ($current !== null && $current !== '' && ($principalInfo['uri'] ?? '') !== $current) {
             throw new DAV\Exception\NotFound('Principal with name '.$name.' not found');
         }
 
