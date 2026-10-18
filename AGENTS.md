@@ -40,6 +40,7 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 | [plugins](.agents/skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |
 | [meet](.agents/skills/meet/) | Meet UI, RTC, room signaling |
 | [apps-ui](.agents/skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
+| [client-transport](.agents/skills/client-transport/) | Client API calls in `lib/api/wgw` — typed errors with an HTTP status for the offline outbox |
 | [workspace](.agents/skills/workspace/) | *App, *Workspace, workspace shell — [workspace-shells.md](packages/apps/docs/workspace-shells.md), [feature-blueprint.md](.agents/skills/workspace/feature-blueprint.md), [collab-hooks.md](.agents/skills/workspace/collab-hooks.md) (text-editor-core / docs-collab), [apps-done-gate.md](.agents/skills/testing/apps-done-gate.md) |
 | [plan-feature](.agents/skills/plan-feature/) | Scoping features, parallel chunk plans; file issues via [issue-filing.md](.agents/skills/developer/issue-filing.md) |
 | [security](.agents/skills/security/) | Pre-auth paths, caller-input parsers and uploads, cache or limiter keys from caller input |
