@@ -228,3 +228,30 @@ export CI="${CI:-}"
 
 cd "$ROOT/tools/api-e2e"
 pnpm exec playwright test e2e/install.fresh.spec.ts
+
+if [[ "$CHANNEL" == "zip" ]]; then
+  # The parent of the tree is writable, so the resolver must put the data
+  # directory outside it. The health checks above ran before the install,
+  # so nothing they wrote may be left under the document root either.
+  TREE_REAL="$(cd "$WORK/tree" && pwd -P)"
+  DATA_DIR="$(sed -n 's/^WGW_DATA_DIR=//p' "$WORK/tree/packages/api/.env" | tail -1)"
+  if [[ "$DATA_DIR" != /* ]]; then
+    echo "WGW_DATA_DIR is not an absolute path outside the tree: '${DATA_DIR}'" >&2
+    exit 1
+  fi
+  DATA_REAL="$(cd "$DATA_DIR" && pwd -P)"
+  if [[ "$DATA_REAL" == "$TREE_REAL" || "$DATA_REAL" == "$TREE_REAL"/* ]]; then
+    echo "WGW_DATA_DIR ${DATA_DIR} is inside the document root ${TREE_REAL}" >&2
+    exit 1
+  fi
+  if [[ ! -f "$DATA_REAL/.installed" ]]; then
+    echo "No .installed in ${DATA_REAL}" >&2
+    exit 1
+  fi
+  if [[ -e "$WORK/tree/wgw-content" ]]; then
+    echo "wgw-content exists under the document root:" >&2
+    find "$WORK/tree/wgw-content" >&2
+    exit 1
+  fi
+  echo "Data directory resolved outside the document root: ${DATA_REAL}"
+fi
