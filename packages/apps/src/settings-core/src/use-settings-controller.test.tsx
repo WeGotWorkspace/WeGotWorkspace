@@ -50,6 +50,7 @@ describe("useSettingsController MCP kill-switch", () => {
       "profile",
       "memberships",
       "offline",
+      "about",
     ]);
     expect(result.current.sidebarGroups.apps.map((section) => section.id)).toEqual([
       "calendar",

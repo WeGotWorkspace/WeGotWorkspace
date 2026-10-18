@@ -4,12 +4,14 @@ import {
   CheckCircle2,
   Contact,
   HardDrive,
+  Info,
   Mail as MailIcon,
   StickyNote,
   User,
   Users,
   Video,
 } from "lucide-react";
+import { SettingsAboutPane } from "@/settings-core/src/settings-about-pane";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 import {
@@ -114,6 +116,13 @@ export function registerBuiltinSettings(): void {
     group: "apps",
     appId: "meet",
   });
+  registerPanel({
+    id: "about",
+    label: "About",
+    description: "License and source code",
+    icon: <Info className="size-3.5" />,
+    group: "account",
+  });
 
   registerSlice({
     id: "profile",
@@ -164,5 +173,10 @@ export function registerBuiltinSettings(): void {
     id: "meet-device",
     panelIds: ["meet"],
     render: () => <SettingsMeetPane />,
+  });
+  registerSlice({
+    id: "about",
+    panelIds: ["about"],
+    render: () => <SettingsAboutPane />,
   });
 }

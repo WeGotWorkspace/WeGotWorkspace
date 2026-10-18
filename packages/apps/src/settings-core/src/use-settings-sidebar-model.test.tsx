@@ -21,6 +21,7 @@ describe("useSettingsSidebarModel", () => {
       "memberships",
       "offline",
       "assistants",
+      "about",
     ]);
     expect(result.current.apps.map((section) => section.id)).toEqual([
       "calendar",
@@ -40,6 +41,7 @@ describe("useSettingsSidebarModel", () => {
       "profile",
       "memberships",
       "offline",
+      "about",
     ]);
     expect(result.current.apps.map((section) => section.id)).toEqual([
       "calendar",
