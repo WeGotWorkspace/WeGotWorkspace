@@ -260,6 +260,37 @@ describe("syncDriveInboundFromFileNodes", () => {
     await expect(readDocsAvailability(username, "/users/ada/original.md")).resolves.toBeUndefined();
   });
 
+  it("moves a pin found by nodeId even when its path is stale", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/current.md", "fn-pin"));
+    await writeDocsAvailability(username, {
+      id: "/users/ada/older.md",
+      location: "My Drive",
+      nodeId: "fn-pin",
+    });
+    const catalog = new Map<string, JmapFileNode>([
+      ["fn-home", node("fn-home", null, "ada", "directory")],
+      ["fn-pin", node("fn-pin", "fn-home", "latest.md")],
+    ]);
+    getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
+      accountId: "ada",
+      state: "7",
+      list: ids.flatMap((id) => {
+        const item = catalog.get(id);
+        return item ? [item] : [];
+      }),
+      notFound: [],
+    }));
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-pin"], newState: "7" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    await expect(readDocsAvailability(username, "/users/ada/older.md")).resolves.toBeUndefined();
+    await expect(readDocsAvailability(username, "/users/ada/latest.md")).resolves.toMatchObject({
+      nodeId: "fn-pin",
+    });
+  });
+
   it("moves descendant cache rows when a directory is renamed", async () => {
     await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
     await upsertDriveEntry(username, entry("/users/ada/folder", "fn-dir", "dir"));

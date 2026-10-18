@@ -199,6 +199,29 @@ describe("applyFetchedDirectorySnapshot", () => {
     expect(paths).toEqual(["/users/alice/after.md"]);
   });
 
+  it("moves the offline pin to the new path when the crawl sees a remote rename", async () => {
+    await upsertDriveEntry(username, entry("/users/alice/old-name.md", "file", "fn-pin"));
+    await writeDocsAvailability(username, {
+      id: "/users/alice/old-name.md",
+      location: "My Drive",
+      nodeId: "fn-pin",
+    });
+
+    await applyFetchedDirectorySnapshot(username, "/users/alice", [
+      entry("/users/alice/new-name.md", "file", "fn-pin"),
+    ]);
+
+    await expect(
+      readDocsAvailability(username, "/users/alice/old-name.md"),
+    ).resolves.toBeUndefined();
+    await expect(readDocsAvailability(username, "/users/alice/new-name.md")).resolves.toMatchObject(
+      {
+        nodeId: "fn-pin",
+        location: "My Drive",
+      },
+    );
+  });
+
   it("does not prune the requested folder when a listing entry belongs elsewhere, and still stores that entry", async () => {
     await upsertDriveEntry(username, entry("/users/alice/local.md"));
 

@@ -45,6 +45,9 @@ import {
   migrateDocsAvailabilityPath,
   writeDocsAvailability,
 } from "@/lib/offline/docs/docs-availability-store";
+import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
+import { upsertDriveEntry } from "@/lib/offline/drive/drive-directory-offline-store";
+import "@/lib/offline/drive/drive-schema";
 import {
   makeDocsOfflineAvailable,
   removeDocsOfflineCopy,
@@ -75,6 +78,24 @@ describe("docs offline pin core", () => {
     expect(isYDocEmpty(ydoc)).toBe(false);
     await persistence.destroy();
     ydoc.destroy();
+  });
+
+  it("records the cached FileNode id on a new pin", async () => {
+    await upsertDriveEntry(username, {
+      type: "file",
+      path: `/${apiPath}`,
+      name: "pinned.md",
+      size: 1,
+      time: 1,
+      permissions: 0,
+      myRights: fullDriveMyRights,
+      nodeId: "fn-pinned",
+    });
+
+    await makeDocsOfflineAvailable(username, apiPath, "My Drive");
+
+    const rows = await listDocsAvailability(username);
+    expect(rows.find((row) => row.id === apiPath)?.nodeId).toBe("fn-pinned");
   });
 
   it("remove clears persistence and availability row", async () => {

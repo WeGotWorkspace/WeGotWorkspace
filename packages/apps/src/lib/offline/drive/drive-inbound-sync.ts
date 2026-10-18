@@ -8,6 +8,7 @@ import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   migrateDocsAvailabilityPath,
+  moveDocsAvailabilityForNode,
   stampDocsAvailabilityNodeIds,
 } from "@/lib/offline/docs/docs-availability-store";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
@@ -204,6 +205,7 @@ async function applyFileNodeChanges(
       }
       await upsertDriveEntry(username, fileNodeToDirectoryEntry(path, node));
       await stampDocsAvailabilityNodeIds(username, [{ path, nodeId: node.id }]);
+      await moveDocsAvailabilityForNode(username, node.id, path);
       cachePaths.set(node.id, path);
       upserted.add(node.id);
       changed = true;

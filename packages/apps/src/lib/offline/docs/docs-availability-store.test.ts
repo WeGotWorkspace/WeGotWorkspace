@@ -4,6 +4,7 @@ import "@/lib/offline/docs/docs-schema";
 import {
   listDocsAvailability,
   migrateDocsAvailabilityPath,
+  moveDocsAvailabilityForNode,
   readDocsAvailability,
   removeDocsAvailability,
   writeDocsAvailability,
@@ -35,6 +36,36 @@ describe("docs-availability-store", () => {
 
     await removeDocsAvailability(username, "users/ada/note.md");
     expect(await listDocsAvailability(username)).toHaveLength(0);
+  });
+
+  it("keeps the FileNode id when a pin is written again", async () => {
+    await writeDocsAvailability(username, {
+      id: "users/ada/note.md",
+      location: "My Drive",
+      nodeId: "fn-note",
+    });
+    await writeDocsAvailability(username, { id: "users/ada/note.md", location: "Shared" });
+
+    await expect(readDocsAvailability(username, "users/ada/note.md")).resolves.toMatchObject({
+      location: "Shared",
+      nodeId: "fn-note",
+    });
+  });
+
+  it("moves the pin of a FileNode to its new path, wherever the pin was", async () => {
+    await writeDocsAvailability(username, {
+      id: "users/ada/stale.md",
+      location: "My Drive",
+      nodeId: "fn-moved",
+    });
+
+    await moveDocsAvailabilityForNode(username, "fn-moved", "/users/ada/new/place.md");
+
+    await expect(readDocsAvailability(username, "users/ada/stale.md")).resolves.toBeUndefined();
+    await expect(readDocsAvailability(username, "users/ada/new/place.md")).resolves.toMatchObject({
+      nodeId: "fn-moved",
+      location: "My Drive",
+    });
   });
 
   it("migrates availability path on rename", async () => {
