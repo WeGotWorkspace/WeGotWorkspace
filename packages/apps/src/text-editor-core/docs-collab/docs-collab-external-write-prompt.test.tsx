@@ -496,6 +496,69 @@ describe("Docs external write (#1349)", () => {
     expect(secondPuts.every((put) => put.seen === undefined)).toBe(true);
   }, 15_000);
 
+  it("ends a pending offline Notes save in the prompt and keeps it with the content tag", async () => {
+    const room = "note-offline-refused";
+    await markUnsavedWork(room);
+    const puts: RefusedPut[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), { status: 200, headers: { ETag: '"state"' } });
+        }
+        if (method === "PUT") {
+          const headers = (init?.headers ?? {}) as Record<string, string>;
+          const seen = headers["X-Wgw-External-Write"];
+          puts.push({ markdown: markdownFromFramedSave(init?.body), seen });
+          if (seen !== '"content-outside"') {
+            return new Response(
+              JSON.stringify({ error: "external_write", code: "external_write" }),
+              {
+                status: 409,
+              },
+            );
+          }
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(
+          JSON.stringify({
+            body: OUTSIDE_TEXT,
+            title: "Outside",
+            contentEtag: '"content-outside"',
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ETag: '"journal-etag"' },
+          },
+        );
+      }),
+    );
+    const documentUrl = `/api/v1/notes/items/${room}`;
+    const { result } = renderDocsWorkspaceHooks({
+      ...DEFAULT_DOCS_COLLAB_URLS,
+      room,
+      documentUrl,
+      yjsUrl: `${documentUrl}?format=yjs`,
+    });
+    await waitFor(() => expect(result.current.collab.session).not.toBeNull(), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.prompt.open).toBe(true));
+    expect(result.current.request.detail?.title).toBe("Outside");
+    expect(result.current.collab.docStatus).not.toMatch(/save failed|external_write/i);
+
+    act(() => result.current.prompt.keepLocal());
+
+    await waitFor(() => expect(result.current.prompt.open).toBe(false));
+    // The content tag, not the journal ETag: a tag or move while asking does not ask again.
+    expect(puts.at(-1)?.seen).toBe('"content-outside"');
+  }, 15_000);
+
   it("shows a prompt that Escape cannot dismiss", () => {
     const labels = docsLabels.externalWriteDialog;
     render(

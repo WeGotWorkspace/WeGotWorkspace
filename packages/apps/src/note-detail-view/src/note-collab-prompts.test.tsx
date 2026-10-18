@@ -1,10 +1,13 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab/docs-collab-types";
 
 const harness = vi.hoisted(() => ({
   prompt: false,
+  answerFails: false,
+  session: null as { ydoc: unknown } | null,
 }));
 
 vi.mock("@/text-editor-core/docs-collab", async () => {
@@ -18,9 +21,11 @@ vi.mock("@/text-editor-core/docs-collab", async () => {
       return {
         onMarkdownChange: vi.fn(),
         registerMarkdownGetter: vi.fn(),
-        session: null,
+        session: harness.session,
         scheduleSave: vi.fn(),
-        resolveExternalWrite: vi.fn(async () => undefined),
+        resolveExternalWrite: vi.fn(async () => {
+          if (harness.answerFails) throw new Error("HTTP 503");
+        }),
         peers: [],
         connectingPeers: [],
         warningPeers: [],
@@ -59,6 +64,42 @@ function renderSession() {
 describe("NoteCollabSession prompts", () => {
   beforeEach(() => {
     harness.prompt = false;
+    harness.answerFails = false;
+    harness.session = null;
+  });
+
+  it("keeps the dialog usable when the save behind Keep my edits fails", async () => {
+    harness.prompt = true;
+    harness.answerFails = true;
+    renderSession();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Keep my edits" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Keep my edits" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.getByRole("dialog", { name: "Changed outside the app" })).toBeTruthy();
+  });
+
+  it("disables Keep my edits once the outside version replaced the note, even if its save failed", async () => {
+    harness.prompt = true;
+    harness.answerFails = true;
+    harness.session = { ydoc: new Y.Doc() };
+    renderSession();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Use the outside version" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.getByRole("dialog", { name: "Changed outside the app" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Keep my edits" })).toHaveProperty("disabled", true);
   });
 
   it("shows the outside-write prompt and not the retired choice screen", async () => {

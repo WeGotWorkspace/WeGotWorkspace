@@ -271,13 +271,13 @@ function createNotesCollabApp(): CollabApp {
       return { id, yjs: parsed.searchParams.get("format") === "yjs" };
     },
     markdownResponse(markdown, etag) {
-      return new Response(JSON.stringify({ body: markdown }), {
+      // The journal ETag moves with tags too; the content tag names the text.
+      return new Response(JSON.stringify({ body: markdown, contentEtag: etag }), {
         status: 200,
-        headers: { "Content-Type": "application/json", ETag: etag },
+        headers: { "Content-Type": "application/json", ETag: `"journal-${etag}"` },
       });
     },
-    // #1381: the Notes save does not refuse an unseen outside edit yet.
-    refusesUnseenExternalWrites: false,
+    refusesUnseenExternalWrites: true,
   });
   installFetch(server.handle);
 
@@ -569,8 +569,6 @@ const scenarios: Scenario[] = [
   },
   {
     name: "an external writer changes the content while the document is open",
-    // Notes still saves over an unseen outside edit. #1381 adds the refusal.
-    knownGap: { app: "notes", issue: "#1381" },
     async run(app) {
       const listener = vi.fn();
       setDocsSyncConflictListener(listener);
