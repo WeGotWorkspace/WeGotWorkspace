@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type * as Y from "yjs";
 import {
   type ExternalWriteDetail,
@@ -10,36 +10,56 @@ import { collabDocumentFormat } from "./docs-collab-utils";
 export type DocsExternalWriteRequest = {
   /** The urls to hand to `useDocsCollab`, with `onExternalWrite` wired. */
   urls: DocsCollabUrls | undefined;
+  /** Only the question for the document open now. */
   detail: ExternalWriteDetail | null;
   clear: () => void;
 };
 
+type PendingQuestion = { room: string | undefined; detail: ExternalWriteDetail };
+
 /**
  * Catches the join path's question. Without this, the join holds saves on
- * `prompt` and asks nobody (#1349).
+ * `prompt` and asks nobody (#1349). The workspace is not remounted per
+ * document, so a question is kept with its room and dropped on a switch:
+ * an answer must never write one document's outside text into another.
  */
 export function useDocsExternalWriteRequest(
   urls: DocsCollabUrls | undefined,
 ): DocsExternalWriteRequest {
-  const [detail, setDetail] = useState<ExternalWriteDetail | null>(null);
+  const room = urls?.room;
+  const [pending, setPending] = useState<PendingQuestion | null>(null);
   const collabUrls = useMemo(
-    () => (urls ? { ...urls, onExternalWrite: setDetail } : undefined),
+    () =>
+      urls
+        ? {
+            ...urls,
+            onExternalWrite: (detail: ExternalWriteDetail) =>
+              setPending({ room: urls.room, detail }),
+          }
+        : undefined,
     [urls],
   );
-  const clear = useCallback(() => setDetail(null), []);
+  useEffect(() => {
+    setPending(null);
+  }, [room]);
+  const clear = useCallback(() => setPending(null), []);
+  const detail = pending !== null && pending.room === room ? pending.detail : null;
   return { urls: collabUrls, detail, clear };
 }
 
 export type DocsExternalWritePrompt = {
   open: boolean;
   busy: boolean;
+  /** The outside text already replaced the local edits; only a retry is left. */
+  keepLocalDisabled: boolean;
   keepLocal: () => void;
   useOutside: () => void;
 };
 
 /**
- * The two answers. Saves stay held until one of them runs, so the prompt has
- * no dismiss: closing it would write neither version.
+ * The two answers. Saves stay held until one of them is saved, so the prompt
+ * has no dismiss, and a failed save leaves it up. The save hook already
+ * reports the failure in the sync status.
  */
 export function useDocsExternalWritePrompt({
   request,
@@ -55,31 +75,40 @@ export function useDocsExternalWritePrompt({
   onOutsideApplied?: () => void;
 }): DocsExternalWritePrompt {
   const [busy, setBusy] = useState(false);
+  const [appliedOutside, setAppliedOutside] = useState<ExternalWriteDetail | null>(null);
   const { detail, clear } = request;
+  const keepLocalDisabled = detail !== null && appliedOutside === detail;
+
+  const answer = useCallback(
+    (suppliedMarkdown: string | null) => {
+      setBusy(true);
+      void resolveExternalWrite(suppliedMarkdown)
+        .then(clear)
+        .catch(() => undefined)
+        .finally(() => setBusy(false));
+    },
+    [clear, resolveExternalWrite],
+  );
 
   const keepLocal = useCallback(() => {
-    setBusy(true);
-    void resolveExternalWrite(null)
-      .then(clear)
-      .finally(() => setBusy(false));
-  }, [clear, resolveExternalWrite]);
+    if (keepLocalDisabled) return;
+    answer(null);
+  }, [answer, keepLocalDisabled]);
 
   const useOutside = useCallback(() => {
     if (!detail || !ydoc) return;
-    setBusy(true);
-    replaceDocumentWithExternalText(
-      ydoc,
-      detail.markdown,
-      detail.title,
-      collabDocumentFormat(room),
-    );
-    void resolveExternalWrite(detail.markdown)
-      .then(() => {
-        clear();
-        onOutsideApplied?.();
-      })
-      .finally(() => setBusy(false));
-  }, [clear, detail, onOutsideApplied, resolveExternalWrite, room, ydoc]);
+    if (appliedOutside !== detail) {
+      replaceDocumentWithExternalText(
+        ydoc,
+        detail.markdown,
+        detail.title,
+        collabDocumentFormat(room),
+      );
+      setAppliedOutside(detail);
+      onOutsideApplied?.();
+    }
+    answer(detail.markdown);
+  }, [answer, appliedOutside, detail, onOutsideApplied, room, ydoc]);
 
-  return { open: detail !== null, busy, keepLocal, useOutside };
+  return { open: detail !== null, busy, keepLocalDisabled, keepLocal, useOutside };
 }

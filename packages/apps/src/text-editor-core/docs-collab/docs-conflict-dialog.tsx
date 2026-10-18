@@ -21,6 +21,8 @@ export type DocsConflictDialogProps = {
   open: boolean;
   documentTitle: string;
   busy?: boolean;
+  /** Set once the local version can no longer be kept. */
+  keepLocalDisabled?: boolean;
   labels: DocsConflictDialogLabels;
   onKeepLocal: () => void;
   onUseServer: () => void;
@@ -32,6 +34,7 @@ export function DocsConflictDialog({
   open,
   documentTitle,
   busy = false,
+  keepLocalDisabled = false,
   labels,
   onKeepLocal,
   onUseServer,
@@ -48,7 +51,7 @@ export function DocsConflictDialog({
           <Button variant="outline" onClick={onUseServer} disabled={busy}>
             {labels.conflictUseServer}
           </Button>
-          <Button variant="primary" onClick={onKeepLocal} disabled={busy}>
+          <Button variant="primary" onClick={onKeepLocal} disabled={busy || keepLocalDisabled}>
             {labels.conflictKeepMine}
           </Button>
         </DialogFooter>

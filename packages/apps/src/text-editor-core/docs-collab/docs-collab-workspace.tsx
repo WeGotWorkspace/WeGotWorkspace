@@ -767,6 +767,7 @@ function DocsCollabWorkspaceInner({
           open={externalWrite.open}
           documentTitle={resolvedDocumentTitle}
           busy={externalWrite.busy}
+          keepLocalDisabled={externalWrite.keepLocalDisabled}
           labels={labels.externalWriteDialog}
           onKeepLocal={externalWrite.keepLocal}
           onUseServer={externalWrite.useOutside}
