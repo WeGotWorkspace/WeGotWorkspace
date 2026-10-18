@@ -289,6 +289,23 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
         $this->assertSame("# Outside again\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
     }
 
+    public function test_a_wildcard_or_empty_acknowledgement_is_refused(): void
+    {
+        $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+        $this->dav('PUT', '/files/users/alice/together.md', "# Outside\n")->assertSuccessful();
+
+        foreach (['*', ' ', 'W/*'] as $seen) {
+            $this->withBearer($this->token)
+                ->putCollaboration($this->documentUrl(), "# Doc, kept\n", "\x05", [
+                    'If-Match' => $etag,
+                    CollabExternalWrite::HEADER => $seen,
+                ])
+                ->assertStatus(409);
+        }
+
+        $this->assertSame("# Outside\n", Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
+    }
+
     public function test_a_save_without_a_row_is_not_refused(): void
     {
         $this->seedWithoutRow();
