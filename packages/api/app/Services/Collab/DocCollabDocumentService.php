@@ -270,12 +270,31 @@ final class DocCollabDocumentService
             return;
         }
 
-        $seen = trim((string) $request->headers->get(CollabExternalWrite::HEADER, ''));
-        if ($seen !== '' && $this->etagSatisfies($seen, $this->states->storedTextEtag($documentKey))) {
+        $seen = (string) $request->headers->get(CollabExternalWrite::HEADER, '');
+        if ($this->namesText($seen, $this->states->storedTextEtag($documentKey))) {
             return;
         }
 
         $this->fail('external_write', 409);
+    }
+
+    /**
+     * The acknowledgement must name the text exactly. Unlike `If-Match`, a
+     * `*` would acknowledge any outside text unseen, so it never matches.
+     */
+    private function namesText(string $header, string $stored): bool
+    {
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = substr($candidate, 2);
+            }
+            if ($candidate !== '' && $candidate !== '*' && hash_equals($stored, $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -2872,7 +2872,7 @@ export interface paths {
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
-                    /** @description Entity tag of the text representation the client saw after the document changed outside the app: the markdown `ETag` from `GET /files/collaboration` (sha1 of the markdown bytes). Required to save while the stored text is not the text the sidecar was saved with; without it, or with a tag for an older text, the save is refused with 409 `external_write`. */
+                    /** @description Entity tag of the text representation the client saw after the document changed outside the app: the markdown `ETag` from `GET /files/collaboration` (sha1 of the markdown bytes). Required to save while the stored text is not the text the sidecar was saved with; without it, with a tag for an older text, or with a wildcard `*`, the save is refused with 409 `external_write`. */
                     "X-Wgw-External-Write"?: string;
                 };
                 path?: never;
