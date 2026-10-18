@@ -176,6 +176,9 @@ describe("createHybridNotesOperations", () => {
     const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
     expect(request?.title).toBe("Renamed");
     expect(request).not.toHaveProperty("tags");
+    expect(request).not.toHaveProperty("starred");
+    expect(request).not.toHaveProperty("notebook");
+    expect(request).not.toHaveProperty("notebookId");
   });
 
   it("queues an offline star without the cached tag set or title", async () => {

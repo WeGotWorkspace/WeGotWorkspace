@@ -210,12 +210,15 @@ export function wgwNoteMetadataFromNote(
     archived?: boolean;
     includeTitle?: boolean;
     includeTags?: boolean;
+    /** False leaves notebook and notebookId off the PATCH. Default keeps them. */
+    includeNotebook?: boolean;
   },
 ): WgwNoteUpsertRequest {
+  const sendNotebook = opts?.includeNotebook !== false;
   return {
     id: note.id,
-    notebook: note.notebook,
-    ...(note.notebookId ? { notebookId: note.notebookId } : {}),
+    ...(sendNotebook ? { notebook: note.notebook } : {}),
+    ...(sendNotebook && note.notebookId ? { notebookId: note.notebookId } : {}),
     ...(opts?.includeTitle && note.title !== undefined ? { title: note.title } : {}),
     ...(opts?.includeTags ? { tags: note.tags } : {}),
     ...(opts?.starred !== undefined && { starred: opts.starred }),

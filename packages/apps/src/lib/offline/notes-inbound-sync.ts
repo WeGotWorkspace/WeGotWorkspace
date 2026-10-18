@@ -145,15 +145,16 @@ export async function syncNotesInboundFromRest(
   const notebookRows = cached?.data.notebookCollections ?? [];
   const blockingIds = await listNoteIdsBlockingSyncToken(username);
   const skippedIds = new Set<string>();
+  // A skipped upsert (queued delete) or destroy holds the notebook token.
+  // A stateMismatch row is absent from blockingIds, so it does not pin it.
   for (const id of upsertIds) {
     const row = await getNote(id);
     const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
     if (result === "upserted" || result === "merged-pending") changed = true;
+    if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
   }
   for (const id of destroyIds) {
     const result = await ingestRemoteNoteDestroyed(username, id);
-    // Upserts merge field-wise. Only a pending destroy skips, and a
-    // stateMismatch row must not pin the notebook token.
     if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
     if (result === "removed") changed = true;
   }
