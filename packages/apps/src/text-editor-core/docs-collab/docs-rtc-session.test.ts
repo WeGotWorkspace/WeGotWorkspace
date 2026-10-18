@@ -103,7 +103,7 @@ function collabTicket(input: { peer: string; access: string }): string {
   return `${body}.sig`;
 }
 
-function pollRoster(peers: Array<{ id: string; name: string }>): void {
+function pollRoster(peers: Array<{ id: string; name: string; user?: string }>): void {
   captured.meshOptions?.onPollData?.({ peers, messages: [] });
 }
 
@@ -378,6 +378,51 @@ describe("DocsRtcSession gossip discovery", () => {
     );
 
     expect(seen).toEqual([]);
+  });
+});
+
+describe("DocsRtcSession principal wake", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  function sessionWith(registry: PrincipalLinkRegistry): DocsRtcSession {
+    return new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "docs/wake-test.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      reuseRegistry: registry,
+    });
+  }
+
+  it("asks for a principal poll for each user behind a new collab peer", () => {
+    const registry = new PrincipalLinkRegistry();
+    const wake = vi.spyOn(registry, "requestPrincipalPoll");
+    sessionWith(registry);
+
+    pollRoster([
+      { id: "me", name: "Self", user: "admin" },
+      { id: "c1", name: "Ann", user: "ann" },
+      { id: "c2", name: "Guest" },
+    ]);
+
+    expect(wake).toHaveBeenCalledTimes(1);
+    expect(wake).toHaveBeenCalledWith("ann");
+  });
+
+  it("asks again when the same user returns as a new collab peer after a reload", () => {
+    const registry = new PrincipalLinkRegistry();
+    const wake = vi.spyOn(registry, "requestPrincipalPoll");
+    sessionWith(registry);
+
+    pollRoster([{ id: "c1", name: "Ann", user: "ann" }]);
+    pollRoster([{ id: "c1", name: "Ann", user: "ann" }]);
+    expect(wake).toHaveBeenCalledTimes(1);
+
+    pollRoster([{ id: "c9", name: "Ann", user: "ann" }]);
+    expect(wake).toHaveBeenCalledTimes(2);
   });
 });
 
