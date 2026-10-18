@@ -37,18 +37,31 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->converter = new VCardJsContactConverter;
     }
 
-    /** CT-1: on read only the last ungrouped address is visible; an unrelated edit keeps both (#1418). */
-    public function test_ct1_read_shows_one_address_but_edit_keeps_both(): void
+    /** CT-1 (fixed by #1419): every ungrouped address is read, and editing one keeps the other. */
+    public function test_ct1_all_ungrouped_addresses_are_read_and_survive(): void
     {
         $vcard = $this->vcard('4.0', "FN:Multi Adr\r\nN:Adr;Multi;;;\r\n"
             ."ADR;TYPE=home:;;Home St 1;Amsterdam;;1000 AA;NL\r\n"
             ."ADR;TYPE=work:;;Work St 2;Utrecht;;3500 BB;NL\r\n");
 
-        $this->assertCount(1, $this->converter->cardFromVCard($vcard)['addresses']);
+        $addresses = $this->converter->cardFromVCard($vcard)['addresses'];
+        $this->assertCount(2, $addresses);
 
         $out = $this->edit($vcard);
         $this->assertStringContainsString('Home St 1', $out);
         $this->assertStringContainsString('Work St 2', $out);
+
+        $workId = array_key_last($addresses);
+        $work = $addresses[$workId];
+        foreach ($work['components'] as $i => $component) {
+            if (($component['kind'] ?? null) === 'locality') {
+                $work['components'][$i]['value'] = 'Rotterdam';
+            }
+        }
+        $edited = $this->edit($vcard, ['addresses' => [$workId => $work]]);
+        $this->assertStringContainsString(';;Home St 1;Amsterdam;;1000 AA;NL', $edited);
+        $this->assertStringContainsString('Rotterdam', $edited);
+        $this->assertStringNotContainsString('Utrecht', $edited);
     }
 
     /** CT-2 (fixed by #1418): Apple groups and labels stay put across edits; no GROUP= parameter. */

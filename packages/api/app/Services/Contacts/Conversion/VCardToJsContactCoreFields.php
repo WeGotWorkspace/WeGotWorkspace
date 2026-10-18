@@ -124,10 +124,17 @@ final class VCardToJsContactCoreFields
         $buckets = [];
         $hasGrouped = false;
 
+        /** @var list<Property> $extraUngrouped Ungrouped ADRs after the first (CT-1, #1419). */
+        $extraUngrouped = [];
         foreach ($document->select('ADR') as $property) {
             $group = $this->groupKeyFromProperty($property);
             if ($group !== '') {
                 $hasGrouped = true;
+            }
+            if ($group === '' && isset($buckets['']['adr'])) {
+                $extraUngrouped[] = $property;
+
+                continue;
             }
             $buckets[$group]['adr'] = $property;
             $buckets[$group]['geos'] ??= [];
@@ -175,10 +182,25 @@ final class VCardToJsContactCoreFields
         }
 
         $addresses = [];
-        foreach ($buckets as $bucket) {
+        foreach ($buckets as $key => $bucket) {
             if (isset($bucket['adr'])) {
                 $geos = $bucket['geos'];
                 $tzs = $bucket['tzs'];
+                // GEO/TZ only belong to an ungrouped ADR when it is the only one.
+                if ($key === '' && $extraUngrouped !== []) {
+                    $addresses[] = $this->addressEntryFromAdr($bucket['adr'], [], []);
+                    foreach ($geos as $index => $property) {
+                        $addresses[] = $this->minimalAddressFromGeo($property, $index);
+                    }
+                    foreach ($tzs as $index => $property) {
+                        $entry = $this->minimalAddressFromTz($property, $index);
+                        if ($entry !== null) {
+                            $addresses[] = $entry;
+                        }
+                    }
+
+                    continue;
+                }
                 $mergeTzIntoAdr = ! isset($bucket['adr']['TZ']);
                 $addresses[] = $this->addressEntryFromAdr(
                     $bucket['adr'],
@@ -209,6 +231,10 @@ final class VCardToJsContactCoreFields
                     $addresses[] = $entry;
                 }
             }
+        }
+
+        foreach ($extraUngrouped as $property) {
+            $addresses[] = $this->addressEntryFromAdr($property, [], []);
         }
 
         if ($addresses === []) {

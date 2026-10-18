@@ -113,11 +113,25 @@ final class VCardInPlacePatcher
      */
     private static function matchWithoutPropId(array $storedEntries, array $baselineEntry): ?array
     {
-        $wanted = self::renderEntry($baselineEntry, false);
+        // Labels are left out: the writer adds standard ones (Home, Work) that
+        // the stored line never had.
+        // Without PROP-IDs, all stored lines of a name share one entry, so each
+        // line is compared on its own.
+        $wanted = self::renderEntry($baselineEntry, false, false);
         $name = $baselineEntry['main'][0]->name ?? '';
         foreach ($storedEntries as $entry) {
-            if (($entry['main'][0]->name ?? null) === $name && self::renderEntry($entry, false) === $wanted) {
-                return $entry;
+            foreach ($entry['main'] as $property) {
+                if ($property->name !== $name) {
+                    continue;
+                }
+                $single = ['main' => [$property], 'satellites' => array_values(array_filter(
+                    $entry['satellites'],
+                    static fn (Property $satellite): bool => $property->group !== null && $property->group !== ''
+                        && strcasecmp((string) $satellite->group, (string) $property->group) === 0,
+                ))];
+                if (self::renderEntry($single, false, false) === $wanted) {
+                    return $single;
+                }
             }
         }
 
@@ -132,10 +146,10 @@ final class VCardInPlacePatcher
     /**
      * @param  array{main: list<Property>, satellites: list<Property>}  $entry
      */
-    private static function renderEntry(array $entry, bool $withPropId = true): string
+    private static function renderEntry(array $entry, bool $withPropId = true, bool $withSatellites = true): string
     {
         $lines = [];
-        foreach (self::entryProperties($entry) as $property) {
+        foreach ($withSatellites ? self::entryProperties($entry) : $entry['main'] as $property) {
             $params = [];
             foreach ($property->parameters() as $name => $parameter) {
                 if ($name === 'GROUP' || (! $withPropId && $name === 'PROP-ID')) {
