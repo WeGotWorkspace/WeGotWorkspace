@@ -71,8 +71,20 @@ export function isCollabDocumentGoneError(error: unknown): boolean {
   return collabErrorStatus(error) === 404;
 }
 
+/**
+ * 409 `external_write` — the stored text changed outside the app and this
+ * save did not name the text it saw. Reloading the state does not resolve
+ * it; a person chooses.
+ */
+export function isExternalWriteRefusal(error: unknown): boolean {
+  if (collabErrorStatus(error) !== 409) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return /external_write/.test(message);
+}
+
 /** 409 / 412 / 428 — the stored document moved on; reload, merge, and save again. */
 export function isServerDivergenceError(error: unknown): boolean {
+  if (isExternalWriteRefusal(error)) return false;
   const status = collabErrorStatus(error);
   if (status === 409 || status === 412 || status === 428) return true;
   const message = error instanceof Error ? error.message : String(error);

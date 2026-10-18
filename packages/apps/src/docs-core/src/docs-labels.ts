@@ -43,6 +43,14 @@ export const docsLabels = {
     count === 1
       ? `Your unsaved copy of ${shownPaths} is still here.`
       : `Your unsaved copies are still here: ${shownPaths}.`,
+  /** The conflict dialog's labels when the file changed outside the app (#1349). */
+  externalWriteDialog: {
+    conflictTitle: "Changed outside the app",
+    conflictDescription: (title: string) =>
+      `"${title}" was changed outside the app, and you also have unsaved changes. Nothing has been overwritten.`,
+    conflictKeepMine: "Keep my edits",
+    conflictUseServer: "Use the outside version",
+  },
   homeLocationColumn: "Location",
   homeNewDocument: driveLabels.newMarkdown,
   homeCreateError: "Could not create a new document.",

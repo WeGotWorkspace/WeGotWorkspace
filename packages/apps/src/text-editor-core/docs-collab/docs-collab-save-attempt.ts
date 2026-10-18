@@ -4,7 +4,11 @@ import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts"
 import { rememberSidecarEtag, sidecarPrecondition } from "./docs-collab-etag";
 import { loadYjsSnapshot, saveDocument } from "./docs-collab-server-io";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { isServerDivergenceError, SERVER_ORIGIN } from "./docs-collab-utils";
+import {
+  isExternalWriteRefusal,
+  isServerDivergenceError,
+  SERVER_ORIGIN,
+} from "./docs-collab-utils";
 
 export type CollabSaveAttempt = {
   urls: DocsCollabUrls;
@@ -22,6 +26,8 @@ export type CollabSaveAttempt = {
    * back if the save fails, so a later retry still has it.
    */
   markdownOverrideRef?: { current: string | null };
+  /** Entity tag of the outside text the person was shown, if any. */
+  externalWriteSeen?: string | null;
 };
 
 export type CollabSaveAttemptResult = { status: "skipped" } | { status: "saved"; markdown: string };
@@ -48,6 +54,7 @@ export async function persistCollabSave(
       input.ydoc,
       input.authToken,
       sidecarPrecondition(input.room),
+      input.externalWriteSeen ?? null,
     );
     rememberSidecarEtag(input.room, etag);
   };
@@ -80,6 +87,8 @@ export async function persistCollabSave(
     return { status: "saved", markdown: savedMarkdown };
   } catch (error) {
     if (heldOverride !== null && overrideRef) overrideRef.current = heldOverride;
+    // A person answers this one. The next 412 from a collaborator must still remerge.
+    if (isExternalWriteRefusal(error)) input.remergeAttempted.current = false;
     if (isServerDivergenceError(error) && getConnectivitySnapshot()) {
       reportDocsSyncConflicts([input.room]);
     }

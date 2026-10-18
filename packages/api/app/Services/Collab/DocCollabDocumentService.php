@@ -35,6 +35,7 @@ final class DocCollabDocumentService
         private StoragePaths $paths,
         private DriveShareAuthorizer $authorizer,
         private FileNodeIndexService $fileNodes,
+        private DocYjsStateStore $states,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -56,9 +57,12 @@ final class DocCollabDocumentService
     }
 
     /**
-     * @return non-empty-string|null null when sidecar is missing or empty
+     * `externalWrite` is set when the markdown on disk is not the text this
+     * sidecar was saved with (#1349).
+     *
+     * @return array{bytes: non-empty-string, externalWrite: bool}|null null when sidecar is missing or empty
      */
-    public function getYjsBinary(Request $request, mixed $room): ?string
+    public function getYjsSnapshot(Request $request, mixed $room): ?array
     {
         $virtual = $this->resolveReadablePath($request, $room);
         $key = $this->paths->virtualToStorageKey($this->yjsSidecarPath($virtual));
@@ -77,7 +81,10 @@ final class DocCollabDocumentService
             return null;
         }
 
-        return $contents;
+        return [
+            'bytes' => $contents,
+            'externalWrite' => $this->states->isExternalWrite($this->paths->virtualToStorageKey($virtual), $contents),
+        ];
     }
 
     /**
@@ -134,6 +141,7 @@ final class DocCollabDocumentService
         try {
             $this->assertSidecarPrecondition($request, $sidecarKey, $yjsBytes !== null);
             $previousSidecar = $this->readSidecarBytes($sidecarKey);
+            $this->assertNoUnseenExternalWrite($request, $documentKey, $previousSidecar);
             $wroteSidecar = false;
             if ($yjsBytes !== null) {
                 $disk->put($sidecarKey, $yjsBytes);
@@ -148,6 +156,7 @@ final class DocCollabDocumentService
                     }
                     throw $e;
                 }
+                $this->recordSidecarLink($documentKey, $markdown, $yjsBytes);
                 try {
                     $this->fileNodes->recordContentWrite($documentKey, hash('sha256', $markdown));
                 } catch (\Throwable $e) {
@@ -159,12 +168,36 @@ final class DocCollabDocumentService
                     'written',
                     'files/'.$documentKey,
                 );
+            } elseif ($yjsBytes !== null) {
+                $this->recordSidecarLink($documentKey, null, $yjsBytes);
             }
         } finally {
             $this->releaseDocumentLock($lock);
         }
 
         return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
+    }
+
+    /**
+     * #1349: which markdown the sidecar now belongs to. Only a save that
+     * writes the sidecar links it: a markdown-only save leaves the old row,
+     * so the next read still flags the new text. The bytes are already on
+     * disk, so a failed row write logs and does not fail the save.
+     */
+    private function recordSidecarLink(string $documentKey, ?string $markdown, ?string $sidecar): void
+    {
+        if ($sidecar === null) {
+            return;
+        }
+        try {
+            if ($markdown === null) {
+                $this->states->recordSidecar($documentKey, $sidecar);
+            } else {
+                $this->states->record($documentKey, $markdown, $sidecar);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('doc_yjs_state_sync_failed', ['error' => $e->getMessage(), 'key' => $documentKey]);
+        }
     }
 
     /**
@@ -219,6 +252,49 @@ final class DocCollabDocumentService
         }
 
         $disk->put($sidecarKey, $previous);
+    }
+
+    /**
+     * #1349: a client that holds the current sidecar tag would still write
+     * over an outside edit it never saw. While the stored markdown is not
+     * the text this sidecar was saved with, a save must name the text it saw
+     * in `X-Wgw-External-Write` (that representation's entity tag). A newer
+     * outside edit makes that tag stale, so it is refused again.
+     */
+    private function assertNoUnseenExternalWrite(
+        Request $request,
+        string $documentKey,
+        ?string $sidecar,
+    ): void {
+        if ($sidecar === null || ! $this->states->isExternalWrite($documentKey, $sidecar)) {
+            return;
+        }
+
+        $seen = (string) $request->headers->get(CollabExternalWrite::HEADER, '');
+        if ($this->namesText($seen, $this->states->storedTextEtag($documentKey))) {
+            return;
+        }
+
+        $this->fail('external_write', 409);
+    }
+
+    /**
+     * The acknowledgement must name the text exactly. Unlike `If-Match`, a
+     * `*` would acknowledge any outside text unseen, so it never matches.
+     */
+    private function namesText(string $header, string $stored): bool
+    {
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = substr($candidate, 2);
+            }
+            if ($candidate !== '' && $candidate !== '*' && hash_equals($stored, $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

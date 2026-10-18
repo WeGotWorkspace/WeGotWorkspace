@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Files;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
+use App\Services\Collab\CollabExternalWrite;
 use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveForbiddenException;
@@ -155,13 +156,18 @@ final class FilesController
         $request->query->set('room', $path);
 
         if ($request->query('format') === 'yjs') {
-            $binary = $this->collabDocuments->getYjsBinary($request, $path);
+            $snapshot = $this->collabDocuments->getYjsSnapshot($request, $path);
             // C7: a 204 means "no sidecar" and carries no entity tag.
-            if ($binary === null) {
+            if ($snapshot === null) {
                 return response('', 204);
             }
 
-            return $this->collaborationBody($request, $binary, 'application/octet-stream');
+            return $this->collaborationBody(
+                $request,
+                $snapshot['bytes'],
+                'application/octet-stream',
+                $snapshot['externalWrite'],
+            );
         }
 
         return $this->collaborationBody(
@@ -172,18 +178,31 @@ final class FilesController
     }
 
     /** 304 when `If-None-Match` still names this body. `*` matches any stored representation. */
-    private function collaborationBody(Request $request, string $bytes, string $contentType): Response
-    {
+    private function collaborationBody(
+        Request $request,
+        string $bytes,
+        string $contentType,
+        bool $externalWrite = false,
+    ): Response {
         $etag = DocCollabDocumentService::sidecarEtag($bytes);
+        $headers = [
+            'Content-Type' => $contentType,
+            'ETag' => $etag,
+        ];
+        if ($externalWrite) {
+            // A 304 would hide the signal. The sidecar bytes are unchanged, and
+            // the client must still see that they are not an ancestor.
+            $headers[CollabExternalWrite::HEADER] = '1';
+
+            return response($bytes, 200, $headers);
+        }
+
         $ifNoneMatch = trim((string) $request->headers->get('If-None-Match', ''));
         if ($ifNoneMatch === '*' || $this->etagListed($ifNoneMatch, $etag)) {
             return response('', 304, ['ETag' => $etag]);
         }
 
-        return response($bytes, 200, [
-            'Content-Type' => $contentType,
-            'ETag' => $etag,
-        ]);
+        return response($bytes, 200, $headers);
     }
 
     private function etagListed(string $header, string $etag): bool

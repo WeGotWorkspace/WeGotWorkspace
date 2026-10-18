@@ -16,8 +16,6 @@ use App\Services\Notes\Conversion\NoteJournalConverter;
  */
 final class NoteYjsProjection
 {
-    public const EXTERNAL_WRITE_HEADER = 'X-Wgw-External-Write';
-
     public function __construct(
         private readonly NoteJournalConverter $converter,
     ) {}

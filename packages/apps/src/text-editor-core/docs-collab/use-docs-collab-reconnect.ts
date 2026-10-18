@@ -1,3 +1,4 @@
+import { isExternalWriteRefusal } from "./docs-collab-utils";
 import { useCallback } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useOnReconnect } from "@/hooks/use-connectivity";
@@ -166,6 +167,11 @@ export function useDocsCollabReconnect({
         setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
       }
     } catch (error) {
+      // The save hook already asked the person; the server answered fine.
+      if (isExternalWriteRefusal(error)) {
+        setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
+        return;
+      }
       markRoomServerFailure(room);
       console.warn("[docs-collab] reconnect failed", error);
       setDocStatus(error instanceof Error ? error.message : String(error));

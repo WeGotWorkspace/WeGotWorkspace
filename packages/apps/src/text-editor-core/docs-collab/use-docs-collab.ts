@@ -114,7 +114,13 @@ export function useDocsCollab({
       if (suppliedMarkdown !== null) refs.markdownOverrideRef.current = suppliedMarkdown;
       refs.localDirtySinceLastSaveRef.current = true;
       refs.lastSuccessfulSaveSignatureRef.current = null;
-      await persistToServer();
+      try {
+        await persistToServer();
+      } catch (error) {
+        // The question is still open. Hold every other save until an answer lands.
+        refs.externalWriteHoldRef.current = true;
+        throw error;
+      }
     },
     [persistToServer, refs],
   );

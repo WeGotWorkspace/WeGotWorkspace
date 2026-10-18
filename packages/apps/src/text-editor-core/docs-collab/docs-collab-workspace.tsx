@@ -78,6 +78,10 @@ import { useDocsCollabUserName } from "./use-docs-collab-user-name";
 import { useDocsConflictResolution } from "./use-docs-conflict-resolution";
 import { DocsConflictDialog } from "./docs-conflict-dialog";
 import {
+  useDocsExternalWritePrompt,
+  useDocsExternalWriteRequest,
+} from "./use-docs-external-write-prompt";
+import {
   WorkspaceAppLayout,
   WorkspaceUserFooter,
 } from "@/workspace-shell/src/workspace-app-layout";
@@ -222,6 +226,7 @@ function DocsCollabWorkspaceInner({
     [userName],
   );
 
+  const externalWriteRequest = useDocsExternalWriteRequest(sessionUrls);
   const {
     session: collabSession,
     peers,
@@ -233,12 +238,13 @@ function DocsCollabWorkspaceInner({
     failedSync,
     snapshotPreview,
     saveNow,
+    resolveExternalWrite,
     onMarkdownChange,
     registerMarkdownGetter,
   } = useDocsCollab({
     userName,
     autoJoin: true,
-    urls: sessionUrls,
+    urls: externalWriteRequest.urls,
     wire,
   });
   const showFailedSync = useDocsCollabFailedSync(urls?.room);
@@ -553,6 +559,13 @@ function DocsCollabWorkspaceInner({
     saveNow,
     onServerApplied: handleServerDocApplied,
   });
+  const externalWrite = useDocsExternalWritePrompt({
+    request: externalWriteRequest,
+    room: urls?.room,
+    ydoc: collabSession?.ydoc ?? null,
+    resolveExternalWrite,
+    onOutsideApplied: handleServerDocApplied,
+  });
   useEffect(() => {
     reportDocumentGoneRef.current = conflict.reportDocumentGone;
   }, [conflict.reportDocumentGone]);
@@ -749,6 +762,15 @@ function DocsCollabWorkspaceInner({
           onKeepLocal={conflict.keepLocal}
           onUseServer={conflict.useServer}
           onOpenChange={conflict.setOpen}
+        />
+        <DocsConflictDialog
+          open={externalWrite.open}
+          documentTitle={resolvedDocumentTitle}
+          busy={externalWrite.busy}
+          keepLocalDisabled={externalWrite.keepLocalDisabled}
+          labels={labels.externalWriteDialog}
+          onKeepLocal={externalWrite.keepLocal}
+          onUseServer={externalWrite.useOutside}
         />
         <AlertDialog open={sourceClosedDialogOpen} onOpenChange={setSourceClosedDialogOpen}>
           <AlertDialogContent>

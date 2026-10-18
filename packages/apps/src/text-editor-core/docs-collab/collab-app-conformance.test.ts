@@ -10,25 +10,29 @@ import {
   sidecarPrecondition,
 } from "./docs-collab-etag";
 import { applyContentSeedToYDoc, readContentFromYDoc } from "./docs-collab-editor-surface";
+import {
+  decideExternalWrite,
+  EXTERNAL_WRITE_HEADER,
+  replaceDocumentWithExternalText,
+} from "./docs-collab-external-write";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import {
   fetchYjsSnapshot,
+  loadCollabText,
   loadMarkdown,
   loadYjsSnapshot,
   saveDocument,
 } from "./docs-collab-server-io";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { SERVER_ORIGIN } from "./docs-collab-utils";
+import { isExternalWriteRefusal, SERVER_ORIGIN } from "./docs-collab-utils";
 
 /**
  * One scenario table for Notes and Docs. The fake server is the same kind of
  * stand-in as `docs-collab-concurrent-save.test.ts`: ETag, If-Match,
- * If-None-Match, 412, and 428. No real backend. The table has no per-app branch.
- *
- * An external writer is not in this table. Detection exists only for Notes.
- * Docs has no journal and no `X-Wgw-External-Write` until N9/N10. The row
- * comes back when Docs has the same mechanism. This suite does not replace
- * the existing `docs-collab-*` tests.
+ * If-None-Match, 412, 428, 409 `external_write`, and `X-Wgw-External-Write`.
+ * No real backend. The rows have no per-app branch. A row an app does not
+ * meet yet names that app and its issue in `knownGap` and runs as a todo
+ * there. This suite does not replace the existing `docs-collab-*` tests.
  */
 type StoredDocument = {
   markdown: string;
@@ -41,9 +45,19 @@ type CollabApp = {
   createDocument(): Promise<{ id: string; urls: DocsCollabUrls }>;
   /** Reads what is stored on the server, independent of the client. */
   readStored(id: string): Promise<StoredDocument>;
+  /** Writes the text from outside the app, the way a CalDAV or WebDAV client would. */
+  writeExternally(id: string, markdown: string): Promise<void>;
 };
 
-type ServerDocument = StoredDocument & { revision: number };
+/**
+ * `savedMarkdown` is the text the last collab save linked the state to.
+ * `textRevision` names the text representation's entity tag.
+ */
+type ServerDocument = StoredDocument & {
+  revision: number;
+  savedMarkdown: string;
+  textRevision: number;
+};
 
 type UrlMatch = { id: string; yjs: boolean } | null;
 
@@ -91,9 +105,15 @@ function header(init: RequestInit | undefined, name: string): string | undefined
  * Contract C7, shared by both adapters. Only the URL and the markdown body
  * differ, and those stay inside the adapter.
  */
+function textEtagFor(document: ServerDocument): string {
+  return `"text-${document.textRevision}"`;
+}
+
 function createCollabFakeServer(options: {
   match(url: string): UrlMatch;
-  markdownResponse(markdown: string): Response;
+  markdownResponse(markdown: string, etag: string): Response;
+  /** 409 `external_write` for a save that did not see the outside text (#1349, Docs). */
+  refusesUnseenExternalWrites: boolean;
 }) {
   const documents = new Map<string, ServerDocument>();
 
@@ -106,12 +126,11 @@ function createCollabFakeServer(options: {
     const method = init?.method ?? "GET";
     if (method === "GET" && matched.yjs) {
       if (!document.yjs) return new Response(null, { status: 204 });
-      return new Response(document.yjs as unknown as BodyInit, {
-        status: 200,
-        headers: { ETag: etagFor(document)! },
-      });
+      const headers: Record<string, string> = { ETag: etagFor(document)! };
+      if (document.markdown !== document.savedMarkdown) headers[EXTERNAL_WRITE_HEADER] = "1";
+      return new Response(document.yjs as unknown as BodyInit, { status: 200, headers });
     }
-    if (method === "GET") return options.markdownResponse(document.markdown);
+    if (method === "GET") return options.markdownResponse(document.markdown, textEtagFor(document));
     if (method !== "PUT") return new Response("method not allowed", { status: 405 });
 
     const body = readFramedSave(init?.body);
@@ -126,19 +145,37 @@ function createCollabFakeServer(options: {
     if (refused) {
       return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
     }
+    const unseenExternalWrite =
+      options.refusesUnseenExternalWrites &&
+      document.yjs !== null &&
+      document.markdown !== document.savedMarkdown &&
+      header(init, EXTERNAL_WRITE_HEADER) !== textEtagFor(document);
+    if (unseenExternalWrite) {
+      return new Response(JSON.stringify({ error: "external_write" }), { status: 409 });
+    }
 
     if (body.yjs) {
       document.yjs = body.yjs.slice();
       document.revision += 1;
     }
-    if (typeof body.markdown === "string") document.markdown = body.markdown;
+    if (typeof body.markdown === "string") {
+      document.markdown = body.markdown;
+      document.savedMarkdown = body.markdown;
+      document.textRevision += 1;
+    }
     return new Response("{}", { status: 200, headers: { ETag: etagFor(document)! } });
   };
 
   return {
     handle,
     create(id: string): void {
-      documents.set(id, { markdown: "", yjs: null, revision: 0 });
+      documents.set(id, {
+        markdown: "",
+        yjs: null,
+        revision: 0,
+        savedMarkdown: "",
+        textRevision: 0,
+      });
     },
     read(id: string): StoredDocument {
       const document = documents.get(id);
@@ -147,6 +184,13 @@ function createCollabFakeServer(options: {
         markdown: document.markdown,
         yjs: document.yjs ? document.yjs.slice() : null,
       };
+    },
+    /** The text changes; the stored state and its tag do not. */
+    writeExternal(id: string, markdown: string): void {
+      const document = documents.get(id);
+      if (!document) throw new Error(`missing document ${id}`);
+      document.markdown = markdown;
+      document.textRevision += 1;
     },
   };
 }
@@ -179,12 +223,13 @@ function createDocsCollabApp(): CollabApp {
       if (!id) return null;
       return { id, yjs: parsed.searchParams.get("format") === "yjs" };
     },
-    markdownResponse(markdown) {
+    markdownResponse(markdown, etag) {
       return new Response(markdown, {
         status: 200,
-        headers: { "Content-Type": "text/markdown" },
+        headers: { "Content-Type": "text/markdown", ETag: etag },
       });
     },
+    refusesUnseenExternalWrites: true,
   });
   installFetch(server.handle);
 
@@ -208,6 +253,9 @@ function createDocsCollabApp(): CollabApp {
     async readStored(id) {
       return server.read(id);
     },
+    async writeExternally(id, markdown) {
+      server.writeExternal(id, markdown);
+    },
   };
 }
 
@@ -222,12 +270,14 @@ function createNotesCollabApp(): CollabApp {
       if (!id) return null;
       return { id, yjs: parsed.searchParams.get("format") === "yjs" };
     },
-    markdownResponse(markdown) {
+    markdownResponse(markdown, etag) {
       return new Response(JSON.stringify({ body: markdown }), {
         status: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ETag: etag },
       });
     },
+    // #1381: the Notes save does not refuse an unseen outside edit yet.
+    refusesUnseenExternalWrites: false,
   });
   installFetch(server.handle);
 
@@ -249,6 +299,9 @@ function createNotesCollabApp(): CollabApp {
     },
     async readStored(id) {
       return server.read(id);
+    },
+    async writeExternally(id, markdown) {
+      server.writeExternal(id, markdown);
     },
   };
 }
@@ -297,7 +350,12 @@ async function openClient(urls: DocsCollabUrls): Promise<Y.Doc> {
   return ydoc;
 }
 
-function save(urls: DocsCollabUrls, ydoc: Y.Doc, markdown: string) {
+function save(
+  urls: DocsCollabUrls,
+  ydoc: Y.Doc,
+  markdown: string,
+  externalWriteSeen: string | null = null,
+) {
   return persistCollabSave({
     urls,
     room: requireRoom(urls),
@@ -305,12 +363,15 @@ function save(urls: DocsCollabUrls, ydoc: Y.Doc, markdown: string) {
     markdown,
     remergeAttempted: { current: false },
     markdownAfterMerge: () => markdown,
+    externalWriteSeen,
   });
 }
 
 type Scenario = {
   name: string;
   run(app: CollabApp): Promise<void>;
+  /** An app that does not meet this row yet, with the issue that closes the gap. */
+  knownGap?: { app: string; issue: string };
 };
 
 /** Sentence two clients seed when the server has no Yjs state (#1089). */
@@ -469,9 +530,75 @@ const scenarios: Scenario[] = [
       expect(text.split(UNSIDECARRED_MARKER).length - 1).toBe(1);
     },
   },
+  {
+    name: "an external writer changes the content",
+    async run(app) {
+      const { id, urls } = await app.createDocument();
+      const room = requireRoom(urls);
+      const author = await openClient(urls);
+      edit(author, "saved in the app");
+      await save(urls, author, "saved in the app");
+      const stateBefore = (await app.readStored(id)).yjs;
+
+      await app.writeExternally(id, "Written outside the app.");
+
+      const flagged = await fetchYjsSnapshot(urls.yjsUrl);
+      expect(flagged.externalWrite).toBe(true);
+      expect((await app.readStored(id)).yjs).toEqual(stateBefore);
+      // With unsaved work the person is asked and nothing is written yet.
+      const putsBefore = documentPuts(urls.documentUrl).length;
+      expect(decideExternalWrite(true, true)).toBe("prompt");
+      expect(documentPuts(urls.documentUrl)).toHaveLength(putsBefore);
+
+      // Without it, the document is rebuilt from the outside text and saved.
+      expect(decideExternalWrite(true, false)).toBe("rebuild");
+      const text = await loadCollabText(urls.documentUrl);
+      const rebuilt = new Y.Doc();
+      replaceDocumentWithExternalText(rebuilt, text.markdown, text.title, "markdown");
+      rememberSidecarEtag(room, flagged.etag);
+      // The rebuild saw the outside text, so its save names it.
+      await save(urls, rebuilt, text.markdown, text.etag ?? null);
+
+      const stored = await app.readStored(id);
+      expect(stored.markdown).toBe("Written outside the app.");
+      const settled = new Y.Doc();
+      Y.applyUpdate(settled, stored.yjs!);
+      expect(readContentFromYDoc(settled, "markdown")).toContain("Written outside the app.");
+      expect((await fetchYjsSnapshot(urls.yjsUrl)).externalWrite).toBe(false);
+    },
+  },
+  {
+    name: "an external writer changes the content while the document is open",
+    // Notes still saves over an unseen outside edit. #1381 adds the refusal.
+    knownGap: { app: "notes", issue: "#1381" },
+    async run(app) {
+      const listener = vi.fn();
+      setDocsSyncConflictListener(listener);
+      const { id, urls } = await app.createDocument();
+      const author = await openClient(urls);
+      edit(author, "saved in the app");
+      await save(urls, author, "saved in the app");
+
+      await app.writeExternally(id, "Written outside the app.");
+      // The sidecar tag this client holds is still current.
+      edit(author, "typed while it was open");
+      const refusal = await save(urls, author, "typed while it was open").catch(
+        (error: unknown) => error,
+      );
+      expect(isExternalWriteRefusal(refusal)).toBe(true);
+      expect((await app.readStored(id)).markdown).toBe("Written outside the app.");
+      expect(listener).not.toHaveBeenCalled();
+
+      // After the person saw the outside text and kept their edits.
+      const seen = await loadCollabText(urls.documentUrl);
+      await save(urls, author, "typed while it was open", seen.etag ?? null);
+      expect((await app.readStored(id)).markdown).toBe("typed while it was open");
+      expect((await fetchYjsSnapshot(urls.yjsUrl)).externalWrite).toBe(false);
+    },
+  },
 ];
 
-describe.each(appFactories)("collab app conformance ($name)", ({ create }) => {
+describe.each(appFactories)("collab app conformance ($name)", ({ name, create }) => {
   let app: CollabApp;
 
   beforeEach(() => {
@@ -489,6 +616,10 @@ describe.each(appFactories)("collab app conformance ($name)", ({ create }) => {
   });
 
   for (const scenario of scenarios) {
+    if (scenario.knownGap?.app === name) {
+      it.todo(`${scenario.name} (${scenario.knownGap.issue})`);
+      continue;
+    }
     it(scenario.name, () => scenario.run(app));
   }
 });

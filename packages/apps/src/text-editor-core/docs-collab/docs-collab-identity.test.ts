@@ -170,6 +170,7 @@ describe("docs collab identity database", () => {
         opened.ydoc,
         undefined,
         null,
+        null,
       );
     } finally {
       migrate.mockRestore();

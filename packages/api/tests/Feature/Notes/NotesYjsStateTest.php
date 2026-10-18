@@ -10,9 +10,9 @@ use App\Models\NoteYjsState;
 use App\Services\Auth\JwtTokenService;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Collab\CollabExternalWrite;
 use App\Services\Collab\YjsBytes;
 use App\Services\Notes\Conversion\NoteJournalConverter;
-use App\Services\Notes\NoteYjsProjection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -542,7 +542,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk()
             ->assertHeader('ETag', $stateEtag)
-            ->assertHeader(NoteYjsProjection::EXTERNAL_WRITE_HEADER, '1');
+            ->assertHeader(CollabExternalWrite::HEADER, '1');
         $this->assertSame(self::BINARY, $state->getContent());
         $this->assertSame($before['bytes'], $this->storedState($note['id'])['bytes']);
 
@@ -559,7 +559,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk()
             ->assertContent("\x04\x05\x06");
-        $this->assertFalse($again->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->assertFalse($again->headers->has(CollabExternalWrite::HEADER));
     }
 
     public function test_external_summary_is_flagged_on_the_next_read(): void
@@ -576,7 +576,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $this->asUser('bob')
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk()
-            ->assertHeader(NoteYjsProjection::EXTERNAL_WRITE_HEADER, '1')
+            ->assertHeader(CollabExternalWrite::HEADER, '1')
             ->assertContent(self::BINARY);
         $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
             ->assertOk()
@@ -595,7 +595,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk()
             ->assertContent(self::BINARY);
-        $this->assertFalse($tagged->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->assertFalse($tagged->headers->has(CollabExternalWrite::HEADER));
         $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
             ->assertOk()
             ->assertJsonPath('body', 'Body')
@@ -605,7 +605,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
         $archived = $this->asUser('bob')
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk();
-        $this->assertFalse($archived->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->assertFalse($archived->headers->has(CollabExternalWrite::HEADER));
         $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
             ->assertOk()
             ->assertJsonPath('status', 'CANCELLED')
@@ -620,7 +620,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertOk()
             ->assertContent(self::BINARY);
-        $this->assertFalse($moved->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->assertFalse($moved->headers->has(CollabExternalWrite::HEADER));
 
         $this->deleteViaCalDav($note['id']);
         $this->asUser('bob')
@@ -637,7 +637,7 @@ final class NotesYjsStateTest extends WgwDatabaseTestCase
             ->get('/api/v1/notes/items/'.$note['id'].'?format=yjs')
             ->assertNoContent();
         $this->assertFalse($response->headers->has('ETag'));
-        $this->assertFalse($response->headers->has(NoteYjsProjection::EXTERNAL_WRITE_HEADER));
+        $this->assertFalse($response->headers->has(CollabExternalWrite::HEADER));
         $this->asUser('bob')->getJson('/api/v1/notes/items/'.$note['id'])
             ->assertOk()
             ->assertJsonPath('body', 'Created outside');

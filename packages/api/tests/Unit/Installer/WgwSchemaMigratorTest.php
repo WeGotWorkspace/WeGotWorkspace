@@ -201,6 +201,7 @@ final class WgwSchemaMigratorTest extends TestCase
             'addressbook_share_dismissals',
             'note_stars',
             'note_yjs_state',
+            'doc_yjs_state',
             'jmap_note_states',
             'oauth_clients',
             'oauth_auth_codes',

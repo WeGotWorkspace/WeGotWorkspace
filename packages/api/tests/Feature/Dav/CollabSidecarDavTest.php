@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Dav;
 
+use App\Services\Collab\CollabExternalWrite;
 use App\Services\Drive\DocAttachmentPaths;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\Storage;
@@ -20,6 +21,8 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
     {
         parent::setUp();
 
+        putenv('WGW_DISABLE_LOGIN_THROTTLE=1');
+        $_ENV['WGW_DISABLE_LOGIN_THROTTLE'] = '1';
         $this->seedWgwUser('alice', displayName: 'Alice');
 
         $installRoot = sys_get_temp_dir().'/wgw-att-root-'.uniqid('', true);
@@ -127,15 +130,26 @@ final class CollabSidecarDavTest extends WgwDatabaseTestCase
         $this->assertFalse(Storage::disk('wgw_files')->exists('users/alice/.together.md.yjs'));
     }
 
-    public function test_put_on_a_document_with_a_sidecar_is_forbidden(): void
+    /**
+     * #1349 replaced the #1291 write block with detection: the write lands,
+     * the sidecar is untouched, and the next yjs read flags the change.
+     */
+    public function test_put_on_a_document_with_a_sidecar_is_allowed_and_flagged(): void
     {
         $this->seedDocumentAndSidecar();
 
-        $this->dav('PUT', '/files/users/alice/together.md', 'external edit')->assertStatus(403);
-        $this->dav('PATCH', '/files/users/alice/together.md', 'external edit')->assertStatus(403);
+        $this->assertContains(
+            $this->dav('PUT', '/files/users/alice/together.md', 'external edit')->getStatusCode(),
+            [201, 204],
+        );
 
-        $this->assertSame('# doc', Storage::disk('wgw_files')->get('users/alice/together.md'));
+        $this->assertSame('external edit', Storage::disk('wgw_files')->get('users/alice/together.md'));
         $this->assertSame('yjs-bytes', Storage::disk('wgw_files')->get('users/alice/.together.md.yjs'));
+        $this->configureWgwJwtKeys();
+        $this->withBearer($this->issueBearerToken())
+            ->get('/api/v1/files/collaboration?path='.urlencode('/users/alice/together.md').'&format=yjs')
+            ->assertOk()
+            ->assertHeader(CollabExternalWrite::HEADER, '1');
     }
 
     public function test_put_on_a_document_without_a_sidecar_still_works(): void

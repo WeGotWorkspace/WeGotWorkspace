@@ -3,7 +3,7 @@ import { wgwErrorMessageFromBody } from "@/lib/api/wgw/http";
 import { encodeFramedPayload } from "@/lib/wire/framed-payload";
 import type { CollabSidecarPrecondition } from "./docs-collab-etag";
 import { noteTitleForSave } from "./docs-collab-document-title";
-import { externalWriteFromHeader } from "./docs-collab-external-write";
+import { EXTERNAL_WRITE_HEADER, externalWriteFromHeader } from "./docs-collab-external-write";
 import { CollabHttpError, SERVER_ORIGIN } from "./docs-collab-utils";
 
 const textEncoder = new TextEncoder();
@@ -20,6 +20,8 @@ export type CollabText = {
   markdown: string;
   /** Set when the JSON note carries a title. A markdown file leaves it null. */
   title: string | null;
+  /** Entity tag of this text representation. A save names it after an outside write. */
+  etag?: string | null;
 };
 
 export async function loadCollabText(documentUrl: string, authToken?: string): Promise<CollabText> {
@@ -28,14 +30,15 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
   });
   if (!res.ok) throw new CollabHttpError(`Could not load document (${res.status})`, res.status);
   const contentType = res.headers.get("content-type") ?? "";
+  const etag = res.headers.get("ETag");
   if (contentType.includes("application/json")) {
     const data = (await res.json()) as { body?: unknown; markdown?: unknown; title?: unknown };
     const title = typeof data.title === "string" ? data.title : null;
-    if (typeof data.markdown === "string") return { markdown: data.markdown, title };
-    if (typeof data.body === "string") return { markdown: data.body, title };
+    if (typeof data.markdown === "string") return { markdown: data.markdown, title, etag };
+    if (typeof data.body === "string") return { markdown: data.body, title, etag };
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);
   }
-  return { markdown: await res.text(), title: null };
+  return { markdown: await res.text(), title: null, etag };
 }
 
 export async function loadMarkdown(documentUrl: string, authToken?: string): Promise<string> {
@@ -93,13 +96,18 @@ export async function loadYjsSnapshot(
   return { applied: true, etag: snapshot.etag };
 }
 
-/** Returns the ETag the server assigned to the save, when it reported one. */
+/**
+ * Returns the ETag the server assigned to the save, when it reported one.
+ * `externalWriteSeen` is the entity tag of the outside text this client
+ * showed; without it a save over an outside edit is refused with 409.
+ */
 export async function saveDocument(
   documentUrl: string,
   markdown: string,
   ydoc: Y.Doc,
   authToken?: string,
   precondition: CollabSidecarPrecondition = null,
+  externalWriteSeen: string | null = null,
 ): Promise<string | null> {
   const documentBytes = textEncoder.encode(markdown);
   const yjsBytes = Y.encodeStateAsUpdate(ydoc);
@@ -119,6 +127,7 @@ export async function saveDocument(
     authToken,
   );
   if (precondition) headers[precondition.name] = precondition.value;
+  if (externalWriteSeen) headers[EXTERNAL_WRITE_HEADER] = externalWriteSeen;
 
   const res = await fetch(documentUrl, {
     method: "PUT",

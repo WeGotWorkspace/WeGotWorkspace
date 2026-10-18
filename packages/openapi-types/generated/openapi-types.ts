@@ -2815,7 +2815,7 @@ export interface paths {
                     format?: "markdown" | "yjs";
                 };
                 header?: {
-                    /** @description Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches. */
+                    /** @description Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches. A `?format=yjs` read whose markdown changed outside the collab path answers 200 with X-Wgw-External-Write instead of 304, so the signal is not hidden. */
                     "If-None-Match"?: string;
                 };
                 path?: never;
@@ -2828,6 +2828,8 @@ export interface paths {
                     headers: {
                         /** @description Entity tag of the representation in this response. Markdown (format omitted or `markdown`) is sha1 of those bytes and is only valid for `If-None-Match` on a markdown load. `?format=yjs` is sha1 of the Yjs sidecar; only that tag is valid for `If-Match` on save. */
                         ETag?: string;
+                        /** @description Present with value 1 on `?format=yjs` when the stored markdown is not the text the Yjs sidecar was last saved with, for example after a WebDAV PUT. Absent when no save has linked the sidecar to its markdown yet, and after a rename or move. The body is still the stored sidecar bytes. The read does not rewrite them; the next collab save clears the flag. */
+                        "X-Wgw-External-Write"?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -2870,6 +2872,8 @@ export interface paths {
                     "If-Match"?: string;
                     /** @description Send `*` to create the sidecar only when none exists (first open). The save is refused with 412 when a sidecar is already stored. */
                     "If-None-Match"?: string;
+                    /** @description Entity tag of the text representation the client saw after the document changed outside the app: the markdown `ETag` from `GET /files/collaboration` (sha1 of the markdown bytes). Required to save while the stored text is not the text the sidecar was saved with; without it, with a tag for an older text, or with a wildcard `*`, the save is refused with 409 `external_write`. */
+                    "X-Wgw-External-Write"?: string;
                 };
                 path?: never;
                 cookie?: never;
@@ -2896,6 +2900,15 @@ export interface paths {
                 };
                 /** @description Unknown path */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `external_write` — the stored text changed outside the app since the sidecar was saved, and the request did not name that text in `X-Wgw-External-Write`. Nothing is written. Load the text, let the person choose, then save with its entity tag. Not a sidecar divergence: reloading the sidecar does not resolve it. */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };

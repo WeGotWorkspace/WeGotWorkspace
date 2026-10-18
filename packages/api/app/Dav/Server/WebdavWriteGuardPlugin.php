@@ -164,14 +164,9 @@ final class WebdavWriteGuardPlugin extends ServerPlugin
             throw new Forbidden(self::message());
         }
 
-        // Refuse a write that replaces the bytes of a collaborative document.
-        // Moving, copying, or deleting the document itself stays allowed:
-        // those are explicit, and a renamed file rebuilds its Yjs state from
-        // the markdown. A move or copy onto the document is rejected above.
-        if (in_array($method, ['PUT', 'PATCH'], true)
-            && $this->hasCollabSidecar($path)) {
-            throw new Forbidden('This document is edited collaboratively; write it through the app.');
-        }
+        // A PUT or PATCH that replaces the bytes of a collaborative document
+        // is allowed (#1349); DocYjsStateDavPlugin links its sidecar once the
+        // write is authorized. A move or copy onto the document is rejected above.
     }
 
     /**
