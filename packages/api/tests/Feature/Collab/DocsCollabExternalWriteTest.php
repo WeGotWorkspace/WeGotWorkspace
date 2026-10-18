@@ -167,6 +167,74 @@ final class DocsCollabExternalWriteTest extends WgwDatabaseTestCase
         $this->assertSame(self::YJS, Storage::disk('wgw_files')->get(self::SIDECAR_KEY));
     }
 
+    /** The row is written after authorization, not before. */
+    public function test_an_unauthorized_dav_put_leaves_no_row(): void
+    {
+        $this->seedWgwUser('bob', displayName: 'Bob');
+        Storage::disk('wgw_files')->put('users/bob/together.md', '# bob');
+        Storage::disk('wgw_files')->put('users/bob/.together.md.yjs', 'bob-yjs');
+
+        $response = $this->dav('PUT', '/files/users/bob/together.md', 'overwrite');
+
+        $this->assertContains($response->getStatusCode(), [403, 404]);
+        $this->assertSame('# bob', Storage::disk('wgw_files')->get('users/bob/together.md'));
+        $this->assertSame(0, DocYjsState::query()->count());
+    }
+
+    public function test_a_dav_put_that_fails_its_precondition_leaves_no_row(): void
+    {
+        $this->seedWithoutRow();
+
+        $this->dav('PUT', '/files/users/alice/together.md', '# Outside', [
+            'HTTP_IF_MATCH' => '"not-the-current-etag"',
+        ])->assertStatus(412);
+
+        $this->assertSame('# doc', Storage::disk('wgw_files')->get(self::DOCUMENT_KEY));
+        $this->assertSame(0, DocYjsState::query()->count());
+    }
+
+    /** A markdown-only save leaves the sidecar behind, so the change stays flagged. */
+    public function test_a_markdown_only_collab_save_stays_flagged(): void
+    {
+        $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+
+        $this->withBearer($this->token)
+            ->putCollaboration($this->documentUrl(), "# Text only\n", null, ['If-Match' => $etag])
+            ->assertOk();
+
+        $this->readYjs()->assertOk()->assertHeader(CollabExternalWrite::HEADER, '1');
+    }
+
+    /**
+     * Between the markdown write and the row write the sidecar is already
+     * new. A row for an older sidecar says nothing about this one.
+     */
+    public function test_a_row_for_another_sidecar_does_not_flag(): void
+    {
+        $this->saveThroughTheApp("# Doc\n");
+        Storage::disk('wgw_files')->put(self::SIDECAR_KEY, "\x09\x09");
+        Storage::disk('wgw_files')->put(self::DOCUMENT_KEY, "# Saved, row not yet written\n");
+
+        $this->readYjs()->assertOk()->assertHeaderMissing(CollabExternalWrite::HEADER);
+    }
+
+    public function test_a_folder_move_with_like_wildcards_moves_only_that_folder(): void
+    {
+        $disk = Storage::disk('wgw_files');
+        $disk->makeDirectory('users/alice/a_b%');
+        $disk->makeDirectory('users/alice/axbz');
+        $this->saveThroughTheApp("# One\n", '/users/alice/a_b%/one.md');
+        $this->saveThroughTheApp("# Two\n", '/users/alice/axbz/two.md');
+
+        $moved = $this->dav('MOVE', '/files/users/alice/'.rawurlencode('a_b%'), server: [
+            'HTTP_DESTINATION' => 'http://localhost/files/users/alice/moved',
+        ]);
+
+        $this->assertContains($moved->getStatusCode(), [201, 204]);
+        $this->assertNotNull(DocYjsState::query()->where('storage_key', 'users/alice/moved/one.md')->first());
+        $this->assertNotNull(DocYjsState::query()->where('storage_key', 'users/alice/axbz/two.md')->first());
+    }
+
     public function test_a_rename_carries_the_row_and_is_not_a_content_change(): void
     {
         $this->saveThroughTheApp("# Doc\n");
