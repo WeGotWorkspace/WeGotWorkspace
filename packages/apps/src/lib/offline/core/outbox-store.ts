@@ -49,8 +49,11 @@ export async function removeOutboxMutation(username: string, id: string): Promis
 }
 
 /**
- * Increment the retry count and record the last error. `status`, when it is a
- * number, is stored as `lastStatus`. A later failure without a status clears it.
+ * Increment the retry count and record the last error. A numeric `status`
+ * replaces `lastStatus`. A later failure with no status leaves an existing
+ * `lastStatus` untouched: absence of a status is not a retraction of a status
+ * the server already gave. A first failure with no status still has no
+ * `lastStatus`.
  */
 export async function markOutboxError(
   username: string,
@@ -67,11 +70,14 @@ export async function markOutboxError(
     lastError: error,
   };
   if (typeof status === "number") next.lastStatus = status;
-  else delete next.lastStatus;
   await db.outbox.put(next);
 }
 
-const CONFLICT_OUTBOX_ERRORS = new Set(["stateMismatch", "conflict", "etagMismatch"]);
+/** Every conflict spelling flush paths write. */
+export const CONFLICT_OUTBOX_ERRORS = new Set(["stateMismatch", "conflict", "etagMismatch"]);
+
+/** Conflict markers that can still carry a permanent server status. */
+export const STATUS_BEARING_CONFLICTS = new Set(["conflict"]);
 
 /**
  * Conflict rows are not transient retries. Flush paths spell that three ways:
@@ -106,12 +112,12 @@ export function isRetryableOutboxRow(row: OfflineOutboxRow): boolean {
 /**
  * True when the server rejected the mutation with HTTP 403 or 404.
  * These stay visible in the sync notices. They are not transient retries.
- * `"stateMismatch"` and `"etagMismatch"` stay conflicts with no permanent
- * status. A `"conflict"` row is permanent only when `lastStatus` says so.
+ * `stateMismatch` and `etagMismatch` are excluded because they are conflict
+ * markers that must not carry a permanent status, while `"conflict"` can.
  */
 export function isPermanentlyFailedOutboxRow(row: OfflineOutboxRow): boolean {
-  if (!(row.retries > 0 && row.lastError)) return false;
-  if (row.lastError === "stateMismatch" || row.lastError === "etagMismatch") return false;
+  if (isFailedNonConflict(row)) return isPermanentOutboxFailure(row);
+  if (!(row.retries > 0 && STATUS_BEARING_CONFLICTS.has(row.lastError ?? ""))) return false;
   return isPermanentOutboxFailure(row);
 }
 

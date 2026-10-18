@@ -2,6 +2,8 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
+  CONFLICT_OUTBOX_ERRORS,
+  STATUS_BEARING_CONFLICTS,
   enqueueOutboxMutation,
   isPermanentlyFailedOutboxRow,
   isRetryableOutboxRow,
@@ -68,6 +70,8 @@ describe("core outbox store", () => {
       payload: "{}",
     });
     await markOutboxError(username, "a", "boom");
+    const [firstFailure] = await listOutboxMutations(username);
+    expect(firstFailure?.lastStatus).toBeUndefined();
     await markOutboxError(username, "a", "boom again");
 
     const [row] = await listOutboxMutations(username);
@@ -130,6 +134,46 @@ describe("core outbox store", () => {
     expect(isRetryableOutboxRow(byId["task-etag"]!)).toBe(false);
     expect(isPermanentlyFailedOutboxRow(byId["task-etag"]!)).toBe(false);
     expect(byId["task-etag"]?.lastStatus).toBeUndefined();
+  });
+
+  it("treats permanence as the status-bearing difference of conflict spellings", async () => {
+    expect(
+      [...STATUS_BEARING_CONFLICTS].filter((spelling) => !CONFLICT_OUTBOX_ERRORS.has(spelling)),
+    ).toEqual([]);
+
+    for (const spelling of CONFLICT_OUTBOX_ERRORS) {
+      await enqueueOutboxMutation(username, {
+        id: `spell-${spelling}`,
+        domain: "docs",
+        op: "rename",
+        payload: "{}",
+      });
+      await markOutboxError(username, `spell-${spelling}`, spelling, 404);
+    }
+
+    await enqueueOutboxMutation(username, {
+      id: "conflict-no-status",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "conflict-no-status", "conflict");
+
+    const byId = Object.fromEntries(
+      (await listOutboxMutations(username)).map((row) => [row.id, row]),
+    );
+
+    for (const spelling of CONFLICT_OUTBOX_ERRORS) {
+      const row = byId[`spell-${spelling}`]!;
+      expect(row.lastStatus).toBe(404);
+      expect(isPermanentlyFailedOutboxRow(row)).toBe(STATUS_BEARING_CONFLICTS.has(spelling));
+      expect(isRetryableOutboxRow(row)).toBe(false);
+    }
+
+    const plain = byId["conflict-no-status"]!;
+    expect(plain.lastStatus).toBeUndefined();
+    expect(isPermanentlyFailedOutboxRow(plain)).toBe(false);
+    expect(isSyncNoticeOutboxRow(plain)).toBe(false);
   });
 
   it("splits transient retries from permanent 403 and 404 rejections", async () => {
@@ -207,9 +251,31 @@ describe("core outbox store", () => {
     expect(isRetryableOutboxRow(byId.retry!)).toBe(true);
 
     await markOutboxError(username, "card", "network down");
-    const cleared = (await listOutboxMutations(username)).find((row) => row.id === "card");
-    expect(cleared?.lastStatus).toBeUndefined();
-    expect(isPermanentlyFailedOutboxRow(cleared!)).toBe(false);
-    expect(isRetryableOutboxRow(cleared!)).toBe(true);
+    const kept = (await listOutboxMutations(username)).find((row) => row.id === "card");
+    expect(kept?.lastStatus).toBe(404);
+    expect(isPermanentlyFailedOutboxRow(kept!)).toBe(true);
+    expect(isRetryableOutboxRow(kept!)).toBe(false);
+  });
+
+  it("keeps a known permanent status across a later status-less failure", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "doc",
+      domain: "docs",
+      op: "rename",
+      payload: "{}",
+    });
+    await markOutboxError(username, "doc", "missing", 404);
+    await markOutboxError(username, "doc", "network down");
+
+    const kept = (await listOutboxMutations(username)).find((row) => row.id === "doc");
+    expect(kept?.lastError).toBe("network down");
+    expect(kept?.lastStatus).toBe(404);
+    expect(isPermanentlyFailedOutboxRow(kept!)).toBe(true);
+
+    await markOutboxError(username, "doc", "server error", 500);
+    const replaced = (await listOutboxMutations(username)).find((row) => row.id === "doc");
+    expect(replaced?.lastStatus).toBe(500);
+    expect(isPermanentlyFailedOutboxRow(replaced!)).toBe(false);
+    expect(isRetryableOutboxRow(replaced!)).toBe(true);
   });
 });
