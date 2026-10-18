@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import type { Editor, UseEditorOptions } from "@tiptap/react";
@@ -22,7 +21,10 @@ import {
 } from "@/text-editor-core/docs-collab";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";
 import type { DocsCollabWireOperations } from "@/text-editor-core/docs-collab/docs-collab-wire";
-import { replaceDocumentWithExternalText } from "@/text-editor-core/docs-collab/docs-collab-external-write";
+import {
+  useDocsExternalWritePrompt,
+  useDocsExternalWriteRequest,
+} from "@/text-editor-core/docs-collab/use-docs-external-write-prompt";
 import { NotesExternalWriteDialog } from "@/notes-core/src/notes-external-write-dialog";
 import { defaultNotesLabels, type NotesUILabels } from "@/notes-core/src/notes-labels";
 
@@ -107,19 +109,12 @@ export function NoteCollabSession({
   onBodyMarkdownChange,
   children,
 }: NoteCollabSessionProps) {
-  const [externalPrompt, setExternalPrompt] = useState<{
-    markdown: string;
-    title: string | null;
-  } | null>(null);
-  const [externalBusy, setExternalBusy] = useState(false);
-  const onExternalWrite = useCallback((detail: { markdown: string; title: string | null }) => {
-    setExternalPrompt(detail);
-  }, []);
-  const collabUrls = useMemo(() => ({ ...urls, onExternalWrite }), [onExternalWrite, urls]);
+  // The same question chain Docs uses: tied to this room, held until an answer saves.
+  const externalWriteRequest = useDocsExternalWriteRequest(urls);
   const collab = useDocsCollab({
     userName,
     autoJoin: true,
-    urls: collabUrls,
+    urls: externalWriteRequest.urls,
     wire,
     seedContent: initialMarkdown,
   });
@@ -186,28 +181,14 @@ export function NoteCollabSession({
     // inline callbacks do not re-subscribe every render.
   }, [collab.session?.ydoc, syncBodyPreview]);
 
-  const keepExternalLocal = useCallback(() => {
-    setExternalBusy(true);
-    void collab
-      .resolveExternalWrite(null)
-      .then(() => setExternalPrompt(null))
-      .finally(() => setExternalBusy(false));
-  }, [collab]);
-
-  const useOutsideVersion = useCallback(() => {
-    const detail = externalPrompt;
-    const ydoc = collab.session?.ydoc;
-    if (!detail || !ydoc) return;
-    setExternalBusy(true);
-    replaceDocumentWithExternalText(ydoc, detail.markdown, detail.title, "markdown");
-    void collab
-      .resolveExternalWrite(detail.markdown)
-      .then(() => {
-        setExternalPrompt(null);
-        syncBodyPreview("hydrate");
-      })
-      .finally(() => setExternalBusy(false));
-  }, [collab, externalPrompt, syncBodyPreview]);
+  const onOutsideApplied = useCallback(() => syncBodyPreview("hydrate"), [syncBodyPreview]);
+  const externalWrite = useDocsExternalWritePrompt({
+    request: externalWriteRequest,
+    room: urls.room,
+    ydoc: collab.session?.ydoc ?? null,
+    resolveExternalWrite: collab.resolveExternalWrite,
+    onOutsideApplied,
+  });
 
   const value = useMemo(
     () => ({ ...collab, localDisplayName, onMarkdownChange, registerMarkdownGetter }),
@@ -222,12 +203,13 @@ export function NoteCollabSession({
       <NoteCollabContext.Provider value={value}>
         {children}
         <NotesExternalWriteDialog
-          open={externalPrompt !== null}
+          open={externalWrite.open}
           noteTitle={documentTitle}
-          busy={externalBusy}
+          busy={externalWrite.busy}
+          keepLocalDisabled={externalWrite.keepLocalDisabled}
           labels={defaultNotesLabels satisfies NotesUILabels}
-          onKeepLocal={keepExternalLocal}
-          onUseOutside={useOutsideVersion}
+          onKeepLocal={externalWrite.keepLocal}
+          onUseOutside={externalWrite.useOutside}
         />
       </NoteCollabContext.Provider>
     </NoteCollabYDocProvider>

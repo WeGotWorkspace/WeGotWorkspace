@@ -30,10 +30,17 @@ export async function loadCollabText(documentUrl: string, authToken?: string): P
   });
   if (!res.ok) throw new CollabHttpError(`Could not load document (${res.status})`, res.status);
   const contentType = res.headers.get("content-type") ?? "";
-  const etag = res.headers.get("ETag");
+  let etag = res.headers.get("ETag");
   if (contentType.includes("application/json")) {
-    const data = (await res.json()) as { body?: unknown; markdown?: unknown; title?: unknown };
+    const data = (await res.json()) as {
+      body?: unknown;
+      markdown?: unknown;
+      title?: unknown;
+      contentEtag?: unknown;
+    };
     const title = typeof data.title === "string" ? data.title : null;
+    // A JSON representation whose own tag also moves with metadata names its text separately.
+    if (typeof data.contentEtag === "string") etag = data.contentEtag;
     if (typeof data.markdown === "string") return { markdown: data.markdown, title, etag };
     if (typeof data.body === "string") return { markdown: data.body, title, etag };
     throw new CollabHttpError("Could not load document (unexpected JSON)", res.status);

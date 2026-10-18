@@ -30,9 +30,8 @@ import { isExternalWriteRefusal, SERVER_ORIGIN } from "./docs-collab-utils";
  * One scenario table for Notes and Docs. The fake server is the same kind of
  * stand-in as `docs-collab-concurrent-save.test.ts`: ETag, If-Match,
  * If-None-Match, 412, 428, 409 `external_write`, and `X-Wgw-External-Write`.
- * No real backend. The rows have no per-app branch. A row an app does not
- * meet yet names that app and its issue in `knownGap` and runs as a todo
- * there. This suite does not replace the existing `docs-collab-*` tests.
+ * No real backend. The table has no per-app branch. This suite does not
+ * replace the existing `docs-collab-*` tests.
  */
 type StoredDocument = {
   markdown: string;
@@ -112,8 +111,6 @@ function textEtagFor(document: ServerDocument): string {
 function createCollabFakeServer(options: {
   match(url: string): UrlMatch;
   markdownResponse(markdown: string, etag: string): Response;
-  /** 409 `external_write` for a save that did not see the outside text (#1349, Docs). */
-  refusesUnseenExternalWrites: boolean;
 }) {
   const documents = new Map<string, ServerDocument>();
 
@@ -146,7 +143,6 @@ function createCollabFakeServer(options: {
       return new Response(JSON.stringify({ error: "precondition_failed" }), { status: 412 });
     }
     const unseenExternalWrite =
-      options.refusesUnseenExternalWrites &&
       document.yjs !== null &&
       document.markdown !== document.savedMarkdown &&
       header(init, EXTERNAL_WRITE_HEADER) !== textEtagFor(document);
@@ -229,7 +225,6 @@ function createDocsCollabApp(): CollabApp {
         headers: { "Content-Type": "text/markdown", ETag: etag },
       });
     },
-    refusesUnseenExternalWrites: true,
   });
   installFetch(server.handle);
 
@@ -277,7 +272,6 @@ function createNotesCollabApp(): CollabApp {
         headers: { "Content-Type": "application/json", ETag: `"journal-${etag}"` },
       });
     },
-    refusesUnseenExternalWrites: true,
   });
   installFetch(server.handle);
 
@@ -370,8 +364,6 @@ function save(
 type Scenario = {
   name: string;
   run(app: CollabApp): Promise<void>;
-  /** An app that does not meet this row yet, with the issue that closes the gap. */
-  knownGap?: { app: string; issue: string };
 };
 
 /** Sentence two clients seed when the server has no Yjs state (#1089). */
@@ -596,7 +588,7 @@ const scenarios: Scenario[] = [
   },
 ];
 
-describe.each(appFactories)("collab app conformance ($name)", ({ name, create }) => {
+describe.each(appFactories)("collab app conformance ($name)", ({ create }) => {
   let app: CollabApp;
 
   beforeEach(() => {
@@ -614,10 +606,6 @@ describe.each(appFactories)("collab app conformance ($name)", ({ name, create })
   });
 
   for (const scenario of scenarios) {
-    if (scenario.knownGap?.app === name) {
-      it.todo(`${scenario.name} (${scenario.knownGap.issue})`);
-      continue;
-    }
     it(scenario.name, () => scenario.run(app));
   }
 });
