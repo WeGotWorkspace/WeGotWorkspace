@@ -17,7 +17,7 @@ final class JsContactToVCardConverter
     /** @param array<string, mixed> $card */
     public function convert(array $card): string
     {
-        $card = ConversionSupport::normalizeCardMapKeys($card);
+        $card = ConversionSupport::normalizeCardMapKeys($card, $card); // Keep stored PROP-IDs, so renders match (#1425).
         $this->groups = VCardGroupAllocator::forCard($card);
         $this->organizationGroups = [];
         $vcard = new VCard([], false);

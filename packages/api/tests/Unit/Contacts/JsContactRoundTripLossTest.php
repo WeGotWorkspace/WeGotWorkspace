@@ -168,23 +168,43 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringContainsString("NICKNAME:Al,Ally\r\n", $this->edit($vcard));
     }
 
-    /** CT-10: changing an entry's context merges the contexts map, so the old context is kept. */
-    public function test_ct10_context_change_does_not_replace_old_context(): void
+    /** CT-10 (fixed by #1425): changing an entry's context replaces the old context. */
+    public function test_ct10_context_change_replaces_old_context(): void
     {
         $vcard = $this->vcard('4.0', "FN:John Doe\r\nEMAIL;PROP-ID=e1;TYPE=work:jd@example.com\r\n");
+        $id = array_key_first($this->converter->cardFromVCard($vcard)['emails']);
 
         // What the web app sends when the user switches the email from Work to Home (editDraftToPatch).
-        $out = $this->edit($vcard, ['emails' => ['e1' => ['address' => 'jd@example.com', 'contexts' => ['private' => true]]]]);
+        $out = $this->edit($vcard, ['emails' => [$id => ['address' => 'jd@example.com', 'contexts' => ['private' => true]]]]);
 
-        $this->assertStringContainsString('TYPE="home,work"', $out);
+        $this->assertSame(1, substr_count($out, 'jd@example.com'));
+        $this->assertStringContainsString('TYPE=home', $out);
+        $this->assertStringNotContainsString('work', $out);
     }
 
-    /** CT-10: RFC 8620 PatchObject pointer paths are ignored. */
-    public function test_ct10_patch_object_pointer_paths_are_ignored(): void
+    /** CT-10 (fixed by #1425): a context change keeps the fields the web app does not send, like an Apple label. */
+    public function test_ct10_context_change_keeps_the_apple_label(): void
+    {
+        $vcard = $this->vcard('3.0', "FN:John Doe\r\nN:Doe;John;;;\r\n"
+            ."item1.EMAIL;PROP-ID=e1;TYPE=work:jd@example.com\r\nitem1.X-ABLabel:Newsletter\r\n");
+        $id = array_key_first($this->converter->cardFromVCard($vcard)['emails']);
+
+        $out = $this->edit($vcard, ['emails' => [$id => ['address' => 'jd@example.com', 'contexts' => ['private' => true]]]]);
+        $this->assertSame(1, substr_count($out, 'jd@example.com'));
+
+        $this->assertStringContainsStringIgnoringCase('item1.X-ABLABEL:Newsletter', $out);
+        $this->assertStringContainsStringIgnoringCase('item1.EMAIL', $out);
+    }
+
+    /** CT-10 (fixed by #1425): RFC 8620 PatchObject pointer paths are applied. */
+    public function test_ct10_patch_object_pointer_paths_are_applied(): void
     {
         $vcard = $this->vcard('4.0', "FN:John Doe\r\nEMAIL;PROP-ID=e1:a@example.com\r\nEMAIL;PROP-ID=e2:b@example.com\r\n");
 
-        $this->assertStringContainsString('b@example.com', $this->edit($vcard, ['emails/e2' => null]));
+        $ids = array_keys($this->converter->cardFromVCard($vcard)['emails']);
+        $out = $this->edit($vcard, ['emails/'.$ids[1] => null]);
+        $this->assertStringNotContainsString('b@example.com', $out);
+        $this->assertStringContainsString('a@example.com', $out);
     }
 
     /** CT-11 (fixed for unrelated edits by #1418): the ADR LABEL is not copied into an X-ABLabel. */

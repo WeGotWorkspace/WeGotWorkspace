@@ -41,6 +41,8 @@ final class JmapSetErrors
             // client-input problem, not a server failure.
             'invalid_blob' => 'invalidProperties',
             'alreadyExists' => 'invalidProperties',
+            // RFC 8620 §5.3: a PatchObject pointer that does not resolve.
+            'invalidPatch' => 'invalidPatch',
             default => 'serverFail',
         };
 
