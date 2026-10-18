@@ -31,7 +31,7 @@ describe("useDriveFileNodeInbound", () => {
     renderHook(() => useDriveFileNodeInbound("ada", 0));
     await waitFor(() => expect(show).toHaveBeenCalledTimes(1));
     expect(show).toHaveBeenCalledWith(docsLabels.keptUnsavedDocumentTitle, {
-      description: docsLabels.keptUnsavedDocumentMessage(["users/ada/unsaved.md"]),
+      description: "Your unsaved copy of /users/ada/unsaved.md is still here.",
     });
     expect(syncDriveInboundFromFileNodes).toHaveBeenCalledWith("ada");
   });

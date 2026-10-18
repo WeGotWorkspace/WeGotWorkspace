@@ -3,6 +3,10 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { syncDriveInboundFromFileNodes } from "@/lib/offline/drive/drive-inbound-sync";
 
+function shownPaths(paths: readonly string[]): string {
+  return paths.map((path) => (path.startsWith("/") ? path : `/${path}`)).join(", ");
+}
+
 /**
  * FileNode/changes on app start and whenever `refreshKey` changes.
  * Callers bump `refreshKey` from `useOfflineReconnectFlush`'s `afterFlush`
@@ -20,7 +24,10 @@ export function useDriveFileNodeInbound(
       .then((result) => {
         if (cancelled || result.keptUnsavedPaths.length === 0) return;
         show(docsLabels.keptUnsavedDocumentTitle, {
-          description: docsLabels.keptUnsavedDocumentMessage(result.keptUnsavedPaths),
+          description: docsLabels.keptUnsavedDocumentMessage(
+            shownPaths(result.keptUnsavedPaths),
+            result.keptUnsavedPaths.length,
+          ),
         });
       })
       .catch((error: unknown) => {
