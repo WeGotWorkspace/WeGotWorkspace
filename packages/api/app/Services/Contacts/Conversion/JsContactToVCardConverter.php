@@ -11,6 +11,9 @@ final class JsContactToVCardConverter
     /** RFC 9555 §3 reverse conversion; optional uid per RFC 9982 when Card.version is "2.0"+. */
     private int $groupCounter = 0;
 
+    /** @var array<string, true> Lowercase vCard groups already present on the card. */
+    private array $reservedGroups = [];
+
     /** @var array<string, string> */
     private array $organizationGroups = [];
 
@@ -19,6 +22,7 @@ final class JsContactToVCardConverter
     {
         $card = ConversionSupport::normalizeCardMapKeys($card);
         $this->groupCounter = 0;
+        $this->reservedGroups = self::groupsInCard($card);
         $this->organizationGroups = [];
         $vcard = new VCard([], false);
 
@@ -775,6 +779,10 @@ final class JsContactToVCardConverter
         $vCardParams = ConversionSupport::vCardParamsFromObject($entry);
         if ($vCardParams !== null) {
             foreach ($vCardParams as $name => $value) {
+                // The group is the property's group, not a GROUP= parameter (CT-2).
+                if (strtolower((string) $name) === 'group') {
+                    continue;
+                }
                 $params[strtolower((string) $name)] = $value;
             }
         }
@@ -814,7 +822,7 @@ final class JsContactToVCardConverter
             return $existingGroup;
         }
 
-        $group = $existingGroup ?? 'item'.(++$this->groupCounter);
+        $group = $existingGroup ?? $this->nextGroup();
         $labelProperty = $vcard->add('X-ABLABEL', $label);
         $labelProperty->group = $group;
 
@@ -916,5 +924,45 @@ final class JsContactToVCardConverter
         }
 
         return '4.0';
+    }
+
+    /**
+     * Next `itemN` group that no stored group uses. vCard groups are
+     * case-insensitive, so a client's `ITEM1` and a new `item1` collide (CT-2).
+     */
+    private function nextGroup(): string
+    {
+        do {
+            $candidate = 'item'.(++$this->groupCounter);
+        } while (isset($this->reservedGroups[$candidate]));
+        $this->reservedGroups[$candidate] = true;
+
+        return $candidate;
+    }
+
+    /**
+     * @param  array<mixed>  $node
+     * @return array<string, true>
+     */
+    private static function groupsInCard(array $node): array
+    {
+        $groups = [];
+        foreach ($node as $key => $value) {
+            if ($key === 'vCardParams' && is_array($value) && isset($value['group']) && is_string($value['group'])) {
+                $groups[strtolower($value['group'])] = true;
+            }
+            if ($key === 'vCardProps' && is_array($value)) {
+                foreach ($value as $tuple) {
+                    if (is_array($tuple) && isset($tuple[1]['group']) && is_string($tuple[1]['group'])) {
+                        $groups[strtolower($tuple[1]['group'])] = true;
+                    }
+                }
+            }
+            if (is_array($value)) {
+                $groups += self::groupsInCard($value);
+            }
+        }
+
+        return $groups;
     }
 }

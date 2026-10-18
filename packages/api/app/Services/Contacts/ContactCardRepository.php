@@ -14,6 +14,7 @@ use App\Services\Contacts\Conversion\ConversionSupport;
 use App\Services\Contacts\Conversion\VCardJsContactConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
+use App\Services\VObject\VCardInPlacePatcher;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -293,7 +294,7 @@ final class ContactCardRepository
         $cardPayload['id'] = ContactCardMapper::cardIdFromUri($cardUri);
         $cardPayload['addressBookIds'] = [$bookApiId => true];
 
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->updatedVCard($username, $card, $cardPayload, $existingContact);
         $addressBookId = (int) $card->addressbookid;
         $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
         $davPath = $this->cardDavPathFor($book, $cardUri);
@@ -375,7 +376,7 @@ final class ContactCardRepository
         }
 
         $cardPayload['addressBookIds'] = [$bookApiId => true];
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->updatedVCard($username, $card, $cardPayload, $existingContact);
         $addressBookId = (int) $card->addressbookid;
         $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
         $davPath = $this->cardDavPathFor($book, $cardUri);
@@ -502,7 +503,7 @@ final class ContactCardRepository
             );
         }
 
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->updatedVCard($username, $card, $cardPayload, $existingContact);
         DB::connection('wgw')->transaction(function () use (
             $username,
             $sourceBook,
@@ -794,5 +795,27 @@ final class ContactCardRepository
         }
 
         return trim($matches[1]);
+    }
+
+    /**
+     * Applies the edit to the stored vCard in place, so data the JSContact model
+     * cannot hold survives (#1418). The baseline is the stored contact as read,
+     * normalized the same way as the payload.
+     *
+     * @param  array<string, mixed>  $cardPayload
+     * @param  array<string, mixed>  $existingContact
+     */
+    private function updatedVCard(string $username, Card $card, array $cardPayload, array $existingContact): string
+    {
+        $baseline = $this->normalizeCardPayload($existingContact, $existingContact);
+        $baseline['id'] = $cardPayload['id'];
+        $baseline['addressBookIds'] = $cardPayload['addressBookIds'];
+        $stored = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
+
+        return VCardInPlacePatcher::patch(
+            $stored,
+            $this->mapper->toVCard($username, $baseline),
+            $this->mapper->toVCard($username, $cardPayload),
+        );
     }
 }
