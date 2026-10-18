@@ -19,7 +19,7 @@ final class InstallerWindow
 {
     private const WINDOW_SECONDS = 1800;
 
-    private const STAMP_NAME = '.install-window';
+    public const STAMP_NAME = '.install-window';
 
     public function __construct(
         private AppPaths $paths,

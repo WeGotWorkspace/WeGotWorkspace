@@ -11,11 +11,11 @@ use App\Support\WebRootDeny;
  * Removes `<install root>/wgw-content` when the data directory lives elsewhere
  * and that folder holds only files an earlier boot generated there.
  *
- * Before #1329 was fixed, the first request to a fresh ZIP tree wrote an OAuth
- * key pair into the stock `./wgw-content`, and the install then added deny
- * files beside it. Passport loads from the resolved data directory only, so
- * that pair is never live. Anything outside the allowlist leaves the folder
- * untouched.
+ * Before the data directory is resolved, writes land in the stock
+ * `./wgw-content`: the OAuth key pair from boot (before #1329 was fixed), the
+ * web installer's window stamp, and the deny files the requirements screen
+ * adds. Passport loads from the resolved data directory only, so that pair is
+ * never live. Anything outside the allowlist leaves the folder untouched.
  */
 final class StrayDataDirCleaner
 {
@@ -79,18 +79,32 @@ final class StrayDataDirCleaner
                 continue;
             }
 
-            $expected = match ($entry) {
-                '.htaccess' => WebRootDeny::HTACCESS,
-                '.probe' => WebRootDeny::PROBE,
-                default => null,
-            };
-            if ($expected === null || ! $this->isPlainFile($path) || @file_get_contents($path) !== $expected) {
+            if (! $this->isGeneratedFile($entry, $path)) {
                 return null;
             }
             $files[] = $path;
         }
 
         return $files;
+    }
+
+    private function isGeneratedFile(string $entry, string $path): bool
+    {
+        if (! in_array($entry, ['.htaccess', '.probe', InstallerWindow::STAMP_NAME], true) || ! $this->isPlainFile($path)) {
+            return false;
+        }
+
+        $contents = @file_get_contents($path);
+        if (! is_string($contents)) {
+            return false;
+        }
+
+        return match ($entry) {
+            '.htaccess' => $contents === WebRootDeny::HTACCESS,
+            '.probe' => $contents === WebRootDeny::PROBE,
+            // InstallerWindow writes "<unix time>\n" before the resolver has chosen a directory.
+            default => preg_match('/\A[1-9][0-9]{0,18}\n\z/', $contents) === 1,
+        };
     }
 
     /**

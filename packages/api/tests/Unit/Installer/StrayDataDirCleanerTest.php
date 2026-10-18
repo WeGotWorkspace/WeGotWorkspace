@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Installer;
 
+use App\Services\Installer\InstallerWindow;
 use App\Services\Installer\StrayDataDirCleaner;
 use App\Support\AppPaths;
 use App\Support\WebRootDeny;
@@ -41,6 +42,23 @@ final class StrayDataDirCleanerTest extends TestCase
 
         $this->assertTrue($this->cleaner()->removeIfStray());
         $this->assertDirectoryDoesNotExist($this->stray);
+    }
+
+    public function test_removes_the_set_a_web_wizard_install_left_with_its_window_stamp(): void
+    {
+        $this->writeGeneratedFiles();
+        file_put_contents($this->stray.'/'.InstallerWindow::STAMP_NAME, "1792345678\n");
+
+        $this->assertTrue($this->cleaner()->removeIfStray());
+        $this->assertDirectoryDoesNotExist($this->stray);
+    }
+
+    public function test_a_window_stamp_with_other_content_keeps_everything(): void
+    {
+        $this->writeGeneratedFiles();
+        file_put_contents($this->stray.'/'.InstallerWindow::STAMP_NAME, "1792345678\nmore\n");
+
+        $this->assertKeptIntact([InstallerWindow::STAMP_NAME, '.htaccess', 'keys/oauth-private.key']);
     }
 
     public function test_removes_a_folder_holding_only_the_oauth_pair(): void
