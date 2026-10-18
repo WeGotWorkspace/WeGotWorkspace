@@ -69,7 +69,7 @@ function staleState(): ArrayBuffer {
 }
 
 /** The Docs server after a WebDAV write: same sidecar, flagged, new text. */
-function serveExternalWrite(puts: string[]) {
+function serveExternalWrite(puts: string[], saveStatus = 200) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -83,6 +83,7 @@ function serveExternalWrite(puts: string[]) {
       }
       if (method === "PUT") {
         puts.push(markdownFromFramedSave(init?.body));
+        if (saveStatus !== 200) return new Response("{}", { status: saveStatus });
         return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
       }
       return new Response(OUTSIDE_TEXT, {
@@ -198,6 +199,70 @@ describe("Docs external write (#1349)", () => {
     expect(puts[0]).toContain(LOCAL_TEXT);
     expect(documentText(result)).toContain(LOCAL_TEXT);
     expect(documentText(result)).not.toContain(OUTSIDE_TEXT);
+  }, 15_000);
+
+  it("drops a prompt that belongs to another document", () => {
+    const first = docsUrls("docs/first.md");
+    const second = docsUrls("docs/second.md");
+    const { result, rerender } = renderHook(({ urls }) => useDocsExternalWriteRequest(urls), {
+      initialProps: { urls: second },
+    });
+
+    act(() => result.current.urls?.onExternalWrite?.({ markdown: OUTSIDE_TEXT, title: null }));
+    expect(result.current.detail?.markdown).toBe(OUTSIDE_TEXT);
+
+    rerender({ urls: first });
+    expect(result.current.detail).toBeNull();
+    rerender({ urls: second });
+    expect(result.current.detail).toBeNull();
+  });
+
+  it("keeps the prompt and the hold when saving the outside version fails", async () => {
+    const room = "docs/external-outside-fails.md";
+    await markUnsavedWork(room);
+    const puts: string[] = [];
+    serveExternalWrite(puts, 503);
+
+    const { result } = renderDocsWorkspaceHooks(docsUrls(room));
+    await waitFor(() => expect(result.current.prompt.open).toBe(true), { timeout: 5000 });
+
+    await act(async () => result.current.prompt.useOutside());
+    await waitFor(() => expect(result.current.prompt.busy).toBe(false));
+    const failedPuts = puts.length;
+    expect(failedPuts).toBeGreaterThan(0);
+
+    expect(result.current.prompt.open).toBe(true);
+    // The local edits are already replaced, so "Keep my edits" would save the outside text.
+    expect(result.current.prompt.keepLocalDisabled).toBe(true);
+    // A retry from the sync toast must not save behind the open prompt.
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+    expect(puts).toHaveLength(failedPuts);
+  }, 15_000);
+
+  it("keeps the prompt and the hold when saving the local version fails", async () => {
+    const room = "docs/external-keep-fails.md";
+    await markUnsavedWork(room);
+    const puts: string[] = [];
+    serveExternalWrite(puts, 503);
+
+    const { result } = renderDocsWorkspaceHooks(docsUrls(room));
+    await waitFor(() => expect(result.current.prompt.open).toBe(true), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+
+    await act(async () => result.current.prompt.keepLocal());
+    await waitFor(() => expect(result.current.prompt.busy).toBe(false));
+    const failedPuts = puts.length;
+    expect(failedPuts).toBeGreaterThan(0);
+
+    expect(result.current.prompt.open).toBe(true);
+    expect(result.current.prompt.keepLocalDisabled).toBe(false);
+    // A retry from the sync toast must not save behind the open prompt.
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+    expect(puts).toHaveLength(failedPuts);
   }, 15_000);
 
   it("shows a prompt that Escape cannot dismiss", () => {
