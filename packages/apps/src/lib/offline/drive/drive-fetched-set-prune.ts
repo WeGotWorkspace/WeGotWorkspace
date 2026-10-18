@@ -4,7 +4,10 @@ import { parentAndName } from "@/lib/files/api-path";
 import { readMeta, writeMeta } from "@/lib/offline/core/meta-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { listOutboxMutations } from "@/lib/offline/core/outbox-store";
-import { removeDocsAvailability } from "@/lib/offline/docs/docs-availability-store";
+import {
+  moveDocsAvailabilityForNode,
+  removeDocsAvailability,
+} from "@/lib/offline/docs/docs-availability-store";
 import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
 import { pathsForDocsOutboxRow } from "@/lib/offline/docs/docs-outbox-flush";
 import { reportDocsSyncConflicts } from "@/lib/offline/docs/docs-sync-conflicts";
@@ -260,7 +263,12 @@ async function removePrunedFile(
   if (isDocsCollabEditablePath(apiPath)) {
     const deleted = await dropCollabDatabase(apiPath, await identityDatabaseFor(row, table));
     if (!deleted) return false;
-    await removeDocsAvailability(username, apiPath);
+    const livingPath = await livingPathOfNode(row, table);
+    if (livingPath && row.nodeId) {
+      await moveDocsAvailabilityForNode(username, row.nodeId, livingPath);
+    } else {
+      await removeDocsAvailability(username, apiPath);
+    }
   }
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await driveEntriesTable(db).delete(apiPath);
@@ -304,9 +312,15 @@ function parsePathList(raw: string | null): string[] {
  */
 async function identityDatabaseFor(row: PrunedRow, table: DriveEntries): Promise<string | null> {
   if (!row.nodeId) return null;
-  const owners = await table.where("nodeId").equals(row.nodeId).primaryKeys();
-  if (owners.some((id) => id !== row.id)) return null;
+  if (await livingPathOfNode(row, table)) return null;
   return docsCollabIndexedDbKey(row.nodeId, DOCS_COLLAB_IDENTITY_DB_VERSION);
+}
+
+/** Another cached path that carries this row's FileNode id: a remote rename or move. */
+async function livingPathOfNode(row: PrunedRow, table: DriveEntries): Promise<string | null> {
+  if (!row.nodeId) return null;
+  const owners = await table.where("nodeId").equals(row.nodeId).primaryKeys();
+  return owners.find((id) => id !== row.id) ?? null;
 }
 
 async function documentHasPendingServerSave(
