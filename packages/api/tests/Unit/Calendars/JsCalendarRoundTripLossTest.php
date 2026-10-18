@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Calendars;
 
+use App\Exceptions\ApiHttpException;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
 use App\Services\VObject\ICalendarInPlacePatcher;
@@ -207,8 +208,8 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringContainsString('PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN', $out);
     }
 
-    /** RT-10: sending a map without an entry does not remove that entry. */
-    public function test_rt10_removing_an_alert_or_participant_from_the_map_is_ignored(): void
+    /** RT-10 (fixed by #1401): sending a map without an entry removes that entry. */
+    public function test_rt10_removing_an_alert_or_participant_from_the_map_sticks(): void
     {
         $ics = $this->calendar(self::BASE
             ."ATTENDEE;CN=A:mailto:a@ex.com\r\nATTENDEE;CN=B:mailto:b@ex.com\r\n"
@@ -221,18 +222,61 @@ final class JsCalendarRoundTripLossTest extends TestCase
             'participants' => ['att1' => $event['participants']['att1']],
         ]);
 
-        $this->assertStringContainsString('TRIGGER:-PT1H', $out);
-        $this->assertStringContainsString('mailto:b@ex.com', $out);
+        $this->assertStringNotContainsString('TRIGGER:-PT1H', $out);
+        $this->assertStringContainsString('TRIGGER:-PT15M', $out);
+        $this->assertStringNotContainsString('mailto:b@ex.com', $out);
+        $this->assertStringContainsString('mailto:a@ex.com', $out);
     }
 
-    /** RT-10: RFC 8620 PatchObject pointer paths are ignored. */
-    public function test_rt10_patch_object_pointer_paths_are_ignored(): void
+    /** RT-10 (fixed by #1401): RFC 8620 PatchObject pointer paths are applied. */
+    public function test_rt10_patch_object_pointer_paths_are_applied(): void
     {
         $ics = $this->calendar(self::BASE
             ."BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT15M\r\nDESCRIPTION:r\r\nEND:VALARM\r\n"
             ."BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT1H\r\nDESCRIPTION:r\r\nEND:VALARM\r\n");
 
-        $this->assertStringContainsString('TRIGGER:-PT1H', $this->patch($ics, ['alerts/alert2' => null]));
+        $out = $this->patch($ics, ['alerts/alert2' => null]);
+        $this->assertStringNotContainsString('TRIGGER:-PT1H', $out);
+        $this->assertStringContainsString('TRIGGER:-PT15M', $out);
+    }
+
+    /** RT-10 (fixed by #1401): the web app's full `locations` map replaces the old location. */
+    public function test_rt10_location_edit_replaces_the_old_location(): void
+    {
+        $ics = $this->calendar(self::BASE."LOCATION:Old room\r\n");
+
+        $out = $this->patch($ics, ['locations' => ['primary' => ['@type' => 'Location', 'name' => 'New room']]]);
+
+        $this->assertStringContainsString("LOCATION:New room\r\n", $out);
+        $this->assertStringNotContainsString('Old room', $out);
+    }
+
+    /** RT-10 (fixed by #1401): a pointer into a missing object is an invalidPatch error. */
+    public function test_rt10_pointer_into_missing_object_is_invalid_patch(): void
+    {
+        try {
+            $this->patch($this->calendar(self::BASE), ['participants/nobody/name' => 'X']);
+            $this->fail('Expected invalidPatch');
+        } catch (ApiHttpException $e) {
+            $this->assertSame('invalidPatch', $e->errorCode());
+        }
+    }
+
+    /** #1397 + #1401: editing the location keeps a cross-zone event's end zone. */
+    public function test_location_edit_keeps_the_end_time_zone(): void
+    {
+        $ics = $this->calendar("UID:u1\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Flight\r\n"
+            ."DTSTART;TZID=Europe/Amsterdam:20260601T100000\r\n"
+            ."DTEND;TZID=America/New_York:20260601T130000\r\nLOCATION:Schiphol\r\n");
+
+        $out = $this->patch($ics, [
+            'locations' => ['primary' => ['@type' => 'Location', 'name' => 'Gate D7']],
+            'start' => '2026-06-01T10:30:00',
+            'end' => '2026-06-01T13:30:00',
+        ]);
+
+        $this->assertStringContainsString("LOCATION:Gate D7\r\n", $out);
+        $this->assertStringContainsString("DTEND;TZID=America/New_York:20260601T133000\r\n", $out);
     }
 
     /** RT-11: RFC 8984 color is never written; COLOR is only read into icsProps. */

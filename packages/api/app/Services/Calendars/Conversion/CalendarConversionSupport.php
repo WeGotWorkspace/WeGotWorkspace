@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\Jmap\JmapPatchObject;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use Illuminate\Support\Str;
 use Sabre\VObject\Component\VAlarm;
@@ -159,23 +160,29 @@ final class CalendarConversionSupport
      */
     public static function deepMergeEventPatch(array $existing, array $patch): array
     {
-        $merged = $existing;
-        foreach ($patch as $key => $value) {
-            if ($key === 'id' || $key === '@type') {
-                continue;
-            }
-            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key]) && self::isAssociativeMap($value) && self::isAssociativeMap($merged[$key])) {
-                // recurrenceOverrides is a full replacement (RFC 8620 property set), not a
-                // per-key merge — otherwise this-and-future splits cannot drop future exceptions.
-                if ($key === 'recurrenceOverrides') {
-                    $merged[$key] = $value;
-                } else {
-                    $merged[$key] = array_replace($merged[$key], $value);
-                }
-            } else {
-                $merged[$key] = $value;
-            }
+        $merged = JmapPatchObject::apply($existing, $patch);
+
+        return self::keepEndTimeZoneLocation($existing, $merged);
+    }
+
+    /**
+     * Clients that know nothing about the end-zone Location (#1397) send
+     * `locations` without it. Carry it over, so editing the location does not
+     * move the end of a cross-zone event.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $merged
+     * @return array<string, mixed>
+     */
+    private static function keepEndTimeZoneLocation(array $existing, array $merged): array
+    {
+        $kept = $existing['locations'][self::END_TIME_ZONE_LOCATION] ?? null;
+        if (! is_array($kept) || self::endTimeZone($merged) !== null) {
+            return $merged;
         }
+        $locations = is_array($merged['locations'] ?? null) ? $merged['locations'] : [];
+        $locations[self::END_TIME_ZONE_LOCATION] = $kept;
+        $merged['locations'] = $locations;
 
         return $merged;
     }
