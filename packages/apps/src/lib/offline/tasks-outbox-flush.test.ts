@@ -64,6 +64,7 @@ describe("flushTasksOutbox", () => {
     const outbox = await listOutboxMutations(username);
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.lastError).toContain("403");
+    expect(outbox[0]?.lastStatus).toBe(403);
     expect(outbox[0]?.retries).toBe(1);
     expect(patchTask).toHaveBeenCalledWith(
       task.id,

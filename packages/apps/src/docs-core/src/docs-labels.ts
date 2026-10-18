@@ -22,7 +22,8 @@ export const docsLabels = {
   syncingOffline: "Syncing offline",
   offlinePendingSync: driveLabels.offlinePendingSync,
   syncFailedTitle: "Some changes could not sync",
-  syncFailedMessage: "Your edits are saved locally. Retry when you are back online.",
+  syncFailedMessage:
+    "Your edits are saved on this device. Retry temporary failures. Changes the server rejected stay listed.",
   retrySync: "Retry sync",
   conflictTitle: "Document conflict",
   conflictDescription: (title: string) =>

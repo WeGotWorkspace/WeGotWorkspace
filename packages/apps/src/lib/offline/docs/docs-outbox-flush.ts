@@ -2,6 +2,7 @@ import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
 import { ensureTrashFolder } from "@/drive-core/src/drive-batch-utils";
 import { parentAndName } from "@/lib/files/api-path";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import {
   listOutboxMutationsForDomain,
   markOutboxError,
@@ -104,7 +105,7 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
       flushed += 1;
     } catch (error) {
       failed += 1;
-      const status = (error as { status?: number } | undefined)?.status;
+      const status = httpStatusFromFlushError(error);
       const message = error instanceof Error ? error.message : String(error);
       const isStateMismatch =
         status === 409 || status === 412 || /precondition failed/i.test(message);
@@ -112,19 +113,42 @@ export async function flushDocsOutbox(username: string): Promise<OutboxFlushResu
         const path = docsOutboxApiPath(row);
         if (path) stateMismatches.push(path);
       }
-      await markOutboxError(username, row.id, message);
+      await markOutboxError(username, row.id, message, status);
     }
   }
 
   return { flushed, failed, stateMismatches };
 }
 
-export function docsOutboxApiPath(row: OfflineOutboxRow): string | null {
+export function pathsForDocsOutboxPayload(payload: DocsOutboxPayload): string[] {
+  switch (payload.op) {
+    case "rename":
+    case "trash":
+      return [
+        normalizeDocsAvailabilityPath(payload.from),
+        normalizeDocsAvailabilityPath(
+          nextPathAfterRename(payload.from, payload.destination, payload.to),
+        ),
+      ];
+    case "create":
+      return [normalizeDocsAvailabilityPath(payload.apiPath)];
+    case "star":
+      return [normalizeDocsAvailabilityPath(payload.path)];
+    default: {
+      const unreachable: never = payload;
+      return unreachable;
+    }
+  }
+}
+
+export function pathsForDocsOutboxRow(row: OfflineOutboxRow): string[] {
   const payload = parsePayload(row);
-  if (!payload) return null;
-  if (payload.op === "create") return normalizeDocsAvailabilityPath(payload.apiPath);
-  if (payload.op === "star") return normalizeDocsAvailabilityPath(payload.path);
-  return normalizeDocsAvailabilityPath(payload.from);
+  if (!payload) return [];
+  return pathsForDocsOutboxPayload(payload);
+}
+
+export function docsOutboxApiPath(row: OfflineOutboxRow): string | null {
+  return pathsForDocsOutboxRow(row)[0] ?? null;
 }
 
 /**

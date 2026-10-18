@@ -20,6 +20,7 @@ import {
   type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
 import {
   listOutboxMutations,
@@ -182,14 +183,22 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
           await removeOutboxMutation(username, row.id);
         } else {
           if (conflictId) conflicts.push(conflictId);
-          await markOutboxError(username, row.id, "conflict");
+          const notFound = error instanceof JmapSetItemError && error.setError.type === "notFound";
+          await markOutboxError(
+            username,
+            row.id,
+            "conflict",
+            notFound ? httpStatusFromFlushError(error) : undefined,
+          );
         }
         continue;
       }
+      const status = httpStatusFromFlushError(error);
       await markOutboxError(
         username,
         row.id,
         error instanceof Error ? error.message : String(error),
+        status,
       );
     }
   }

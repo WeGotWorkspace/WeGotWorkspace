@@ -1,13 +1,12 @@
+import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
 
 export const NOTES_ACCESS_LOST_MESSAGE =
   "You no longer have access to this note. Unsaved edits were not stored.";
 
 export function persistHttpStatus(error: unknown): number | undefined {
-  if (error && typeof error === "object" && "status" in error) {
-    const status = (error as { status?: unknown }).status;
-    if (typeof status === "number") return status;
-  }
+  const status = httpStatusFromFlushError(error);
+  if (typeof status === "number") return status;
   const message = error instanceof Error ? error.message : String(error);
   const match = /\((\d{3})\)/.exec(message);
   return match ? Number(match[1]) : undefined;

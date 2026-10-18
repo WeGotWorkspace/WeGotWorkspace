@@ -2,12 +2,13 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 import {
+  collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
   docsCollabRoomKey,
+  listExistingIndexedDatabaseNames,
   migrateCollabPersistence,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { isYDocEmpty } from "@/text-editor-core/docs-collab/docs-collab-utils";
-import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 /** y-indexeddb room key = VJOURNAL UID (never a Drive `.notes` path). */
 export function noteCollabRoomKey(uid: string): string {
@@ -19,25 +20,6 @@ export function noteCollabRoomKey(uid: string): string {
  */
 function noteCollabLegacyIndexedDbKeys(room: string): string[] {
   return [room];
-}
-
-/**
- * Databases that already exist. `null` when `indexedDB.databases` is missing
- * or rejects; callers then open the legacy name without an existence check.
- */
-export async function listExistingNoteCollabDatabaseNames(): Promise<ReadonlySet<string> | null> {
-  if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return null;
-  let rows: IDBDatabaseInfo[];
-  try {
-    rows = await indexedDB.databases();
-  } catch {
-    return null;
-  }
-  const names = new Set<string>();
-  for (const row of rows) {
-    if (row.name) names.add(row.name);
-  }
-  return names;
 }
 
 function legacyNamesToOpen(
@@ -76,7 +58,7 @@ async function firstFromRoomNames<T>(
   if (!room) return null;
   const known =
     existingDatabaseNames === undefined
-      ? await listExistingNoteCollabDatabaseNames()
+      ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
@@ -97,7 +79,7 @@ export async function readNoteCollabOfflineContent(uid: string): Promise<string 
 export async function hasNoteCollabOfflinePersistence(uid: string): Promise<boolean> {
   const room = noteCollabRoomKey(uid);
   if (!room) return false;
-  const known = await listExistingNoteCollabDatabaseNames();
+  const known = await listExistingIndexedDatabaseNames();
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
     const found = await withIndexedDb(name, async (ydoc) => !isYDocEmpty(ydoc));
@@ -110,12 +92,17 @@ export async function hasNoteCollabPendingServerSave(
   uid: string,
   existingDatabaseNames?: ReadonlySet<string> | null,
 ): Promise<boolean> {
-  const result = await firstFromRoomNames(
-    uid,
-    async (_d, p) => ((await p.get(PENDING_SERVER_SAVE_KEY)) ? true : null),
-    existingDatabaseNames,
-  );
-  return Boolean(result);
+  const room = noteCollabRoomKey(uid);
+  if (!room) return false;
+  const known =
+    existingDatabaseNames === undefined
+      ? await listExistingIndexedDatabaseNames()
+      : existingDatabaseNames;
+  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
+  for (const name of names) {
+    if (await collabIndexedDbHasPendingServerSave(name)) return true;
+  }
+  return false;
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */

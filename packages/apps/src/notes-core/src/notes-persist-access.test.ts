@@ -1,13 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
+import { JmapSetItemError } from "@/lib/jmap-client";
 import {
   isNotesMetadataSyncRace,
   isNotesPersistForbidden,
   isNotesPersistGone,
   NOTES_ACCESS_LOST_MESSAGE,
+  persistHttpStatus,
   persistNoteKeepingSyncRace,
   persistNoteOrDropGone,
   resolveNotesPersistAccess,
 } from "@/notes-core/src/notes-persist-access";
+
+describe("persistHttpStatus", () => {
+  it("reads a numeric status and a parenthesized status in the message", () => {
+    expect(persistHttpStatus({ status: 412 })).toBe(412);
+    expect(persistHttpStatus(new Error("PATCH /notes/items/uid failed (403)"))).toBe(403);
+  });
+
+  it("maps a JMAP forbidden set error through the shared helper", () => {
+    expect(persistHttpStatus(new JmapSetItemError("update", "note-1", { type: "forbidden" }))).toBe(
+      403,
+    );
+  });
+});
 
 describe("notes persist 403", () => {
   it("treats status 403 as access lost", () => {

@@ -8,7 +8,7 @@ import type {
 import { rememberOfflineCalendarsUsername } from "@/lib/offline/offline-session";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
-  isRetryableOutboxRow,
+  isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
 } from "@/lib/offline/core/outbox-store";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
@@ -174,7 +174,7 @@ export async function writeCalendarSyncToken(
 
 export async function listFailedCalendarOutbox(username: string): Promise<OfflineOutboxRow[]> {
   const rows = await listOutboxMutationsForDomain(username, CALENDARS_DOMAIN);
-  return rows.filter(isRetryableOutboxRow);
+  return rows.filter(isSyncNoticeOutboxRow);
 }
 
 export async function listPendingCalendarEventIds(username: string): Promise<string[]> {

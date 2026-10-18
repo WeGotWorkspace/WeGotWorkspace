@@ -48,19 +48,84 @@ export async function removeOutboxMutation(username: string, id: string): Promis
   await db.outbox.delete(id);
 }
 
-/** Increment retry count and record the last error message for a queued mutation. */
-export async function markOutboxError(username: string, id: string, error: string): Promise<void> {
+/**
+ * Increment the retry count and record the last error. A numeric `status`
+ * replaces `lastStatus`. A later failure with no status leaves an existing
+ * `lastStatus` untouched: absence of a status is not a retraction of a status
+ * the server already gave. A first failure with no status still has no
+ * `lastStatus`.
+ */
+export async function markOutboxError(
+  username: string,
+  id: string,
+  error: string,
+  status?: number,
+): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const row = await db.outbox.get(id);
   if (!row) return;
-  await db.outbox.put({
+  const next: OfflineOutboxRow = {
     ...row,
     retries: row.retries + 1,
     lastError: error,
-  });
+  };
+  if (typeof status === "number") next.lastStatus = status;
+  await db.outbox.put(next);
 }
 
-/** True when a row failed for a non-conflict, transient reason (eligible for retry). */
+/** Every conflict spelling flush paths write. */
+export const CONFLICT_OUTBOX_ERRORS = new Set(["stateMismatch", "conflict", "etagMismatch"]);
+
+/** Conflict markers that can still carry a permanent server status. */
+export const STATUS_BEARING_CONFLICTS = new Set(["conflict"]);
+
+/**
+ * Conflict rows are not transient retries. Flush paths spell that three ways:
+ * `"stateMismatch"`, `"conflict"`, and `"etagMismatch"`.
+ */
+function isFailedNonConflict(row: OfflineOutboxRow): boolean {
+  return (
+    row.retries > 0 && Boolean(row.lastError) && !CONFLICT_OUTBOX_ERRORS.has(row.lastError ?? "")
+  );
+}
+
+/**
+ * 403 and 404 from `lastStatus`. Rows written before that column exist fall
+ * back to the Docs/Drive flush text `failed (403)` or `failed (404)`. Any
+ * stored status that is not 403 or 404 is transient, even when the text matches.
+ */
+function isPermanentOutboxFailure(row: OfflineOutboxRow): boolean {
+  if (typeof row.lastStatus === "number") {
+    return row.lastStatus === 403 || row.lastStatus === 404;
+  }
+  return /failed \((?:403|404)\)/.test(row.lastError ?? "");
+}
+
+/**
+ * True when a row failed for a non-conflict, transient reason (eligible for retry).
+ * Permanent 403 and 404 rejections are `isPermanentlyFailedOutboxRow`, not this.
+ */
 export function isRetryableOutboxRow(row: OfflineOutboxRow): boolean {
-  return row.retries > 0 && Boolean(row.lastError) && row.lastError !== "stateMismatch";
+  return isFailedNonConflict(row) && !isPermanentOutboxFailure(row);
+}
+
+/**
+ * True when the server rejected the mutation with HTTP 403 or 404.
+ * These stay visible in the sync notices. They are not transient retries.
+ * `stateMismatch` and `etagMismatch` are excluded because they are conflict
+ * markers that must not carry a permanent status, while `"conflict"` can.
+ */
+export function isPermanentlyFailedOutboxRow(row: OfflineOutboxRow): boolean {
+  if (isFailedNonConflict(row)) return isPermanentOutboxFailure(row);
+  if (!(row.retries > 0 && STATUS_BEARING_CONFLICTS.has(row.lastError ?? ""))) return false;
+  return isPermanentOutboxFailure(row);
+}
+
+/**
+ * Rows a sync notice lists: transient retries and permanent 403/404 rejections.
+ * Revision conflicts stay on the conflict channel. Docs, Drive, Calendar,
+ * Contacts, Notes, and Tasks use this.
+ */
+export function isSyncNoticeOutboxRow(row: OfflineOutboxRow): boolean {
+  return isRetryableOutboxRow(row) || isPermanentlyFailedOutboxRow(row);
 }

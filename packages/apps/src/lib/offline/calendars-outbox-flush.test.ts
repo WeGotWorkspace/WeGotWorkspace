@@ -12,7 +12,11 @@ import {
   readCalendarBootstrapFromCache,
   writeCalendarBootstrapToCache,
 } from "@/lib/offline/calendars-offline-store";
-import { putOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  isPermanentlyFailedOutboxRow,
+  isRetryableOutboxRow,
+  putOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
 import { CalendarSchedulingGoneError } from "@/lib/api/wgw/calendar-scheduling";
 import { flushCalendarsOutbox } from "@/lib/offline/calendars-outbox-flush";
 
@@ -191,6 +195,26 @@ describe("flushCalendarsOutbox", () => {
     const rows = await listOutboxMutations(username);
     expect(rows).toHaveLength(1);
     expect(rows[0].lastError).toBe("conflict");
+    expect(rows[0].lastStatus).toBe(404);
+    expect(isRetryableOutboxRow(rows[0])).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(rows[0])).toBe(true);
+  });
+
+  it("keeps a stateMismatch set error as a conflict without a permanent status", async () => {
+    patchCalendarEventLive.mockRejectedValue(
+      new JmapSetItemError("update", "ev-1", { type: "stateMismatch" }),
+    );
+    await enqueueCoalescedCalendarEventUpdate(username, "ev-1", { title: "Patched" });
+
+    const result = await flushCalendarsOutbox(username);
+
+    expect(result.conflicts).toEqual(["ev-1"]);
+    const rows = await listOutboxMutations(username);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].lastError).toBe("conflict");
+    expect(rows[0].lastStatus).toBeUndefined();
+    expect(isRetryableOutboxRow(rows[0])).toBe(false);
+    expect(isPermanentlyFailedOutboxRow(rows[0])).toBe(false);
   });
 
   it("marks transport failures with the error message and keeps the row", async () => {

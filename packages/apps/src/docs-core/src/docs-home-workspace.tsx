@@ -47,8 +47,12 @@ import {
 } from "@/lib/offline/docs/docs-hybrid-operations";
 import { readDocsBodySyncProgress } from "@/lib/offline/docs/docs-body-sync";
 import { useOfflineBodySyncProgress } from "@/lib/offline/use-offline-body-sync-progress";
+import { DOCS_DOMAIN } from "@/lib/offline/docs/docs-schema";
+import { setDocsSyncConflictListener } from "@/lib/offline/docs/docs-sync-conflicts";
+import { useDomainOutboxNotice } from "@/lib/offline/use-domain-outbox-notice";
 import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-flush";
 import { useOfflineSyncToast } from "@/lib/offline/use-offline-sync-toast";
+import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import "@/docs-core/src/docs-workspace.css";
 import "@/docs-core/src/docs-home-workspace.css";
 
@@ -211,13 +215,37 @@ export function DocsHomeWorkspace({
     offlineUsername,
   );
 
+  const [outboxNoticeKey, setOutboxNoticeKey] = useState(0);
   const syncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
       if (!offlineUsername) return;
       await getDocsSyncRunner(offlineUsername).flush();
     },
-    afterFlush: refresh,
+    afterFlush: async () => {
+      await refresh();
+      setOutboxNoticeKey((key) => key + 1);
+    },
+  });
+  const { active: outboxNoticeActive, clearConflicts } = useDomainOutboxNotice({
+    username: offlineUsername,
+    domain: DOCS_DOMAIN,
+    setConflictListener: setDocsSyncConflictListener,
+    refreshKey: outboxNoticeKey,
+  });
+  const retryFailedOutbox = useCallback(() => {
+    clearConflicts();
+    if (!offlineUsername) return;
+    void getDocsSyncRunner(offlineUsername)
+      .flush()
+      .finally(() => setOutboxNoticeKey((key) => key + 1));
+  }, [clearConflicts, offlineUsername]);
+  useSyncRetryToast({
+    active: Boolean(offlineUsername) && outboxNoticeActive,
+    title: labels.syncFailedTitle,
+    message: labels.syncFailedMessage,
+    retryLabel: labels.retrySync,
+    onRetry: retryFailedOutbox,
   });
 
   const readBodySyncProgress = useCallback(() => {

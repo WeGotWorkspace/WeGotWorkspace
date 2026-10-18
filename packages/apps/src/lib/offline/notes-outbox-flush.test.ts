@@ -311,7 +311,9 @@ describe("flushNotesOutbox", () => {
 
     expect((await readNotesBootstrapFromCache(username))?.data.notes[0]?.id).toBe(note.id);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect(await db.outbox.toArray()).toHaveLength(1);
+    const rows = await db.outbox.toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.lastStatus).toBe(412);
   });
 
   it("replays starred upserts through REST metadata (not Drive /files/star)", async () => {

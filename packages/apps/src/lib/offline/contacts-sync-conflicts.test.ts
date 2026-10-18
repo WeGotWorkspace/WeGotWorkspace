@@ -13,11 +13,11 @@ describe("contacts sync conflicts", () => {
     setContactsSyncConflictListener(undefined);
   });
 
-  it("ignores empty conflict lists", () => {
+  it("delivers an empty list so the listener can clear", () => {
     const listener = vi.fn();
     setContactsSyncConflictListener(listener);
     reportContactsSyncConflicts([]);
-    expect(listener).not.toHaveBeenCalled();
+    expect(listener).toHaveBeenCalledWith([]);
     setContactsSyncConflictListener(undefined);
   });
 });
