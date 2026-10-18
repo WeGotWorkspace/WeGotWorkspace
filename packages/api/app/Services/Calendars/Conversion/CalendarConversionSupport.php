@@ -50,6 +50,49 @@ final class CalendarConversionSupport
      * months have no fixed length. DateInterval's y/m/d split is therefore unused;
      * the span is total days plus leftover hours/minutes/seconds.
      */
+    /** Id of the Location that carries the DTEND time zone when it differs from DTSTART's (#1397). */
+    public const END_TIME_ZONE_LOCATION = 'end-time-zone';
+
+    /**
+     * Time zone of a `relativeTo: end` Location, if the event has one.
+     *
+     * @param  array<string, mixed>  $event
+     */
+    public static function endTimeZone(array $event): ?string
+    {
+        $locations = $event['locations'] ?? null;
+        if (! is_array($locations)) {
+            return null;
+        }
+        foreach ($locations as $entry) {
+            if (is_array($entry) && ($entry['relativeTo'] ?? null) === 'end'
+                && isset($entry['timeZone']) && is_string($entry['timeZone']) && $entry['timeZone'] !== '') {
+                return $entry['timeZone'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Exact elapsed time between two instants, as an ISO 8601 duration. */
+    public static function durationBetweenInstants(\DateTimeInterface $start, \DateTimeInterface $end): ?string
+    {
+        $seconds = $end->getTimestamp() - $start->getTimestamp();
+        if ($seconds <= 0) {
+            return null;
+        }
+        $days = intdiv($seconds, 86400);
+        $seconds %= 86400;
+        $hours = intdiv($seconds, 3600);
+        $seconds %= 3600;
+        $minutes = intdiv($seconds, 60);
+        $seconds %= 60;
+
+        $time = ($hours > 0 ? $hours.'H' : '').($minutes > 0 ? $minutes.'M' : '').($seconds > 0 ? $seconds.'S' : '');
+
+        return 'P'.($days > 0 ? $days.'D' : '').($time !== '' ? 'T'.$time : '');
+    }
+
     public static function durationBetweenJmapDateTimes(string $start, string $end): ?string
     {
         $start = trim($start);

@@ -250,7 +250,7 @@ final class JmapEventToVEventConverter
                 'DTEND',
                 $event['end'],
                 $showWithoutTime,
-                $timeZone
+                $showWithoutTime ? $timeZone : (CalendarConversionSupport::endTimeZone($event) ?? $timeZone)
             );
         } elseif (isset($event['duration']) && is_string($event['duration'])) {
             $vevent->add('DURATION', $event['duration']);

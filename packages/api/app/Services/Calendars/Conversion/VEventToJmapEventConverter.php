@@ -168,6 +168,7 @@ final class VEventToJmapEventConverter
         }
 
         LocationConversionSupport::readLocationsAndLinks($vevent, $event);
+        $this->readEndTimeZone($vevent, $event);
 
         if (isset($vevent->STATUS)) {
             $status = strtolower(trim((string) $vevent->STATUS->getValue()));
@@ -279,5 +280,40 @@ final class VEventToJmapEventConverter
         if ($props !== []) {
             $event['icsProps'] = $props;
         }
+    }
+
+    /**
+     * A DTEND in another zone than DTSTART (a flight) keeps its zone as an RFC
+     * 8984 Location with relativeTo "end", and the duration is measured between
+     * the two instants instead of the two wall-clock times (RT-6, #1397).
+     *
+     * @param  array<string, mixed>  $event
+     */
+    private function readEndTimeZone(VEvent $vevent, array &$event): void
+    {
+        if (! isset($vevent->DTSTART, $vevent->DTEND) || ($event['showWithoutTime'] ?? false) === true) {
+            return;
+        }
+        $startZone = isset($vevent->DTSTART['TZID']) ? trim((string) $vevent->DTSTART['TZID']) : '';
+        $endZone = isset($vevent->DTEND['TZID']) ? trim((string) $vevent->DTEND['TZID']) : '';
+        if ($startZone === '' || $endZone === '' || $startZone === $endZone) {
+            return;
+        }
+
+        try {
+            $duration = CalendarConversionSupport::durationBetweenInstants($vevent->DTSTART->getDateTime(), $vevent->DTEND->getDateTime());
+        } catch (\Throwable) {
+            return;
+        }
+        if ($duration !== null) {
+            $event['duration'] = $duration;
+        }
+        $locations = isset($event['locations']) && is_array($event['locations']) ? $event['locations'] : [];
+        $locations[CalendarConversionSupport::END_TIME_ZONE_LOCATION] = [
+            '@type' => 'Location',
+            'relativeTo' => 'end',
+            'timeZone' => $endZone,
+        ];
+        $event['locations'] = $locations;
     }
 }

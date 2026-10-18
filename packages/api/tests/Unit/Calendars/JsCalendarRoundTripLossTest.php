@@ -140,19 +140,26 @@ final class JsCalendarRoundTripLossTest extends TestCase
         }
     }
 
-    /**
-     * RT-6: the read side still computes the wrong duration across zones. A title
-     * edit keeps the stored DTEND (#1392); an edit of the times still needs RT-6's own fix.
-     */
-    public function test_rt6_duration_is_wrong_on_read_but_dtend_survives_a_title_edit(): void
+    /** RT-6 (fixed by #1397): a DTEND in another zone keeps its zone, and the duration is exact. */
+    public function test_rt6_end_time_zone_is_read_and_survives_a_time_edit(): void
     {
         $ics = $this->calendar("UID:u1\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Flight\r\n"
             ."DTSTART;TZID=Europe/Amsterdam:20260601T100000\r\n"
             ."DTEND;TZID=America/New_York:20260601T130000\r\n");
 
         // 10:00 Amsterdam (08:00Z) to 13:00 New York (17:00Z) is nine hours.
-        $this->assertSame('PT3H', $this->converter->eventFromIcs($ics)['duration']);
-        $this->assertStringContainsString('DTEND;TZID=America/New_York:20260601T130000', $this->patchTitle($ics));
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame('PT9H', $event['duration']);
+        $this->assertSame(
+            ['@type' => 'Location', 'relativeTo' => 'end', 'timeZone' => 'America/New_York'],
+            $event['locations'][CalendarConversionSupport::END_TIME_ZONE_LOCATION],
+        );
+
+        $this->assertStringContainsString("DTEND;TZID=America/New_York:20260601T130000\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString(
+            "DTEND;TZID=America/New_York:20260601T140000\r\n",
+            $this->patch($ics, ['start' => '2026-06-01T11:00:00', 'end' => '2026-06-01T14:00:00']),
+        );
     }
 
     /**
