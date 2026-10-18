@@ -6,6 +6,7 @@ import type { DocsCollabUrls } from "@/text-editor-core/docs-collab/docs-collab-
 
 const harness = vi.hoisted(() => ({
   prompt: false,
+  outsideMarkdown: "from outside",
   answerFails: false,
   session: null as { ydoc: unknown } | null,
 }));
@@ -16,7 +17,7 @@ vi.mock("@/text-editor-core/docs-collab", async () => {
     useDocsCollab: (options: { urls?: DocsCollabUrls }) => {
       React.useEffect(() => {
         if (!harness.prompt) return;
-        options.urls?.onExternalWrite?.({ markdown: "from outside", title: "Outside" });
+        options.urls?.onExternalWrite?.({ markdown: harness.outsideMarkdown, title: "Outside" });
       }, [options.urls]);
       return {
         onMarkdownChange: vi.fn(),
@@ -47,11 +48,11 @@ const urls: DocsCollabUrls = {
   room: "n1",
 };
 
-function renderSession() {
+function renderSession(sessionUrls: DocsCollabUrls = urls) {
   return render(
     <NoteCollabSession
       userName="Alex"
-      urls={urls}
+      urls={sessionUrls}
       initialMarkdown="local draft"
       localDisplayName="Alex"
       documentTitle="Shopping"
@@ -66,6 +67,19 @@ describe("NoteCollabSession prompts", () => {
     harness.prompt = false;
     harness.answerFails = false;
     harness.session = null;
+    harness.outsideMarkdown = "from outside";
+  });
+
+  it("rebuilds the outside version as markdown even when the note UID ends in .json", async () => {
+    harness.prompt = true;
+    harness.outsideMarkdown = "# Outside heading";
+    const ydoc = new Y.Doc();
+    harness.session = { ydoc };
+    renderSession({ ...urls, room: "n1@host.json" });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
+
+    await waitFor(() => expect(ydoc.getXmlFragment("default").toString()).toContain("<heading"));
   });
 
   it("keeps the dialog usable when the save behind Keep my edits fails", async () => {
