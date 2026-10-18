@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CreateRtcSessionOptions } from "@/lib/rtc/session/create-rtc-session";
 import { MeetRtcSession } from "@/meet-core/src/meet-rtc-session";
-import { sanitizeRtcSdp } from "@/meet-core/src/meet-rtc-sdp";
 import { toSessionDescriptionPayload } from "@/lib/rtc/session/sdp";
 import type { RtcSettings } from "@/lib/rtc/types";
 
@@ -23,9 +22,6 @@ const RTC_SETTINGS: RtcSettings = {
   turnAvailable: false,
   forceRelay: false,
 };
-
-const REMOTE_OFFER_WITH_SSRC =
-  "v=0\r\no=-\r\ns=-\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=ssrc:5555 cname:remote\r\na=rtcp-rsize\r\n";
 
 const REMOTE_OFFER_WITH_OPUS =
   "v=0\r\no=-\r\ns=-\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\n";
@@ -71,17 +67,6 @@ describe("MeetRtcSession SDP wiring", () => {
     expect(format(payload, "offer")).toEqual(toSessionDescriptionPayload(payload, "offer"));
 
     await session.leave();
-  });
-
-  it("sanitizes inbound remote descriptions only", () => {
-    const inbound = toSessionDescriptionPayload(
-      { type: "offer", sdp: REMOTE_OFFER_WITH_SSRC },
-      "offer",
-    );
-    expect(inbound?.sdp).toBeDefined();
-    const sanitized = sanitizeRtcSdp(inbound!.sdp!, "chromium");
-    expect(sanitized).not.toContain("a=ssrc:");
-    expect(sanitized).not.toContain("a=rtcp-rsize");
   });
 
   it("uses guest fetchImpl for signaling when provided", async () => {

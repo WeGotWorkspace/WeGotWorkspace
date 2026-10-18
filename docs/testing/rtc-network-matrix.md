@@ -53,13 +53,14 @@ Not automated: N4 and N5 (real NAT or hotspot), N13–N15 (iOS Safari and the in
 - Signaling is **HTTP poll only** (Apache + mod_php); no WebSocket daemon required.
 - TURN must be **external** (coturn on VPS); STUN-only is insufficient for ~20% of networks.
 
-## SDP sanitizer (2026-10-04)
+## SDP sanitizer removed (2026-10-18)
 
-The pair that required stripping is Safari (WebKit) against Chromium. Unit tests in `meet-rtc-sdp.test.ts` cover it:
+Meet used to rewrite every inbound description (`meet-rtc-sdp.ts`) for Safari against Chromium. It is gone ([#1345](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1345)). Meet now applies inbound descriptions like principal and collab: `toSessionDescriptionPayload` only, which normalizes line endings and the trailing CRLF.
 
-- Chromium parsing a Safari description strips `a=extmap-allow-mixed`, `a=rtcp-rsize`, and plan-b `a=ssrc`, and keeps RTX and Opus RED.
-- Safari parsing a Chromium description strips RTX and Opus RED, and keeps those session lines.
-- H.265/HEVC, AV1, and VP9 are stripped for every parser. Inbound Opus fmtp gains `usedtx=1`.
+Measured on 2026-10-18 without the rewrite, Meet DM call with camera on, direct path:
+
+- Safari (member) ↔ Chrome (admin): Safari offered, Chrome answered. Video in both directions.
+- Firefox (member) ↔ Chrome (admin): Firefox offered, Chrome answered. Video in both directions.
 
 <a id="manual-runs-2026-10-07-08"></a>
 
