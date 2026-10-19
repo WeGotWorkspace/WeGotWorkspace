@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WgwUnifiedSearchData, WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import {
@@ -337,6 +337,126 @@ describe("useDocsHomeList", () => {
     expect(hook.current.isOfflineListing).toBe(true);
   });
 });
+
+describe("useDocsHomeList cache-first", () => {
+  beforeEach(() => {
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(true);
+  });
+
+  it("shows cached rows without loading while the live fetch runs", async () => {
+    await writeDocsListingToCache("carol", {}, { results: FIXTURES.slice(0, 2), hasMore: false });
+    const gated = createGatedFetcher(FIXTURES);
+    gated.hold();
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher: gated.fetcher, offlineUsername: "carol" }),
+    );
+
+    await waitFor(() => expect(hook.current.files.map((f) => f.title)).toEqual(["A", "B"]));
+    await waitFor(() => expect(gated.fetcher).toHaveBeenCalled());
+    expect(hook.current.loading).toBe(false);
+    expect(hook.current.refreshing).toBe(true);
+
+    gated.release();
+    await waitFor(() => expect(hook.current.files).toHaveLength(5));
+    expect(hook.current.refreshing).toBe(false);
+    expect(hook.current.loading).toBe(false);
+    expect(hook.current.isOfflineListing).toBe(false);
+  });
+
+  it("keeps loading on a first run without cache until the live listing arrives", async () => {
+    const gated = createGatedFetcher(FIXTURES);
+    gated.hold();
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher: gated.fetcher, offlineUsername: "dave" }),
+    );
+
+    await waitFor(() => expect(gated.fetcher).toHaveBeenCalled());
+    expect(hook.current.loading).toBe(true);
+    expect(hook.current.refreshing).toBe(false);
+    expect(hook.current.files).toEqual([]);
+
+    gated.release();
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(hook.current.files).toHaveLength(5);
+  });
+
+  it("keeps cached rows when the background refresh fails", async () => {
+    await writeDocsListingToCache("erin", {}, { results: FIXTURES.slice(0, 2), hasMore: false });
+    const fetcher: DocsHomeFetcher = vi.fn(async () => {
+      throw new Error("Network down");
+    });
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher, offlineUsername: "erin" }),
+    );
+
+    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    await waitFor(() => expect(hook.current.refreshing).toBe(false));
+    expect(hook.current.loading).toBe(false);
+    expect(hook.current.error).toBeNull();
+    expect(hook.current.files.map((f) => f.title)).toEqual(["A", "B"]);
+    expect(hook.current.isOfflineListing).toBe(true);
+  });
+
+  it("refreshes in the background on reload while rows are shown", async () => {
+    const gated = createGatedFetcher(FIXTURES);
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher: gated.fetcher, debounceMs: 0 }),
+    );
+    await waitFor(() => expect(hook.current.files).toHaveLength(5));
+
+    gated.hold();
+    act(() => hook.current.reload());
+    await waitFor(() => expect(hook.current.refreshing).toBe(true));
+    expect(hook.current.loading).toBe(false);
+    expect(hook.current.files).toHaveLength(5);
+
+    gated.release();
+    await waitFor(() => expect(hook.current.refreshing).toBe(false));
+    expect(hook.current.files).toHaveLength(5);
+  });
+
+  it("drops rows from the previous query while an uncached query loads", async () => {
+    const gated = createGatedFetcher(FIXTURES);
+    const { result: hook, rerender } = renderHook(
+      ({ q }) =>
+        useDocsHomeList({ username: "alice", query: q, fetcher: gated.fetcher, debounceMs: 0 }),
+      { initialProps: { q: "" } },
+    );
+    await waitFor(() => expect(hook.current.files).toHaveLength(5));
+
+    gated.hold();
+    rerender({ q: "d" });
+    await waitFor(() => expect(hook.current.loading).toBe(true));
+    expect(hook.current.files).toEqual([]);
+
+    gated.release();
+    await waitFor(() => expect(hook.current.files.map((f) => f.title)).toEqual(["D"]));
+    expect(hook.current.loading).toBe(false);
+  });
+});
+
+/** Fetcher whose calls wait while `hold()` is active, until `release()`. */
+function createGatedFetcher(all: WgwUnifiedSearchResult[]) {
+  const inner = createFetcher(all, 50);
+  let gate: Promise<void> | null = null;
+  let open = () => {};
+  const fetcher: DocsHomeFetcher = vi.fn(async (params) => {
+    if (gate) await gate;
+    return inner(params);
+  });
+  return {
+    fetcher,
+    hold() {
+      gate = new Promise((resolve) => {
+        open = () => {
+          gate = null;
+          resolve();
+        };
+      });
+    },
+    release: () => open(),
+  };
+}
 
 function createScopedFetcher(all: WgwUnifiedSearchResult[], pageSize: number): DocsHomeFetcher {
   return vi.fn(async (params): Promise<WgwUnifiedSearchData> => {
