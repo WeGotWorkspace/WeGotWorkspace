@@ -7,7 +7,7 @@
   </picture>
 </p>
 
-<p align="center"><b>Your own office suite: docs, files, calendar, meet, and more, on your own server.</b></p>
+<p align="center"><b>A real-time collaborative office suite that runs anywhere PHP runs, even on shared hosting.</b></p>
 
 <p align="center">
   <a href="https://github.com/WeGotWorkspace/wegotworkspace/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/WeGotWorkspace/wegotworkspace?label=release&color=2ea043"></a>
@@ -27,11 +27,20 @@
 <p><img src=".github/assets/screenshot-home.webp" alt="WeGotWorkspace home screen" width="100%"></p>
 -->
 
-Meet **WeGotWorkspace**, an open-source, self-hosted office platform. Your docs, notes, files, calendars, contacts, tasks, and video calls live in one place, on infrastructure you control. It is built on open protocols (WebDAV, CalDAV, CardDAV), so the apps on your phone and desktop just work with it.
+Meet **WeGotWorkspace**, an open-source office suite you host yourself. Write docs together in real time, share calendars, jump on a video call, and keep your files in one place, on infrastructure you control.
+
+### Why WeGotWorkspace?
+
+- ⚡ **Real-time collaboration, no extra servers.** Co-editing, presence, and video calls run on your PHP host. No WebSocket server, no Node, no third-party relay.
+- 🪄 **Almost zero config.** Upload, open `/install/`, create your account. The wizard handles the rest, and SQLite works out of the box if you don't have a database.
+- 🏠 **Runs on the hosting you already have.** A regular shared hosting plan with cPanel or Plesk is enough. Prefer Docker? That's one command too.
+- 🔓 **Open protocols, open source.** WebDAV, CalDAV, and CardDAV, so the apps on your phone and desktop just work. Every feature is AGPL-licensed.
 
 > **WeGotWorkspace is in beta** and changes quickly. Found a bug or have an idea? [Open an issue](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml) or start a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions). We read all of them.
 
 ## 🚀 Install in one minute
+
+**Shared hosting** (cPanel, Plesk, any Apache/PHP host). Download the ZIP from [Releases](https://github.com/WeGotWorkspace/wegotworkspace/releases/latest), upload it, and open `/install/` in your browser.
 
 **Docker** (VPS or homelab). One command, no Node or PHP needed on the host:
 
@@ -39,14 +48,12 @@ Meet **WeGotWorkspace**, an open-source, self-hosted office platform. Your docs,
 curl -fsSL https://github.com/WeGotWorkspace/wegotworkspace/releases/latest/download/install | sh
 ```
 
-**Shared hosting** (cPanel, Plesk, any Apache/PHP host). Download the ZIP from [Releases](https://github.com/WeGotWorkspace/wegotworkspace/releases/latest), upload it, and open `/install/` in your browser.
-
 Both paths end in the same setup wizard at `/install/`. Need more detail?
 
 | Method | Guide |
 | --- | --- |
-| Docker | [docs/install-docker.md](docs/install-docker.md) |
 | ZIP / shared hosting | [INSTALL.md](INSTALL.md) |
+| Docker | [docs/install-docker.md](docs/install-docker.md) |
 | Not sure which to pick? | [docs/getting-started.md](docs/getting-started.md) |
 
 ### Upgrading
