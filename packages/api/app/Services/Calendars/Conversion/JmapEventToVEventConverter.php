@@ -250,7 +250,7 @@ final class JmapEventToVEventConverter
                 'DTEND',
                 $event['end'],
                 $showWithoutTime,
-                $timeZone
+                $showWithoutTime ? $timeZone : (CalendarConversionSupport::endTimeZone($event) ?? $timeZone)
             );
         } elseif (isset($event['duration']) && is_string($event['duration'])) {
             $vevent->add('DURATION', $event['duration']);
@@ -329,6 +329,10 @@ final class JmapEventToVEventConverter
 
         if (isset($event['categories']) && is_array($event['categories']) && $event['categories'] !== []) {
             $vevent->add('CATEGORIES', implode(',', array_map('strval', $event['categories'])));
+        }
+
+        if (isset($event['color']) && is_string($event['color']) && trim($event['color']) !== '') {
+            $vevent->add('COLOR', trim($event['color']));
         }
     }
 

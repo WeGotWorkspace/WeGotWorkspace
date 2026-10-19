@@ -143,6 +143,9 @@ final class IcsToJmapTaskConverter
         if (isset($dateFields['timeZone']) && is_string($dateFields['timeZone']) && $dateFields['timeZone'] !== '') {
             $task['timeZone'] = $dateFields['timeZone'];
         }
+        if (isset($dateFields['sequence'])) {
+            $task['sequence'] = $dateFields['sequence'];
+        }
 
         $task += [
             'workflowStatus' => TaskConversionSupport::workflowFromStatus($status),

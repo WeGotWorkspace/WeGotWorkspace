@@ -10115,6 +10115,8 @@ export interface components {
             };
             /** @enum {string} */
             freeBusyStatus?: "busy" | "free" | "tentative";
+            /** @description RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR. */
+            color?: string;
             /** @enum {string} */
             privacy?: "public" | "private" | "secret";
             /** @enum {string} */
@@ -10261,6 +10263,8 @@ export interface components {
             };
             /** @enum {string} */
             freeBusyStatus?: "busy" | "free" | "tentative";
+            /** @description RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR. */
+            color?: string;
             /** @enum {string} */
             privacy?: "public" | "private" | "secret";
             /** @enum {string} */
@@ -10321,6 +10325,8 @@ export interface components {
             };
             /** @enum {string} */
             freeBusyStatus?: "busy" | "free" | "tentative";
+            /** @description RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR. */
+            color?: string;
             /** @enum {string} */
             privacy?: "public" | "private" | "secret";
             /** @enum {string} */

@@ -646,6 +646,7 @@ final class TaskRepository
         $baseline['id'] = $taskPayload['id'];
         $baseline['taskListId'] = $taskPayload['taskListId'];
         $baseline['uid'] = $taskPayload['uid'];
+        $taskPayload = self::withSequenceBump($baseline, $taskPayload);
 
         return ICalendarInPlacePatcher::patch(
             $raw,
@@ -662,5 +663,29 @@ final class TaskRepository
         return $vtodoUid !== null
             ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $vtodoUid)
             : $this->mapper->toIcs($taskPayload);
+    }
+
+    /**
+     * RFC 5545 §3.8.7.4: a significant change (start, due, duration or
+     * recurrence) increments SEQUENCE, so clients see the task changed (RT-T2, #1403).
+     *
+     * @param  array<string, mixed>  $baseline
+     * @param  array<string, mixed>  $taskPayload
+     * @return array<string, mixed>
+     */
+    private static function withSequenceBump(array $baseline, array $taskPayload): array
+    {
+        if (array_key_exists('sequence', $taskPayload) && ($taskPayload['sequence'] ?? null) !== ($baseline['sequence'] ?? null)) {
+            return $taskPayload;
+        }
+        foreach (['start', 'due', 'estimatedDuration', 'duration', 'timeZone', 'showWithoutTime', 'recurrenceRules', 'excludedRecurrenceDates', 'recurrenceOverrides'] as $field) {
+            if (($baseline[$field] ?? null) !== ($taskPayload[$field] ?? null)) {
+                $taskPayload['sequence'] = (is_int($baseline['sequence'] ?? null) ? $baseline['sequence'] : 0) + 1;
+
+                return $taskPayload;
+            }
+        }
+
+        return $taskPayload;
     }
 }

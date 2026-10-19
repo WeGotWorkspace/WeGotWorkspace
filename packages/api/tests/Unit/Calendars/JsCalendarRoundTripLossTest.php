@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Calendars;
 
+use App\Exceptions\ApiHttpException;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
 use App\Services\VObject\ICalendarInPlacePatcher;
@@ -66,6 +67,32 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringNotContainsString('X-GOOGLE-CONFERENCE', $out);
     }
 
+    /** RT-1 (#1393): editing a plain link writes it back as URL only, never as a WGW Meet conference. */
+    public function test_rt1_edited_plain_link_stays_a_url(): void
+    {
+        $out = $this->unfold($this->patch(
+            $this->calendar(self::BASE."URL;VALUE=URI:https://example.com/agenda\r\n"),
+            ['links' => ['link1' => ['@type' => 'Link', 'href' => 'https://example.com/agenda-v2']]],
+        ));
+
+        $this->assertStringContainsString('URL;VALUE=URI:https://example.com/agenda-v2', $out);
+        $this->assertStringNotContainsString('https://example.com/agenda'."\r\n", $out);
+        $this->assertStringNotContainsString('CONFERENCE', $out);
+    }
+
+    /** RT-1 (#1393): adding a Zoom link through JMAP is not relabelled as WGW Meet. */
+    public function test_rt1_added_third_party_link_is_not_relabelled(): void
+    {
+        $out = $this->unfold($this->patch(
+            $this->calendar(self::BASE),
+            ['links' => ['link1' => ['@type' => 'Link', 'href' => 'https://zoom.us/j/1']]],
+        ));
+
+        $this->assertStringContainsString('URL;VALUE=URI:https://zoom.us/j/1', $out);
+        $this->assertStringNotContainsString('WeGotWorkspace Meet', $out);
+        $this->assertStringNotContainsString('X-GOOGLE-CONFERENCE', $out);
+    }
+
     /** RT-2 (fixed by #1392): unknown properties keep parameters and repeats. */
     public function test_rt2_unknown_properties_survive_a_title_edit(): void
     {
@@ -115,6 +142,27 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringContainsString('X-NUM-GUESTS=2', $out);
     }
 
+    /** RT-4 (fixed by #1394): one attendee's RSVP keeps every attendee's scheduling parameters. */
+    public function test_rt4_rsvp_change_keeps_scheduling_parameters(): void
+    {
+        $ics = $this->calendar(self::BASE
+            ."ATTENDEE;CN=A;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=1:mailto:a@ex.com\r\n"
+            ."ATTENDEE;CN=B;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=2:mailto:b@ex.com\r\n");
+        $participants = $this->converter->eventFromIcs($ics)['participants'];
+        foreach ($participants as $id => $participant) {
+            if (($participant['email'] ?? '') === 'b@ex.com') {
+                $participants[$id]['participationStatus'] = 'accepted';
+            }
+        }
+
+        $out = $this->unfold($this->patch($ics, ['participants' => $participants]));
+
+        $this->assertStringContainsString('ATTENDEE;CN=A;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=1:mailto:a@ex.com', $out);
+        $this->assertMatchesRegularExpression('/ATTENDEE;[^\r]*PARTSTAT=ACCEPTED[^\r]*:mailto:b@ex\.com/', $out);
+        $this->assertSame(2, substr_count($out, 'SCHEDULE-AGENT=CLIENT'));
+        $this->assertStringContainsString('X-NUM-GUESTS=2', $out);
+    }
+
     /** RT-4 (fixed for unrelated edits by #1392): a non-mailto calendar address is kept as written. */
     public function test_rt4_non_mailto_calendar_address_survives_a_title_edit(): void
     {
@@ -140,33 +188,44 @@ final class JsCalendarRoundTripLossTest extends TestCase
         }
     }
 
-    /**
-     * RT-6: the read side still computes the wrong duration across zones. A title
-     * edit keeps the stored DTEND (#1392); an edit of the times still needs RT-6's own fix.
-     */
-    public function test_rt6_duration_is_wrong_on_read_but_dtend_survives_a_title_edit(): void
+    /** RT-6 (fixed by #1397): a DTEND in another zone keeps its zone, and the duration is exact. */
+    public function test_rt6_end_time_zone_is_read_and_survives_a_time_edit(): void
     {
         $ics = $this->calendar("UID:u1\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Flight\r\n"
             ."DTSTART;TZID=Europe/Amsterdam:20260601T100000\r\n"
             ."DTEND;TZID=America/New_York:20260601T130000\r\n");
 
         // 10:00 Amsterdam (08:00Z) to 13:00 New York (17:00Z) is nine hours.
-        $this->assertSame('PT3H', $this->converter->eventFromIcs($ics)['duration']);
-        $this->assertStringContainsString('DTEND;TZID=America/New_York:20260601T130000', $this->patchTitle($ics));
+        $event = $this->converter->eventFromIcs($ics);
+        $this->assertSame('PT9H', $event['duration']);
+        $this->assertSame(
+            ['@type' => 'Location', 'relativeTo' => 'end', 'timeZone' => 'America/New_York'],
+            $event['locations'][CalendarConversionSupport::END_TIME_ZONE_LOCATION],
+        );
+
+        $this->assertStringContainsString("DTEND;TZID=America/New_York:20260601T130000\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString(
+            "DTEND;TZID=America/New_York:20260601T140000\r\n",
+            $this->patch($ics, ['start' => '2026-06-01T11:00:00', 'end' => '2026-06-01T14:00:00']),
+        );
     }
 
-    /**
-     * RT-7: the read side still drops RDATE next to overrides. A title edit keeps
-     * the stored RDATE (#1392); RT-7 still needs its own read fix.
-     */
-    public function test_rt7_rdate_missing_on_read_but_survives_a_title_edit(): void
+    /** RT-7 (fixed by #1399): RDATE is read next to override VEVENTs and written back after a series edit. */
+    public function test_rt7_rdate_is_read_and_written_with_overrides(): void
     {
         $ics = $this->calendar(self::BASE."RRULE:FREQ=WEEKLY;COUNT=4\r\nRDATE:20260620T100000Z\r\n",
             "BEGIN:VEVENT\r\nUID:u1\r\nDTSTAMP:20260101T000000Z\r\nRECURRENCE-ID:20260622T100000Z\r\n"
             ."SUMMARY:Moved\r\nDTSTART:20260622T120000Z\r\nDTEND:20260622T130000Z\r\nEND:VEVENT\r\n");
 
-        $this->assertArrayNotHasKey('2026-06-20T10:00:00Z', $this->converter->eventFromIcs($ics)['recurrenceOverrides']);
+        $overrides = $this->converter->eventFromIcs($ics)['recurrenceOverrides'];
+        $this->assertArrayHasKey('2026-06-20T10:00:00Z', $overrides);
+        $this->assertArrayHasKey('2026-06-22T10:00:00Z', $overrides);
+
         $this->assertStringContainsString("RDATE:20260620T100000Z\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString(
+            'RDATE:20260620T100000Z',
+            $this->patch($ics, ['recurrenceRules' => [['@type' => 'RecurrenceRule', 'frequency' => 'weekly', 'count' => 5]]]),
+        );
     }
 
     /** RT-8 (fixed by #1392): an override keeps its own alarm, categories and X-props. */
@@ -200,8 +259,8 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringContainsString('PRODID:-//Mozilla.org/NONSGML Mozilla Calendar V1.1//EN', $out);
     }
 
-    /** RT-10: sending a map without an entry does not remove that entry. */
-    public function test_rt10_removing_an_alert_or_participant_from_the_map_is_ignored(): void
+    /** RT-10 (fixed by #1401): sending a map without an entry removes that entry. */
+    public function test_rt10_removing_an_alert_or_participant_from_the_map_sticks(): void
     {
         $ics = $this->calendar(self::BASE
             ."ATTENDEE;CN=A:mailto:a@ex.com\r\nATTENDEE;CN=B:mailto:b@ex.com\r\n"
@@ -214,34 +273,75 @@ final class JsCalendarRoundTripLossTest extends TestCase
             'participants' => ['att1' => $event['participants']['att1']],
         ]);
 
-        $this->assertStringContainsString('TRIGGER:-PT1H', $out);
-        $this->assertStringContainsString('mailto:b@ex.com', $out);
+        $this->assertStringNotContainsString('TRIGGER:-PT1H', $out);
+        $this->assertStringContainsString('TRIGGER:-PT15M', $out);
+        $this->assertStringNotContainsString('mailto:b@ex.com', $out);
+        $this->assertStringContainsString('mailto:a@ex.com', $out);
     }
 
-    /** RT-10: RFC 8620 PatchObject pointer paths are ignored. */
-    public function test_rt10_patch_object_pointer_paths_are_ignored(): void
+    /** RT-10 (fixed by #1401): RFC 8620 PatchObject pointer paths are applied. */
+    public function test_rt10_patch_object_pointer_paths_are_applied(): void
     {
         $ics = $this->calendar(self::BASE
             ."BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT15M\r\nDESCRIPTION:r\r\nEND:VALARM\r\n"
             ."BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT1H\r\nDESCRIPTION:r\r\nEND:VALARM\r\n");
 
-        $this->assertStringContainsString('TRIGGER:-PT1H', $this->patch($ics, ['alerts/alert2' => null]));
+        $out = $this->patch($ics, ['alerts/alert2' => null]);
+        $this->assertStringNotContainsString('TRIGGER:-PT1H', $out);
+        $this->assertStringContainsString('TRIGGER:-PT15M', $out);
     }
 
-    /** RT-11: RFC 8984 color is never written; COLOR is only read into icsProps. */
-    public function test_rt11_color_is_not_mapped(): void
+    /** RT-10 (fixed by #1401): the web app's full `locations` map replaces the old location. */
+    public function test_rt10_location_edit_replaces_the_old_location(): void
+    {
+        $ics = $this->calendar(self::BASE."LOCATION:Old room\r\n");
+
+        $out = $this->patch($ics, ['locations' => ['primary' => ['@type' => 'Location', 'name' => 'New room']]]);
+
+        $this->assertStringContainsString("LOCATION:New room\r\n", $out);
+        $this->assertStringNotContainsString('Old room', $out);
+    }
+
+    /** RT-10 (fixed by #1401): a pointer into a missing object is an invalidPatch error. */
+    public function test_rt10_pointer_into_missing_object_is_invalid_patch(): void
+    {
+        try {
+            $this->patch($this->calendar(self::BASE), ['participants/nobody/name' => 'X']);
+            $this->fail('Expected invalidPatch');
+        } catch (ApiHttpException $e) {
+            $this->assertSame('invalidPatch', $e->errorCode());
+        }
+    }
+
+    /** #1397 + #1401: editing the location keeps a cross-zone event's end zone. */
+    public function test_location_edit_keeps_the_end_time_zone(): void
+    {
+        $ics = $this->calendar("UID:u1\r\nDTSTAMP:20260101T000000Z\r\nSUMMARY:Flight\r\n"
+            ."DTSTART;TZID=Europe/Amsterdam:20260601T100000\r\n"
+            ."DTEND;TZID=America/New_York:20260601T130000\r\nLOCATION:Schiphol\r\n");
+
+        $out = $this->patch($ics, [
+            'locations' => ['primary' => ['@type' => 'Location', 'name' => 'Gate D7']],
+            'start' => '2026-06-01T10:30:00',
+            'end' => '2026-06-01T13:30:00',
+        ]);
+
+        $this->assertStringContainsString("LOCATION:Gate D7\r\n", $out);
+        $this->assertStringContainsString("DTEND;TZID=America/New_York:20260601T133000\r\n", $out);
+    }
+
+    /** RT-11 (fixed by #1402): COLOR is read into color and written back. */
+    public function test_rt11_color_is_mapped(): void
     {
         $ics = $this->calendar(self::BASE."COLOR:turquoise\r\n");
         $event = $this->converter->eventFromIcs($ics);
 
-        $this->assertArrayNotHasKey('color', $event);
-        $this->assertSame('turquoise', $event['icsProps']['COLOR']);
+        $this->assertSame('turquoise', $event['color']);
+        $this->assertArrayNotHasKey('COLOR', $event['icsProps'] ?? []);
 
-        unset($event['icsProps']);
-        $event['color'] = 'red';
-        $this->assertStringNotContainsString('COLOR', $this->converter->icsFromEvent(
-            CalendarConversionSupport::normalizeEventMapKeys($event),
-        ));
+        $this->assertStringContainsString("COLOR:turquoise\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString("COLOR:red\r\n", $this->patch($ics, ['color' => 'red']));
+        $this->assertStringNotContainsString('COLOR', $this->patch($ics, ['color' => null]));
     }
 
     private function calendar(string $masterBody, string $extraComponents = ''): string
@@ -256,7 +356,7 @@ final class JsCalendarRoundTripLossTest extends TestCase
     }
 
     /**
-     * Mirrors persistEventMutation(deepMerge: true) for a single-VEVENT object,
+     * Mirrors JMAP CalendarEvent/set (persistEventMutation with a PatchObject) for a single-VEVENT object,
      * including the in-place patch (#1392).
      *
      * @param  array<string, mixed>  $patch
@@ -265,7 +365,7 @@ final class JsCalendarRoundTripLossTest extends TestCase
     {
         $existing = $this->converter->eventFromIcs($ics);
         $merged = CalendarConversionSupport::normalizeEventMapKeys(
-            CalendarConversionSupport::deepMergeEventPatch($existing, $patch),
+            CalendarConversionSupport::applyEventPatchObject($existing, $patch),
             $existing,
         );
         $baseline = CalendarConversionSupport::normalizeEventMapKeys($existing, $existing);
