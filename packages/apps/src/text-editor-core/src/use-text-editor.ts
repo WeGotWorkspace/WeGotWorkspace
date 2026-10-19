@@ -8,12 +8,15 @@ import {
   createTextEditorExtensions,
   type CreateTextEditorExtensionsOptions,
 } from "@/text-editor-core/src/text-editor-extensions";
+import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 
 export type UseTextEditorOptions = {
   content?: string;
   format?: TextEditorContentFormat;
   editable?: boolean;
   placeholder?: string;
+  /** Accessible name of the editable textbox. Falls back to `placeholder`. */
+  ariaLabel?: string;
   fetchImageContent?: CreateTextEditorExtensionsOptions["fetchImageContent"];
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
 } & Pick<UseEditorOptions, "autofocus" | "editorProps">;
@@ -24,6 +27,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     format = "html",
     editable = true,
     placeholder,
+    ariaLabel,
     fetchImageContent,
     onUpdate,
     autofocus,
@@ -43,7 +47,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
       editable,
       autofocus,
       editorProps: {
-        attributes: { class: "text-editor-prose focus:outline-none" },
+        attributes: textEditorRootAttributes({ editable, ariaLabel: ariaLabel ?? placeholder }),
         ...editorProps,
       },
       immediatelyRender: false,
@@ -55,7 +59,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
             })
         : undefined,
     },
-    [format, editable, placeholder],
+    [format, editable, placeholder, ariaLabel],
   );
 
   return editor;

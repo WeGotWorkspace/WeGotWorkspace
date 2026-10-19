@@ -195,6 +195,7 @@ export function MailComposeView({
               editable={!disableActions}
               content={composeBodyToEditorHtml(body)}
               placeholder="Write your message..."
+              ariaLabel="Message"
               formatBar={{ groups: TEXT_EDITOR_FORMAT_BAR_MAIL, showPrint: false }}
               className="mail-compose-view__message-editor"
               onUpdate={({ content }) => onBodyChange(content)}

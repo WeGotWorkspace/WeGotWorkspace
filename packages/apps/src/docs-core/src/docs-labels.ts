@@ -6,6 +6,8 @@ export const docsLabels = {
   toastSynced: "Changes synced",
   emptyTitle: "No document open",
   emptyDescription: "Open a Markdown file from Drive to start editing.",
+  /** Accessible name of the document editing surface. */
+  editor: "Document",
   homeTitle: "Documents",
   homeSearchPlaceholder: "Search documents...",
   homeEmpty: "No documents yet. Create or upload a Markdown file in Drive.",
