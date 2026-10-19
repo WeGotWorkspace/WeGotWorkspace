@@ -6,13 +6,16 @@ import { useDriveShell } from "@/drive-core/src/use-drive-shell";
 import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { fullDriveMyRights } from "@/lib/api/mock/drive-bootstrap";
 
+// Stable handlers, like the real hook: shell effects depend on `showError`.
+const toast = vi.hoisted(() => ({
+  show: () => {},
+  showError: () => {},
+  showSuccess: () => {},
+  dismiss: () => {},
+}));
+
 vi.mock("@/hooks/use-app-toast", () => ({
-  useAppToast: () => ({
-    show: vi.fn(),
-    showError: vi.fn(),
-    showSuccess: vi.fn(),
-    dismiss: vi.fn(),
-  }),
+  useAppToast: () => toast,
 }));
 
 const USER = "alice";
