@@ -12,9 +12,8 @@ import {
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
-import { mergeDriveFolderListing } from "@/drive-core/src/drive-batch-utils";
+import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
 import {
-  apiPathFromUiPath,
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
@@ -205,40 +204,19 @@ export function useDriveShell({
     operations,
   ]);
 
-  useEffect(() => {
-    if (!operations || folderViewPath === null || listLoading || !currentUsername.trim()) {
-      return;
-    }
-    if (syncedFolderPathRef.current === folderViewPath) {
-      setHydratedFolderPath(folderViewPath);
-      return;
-    }
-
-    const controller = new AbortController();
-    void operations
-      .changeDir(apiPathFromUiPath(folderViewPath, currentUsername, groupRootNamesRef.current), {
-        signal: controller.signal,
-      })
-      .then((nextData) => {
-        const resolvedPath = uiPathFromApiPath(nextData.cwd, currentUsername);
-        pendingFolderRefetchRef.current = false;
-        syncedFolderPathRef.current = resolvedPath;
-        setFiles((previous) => mergeDriveFolderListing(previous, nextData, currentUsername));
-        setHydratedFolderPath(resolvedPath);
-        if (resolvedPath !== folderViewPath) {
-          commitView({ type: "folder", path: resolvedPath });
-        }
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        pendingFolderRefetchRef.current = false;
-        setHydratedFolderPath(folderViewPath);
-        const message = error instanceof Error ? error.message : String(error);
-        showError(message);
-      });
-
-    return () => controller.abort();
-  }, [commitView, currentUsername, folderViewPath, listLoading, operations, showError]);
+  useDriveFolderListingSync({
+    operations,
+    folderViewPath,
+    listLoading,
+    currentUsername,
+    groupRootNamesRef,
+    syncedFolderPathRef,
+    pendingFolderRefetchRef,
+    setFiles,
+    setHydratedFolderPath,
+    commitView,
+    showError,
+  });
 
   const selectView = useCallback(
     (v: ViewKey) => {
