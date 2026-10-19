@@ -974,7 +974,9 @@
   --user-avatar-presence-ring: var(--meet-call-surface);
 }
 
-.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark {
+/* Dark call surfaces: the tinted mark would mix its ink into the dark wash. */
+.meet-call-bar__avatars .user-avatar--colored .user-avatar__mark,
+.meet-lobby-banner .user-avatar--colored .user-avatar__mark {
   color: var(--workspace-foreground);
 }
 
