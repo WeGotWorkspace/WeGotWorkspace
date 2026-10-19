@@ -435,6 +435,57 @@ describe("useDocsHomeList cache-first", () => {
   });
 });
 
+describe("useDocsHomeList cache read for new filters", () => {
+  beforeEach(() => {
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(true);
+  });
+
+  it("shows loading instead of the previous rows while the cache is read", async () => {
+    const fetcher = createFetcher(FIXTURES, 50);
+    const { result: hook, rerender } = renderHook(
+      ({ q }) =>
+        useDocsHomeList({
+          username: "alice",
+          query: q,
+          fetcher,
+          debounceMs: 0,
+          offlineUsername: "frank",
+          cacheTimeoutMs: 5000,
+        }),
+      { initialProps: { q: "" } },
+    );
+    await waitFor(() => expect(hook.current.files).toHaveLength(5));
+
+    vi.mocked(readDocsListingFromCache).mockReturnValueOnce(new Promise(() => {}));
+    rerender({ q: "d" });
+
+    await waitFor(() => expect(hook.current.loading).toBe(true));
+    expect(hook.current.files).toEqual([]);
+  });
+
+  it("shows loading while the cache is read after the list is re-enabled", async () => {
+    const fetcher = createFetcher(FIXTURES, 50);
+    const { result: hook, rerender } = renderHook(
+      ({ enabled }) =>
+        useDocsHomeList({
+          username: "alice",
+          fetcher,
+          debounceMs: 0,
+          offlineUsername: "grace",
+          enabled,
+          cacheTimeoutMs: 5000,
+        }),
+      { initialProps: { enabled: false } },
+    );
+    expect(hook.current.loading).toBe(false);
+
+    vi.mocked(readDocsListingFromCache).mockReturnValueOnce(new Promise(() => {}));
+    rerender({ enabled: true });
+
+    await waitFor(() => expect(hook.current.loading).toBe(true));
+  });
+});
+
 /** Fetcher whose calls wait while `hold()` is active, until `release()`. */
 function createGatedFetcher(all: WgwUnifiedSearchResult[]) {
   const inner = createFetcher(all, 50);
