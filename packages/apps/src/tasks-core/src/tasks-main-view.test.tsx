@@ -11,6 +11,9 @@ import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
 import "@/tasks-core/src/tasks-workspace.css";
 
+/** The due trigger is named "Due date: <value>"; match on the field-name prefix. */
+const dueTriggerName = new RegExp(`^${defaultTasksLabels.addTaskDue}:`);
+
 function taskTitleForTest(title: string | null | undefined): string {
   if (!title) throw new Error("expected task title in fixture");
   return title;
@@ -494,7 +497,7 @@ describe("TasksMainView composer", () => {
   it("defaults due date to none in the composer", () => {
     renderComposer();
 
-    const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+    const dueTrigger = screen.getByLabelText(dueTriggerName);
     expect(dueTrigger.textContent).toContain(defaultTasksLabels.noDue);
     expect(dueTrigger.querySelector(".lucide-calendar-days")).toBeTruthy();
   });
@@ -514,28 +517,28 @@ describe("TasksMainView composer", () => {
     it("prefills due date to today on today view", () => {
       renderMainView({ view: "state:today" });
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueToday);
     });
 
     it("prefills due date to tomorrow on upcoming view", () => {
       renderMainView({ view: "state:upcoming" });
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueTomorrow);
     });
 
     it("prefills due date to yesterday on overdue view", () => {
       renderMainView({ view: "state:overdue", canCreate: true });
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueYesterday);
     });
 
     it("clears view-prefilled due when switching away from today view", () => {
       const { rerender } = renderMainView({ view: "state:today" });
 
-      expect(screen.getByLabelText(defaultTasksLabels.addTaskDue).textContent).toContain(
+      expect(screen.getByLabelText(dueTriggerName).textContent).toContain(
         defaultTasksLabels.dueToday,
       );
 
@@ -560,7 +563,7 @@ describe("TasksMainView composer", () => {
         </TooltipProvider>,
       );
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.noDue);
     });
   });
@@ -571,11 +574,9 @@ describe("TasksMainView composer", () => {
     expect(
       (screen.getByLabelText(defaultTasksLabels.addTaskName) as HTMLInputElement).disabled,
     ).toBe(false);
-    expect(
-      (screen.getByLabelText(defaultTasksLabels.addTaskDue) as HTMLButtonElement).disabled,
-    ).toBe(false);
+    expect((screen.getByLabelText(dueTriggerName) as HTMLButtonElement).disabled).toBe(false);
 
-    const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+    const dueTrigger = screen.getByLabelText(dueTriggerName);
     const listTrigger = screen.getByLabelText(defaultTasksLabels.addTaskList);
     const dueStyles = window.getComputedStyle(dueTrigger);
     const listStyles = window.getComputedStyle(listTrigger);
@@ -600,30 +601,30 @@ describe("TasksMainView composer", () => {
     it("shows Today when due date is today", () => {
       renderComposer();
 
-      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      fireEvent.click(screen.getByLabelText(dueTriggerName));
       selectComposerDueDay(0, mockedNow);
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueToday);
     });
 
     it("shows Yesterday when due date is yesterday", () => {
       renderComposer();
 
-      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      fireEvent.click(screen.getByLabelText(dueTriggerName));
       selectComposerDueDay(-1, mockedNow);
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueYesterday);
     });
 
     it("shows Tomorrow when due date is tomorrow", () => {
       renderComposer();
 
-      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      fireEvent.click(screen.getByLabelText(dueTriggerName));
       selectComposerDueDay(1, mockedNow);
 
-      const dueTrigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+      const dueTrigger = screen.getByLabelText(dueTriggerName);
       expect(dueTrigger.textContent).toContain(defaultTasksLabels.dueTomorrow);
     });
   });
@@ -642,7 +643,7 @@ describe("TasksMainView composer", () => {
     );
 
     expect(names).toEqual([
-      defaultTasksLabels.addTaskDue,
+      `${defaultTasksLabels.addTaskDue}: ${defaultTasksLabels.noDue}`,
       defaultTasksLabels.addTaskList,
       defaultTasksLabels.addTaskStatus,
       defaultTasksLabels.addTaskPriority,
@@ -672,7 +673,7 @@ describe("TasksMainView composer", () => {
         target: { value: "Due task" },
       });
 
-      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      fireEvent.click(screen.getByLabelText(dueTriggerName));
       selectComposerDueDay(3, mockedNow);
 
       const targetDay = new Date(mockedNow);
@@ -702,7 +703,7 @@ describe("TasksMainView composer", () => {
         target: { value: "Clear due task" },
       });
 
-      fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+      fireEvent.click(screen.getByLabelText(dueTriggerName));
       selectComposerDueDay(5, mockedNow);
       fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.noDue }));
 

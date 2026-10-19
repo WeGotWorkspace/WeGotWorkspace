@@ -683,6 +683,7 @@ function DocsCollabWorkspaceInner({
                   sheetFill
                   viewSource={viewSource}
                   editable={permissions.editable}
+                  ariaLabel={labels.editor}
                   formattingDisabled={formatBarMode === "commentOnly"}
                   formatBar={
                     editorFormat === "text" || formatBarMode === "hidden"

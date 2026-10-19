@@ -9,6 +9,7 @@ import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { DocsCommentsFloatingLayer } from "@/text-editor-core/docs-collab/docs-comments";
 import { useDocsComments } from "@/text-editor-core/docs-collab/use-docs-comments";
 import { docsLabels } from "@/docs-core/src/docs-labels";
+import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 
 import "@/text-editor-core/src/text-editor.css";
 
@@ -19,7 +20,7 @@ function DocsCommentsCollabDemo() {
     extensions: [StarterKit.configure({ undoRedo: false }), CommentMark],
     content: "<p>Select this phrase to comment.</p>",
     editorProps: {
-      attributes: { class: "text-editor-prose focus:outline-none" },
+      attributes: textEditorRootAttributes({ editable: true }),
     },
     immediatelyRender: false,
   });

@@ -11,6 +11,7 @@ import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useMockDocsCollabEditorSession } from "@/text-editor-core/stories/text-editor-collab-stories.harness";
+import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 
 import "@/text-editor-core/src/text-editor.css";
 import "@/docs-core/src/docs-workspace.css";
@@ -29,7 +30,7 @@ function SuggestControlsHarness() {
         user: session.user,
       }),
       editorProps: {
-        attributes: { class: "text-editor-prose focus:outline-none" },
+        attributes: textEditorRootAttributes({ editable: true }),
       },
     },
     [session.ydoc, session.awareness],

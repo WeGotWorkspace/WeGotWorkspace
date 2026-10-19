@@ -23,6 +23,8 @@ export type TextEditorProps = {
   content?: string;
   editable?: boolean;
   placeholder?: string;
+  /** Accessible name of the editable textbox. Falls back to `placeholder`. */
+  ariaLabel?: string;
   /** `false` hides the bar; pass `groups` to show a subset. */
   formatBar?: boolean | TextEditorFormatBarConfig;
   /** @deprecated Use `formatBar={{ showPrint: false }}` instead. */
@@ -52,6 +54,7 @@ export function TextEditor({
   content,
   editable = true,
   placeholder,
+  ariaLabel,
   formatBar = true,
   showPrint,
   sheetVariant = "sheet",
@@ -67,6 +70,7 @@ export function TextEditor({
     content: content ?? textEditorDemoContent(format),
     editable,
     placeholder,
+    ariaLabel,
     onUpdate,
   });
 

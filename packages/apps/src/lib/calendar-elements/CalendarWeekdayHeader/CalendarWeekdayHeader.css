@@ -156,6 +156,14 @@
   @apply inline;
 }
 
+/* Full date for assistive tech. The day button is named by its content (visible
+   weekday + day number first, then this) rather than an aria-label, so the
+   accessible name always starts with the label that is on screen
+   (WCAG 2.5.3 / axe label-content-name-mismatch) at every breakpoint. */
+.weekday-full-date {
+  @apply sr-only;
+}
+
 .weekday-long {
   @apply hidden;
 }
