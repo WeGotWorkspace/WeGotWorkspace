@@ -163,8 +163,11 @@ export class CalendarListView extends CalendarViewBase {
         class="agenda-event-item"
         data-event-key=${item.id}
         @click=${(clickEvent: MouseEvent) => this.#handleEventClick(item, clickEvent)}
+        @keydown=${(keyEvent: KeyboardEvent) => this.#handleEventKeyDown(item, keyEvent)}
       >
         <event-card
+          role="button"
+          tabindex="0"
           layout="flow"
           .lang=${this.lang}
           .summary=${event.data.summary}
@@ -198,7 +201,14 @@ export class CalendarListView extends CalendarViewBase {
     }
   }
 
-  #handleEventClick(item: AgendaItem, event: MouseEvent) {
+  /** Agenda rows open like buttons from the keyboard (Enter / Space). */
+  #handleEventKeyDown(item: AgendaItem, event: KeyboardEvent) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    this.#handleEventClick(item, event);
+  }
+
+  #handleEventClick(item: AgendaItem, event: Event) {
     const card =
       event.currentTarget instanceof Element
         ? (event.currentTarget.querySelector("event-card") ?? event.currentTarget)
