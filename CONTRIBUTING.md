@@ -11,9 +11,23 @@ Thank you for your interest in WeGotWorkspace.
 | **Already-public security findings** | Open — use the [DAST finding](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=dast-finding.yml) template. A report that is not yet public follows [SECURITY.md](SECURITY.md), not that template. |
 | **Goals / Epics / Tasks / Chores** | **Maintainers only** — non-maintainer filings are closed automatically |
 | **Blank issues** | Disabled |
-| **Code contributions (PRs from outside maintainers)** | **Closed** — we are landing the beta first |
+| **Code contributions (PRs from outside maintainers)** | Open — see [Pull requests](#pull-requests) |
 
 Start a **Discussion** or file a **bug**. Do not open Goal, Epic, Task, or Chore issues — maintainers promote promising threads.
+
+## Pull requests
+
+- Small fixes (typos, docs, a clear bug) can go straight to a PR.
+- For a feature or a larger change, start a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions) or link a bug first, so we can agree on the approach before you write the code.
+- Fill in the [pull request template](.github/pull_request_template.md). Write the PR, commits, and docs in **English**.
+- Add or update tests when behavior changes. CI must pass before a maintainer reviews.
+- Follow the engineering rules in [AGENTS.md](AGENTS.md) and `.agents/skills/` (they apply to humans too).
+
+### Licensing your contribution
+
+There is no Contributor License Agreement. By opening a pull request, you license your contribution under the project license, AGPL-3.0-or-later (inbound = outbound). You keep the copyright on your work.
+
+Only submit work you have the right to submit. Do not copy in code under a license that is not compatible with AGPL-3.0-or-later.
 
 ## Product vs engineering
 
@@ -32,4 +46,4 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Enforcement: [legal@wegotworkspace
 
 ## License
 
-AGPL-3.0-or-later (`LICENSE`), copyright WeGotWorkspace B.V. Paid option: [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+AGPL-3.0-or-later (`LICENSE`), copyright WeGotWorkspace B.V. and contributors. There is no separate paid license; see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).

@@ -16,6 +16,15 @@ final class PublicIp
             $ip = long2ip($n);
         }
 
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE) !== false;
+        return filter_var($ip, FILTER_VALIDATE_IP, self::publicRangeFlags()) !== false;
+    }
+
+    /**
+     * Kept behind an int return type: on PHP < 8.5 FILTER_FLAG_GLOBAL_RANGE shares its value
+     * with 8.5's FILTER_THROW_ON_FAILURE, which makes PHPStan think filter_var never returns false.
+     */
+    private static function publicRangeFlags(): int
+    {
+        return FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE | FILTER_FLAG_GLOBAL_RANGE;
     }
 }
