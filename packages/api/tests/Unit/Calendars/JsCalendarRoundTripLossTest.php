@@ -330,20 +330,18 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringContainsString("DTEND;TZID=America/New_York:20260601T133000\r\n", $out);
     }
 
-    /** RT-11: RFC 8984 color is never written; COLOR is only read into icsProps. */
-    public function test_rt11_color_is_not_mapped(): void
+    /** RT-11 (fixed by #1402): COLOR is read into color and written back. */
+    public function test_rt11_color_is_mapped(): void
     {
         $ics = $this->calendar(self::BASE."COLOR:turquoise\r\n");
         $event = $this->converter->eventFromIcs($ics);
 
-        $this->assertArrayNotHasKey('color', $event);
-        $this->assertSame('turquoise', $event['icsProps']['COLOR']);
+        $this->assertSame('turquoise', $event['color']);
+        $this->assertArrayNotHasKey('COLOR', $event['icsProps'] ?? []);
 
-        unset($event['icsProps']);
-        $event['color'] = 'red';
-        $this->assertStringNotContainsString('COLOR', $this->converter->icsFromEvent(
-            CalendarConversionSupport::normalizeEventMapKeys($event),
-        ));
+        $this->assertStringContainsString("COLOR:turquoise\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString("COLOR:red\r\n", $this->patch($ics, ['color' => 'red']));
+        $this->assertStringNotContainsString('COLOR', $this->patch($ics, ['color' => null]));
     }
 
     private function calendar(string $masterBody, string $extraComponents = ''): string
