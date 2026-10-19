@@ -20,6 +20,7 @@ describe("useSettingsSidebarModel", () => {
       "profile",
       "memberships",
       "offline",
+      "appearance",
       "assistants",
       "about",
     ]);
@@ -41,6 +42,7 @@ describe("useSettingsSidebarModel", () => {
       "profile",
       "memberships",
       "offline",
+      "appearance",
       "about",
     ]);
     expect(result.current.apps.map((section) => section.id)).toEqual([
