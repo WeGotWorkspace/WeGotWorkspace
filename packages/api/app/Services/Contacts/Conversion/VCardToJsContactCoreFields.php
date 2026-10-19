@@ -295,6 +295,12 @@ final class VCardToJsContactCoreFields
             }
         }
         ConversionSupport::applySharedFields($entry, $property);
+        // On ADR, LABEL is the formatted delivery address (`full`), not a display
+        // label; reading it as `label` made the writer copy it into an
+        // X-ABLabel (CT-11, #1429).
+        if (isset($property['LABEL']) && ($entry['label'] ?? null) === VObjectScalar::string($property['LABEL'])) {
+            unset($entry['label']);
+        }
         $this->extra->applyGroupLabel($entry, $property);
 
         return $entry;
