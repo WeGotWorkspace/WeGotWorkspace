@@ -76,6 +76,25 @@ final class CalendarMeetLinkHref
         return $room;
     }
 
+    /**
+     * True when $href is a Meet link of this workspace: a room door
+     * (parseWgwRoom) or a channel call (`/meet/channels/{id}`) on the
+     * workspace origin. Only these are written as a video conference (#1393).
+     */
+    public function isWgwMeetHref(string $href): bool
+    {
+        if ($this->parseWgwRoom($href) !== null) {
+            return true;
+        }
+        $origin = $this->origin($href);
+        if ($origin === null || $origin !== $this->workspaceOrigin()) {
+            return false;
+        }
+        $path = '/'.trim((string) (parse_url($href, PHP_URL_PATH) ?? ''), '/');
+
+        return preg_match('#^/meet/channels/[^/]+$#', $path) === 1;
+    }
+
     /** Ad-hoc leftover room `xxxx-xxxx-xxxx` for `/meet/meetings/{code}`. */
     public function allocateAdHocRoomCode(): string
     {

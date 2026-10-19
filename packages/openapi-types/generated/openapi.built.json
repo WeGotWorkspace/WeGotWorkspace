@@ -5455,6 +5455,10 @@
                             "tentative"
                         ]
                     },
+                    "color": {
+                        "type": "string",
+                        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
+                    },
                     "privacy": {
                         "type": "string",
                         "enum": [
@@ -5919,6 +5923,10 @@
                             "tentative"
                         ]
                     },
+                    "color": {
+                        "type": "string",
+                        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
+                    },
                     "privacy": {
                         "type": "string",
                         "enum": [
@@ -6137,6 +6145,10 @@
                             "free",
                             "tentative"
                         ]
+                    },
+                    "color": {
+                        "type": "string",
+                        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
                     },
                     "privacy": {
                         "type": "string",

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\Jmap\JmapPatchObject;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use Illuminate\Support\Str;
 use Sabre\VObject\Component\VAlarm;
@@ -50,6 +51,49 @@ final class CalendarConversionSupport
      * months have no fixed length. DateInterval's y/m/d split is therefore unused;
      * the span is total days plus leftover hours/minutes/seconds.
      */
+    /** Id of the Location that carries the DTEND time zone when it differs from DTSTART's (#1397). */
+    public const END_TIME_ZONE_LOCATION = 'end-time-zone';
+
+    /**
+     * Time zone of a `relativeTo: end` Location, if the event has one.
+     *
+     * @param  array<string, mixed>  $event
+     */
+    public static function endTimeZone(array $event): ?string
+    {
+        $locations = $event['locations'] ?? null;
+        if (! is_array($locations)) {
+            return null;
+        }
+        foreach ($locations as $entry) {
+            if (is_array($entry) && ($entry['relativeTo'] ?? null) === 'end'
+                && isset($entry['timeZone']) && is_string($entry['timeZone']) && $entry['timeZone'] !== '') {
+                return $entry['timeZone'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Exact elapsed time between two instants, as an ISO 8601 duration. */
+    public static function durationBetweenInstants(\DateTimeInterface $start, \DateTimeInterface $end): ?string
+    {
+        $seconds = $end->getTimestamp() - $start->getTimestamp();
+        if ($seconds <= 0) {
+            return null;
+        }
+        $days = intdiv($seconds, 86400);
+        $seconds %= 86400;
+        $hours = intdiv($seconds, 3600);
+        $seconds %= 3600;
+        $minutes = intdiv($seconds, 60);
+        $seconds %= 60;
+
+        $time = ($hours > 0 ? $hours.'H' : '').($minutes > 0 ? $minutes.'M' : '').($seconds > 0 ? $seconds.'S' : '');
+
+        return 'P'.($days > 0 ? $days.'D' : '').($time !== '' ? 'T'.$time : '');
+    }
+
     public static function durationBetweenJmapDateTimes(string $start, string $end): ?string
     {
         $start = trim($start);
@@ -133,6 +177,44 @@ final class CalendarConversionSupport
                 $merged[$key] = $value;
             }
         }
+
+        return $merged;
+    }
+
+    /**
+     * JMAP CalendarEvent/set update: an RFC 8620 PatchObject. A property in the
+     * patch replaces the stored one, so removing an alert or participant sticks
+     * (#1401). REST, MCP and internal callers keep deepMergeEventPatch, which
+     * merges maps: a caller that sends one new participant must not cancel the
+     * others.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public static function applyEventPatchObject(array $existing, array $patch): array
+    {
+        return self::keepEndTimeZoneLocation($existing, JmapPatchObject::apply($existing, $patch));
+    }
+
+    /**
+     * Clients that know nothing about the end-zone Location (#1397) send
+     * `locations` without it. Carry it over, so editing the location does not
+     * move the end of a cross-zone event.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $merged
+     * @return array<string, mixed>
+     */
+    private static function keepEndTimeZoneLocation(array $existing, array $merged): array
+    {
+        $kept = $existing['locations'][self::END_TIME_ZONE_LOCATION] ?? null;
+        if (! is_array($kept) || self::endTimeZone($merged) !== null) {
+            return $merged;
+        }
+        $locations = is_array($merged['locations'] ?? null) ? $merged['locations'] : [];
+        $locations[self::END_TIME_ZONE_LOCATION] = $kept;
+        $merged['locations'] = $locations;
 
         return $merged;
     }
