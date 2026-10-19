@@ -1,0 +1,14 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//Sabre//Sabre VObject 4.6.1//EN
+N:E2E Contact;TB;;;
+FN:TB E2E Contact
+NICKNAME;PROP-ID=ac884998-ab32-450d-9de2-1a1774f4f29d:Bob\,Rob
+EMAIL;TYPE=PREF;PROP-ID=d6d48ab9-0e93-4932-bc4d-e4bcd8440980:tb-e2e@example
+ .com
+ADR;PROP-ID=66bcdbcc-c305-46e5-939f-7cd1730d176c:;;Damrak 1;Amsterdam;;1012
+  LG;
+ADR;PROP-ID=ddf32347-c2d9-4603-933b-95f578e0896b:;;Coolsingel 40;Rotterdam;
+ ;;
+UID:7ba9fa8d-8ecb-4ce1-9d7e-488f9b263057
+END:VCARD

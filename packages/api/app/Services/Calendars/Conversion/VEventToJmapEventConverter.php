@@ -38,7 +38,9 @@ final class VEventToJmapEventConverter
                     $series['overrides'],
                 );
                 if ($overrides !== []) {
-                    $event['recurrenceOverrides'] = $overrides;
+                    // RDATE keys (empty patches) stay next to the override VEVENTs (RT-7, #1399).
+                    $rdates = is_array($event['recurrenceOverrides'] ?? null) ? $event['recurrenceOverrides'] : [];
+                    $event['recurrenceOverrides'] = array_replace($rdates, $overrides);
                 }
             }
             $events[] = $event;
@@ -168,6 +170,15 @@ final class VEventToJmapEventConverter
         }
 
         LocationConversionSupport::readLocationsAndLinks($vevent, $event);
+        $this->readEndTimeZone($vevent, $event);
+
+        // RFC 7986 COLOR <-> RFC 8984 color (RT-11, #1402).
+        if (isset($vevent->COLOR)) {
+            $color = trim((string) $vevent->COLOR->getValue());
+            if ($color !== '') {
+                $event['color'] = $color;
+            }
+        }
 
         if (isset($vevent->STATUS)) {
             $status = strtolower(trim((string) $vevent->STATUS->getValue()));
@@ -261,7 +272,7 @@ final class VEventToJmapEventConverter
             'UID', 'SUMMARY', 'DESCRIPTION', 'DTSTART', 'DTEND', 'DURATION', 'RRULE', 'EXRULE', 'EXDATE', 'RDATE',
             'LOCATION', 'GEO', 'URL', 'CONFERENCE', 'X-GOOGLE-CONFERENCE', 'X-MICROSOFT-SKYPETEAMSMEETINGURL',
             'ATTACH', 'STATUS', 'TRANSP', 'CLASS', 'CREATED', 'LAST-MODIFIED', 'DTSTAMP',
-            'SEQUENCE', 'PRIORITY', 'CATEGORIES', 'ORGANIZER', 'ATTENDEE', 'RECURRENCE-ID',
+            'SEQUENCE', 'PRIORITY', 'CATEGORIES', 'ORGANIZER', 'ATTENDEE', 'RECURRENCE-ID', 'COLOR',
         ];
 
         $props = [];
@@ -279,5 +290,40 @@ final class VEventToJmapEventConverter
         if ($props !== []) {
             $event['icsProps'] = $props;
         }
+    }
+
+    /**
+     * A DTEND in another zone than DTSTART (a flight) keeps its zone as an RFC
+     * 8984 Location with relativeTo "end", and the duration is measured between
+     * the two instants instead of the two wall-clock times (RT-6, #1397).
+     *
+     * @param  array<string, mixed>  $event
+     */
+    private function readEndTimeZone(VEvent $vevent, array &$event): void
+    {
+        if (! isset($vevent->DTSTART, $vevent->DTEND) || ($event['showWithoutTime'] ?? false) === true) {
+            return;
+        }
+        $startZone = isset($vevent->DTSTART['TZID']) ? trim((string) $vevent->DTSTART['TZID']) : '';
+        $endZone = isset($vevent->DTEND['TZID']) ? trim((string) $vevent->DTEND['TZID']) : '';
+        if ($startZone === '' || $endZone === '' || $startZone === $endZone) {
+            return;
+        }
+
+        try {
+            $duration = CalendarConversionSupport::durationBetweenInstants($vevent->DTSTART->getDateTime(), $vevent->DTEND->getDateTime());
+        } catch (\Throwable) {
+            return;
+        }
+        if ($duration !== null) {
+            $event['duration'] = $duration;
+        }
+        $locations = isset($event['locations']) && is_array($event['locations']) ? $event['locations'] : [];
+        $locations[CalendarConversionSupport::END_TIME_ZONE_LOCATION] = [
+            '@type' => 'Location',
+            'relativeTo' => 'end',
+            'timeZone' => $endZone,
+        ];
+        $event['locations'] = $locations;
     }
 }
