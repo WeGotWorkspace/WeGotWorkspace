@@ -60,6 +60,22 @@ final class McpConsentRoundTripTest extends WgwDatabaseTestCase
         $this->post('/oauth/authorize', ['auth_token' => 'forged'] + $form)->assertForbidden();
     }
 
+    public function test_consent_page_form_action_allows_only_the_client_redirect_origin(): void
+    {
+        $this->openConsentPage();
+        $csp = (string) $this->consentPage?->headers->get('Content-Security-Policy');
+
+        // CSP checks the redirect after Allow against form-action; 'self' alone blocks it.
+        $this->assertStringContainsString("; form-action 'self' https://claude.ai; ", $csp);
+    }
+
+    public function test_other_pages_keep_form_action_self(): void
+    {
+        $csp = (string) $this->get('/login')->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString("; form-action 'self'; ", $csp);
+    }
+
     public function test_consent_page_script_carries_the_csp_nonce(): void
     {
         $this->openConsentPage();
