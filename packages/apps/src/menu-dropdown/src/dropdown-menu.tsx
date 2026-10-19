@@ -32,6 +32,11 @@ function isSeparator(item: DropdownMenuEntry): item is DropdownMenuSeparatorProp
   return "type" in item && item.type === "separator";
 }
 
+/** `id` keys the entry; it must not land on the DOM row MenuItem renders. */
+function menuItemProps({ id: _id, ...props }: DropdownMenuItemProps): MenuItemProps {
+  return props;
+}
+
 export function DropdownMenu({
   trigger,
   items,
@@ -61,7 +66,10 @@ export function DropdownMenu({
               disabled={item.disabled}
               className="dropdown-menu__item"
             >
-              <MenuItem {...item} className={cn("dropdown-menu__menu-item", item.className)} />
+              <MenuItem
+                {...menuItemProps(item)}
+                className={cn("dropdown-menu__menu-item", item.className)}
+              />
             </DropdownMenuItem>
           ),
         )}

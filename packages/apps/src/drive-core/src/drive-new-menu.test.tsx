@@ -42,12 +42,12 @@ describe("DriveNewMenu", () => {
     const chevron = screen.getByRole("button", { name: L.newButtonMenu });
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.uploadFiles }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.uploadFiles }));
     expect(onUploadFiles).toHaveBeenCalledOnce();
 
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.newMarkdown }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.newMarkdown }));
     expect(onCreateMarkdown).toHaveBeenCalledOnce();
   });
 

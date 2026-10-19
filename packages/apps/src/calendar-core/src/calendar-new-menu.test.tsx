@@ -45,17 +45,17 @@ describe("CalendarNewMenu", () => {
     const chevron = screen.getByRole("button", { name: L.newEventMenu });
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.createCalendar }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.createCalendar }));
     expect(onCreateCalendar).toHaveBeenCalledOnce();
 
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.subscribeCalendar }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.subscribeCalendar }));
     expect(onSubscribeCalendar).toHaveBeenCalledOnce();
 
     fireEvent.pointerDown(chevron);
     fireEvent.click(chevron);
-    fireEvent.click(screen.getByRole("button", { name: L.importIcs }));
+    fireEvent.click(screen.getByRole("menuitem", { name: L.importIcs }));
     expect(onImportEvents).toHaveBeenCalledOnce();
   });
 
