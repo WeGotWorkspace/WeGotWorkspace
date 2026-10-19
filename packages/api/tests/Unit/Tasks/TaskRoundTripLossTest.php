@@ -62,6 +62,18 @@ final class TaskRoundTripLossTest extends TestCase
         $this->assertSame(1, substr_count($out, 'RECURRENCE-ID'));
     }
 
+    /** RT-T3 (fixed by #1404): a generated all-day override RECURRENCE-ID carries VALUE=DATE. */
+    public function test_rt_t3_generated_all_day_recurrence_id_has_value_date(): void
+    {
+        $task = $this->converter->tasksFromIcs($this->todo(
+            "RRULE:FREQ=MONTHLY;COUNT=3\r\n",
+            "BEGIN:VTODO\r\nUID:t1\r\nDTSTAMP:20260101T000000Z\r\nRECURRENCE-ID;VALUE=DATE:20260720\r\n"
+            ."SUMMARY:Parent\r\nDUE;VALUE=DATE:20260721\r\nEND:VTODO\r\n",
+        ), 't1.ics', 'inbox')[0];
+
+        $this->assertStringContainsString("RECURRENCE-ID;VALUE=DATE:20260720\r\n", $this->converter->icsFromTask($task));
+    }
+
     /** RT-T4 (fixed by #1392): an override keeps its own X-props and gets no master-only properties. */
     public function test_rt_t4_override_survives_a_title_edit(): void
     {
