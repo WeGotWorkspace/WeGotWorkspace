@@ -12,7 +12,7 @@
  * Import only from {@link MailWorkspace}.
  */
 .mail-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -136,7 +136,7 @@
  * {@link Button} and field labels read tokens from `.mail-compose-dialog-surface`.
  */
 :is(.mail-compose-dialog-surface, .mail-dialog-surface) {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --color-emerald: var(--workspace-accent);
   /* Switch mark stays the mail icon (red + soft). */
   --workspace-icon-surface: var(--color-we-got-red);

@@ -11,7 +11,7 @@
  * Import only from {@link AdminWorkspace}.
  */
 .admin-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);
@@ -69,7 +69,7 @@
  * {@link Button} and {@link buttonVariants} match the admin shell.
  */
 .admin-dialog-surface {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-dark);
   /* Soft outline + menu washes: shared `workspace-derive.css`. */

@@ -9,7 +9,7 @@
  * Import only from {@link ContactsWorkspace}.
  */
 .contacts-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-detail-bg: var(--workspace-surface);
@@ -463,7 +463,7 @@
 }
 
 .contacts-dialog-surface {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--theme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-sky);
   --workspace-icon-foreground: var(--color-we-got-soft);

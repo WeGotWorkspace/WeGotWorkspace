@@ -19,8 +19,8 @@
 }
 
 .text-editor {
-  /* White letter fill — shared with Notes via `.paper-sheet` / `--paper-sheet-bg`. */
-  --paper-sheet-bg: oklch(1 0 0);
+  /* Letter fill (white, lifted paper in dark) — shared with Notes via `.paper-sheet` / `--paper-sheet-bg`. */
+  --paper-sheet-bg: var(--theme-letter);
   /* Compat alias for callers that still read `--text-editor-sheet`. */
   --text-editor-sheet: var(--paper-sheet-bg);
   --text-editor-sheet-margin-block: 1.5rem;
