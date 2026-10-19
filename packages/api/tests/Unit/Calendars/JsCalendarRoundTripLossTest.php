@@ -116,6 +116,27 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringContainsString('X-NUM-GUESTS=2', $out);
     }
 
+    /** RT-4 (fixed by #1394): one attendee's RSVP keeps every attendee's scheduling parameters. */
+    public function test_rt4_rsvp_change_keeps_scheduling_parameters(): void
+    {
+        $ics = $this->calendar(self::BASE
+            ."ATTENDEE;CN=A;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=1:mailto:a@ex.com\r\n"
+            ."ATTENDEE;CN=B;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=2:mailto:b@ex.com\r\n");
+        $participants = $this->converter->eventFromIcs($ics)['participants'];
+        foreach ($participants as $id => $participant) {
+            if (($participant['email'] ?? '') === 'b@ex.com') {
+                $participants[$id]['participationStatus'] = 'accepted';
+            }
+        }
+
+        $out = $this->unfold($this->patch($ics, ['participants' => $participants]));
+
+        $this->assertStringContainsString('ATTENDEE;CN=A;PARTSTAT=NEEDS-ACTION;SCHEDULE-AGENT=CLIENT;X-NUM-GUESTS=1:mailto:a@ex.com', $out);
+        $this->assertMatchesRegularExpression('/ATTENDEE;[^\r]*PARTSTAT=ACCEPTED[^\r]*:mailto:b@ex\.com/', $out);
+        $this->assertSame(2, substr_count($out, 'SCHEDULE-AGENT=CLIENT'));
+        $this->assertStringContainsString('X-NUM-GUESTS=2', $out);
+    }
+
     /** RT-4 (fixed for unrelated edits by #1392): a non-mailto calendar address is kept as written. */
     public function test_rt4_non_mailto_calendar_address_survives_a_title_edit(): void
     {

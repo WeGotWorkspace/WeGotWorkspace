@@ -25,6 +25,12 @@ final class ICalendarInPlacePatcher
 {
     private const PATCHED_COMPONENTS = ['VEVENT', 'VTODO', 'VJOURNAL'];
 
+    /** Parameters the writer models; a changed instance never gets a stale stored one back. */
+    private const MODELLED_PARAMETERS = [
+        'CN', 'PARTSTAT', 'ROLE', 'CUTYPE', 'RSVP', 'LANGUAGE', 'DELEGATED-TO', 'DELEGATED-FROM',
+        'MEMBER', 'VALUE', 'TZID', 'FMTTYPE', 'ALTREP',
+    ];
+
     public static function patch(string $stored, string $baseline, string $generated): string
     {
         $storedDoc = Reader::read($stored);
@@ -69,19 +75,104 @@ final class ICalendarInPlacePatcher
             if ($baselineLines === $generatedLines) {
                 continue;
             }
-            foreach ($stored->select($name) as $property) {
-                if ($property instanceof Property) {
-                    $stored->remove($property);
-                }
-            }
-            foreach ($generated->select($name) as $property) {
-                if ($property instanceof Property) {
-                    $stored->add(clone $property);
-                }
-            }
+            self::patchPropertyGroup($stored, $baseline, $generated, $name);
         }
 
         self::patchAlarms($stored, $baseline, $generated);
+    }
+
+    /**
+     * A changed group (two attendees, one changed) keeps the stored form of the
+     * instances that did not change: stored and baseline instances are paired by
+     * position, and a generated instance identical to a baseline instance takes
+     * that stored line. Only the changed instances take the generated lines, so
+     * one RSVP does not strip SCHEDULE-AGENT from every other attendee (#1394).
+     */
+    private static function patchPropertyGroup(Component $stored, Component $baseline, Component $generated, string $name): void
+    {
+        $storedProps = self::properties($stored, $name);
+        $baselineProps = self::properties($baseline, $name);
+        $generatedProps = self::properties($generated, $name);
+        $aligned = count($storedProps) === count($baselineProps);
+        $baselineRendered = array_map(static fn (Property $p): string => $p->serialize(), $baselineProps);
+
+        $used = [];
+        $result = [];
+        foreach ($generatedProps as $property) {
+            $match = $aligned ? self::firstUnused($baselineRendered, $property->serialize(), $used) : null;
+            if ($match !== null) {
+                $used[$match] = true;
+                $result[] = $storedProps[$match];
+
+                continue;
+            }
+            $copy = clone $property;
+            $twin = $aligned ? self::sameValueIndex($baselineProps, $property, $used) : null;
+            if ($twin !== null) {
+                // Same instance (same value), changed parameters: keep the stored
+                // parameters WGW does not write, such as SCHEDULE-AGENT.
+                $used[$twin] = true;
+                foreach ($storedProps[$twin]->parameters() as $parameterName => $parameter) {
+                    if (! isset($copy[$parameterName]) && ! in_array(strtoupper((string) $parameterName), self::MODELLED_PARAMETERS, true)) {
+                        $copy->add($parameterName, $parameter->getParts());
+                    }
+                }
+            }
+            $result[] = $copy;
+        }
+
+        foreach ($storedProps as $property) {
+            $stored->remove($property);
+        }
+        foreach ($result as $property) {
+            $stored->add($property);
+        }
+    }
+
+    /**
+     * @param  list<string>  $haystack
+     * @param  array<int, true>  $used
+     */
+    private static function firstUnused(array $haystack, string $needle, array $used): ?int
+    {
+        foreach ($haystack as $index => $candidate) {
+            if ($candidate === $needle && ! isset($used[$index])) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<Property>  $baselineProps
+     * @param  array<int, true>  $used
+     */
+    private static function sameValueIndex(array $baselineProps, Property $property, array $used): ?int
+    {
+        $value = strtolower(trim((string) $property->getValue()));
+        foreach ($baselineProps as $index => $candidate) {
+            if (! isset($used[$index]) && strtolower(trim((string) $candidate->getValue())) === $value) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<Property>
+     */
+    private static function properties(Component $component, string $name): array
+    {
+        $properties = [];
+        foreach ($component->select($name) as $property) {
+            if ($property instanceof Property) {
+                $properties[] = $property;
+            }
+        }
+
+        return $properties;
     }
 
     /**
