@@ -80,10 +80,18 @@ final class NoteJournalConverter
         }
         if (array_key_exists('body', $patch)) {
             $body = is_string($patch['body']) ? $patch['body'] : '';
-            if ($body !== '') {
-                $journal->DESCRIPTION = $body;
+            // Only the first DESCRIPTION (the one WGW shows) is the note body. A
+            // VJOURNAL may carry more (one per language); they and the first
+            // one's parameters stay (NT-1, #1410).
+            $first = $journal->select('DESCRIPTION')[0] ?? null;
+            if ($body === '') {
+                if ($first !== null) {
+                    $journal->remove($first);
+                }
+            } elseif ($first !== null) {
+                $first->setValue($body);
             } else {
-                unset($journal->DESCRIPTION);
+                $journal->add('DESCRIPTION', $body);
             }
         }
         if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
