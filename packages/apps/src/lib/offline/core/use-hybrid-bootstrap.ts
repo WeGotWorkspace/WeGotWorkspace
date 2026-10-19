@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
+import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";
 
 type HybridPhase = "loading" | "ready" | "error";
 
 export function useHybridBootstrap<T>({
   load,
   readCache,
+  cacheTimeoutMs,
 }: {
   /** Optional progress paints the first chunk without waiting for the full result. */
   load: (reportProgress?: (partial: T) => void) => Promise<T>;
   readCache: () => Promise<T | null>;
+  /** Upper bound for `readCache` before the live load runs. Defaults to the offline-cache guard timeout. */
+  cacheTimeoutMs?: number;
 }) {
   const [phase, setPhase] = useState<HybridPhase>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +64,8 @@ export function useHybridBootstrap<T>({
 
   useEffect(() => {
     let cancelled = false;
-    void readCache().then((cached) => {
+    // A stalled or failed cache read must not block the live load.
+    void guardOfflineCacheStep(readCache(), null, cacheTimeoutMs).then((cached) => {
       if (cancelled) return;
       if (cached) {
         applySuccess(cached);
@@ -84,7 +89,7 @@ export function useHybridBootstrap<T>({
     return () => {
       cancelled = true;
     };
-  }, [applySuccess, load, readCache, run]);
+  }, [applySuccess, cacheTimeoutMs, load, readCache, run]);
 
   const patchBootstrap = useCallback((updater: (prev: T | null) => T | null) => {
     setData(updater);
