@@ -12,8 +12,8 @@ use PHPUnit\Framework\TestCase;
  * (jtx Board, Thunderbird). Notes patch the stored VJOURNAL in place, unlike
  * events, tasks and contacts. See docs/architecture/jscalendar-conformance.md.
  *
- * The first test pins what survives. The second pins the one known loss (NT-1);
- * its fix flips the assertions.
+ * The first test pins what survives; the NT-1 tests pin how several
+ * DESCRIPTIONs are handled (#1410).
  */
 final class NoteRoundTripTest extends TestCase
 {
@@ -36,16 +36,27 @@ final class NoteRoundTripTest extends TestCase
         $this->assertStringContainsString("X-WR-CALNAME:Journal\r\n", $out);
     }
 
-    /** NT-1: VJOURNAL allows several DESCRIPTIONs (RFC 5545 §3.6.3); a body edit keeps one and drops its params. */
-    public function test_nt1_body_edit_collapses_descriptions_and_drops_params(): void
+    /** NT-1 (fixed by #1410): a body edit updates the first DESCRIPTION and keeps the others and its parameters. */
+    public function test_nt1_body_edit_updates_the_first_description_only(): void
     {
         $out = (new NoteJournalConverter)->mergeIntoIcs($this->journal(
             "DESCRIPTION;LANGUAGE=nl:Eerste\r\nDESCRIPTION;LANGUAGE=en:Second\r\n"
         ), ['body' => 'Edited']);
 
-        $this->assertSame(1, substr_count($out, 'DESCRIPTION'));
-        $this->assertStringContainsString("DESCRIPTION:Edited\r\n", $out);
-        $this->assertStringNotContainsString('LANGUAGE', $out);
+        $this->assertStringContainsString("DESCRIPTION;LANGUAGE=nl:Edited\r\n", $out);
+        $this->assertStringContainsString("DESCRIPTION;LANGUAGE=en:Second\r\n", $out);
+        $this->assertStringNotContainsString('Eerste', $out);
+    }
+
+    /** NT-1 (#1410): clearing the body removes only the first DESCRIPTION. */
+    public function test_nt1_clearing_the_body_removes_only_the_first_description(): void
+    {
+        $out = (new NoteJournalConverter)->mergeIntoIcs($this->journal(
+            "DESCRIPTION;LANGUAGE=nl:Eerste\r\nDESCRIPTION;LANGUAGE=en:Second\r\n"
+        ), ['body' => '']);
+
+        $this->assertStringNotContainsString('Eerste', $out);
+        $this->assertStringContainsString("DESCRIPTION;LANGUAGE=en:Second\r\n", $out);
     }
 
     private function journal(string $extra): string
