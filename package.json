@@ -71,8 +71,8 @@
   },
   "pnpm": {
     "overrides": {
-      "@tiptap/core": "3.32.0",
-      "@tiptap/pm": "3.32.0",
+      "@tiptap/core": "3.30.5",
+      "@tiptap/pm": "3.30.5",
       "axe-core": "4.13.0",
       "brace-expansion@1": "^1.1.18",
       "brace-expansion@2": "^2.1.4",
