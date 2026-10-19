@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts\Conversion;
 
+use App\Services\Jmap\JmapPatchObject;
 use App\Services\VObject\VObjectScalar;
 use Illuminate\Support\Str;
 use Sabre\VObject\Property;
@@ -156,6 +157,13 @@ final class ConversionIdMethods
      */
     public static function deepMergeContactCardPatch(array $existing, array $patch): array
     {
+        // RFC 8620 PatchObject pointer paths ("emails/e2", "name/full") apply first.
+        $pointers = array_filter($patch, static fn ($key): bool => str_contains((string) $key, '/'), ARRAY_FILTER_USE_KEY);
+        if ($pointers !== []) {
+            $existing = JmapPatchObject::apply($existing, $pointers);
+            $patch = array_diff_key($patch, $pointers);
+        }
+
         $result = $existing;
 
         foreach ($patch as $key => $value) {
@@ -220,7 +228,18 @@ final class ConversionIdMethods
             }
 
             if (is_array($entry) && isset($result[$mapKey]) && is_array($result[$mapKey])) {
-                $result[$mapKey] = self::deepMergeContactCardPatch($result[$mapKey], $entry);
+                // Fields the client sends replace the stored field as a whole, so
+                // switching Work -> Home does not end up as both (CT-10, #1425).
+                // Fields it does not send (label, vCardParams) are kept.
+                $merged = $result[$mapKey];
+                foreach ($entry as $field => $fieldValue) {
+                    if ($fieldValue === null) {
+                        unset($merged[$field]);
+                    } else {
+                        $merged[$field] = $fieldValue;
+                    }
+                }
+                $result[$mapKey] = $merged;
             } else {
                 $result[$mapKey] = $entry;
             }

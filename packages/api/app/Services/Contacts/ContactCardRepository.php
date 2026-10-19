@@ -293,7 +293,7 @@ final class ContactCardRepository
         $cardPayload['id'] = ContactCardMapper::cardIdFromUri($cardUri);
         $cardPayload['addressBookIds'] = [$bookApiId => true];
 
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
         $addressBookId = (int) $card->addressbookid;
         $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
         $davPath = $this->cardDavPathFor($book, $cardUri);
@@ -375,7 +375,7 @@ final class ContactCardRepository
         }
 
         $cardPayload['addressBookIds'] = [$bookApiId => true];
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
         $addressBookId = (int) $card->addressbookid;
         $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
         $davPath = $this->cardDavPathFor($book, $cardUri);
@@ -502,7 +502,7 @@ final class ContactCardRepository
             );
         }
 
-        $vcard = $this->mapper->toVCard($username, $cardPayload);
+        $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
         DB::connection('wgw')->transaction(function () use (
             $username,
             $sourceBook,
