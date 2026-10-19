@@ -46,4 +46,4 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Enforcement: [legal@wegotworkspace
 
 ## License
 
-AGPL-3.0-or-later (`LICENSE`), copyright WeGotWorkspace B.V. Paid option: [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+AGPL-3.0-or-later (`LICENSE`), copyright WeGotWorkspace B.V. and contributors. There is no separate paid license; see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
