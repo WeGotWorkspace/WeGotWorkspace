@@ -1,6 +1,6 @@
 packages/api/app/Services/Calendars/CalendarRepository.php	878	grandfathered
 packages/api/app/Services/Chat/ChatChannelRepository.php	917	grandfathered
-packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	920	grandfathered
+packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	919	grandfathered
 packages/api/app/Services/Docs/DocsThreadRepository.php	851	grandfathered
 packages/api/app/Services/Drive/DriveService.php	870	grandfathered
 packages/api/app/Services/Mail/MailImapClient.php	1022	grandfathered

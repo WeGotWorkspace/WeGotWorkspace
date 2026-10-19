@@ -42,6 +42,12 @@ final class VCardInPlacePatcher
                 continue;
             }
 
+            if (str_ends_with($key, '|') && isset($storedEntries[$key], $generatedEntries[$key])) {
+                self::patchByValue($storedCard, $storedEntries[$key], $generatedEntries[$key]);
+
+                continue;
+            }
+
             $storedEntry = $storedEntries[$key] ?? (isset($baselineEntries[$key])
                 ? self::matchWithoutPropId($storedEntries, $baselineEntries[$key])
                 : null);
@@ -101,6 +107,36 @@ final class VCardInPlacePatcher
         }
 
         return $entries;
+    }
+
+    /**
+     * Lines without a PROP-ID (group members, repeated vendor lines) are matched
+     * one by one on their value, case-insensitively. A generated line whose value
+     * is already stored keeps the stored line (an Apple member UID stays
+     * uppercase); new values are added and missing ones removed (#1457).
+     *
+     * @param  array{main: list<Property>, satellites: list<Property>}  $stored
+     * @param  array{main: list<Property>, satellites: list<Property>}  $generated
+     */
+    private static function patchByValue(VCard $card, array $stored, array $generated): void
+    {
+        $remaining = $stored['main'];
+        foreach ($generated['main'] as $property) {
+            $value = strtolower(trim($property->getRawMimeDirValue()));
+            foreach ($remaining as $index => $candidate) {
+                if (strtolower(trim($candidate->getRawMimeDirValue())) === $value) {
+                    unset($remaining[$index]);
+
+                    continue 2;
+                }
+            }
+            $copy = clone $property;
+            unset($copy['GROUP']);
+            $card->add($copy);
+        }
+        foreach ($remaining as $property) {
+            $card->remove($property);
+        }
     }
 
     /**
