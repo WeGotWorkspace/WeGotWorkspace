@@ -1,0 +1,13 @@
+@import "../../styles.css" reference;
+
+.settings-about-pane {
+  @apply max-w-lg space-y-4;
+}
+
+.settings-about-pane__license {
+  @apply text-sm text-muted-foreground;
+}
+
+.settings-about-pane__source {
+  @apply text-sm;
+}

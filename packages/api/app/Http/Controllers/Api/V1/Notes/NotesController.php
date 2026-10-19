@@ -78,6 +78,7 @@ final class NotesController
             $body,
             $this->header($request, 'If-Match'),
             $this->header($request, 'If-None-Match'),
+            $this->header($request, CollabExternalWrite::HEADER),
         );
 
         return response()->json(['ok' => true])->header('ETag', $etag);

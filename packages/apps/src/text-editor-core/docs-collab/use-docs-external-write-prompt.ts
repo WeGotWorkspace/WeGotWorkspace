@@ -5,7 +5,7 @@ import {
   replaceDocumentWithExternalText,
 } from "./docs-collab-external-write";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { collabDocumentFormat } from "./docs-collab-utils";
+import { collabFormatForUrls } from "./docs-collab-utils";
 
 export type DocsExternalWriteRequest = {
   /** The urls to hand to `useDocsCollab`, with `onExternalWrite` wired. */
@@ -63,13 +63,11 @@ export type DocsExternalWritePrompt = {
  */
 export function useDocsExternalWritePrompt({
   request,
-  room,
   ydoc,
   resolveExternalWrite,
   onOutsideApplied,
 }: {
   request: DocsExternalWriteRequest;
-  room: string | undefined;
   ydoc: Y.Doc | null;
   resolveExternalWrite: (suppliedMarkdown: string | null) => Promise<void>;
   onOutsideApplied?: () => void;
@@ -107,13 +105,13 @@ export function useDocsExternalWritePrompt({
         ydoc,
         detail.markdown,
         detail.title,
-        collabDocumentFormat(room),
+        collabFormatForUrls(request.urls),
       );
       setAppliedOutside(detail);
       onOutsideApplied?.();
     }
     answer(detail.markdown);
-  }, [answer, appliedOutside, detail, onOutsideApplied, room, ydoc]);
+  }, [answer, appliedOutside, detail, onOutsideApplied, request.urls, ydoc]);
 
   return { open: detail !== null, busy, keepLocalDisabled, keepLocal, useOutside };
 }

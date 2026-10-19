@@ -146,14 +146,29 @@ export function decideServerStateAdoption({
  * Adopt the server snapshot: apply it, then delete only the items this doc
  * has that the server does not (a stale local seed). Never wipe the body —
  * items the doc already holds are skipped by applyUpdate, so a wipe would stick.
+ *
+ * `loadedStateVector` is the doc's state when its local copy finished loading.
+ * Only those items can be a stale seed; anything added since was typed or
+ * received in this session and is kept. Without it every item the server
+ * lacks is dropped (an outside rewrite replaces the whole document).
+ *
+ * Returns whether any local item was dropped.
  */
-export function adoptServerSnapshot(ydoc: Y.Doc, update: Uint8Array, origin: string): void {
+export function adoptServerSnapshot(
+  ydoc: Y.Doc,
+  update: Uint8Array,
+  origin: string,
+  loadedStateVector?: ReadonlyMap<number, number>,
+): boolean {
   const serverSv = Y.decodeStateVector(Y.encodeStateVectorFromUpdate(update));
   const localSv = Y.decodeStateVector(Y.encodeStateVector(ydoc));
   const localOnly: Array<[client: number, clock: number, len: number]> = [];
   for (const [client, localClock] of localSv) {
     const serverClock = serverSv.get(client) ?? 0;
-    if (localClock > serverClock) localOnly.push([client, serverClock, localClock - serverClock]);
+    const staleEnd = loadedStateVector
+      ? Math.min(localClock, loadedStateVector.get(client) ?? 0)
+      : localClock;
+    if (staleEnd > serverClock) localOnly.push([client, serverClock, staleEnd - serverClock]);
   }
   ydoc.transact(() => {
     Y.applyUpdate(ydoc, update, origin);
@@ -170,4 +185,5 @@ export function adoptServerSnapshot(ydoc: Y.Doc, update: Uint8Array, origin: str
     }
     Y.applyUpdate(ydoc, encoder.toUint8Array(), origin);
   }, origin);
+  return localOnly.length > 0;
 }
