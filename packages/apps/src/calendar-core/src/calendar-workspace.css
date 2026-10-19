@@ -66,21 +66,6 @@
   --workspace-panel-width: var(--calendar-invitations-column-width);
 }
 
-/** App switcher lockup: dark tile, soft marks. */
-.calendar-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-icon-surface);
-}
-
-.calendar-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
 /* Inbox is titleTrailing (row 1 end). Prev/next/Today is titleLeading (row 2 end). */
 .calendar-workspace .calendar-header-nav,
 .calendar-workspace .calendar-header-actions {

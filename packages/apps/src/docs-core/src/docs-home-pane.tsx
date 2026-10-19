@@ -36,7 +36,10 @@ export type DocsHomePaneProps = {
   /** Empty-state icon; defaults to a document icon. Use Share for Shared with me. */
   emptyIcon?: ReactNode;
   files: DriveFile[];
+  /** Shows the loading state while `files` is still empty. */
   loading: boolean;
+  /** Rows are visible while the list refreshes in the background. */
+  refreshing?: boolean;
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
@@ -106,6 +109,7 @@ export function DocsHomePane({
   emptyIcon,
   files,
   loading,
+  refreshing = false,
   loadingMore,
   hasMore,
   error,
@@ -341,8 +345,11 @@ export function DocsHomePane({
       </div>
 
       <div className="docs-home-pane__body drive-workspace">
-        <div className="docs-home-pane__scroll collection-state-host">
-          {loading ? (
+        <div
+          className="docs-home-pane__scroll collection-state-host"
+          aria-busy={refreshing || undefined}
+        >
+          {loading && files.length === 0 ? (
             <CollectionState variant="loading">{labels.homeLoading}</CollectionState>
           ) : error ? (
             <CollectionState icon={emptyIcon ?? <FileText className="size-12" />}>

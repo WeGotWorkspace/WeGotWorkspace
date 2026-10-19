@@ -257,7 +257,10 @@ final class ConversionUidNameMethods
         }
 
         $date = ['@type' => 'PartialDate'];
-        if ($parts['year'] !== null) {
+        // Apple stores a birthday without a year as a placeholder year plus
+        // X-APPLE-OMIT-YEAR=<that year> (CT-4, #1421).
+        $omitYear = isset($property['X-APPLE-OMIT-YEAR']) ? trim(VObjectScalar::string($property['X-APPLE-OMIT-YEAR'])) : '';
+        if ($parts['year'] !== null && ($omitYear === '' || (int) $omitYear !== (int) $parts['year'])) {
             $date['year'] = (int) $parts['year'];
         }
         if ($parts['month'] !== null) {

@@ -6,6 +6,7 @@ namespace Tests\Feature\Principal;
 
 use App\Models\Principal;
 use App\Models\PrincipalPeer;
+use App\Services\Rtc\RtcTurnCredentialService;
 use App\Services\Settings\SettingKeys;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -392,6 +393,47 @@ final class PrincipalRoomTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/configuration')
             ->assertUnauthorized()
             ->assertJsonPath('error', 'auth_required');
+    }
+
+    public function test_a_member_gets_turn_credentials_for_the_workspace_room(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => 'north',
+        ]);
+        $token = $this->issueBearerTokenFor('alice');
+        $peerId = $this->joinWorkspace($token, 'Alice');
+
+        $response = $this->withBearer($token)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/relay', [
+            'peerId' => $peerId,
+            'target' => '*',
+            'reason' => 'precheck',
+        ]);
+
+        $response->assertOk();
+        $this->assertSame(['turn:relay.example.org:3478'], $response->json('turn.urls'));
+        $this->assertSame(
+            RtcTurnCredentialService::credential((string) $response->json('turn.username'), 'north'),
+            $response->json('turn.credential'),
+        );
+    }
+
+    public function test_relay_in_the_workspace_room_is_unavailable_without_a_secret(): void
+    {
+        $this->setAppSettings([
+            SettingKeys::RTC_TURN_URL => 'turn:relay.example.org:3478',
+            SettingKeys::RTC_TURN_SECRET => '',
+        ]);
+        $token = $this->issueBearerTokenFor('alice');
+        $peerId = $this->joinWorkspace($token, 'Alice');
+
+        $this->withBearer($token)->postJson('/api/v1/rooms/'.self::WORKSPACE_ROOM_ID.'/relay', [
+            'peerId' => $peerId,
+            'target' => '*',
+            'reason' => 'precheck',
+        ])
+            ->assertStatus(503)
+            ->assertJson(['error' => 'relay_unavailable']);
     }
 
     private function joinWorkspace(string $token, string $name): string

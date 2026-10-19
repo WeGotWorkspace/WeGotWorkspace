@@ -1,5 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
 <rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-sky, #a3c4e8))"/>
-<path fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" d="M39.944 35C45.498 35 50 39.418 50 44.868V60H10V44.868C10 39.418 14.502 35 20.056 35zM30 10c5.523 0 10 4.477 10 10s-4.477 10-10 10-10-4.477-10-10 4.477-10 10-10"/>
-<path fill="var(--app-icon-layer-surface, var(--color-we-got-sky, #a3c4e8))" d="M18 59v1h2v-1zm2-13a1 1 0 1 0-2 0zm-1 13h1V46h-2v13zm21 0v1h2v-1zm2-13a1 1 0 1 0-2 0zm-1 13h1V46h-2v13z"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-sky-tint, #d7eafe))" d="M11 44.868C11.5 39.5 15.502 35 21.056 35h17.888C44.498 35 48.5 39.5 49 44.868L50 60H10zM30 30c5.523 0 10-4.477 10-10s-4.477-10-10-10-10 4.477-10 10 4.477 10 10 10"/>
 </svg>

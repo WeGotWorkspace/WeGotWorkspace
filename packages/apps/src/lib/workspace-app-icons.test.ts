@@ -49,17 +49,17 @@ describe("WORKSPACE_APP_ICON_INLINE", () => {
     }
   });
 
-  it("keeps notes as the orange notepad, not the contacts person", () => {
+  it("keeps notes as the yellow notepad, not the contacts person", () => {
     const notes = WORKSPACE_APP_ICON_INLINE.notes;
     const contacts = WORKSPACE_APP_ICON_INLINE.contacts;
 
     expect(notes).toContain('d="M28 43a2 2 0');
     expect(notes).toContain("#ffc800");
-    expect(notes).toContain("#fff5e9");
+    expect(notes).toContain("#ffea9f");
     expect(notes).not.toContain("44.868");
     expect(contacts).toContain("44.868");
     expect(contacts).toContain("#a3c4e8");
-    expect(contacts).toContain("#fff5e9");
+    expect(contacts).toContain("#d7eafe");
     expect(contacts).not.toContain('d="M28 43a2 2 0');
     expect(contacts).not.toContain('d="M256 280C284.719');
   });
@@ -104,8 +104,8 @@ describe("WORKSPACE_APP_ACCENT", () => {
     }
   });
 
-  it("samples contacts from the purple launcher tile", () => {
-    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#962fa8");
+  it("samples contacts from the sky launcher tile", () => {
+    expect(WORKSPACE_APP_ACCENT.contacts.toLowerCase()).toBe("#a3c4e8");
     expect(WORKSPACE_APP_ACCENT.contacts).not.toMatch(/#8b6f45/i);
   });
 
