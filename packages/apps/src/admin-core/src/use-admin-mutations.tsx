@@ -29,6 +29,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
   return {
     checkingUpdates: updates.checkingUpdates,
     refreshingServerChecks: updates.refreshingServerChecks,
+    savingUpdateChannel: updates.savingUpdateChannel,
     actions: {
       saveSettings: settings.saveSettings,
       useThisAddress: settings.useThisAddress,
@@ -37,6 +38,7 @@ export function useAdminMutations({ operations, shell }: UseAdminMutationsArgs) 
       sendMailDeliveryTest: settings.sendMailDeliveryTest,
       refresh,
       checkUpdates: updates.checkUpdates,
+      setUpdateChannel: updates.setUpdateChannel,
       refreshServerChecks: updates.refreshServerChecks,
       clearUpdateLog: updates.clearUpdateLog,
       refreshUpdateLog: updates.refreshUpdateLog,

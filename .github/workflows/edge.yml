@@ -1,0 +1,139 @@
+name: Edge build
+
+# Every merge to main publishes an edge build: a signed deploy ZIP and a
+# Docker image, offered to installs on the edge update channel.
+# Edge is for testers, not production data: schema migrations only go
+# forward, so an edge install cannot move back to stable or beta.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer merge cancels a running edge build; only the newest one publishes.
+concurrency:
+  group: edge-build
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      value: ${{ steps.next.outputs.value }}
+    steps:
+      - uses: actions/checkout@v7
+      # Next patch after the last release, plus the run number:
+      # VERSION 0.1.121 -> 0.1.122-edge.<run>. The next stable release sorts
+      # above every edge build of its own version.
+      - id: next
+        run: |
+          set -euo pipefail
+          base="$(tr -d '\n' < apps/wegotworkspace/VERSION)"
+          IFS=. read -r major minor patch <<< "${base%%-*}"
+          echo "value=${major}.${minor}.$((patch + 1))-edge.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+  prepare:
+    needs: version
+    uses: ./.github/workflows/install-e2e-build.yml
+    secrets:
+      WGW_RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.WGW_RELEASE_SIGNING_PRIVATE_KEY }}
+    permissions:
+      contents: read
+      packages: write
+    with:
+      build_arm64: true
+      sign_release: true
+      version: ${{ needs.version.outputs.value }}
+      release_tag: channel-edge
+      notes_url: https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+
+  install-gate:
+    needs: prepare
+    uses: ./.github/workflows/install-e2e-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+    with:
+      cells: '["zip-sqlite"]'
+      image: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+
+  publish:
+    needs: [prepare, install-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download the release ZIP
+        uses: actions/download-artifact@v8
+        with:
+          name: wegotworkspace-deploy-zip
+          path: dist/releases
+
+      - name: Promote tested image to edge tags
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          AMD64: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.amd64_digest }}
+          ARM64: ghcr.io/wegotworkspace/wegotworkspace-candidate@${{ needs.prepare.outputs.arm64_digest }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            -t "ghcr.io/wegotworkspace/wegotworkspace:${VERSION}" \
+            -t ghcr.io/wegotworkspace/wegotworkspace:edge \
+            "$AMD64" "$ARM64"
+
+      - name: Build Docker install bundle
+        env:
+          WGW_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: node tools/build-docker-install-bundle.mjs
+
+      - name: Publish to the edge channel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          node tools/publish-release-channel.mjs edge dist/releases \
+            dist/releases/wegotworkspace-deploy-*.zip \
+            dist/releases/install \
+            dist/releases/setup.sh \
+            dist/releases/docker-compose.yml \
+            dist/releases/env.example
+
+  cleanup:
+    needs: prepare
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Delete candidate tags older than 7 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/ghcr-delete-old-candidates.sh

@@ -215,6 +215,17 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
       };
       return snapshot();
     },
+    setUpdateChannel: async (channel, opts) => {
+      await sleep(120, opts?.signal);
+      current.updates = {
+        ...current.updates,
+        updateChannel: channel,
+        latest: null,
+        updateAvailable: false,
+        lastCheckedAt: null,
+      };
+      return cloneData(current).updates;
+    },
     refreshUpdateState: async (opts) => {
       await sleep(80, opts?.signal);
       return cloneData(current).updates;

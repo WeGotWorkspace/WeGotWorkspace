@@ -90,6 +90,25 @@ curl -fsSL .../install | sh -s -- --upgrade 1.2.0
 
 Upgrades always pin `WGW_IMAGE` to a semver tag in `.env` (never `:latest`).
 
+### Update channels
+
+`WGW_UPDATE_CHANNEL` in `.env` picks the release feed for `check` and `upgrade`:
+
+| Channel | Gets | Feed |
+|---------|------|------|
+| `stable` (default) | Every `vX.Y.Z` release | `releases/latest/download/manifest.json` |
+| `beta` | Prereleases (`vX.Y.Z-beta.N`, `-rc.N`) and stable releases, whichever is newer | `releases/download/channel-beta/manifest.json` |
+| `edge` | A build of every merge to `main` (`X.Y.Z-edge.N`) | `releases/download/channel-edge/manifest.json` |
+
+Switch once with `--channel`; it is saved to `.env`:
+
+```bash
+bash setup.sh upgrade --channel beta
+curl -fsSL .../install | sh -s -- --channel beta     # new install on beta
+```
+
+Edge is for testing, not production data. Schema migrations only go forward, so a switch to an older release never downgrades: `upgrade` keeps the installed version until the new channel catches up. Admin → Updates shows the channel read-only on Docker.
+
 Run `bash setup.sh --help` for the full command list.
 
 ## SQLite only

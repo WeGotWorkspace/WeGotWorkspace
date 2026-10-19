@@ -98,3 +98,96 @@ test("sourced setup resolves SETUP_SCRIPT_DIR from the script file", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), path.dirname(setupScript));
 });
+
+/** Source the installer as a library and run a shell snippet against it. */
+function runLib(snippet, env = {}) {
+  return spawnSync("sh", ["-c", `WGW_SETUP_LIB=1 . "$1"; ${snippet}`, "sh", setupScript], {
+    encoding: "utf8",
+    env: { ...process.env, WGW_MANIFEST_URL: "", WGW_INSTALL_DIR: tmpdir(), ...env },
+  });
+}
+
+function cmp(a, b) {
+  return runLib(`semver_cmp "${a}" "${b}"`).status;
+}
+
+test("semver_cmp orders prereleases below their release", () => {
+  const ascending = [
+    "0.1.121",
+    "0.1.122-beta.1",
+    "0.1.122-beta.2",
+    "0.1.122-beta.10",
+    "0.1.122-edge.5",
+    "0.1.122-edge.40",
+    "0.1.122",
+    "v0.2.0",
+    "1.0.0",
+  ];
+  for (let i = 1; i < ascending.length; i++) {
+    assert.equal(cmp(ascending[i - 1], ascending[i]), 2, `${ascending[i - 1]} < ${ascending[i]}`);
+    assert.equal(cmp(ascending[i], ascending[i - 1]), 1, `${ascending[i]} > ${ascending[i - 1]}`);
+  }
+  assert.equal(cmp("v1.2.3", "1.2.3"), 0);
+  assert.equal(cmp("1.0.0-beta.1", "1.0.0-beta.1"), 0);
+});
+
+test("manifest_url follows the update channel", () => {
+  const base = "https://github.com/WeGotWorkspace/wegotworkspace/releases";
+  assert.equal(runLib("manifest_url").stdout, `${base}/latest/download/manifest.json`);
+  assert.equal(
+    runLib("manifest_url", { WGW_UPDATE_CHANNEL: "beta" }).stdout,
+    `${base}/download/channel-beta/manifest.json`,
+  );
+  assert.equal(
+    runLib('WGW_CHANNEL_FLAG=edge; manifest_url', { WGW_UPDATE_CHANNEL: "beta" }).stdout,
+    `${base}/download/channel-edge/manifest.json`,
+  );
+  assert.equal(
+    runLib("manifest_url", { WGW_MANIFEST_URL: "https://updates.example/manifest.json" }).stdout,
+    "https://updates.example/manifest.json",
+  );
+});
+
+test("--channel rejects an unknown channel", () => {
+  const result = spawnSync("sh", [setupScript, "--channel", "nightly", "check"], { encoding: "utf8" });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unknown update channel: nightly/);
+});
+
+test("edge assets come from the rolling channel-edge release", () => {
+  const base = "https://github.com/WeGotWorkspace/wegotworkspace/releases";
+  assert.equal(
+    runLib('WGW_VERSION=0.1.122-edge.7; download_url docker-compose.yml').stdout,
+    `${base}/download/channel-edge/docker-compose.yml`,
+  );
+  assert.equal(
+    runLib('WGW_VERSION=1.0.0-beta.1; download_url docker-compose.yml').stdout,
+    `${base}/download/v1.0.0-beta.1/docker-compose.yml`,
+  );
+});
+
+test("save_update_channel writes WGW_UPDATE_CHANNEL once", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "wgw-channel-"));
+  const envPath = path.join(dir, ".env");
+  writeFileSync(envPath, mysqlEnv());
+  try {
+    for (const channel of ["beta", "edge"]) {
+      const result = runLib(`WGW_CHANNEL_FLAG=${channel}; save_update_channel "${envPath}"`, {
+        WGW_INSTALL_DIR: dir,
+      });
+      assert.equal(result.status, 0, result.stderr);
+    }
+    const body = readFileSync(envPath, "utf8");
+    assert.equal(body.match(/^WGW_UPDATE_CHANNEL=/gm)?.length, 1);
+    assert.match(body, /^WGW_UPDATE_CHANNEL=edge$/m);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("release workflow never makes a prerelease Latest", () => {
+  const workflow = readFileSync(releaseWorkflow, "utf8");
+  assert.match(workflow, /prerelease: \$\{\{ contains\(github\.ref_name, '-'\) \}\}/);
+  assert.match(workflow, /make_latest: \$\{\{ !contains\(github\.ref_name, '-'\) \}\}/);
+  assert.match(workflow, /publish-release-channel\.mjs beta dist\/releases/);
+});

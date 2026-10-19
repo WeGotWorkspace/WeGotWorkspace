@@ -5,6 +5,10 @@ import { Callout } from "@/callout/src/callout";
 import { Card } from "@/card/src/card";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import { MenuItem } from "@/menu-item/src/menu-item";
+import {
+  SegmentedControl,
+  type SegmentedControlOption,
+} from "@/segmented-control/src/segmented-control";
 import { Tag } from "@/tag/src/tag";
 import {
   formatByteCount,
@@ -14,10 +18,32 @@ import {
   UPDATE_PROGRESS_STEPS,
   type UpdateLogRow,
 } from "@/admin-core/src/admin-workspace-utils";
+import type { AdminUpdateChannel } from "@/admin-core/src/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
 const DOCKER_INSTALL_DOCS_URL =
   "https://github.com/WeGotWorkspace/wegotworkspace/blob/main/docs/install-docker.md";
+
+const UPDATE_CHANNEL_OPTIONS: SegmentedControlOption<AdminUpdateChannel>[] = [
+  { value: "stable", label: "Stable" },
+  { value: "beta", label: "Beta" },
+  { value: "edge", label: "Edge" },
+];
+
+const UPDATE_CHANNEL_NOTES: Record<AdminUpdateChannel, { title: string; message: string } | null> =
+  {
+    stable: null,
+    beta: {
+      title: "Beta channel",
+      message:
+        "Offers prereleases and stable releases, whichever is newer. Switching back to stable does not downgrade: this install stays on its version until stable catches up.",
+    },
+    edge: {
+      title: "Edge channel: not for production data",
+      message:
+        "Every merge to main ships here. Database changes only move forward, so this install cannot go back to beta or stable. Use edge for testing only.",
+    },
+  };
 
 export type AdminUpdatesPaneProps = {
   controller: AdminControllerState;
@@ -33,6 +59,8 @@ export function AdminUpdatesPane({
   updatingNow,
 }: AdminUpdatesPaneProps) {
   const isDockerChannel = controller.updates.installChannel === "docker";
+  const updateChannel = controller.updates.updateChannel;
+  const updateChannelNote = UPDATE_CHANNEL_NOTES[updateChannel];
   const updateLogRows = useMemo(
     () =>
       controller.updateLogLines.map((line, index) => parseUpdateLogLine(line, index)).slice(-25),
@@ -112,6 +140,10 @@ export function AdminUpdatesPane({
                 <div className="admin-updates-stat-label">Install channel</div>
                 <Tag label="docker" />
               </div>
+              <div>
+                <div className="admin-updates-stat-label">Update channel</div>
+                <Tag label={updateChannel} />
+              </div>
               {controller.updates.imageTag ? (
                 <div>
                   <div className="admin-updates-stat-label">Image tag</div>
@@ -136,8 +168,17 @@ export function AdminUpdatesPane({
                 </div>
               </div>
               <div>
-                <div className="admin-updates-stat-label">Channel</div>
-                <Tag label="stable" />
+                <div className="admin-updates-stat-label" id="admin-update-channel-label">
+                  Channel
+                </div>
+                <SegmentedControl
+                  value={updateChannel}
+                  onChange={controller.actions.setUpdateChannel}
+                  options={UPDATE_CHANNEL_OPTIONS}
+                  size="sm"
+                  disabled={controller.savingUpdateChannel || controller.updates.inProgress}
+                  aria-label="Update channel"
+                />
               </div>
               <div className="flex-1 min-w-32">
                 <div className="admin-updates-stat-label">Last checked</div>
@@ -162,6 +203,13 @@ export function AdminUpdatesPane({
                   <code>{`cd wegotworkspace\nbash setup.sh check\nbash setup.sh upgrade`}</code>
                 </pre>
                 <p>
+                  To switch the update channel, pass it once:{" "}
+                  <code className="admin-updates-inline-code">
+                    bash setup.sh upgrade --channel beta
+                  </code>{" "}
+                  (stable, beta, or edge).
+                </p>
+                <p>
                   See{" "}
                   <a
                     className="admin-updates-docs-link"
@@ -178,6 +226,14 @@ export function AdminUpdatesPane({
           />
         ) : (
           <>
+            {updateChannelNote ? (
+              <Callout
+                className="mt-5"
+                severity={updateChannel === "edge" ? "warning" : "info"}
+                title={updateChannelNote.title}
+                message={updateChannelNote.message}
+              />
+            ) : null}
             <Callout
               className="mt-5"
               severity={
@@ -198,8 +254,8 @@ export function AdminUpdatesPane({
                 controller.updates.inProgress
                   ? `Applying ${controller.updates.current?.from ?? controller.updates.installedVersion} -> ${controller.updates.current?.to ?? controller.updates.latest?.version ?? "latest"} (${controller.updates.phase?.replace(/_/g, " ") ?? "processing"}).`
                   : controller.updates.updateAvailable
-                    ? `${controller.updates.latest?.version ?? "Latest"} introduces faster sync and security patches.`
-                    : "Running the latest stable release."
+                    ? `${controller.updates.latest?.version ?? "A new release"} is available on the ${updateChannel} channel.`
+                    : `Running the latest ${updateChannel} release.`
               }
             />
             {controller.updates.inProgress ? (

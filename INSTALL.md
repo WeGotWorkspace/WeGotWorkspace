@@ -121,6 +121,16 @@ php -S localhost:8080 -t . index.php
 
 `WGW_RTC_RELAY_REQUESTS_PER_MINUTE` caps relay credential requests for one signed-in actor. The default is 6.
 
+## Update channels
+
+**Admin → Updates** checks one release feed. Pick the channel there:
+
+- **Stable** (default): every `vX.Y.Z` release.
+- **Beta**: prereleases (`-beta.N`, `-rc.N`) and stable releases, whichever is newer.
+- **Edge**: a build of every merge to `main`. For testing only, not for data you need.
+
+The choice is saved as `WGW_UPDATE_CHANNEL` in `packages/api/.env`. Updates never downgrade: schema migrations only go forward, so after a switch to an older channel the install stays on its version until that channel catches up. A `WGW_UPDATE_FEED_URL` other than the stable default overrides the channel.
+
 ## Move an existing data directory out of the web root
 
 A fresh install puts the database, signing keys, and backups in a `wgw-content` directory next to the published folder when that parent is writable. Installs created before that change keep their data inside the published folder. Nothing moves them automatically. Administration shows a standing warning until you move the directory yourself.

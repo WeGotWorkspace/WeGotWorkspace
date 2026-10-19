@@ -28,6 +28,8 @@ x-wgw-web-environment: &wgw-web-environment
   WGW_DB_PORT: ${WGW_DB_PORT:-3306}
   WGW_DB_USERNAME: ${WGW_DB_USERNAME:-wgw}
   WGW_DB_PASSWORD: ${WGW_DB_PASSWORD:-wgw}
+  # Shown in Admin > Updates. setup.sh reads it from .env to pick the release feed.
+  WGW_UPDATE_CHANNEL: ${WGW_UPDATE_CHANNEL:-stable}
   MARIADB_DATABASE: ${MARIADB_DATABASE:-wgw}
   MARIADB_USER: ${MARIADB_USER:-wgw}
   MARIADB_PASSWORD: ${MARIADB_PASSWORD:-wgw}

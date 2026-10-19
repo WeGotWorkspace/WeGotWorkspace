@@ -41,6 +41,7 @@ function coerceUpdateCheck(input: AdminUpdateCheck): AdminUpdateCheck {
 export function mapWgwUpdateStateToUI(state: WgwUpdateStateResponse): AdminUpdateState {
   return {
     installChannel: state.installChannel ?? null,
+    updateChannel: state.updateChannel ?? "stable",
     installedVersion: state.installedVersion,
     schemaVersion: state.schemaVersion,
     latest: state.latest
@@ -372,6 +373,22 @@ export function createWgwAdminOperations(): AdminAPIOperations {
       });
       if (!res.ok) throw new Error(`POST /admin/update-jobs failed (${res.status})`);
       return fetchAdminUiData(opts);
+    },
+    setUpdateChannel: async (channel, opts) => {
+      const res = await wgwFetch("/admin/updates/channel", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel }),
+        signal: opts?.signal,
+      });
+      if (!res.ok) {
+        const message = await readApiError(
+          res,
+          `PUT /admin/updates/channel failed (${res.status})`,
+        );
+        throw new Error(message);
+      }
+      return fetchAdminUpdateState(opts);
     },
     refreshUpdateState: (opts) => fetchAdminUpdateState(opts),
     applyUpdate: async (version, opts) => {

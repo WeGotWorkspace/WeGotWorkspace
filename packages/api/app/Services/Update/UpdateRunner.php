@@ -10,6 +10,7 @@ use App\Services\Installer\InstallerEnvChecker;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\AppVersion;
+use App\Support\UpdateFeedDefaults;
 use App\Support\WgwInstallConfig;
 
 final class UpdateRunner
@@ -68,6 +69,7 @@ final class UpdateRunner
 
         $response = [
             'installChannel' => $installChannel,
+            'updateChannel' => UpdateFeedDefaults::normalizeChannel(config('wgw.update_channel')),
             'installedVersion' => $installedVersion,
             'schemaVersion' => $this->schemaMigrator->currentVersion(),
             'latest' => $latest,

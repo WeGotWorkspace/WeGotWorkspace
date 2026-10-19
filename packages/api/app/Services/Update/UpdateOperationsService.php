@@ -39,10 +39,6 @@ final class UpdateOperationsService
 
     private function updateFeedUrl(): string
     {
-        $fromConfig = config('wgw.update_feed_url');
-
-        return is_string($fromConfig) && trim($fromConfig) !== ''
-            ? trim($fromConfig)
-            : UpdateFeedDefaults::MANIFEST_URL;
+        return UpdateFeedDefaults::feedUrl(config('wgw.update_feed_url'), config('wgw.update_channel'));
     }
 }

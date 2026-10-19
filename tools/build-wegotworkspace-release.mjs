@@ -117,13 +117,13 @@ const manifest = {
   name: "wegotworkspace",
   version,
   package_name: packageName,
-  package_url: "",
+  package_url: releasePackageUrl(packageName),
   checksum_sha256: checksum,
   checksum_signature: checksumSignature,
   min_php: "8.3.0",
   min_schema: 1,
   released_at: new Date().toISOString(),
-  notes_url: "",
+  notes_url: releaseNotesUrl(),
 };
 const manifestContent = `${JSON.stringify(manifest, null, 2)}\n`;
 writeFileSync(manifestPath, manifestContent, "utf8");
@@ -142,6 +142,32 @@ console.log(`Release assets written to ${relative(repoRoot, outputRoot)}`);
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   buildRelease();
+}
+
+// WGW_RELEASE_TAG names the GitHub release that hosts the ZIP. Channel feeds
+// (channel-beta, channel-edge) serve a copy of this manifest from another
+// release, so the package URL must point at the hosting release, not at the
+// feed's own folder.
+export function releasePackageUrl(packageName, env = process.env) {
+  const tag = env.WGW_RELEASE_TAG?.trim() ?? "";
+  if (tag === "") {
+    return "";
+  }
+  return `${releaseBase(env)}/download/${tag}/${packageName}`;
+}
+
+export function releaseNotesUrl(env = process.env) {
+  const explicit = env.WGW_RELEASE_NOTES_URL?.trim() ?? "";
+  if (explicit !== "") {
+    return explicit;
+  }
+  const tag = env.WGW_RELEASE_TAG?.trim() ?? "";
+  return tag === "" ? "" : `${releaseBase(env)}/tag/${tag}`;
+}
+
+function releaseBase(env) {
+  const repo = env.WGW_GITHUB_REPO?.trim() || "WeGotWorkspace/wegotworkspace";
+  return `https://github.com/${repo}/releases`;
 }
 
 function resolveVersion() {
