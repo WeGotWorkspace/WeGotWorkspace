@@ -62,4 +62,32 @@ describe("useHybridBootstrap", () => {
     expect(result.current.successVersion).toBe(versionAfterFirstPage);
     expect(result.current.complete).toBe(true);
   });
+
+  it("loads live data when readCache never settles", async () => {
+    const live = { from: "live" };
+    const load = vi.fn(() => Promise.resolve(live));
+    const readCache = () => new Promise<typeof live | null>(() => undefined);
+
+    const { result } = renderHook(() =>
+      useHybridBootstrap({ load, readCache, cacheTimeoutMs: 10 }),
+    );
+
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    expect(result.current.data).toEqual(live);
+    expect(result.current.complete).toBe(true);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads live data when readCache rejects", async () => {
+    const live = { from: "live" };
+    const load = vi.fn(() => Promise.resolve(live));
+    const readCache = () => Promise.reject<typeof live | null>(new Error("idb blocked"));
+
+    const { result } = renderHook(() => useHybridBootstrap({ load, readCache }));
+
+    await waitFor(() => expect(result.current.phase).toBe("ready"));
+    expect(result.current.data).toEqual(live);
+    expect(result.current.complete).toBe(true);
+    expect(load).toHaveBeenCalledTimes(1);
+  });
 });
