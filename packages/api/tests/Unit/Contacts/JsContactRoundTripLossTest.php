@@ -262,6 +262,46 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringNotContainsString('X-ABLABEL', $out);
     }
 
+    /** CT-11 (fixed by #1429): ADR LABEL is read as `full` only, so editing the address adds no X-ABLabel. */
+    public function test_ct11_adr_label_is_full_only_and_edit_adds_no_x_ablabel(): void
+    {
+        $vcard = $this->vcard('4.0', "FN:John Doe\r\n"
+            ."ADR;TYPE=work;LABEL=\"Acme\\nDamrak 2\":;;Damrak 2;Amsterdam;;1012 LG;NL\r\n");
+        $addresses = $this->converter->cardFromVCard($vcard)['addresses'];
+        $id = array_key_first($addresses);
+        $this->assertArrayNotHasKey('label', $addresses[$id]);
+
+        $address = $addresses[$id];
+        foreach ($address['components'] as $i => $component) {
+            if (($component['kind'] ?? null) === 'locality') {
+                $address['components'][$i]['value'] = 'Haarlem';
+            }
+        }
+        $out = $this->edit($vcard, ['addresses' => [$id => $address]]);
+
+        $this->assertStringContainsString('Haarlem', $out);
+        $this->assertStringNotContainsString('Acme', $this->onlyXAbLabels($out));
+    }
+
+    /** CT-13 (fixed by #1431): a timestamp ANNIVERSARY is read as a Timestamp and keeps its time when edited. */
+    public function test_ct13_anniversary_timestamp_is_read_and_kept(): void
+    {
+        $vcard = $this->vcard('4.0', "FN:John Doe\r\nANNIVERSARY:20100601T120000Z\r\n");
+        $anniversaries = $this->converter->cardFromVCard($vcard)['anniversaries'];
+        $id = array_key_first($anniversaries);
+        $this->assertSame('Timestamp', $anniversaries[$id]['date']['@type']);
+
+        $anniversaries[$id]['date']['utc'] = '2011-06-01T12:00:00Z';
+        $out = $this->edit($vcard, ['anniversaries' => [$id => $anniversaries[$id]]]);
+
+        $this->assertStringContainsString('20110601T120000Z', $out);
+    }
+
+    private function onlyXAbLabels(string $vcard): string
+    {
+        return implode("\n", array_filter(explode("\r\n", $vcard), static fn (string $line): bool => stripos($line, 'X-ABLABEL') !== false));
+    }
+
     /** CT-12 (fixed for unrelated edits by #1418): a card-level TZ stays a property. */
     public function test_ct12_tz_property_survives_an_edit(): void
     {
