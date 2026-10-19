@@ -32,8 +32,8 @@ Meet **WeGotWorkspace**, an open-source office suite you host yourself. Write do
 ### Why WeGotWorkspace?
 
 - ⚡ **Real-time collaboration, no extra servers.** Co-editing, presence, and video calls run on your PHP host. No WebSocket server, no Node, no third-party relay.
-- 🪄 **Almost zero config.** Upload, open `/install/`, create your account. The wizard handles the rest, and SQLite works out of the box if you don't have a database.
-- 🏠 **Runs on the hosting you already have.** A regular shared hosting plan with cPanel or Plesk is enough. Prefer Docker? That's one command too.
+- 🪄 **Almost zero config.** Upload the ZIP or run the Docker one-liner, open `/install/`, and create your account. The wizard handles the rest, and SQLite works out of the box if you don't have a database.
+- 🏠 **Shared hosting or Docker, your pick.** Drop it on a regular cPanel or Plesk plan, or run one command on your VPS or homelab. Docker needs nothing else on the host: no PHP, no Node. Same app, same setup wizard.
 - 🔓 **Open protocols, open source.** WebDAV, CalDAV, and CardDAV, so the apps on your phone and desktop just work. Every feature is AGPL-licensed.
 
 > **WeGotWorkspace is in beta** and changes quickly. Found a bug or have an idea? [Open an issue](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml) or start a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions). We read all of them.
