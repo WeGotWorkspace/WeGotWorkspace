@@ -141,6 +141,8 @@ export function TextEditorFormatBar({
   const showComment = Boolean(commentControl);
   const hasContentBeforeComment = showLink || showHistory || showHeading || showMarks || showBlocks;
   const headingActive = state.headingLevel > 0;
+  // Shown on the trigger; the accessible name leads with it (WCAG 2.5.3).
+  const headingTriggerLabel = headingActive ? `H${state.headingLevel}` : "Text";
 
   if (
     !showHistory &&
@@ -183,7 +185,7 @@ export function TextEditorFormatBar({
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
-                aria-label="Heading level"
+                aria-label={`${headingTriggerLabel}, heading level`}
                 disabled={formattingDisabled}
                 aria-pressed={headingActive || undefined}
                 size="md"
@@ -194,7 +196,7 @@ export function TextEditorFormatBar({
                 )}
               >
                 <span className="text-editor-format-bar__heading-trigger-label">
-                  {headingActive ? `H${state.headingLevel}` : "Text"}
+                  {headingTriggerLabel}
                 </span>
                 <ChevronDown className="text-editor-format-bar__heading-trigger-chevron" />
               </Button>
