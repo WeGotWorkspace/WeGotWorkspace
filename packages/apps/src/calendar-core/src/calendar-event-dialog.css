@@ -14,7 +14,7 @@
 }
 
 .calendar-dialog-surface {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--scheme-ink);
   --workspace-accent-strong: color-mix(
     in oklch,
     var(--workspace-accent) 32%,
@@ -267,7 +267,7 @@
 }
 
 .calendar-dialog-surface .calendar-event-dialog__meet {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--scheme-ink);
   --card-title-icon-color: var(--workspace-accent);
 }
 

@@ -15,6 +15,10 @@
       body {
         background-color: #fff5e9;
       }
+      html[data-theme="dark"],
+      html[data-theme="dark"] body {
+        background-color: #141414;
+      }
     </style>
     <script>
       if (
@@ -23,6 +27,17 @@
       ) {
         document.documentElement.classList.add("pwa-standalone");
       }
+      // Same resolution as `src/lib/theme-preference.ts`, before first paint.
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("wgw.theme");
+        } catch (e) {}
+        var dark =
+          stored === "dark" ||
+          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.dataset.theme = dark ? "dark" : "light";
+      })();
     </script>
     <title>WeGotWorkspace</title>
     <link

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\Calendars\CalendarMeetLinkHref;
 use App\Services\VObject\VObjectScalar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\Property;
@@ -158,12 +159,16 @@ final class LocationConversionSupport
             if (! isset($vevent->URL)) {
                 $vevent->add('URL', $href);
             }
-            $vevent->add(self::CONFERENCE, $href, [
-                'VALUE' => 'URI',
-                'FEATURE' => 'VIDEO',
-                'LABEL' => self::CONFERENCE_LABEL,
-            ]);
-            $vevent->add(self::X_GOOGLE_CONFERENCE, $href);
+            // Only a WGW Meet link is a WGW Meet video call; any other link stays a
+            // plain URL, so an agenda or Zoom link is not relabelled (#1393).
+            if (self::isWgwMeetHref($href)) {
+                $vevent->add(self::CONFERENCE, $href, [
+                    'VALUE' => 'URI',
+                    'FEATURE' => 'VIDEO',
+                    'LABEL' => self::CONFERENCE_LABEL,
+                ]);
+                $vevent->add(self::X_GOOGLE_CONFERENCE, $href);
+            }
         }
 
         $attachments = $event['attachments'] ?? null;
@@ -184,6 +189,16 @@ final class LocationConversionSupport
                 }
                 $vevent->add('ATTACH', $href, $params);
             }
+        }
+    }
+
+    private static function isWgwMeetHref(string $href): bool
+    {
+        try {
+            return app(CalendarMeetLinkHref::class)->isWgwMeetHref($href);
+        } catch (\Throwable) {
+            // No application (plain unit tests): nothing is a workspace Meet link.
+            return false;
         }
     }
 

@@ -158,6 +158,7 @@ final class CalendarEventSetService
                     $ifMatch,
                     null,
                     $requirePrecondition,
+                    patchObject: true,
                 );
                 $updated[$eventId] = ['state' => (string) ($event['state'] ?? '')];
                 $this->collectTouchedUris($touchedUris, $event);
