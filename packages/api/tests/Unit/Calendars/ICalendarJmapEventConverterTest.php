@@ -212,7 +212,8 @@ final class ICalendarJmapEventConverterTest extends TestCase
         $this->assertStringContainsString('https://meet.example.com/room', $roundTrip);
     }
 
-    public function test_links_write_url_conference_and_x_google_but_never_microsoft(): void
+    /** #1393: a link that is not a WGW Meet link is written as URL only (Meet links: CalendarMeetConferenceLinkTest). */
+    public function test_non_meet_links_write_url_only(): void
     {
         $ics = $this->converter->icsFromEvent([
             '@type' => 'Event',
@@ -224,22 +225,15 @@ final class ICalendarJmapEventConverterTest extends TestCase
             'links' => [
                 'link1' => [
                     '@type' => 'Link',
-                    'href' => 'https://workspace.test/meet/guest?room=abcd-efgh-jklm',
+                    'href' => 'https://example.com/agenda',
                 ],
             ],
         ]);
         $defolded = str_replace("\r\n ", '', $ics);
 
-        $this->assertMatchesRegularExpression(
-            '/URL(?:;[^:\\r\\n]*)?:https:\\/\\/workspace\\.test\\/meet\\/guest\\?room=abcd-efgh-jklm/',
-            $defolded,
-        );
-        $this->assertStringContainsString('CONFERENCE;', $defolded);
-        $this->assertStringContainsString('VALUE=URI', $defolded);
-        $this->assertStringContainsString('FEATURE=VIDEO', $defolded);
-        $this->assertStringContainsString('WeGotWorkspace Meet', $defolded);
-        $this->assertStringContainsString('https://workspace.test/meet/guest?room=abcd-efgh-jklm', $defolded);
-        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://workspace.test/meet/guest?room=abcd-efgh-jklm', $defolded);
+        $this->assertMatchesRegularExpression('/URL(?:;[^:\\r\\n]*)?:https:\\/\\/example\\.com\\/agenda/', $defolded);
+        $this->assertStringNotContainsString('CONFERENCE', $defolded);
+        $this->assertStringNotContainsString('WeGotWorkspace Meet', $defolded);
         $this->assertStringNotContainsString('X-MICROSOFT-SKYPETEAMSMEETINGURL', $defolded);
     }
 
@@ -277,7 +271,8 @@ final class ICalendarJmapEventConverterTest extends TestCase
 
         $rewritten = str_replace("\r\n ", '', $this->converter->icsFromEvent($event));
         $this->assertStringNotContainsString('X-MICROSOFT-SKYPETEAMSMEETINGURL', $rewritten);
-        $this->assertStringContainsString('X-GOOGLE-CONFERENCE:https://teams.microsoft.com/l/meetup-join/1', $rewritten);
+        $this->assertStringContainsString('URL;VALUE=URI:https://teams.microsoft.com/l/meetup-join/1', $rewritten);
+        $this->assertStringNotContainsString('CONFERENCE', $rewritten);
     }
 
     public function test_instance_partstat_override_round_trips(): void
