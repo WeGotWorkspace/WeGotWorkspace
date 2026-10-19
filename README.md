@@ -7,7 +7,7 @@
   </picture>
 </p>
 
-<p align="center"><b>Your own office suite: files, mail, calendar, and more, on your own server.</b></p>
+<p align="center"><b>Your own office suite: docs, files, calendar, meet, and more, on your own server.</b></p>
 
 <p align="center">
   <a href="https://github.com/WeGotWorkspace/wegotworkspace/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/WeGotWorkspace/wegotworkspace?label=release&color=2ea043"></a>
@@ -27,7 +27,7 @@
 <p><img src=".github/assets/screenshot-home.webp" alt="WeGotWorkspace home screen" width="100%"></p>
 -->
 
-Meet **WeGotWorkspace**, an open-source, self-hosted office platform. Your files, mail, calendars, contacts, tasks, notes, and video calls live in one place, on infrastructure you control. It is built on open protocols (WebDAV, CalDAV, CardDAV), so the apps on your phone and desktop just work with it.
+Meet **WeGotWorkspace**, an open-source, self-hosted office platform. Your docs, notes, files, calendars, contacts, tasks, and video calls live in one place, on infrastructure you control. It is built on open protocols (WebDAV, CalDAV, CardDAV), so the apps on your phone and desktop just work with it.
 
 > **WeGotWorkspace is in beta** and changes quickly. Found a bug or have an idea? [Open an issue](https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml) or start a [Discussion](https://github.com/WeGotWorkspace/wegotworkspace/discussions). We read all of them.
 
@@ -58,23 +58,22 @@ Your settings and data are kept. See the install guides for backups and details.
 
 ## 🌟 Features
 
+- **Docs.** Write documents together in real time. Suggest edits with track changes, then accept or reject them.
+- **Notes.** Capture ideas in a rich text editor and edit them together with your team, live.
 - **Files.** Upload, organize, preview, and share files. Mount them on your computer over WebDAV.
-- **Mail.** Read and send email from the same workspace as everything else.
-- **Calendar.** Plan your week and sync with your phone over CalDAV.
+- **Calendar.** Plan your week, share calendars with others, and send and answer meeting invites. Syncs with your phone over CalDAV.
+- **Meet.** Video calls in the browser with chat built in, linked straight from calendar events.
 - **Contacts.** Keep your contacts in one place, synced over CardDAV.
 - **Tasks.** Keep track of to-dos alongside your calendar.
-- **Notes and Docs.** Write notes and documents in a rich text editor.
-- **Meet.** Video calls in the browser, linked straight from calendar events.
 - **Works offline.** The web app keeps working when the connection drops and syncs when it returns.
 - **Bring your AI assistant.** Connect Claude, ChatGPT, or Mistral over MCP so they can work with your files and calendar as you. Off by default; [read how it works](docs/mcp-connect.md).
-- **Make it yours.** Set your own logo and colors.
 
 ## 📸 Screenshots
 
 <!-- TODO: add one screenshot per app, e.g.
 <p><img src=".github/assets/screenshot-files.webp" alt="Files" width="100%"></p>
 <p><img src=".github/assets/screenshot-calendar.webp" alt="Calendar" width="100%"></p>
-<p><img src=".github/assets/screenshot-mail.webp" alt="Mail" width="100%"></p>
+<p><img src=".github/assets/screenshot-docs.webp" alt="Docs" width="100%"></p>
 <p><img src=".github/assets/screenshot-meet.webp" alt="Meet" width="100%"></p>
 -->
 
