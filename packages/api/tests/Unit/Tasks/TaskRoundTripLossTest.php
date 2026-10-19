@@ -100,6 +100,18 @@ final class TaskRoundTripLossTest extends TestCase
         $this->assertStringContainsString("UID:al1\r\n", $out);
     }
 
+    /** RT-T6 (fixed by #1408): a new DISPLAY alarm is written with the required DESCRIPTION. */
+    public function test_rt_t6_new_display_alarm_has_description(): void
+    {
+        $task = $this->converter->tasksFromIcs($this->todo(''), 't1.ics', 'inbox')[0];
+        $task['alerts'] = ['a1' => ['@type' => 'Alert', 'action' => 'display', 'trigger' => ['@type' => 'OffsetTrigger', 'offset' => '-PT1H', 'relativeTo' => 'end']]];
+
+        $out = $this->converter->icsFromTask($task);
+
+        $this->assertStringContainsString("ACTION:DISPLAY\r\n", $out);
+        $this->assertStringContainsString("DESCRIPTION:Reminder\r\n", $out);
+    }
+
     /** RT-T7: the tasks wire shape keeps the pre-RFC 8984 names for progress. */
     public function test_rt_t7_progress_uses_pre_rfc_wire_names(): void
     {
