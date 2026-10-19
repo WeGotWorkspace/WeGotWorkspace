@@ -151,11 +151,19 @@ final class ConversionPropertyMethods
 
     public static function prefFromProperty(Property $property): ?int
     {
-        if (! isset($property['PREF'])) {
-            return null;
+        if (isset($property['PREF'])) {
+            return (int) VObjectScalar::string($property['PREF']);
+        }
+        // vCard 3.0 marks the preferred entry with TYPE=pref (CT-6, #1424).
+        if (isset($property['TYPE'])) {
+            foreach ($property['TYPE']->getParts() as $type) {
+                if (strtolower(trim((string) $type)) === 'pref') {
+                    return 1;
+                }
+            }
         }
 
-        return (int) VObjectScalar::string($property['PREF']);
+        return null;
     }
 
     /**
