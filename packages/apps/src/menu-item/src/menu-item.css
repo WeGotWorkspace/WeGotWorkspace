@@ -164,7 +164,7 @@
 }
 
 .menu-item__description {
-  @apply mt-0.5 block truncate text-xs opacity-75;
+  @apply mt-0.5 block truncate text-xs opacity-90;
 }
 
 /* ----- Badge ----- */

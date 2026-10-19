@@ -138,7 +138,7 @@
 
 .list-item__title[data-empty="true"],
 .list-item__body[data-empty="true"] {
-  color: color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 72%, transparent);
 }
 
 .list-item__body {
