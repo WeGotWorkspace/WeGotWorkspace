@@ -23,6 +23,10 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import { resolveDocsDriveLabel, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
 import { driveLabels } from "@/drive-core/src/drive-labels";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
+import {
+  guardOfflineCacheStep,
+  OFFLINE_CACHE_TIMEOUT_MS,
+} from "@/lib/offline/core/offline-cache-guard";
 import { syncDocsBodiesFromListingResults } from "@/lib/offline/docs/docs-body-sync";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
 import {
@@ -58,6 +62,8 @@ export type UseDocsHomeListOptions = {
    * chips to Docs SST labels (e.g. "Administrators" instead of "administrators").
    */
   groupRoots?: readonly DocsHomeGroupRoot[];
+  /** Max wait for one offline cache read/write before loading continues without it. */
+  cacheTimeoutMs?: number;
 };
 
 export type UseDocsHomeListResult = {
@@ -188,6 +194,7 @@ export function useDocsHomeList({
   offlineUsername = null,
   enabled = true,
   groupRoots,
+  cacheTimeoutMs = OFFLINE_CACHE_TIMEOUT_MS,
 }: UseDocsHomeListOptions): UseDocsHomeListResult {
   const [results, setResults] = useState<WgwUnifiedSearchResult[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -226,18 +233,26 @@ export function useDocsHomeList({
   const persistListingCache = useCallback(
     async (nextResults: WgwUnifiedSearchResult[], nextHasMore: boolean) => {
       if (!offlineUsername) return;
-      await writeDocsListingToCache(offlineUsername, filters, {
-        results: nextResults,
-        hasMore: nextHasMore,
-      });
+      await guardOfflineCacheStep(
+        writeDocsListingToCache(offlineUsername, filters, {
+          results: nextResults,
+          hasMore: nextHasMore,
+        }),
+        undefined,
+        cacheTimeoutMs,
+      );
     },
-    [filters, offlineUsername],
+    [cacheTimeoutMs, filters, offlineUsername],
   );
 
   const applyCachedListing = useCallback(
     async (online: boolean): Promise<boolean> => {
       if (!offlineUsername) return false;
-      const cached = await readDocsListingFromCache(offlineUsername, filters);
+      const cached = await guardOfflineCacheStep(
+        readDocsListingFromCache(offlineUsername, filters),
+        null,
+        cacheTimeoutMs,
+      );
       if (!cached || cached.results.length === 0) return false;
       setResults(cached.results);
       setHasMore(cached.hasMore);
@@ -245,7 +260,7 @@ export function useDocsHomeList({
       setIsOfflineListing(!online);
       return true;
     },
-    [filters, offlineUsername],
+    [cacheTimeoutMs, filters, offlineUsername],
   );
 
   const fetchLiveListing = useCallback(
