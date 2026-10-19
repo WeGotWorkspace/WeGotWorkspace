@@ -8,6 +8,7 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarObject;
 use App\Services\Calendars\Conversion\CalendarConversionSupport;
 use App\Services\Calendars\Conversion\ICalendarJmapEventConverter;
+use App\Services\VObject\ICalendarInPlacePatcher;
 use Illuminate\Support\Str;
 
 final class CalendarEventMapper
@@ -90,9 +91,31 @@ final class CalendarEventMapper
     }
 
     /**
+     * With a baseline (the stored event as read, normalized like the payload),
+     * the edit is applied to the stored iCalendar in place instead of rebuilding
+     * it, so data the JMAP model cannot hold survives (#1392).
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>|null  $baselinePayload
+     */
+    public function updateIcs(string $existingIcs, array $payload, ?string $targetVeventUid, ?array $baselinePayload = null): string
+    {
+        $generated = $this->renderUpdate($existingIcs, $payload, $targetVeventUid);
+        if ($baselinePayload === null) {
+            return $generated;
+        }
+
+        return ICalendarInPlacePatcher::patch(
+            $existingIcs,
+            $this->renderUpdate($existingIcs, $baselinePayload, $targetVeventUid),
+            $generated,
+        );
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
-    public function updateIcs(string $existingIcs, array $payload, ?string $targetVeventUid): string
+    private function renderUpdate(string $existingIcs, array $payload, ?string $targetVeventUid): string
     {
         if ($targetVeventUid !== null) {
             return $this->converter->updateVEventInIcs($existingIcs, $payload, $targetVeventUid);

@@ -20,6 +20,10 @@
         "type": "string",
         "enum": ["busy", "free", "tentative"]
       },
+      "color": {
+        "type": "string",
+        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
+      },
       "privacy": {
         "type": "string",
         "enum": ["public", "private", "secret"]
@@ -231,6 +235,10 @@
         "type": "string",
         "enum": ["busy", "free", "tentative"]
       },
+      "color": {
+        "type": "string",
+        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
+      },
       "privacy": {
         "type": "string",
         "enum": ["public", "private", "secret"]
@@ -351,6 +359,10 @@
       "freeBusyStatus": {
         "type": "string",
         "enum": ["busy", "free", "tentative"]
+      },
+      "color": {
+        "type": "string",
+        "description": "RFC 8984 color: a CSS color name or #RRGGBB. Maps to RFC 7986 COLOR."
       },
       "privacy": {
         "type": "string",

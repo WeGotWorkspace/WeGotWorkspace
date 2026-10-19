@@ -18,6 +18,7 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Tasks\Conversion\ConversionSupport;
 use App\Services\Tasks\Conversion\IcsJmapTaskConverter;
+use App\Services\VObject\ICalendarInPlacePatcher;
 use App\Services\VObject\VObjectPayloadGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -218,9 +219,7 @@ final class TaskRepository
         $taskPayload['uid'] = $existingTask['uid'];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-        $ics = $located['vtodoUid'] !== null
-            ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $located['vtodoUid'])
-            : $this->mapper->toIcs($taskPayload);
+        $ics = $this->updatedIcs($raw, $taskPayload, $existingTask, $located['vtodoUid']);
 
         $this->calBackend()->updateCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
@@ -286,9 +285,7 @@ final class TaskRepository
         $taskPayload['uid'] = $existingTask['uid'];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-        $ics = $located['vtodoUid'] !== null
-            ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $located['vtodoUid'])
-            : $this->mapper->toIcs($taskPayload);
+        $ics = $this->updatedIcs($raw, $taskPayload, $existingTask, $located['vtodoUid']);
 
         $this->calBackend()->updateCalendarObject(
             [(int) $instance->calendarid, (int) $instance->id],
@@ -633,5 +630,62 @@ final class TaskRepository
     private function calBackend(): CalPDO
     {
         return new CalPDO(DB::connection('wgw')->getPdo());
+    }
+
+    /**
+     * Applies the edit to the stored iCalendar in place, so data the task model
+     * cannot hold survives (#1392). The baseline is the stored task as read,
+     * normalized the same way as the payload.
+     *
+     * @param  array<string, mixed>  $taskPayload
+     * @param  array<string, mixed>  $existingTask
+     */
+    private function updatedIcs(string $raw, array $taskPayload, array $existingTask, ?string $vtodoUid): string
+    {
+        $baseline = $this->normalizeTaskPayload($existingTask, $existingTask);
+        $baseline['id'] = $taskPayload['id'];
+        $baseline['taskListId'] = $taskPayload['taskListId'];
+        $baseline['uid'] = $taskPayload['uid'];
+        $taskPayload = self::withSequenceBump($baseline, $taskPayload);
+
+        return ICalendarInPlacePatcher::patch(
+            $raw,
+            $this->renderTaskUpdate($raw, $baseline, $vtodoUid),
+            $this->renderTaskUpdate($raw, $taskPayload, $vtodoUid),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $taskPayload
+     */
+    private function renderTaskUpdate(string $raw, array $taskPayload, ?string $vtodoUid): string
+    {
+        return $vtodoUid !== null
+            ? $this->mapper->mergeIntoIcs($raw, $taskPayload, $vtodoUid)
+            : $this->mapper->toIcs($taskPayload);
+    }
+
+    /**
+     * RFC 5545 §3.8.7.4: a significant change (start, due, duration or
+     * recurrence) increments SEQUENCE, so clients see the task changed (RT-T2, #1403).
+     *
+     * @param  array<string, mixed>  $baseline
+     * @param  array<string, mixed>  $taskPayload
+     * @return array<string, mixed>
+     */
+    private static function withSequenceBump(array $baseline, array $taskPayload): array
+    {
+        if (array_key_exists('sequence', $taskPayload) && ($taskPayload['sequence'] ?? null) !== ($baseline['sequence'] ?? null)) {
+            return $taskPayload;
+        }
+        foreach (['start', 'due', 'estimatedDuration', 'duration', 'timeZone', 'showWithoutTime', 'recurrenceRules', 'excludedRecurrenceDates', 'recurrenceOverrides'] as $field) {
+            if (($baseline[$field] ?? null) !== ($taskPayload[$field] ?? null)) {
+                $taskPayload['sequence'] = (is_int($baseline['sequence'] ?? null) ? $baseline['sequence'] : 0) + 1;
+
+                return $taskPayload;
+            }
+        }
+
+        return $taskPayload;
     }
 }

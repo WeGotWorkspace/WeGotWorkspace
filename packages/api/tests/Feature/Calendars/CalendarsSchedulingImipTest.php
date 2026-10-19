@@ -418,15 +418,15 @@ final class CalendarsSchedulingImipTest extends WgwDatabaseTestCase
 
         $this->jmapAs('bob', [[
             'CalendarEvent/set',
+            // RFC 8620: a PatchObject pointer adds one participant; sending a
+            // `participants` map would replace the whole map (#1401).
             ['accountId' => 'bob', 'update' => [$eventId => [
-                'participants' => [
-                    'ext51' => [
-                        '@type' => 'Participant',
-                        'email' => 'guest51@elsewhere.test',
-                        'roles' => ['attendee'],
-                        'expectReply' => true,
-                        'participationStatus' => 'needs-action',
-                    ],
+                'participants/ext51' => [
+                    '@type' => 'Participant',
+                    'email' => 'guest51@elsewhere.test',
+                    'roles' => ['attendee'],
+                    'expectReply' => true,
+                    'participationStatus' => 'needs-action',
                 ],
             ]]],
             'c0',
