@@ -307,7 +307,7 @@ final class JsCalendarRoundTripLossTest extends TestCase
     }
 
     /**
-     * Mirrors persistEventMutation(deepMerge: true) for a single-VEVENT object,
+     * Mirrors JMAP CalendarEvent/set (persistEventMutation with a PatchObject) for a single-VEVENT object,
      * including the in-place patch (#1392).
      *
      * @param  array<string, mixed>  $patch
@@ -316,7 +316,7 @@ final class JsCalendarRoundTripLossTest extends TestCase
     {
         $existing = $this->converter->eventFromIcs($ics);
         $merged = CalendarConversionSupport::normalizeEventMapKeys(
-            CalendarConversionSupport::deepMergeEventPatch($existing, $patch),
+            CalendarConversionSupport::applyEventPatchObject($existing, $patch),
             $existing,
         );
         $baseline = CalendarConversionSupport::normalizeEventMapKeys($existing, $existing);

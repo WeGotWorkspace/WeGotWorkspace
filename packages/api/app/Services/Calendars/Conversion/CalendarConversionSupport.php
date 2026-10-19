@@ -160,9 +160,41 @@ final class CalendarConversionSupport
      */
     public static function deepMergeEventPatch(array $existing, array $patch): array
     {
-        $merged = JmapPatchObject::apply($existing, $patch);
+        $merged = $existing;
+        foreach ($patch as $key => $value) {
+            if ($key === 'id' || $key === '@type') {
+                continue;
+            }
+            if (is_array($value) && isset($merged[$key]) && is_array($merged[$key]) && self::isAssociativeMap($value) && self::isAssociativeMap($merged[$key])) {
+                // recurrenceOverrides is a full replacement (RFC 8620 property set), not a
+                // per-key merge — otherwise this-and-future splits cannot drop future exceptions.
+                if ($key === 'recurrenceOverrides') {
+                    $merged[$key] = $value;
+                } else {
+                    $merged[$key] = array_replace($merged[$key], $value);
+                }
+            } else {
+                $merged[$key] = $value;
+            }
+        }
 
-        return self::keepEndTimeZoneLocation($existing, $merged);
+        return $merged;
+    }
+
+    /**
+     * JMAP CalendarEvent/set update: an RFC 8620 PatchObject. A property in the
+     * patch replaces the stored one, so removing an alert or participant sticks
+     * (#1401). REST, MCP and internal callers keep deepMergeEventPatch, which
+     * merges maps: a caller that sends one new participant must not cancel the
+     * others.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public static function applyEventPatchObject(array $existing, array $patch): array
+    {
+        return self::keepEndTimeZoneLocation($existing, JmapPatchObject::apply($existing, $patch));
     }
 
     /**

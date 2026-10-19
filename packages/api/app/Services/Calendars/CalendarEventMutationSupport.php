@@ -237,6 +237,7 @@ final class CalendarEventMutationSupport
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
+        bool $patchObject = false,
     ): array {
         return $this->persistEventMutation(
             $username,
@@ -246,6 +247,7 @@ final class CalendarEventMutationSupport
             $ifMatch,
             $ifUnmodifiedSince,
             $requirePrecondition,
+            $patchObject,
         );
     }
 
@@ -348,6 +350,7 @@ final class CalendarEventMutationSupport
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
+        bool $patchObject = false,
     ): array {
         return DB::connection('wgw')->transaction(function () use (
             $username,
@@ -357,6 +360,7 @@ final class CalendarEventMutationSupport
             $ifMatch,
             $ifUnmodifiedSince,
             $requirePrecondition,
+            $patchObject,
         ): array {
             $located = $this->findOwnedEvent($username, $eventId, lock: true);
             if ($located === null) {
@@ -380,7 +384,9 @@ final class CalendarEventMutationSupport
                 $username,
                 $deepMerge
                     ? $this->normalizeEventPayload(
-                        CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
+                        $patchObject
+                            ? CalendarConversionSupport::applyEventPatchObject($existingEvent, $payload)
+                            : CalendarConversionSupport::deepMergeEventPatch($existingEvent, $payload),
                         $existingEvent,
                     )
                     : $this->normalizeEventPayload($payload, $existingEvent),

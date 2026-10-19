@@ -278,6 +278,7 @@ final class CalendarEventRepository
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
+        bool $patchObject = false,
     ): array {
         return $this->mutations->patchWithPrecondition(
             $username,
@@ -286,6 +287,7 @@ final class CalendarEventRepository
             $ifMatch,
             $ifUnmodifiedSince,
             $requirePrecondition,
+            $patchObject,
         );
     }
 
