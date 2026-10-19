@@ -172,6 +172,16 @@ export function useDocsHomeListingLoad({
     const controller = new AbortController();
     let cancelled = false;
 
+    const hadRows = shownKeyRef.current === filtersKey && resultsRef.current.length > 0;
+    if (!hadRows) {
+      // Rows from other filters must not stand in for this listing.
+      shownKeyRef.current = null;
+      setResults((previous) => (previous.length === 0 ? previous : []));
+      setHasMore(false);
+      setRefreshing(false);
+      setLoading(true);
+    }
+
     void (async () => {
       setLoadingMore(false);
       setError(null);
@@ -179,8 +189,7 @@ export function useDocsHomeListingLoad({
       const online = getConnectivitySnapshot();
       const hadCache = await applyCachedListing(online);
       if (cancelled) return;
-      const hasRows =
-        hadCache || (shownKeyRef.current === filtersKey && resultsRef.current.length > 0);
+      const hasRows = hadCache || hadRows;
 
       if (!online) {
         if (!hasRows) {
@@ -197,13 +206,7 @@ export function useDocsHomeListingLoad({
         setLoading(false);
         setRefreshing(true);
       } else {
-        // Rows from other filters must not stand in for this listing.
-        shownKeyRef.current = null;
-        setResults([]);
-        setHasMore(false);
         setIsOfflineListing(false);
-        setRefreshing(false);
-        setLoading(true);
       }
 
       const liveLoaded = await fetchLiveListing(controller.signal);
