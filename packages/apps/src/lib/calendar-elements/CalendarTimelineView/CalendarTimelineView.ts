@@ -79,6 +79,7 @@ import {
   movedOccurrenceInEventZone,
 } from "../utils/event-display-time.js";
 import { renderPlusIcon } from "../icons/PlusIcon.js";
+import { dayHeaderAriaLabel, monthDayHeaderAriaLabel } from "./day-header-aria-label.js";
 import componentStyle from "./CalendarTimelineView.css?inline";
 
 /** Placeholder title on the drag-to-create event-card (matches calendar-labels `newEvent`). */
@@ -1150,9 +1151,7 @@ export class CalendarTimelineView extends CalendarViewBase {
       dayDate,
     );
     const dayNumber = new Intl.NumberFormat(this.#locale).format(day.day);
-    const fullDateLabel = new Intl.DateTimeFormat(this.#locale, { dateStyle: "full" }).format(
-      dayDate,
-    );
+    const ariaLabel = dayHeaderAriaLabel(this.#locale, dayDate, `${weekdayLabel} ${dayNumber}`);
     // State variants travel as extra part names, mirroring the CSS the parts map to.
     const headerParts = ["day-header", isWeekend ? "day-header-weekend" : ""]
       .filter(Boolean)
@@ -1163,7 +1162,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           type="button"
           class="timeline-day-header-button"
           part="day-header-button"
-          .ariaLabel=${fullDateLabel}
+          .ariaLabel=${ariaLabel}
           .ariaCurrent=${isToday ? "date" : null}
           @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, cellIndex, clickEvent)}
         >
@@ -1462,7 +1461,7 @@ export class CalendarTimelineView extends CalendarViewBase {
           type="button"
           class="timeline-day-header-button"
           part="day-header-button"
-          .ariaLabel=${fullDateLabel}
+          .ariaLabel=${monthDayHeaderAriaLabel(this.#locale, dayDate)}
           .ariaCurrent=${isToday ? "date" : null}
           @click=${(clickEvent: MouseEvent) =>
             this.#handleMonthDayHeaderClick(cellIndex, day, clickEvent)}
