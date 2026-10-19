@@ -49,19 +49,6 @@
   --sidebar-badge-fg: var(--workspace-accent-foreground);
 }
 
-/** App switcher lockup: mail.svg literals (red tile / soft flap). */
-.mail-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-icon-surface);
-}
-
-.mail-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
 .mail-workspace .mail-state-accent {
   color: var(--mail-state-accent);
 }

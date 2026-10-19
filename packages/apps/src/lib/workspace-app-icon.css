@@ -16,24 +16,20 @@
 }
 
 /**
- * Switch trigger lockup: `--app-sidebar-color` background + `--workspace-accent` artwork.
- * Artwork paints `--app-icon-layer-*` (with per-app fallbacks). This host maps
- * those layers from `--workspace-icon-*` so invert still follows the pair.
+ * Switch trigger lockup: same colors as the home grid tile. The artwork paints
+ * `--app-icon-layer-*` with per-app fallbacks; `initial` drops any inherited
+ * pair so those fallbacks (the launcher colors) always win.
  */
 .workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--app-sidebar-color, var(--app-switch-label-color, currentColor));
-  --app-switch-icon-fg: var(--workspace-accent, currentColor);
   @apply block overflow-hidden;
   border-radius: calc(100% / 6);
-  background-color: var(--app-switch-icon-bg);
+  background-color: var(--app-switch-icon-bg, transparent);
 }
 
 .workspace-app-icon--switch-trigger svg {
   @apply block size-full;
-  --app-icon-layer-surface: var(--workspace-icon-surface);
-  --app-icon-layer-foreground: var(--workspace-icon-foreground);
-  --workspace-icon-surface: transparent;
-  --workspace-icon-foreground: var(--app-switch-icon-fg);
+  --app-icon-layer-surface: initial;
+  --app-icon-layer-foreground: initial;
 }
 
 /**
@@ -41,13 +37,13 @@
  * `home.svg` is the in-app mark (dark + soft fallbacks). The `/` install icons
  * use the raster PNG; the favicon uses `home-pwa.svg` and is not inlined here.
  * This override clears the in-app tile through the shared transparent brand
- * fill and pins the mark so it does not pick up `--app-switch-icon-fg`.
+ * fill and pins the mark to the workspace ink.
  */
 .workspace-app-icon--switch-trigger-home {
   --app-switch-icon-bg: var(--workspace-surface);
 }
 
 .workspace-app-icon--switch-trigger.workspace-app-icon--switch-trigger-home svg {
-  --workspace-icon-foreground: var(--workspace-foreground);
+  --app-icon-layer-surface: transparent;
   --app-icon-layer-foreground: var(--workspace-foreground);
 }

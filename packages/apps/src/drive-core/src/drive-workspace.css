@@ -57,25 +57,6 @@
   --notification-inbox-badge-fg: var(--workspace-accent-foreground);
 }
 
-/**
- * App switcher lockup: dark tile, brat folder.
- * Pin both the lockup variables and `--workspace-icon-*` so artwork stays distinct from
- * any shared switch-trigger remaps (do not recolor the folder mark).
- */
-.drive-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-icon-surface);
-  --app-switch-icon-fg: var(--workspace-icon-foreground);
-  background-color: var(--workspace-icon-surface);
-}
-
-.drive-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-brat);
-}
-
 .drive-workspace .drive-main-pane {
   @apply flex min-h-0 flex-1 flex-col min-w-0 relative w-full;
   background-color: var(--workspace-surface);

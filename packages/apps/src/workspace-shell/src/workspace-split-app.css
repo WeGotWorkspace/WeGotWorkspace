@@ -7,8 +7,8 @@
  *
  * Sidebar chrome contract (see also `app-sidebar.css` lockup derivation):
  * - `--app-sidebar-bg` — sidebar surface
- * - `--app-sidebar-color` — sidebar foreground (nav text, switch label, inverted icon bg)
- * - `--workspace-accent` — product accent (inverted switch icon glyph, badges, CTAs)
+ * - `--app-sidebar-color` — sidebar foreground (nav text, switch label)
+ * - `--workspace-accent` — product accent (badges, CTAs)
  *
  * Main column width (`--workspace-main-content-max-width`) is unified here so pane
  * content and {@link Card} stacks share the same measure across products.

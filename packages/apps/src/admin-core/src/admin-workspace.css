@@ -38,18 +38,6 @@
   --workspace-icon-foreground: var(--color-we-got-dark);
 }
 
-.admin-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-icon-surface);
-}
-
-.admin-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
 .admin-workspace .app-sidebar__footer {
   --workspace-user-footer-text-color: var(--workspace-foreground);
   --workspace-user-footer-subtitle-color: color-mix(

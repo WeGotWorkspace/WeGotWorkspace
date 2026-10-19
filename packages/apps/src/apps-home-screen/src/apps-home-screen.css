@@ -28,59 +28,12 @@ html:has(.apps-home-screen) {
 }
 
 /**
- * Home tiles always map `--workspace-icon-*` onto `--app-icon-layer-*`.
- * Pin each `data-app-id` below; an unpinned tile (e.g. reminders) inherits
- * the `:root` pair and will not use the SVG fallbacks.
+ * Home tiles show the artwork's own colors (the per-app fallbacks in each SVG),
+ * same as the sidebar switch icon. `initial` drops any inherited layer pair.
  */
 .apps-home-screen__tile-icon .workspace-app-icon--tile {
-  --app-icon-layer-surface: var(--workspace-icon-surface);
-  --app-icon-layer-foreground: var(--workspace-icon-foreground);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="admin"],
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="settings"] {
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-dark);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="calendar"] {
-  --workspace-icon-surface: var(--color-we-got-prince);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="contacts"] {
-  --workspace-icon-surface: var(--color-we-got-sky);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="docs"] {
-  --workspace-icon-surface: var(--color-we-got-blue);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="drive"] {
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-brat);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="mail"] {
-  --workspace-icon-surface: var(--color-we-got-red);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="meet"] {
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-sand);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="notes"] {
-  --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
-.apps-home-screen__tile-icon .workspace-app-icon--tile[data-app-id="tasks"] {
-  --workspace-icon-surface: var(--color-we-got-pink);
-  --workspace-icon-foreground: var(--color-we-got-soft);
+  --app-icon-layer-surface: initial;
+  --app-icon-layer-foreground: initial;
 }
 
 .apps-home-screen__label {
