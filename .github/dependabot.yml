@@ -102,8 +102,8 @@ updates:
         versions:
           - ">=25.0.0"
       # 1.169 pulls seroval-plugins 1.6.7, which imports isStream. The seroval
-      # 1.5.3 override does not export that. 1.170 also treats a Node process
-      # as a server and skips client navigate(). Revisit the seroval 1.5.3
+      # 1.6.3 override does not export that. 1.170 also treats a Node process
+      # as a server and skips client navigate(). Revisit the seroval 1.6.3
       # override in the same PR that lifts this hold.
       - dependency-name: "@tanstack/react-router"
         versions:
