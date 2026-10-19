@@ -2,7 +2,7 @@
 
 How product intent and contributions are decided for WeGotWorkspace.
 
-**External intake:** Discussions and bug reports. Goals and delivery issues are maintainer-filed. External code PRs are closed until we open contributions after the beta.
+**External intake:** Discussions, bug reports, and code pull requests. Goals and delivery issues are maintainer-filed. See [CONTRIBUTING.md](CONTRIBUTING.md#pull-requests).
 
 ## Three surfaces
 
@@ -34,7 +34,7 @@ Goals live on the **Product roadmap** Project. Engineering epics, tasks, bugs, a
 
 | Actor | May file |
 |-------|----------|
-| External contributors | Discussions; Bug reports; DAST/security findings |
+| External contributors | Discussions; Bug reports; DAST/security findings; pull requests |
 | Maintainers (`OWNER` / `MEMBER` / `COLLABORATOR`) | All templates (Goal, Epic, Task, Chore, Bug, DAST) |
 
 Blank issues are disabled. A workflow closes Goal/Epic/Task/Chore issues opened by non-maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -56,6 +56,6 @@ See [docs/product/README.md](docs/product/README.md).
 
 ## Community
 
-Discussions and bugs are open; no external Goal, Epic, Task, or Chore filing; no external code PRs until we open contributions after the beta. Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
+Discussions, bugs, and code pull requests are open; no external Goal, Epic, Task, or Chore filing. Maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
 Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Commercial terms: [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
