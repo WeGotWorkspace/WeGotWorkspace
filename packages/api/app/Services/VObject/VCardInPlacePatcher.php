@@ -42,6 +42,12 @@ final class VCardInPlacePatcher
                 continue;
             }
 
+            if (str_ends_with($key, '|') && isset($storedEntries[$key], $generatedEntries[$key])) {
+                self::patchByValue($storedCard, $storedEntries[$key], $generatedEntries[$key]);
+
+                continue;
+            }
+
             $storedEntry = $storedEntries[$key] ?? (isset($baselineEntries[$key])
                 ? self::matchWithoutPropId($storedEntries, $baselineEntries[$key])
                 : null);
@@ -104,6 +110,36 @@ final class VCardInPlacePatcher
     }
 
     /**
+     * Lines without a PROP-ID (group members, repeated vendor lines) are matched
+     * one by one on their value, case-insensitively. A generated line whose value
+     * is already stored keeps the stored line (an Apple member UID stays
+     * uppercase); new values are added and missing ones removed (#1457).
+     *
+     * @param  array{main: list<Property>, satellites: list<Property>}  $stored
+     * @param  array{main: list<Property>, satellites: list<Property>}  $generated
+     */
+    private static function patchByValue(VCard $card, array $stored, array $generated): void
+    {
+        $remaining = $stored['main'];
+        foreach ($generated['main'] as $property) {
+            $value = strtolower(trim($property->getRawMimeDirValue()));
+            foreach ($remaining as $index => $candidate) {
+                if (strtolower(trim($candidate->getRawMimeDirValue())) === $value) {
+                    unset($remaining[$index]);
+
+                    continue 2;
+                }
+            }
+            $copy = clone $property;
+            unset($copy['GROUP']);
+            $card->add($copy);
+        }
+        foreach ($remaining as $property) {
+            $card->remove($property);
+        }
+    }
+
+    /**
      * A stored card without PROP-IDs (written before PROP-IDs were added) is
      * matched on content, so a changed entry replaces it instead of duplicating.
      *
@@ -116,22 +152,25 @@ final class VCardInPlacePatcher
         // Labels are left out: the writer adds standard ones (Home, Work) that
         // the stored line never had.
         // Without PROP-IDs, all stored lines of a name share one entry, so each
-        // line is compared on its own.
-        $wanted = self::renderEntry($baselineEntry, false, false);
-        $name = $baselineEntry['main'][0]->name ?? '';
+        // line is compared on its own, by name and value: the writer normalizes
+        // parameters (it drops TYPE=INTERNET, adds standard labels), so the
+        // rendered lines rarely match the stored ones.
+        $wanted = $baselineEntry['main'][0] ?? null;
+        if (! $wanted instanceof Property) {
+            return null;
+        }
+        $wantedValue = strtolower(trim($wanted->getRawMimeDirValue()));
         foreach ($storedEntries as $entry) {
             foreach ($entry['main'] as $property) {
-                if ($property->name !== $name) {
+                if ($property->name !== $wanted->name || strtolower(trim($property->getRawMimeDirValue())) !== $wantedValue) {
                     continue;
                 }
-                $single = ['main' => [$property], 'satellites' => array_values(array_filter(
+
+                return ['main' => [$property], 'satellites' => array_values(array_filter(
                     $entry['satellites'],
                     static fn (Property $satellite): bool => $property->group !== null && $property->group !== ''
                         && strcasecmp((string) $satellite->group, (string) $property->group) === 0,
                 ))];
-                if (self::renderEntry($single, false, false) === $wanted) {
-                    return $single;
-                }
             }
         }
 
