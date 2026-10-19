@@ -76,6 +76,22 @@ final class CalendarEventInPlaceUpdateTest extends WgwDatabaseTestCase
         $this->assertSame('https://example.com/agenda', $event['links']['link1']['href'] ?? null);
     }
 
+    public function test_pointer_patch_removes_the_alert_and_keeps_the_rest(): void
+    {
+        $this->updateEvent(['alerts/alert1' => null]);
+
+        $stored = $this->storedIcs();
+        $this->assertStringNotContainsString('BEGIN:VALARM', $stored);
+        $this->assertStringContainsString("URL;VALUE=URI:https://example.com/agenda\r\n", $stored);
+    }
+
+    public function test_pointer_into_missing_object_is_reported_as_invalid_patch(): void
+    {
+        $response = $this->jmap([['CalendarEvent/set', ['accountId' => 'bob', 'update' => [self::EVENT_ID => ['participants/nobody/name' => 'X']]], 's']]);
+
+        $this->assertSame('invalidPatch', $response->json('methodResponses.0.1.notUpdated.'.self::EVENT_ID.'.type'));
+    }
+
     /**
      * @param  array<string, mixed>  $patch
      */

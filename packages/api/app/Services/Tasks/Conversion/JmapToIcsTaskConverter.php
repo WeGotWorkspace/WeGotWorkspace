@@ -121,10 +121,6 @@ final class JmapToIcsTaskConverter
             'UID' => (string) ($task['uid'] ?? ''),
         ];
 
-        if ($recurrenceId !== null) {
-            $properties['RECURRENCE-ID'] = ICalendarDateTime::toIcs($recurrenceId);
-        }
-
         if (isset($task['title']) && is_string($task['title']) && trim($task['title']) !== '') {
             $properties['SUMMARY'] = trim($task['title']);
         }
@@ -146,6 +142,9 @@ final class JmapToIcsTaskConverter
             $properties['CLASS'] = $class;
         }
 
+        if (isset($task['sequence']) && is_int($task['sequence']) && $task['sequence'] >= 0) {
+            $properties['SEQUENCE'] = (string) $task['sequence'];
+        }
         if (isset($task['priority']) && is_int($task['priority']) && $task['priority'] > 0) {
             $properties['PRIORITY'] = (string) max(1, min(9, $task['priority']));
         }
@@ -163,6 +162,18 @@ final class JmapToIcsTaskConverter
         $todo = $calendar->add('VTODO', $properties);
         if (! $todo instanceof VTodo) {
             throw new \InvalidArgumentException('Expected a VTODO component.');
+        }
+
+        if ($recurrenceId !== null) {
+            // Written like DTSTART/DUE so an all-day override gets VALUE=DATE and a
+            // zoned one its TZID (RT-T3, #1404).
+            ICalendarDateTime::writeProperty(
+                $todo,
+                'RECURRENCE-ID',
+                $recurrenceId,
+                (bool) ($task['showWithoutTime'] ?? false) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $recurrenceId) === 1,
+                isset($task['timeZone']) && is_string($task['timeZone']) ? $task['timeZone'] : null,
+            );
         }
 
         TaskConversionSupport::writeDateTimesToVtodo($todo, $task);

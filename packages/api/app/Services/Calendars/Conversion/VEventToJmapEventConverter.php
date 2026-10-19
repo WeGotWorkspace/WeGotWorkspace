@@ -38,7 +38,9 @@ final class VEventToJmapEventConverter
                     $series['overrides'],
                 );
                 if ($overrides !== []) {
-                    $event['recurrenceOverrides'] = $overrides;
+                    // RDATE keys (empty patches) stay next to the override VEVENTs (RT-7, #1399).
+                    $rdates = is_array($event['recurrenceOverrides'] ?? null) ? $event['recurrenceOverrides'] : [];
+                    $event['recurrenceOverrides'] = array_replace($rdates, $overrides);
                 }
             }
             $events[] = $event;
@@ -170,6 +172,14 @@ final class VEventToJmapEventConverter
         LocationConversionSupport::readLocationsAndLinks($vevent, $event);
         $this->readEndTimeZone($vevent, $event);
 
+        // RFC 7986 COLOR <-> RFC 8984 color (RT-11, #1402).
+        if (isset($vevent->COLOR)) {
+            $color = trim((string) $vevent->COLOR->getValue());
+            if ($color !== '') {
+                $event['color'] = $color;
+            }
+        }
+
         if (isset($vevent->STATUS)) {
             $status = strtolower(trim((string) $vevent->STATUS->getValue()));
             if (in_array($status, ['confirmed', 'cancelled', 'tentative'], true)) {
@@ -262,7 +272,7 @@ final class VEventToJmapEventConverter
             'UID', 'SUMMARY', 'DESCRIPTION', 'DTSTART', 'DTEND', 'DURATION', 'RRULE', 'EXRULE', 'EXDATE', 'RDATE',
             'LOCATION', 'GEO', 'URL', 'CONFERENCE', 'X-GOOGLE-CONFERENCE', 'X-MICROSOFT-SKYPETEAMSMEETINGURL',
             'ATTACH', 'STATUS', 'TRANSP', 'CLASS', 'CREATED', 'LAST-MODIFIED', 'DTSTAMP',
-            'SEQUENCE', 'PRIORITY', 'CATEGORIES', 'ORGANIZER', 'ATTENDEE', 'RECURRENCE-ID',
+            'SEQUENCE', 'PRIORITY', 'CATEGORIES', 'ORGANIZER', 'ATTENDEE', 'RECURRENCE-ID', 'COLOR',
         ];
 
         $props = [];

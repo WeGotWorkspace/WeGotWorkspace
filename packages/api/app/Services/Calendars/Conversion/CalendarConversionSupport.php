@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars\Conversion;
 
+use App\Services\Jmap\JmapPatchObject;
 use App\Services\VObject\ICalendarAlarmTrigger;
 use Illuminate\Support\Str;
 use Sabre\VObject\Component\VAlarm;
@@ -176,6 +177,44 @@ final class CalendarConversionSupport
                 $merged[$key] = $value;
             }
         }
+
+        return $merged;
+    }
+
+    /**
+     * JMAP CalendarEvent/set update: an RFC 8620 PatchObject. A property in the
+     * patch replaces the stored one, so removing an alert or participant sticks
+     * (#1401). REST, MCP and internal callers keep deepMergeEventPatch, which
+     * merges maps: a caller that sends one new participant must not cancel the
+     * others.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $patch
+     * @return array<string, mixed>
+     */
+    public static function applyEventPatchObject(array $existing, array $patch): array
+    {
+        return self::keepEndTimeZoneLocation($existing, JmapPatchObject::apply($existing, $patch));
+    }
+
+    /**
+     * Clients that know nothing about the end-zone Location (#1397) send
+     * `locations` without it. Carry it over, so editing the location does not
+     * move the end of a cross-zone event.
+     *
+     * @param  array<string, mixed>  $existing
+     * @param  array<string, mixed>  $merged
+     * @return array<string, mixed>
+     */
+    private static function keepEndTimeZoneLocation(array $existing, array $merged): array
+    {
+        $kept = $existing['locations'][self::END_TIME_ZONE_LOCATION] ?? null;
+        if (! is_array($kept) || self::endTimeZone($merged) !== null) {
+            return $merged;
+        }
+        $locations = is_array($merged['locations'] ?? null) ? $merged['locations'] : [];
+        $locations[self::END_TIME_ZONE_LOCATION] = $kept;
+        $merged['locations'] = $locations;
 
         return $merged;
     }

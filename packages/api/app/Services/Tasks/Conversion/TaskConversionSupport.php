@@ -211,6 +211,10 @@ final class TaskConversionSupport
             $task['timeZone'] = $timeZone;
         }
 
+        if (isset($todo->SEQUENCE)) {
+            $task['sequence'] = max(0, (int) $todo->SEQUENCE->getValue());
+        }
+
         if (isset($todo->COMPLETED)) {
             $task['completed'] = self::formatCompletedUtc((string) $todo->COMPLETED->getValue());
         }
@@ -557,6 +561,13 @@ final class TaskConversionSupport
                 : 'DISPLAY';
             $valarm->add('ACTION', $action);
             $valarm->add('TRIGGER', $parts['value'], $parts['params']);
+            // RFC 5545 §3.6.6: a DISPLAY alarm requires DESCRIPTION (RT-T6, #1408).
+            if ($action === 'DISPLAY') {
+                $description = isset($entry['description']) && is_string($entry['description']) && trim($entry['description']) !== ''
+                    ? trim($entry['description'])
+                    : 'Reminder';
+                $valarm->add('DESCRIPTION', $description);
+            }
 
             if (isset($entry['acknowledged']) && is_string($entry['acknowledged']) && trim($entry['acknowledged']) !== '') {
                 $valarm->add('ACKNOWLEDGED', ICalendarDateTime::toIcs($entry['acknowledged']));
