@@ -183,18 +183,18 @@ export function createAppBrandingCssprops(
   return map;
 }
 
-/** Per-app icon-pair defaults sampled from `*-workspace.css` switch-trigger rules. */
+/** Per-app icon-pair defaults — the surface/foreground fallbacks in `src/assets/app-icons/*.svg`. */
 export const BRANDING_APP_ICON_DEFAULTS: Record<WorkspaceAppId, { bg: string; fg: string }> = {
-  mail: { bg: "#de4b0e", fg: "var(--color-we-got-soft)" },
-  notes: { bg: "#ffc800", fg: "var(--color-we-got-soft)" },
-  docs: { bg: "#0045ff", fg: "var(--color-we-got-soft)" },
-  drive: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-brat)" },
-  tasks: { bg: "#ffbdc2", fg: "var(--color-we-got-soft)" },
-  calendar: { bg: "#962fa8", fg: "var(--color-we-got-soft)" },
-  contacts: { bg: "#a3c4e8", fg: "var(--color-we-got-soft)" },
-  meet: { bg: "var(--color-we-got-soft)", fg: "#ba9689" },
-  admin: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-dark)" },
-  settings: { bg: "var(--color-we-got-soft)", fg: "var(--color-we-got-dark)" },
+  mail: { bg: "var(--color-we-got-red)", fg: "var(--color-we-got-red-tint)" },
+  notes: { bg: "var(--color-we-got-yellow)", fg: "var(--color-we-got-yellow-tint)" },
+  docs: { bg: "var(--color-we-got-blue)", fg: "var(--color-we-got-blue-tint)" },
+  drive: { bg: "var(--color-we-got-forest)", fg: "var(--color-we-got-brat)" },
+  tasks: { bg: "var(--color-we-got-pink)", fg: "var(--color-we-got-pink-tint)" },
+  calendar: { bg: "var(--color-we-got-prince)", fg: "var(--color-we-got-prince-tint)" },
+  contacts: { bg: "var(--color-we-got-sky)", fg: "var(--color-we-got-sky-tint)" },
+  meet: { bg: "var(--color-we-got-sand-pale)", fg: "var(--color-we-got-sand)" },
+  admin: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-brat)" },
+  settings: { bg: "var(--color-we-got-dark)", fg: "var(--color-we-got-brat)" },
 };
 
 /**

@@ -191,8 +191,8 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(cssprops).not.toHaveProperty("app-sidebar-bg");
     expect(cssprops["workspace-accent"].value).toBe("var(--color-we-got-dark)");
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["workspace-icon-surface"].value).toBe("#0045ff");
-    expect(cssprops["workspace-icon-foreground"].value).toBe("var(--color-we-got-soft)");
+    expect(cssprops["workspace-icon-surface"].value).toBe("var(--color-we-got-blue)");
+    expect(cssprops["workspace-icon-foreground"].value).toBe("var(--color-we-got-blue-tint)");
     expect(cssprops["wai-detail"]).toBeUndefined();
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
@@ -206,8 +206,8 @@ describe("createBrandingStoryMeta defaults", () => {
     expect(cssprops["workspace-accent"].value).toBe("var(--color-we-got-dark)");
     expect(cssprops["app-sidebar-bg"]).toBeUndefined();
     expect(cssprops["app-sidebar-color"]).toBeUndefined();
-    expect(cssprops["workspace-icon-surface"].value).toBe("#962fa8");
-    expect(cssprops["workspace-icon-foreground"].value).toBe("var(--color-we-got-soft)");
+    expect(cssprops["workspace-icon-surface"].value).toBe("var(--color-we-got-prince)");
+    expect(cssprops["workspace-icon-foreground"].value).toBe("var(--color-we-got-prince-tint)");
     expect(cssprops["wai-cutout"]).toBeUndefined();
   });
 

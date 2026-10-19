@@ -25,11 +25,6 @@
   background-color: var(--workspace-surface);
 }
 
-.meet-guest-channel__lobby .meet-guest-lobby__mark.workspace-app-icon--switch-trigger > svg {
-  --workspace-icon-surface: var(--color-we-got-soft);
-  --workspace-icon-foreground: var(--color-we-got-sand);
-}
-
 .meet-guest-channel__lobby .meet-guest-lobby__knock.button--variant-primary {
   @apply mt-4 w-full;
   --workspace-icon-foreground: var(--color-we-got-sand);

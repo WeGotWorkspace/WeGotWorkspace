@@ -44,19 +44,6 @@
   --workspace-icon-foreground: var(--color-we-got-soft);
 }
 
-/** App switcher lockup: dark tile, soft marks. */
-.tasks-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  background-color: var(--workspace-icon-surface);
-}
-
-.tasks-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
 /**
  * Desktop: task/composer text keeps a modest content inset inside the centered
  * column; row markers sit in a left gutter. ViewHeader stays full-bleed.

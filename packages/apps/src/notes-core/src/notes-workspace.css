@@ -280,23 +280,6 @@
 }
 
 /**
- * App switcher lockup: yellow tile, dark marks.
- * Default switch-trigger remaps `--workspace-icon-*`; pin them here.
- */
-.notes-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-icon-surface);
-  background-color: var(--workspace-icon-surface);
-}
-
-.notes-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-yellow);
-  --workspace-icon-foreground: var(--color-we-got-dark);
-}
-
-/**
  * Portaled notes dialogs/alerts sit outside `.notes-workspace`; repeat accent tokens so
  * {@link Button} and {@link buttonVariants} match the notes shell.
  */

@@ -1,8 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 60 60">
 <rect width="60" height="60" fill="var(--app-icon-layer-surface, var(--color-we-got-pink, #ffbdc2))"/>
-<rect width="27" height="4" x="23" y="43" fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" rx="2"/>
-<rect width="27" height="4" x="23" y="13" fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" rx="2"/>
-<path fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" d="M15 20a5 5 0 1 0 0-10 5 5 0 0 0 0 10m0 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10"/>
-<path stroke="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" stroke-width="2" d="M15 41a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z"/>
-<rect width="27" height="4" x="23" y="28" fill="var(--app-icon-layer-foreground, var(--color-we-got-soft, #fff5e9))" rx="2"/>
+<path fill="var(--app-icon-layer-foreground, var(--color-we-got-pink-tint, #ffe8ea))" d="M15 40a5 5 0 1 1 0 10 5 5 0 0 1 0-10m0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6m33 1a2 2 0 1 1 0 4H25a2 2 0 1 1 0-4zM15 25a5 5 0 1 1 0 10 5 5 0 0 1 0-10m33 3a2 2 0 1 1 0 4H25a2 2 0 1 1 0-4zM15 10a5 5 0 1 1 0 10 5 5 0 0 1 0-10m33 3a2 2 0 1 1 0 4H25a2 2 0 1 1 0-4z"/>
 </svg>

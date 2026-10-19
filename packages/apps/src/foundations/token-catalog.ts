@@ -15,6 +15,15 @@ export const COLOR_WE_GOT_PRIMITIVES = [
   "--color-we-got-pink",
   "--color-we-got-yellow",
   "--color-we-got-sand",
+  "--color-we-got-forest",
+  "--color-we-got-prince-tint",
+  "--color-we-got-sky-tint",
+  "--color-we-got-blue-tint",
+  "--color-we-got-red-tint",
+  "--color-we-got-yellow-tint",
+  "--color-we-got-pink-tint",
+  "--color-we-got-sand-tint",
+  "--color-we-got-sand-pale",
 ] as const;
 
 /** Status roles. Brand hues stay on `--color-we-got-*`. */

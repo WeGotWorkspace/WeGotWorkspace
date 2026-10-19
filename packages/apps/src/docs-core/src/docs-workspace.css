@@ -119,21 +119,6 @@
   @apply mx-0 flex min-h-full w-full max-w-none flex-1 flex-col px-0 py-0;
 }
 
-/** Sidebar lockup: dark tile, soft marks. UI accent is Dark. */
-.docs-workspace .app-sidebar__header .app-switch-button__icon.workspace-app-icon--switch-trigger {
-  --app-switch-icon-bg: var(--workspace-icon-surface);
-  --app-switch-icon-fg: var(--workspace-icon-foreground);
-  background-color: var(--workspace-icon-surface);
-}
-
-.docs-workspace
-  .app-sidebar__header
-  .app-switch-button__icon.workspace-app-icon--switch-trigger
-  svg {
-  --workspace-icon-surface: var(--color-we-got-dark);
-  --workspace-icon-foreground: var(--color-we-got-soft);
-}
-
 .docs-workspace__header-actions {
   @apply flex shrink-0 flex-nowrap items-center justify-end gap-1.5;
 }

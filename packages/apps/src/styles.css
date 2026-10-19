@@ -46,6 +46,25 @@
   --color-we-got-yellow: oklch(from #ffc800 l c h);
   --color-we-got-sand: #ba9689;
   --color-we-got-sand: oklch(from #ba9689 l c h);
+  /* Brand tints — lighter marks on app icon tiles; forest is the Drive tile. */
+  --color-we-got-forest: #16853b;
+  --color-we-got-forest: oklch(from #16853b l c h);
+  --color-we-got-prince-tint: #e7ccec;
+  --color-we-got-prince-tint: oklch(from #e7ccec l c h);
+  --color-we-got-sky-tint: #d7eafe;
+  --color-we-got-sky-tint: oklch(from #d7eafe l c h);
+  --color-we-got-blue-tint: #b2c7ff;
+  --color-we-got-blue-tint: oklch(from #b2c7ff l c h);
+  --color-we-got-red-tint: #f9b193;
+  --color-we-got-red-tint: oklch(from #f9b193 l c h);
+  --color-we-got-yellow-tint: #ffea9f;
+  --color-we-got-yellow-tint: oklch(from #ffea9f l c h);
+  --color-we-got-pink-tint: #ffe8ea;
+  --color-we-got-pink-tint: oklch(from #ffe8ea l c h);
+  --color-we-got-sand-tint: #e8d0c8;
+  --color-we-got-sand-tint: oklch(from #e8d0c8 l c h);
+  --color-we-got-sand-pale: #ebdbd4;
+  --color-we-got-sand-pale: oklch(from #ebdbd4 l c h);
   /* Status semantics (not brand primitives). Hex then oklch(from); error ≠ We Got Red. */
   --color-error: #b14242;
   --color-error: oklch(from #b14242 l c h);
