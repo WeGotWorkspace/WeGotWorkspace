@@ -328,6 +328,27 @@ final class ConversionSupport
     }
 
     /**
+     * Writes pref: as a PREF parameter on vCard 4.0, and as TYPE=pref on vCard 3.0,
+     * which has no PREF parameter (CT-6, #1424).
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public static function withPref(array $params, mixed $pref, string $version): array
+    {
+        if ($pref === null) {
+            return $params;
+        }
+        if ($version === '3.0') {
+            $params['type'] = [...(array) ($params['type'] ?? []), 'pref'];
+        } else {
+            $params['pref'] = (string) $pref;
+        }
+
+        return $params;
+    }
+
+    /**
      * vCardParams without the group: the group is the property's group, not a
      * GROUP= parameter (CT-2, #1420).
      *
@@ -375,9 +396,15 @@ final class ConversionSupport
      * @param  array<string, mixed>  $date
      * @return array{0: string, 1: array<string, string>}
      */
-    public static function anniversaryDateToVCardValue(array $date, string $propertyName): array
+    public static function anniversaryDateToVCardValue(array $date, string $propertyName, string $version = '4.0'): array
     {
-        return ConversionUidNameMethods::anniversaryDateToVCardValue($date, $propertyName);
+        [$value, $params] = ConversionUidNameMethods::anniversaryDateToVCardValue($date, $propertyName);
+        if ($version === '3.0' && str_starts_with($value, '--')) {
+            // vCard 3.0 has no year-less date; write Apple's placeholder form (CT-4, #1421).
+            return ['1604-'.substr($value, 2, 2).'-'.substr($value, 4, 2), ['x-apple-omit-year' => '1604']];
+        }
+
+        return [$value, $params];
     }
 
     /**

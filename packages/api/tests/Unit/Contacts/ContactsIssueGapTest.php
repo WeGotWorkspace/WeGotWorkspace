@@ -233,7 +233,7 @@ VCARD;
         $this->assertStringContainsString('MEMBER:urn:uuid:c4cf6038-5da0-41be-9c2d-d8cb9b4af90f', $written);
     }
 
-    public function test_rfc6350_group_write_emits_x_addressbookserver_kind_and_member(): void
+    public function test_vcard4_group_write_emits_only_rfc6350_kind_and_member(): void
     {
         $card = [
             '@type' => 'Card',
@@ -249,13 +249,13 @@ VCARD;
 
         $written = $this->converter->vCardFromCard($card);
 
-        // Both RFC 6350 and Apple-style properties must be written.
-        $this->assertStringContainsStringIgnoringCase('KIND:group', $written);
-        $this->assertStringContainsStringIgnoringCase('X-ADDRESSBOOKSERVER-KIND:group', $written);
-        $this->assertStringContainsString('MEMBER:urn:uuid:11111111-1111-4111-8111-111111111111', $written);
-        $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:11111111-1111-4111-8111-111111111111', $written);
-        $this->assertStringContainsString('MEMBER:urn:uuid:22222222-2222-4222-8222-222222222222', $written);
-        $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:22222222-2222-4222-8222-222222222222', $written);
+        // A vCard 4.0 group carries only RFC 6350 KIND/MEMBER. Sabre converts them to
+        // X-ADDRESSBOOKSERVER-KIND/-MEMBER when a 3.0 client (Apple Contacts) reads the card;
+        // writing both made 3.0 readers get every line twice (#1457, verified with Apple Contacts).
+        $this->assertStringContainsString("\r\nKIND:group\r\n", $written);
+        $this->assertStringContainsString("\r\nMEMBER:urn:uuid:11111111-1111-4111-8111-111111111111\r\n", $written);
+        $this->assertStringContainsString("\r\nMEMBER:urn:uuid:22222222-2222-4222-8222-222222222222\r\n", $written);
+        $this->assertStringNotContainsString('X-ADDRESSBOOKSERVER-', $written);
     }
 
     public function test_group_write_normalizes_bare_member_uids_to_urn_uuid(): void
@@ -275,9 +275,8 @@ VCARD;
         $written = $this->converter->vCardFromCard($card);
 
         $this->assertStringContainsString('MEMBER:urn:uuid:c4cf6038-5da0-41be-9c2d-d8cb9b4af90f', $written);
-        $this->assertStringContainsString('X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:c4cf6038-5da0-41be-9c2d-d8cb9b4af90f', $written);
         $this->assertStringContainsString('MEMBER:urn:uuid:07d442ce-49b5-4a59-bc01-d75b17b92c9a', $written);
-        $this->assertStringNotContainsString('X-ADDRESSBOOKSERVER-MEMBER:c4cf6038-5da0-41be-9c2d-d8cb9b4af90f', $written);
+        $this->assertStringNotContainsString('MEMBER:c4cf6038-5da0-41be-9c2d-d8cb9b4af90f', $written);
     }
 
     public function test_group_write_deduplicates_mixed_member_uid_key_formats(): void
@@ -299,7 +298,7 @@ VCARD;
         $appleMemberLines = preg_match_all('/^X-ADDRESSBOOKSERVER-MEMBER:/m', $written, $appleMatches) ? count($appleMatches[0]) : 0;
 
         $this->assertSame(1, $memberLines);
-        $this->assertSame(1, $appleMemberLines);
+        $this->assertSame(0, $appleMemberLines, 'vCard 4.0 groups write MEMBER only (#1457)');
     }
 
     public function test_apple_group_round_trip_preserves_kind_and_members(): void
