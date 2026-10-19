@@ -75,17 +75,6 @@ Your settings and data are kept. See the install guides for backups and details.
 - **Works offline.** The web app keeps working when the connection drops and syncs when it returns.
 - **Bring your AI assistant.** Connect Claude, ChatGPT, or Mistral over MCP so they can work with your files and calendar as you. Off by default; [read how it works](docs/mcp-connect.md).
 
-## 📸 Screenshots
-
-<!-- TODO: add one screenshot per app, e.g.
-<p><img src=".github/assets/screenshot-files.webp" alt="Files" width="100%"></p>
-<p><img src=".github/assets/screenshot-calendar.webp" alt="Calendar" width="100%"></p>
-<p><img src=".github/assets/screenshot-docs.webp" alt="Docs" width="100%"></p>
-<p><img src=".github/assets/screenshot-meet.webp" alt="Meet" width="100%"></p>
--->
-
-_Screenshots are coming soon._
-
 ## ⚙️ Built with
 
 [![Laravel](https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com/)
