@@ -112,6 +112,8 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 **Title UX:** Editable `SUMMARY` field. Auto-fill once from first heading or first non-empty line; user edit sticks. Title/tags/move = REST PATCH + `If-Match` **without** opening a room. PATCH must not clobber `DESCRIPTION` (read-modify-write ICS or field-level replace).
 
+**Several DESCRIPTIONs:** A VJOURNAL may carry more than one `DESCRIPTION` (RFC 5545 §3.6.3), for example one per language. The note body is the first one. A body edit updates only its value and keeps its parameters (`LANGUAGE`, `ALTREP`); clearing the body removes only that one. The other `DESCRIPTION`s are left as written ([#1410](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1410)).
+
 ---
 
 ## Decision 8 — Mid-session ACL (v1 = Docs)
