@@ -38,7 +38,9 @@ final class VEventToJmapEventConverter
                     $series['overrides'],
                 );
                 if ($overrides !== []) {
-                    $event['recurrenceOverrides'] = $overrides;
+                    // RDATE keys (empty patches) stay next to the override VEVENTs (RT-7, #1399).
+                    $rdates = is_array($event['recurrenceOverrides'] ?? null) ? $event['recurrenceOverrides'] : [];
+                    $event['recurrenceOverrides'] = array_replace($rdates, $overrides);
                 }
             }
             $events[] = $event;

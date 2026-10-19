@@ -163,18 +163,22 @@ final class JsCalendarRoundTripLossTest extends TestCase
         );
     }
 
-    /**
-     * RT-7: the read side still drops RDATE next to overrides. A title edit keeps
-     * the stored RDATE (#1392); RT-7 still needs its own read fix.
-     */
-    public function test_rt7_rdate_missing_on_read_but_survives_a_title_edit(): void
+    /** RT-7 (fixed by #1399): RDATE is read next to override VEVENTs and written back after a series edit. */
+    public function test_rt7_rdate_is_read_and_written_with_overrides(): void
     {
         $ics = $this->calendar(self::BASE."RRULE:FREQ=WEEKLY;COUNT=4\r\nRDATE:20260620T100000Z\r\n",
             "BEGIN:VEVENT\r\nUID:u1\r\nDTSTAMP:20260101T000000Z\r\nRECURRENCE-ID:20260622T100000Z\r\n"
             ."SUMMARY:Moved\r\nDTSTART:20260622T120000Z\r\nDTEND:20260622T130000Z\r\nEND:VEVENT\r\n");
 
-        $this->assertArrayNotHasKey('2026-06-20T10:00:00Z', $this->converter->eventFromIcs($ics)['recurrenceOverrides']);
+        $overrides = $this->converter->eventFromIcs($ics)['recurrenceOverrides'];
+        $this->assertArrayHasKey('2026-06-20T10:00:00Z', $overrides);
+        $this->assertArrayHasKey('2026-06-22T10:00:00Z', $overrides);
+
         $this->assertStringContainsString("RDATE:20260620T100000Z\r\n", $this->patchTitle($ics));
+        $this->assertStringContainsString(
+            'RDATE:20260620T100000Z',
+            $this->patch($ics, ['recurrenceRules' => [['@type' => 'RecurrenceRule', 'frequency' => 'weekly', 'count' => 5]]]),
+        );
     }
 
     /** RT-8 (fixed by #1392): an override keeps its own alarm, categories and X-props. */
