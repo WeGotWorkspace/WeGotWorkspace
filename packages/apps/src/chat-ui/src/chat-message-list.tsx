@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MessageSquare } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { CollectionState } from "@/collection-state/src/collection-state";
@@ -59,6 +59,7 @@ export function ChatMessageList({
   onCaughtUpChange,
 }: ChatMessageListProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const dayIdPrefix = useId();
   const stickRef = useRef(true);
   const ignoreScrollRef = useRef(false);
   const lastMessageIdRef = useRef<string | undefined>(undefined);
@@ -152,13 +153,15 @@ export function ChatMessageList({
             aria-relevant="additions"
           >
             {daySections.map((day) => (
-              <section
+              // A labelled group, not a region: several lists can show the same day.
+              <div
                 key={day.key}
+                role="group"
                 className="chat-message-list__day-section"
-                aria-labelledby={`chat-day-${day.key}`}
+                aria-labelledby={`${dayIdPrefix}chat-day-${day.key}`}
               >
                 <ListStickyHeader
-                  id={`chat-day-${day.key}`}
+                  id={`${dayIdPrefix}chat-day-${day.key}`}
                   label={day.label}
                   emphasis={day.emphasis}
                   rest={day.rest}
@@ -188,7 +191,7 @@ export function ChatMessageList({
                     ))}
                   </div>
                 ))}
-              </section>
+              </div>
             ))}
           </div>
           {showJump ? (
