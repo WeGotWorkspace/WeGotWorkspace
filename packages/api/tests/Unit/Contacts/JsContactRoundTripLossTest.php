@@ -152,21 +152,26 @@ final class JsContactRoundTripLossTest extends TestCase
         );
     }
 
-    /** CT-6: vCard 3.0 TYPE=pref is still not read as pref; an unrelated edit keeps it (#1418). */
-    public function test_ct6_type_pref_not_read_but_kept_on_edit(): void
+    /** CT-6 (fixed by #1424): vCard 3.0 TYPE=pref is read as pref and written back as TYPE=pref. */
+    public function test_ct6_vcard3_type_pref_is_read_and_written(): void
     {
         $vcard = $this->vcard('3.0', "FN:John Doe\r\nN:Doe;John;;;\r\n"
             ."EMAIL;type=INTERNET;type=WORK:john@work.example\r\n"
             ."EMAIL;type=INTERNET;type=HOME;type=pref:john@home.example\r\n"
             ."TEL;type=CELL;type=VOICE;type=pref:+31 6 1234 5678\r\n");
 
-        foreach ($this->converter->cardFromVCard($vcard)['emails'] as $email) {
-            $this->assertArrayNotHasKey('pref', $email);
-        }
+        $emails = $this->converter->cardFromVCard($vcard)['emails'];
+        $prefs = array_column(array_values($emails), 'pref', 'address');
+        $this->assertSame(['john@home.example' => 1], $prefs);
 
         $out = strtolower($this->edit($vcard));
         $this->assertStringContainsString('home,pref:john@home.example', $out);
-        $this->assertStringContainsString('voice,pref:+31 6 1234 5678', $out);
+
+        $workId = array_search('john@work.example', array_map(static fn (array $e): string => (string) $e['address'], $emails), true);
+        $moved = strtolower($this->edit($vcard, ['emails' => [$workId => ['address' => 'john@work.example', 'contexts' => ['work' => true], 'pref' => 1]]]));
+        $this->assertSame(1, substr_count($moved, 'john@work.example'));
+        $this->assertMatchesRegularExpression('/email;[^\r]*type=work,pref[^\r]*:john@work\.example/', $moved);
+        $this->assertStringNotContainsString('pref=1', $moved);
     }
 
     /** CT-7 (fixed for unrelated edits by #1418): unmodelled parameters on known properties survive. */

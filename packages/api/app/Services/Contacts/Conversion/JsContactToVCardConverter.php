@@ -11,6 +11,8 @@ final class JsContactToVCardConverter
     /** RFC 9555 §3 reverse conversion; optional uid per RFC 9982 when Card.version is "2.0"+. */
     private VCardGroupAllocator $groups;
 
+    private string $version = '4.0';
+
     /** @var array<string, string> */
     private array $organizationGroups = [];
 
@@ -23,7 +25,7 @@ final class JsContactToVCardConverter
         $vcard = new VCard([], false);
 
         $version = $this->versionFromCard($card);
-        $vcard->add('VERSION', $version);
+        $vcard->add('VERSION', $this->version = $version);
 
         if (isset($card['uid']) && is_string($card['uid'])) {
             $vcard->add('UID', $card['uid']);
@@ -766,12 +768,10 @@ final class JsContactToVCardConverter
                 $types[] = 'school';
             }
             if ($types !== []) {
-                $params['type'] = implode(',', $types);
+                $params['type'] = $types;
             }
         }
-        if (isset($entry['pref'])) {
-            $params['pref'] = (string) $entry['pref'];
-        }
+        $params = ConversionSupport::withPref($params, $entry['pref'] ?? null, $this->version);
         $vCardParams = ConversionSupport::vCardParamsWithoutGroup($entry);
         if ($vCardParams !== null) {
             foreach ($vCardParams as $name => $value) {
