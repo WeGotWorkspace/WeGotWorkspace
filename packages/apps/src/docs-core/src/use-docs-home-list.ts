@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOnReconnect } from "@/hooks/use-connectivity";
-import {
-  fetchWgwUnifiedSearch,
-  type WgwUnifiedSearchData,
-  type WgwUnifiedSearchParams,
-  type WgwUnifiedSearchResult,
-} from "@/lib/api/wgw/search";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchWgwUnifiedSearch, type WgwUnifiedSearchResult } from "@/lib/api/wgw/search";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import {
   apiPathFromSearchSourceKey,
@@ -21,22 +15,18 @@ import {
 } from "@/docs-core/src/docs-home-constants";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { resolveDocsDriveLabel, type DocsHomeGroupRoot } from "@/docs-core/src/docs-home-drives";
+import {
+  useDocsHomeListingLoad,
+  type DocsHomeFetcher,
+} from "@/docs-core/src/use-docs-home-listing-load";
 import { driveLabels } from "@/drive-core/src/drive-labels";
-import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
-import {
-  guardOfflineCacheStep,
-  OFFLINE_CACHE_TIMEOUT_MS,
-} from "@/lib/offline/core/offline-cache-guard";
-import { syncDocsBodiesFromListingResults } from "@/lib/offline/docs/docs-body-sync";
+import { OFFLINE_CACHE_TIMEOUT_MS } from "@/lib/offline/core/offline-cache-guard";
 import type { DocsListingBrowseFilters } from "@/lib/offline/docs/docs-listing-cache-key";
-import {
-  readDocsListingFromCache,
-  writeDocsListingToCache,
-} from "@/lib/offline/docs-listing-offline-store";
 
-export type DocsHomeFetcher = (
-  params: Omit<WgwUnifiedSearchParams, "signal"> & { signal?: AbortSignal },
-) => Promise<WgwUnifiedSearchData>;
+export {
+  fetchAllDocsHomeListingPages,
+  type DocsHomeFetcher,
+} from "@/docs-core/src/use-docs-home-listing-load";
 
 export type UseDocsHomeListOptions = {
   /** Current user login/handle; used to map API source keys to UI paths. */
@@ -68,8 +58,10 @@ export type UseDocsHomeListOptions = {
 
 export type UseDocsHomeListResult = {
   files: DriveFile[];
-  /** Initial load or query-change reload in flight. */
+  /** Nothing to show yet for the current filters while the first fetch runs. */
   loading: boolean;
+  /** Rows are visible while a live fetch refreshes them in the background. */
+  refreshing: boolean;
   /** A `loadMore()` page request is in flight. */
   loadingMore: boolean;
   error: string | null;
@@ -150,40 +142,6 @@ function browseFilters(scopePrefix: string, debouncedQuery: string): DocsListing
   };
 }
 
-/** Fetch every browse page so offline cache and UI match the full server listing. */
-export async function fetchAllDocsHomeListingPages(
-  fetcher: DocsHomeFetcher,
-  baseParams: Omit<WgwUnifiedSearchParams, "signal" | "q" | "offset"> & { limit: number },
-  query: string,
-  signal: AbortSignal,
-): Promise<{ results: WgwUnifiedSearchResult[]; hasMore: boolean }> {
-  const merged: WgwUnifiedSearchResult[] = [];
-  let offset = 0;
-  let hasMore = true;
-
-  while (hasMore) {
-    const data = await fetcher({
-      ...baseParams,
-      q: query || undefined,
-      offset,
-      signal,
-    });
-    if (signal.aborted) {
-      return { results: merged, hasMore: merged.length > 0 ? hasMore : false };
-    }
-    const page = data.results ?? [];
-    merged.push(...page);
-    hasMore = Boolean(data.hasMore);
-    offset = merged.length;
-    if (page.length === 0) {
-      hasMore = false;
-      break;
-    }
-  }
-
-  return { results: merged, hasMore: false };
-}
-
 export function useDocsHomeList({
   username,
   query = "",
@@ -196,16 +154,7 @@ export function useDocsHomeList({
   groupRoots,
   cacheTimeoutMs = OFFLINE_CACHE_TIMEOUT_MS,
 }: UseDocsHomeListOptions): UseDocsHomeListResult {
-  const [results, setResults] = useState<WgwUnifiedSearchResult[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(enabled);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
   const [debouncedQuery, setDebouncedQuery] = useState(() => query.trim());
-  const [isOfflineListing, setIsOfflineListing] = useState(false);
-  const resultsRef = useRef(results);
-  resultsRef.current = results;
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -230,127 +179,28 @@ export function useDocsHomeList({
     [pageSize, scopePrefix],
   );
 
-  const persistListingCache = useCallback(
-    async (nextResults: WgwUnifiedSearchResult[], nextHasMore: boolean) => {
-      if (!offlineUsername) return;
-      await guardOfflineCacheStep(
-        writeDocsListingToCache(offlineUsername, filters, {
-          results: nextResults,
-          hasMore: nextHasMore,
-        }),
-        undefined,
-        cacheTimeoutMs,
-      );
-    },
-    [cacheTimeoutMs, filters, offlineUsername],
-  );
-
-  const applyCachedListing = useCallback(
-    async (online: boolean): Promise<boolean> => {
-      if (!offlineUsername) return false;
-      const cached = await guardOfflineCacheStep(
-        readDocsListingFromCache(offlineUsername, filters),
-        null,
-        cacheTimeoutMs,
-      );
-      if (!cached || cached.results.length === 0) return false;
-      setResults(cached.results);
-      setHasMore(cached.hasMore);
-      setError(null);
-      setIsOfflineListing(!online);
-      return true;
-    },
-    [cacheTimeoutMs, filters, offlineUsername],
-  );
-
-  const fetchLiveListing = useCallback(
-    async (signal: AbortSignal): Promise<boolean> => {
-      if (!getConnectivitySnapshot()) return false;
-      try {
-        const { results: nextResults, hasMore: nextHasMore } = await fetchAllDocsHomeListingPages(
-          fetcher,
-          baseParams,
-          debouncedQuery,
-          signal,
-        );
-        if (signal.aborted) return false;
-        setResults(nextResults);
-        setHasMore(nextHasMore);
-        setIsOfflineListing(false);
-        setError(null);
-        await persistListingCache(nextResults, nextHasMore);
-        if (offlineUsername) {
-          void syncDocsBodiesFromListingResults(offlineUsername, nextResults, { signal });
-        }
-        return true;
-      } catch (_err) {
-        if (signal.aborted) return false;
-        return false;
-      }
-    },
-    [baseParams, debouncedQuery, fetcher, offlineUsername, persistListingCache],
-  );
-
-  useEffect(() => {
-    if (!enabled) {
-      setResults([]);
-      setHasMore(false);
-      setLoading(false);
-      setLoadingMore(false);
-      setError(null);
-      setIsOfflineListing(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    let cancelled = false;
-
-    void (async () => {
-      setLoadingMore(false);
-      setError(null);
-
-      const online = getConnectivitySnapshot();
-      const hadCache = await applyCachedListing(online);
-      if (cancelled) return;
-
-      if (!online) {
-        if (!hadCache) {
-          setResults([]);
-          setHasMore(false);
-          setError(null);
-          setIsOfflineListing(true);
-        }
-        setLoading(false);
-        return;
-      }
-
-      if (!hadCache) {
-        setLoading(true);
-        setIsOfflineListing(false);
-      }
-
-      const liveLoaded = await fetchLiveListing(controller.signal);
-      if (controller.signal.aborted || cancelled) return;
-
-      if (!liveLoaded) {
-        if (hadCache) {
-          setError(null);
-          setIsOfflineListing(true);
-        } else {
-          setError("Failed to load documents");
-          setResults([]);
-          setHasMore(false);
-        }
-      }
-
-      if (!controller.signal.aborted && !cancelled) setLoading(false);
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [applyCachedListing, enabled, fetchLiveListing, reloadToken]);
+  const listing = useDocsHomeListingLoad({
+    enabled,
+    offlineUsername,
+    filters,
+    baseParams,
+    query: debouncedQuery,
+    fetcher,
+    cacheTimeoutMs,
+  });
+  const {
+    results,
+    resultsRef,
+    setResults,
+    hasMore,
+    setHasMore,
+    loading,
+    loadingMore,
+    setLoadingMore,
+    setError,
+    isOfflineListing,
+    persistListingCache,
+  } = listing;
 
   const loadMore = useCallback(() => {
     if (!enabled || loading || loadingMore || !hasMore || isOfflineListing) return;
@@ -386,21 +236,12 @@ export function useDocsHomeList({
     loading,
     loadingMore,
     persistListingCache,
+    resultsRef,
+    setError,
+    setHasMore,
+    setLoadingMore,
+    setResults,
   ]);
-
-  const reload = useCallback(() => setReloadToken((token) => token + 1), []);
-
-  useOnReconnect(
-    useCallback(() => {
-      if (!enabled || !offlineUsername) return;
-      void (async () => {
-        await new Promise((resolve) => window.setTimeout(resolve, 400));
-        if (!getConnectivitySnapshot()) return;
-        const controller = new AbortController();
-        await fetchLiveListing(controller.signal);
-      })();
-    }, [enabled, fetchLiveListing, offlineUsername]),
-  );
 
   // Content key so an unstable `groupRoots` array identity does not remap files
   // every render (which would feed Docs home's mergeGroupRoots effect loop).
@@ -419,11 +260,12 @@ export function useDocsHomeList({
   return {
     files,
     loading,
+    refreshing: listing.refreshing,
     loadingMore,
-    error,
+    error: listing.error,
     hasMore,
     loadMore,
-    reload,
+    reload: listing.reload,
     isOfflineListing,
   };
 }

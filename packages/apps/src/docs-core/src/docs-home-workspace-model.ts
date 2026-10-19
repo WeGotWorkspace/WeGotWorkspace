@@ -63,7 +63,10 @@ export function resolveDocsHomeFiles(input: DocsHomeFilesInput): DriveFile[] {
 }
 
 export type DocsHomeListingStatus = {
+  /** Nothing to show yet: the pane renders its loading state. */
   loading: boolean;
+  /** Rows are visible while a list refreshes or shares still merge in. */
+  refreshing: boolean;
   loadingMore: boolean;
   hasMore: boolean;
   error: string | null;
@@ -77,6 +80,8 @@ export type DocsHomeListingQuery = {
 };
 
 export type DocsHomeBrowseListing = DocsHomeListingQuery & {
+  files: readonly DriveFile[];
+  refreshing: boolean;
   loadingMore: boolean;
   hasMore: boolean;
   isOfflineListing: boolean;
@@ -89,7 +94,7 @@ type DocsHomeListingStatusInput = {
   isTrashView: boolean;
   isAllView: boolean;
   usesBrowseList: boolean;
-  /** True when Share operations are wired (All docs waits on the shared list too). */
+  /** True when Share operations are wired (All docs merges the shared list in). */
   shareOperationsEnabled: boolean;
   browse: DocsHomeBrowseListing;
   shared: DocsHomeListingQuery;
@@ -99,20 +104,27 @@ type DocsHomeListingStatusInput = {
 
 /**
  * Loading, error, and paging flags for the active view.
- * All docs waits for shared-with-me so rows don't remount when shares merge in.
+ * All docs shows browse rows as soon as they exist and merges shared-with-me
+ * in when it arrives; it only waits on shares while browse has no rows.
  */
 export function resolveDocsHomeListingStatus(
   input: DocsHomeListingStatusInput,
 ): DocsHomeListingStatus {
+  const mergesShared = input.isAllView && input.shareOperationsEnabled;
+  const browseHasRows = input.browse.files.length > 0;
   const loading = input.isSharedView
     ? input.shared.loading
     : input.isStarredView
       ? input.starred.loading
       : input.isTrashView
         ? input.trash.loading
-        : input.isAllView && input.shareOperationsEnabled
-          ? input.browse.loading || input.shared.loading
+        : mergesShared
+          ? input.browse.loading || (input.shared.loading && !browseHasRows)
           : input.browse.loading;
+  const refreshing =
+    !loading &&
+    input.usesBrowseList &&
+    (input.browse.refreshing || (mergesShared && input.shared.loading));
   const error = input.isSharedView
     ? input.shared.error
     : input.isStarredView
@@ -122,6 +134,7 @@ export function resolveDocsHomeListingStatus(
         : input.browse.error;
   return {
     loading,
+    refreshing,
     loadingMore: input.usesBrowseList ? input.browse.loadingMore : false,
     hasMore: input.usesBrowseList ? input.browse.hasMore : false,
     error,
