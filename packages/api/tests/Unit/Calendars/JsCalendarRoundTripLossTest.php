@@ -67,6 +67,32 @@ final class JsCalendarRoundTripLossTest extends TestCase
         $this->assertStringNotContainsString('X-GOOGLE-CONFERENCE', $out);
     }
 
+    /** RT-1 (#1393): editing a plain link writes it back as URL only, never as a WGW Meet conference. */
+    public function test_rt1_edited_plain_link_stays_a_url(): void
+    {
+        $out = $this->unfold($this->patch(
+            $this->calendar(self::BASE."URL;VALUE=URI:https://example.com/agenda\r\n"),
+            ['links' => ['link1' => ['@type' => 'Link', 'href' => 'https://example.com/agenda-v2']]],
+        ));
+
+        $this->assertStringContainsString('URL;VALUE=URI:https://example.com/agenda-v2', $out);
+        $this->assertStringNotContainsString('https://example.com/agenda'."\r\n", $out);
+        $this->assertStringNotContainsString('CONFERENCE', $out);
+    }
+
+    /** RT-1 (#1393): adding a Zoom link through JMAP is not relabelled as WGW Meet. */
+    public function test_rt1_added_third_party_link_is_not_relabelled(): void
+    {
+        $out = $this->unfold($this->patch(
+            $this->calendar(self::BASE),
+            ['links' => ['link1' => ['@type' => 'Link', 'href' => 'https://zoom.us/j/1']]],
+        ));
+
+        $this->assertStringContainsString('URL;VALUE=URI:https://zoom.us/j/1', $out);
+        $this->assertStringNotContainsString('WeGotWorkspace Meet', $out);
+        $this->assertStringNotContainsString('X-GOOGLE-CONFERENCE', $out);
+    }
+
     /** RT-2 (fixed by #1392): unknown properties keep parameters and repeats. */
     public function test_rt2_unknown_properties_survive_a_title_edit(): void
     {
