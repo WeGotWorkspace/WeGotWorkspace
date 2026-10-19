@@ -8,6 +8,7 @@ use App\Http\Support\OptimisticConcurrency;
 use App\Models\Card;
 use App\Services\Contacts\Conversion\ConversionSupport;
 use App\Services\Contacts\Conversion\VCardJsContactConverter;
+use App\Services\VObject\VCardInPlacePatcher;
 use Illuminate\Support\Str;
 
 final class ContactCardMapper
@@ -145,6 +146,23 @@ final class ContactCardMapper
         $payload = ConversionSupport::syncGroupDisplayName($payload);
 
         return $this->converter->vCardFromCard($payload);
+    }
+
+    /**
+     * Applies an edit to the stored vCard in place, so data the JSContact model
+     * cannot hold survives (#1418). $baseline is the stored contact as read,
+     * normalized the same way as $payload.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $baseline
+     */
+    public function updatedVCard(string $username, Card $card, array $payload, array $baseline): string
+    {
+        $baseline['id'] = $payload['id'] ?? null;
+        $baseline['addressBookIds'] = $payload['addressBookIds'] ?? null;
+        $stored = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
+
+        return VCardInPlacePatcher::patch($stored, $this->toVCard($username, $baseline), $this->toVCard($username, $payload));
     }
 
     public static function cardIdFromUri(string $uri): string

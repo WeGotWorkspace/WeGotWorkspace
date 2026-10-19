@@ -328,6 +328,23 @@ final class ConversionSupport
     }
 
     /**
+     * vCardParams without the group: the group is the property's group, not a
+     * GROUP= parameter (CT-2, #1420).
+     *
+     * @param  array<string, mixed>  $object
+     * @return array<string, mixed>|null
+     */
+    public static function vCardParamsWithoutGroup(array $object): ?array
+    {
+        $params = self::vCardParamsFromObject($object);
+        if ($params === null) {
+            return null;
+        }
+
+        return array_filter($params, static fn (mixed $value, mixed $name): bool => strtolower((string) $name) !== 'group', ARRAY_FILTER_USE_BOTH);
+    }
+
+    /**
      * @param  array<string, mixed>  $object
      * @return array<string, string|list<string>>|null
      */
