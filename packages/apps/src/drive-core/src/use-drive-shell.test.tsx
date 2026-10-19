@@ -66,6 +66,27 @@ function createOperations(changeDir: DriveAPIOperations["changeDir"]): DriveAPIO
   };
 }
 
+const PROJECTS_CWD = `${MY_DRIVE_CWD}/Projects`;
+
+function folderData(cwd: string, fileNames: string[]): DriveUIData {
+  return {
+    ...driveData([]),
+    cwd,
+    directory: {
+      location: cwd,
+      files: fileNames.map((name) => ({ ...directoryEntry(name), path: `${cwd}/${name}` })),
+    },
+  };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 describe("useDriveShell folder listing sync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -135,6 +156,65 @@ describe("useDriveShell folder listing sync", () => {
     });
 
     unmount();
+  });
+
+  it("shows a cached folder at once while the live listing loads", async () => {
+    const live = deferred<DriveUIData>();
+    const changeDir = vi.fn().mockReturnValue(live.promise);
+    const operations: DriveAPIOperations = {
+      ...createOperations(changeDir),
+      readCachedDirectory: vi
+        .fn()
+        .mockResolvedValue(folderData(PROJECTS_CWD, ["plan.md", "gone.md"])),
+    };
+    const bootstrap = driveData(["old.txt"]);
+    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+
+    act(() => {
+      result.current.selectView({ type: "folder", path: "My Drive/Projects" });
+    });
+
+    await waitFor(() =>
+      expect(result.current.files.map((file) => file.title)).toEqual(["plan.md", "gone.md"]),
+    );
+    expect(result.current.folderListingPending).toBe(false);
+    expect(changeDir).toHaveBeenCalled();
+
+    await act(async () => {
+      live.resolve(folderData(PROJECTS_CWD, ["plan.md", "new.md"]));
+    });
+    await waitFor(() =>
+      expect(result.current.files.map((file) => file.title)).toEqual(["plan.md", "new.md"]),
+    );
+    expect(result.current.folderListingPending).toBe(false);
+  });
+
+  it("keeps an uncached folder pending until the live listing arrives", async () => {
+    const live = deferred<DriveUIData>();
+    const changeDir = vi.fn().mockReturnValue(live.promise);
+    const readCachedDirectory = vi.fn().mockResolvedValue(null);
+    const operations: DriveAPIOperations = {
+      ...createOperations(changeDir),
+      readCachedDirectory,
+    };
+    const bootstrap = driveData(["old.txt"]);
+    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+
+    act(() => {
+      result.current.selectView({ type: "folder", path: "My Drive/Projects" });
+    });
+
+    await waitFor(() => expect(readCachedDirectory).toHaveBeenCalled());
+    await waitFor(() => expect(changeDir).toHaveBeenCalled());
+    expect(result.current.folderListingPending).toBe(true);
+
+    await act(async () => {
+      live.resolve(folderData(PROJECTS_CWD, ["plan.md"]));
+    });
+    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
   });
 
   it("loads Shared with me entries when the shared view is selected", async () => {

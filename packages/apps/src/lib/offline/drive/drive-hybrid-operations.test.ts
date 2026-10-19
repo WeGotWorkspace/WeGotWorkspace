@@ -95,3 +95,31 @@ describe("createHybridDriveOperations offline rename", () => {
     expect(outbox[0]?.op).toBe("rename");
   });
 });
+
+describe("createHybridDriveOperations readCachedDirectory", () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await driveEntriesTable(db).clear();
+    await db.meta.clear();
+  });
+
+  it("returns cached folder rows while online", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    await upsertDriveEntry(username, entry("/users/alice/Projects/plan.md", "plan.md"));
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    const cached = await ops.readCachedDirectory?.("/users/alice/Projects");
+
+    expect(cached?.cwd).toBe("/users/alice/Projects");
+    expect(cached?.directory.files.map((file) => file.name)).toEqual(["plan.md"]);
+  });
+
+  it("returns null for a folder with no cached rows", async () => {
+    await writeDriveBootstrapToCache(username, bootstrap());
+    const ops = createHybridDriveOperations(username, bootstrap());
+
+    await expect(ops.readCachedDirectory?.("/users/alice/Empty")).resolves.toBeNull();
+  });
+});
