@@ -211,6 +211,10 @@ final class TaskConversionSupport
             $task['timeZone'] = $timeZone;
         }
 
+        if (isset($todo->SEQUENCE)) {
+            $task['sequence'] = max(0, (int) $todo->SEQUENCE->getValue());
+        }
+
         if (isset($todo->COMPLETED)) {
             $task['completed'] = self::formatCompletedUtc((string) $todo->COMPLETED->getValue());
         }

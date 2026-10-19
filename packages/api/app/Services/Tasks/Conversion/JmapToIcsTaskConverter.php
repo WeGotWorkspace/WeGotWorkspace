@@ -146,6 +146,9 @@ final class JmapToIcsTaskConverter
             $properties['CLASS'] = $class;
         }
 
+        if (isset($task['sequence']) && is_int($task['sequence']) && $task['sequence'] >= 0) {
+            $properties['SEQUENCE'] = (string) $task['sequence'];
+        }
         if (isset($task['priority']) && is_int($task['priority']) && $task['priority'] > 0) {
             $properties['PRIORITY'] = (string) max(1, min(9, $task['priority']));
         }
