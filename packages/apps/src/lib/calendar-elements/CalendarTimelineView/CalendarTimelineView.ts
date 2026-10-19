@@ -1541,8 +1541,8 @@ export class CalendarTimelineView extends CalendarViewBase {
       new Date(Date.UTC(day.year, day.month - 1, day.day)),
     );
     const isMonthMode = this.mode === "month";
-    const anchor = this.#parsedStartDate;
     const inlineAlign = this.#popoverInlineAlign(cellIndex);
+    const hiddenCountLabel = new Intl.NumberFormat(this.#locale).format(hiddenCount);
     return html`
       <button
         type="button"
@@ -1550,13 +1550,13 @@ export class CalendarTimelineView extends CalendarViewBase {
         part="overflow-button"
         style=${`anchor-name:${anchorName}`}
         aria-haspopup="dialog"
-        .ariaLabel=${`Show all ${allCellEvents.length} events on ${fullDateLabel}`}
+        .ariaLabel=${`${hiddenCountLabel} more, show all ${allCellEvents.length} events on ${fullDateLabel}`}
         popovertarget=${popoverId}
         popovertargetaction="toggle"
         @click=${() => this.#prepareOverflowPopover(cellIndex)}
       >
         ${this.#renderOverflowDots(hiddenEvents, hiddenCount)}
-        <span>+${new Intl.NumberFormat(this.#locale).format(hiddenCount)}</span>
+        <span>+${hiddenCountLabel}</span>
       </button>
       <day-overflow-popover
         id=${popoverId}
@@ -1573,7 +1573,7 @@ export class CalendarTimelineView extends CalendarViewBase {
         ?is-current-day=${
           Temporal.PlainDate.compare(day, this.#currentDateTime.toPlainDate()) === 0
         }
-        ?outside-visible-month=${isMonthMode && isOutsideVisibleMonth(day, anchor)}
+        ?outside-visible-month=${isMonthMode && isOutsideVisibleMonth(day, this.#parsedStartDate)}
         ?is-weekend=${this.#isWeekendDay(day)}
         .events=${popoverEvents}
         @day-label-selection=${(event: Event) =>
