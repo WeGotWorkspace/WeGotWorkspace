@@ -9,7 +9,19 @@ import {
   useDocsHomeList,
   type DocsHomeFetcher,
 } from "@/docs-core/src/use-docs-home-list";
-import { writeDocsListingToCache } from "@/lib/offline/docs-listing-offline-store";
+import {
+  readDocsListingFromCache,
+  writeDocsListingToCache,
+} from "@/lib/offline/docs-listing-offline-store";
+
+vi.mock("@/lib/offline/docs-listing-offline-store", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/docs-listing-offline-store")>();
+  return {
+    ...actual,
+    readDocsListingFromCache: vi.fn(actual.readDocsListingFromCache),
+    writeDocsListingToCache: vi.fn(actual.writeDocsListingToCache),
+  };
+});
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
   getConnectivitySnapshot: vi.fn(() => true),
@@ -261,6 +273,67 @@ describe("useDocsHomeList", () => {
     await waitFor(() => expect(hook.current.loading).toBe(false));
     expect(fetcher).not.toHaveBeenCalled();
     expect(hook.current.files.map((f) => f.title)).toEqual(["A", "B"]);
+    expect(hook.current.isOfflineListing).toBe(true);
+  });
+
+  it("loads the live listing when the offline cache read fails", async () => {
+    vi.mocked(readDocsListingFromCache).mockRejectedValueOnce(new Error("UnknownError"));
+    const fetcher = createFetcher(FIXTURES, 50);
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher, debounceMs: 0, offlineUsername: "alice" }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(hook.current.error).toBeNull();
+    expect(hook.current.files).toHaveLength(5);
+  });
+
+  it("loads the live listing when the offline cache read stalls", async () => {
+    vi.mocked(readDocsListingFromCache).mockReturnValueOnce(new Promise(() => {}));
+    const fetcher = createFetcher(FIXTURES, 50);
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({
+        username: "alice",
+        fetcher,
+        debounceMs: 0,
+        offlineUsername: "alice",
+        cacheTimeoutMs: 20,
+      }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(hook.current.files).toHaveLength(5);
+  });
+
+  it("stops loading when the offline cache write stalls", async () => {
+    vi.mocked(writeDocsListingToCache).mockReturnValueOnce(new Promise(() => {}));
+    const fetcher = createFetcher(FIXTURES, 50);
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({
+        username: "alice",
+        fetcher,
+        debounceMs: 0,
+        offlineUsername: "alice",
+        cacheTimeoutMs: 20,
+      }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(hook.current.error).toBeNull();
+    expect(hook.current.files).toHaveLength(5);
+  });
+
+  it("stops loading offline when the offline cache read fails", async () => {
+    vi.mocked(getConnectivitySnapshot).mockReturnValue(false);
+    vi.mocked(readDocsListingFromCache).mockRejectedValueOnce(new Error("UnknownError"));
+    const fetcher = vi.fn(createFetcher(FIXTURES, 2));
+    const { result: hook } = renderHook(() =>
+      useDocsHomeList({ username: "alice", fetcher, debounceMs: 0, offlineUsername: "alice" }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(hook.current.files).toEqual([]);
     expect(hook.current.isOfflineListing).toBe(true);
   });
 });
