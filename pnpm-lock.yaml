@@ -24,7 +24,9 @@ overrides:
   linkify-it: 5.0.2
   nanoid: 3.3.18
   postcss: 8.5.18
-  seroval: 1.5.3
+  seroval: 1.6.3
+  seroval-plugins: 1.6.3
+  source-map-js@1: 1.2.2
   undici@7: ^7.29.0
   ws@8: ^8.21.0
 
@@ -5509,14 +5511,14 @@ packages:
     resolution: {integrity: sha512-GL2BWwVa6JydKO6l/ljVgjAZF4QJ3S7dWDWi53s5GZT8PJzD2fNxi67HANQGKAqPrwEpL5ba7gUBGi0Ls/sEoQ==}
     engines: {node: '>=20.0.0'}
 
-  seroval-plugins@1.5.2:
-    resolution: {integrity: sha512-qpY0Cl+fKYFn4GOf3cMiq6l72CpuVaawb6ILjubOQ+diJ54LfOWaSSPsaswN8DRPIPW4Yq+tE1k5aKd7ILyaFg==}
+  seroval-plugins@1.6.3:
+    resolution: {integrity: sha512-zQIy62HW683pMIUOKv9yKueQmOr+xMjpP2eH/qEPhr6nTAC+pJTh508md571Oduf/K/QpAoyeWpOhOp1+RFeDA==}
     engines: {node: '>=10'}
     peerDependencies:
-      seroval: 1.5.3
+      seroval: 1.6.3
 
-  seroval@1.5.3:
-    resolution: {integrity: sha512-BXe0x4buEeYiIKaRUnth1WqCILQ3k4O67KP/B4pC3pVz0Mv2c96ngA9QDREUYxWY1sb2RZVRqwI9RcpVMyHCVw==}
+  seroval@1.6.3:
+    resolution: {integrity: sha512-5PwLbVPpT4DEki1hYVSSsoxWY6xCNMVucAVLK/CH0mXSDfp/I4KaAex72q80GNt5hpn7CCMGdSpIg4YGqH/wXQ==}
     engines: {node: '>=10'}
 
   serve-static@2.2.1:
@@ -5587,8 +5589,8 @@ packages:
       react: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
+  source-map-js@1.2.2:
+    resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
 
   source-map-support@0.5.21:
@@ -8683,7 +8685,7 @@ snapshots:
       jiti: 2.6.1
       lightningcss: 1.32.0
       magic-string: 0.30.21
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
       tailwindcss: 4.2.4
 
   '@tailwindcss/oxide-android-arm64@4.2.4':
@@ -8766,8 +8768,8 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.161.6
       cookie-es: 3.1.1
-      seroval: 1.5.3
-      seroval-plugins: 1.5.2(seroval@1.5.3)
+      seroval: 1.6.3
+      seroval-plugins: 1.6.3(seroval@1.6.3)
 
   '@tanstack/store@0.9.3': {}
 
@@ -9799,7 +9801,7 @@ snapshots:
   css-tree@3.2.1:
     dependencies:
       mdn-data: 2.27.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   css.escape@1.5.1: {}
 
@@ -10910,7 +10912,7 @@ snapshots:
     dependencies:
       '@babel/parser': 7.29.9
       '@babel/types': 7.29.8
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   make-dir@4.0.0:
     dependencies:
@@ -11160,7 +11162,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
   prelude-ls@1.2.1: {}
 
@@ -11620,11 +11622,11 @@ snapshots:
 
   serialize-javascript@7.1.2: {}
 
-  seroval-plugins@1.5.2(seroval@1.5.3):
+  seroval-plugins@1.6.3(seroval@1.6.3):
     dependencies:
-      seroval: 1.5.3
+      seroval: 1.6.3
 
-  seroval@1.5.3: {}
+  seroval@1.6.3: {}
 
   serve-static@2.2.1:
     dependencies:
@@ -11712,7 +11714,7 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.2: {}
 
   source-map-support@0.5.21:
     dependencies:

@@ -18478,6 +18478,15 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "X-Wgw-External-Write",
+                        "in": "header",
+                        "required": false,
+                        "description": "The note's `contentEtag` from `GET /notes/items/{noteId}`, after the person saw an outside edit. Required to save while SUMMARY or DESCRIPTION is not the text the stored state was written from; without it, with a tag for older content, or with a wildcard `*`, the save is refused with 409 `external_write`.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody": {
@@ -18524,6 +18533,16 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "description": "`external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "412": {
                         "$ref": "#/components/responses/JmapPreconditionFailed"

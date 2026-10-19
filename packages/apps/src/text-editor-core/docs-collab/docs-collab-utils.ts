@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { BC_TAB_ORIGIN } from "./docs-collab-tab-sync";
+import type { DocsCollabUrls } from "./docs-collab-types";
 
 export { BC_TAB_ORIGIN };
 export const MESH_ORIGIN = "mesh";
@@ -100,6 +101,13 @@ export function isCollabPayloadTooLarge(error: unknown): boolean {
 
 export function isYDocEmpty(doc: Y.Doc): boolean {
   return doc.getXmlFragment("default").length === 0;
+}
+
+/** The caller's format when it gives one; otherwise the room's file name decides. */
+export function collabFormatForUrls(
+  urls: Pick<DocsCollabUrls, "room" | "documentFormat"> | undefined,
+): TextEditorContentFormat {
+  return urls?.documentFormat ?? collabDocumentFormat(urls?.room);
 }
 
 export function collabDocumentFormat(room: string | undefined): TextEditorContentFormat {

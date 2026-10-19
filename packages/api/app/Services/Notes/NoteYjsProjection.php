@@ -60,6 +60,38 @@ final class NoteYjsProjection
         return $stored !== self::hashContent($parsed['body'], $parsed['title']);
     }
 
+    /**
+     * The tag of the note's text: DESCRIPTION and SUMMARY, the same hash the
+     * state row keeps. A tag, move, or archive does not change it.
+     */
+    public function contentEtag(CalendarObject $object): string
+    {
+        $parsed = $this->parsed($object);
+
+        return '"'.self::hashContent($parsed['body'], $parsed['title']).'"';
+    }
+
+    /**
+     * #1381: an `X-Wgw-External-Write` acknowledgement names the content the
+     * client showed. Unlike `If-Match`, `*` would acknowledge any outside
+     * text unseen, so it never matches.
+     */
+    public function namesContent(string $header, CalendarObject $object): bool
+    {
+        $current = $this->contentEtag($object);
+        foreach (explode(',', $header) as $candidate) {
+            $candidate = trim($candidate);
+            if (str_starts_with($candidate, 'W/')) {
+                $candidate = substr($candidate, 2);
+            }
+            if ($candidate !== '' && $candidate !== '*' && hash_equals($current, $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function journalEtag(CalendarObject $object): string
     {
         return OptimisticConcurrency::formatEtag((string) $object->etag) ?? (string) $object->etag;

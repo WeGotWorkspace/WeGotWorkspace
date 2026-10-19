@@ -6491,6 +6491,8 @@ export interface paths {
                     "If-Match"?: string;
                     /** @description Send * to write the state only when none exists. Refused with 412 when a state is already stored. */
                     "If-None-Match"?: string;
+                    /** @description The note's `contentEtag` from `GET /notes/items/{noteId}`, after the person saw an outside edit. Required to save while SUMMARY or DESCRIPTION is not the text the stored state was written from; without it, with a tag for older content, or with a wildcard `*`, the save is refused with 409 `external_write`. */
+                    "X-Wgw-External-Write"?: string;
                 };
                 path: {
                     noteId: string;
@@ -6520,6 +6522,15 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
+                /** @description `external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
                 /** @description A yjs write over an existing state carried neither If-Match nor If-None-Match */

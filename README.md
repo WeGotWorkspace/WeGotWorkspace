@@ -45,7 +45,7 @@ Details: [docs/dev-layout.md](docs/dev-layout.md), [docs/env.md](docs/env.md). D
 
 - [Getting started](docs/getting-started.md) — path picker
 - [Plugins](docs/plugins.md) — separate from core deploy — not available in the beta
-- [License](LICENSE) / [Commercial](COMMERCIAL-LICENSE.md)
+- [License](LICENSE) / [Commercial](COMMERCIAL-LICENSE.md) — every feature is free and open source (AGPL-3.0-or-later). A hosted offering and support/SLA for hosting partners are planned
 
 ### Contributing
 

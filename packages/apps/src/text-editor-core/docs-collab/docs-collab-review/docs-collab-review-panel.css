@@ -7,7 +7,7 @@
  */
 .docs-collab-review-panel-drawer {
   --side-drawer-width: 22rem;
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--scheme-ink);
   --workspace-icon-surface: var(--color-we-got-blue);
 }
 

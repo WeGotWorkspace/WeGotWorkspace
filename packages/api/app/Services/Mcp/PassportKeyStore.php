@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Mcp;
 
-use App\Support\WgwInstallConfig;
+use App\Support\AppPaths;
 use Illuminate\Support\Facades\File;
 use Laravel\Passport\Passport;
 
 final class PassportKeyStore
 {
-    public function __construct(private WgwInstallConfig $install) {}
+    public function __construct(private AppPaths $paths) {}
 
     public function ensure(): void
     {
@@ -31,7 +31,21 @@ final class PassportKeyStore
             return;
         }
 
-        $dir = rtrim($this->install->dataDir(), '/').'/keys';
+        $this->ensureInDataDir();
+    }
+
+    /**
+     * Before the install, dataDir() is still the stock ./wgw-content inside the
+     * published tree. The installer writes the JWT pair into the directory it
+     * resolved, so that pair marks the data directory as final.
+     */
+    public function ensureInDataDir(): void
+    {
+        if (! $this->paths->jwtKeysReady()) {
+            return;
+        }
+
+        $dir = rtrim($this->paths->dataDir(), '/').'/keys';
         File::ensureDirectoryExists($dir, 0700);
         $privatePath = $dir.'/oauth-private.key';
         $publicPath = $dir.'/oauth-public.key';

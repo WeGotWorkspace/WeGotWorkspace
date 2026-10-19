@@ -163,7 +163,6 @@ function renderDocsWorkspaceHooks(initialUrls: DocsCollabUrls) {
       const collab = useDocsCollab({ userName: "Alex", autoJoin: true, urls: request.urls, wire });
       const prompt = useDocsExternalWritePrompt({
         request,
-        room: urls.room,
         ydoc: collab.session?.ydoc ?? null,
         resolveExternalWrite: collab.resolveExternalWrite,
       });
@@ -494,6 +493,111 @@ describe("Docs external write (#1349)", () => {
     );
     expect(secondPuts.length).toBeGreaterThan(0);
     expect(secondPuts.every((put) => put.seen === undefined)).toBe(true);
+  }, 15_000);
+
+  it("rebuilds in the format the caller gives, not the one the room name suggests", async () => {
+    const puts: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), {
+            status: 200,
+            headers: { ETag: '"state"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if ((init?.method ?? "GET") === "PUT") {
+          puts.push(markdownFromFramedSave(init?.body));
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(JSON.stringify({ body: "# Outside heading", contentEtag: '"c"' }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+    // A note UID can end in an extension that names a plain-text file.
+    const room = "n1@host.json";
+    const documentUrl = `/api/v1/notes/items/${encodeURIComponent(room)}`;
+    const { result } = renderDocsWorkspaceHooks({
+      ...DEFAULT_DOCS_COLLAB_URLS,
+      room,
+      documentUrl,
+      yjsUrl: `${documentUrl}?format=yjs`,
+      documentFormat: "markdown",
+    });
+
+    await waitFor(
+      () =>
+        expect(result.current.collab.session?.ydoc.getXmlFragment("default").toString()).toContain(
+          "<heading",
+        ),
+      { timeout: 5000 },
+    );
+  }, 15_000);
+
+  it("ends a pending offline Notes save in the prompt and keeps it with the content tag", async () => {
+    const room = "note-offline-refused";
+    await markUnsavedWork(room);
+    const puts: RefusedPut[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), { status: 200, headers: { ETag: '"state"' } });
+        }
+        if (method === "PUT") {
+          const headers = (init?.headers ?? {}) as Record<string, string>;
+          const seen = headers["X-Wgw-External-Write"];
+          puts.push({ markdown: markdownFromFramedSave(init?.body), seen });
+          if (seen !== '"content-outside"') {
+            return new Response(
+              JSON.stringify({ error: "external_write", code: "external_write" }),
+              {
+                status: 409,
+              },
+            );
+          }
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response(
+          JSON.stringify({
+            body: OUTSIDE_TEXT,
+            title: "Outside",
+            contentEtag: '"content-outside"',
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ETag: '"journal-etag"' },
+          },
+        );
+      }),
+    );
+    const documentUrl = `/api/v1/notes/items/${room}`;
+    const { result } = renderDocsWorkspaceHooks({
+      ...DEFAULT_DOCS_COLLAB_URLS,
+      room,
+      documentUrl,
+      yjsUrl: `${documentUrl}?format=yjs`,
+    });
+    await waitFor(() => expect(result.current.collab.session).not.toBeNull(), { timeout: 5000 });
+    act(() => result.current.collab.registerMarkdownGetter(() => documentText(result)));
+    await act(async () => {
+      await result.current.collab.saveNow().catch(() => undefined);
+    });
+
+    await waitFor(() => expect(result.current.prompt.open).toBe(true));
+    expect(result.current.request.detail?.title).toBe("Outside");
+    expect(result.current.collab.docStatus).not.toMatch(/save failed|external_write/i);
+
+    act(() => result.current.prompt.keepLocal());
+
+    await waitFor(() => expect(result.current.prompt.open).toBe(false));
+    // The content tag, not the journal ETag: a tag or move while asking does not ask again.
+    expect(puts.at(-1)?.seen).toBe('"content-outside"');
   }, 15_000);
 
   it("shows a prompt that Escape cannot dismiss", () => {

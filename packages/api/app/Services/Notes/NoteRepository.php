@@ -101,12 +101,16 @@ final class NoteRepository
             ->where('calendar_object_id', (int) $located['object']->id)
             ->exists();
 
-        return $this->rememberedNote(
+        $note = $this->rememberedNote(
             $username,
             $located['object'],
             $this->notebooks->apiIdForInstance($located['instance']),
             $starred,
         );
+        // #1381: the tag a save names once the person saw an outside edit.
+        $note['contentEtag'] = $this->yjsProjection->contentEtag($located['object']);
+
+        return $note;
     }
 
     /**

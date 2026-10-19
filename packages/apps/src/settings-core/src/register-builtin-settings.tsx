@@ -4,12 +4,16 @@ import {
   CheckCircle2,
   Contact,
   HardDrive,
+  Info,
   Mail as MailIcon,
+  Palette,
   StickyNote,
   User,
   Users,
   Video,
 } from "lucide-react";
+import { SettingsAboutPane } from "@/settings-core/src/settings-about-pane";
+import { SettingsAppearancePane } from "@/settings-core/src/settings-appearance-pane";
 import { SettingsAssistantsPane } from "@/settings-core/src/settings-assistants-pane";
 import { SettingsCalendarPane } from "@/settings-core/src/settings-calendar-pane";
 import {
@@ -54,6 +58,13 @@ export function registerBuiltinSettings(): void {
     label: "Offline",
     description: "Offline content sync on this device",
     icon: <HardDrive className="size-3.5" />,
+    group: "account",
+  });
+  registerPanel({
+    id: "appearance",
+    label: "Appearance",
+    description: "Light or dark theme on this device",
+    icon: <Palette className="size-3.5" />,
     group: "account",
   });
   registerPanel({
@@ -114,6 +125,13 @@ export function registerBuiltinSettings(): void {
     group: "apps",
     appId: "meet",
   });
+  registerPanel({
+    id: "about",
+    label: "About",
+    description: "License and source code",
+    icon: <Info className="size-3.5" />,
+    group: "account",
+  });
 
   registerSlice({
     id: "profile",
@@ -129,6 +147,11 @@ export function registerBuiltinSettings(): void {
     id: "offline",
     panelIds: ["offline"],
     render: () => <SettingsOfflinePane />,
+  });
+  registerSlice({
+    id: "appearance",
+    panelIds: ["appearance"],
+    render: () => <SettingsAppearancePane />,
   });
   registerSlice({
     id: "assistants",
@@ -164,5 +187,10 @@ export function registerBuiltinSettings(): void {
     id: "meet-device",
     panelIds: ["meet"],
     render: () => <SettingsMeetPane />,
+  });
+  registerSlice({
+    id: "about",
+    panelIds: ["about"],
+    render: () => <SettingsAboutPane />,
   });
 }

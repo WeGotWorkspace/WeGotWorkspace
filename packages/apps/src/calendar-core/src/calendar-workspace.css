@@ -14,7 +14,7 @@
  * (shadow DOM, own styles); this file styles the React chrome around it.
  */
 .calendar-workspace {
-  --workspace-accent: var(--color-we-got-dark);
+  --workspace-accent: var(--scheme-ink);
   --calendar-muted: color-mix(in oklch, var(--workspace-foreground) 80%, var(--workspace-surface));
 
   --color-emerald: var(--workspace-accent);

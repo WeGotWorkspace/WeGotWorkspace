@@ -14,6 +14,8 @@ export type NotesExternalWriteDialogProps = {
   open: boolean;
   noteTitle: string;
   busy?: boolean;
+  /** Set once the outside version replaced the local note in this question. */
+  keepLocalDisabled?: boolean;
   labels: NotesUILabels;
   onKeepLocal: () => void;
   onUseOutside: () => void;
@@ -28,6 +30,7 @@ export function NotesExternalWriteDialog({
   open,
   noteTitle,
   busy = false,
+  keepLocalDisabled = false,
   labels: L,
   onKeepLocal,
   onUseOutside,
@@ -47,7 +50,7 @@ export function NotesExternalWriteDialog({
           <Button variant="outline" onClick={onUseOutside} disabled={busy}>
             {L.externalWriteUseOutside}
           </Button>
-          <Button variant="primary" onClick={onKeepLocal} disabled={busy}>
+          <Button variant="primary" onClick={onKeepLocal} disabled={busy || keepLocalDisabled}>
             {L.externalWriteKeepMine}
           </Button>
         </DialogFooter>
