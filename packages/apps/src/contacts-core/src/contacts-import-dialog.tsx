@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/ui/dialog";
@@ -66,6 +66,7 @@ export function ContactsImportDialog({
   contentClassName = "contacts-dialog-surface",
 }: ContactsImportDialogProps) {
   const writable = writableOwnedAddressBooks(books);
+  const progressLabelId = useId();
   const [addressBookId, setAddressBookId] = useState("");
   const initializedOpen = useRef(false);
 
@@ -111,7 +112,7 @@ export function ContactsImportDialog({
             ) : null}
             {busy && progress ? (
               <div className="contacts-import-dialog__progress" aria-live="polite" aria-busy="true">
-                <p>
+                <p id={progressLabelId}>
                   {labels.importProgress(
                     progress.importedCards,
                     progress.totalCards,
@@ -122,6 +123,7 @@ export function ContactsImportDialog({
                 <div
                   className="contacts-import-dialog__progress-track"
                   role="progressbar"
+                  aria-labelledby={progressLabelId}
                   aria-valuemin={0}
                   aria-valuemax={progress.totalCards}
                   aria-valuenow={progress.importedCards}

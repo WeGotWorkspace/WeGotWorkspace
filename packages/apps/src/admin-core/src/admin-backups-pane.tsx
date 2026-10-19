@@ -52,7 +52,7 @@ export function AdminBackupsPane({ controller }: AdminBackupsPaneProps) {
     },
     {
       key: "actions",
-      header: "",
+      header: <span className="sr-only">Actions</span>,
       headerClassName: "font-medium pb-3 w-1",
       cellClassName: "py-3 whitespace-nowrap text-right",
       render: (row) => (
