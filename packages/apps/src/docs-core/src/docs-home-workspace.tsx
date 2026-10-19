@@ -382,6 +382,7 @@ export function DocsHomeWorkspace({
             emptyIcon={docsHomeEmptyIcon(emptyIconKind)}
             files={visibleFiles}
             loading={listing.loading}
+            refreshing={listing.refreshing}
             loadingMore={listing.loadingMore}
             hasMore={listing.hasMore}
             error={listing.error}

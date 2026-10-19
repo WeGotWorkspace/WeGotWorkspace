@@ -193,6 +193,10 @@ export function createHybridDriveOperations(
       if (cached) return cached;
       throw new Error("This folder is not available offline.");
     },
+    readCachedDirectory: async (at) => {
+      const cached = await readCachedDriveState(username, normalizeApiVirtualPath(at));
+      return cached && cached.directory.files.length > 0 ? cached : null;
+    },
     listDirectory: async (at, opts) => {
       const target = normalizeApiVirtualPath(at);
       if (readBrowserOnline()) {

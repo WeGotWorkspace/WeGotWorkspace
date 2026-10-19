@@ -108,6 +108,11 @@ export type DriveAPIOperations = {
   changeDir: (to: string, opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
   /** List a directory without updating the session working directory. */
   listDirectory: (at: string, opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
+  /**
+   * Offline-cached listing for `at` without a network call, or null when the
+   * folder has no cached rows. Lets folder views paint before `changeDir`.
+   */
+  readCachedDirectory?: (at: string) => Promise<DriveUIData | null>;
   /** List raw directory children, including dot-prefixed names such as `.Trash`. */
   listAllDirectoryEntries?: (
     at: string,

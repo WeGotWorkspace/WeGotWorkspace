@@ -31,7 +31,7 @@ export function applyDriveListing(
   setView({ type: "folder", path: uiPathFromApiPath(nextData.cwd, username) });
 }
 
-function mapDriveListingEntries(nextData: DriveUIData, username: string): DriveFile[] {
+export function mapDriveListingEntries(nextData: DriveUIData, username: string): DriveFile[] {
   return nextData.directory.files.map((entry) => driveFileFromEntry(entry, username));
 }
 

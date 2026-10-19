@@ -393,3 +393,43 @@ describe("DocsHomePane share actions", () => {
     expect(screen.queryByRole("menuitem", { name: driveLabels.detailShare })).toBeNull();
   });
 });
+
+describe("DocsHomePane loading", () => {
+  function renderLoadingPane(files: DriveFile[], refreshing = false) {
+    return render(
+      <TooltipProvider>
+        <DocsHomePane
+          labels={docsLabels}
+          files={files}
+          loading
+          refreshing={refreshing}
+          loadingMore={false}
+          hasMore={false}
+          error={null}
+          query=""
+          onQueryChange={() => {}}
+          viewMode="list"
+          onViewModeChange={() => {}}
+          onLoadMore={() => {}}
+          onOpenFile={() => {}}
+          sidebarOpen={false}
+          onToggleSidebar={() => {}}
+        />
+      </TooltipProvider>,
+    );
+  }
+
+  it("shows the loading state only when there are no rows", () => {
+    renderLoadingPane([]);
+    expect(screen.getByText(docsLabels.homeLoading)).toBeTruthy();
+  });
+
+  it("keeps rows visible while a refresh is in flight", () => {
+    const { container } = renderLoadingPane([FILE], true);
+    expect(screen.queryByText(docsLabels.homeLoading)).toBeNull();
+    expect(screen.getByText(FILE.title)).toBeTruthy();
+    expect(container.querySelector(".docs-home-pane__scroll")?.getAttribute("aria-busy")).toBe(
+      "true",
+    );
+  });
+});

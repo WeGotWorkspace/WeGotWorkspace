@@ -44,6 +44,8 @@ const loadMore = () => {};
 const idleQuery: DocsHomeListingQuery = { loading: false, error: null };
 const idleBrowse: DocsHomeBrowseListing = {
   ...idleQuery,
+  files: [],
+  refreshing: false,
   loadingMore: false,
   hasMore: false,
   isOfflineListing: false,
@@ -199,6 +201,29 @@ describe("resolveDocsHomeListingStatus", () => {
     });
     expect(status({ isStarredView: true, starred: { error: "starred" } }).error).toBe("starred");
     expect(status({ isTrashView: true, trash: { loading: true } }).loading).toBe(true);
+  });
+
+  it("shows browse rows on All docs while shares are still loading", () => {
+    const allDocs = {
+      isAllView: true,
+      usesBrowseList: true,
+      shareOperationsEnabled: true,
+      shared: { loading: true },
+    };
+    expect(
+      status({ ...allDocs, browse: { files: [file({ id: "a", title: "A.md" })] } }),
+    ).toMatchObject({ loading: false, refreshing: true });
+    expect(status({ ...allDocs, browse: { files: [] } })).toMatchObject({
+      loading: true,
+      refreshing: false,
+    });
+  });
+
+  it("reports a background browse refresh without loading", () => {
+    expect(status({ usesBrowseList: true, browse: { refreshing: true, files: [] } })).toMatchObject(
+      { loading: false, refreshing: true },
+    );
+    expect(status({ isSharedView: true, browse: { refreshing: true } }).refreshing).toBe(false);
   });
 });
 
