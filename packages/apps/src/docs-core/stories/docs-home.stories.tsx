@@ -183,7 +183,7 @@ export const MoveToTrash: StoryObj<typeof DocsTrashConfirmHarness> = {
     await userEvent.click(within(row).getByRole("button", { name: "More actions" }));
     const menu = await canvas.findByRole("menu");
     await userEvent.click(
-      await within(menu).findByRole("button", { name: driveLabels.detailDelete }),
+      await within(menu).findByRole("menuitem", { name: driveLabels.detailDelete }),
     );
     const dialog = await canvas.findByRole("alertdialog", {
       name: docsLabels.homeMoveToTrashTitle,
@@ -220,7 +220,7 @@ export const ShareFromRowMenu: Story = {
     // MenuItem does not forward Radix item props, so the row is a button inside the menu.
     const menu = await body.findByRole("menu");
     await userEvent.click(
-      await within(menu).findByRole("button", { name: driveLabels.detailShare }),
+      await within(menu).findByRole("menuitem", { name: driveLabels.detailShare }),
     );
     await expect(
       await body.findByRole("dialog", { name: "Share Roadmap 2026" }),

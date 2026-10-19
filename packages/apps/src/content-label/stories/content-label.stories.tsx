@@ -16,7 +16,7 @@ export const MailboxInbox: Story = {
     text: "Inbox",
     icon: <Inbox className="size-3.5" />,
     style: {
-      color: "var(--color-emerald)",
+      color: "color-mix(in oklab, var(--color-emerald) 45%, var(--color-we-got-dark))",
       backgroundColor: "color-mix(in oklab, var(--color-emerald) 16%, transparent)",
     },
   },

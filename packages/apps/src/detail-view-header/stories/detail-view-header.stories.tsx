@@ -29,7 +29,7 @@ export const ReadonlyMailStyle: Story = {
         icon: <CalendarDays className="size-3.5 opacity-70" />,
         colors: {
           backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)",
-          color: "color-mix(in oklab, var(--color-we-got-dark) 58%, transparent)",
+          color: "color-mix(in oklab, var(--color-we-got-dark) 78%, transparent)",
         },
       },
     ],
@@ -58,7 +58,7 @@ export const EditableNotesStyle: Story = {
             icon: <CalendarDays className="size-3.5 opacity-70" />,
             colors: {
               backgroundColor: "color-mix(in oklab, var(--color-we-got-dark) 6%, transparent)",
-              color: "color-mix(in oklab, var(--color-we-got-dark) 58%, transparent)",
+              color: "color-mix(in oklab, var(--color-we-got-dark) 78%, transparent)",
             },
           },
         ]}
