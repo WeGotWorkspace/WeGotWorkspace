@@ -321,6 +321,27 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringContainsString("ANNIVERSARY:20100601T120000Z\r\n", $out);
     }
 
+    /** #1457: editing an Apple group's members keeps the stored member lines and writes no MEMBER on vCard 3.0. */
+    public function test_group_member_edits_keep_stored_member_lines(): void
+    {
+        $vcard = "BEGIN:VCARD\r\nVERSION:3.0\r\nPRODID:-//Apple Inc.//macOS 26.6.2//EN\r\nN:Family\r\nFN:Family\r\n"
+            ."X-ADDRESSBOOKSERVER-KIND:group\r\n"
+            ."X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n"
+            ."X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A2222222-2222-4222-8222-222222222222\r\n"
+            ."UID:B3333333-3333-4333-8333-333333333333\r\nEND:VCARD\r\n";
+        $members = $this->converter->cardFromVCard($vcard)['members'];
+
+        $added = $this->edit($vcard, ['members' => $members + ['urn:uuid:a4444444-4444-4444-8444-444444444444' => true]]);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n", $added);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A2222222-2222-4222-8222-222222222222\r\n", $added);
+        $this->assertSame(1, substr_count(strtolower($added), 'a4444444-4444-4444-8444-444444444444'));
+        $this->assertStringNotContainsString("\r\nMEMBER:", $added);
+
+        $removed = $this->edit($vcard, ['members' => ['urn:uuid:a2222222-2222-4222-8222-222222222222' => null]]);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n", $removed);
+        $this->assertStringNotContainsStringIgnoringCase('a2222222', $removed);
+    }
+
     private function vcard(string $version, string $body): string
     {
         return "BEGIN:VCARD\r\nVERSION:".$version."\r\nUID:urn:uuid:5e1f3a2b-1111-4222-8333-444455556666\r\n"

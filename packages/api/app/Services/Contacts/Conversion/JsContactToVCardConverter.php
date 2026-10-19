@@ -37,10 +37,9 @@ final class JsContactToVCardConverter
             if (strtolower($card['kind']) === 'org') {
                 $vcard->add('X-ABShowAs', 'COMPANY');
             }
-            // Apple CardDAV (AddressBook Server / Contacts.app) uses X-ADDRESSBOOKSERVER-KIND:group
-            // instead of (or in addition to) the RFC 6350 KIND:group property. Emit both so that
-            // Apple clients recognise the card as a group after any server-side write.
-            if (strtolower($card['kind']) === 'group') {
+            // Apple 3.0 groups use X-ADDRESSBOOKSERVER-KIND. On 4.0 KIND is enough: Sabre turns it
+            // into X-ADDRESSBOOKSERVER-KIND when a 3.0 client reads the card (#1457).
+            if (strtolower($card['kind']) === 'group' && $this->version === '3.0') {
                 $vcard->add('X-ADDRESSBOOKSERVER-KIND', 'group');
             }
         }
@@ -432,11 +431,8 @@ final class JsContactToVCardConverter
             }
             $seen[$normalized] = true;
             $uri = ConversionSupport::memberUidForVCardWrite((string) $memberUid);
-            $vcard->add('MEMBER', $uri);
-            // Apple CardDAV uses X-ADDRESSBOOKSERVER-MEMBER instead of (or alongside) the RFC 6350
-            // MEMBER property. Emit both so Apple Contacts.app shows the correct membership after any
-            // server-side write.
-            $vcard->add('X-ADDRESSBOOKSERVER-MEMBER', $uri);
+            // 3.0 (Apple) has no MEMBER; on 4.0 Sabre derives X-ADDRESSBOOKSERVER-MEMBER for 3.0 readers.
+            $vcard->add($this->version === '3.0' ? 'X-ADDRESSBOOKSERVER-MEMBER' : 'MEMBER', $uri);
         }
     }
 
