@@ -200,13 +200,17 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringContainsString("RELATED;TYPE=spouse;VALUE=text:Jane Doe\r\n", $out);
     }
 
-    /** CT-9: a multi-value NICKNAME is still read as one; an unrelated edit keeps the list (#1418). */
-    public function test_ct9_nickname_read_as_one_but_list_kept_on_edit(): void
+    /** CT-9 (fixed by #1428): each NICKNAME value is its own nickname; an escaped comma stays one. */
+    public function test_ct9_nickname_list_is_read_as_separate_nicknames(): void
     {
         $vcard = $this->vcard('3.0', "FN:Al Bundy\r\nN:Bundy;Al;;;\r\nNICKNAME:Al,Ally\r\n");
 
-        $this->assertCount(1, $this->converter->cardFromVCard($vcard)['nicknames']);
+        $names = array_column(array_values($this->converter->cardFromVCard($vcard)['nicknames']), 'name');
+        $this->assertSame(['Al', 'Ally'], $names);
         $this->assertStringContainsString("NICKNAME:Al,Ally\r\n", $this->edit($vcard));
+
+        $escaped = $this->vcard('3.0', "FN:Bob\r\nN:;Bob;;;\r\nNICKNAME:Bob\\,Rob\r\n");
+        $this->assertSame(['Bob,Rob'], array_column(array_values($this->converter->cardFromVCard($escaped)['nicknames']), 'name'));
     }
 
     /** CT-10 (fixed by #1425): changing an entry's context replaces the old context. */
