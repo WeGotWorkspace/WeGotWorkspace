@@ -7,7 +7,7 @@
  */
 .drive-detail-panel-drawer {
   --side-drawer-width: 22rem;
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --workspace-icon-surface: var(--color-we-got-soft);
 }
 

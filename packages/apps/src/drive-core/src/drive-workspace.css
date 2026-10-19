@@ -6,7 +6,7 @@
 .drive-workspace {
   @apply min-w-0 overflow-x-hidden;
   /* Solid accent is Dark. The Drive tile stays lime (`WORKSPACE_APP_ACCENT`). */
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --app-sidebar-border-color: var(--border);
   --app-sidebar-color: var(--workspace-foreground);
@@ -154,7 +154,7 @@
  * Repeat accent tokens here so {@link Button} and destination picker match the drive shell.
  */
 .drive-dialog-surface {
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-brat);

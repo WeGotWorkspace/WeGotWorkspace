@@ -7,7 +7,7 @@
   @apply min-w-0 overflow-x-hidden;
 
   /* Cream paper. Sidebar wash and item tints come from workspace-color.css. */
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --docs-surface: var(--workspace-surface);
   --background: var(--workspace-surface);
@@ -240,7 +240,7 @@
 }
 
 .docs-dialog-surface {
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-icon-surface: var(--color-we-got-blue);
   --workspace-icon-foreground: var(--color-we-got-soft);
@@ -252,7 +252,7 @@
 }
 
 .docs-workspace .docs-comments-floating-layer {
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
 }
 
 .docs-workspace .text-editor {

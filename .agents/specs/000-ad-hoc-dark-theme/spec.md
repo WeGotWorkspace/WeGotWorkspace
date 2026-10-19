@@ -1,4 +1,5 @@
 Source: ad-hoc
+Goal: #642
 
 # Dark theme (beta)
 
@@ -20,8 +21,8 @@ Users can pick Auto (System), Light, or Dark in Settings → Appearance. Dark re
 
 ## Technical constraints
 
-- One swap point: `--theme-surface`, `--theme-sidebar-surface`, `--theme-ink`, `--theme-on-ink`, `--theme-letter` on `:root`, overridden by `:root[data-theme="dark"]`. Tier 2 workspace pairs read these. `workspace-derive.css` recomputes washes, so no per-component dark rules.
-- Product sheets that pinned `--workspace-accent: var(--color-we-got-dark)` read `--theme-ink` instead.
+- One swap point: `--scheme-surface`, `--scheme-sidebar-surface`, `--scheme-ink`, `--scheme-on-ink`, `--scheme-letter`, declared on every element with zero specificity (`:where(:root, :root *)`) and swapped under `[data-theme="dark"]`. Declaring them only on `:root` breaks wherever the brand primitives resolve below the root (Storybook). The `--theme-*` prefix is reserved by Tailwind v4. Tier 2 workspace pairs read these. `workspace-derive.css` recomputes washes, so no per-component dark rules.
+- Product sheets that pinned `--workspace-accent: var(--color-we-got-dark)` read `--scheme-ink` instead.
 - The inline script in `index.html` and `src/lib/theme-preference.ts` share the storage key and resolution rules.
 
 ## Edge cases

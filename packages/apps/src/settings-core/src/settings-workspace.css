@@ -12,7 +12,7 @@
  * Import only from {@link SettingsWorkspace}.
  */
 .settings-workspace {
-  --workspace-accent: var(--theme-ink);
+  --workspace-accent: var(--scheme-ink);
   --color-emerald: var(--workspace-accent);
   --workspace-root-bg: var(--workspace-surface);
   --workspace-main-bg: var(--workspace-surface);

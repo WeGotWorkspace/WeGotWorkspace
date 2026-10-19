@@ -130,30 +130,19 @@
   --radius: 0.625rem;
   color-scheme: light;
   /*
-   * Tier 1.5 — theme pair. The only values `[data-theme="dark"]` swaps.
-   * Product sheets that pin the ink accent read `--theme-ink`, not
-   * `--color-we-got-dark`, so they follow the theme. Scopes never remap these.
-   */
-  --theme-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
-  --theme-sidebar-surface: var(--color-we-got-soft);
-  --theme-ink: var(--color-we-got-dark);
-  --theme-on-ink: #ffffff;
-  /* Docs letter sheet. */
-  --theme-letter: oklch(1 0 0);
-  /*
    * Tier 2 — four surface/foreground pairs. Components and product sheets mix
    * these, never `--color-we-got-*`. A scope remaps the generic pair
    * (`.app-sidebar` → sidebar, `.meet-workspace` → dark) and the derivation
    * sheet recomputes state washes from whatever resolves locally.
    */
-  --workspace-surface: var(--theme-surface);
-  --workspace-foreground: var(--theme-ink);
-  --workspace-accent: var(--theme-ink);
-  --workspace-accent-foreground: var(--theme-on-ink);
+  --workspace-surface: var(--scheme-surface);
+  --workspace-foreground: var(--scheme-ink);
+  --workspace-accent: var(--scheme-ink);
+  --workspace-accent-foreground: var(--scheme-on-ink);
   --workspace-icon-surface: var(--workspace-accent);
   --workspace-icon-foreground: var(--workspace-accent-foreground);
   /* Rail is Soft — not a tint of the icon pair. Paper is Soft mixed toward white. */
-  --workspace-sidebar-surface: var(--theme-sidebar-surface);
+  --workspace-sidebar-surface: var(--scheme-sidebar-surface);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   /*
    * Suite navy. Source for the `@theme` alias `--color-workspace-home-bg`.
@@ -223,17 +212,38 @@
 }
 
 /*
- * Dark theme (beta). `theme-preference.ts` resolves System / Light / Dark to
+ * Tier 1.5 — colour-scheme pair. The only values `[data-theme="dark"]` swaps.
+ * Product sheets that pin the ink accent read `--scheme-ink`, not
+ * `--color-we-got-dark`, so they follow the theme. Scopes never remap these.
+ *
+ * Declared on every element (zero specificity), not only `:root`: custom
+ * properties inherit their resolved value, and a host that re-declares the
+ * brand primitives must see the scheme recomputed from them locally.
+ */
+:where(:root, :root *) {
+  --scheme-surface: color-mix(in oklch, var(--color-we-got-soft) 40%, #fff);
+  --scheme-sidebar-surface: var(--color-we-got-soft);
+  --scheme-ink: var(--color-we-got-dark);
+  --scheme-on-ink: #ffffff;
+  /* Docs letter sheet. */
+  --scheme-letter: oklch(1 0 0);
+}
+
+/*
+ * Dark theme (beta). `theme-preference.ts` resolves Auto / Light / Dark to
  * `data-theme` on <html> before first paint, so only one selector is needed.
  * Paper is neutral near-black; ink is Soft. Everything downstream derives.
  */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --theme-surface: #141414;
-  --theme-sidebar-surface: #1c1c1c;
-  --theme-ink: var(--color-we-got-soft);
-  --theme-on-ink: #111111;
-  --theme-letter: #222222;
+}
+
+:where(:root[data-theme="dark"], :root[data-theme="dark"] *) {
+  --scheme-surface: #141414;
+  --scheme-sidebar-surface: #1c1c1c;
+  --scheme-ink: var(--color-we-got-soft);
+  --scheme-on-ink: #111111;
+  --scheme-letter: #222222;
 }
 
 @layer base {

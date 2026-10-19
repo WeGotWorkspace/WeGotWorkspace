@@ -67,13 +67,13 @@
   .meet-call-stage,
   .meet-call-expanded
 ) {
-  --workspace-surface: var(--theme-surface);
-  --workspace-foreground: var(--theme-ink);
-  --workspace-accent: var(--theme-ink);
-  --workspace-accent-foreground: var(--theme-on-ink);
+  --workspace-surface: var(--scheme-surface);
+  --workspace-foreground: var(--scheme-ink);
+  --workspace-accent: var(--scheme-ink);
+  --workspace-accent-foreground: var(--scheme-on-ink);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-sand);
-  --workspace-sidebar-surface: var(--theme-sidebar-surface);
+  --workspace-sidebar-surface: var(--scheme-sidebar-surface);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   --meet-surface: var(--workspace-surface);
   --meet-text: var(--workspace-foreground);

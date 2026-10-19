@@ -20,7 +20,7 @@
 
 .text-editor {
   /* Letter fill (white, lifted paper in dark) — shared with Notes via `.paper-sheet` / `--paper-sheet-bg`. */
-  --paper-sheet-bg: var(--theme-letter);
+  --paper-sheet-bg: var(--scheme-letter);
   /* Compat alias for callers that still read `--text-editor-sheet`. */
   --text-editor-sheet: var(--paper-sheet-bg);
   --text-editor-sheet-margin-block: 1.5rem;

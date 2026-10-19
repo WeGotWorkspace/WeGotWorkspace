@@ -6,13 +6,13 @@
  * the same Soft paper on `.meet-call-dialog`.
  */
 .meet-channel-dialog {
-  --workspace-surface: var(--theme-surface);
-  --workspace-foreground: var(--theme-ink);
-  --workspace-accent: var(--theme-ink);
-  --workspace-accent-foreground: var(--theme-on-ink);
+  --workspace-surface: var(--scheme-surface);
+  --workspace-foreground: var(--scheme-ink);
+  --workspace-accent: var(--scheme-ink);
+  --workspace-accent-foreground: var(--scheme-on-ink);
   --workspace-icon-surface: var(--color-we-got-soft);
   --workspace-icon-foreground: var(--color-we-got-sand);
-  --workspace-sidebar-surface: var(--theme-sidebar-surface);
+  --workspace-sidebar-surface: var(--scheme-sidebar-surface);
   --workspace-sidebar-foreground: var(--workspace-foreground);
   --color-emerald: var(--workspace-accent);
   --foreground: var(--workspace-foreground);
