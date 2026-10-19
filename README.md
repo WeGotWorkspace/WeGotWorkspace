@@ -59,7 +59,7 @@ Your settings and data are kept. See the install guides for backups and details.
 ## 🌟 Features
 
 - **Docs.** Write documents together in real time. Suggest edits with track changes, then accept or reject them.
-- **Notes.** Capture ideas in a rich text editor and edit them together with your team, live.
+- **Notes.** Capture ideas with full Markdown support and edit them together with your team, live.
 - **Files.** Upload, organize, preview, and share files. Mount them on your computer over WebDAV.
 - **Calendar.** Plan your week, share calendars with others, and send and answer meeting invites. Syncs with your phone over CalDAV.
 - **Meet.** Video calls in the browser with chat built in, linked straight from calendar events.
