@@ -295,6 +295,12 @@ final class VCardToJsContactCoreFields
             }
         }
         ConversionSupport::applySharedFields($entry, $property);
+        // On ADR, LABEL is the formatted delivery address (`full`), not a display
+        // label; reading it as `label` made the writer copy it into an
+        // X-ABLabel (CT-11, #1429).
+        if (isset($property['LABEL']) && ($entry['label'] ?? null) === VObjectScalar::string($property['LABEL'])) {
+            unset($entry['label']);
+        }
         $this->extra->applyGroupLabel($entry, $property);
 
         return $entry;
@@ -525,12 +531,22 @@ final class VCardToJsContactCoreFields
     {
         $nicknames = [];
         foreach ($document->select('NICKNAME') as $index => $property) {
-            $entry = [
-                '@type' => 'Nickname',
-                'name' => trim((string) $property->getValue()),
-            ];
-            ConversionSupport::applySharedFields($entry, $property);
-            $nicknames[ConversionSupport::propertyId($property, $index)] = $entry;
+            // NICKNAME is a text list: "Al,Ally" is two nicknames, an escaped
+            // "Bob\,Rob" is one (CT-9, #1428). Extra values get ids derived from
+            // the property id, so two reads of a card give the same ids.
+            $id = ConversionSupport::propertyId($property, $index);
+            $names = array_values(array_filter(
+                array_map(static fn (mixed $part): string => trim((string) $part), $property->getParts()),
+                static fn (string $name): bool => $name !== '',
+            ));
+            foreach ($names === [] ? [''] : $names as $position => $name) {
+                $entry = [
+                    '@type' => 'Nickname',
+                    'name' => $name,
+                ];
+                ConversionSupport::applySharedFields($entry, $property);
+                $nicknames[$position === 0 ? $id : $id.'-'.($position + 1)] = $entry;
+            }
         }
         if ($nicknames !== []) {
             $card['nicknames'] = $nicknames;

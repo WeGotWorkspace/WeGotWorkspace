@@ -178,7 +178,8 @@ final class VCardToJsContactExtraFields
         }
 
         foreach ($document->select('ANNIVERSARY') as $index => $property) {
-            $date = ConversionSupport::anniversaryDateFromProperty($property, false);
+            // A timestamp ANNIVERSARY keeps its time (CT-13, #1431).
+            $date = ConversionSupport::anniversaryDateFromProperty($property, true);
             if ($date === null) {
                 $this->state->deferredKnownProperties[] = $property;
 

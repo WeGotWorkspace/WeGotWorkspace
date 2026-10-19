@@ -152,21 +152,26 @@ final class JsContactRoundTripLossTest extends TestCase
         );
     }
 
-    /** CT-6: vCard 3.0 TYPE=pref is still not read as pref; an unrelated edit keeps it (#1418). */
-    public function test_ct6_type_pref_not_read_but_kept_on_edit(): void
+    /** CT-6 (fixed by #1424): vCard 3.0 TYPE=pref is read as pref and written back as TYPE=pref. */
+    public function test_ct6_vcard3_type_pref_is_read_and_written(): void
     {
         $vcard = $this->vcard('3.0', "FN:John Doe\r\nN:Doe;John;;;\r\n"
             ."EMAIL;type=INTERNET;type=WORK:john@work.example\r\n"
             ."EMAIL;type=INTERNET;type=HOME;type=pref:john@home.example\r\n"
             ."TEL;type=CELL;type=VOICE;type=pref:+31 6 1234 5678\r\n");
 
-        foreach ($this->converter->cardFromVCard($vcard)['emails'] as $email) {
-            $this->assertArrayNotHasKey('pref', $email);
-        }
+        $emails = $this->converter->cardFromVCard($vcard)['emails'];
+        $prefs = array_column(array_values($emails), 'pref', 'address');
+        $this->assertSame(['john@home.example' => 1], $prefs);
 
         $out = strtolower($this->edit($vcard));
         $this->assertStringContainsString('home,pref:john@home.example', $out);
-        $this->assertStringContainsString('voice,pref:+31 6 1234 5678', $out);
+
+        $workId = array_search('john@work.example', array_map(static fn (array $e): string => (string) $e['address'], $emails), true);
+        $moved = strtolower($this->edit($vcard, ['emails' => [$workId => ['address' => 'john@work.example', 'contexts' => ['work' => true], 'pref' => 1]]]));
+        $this->assertSame(1, substr_count($moved, 'john@work.example'));
+        $this->assertMatchesRegularExpression('/email;[^\r]*type=work,pref[^\r]*:john@work\.example/', $moved);
+        $this->assertStringNotContainsString('pref=1', $moved);
     }
 
     /** CT-7 (fixed for unrelated edits by #1418): unmodelled parameters on known properties survive. */
@@ -195,13 +200,17 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringContainsString("RELATED;TYPE=spouse;VALUE=text:Jane Doe\r\n", $out);
     }
 
-    /** CT-9: a multi-value NICKNAME is still read as one; an unrelated edit keeps the list (#1418). */
-    public function test_ct9_nickname_read_as_one_but_list_kept_on_edit(): void
+    /** CT-9 (fixed by #1428): each NICKNAME value is its own nickname; an escaped comma stays one. */
+    public function test_ct9_nickname_list_is_read_as_separate_nicknames(): void
     {
         $vcard = $this->vcard('3.0', "FN:Al Bundy\r\nN:Bundy;Al;;;\r\nNICKNAME:Al,Ally\r\n");
 
-        $this->assertCount(1, $this->converter->cardFromVCard($vcard)['nicknames']);
+        $names = array_column(array_values($this->converter->cardFromVCard($vcard)['nicknames']), 'name');
+        $this->assertSame(['Al', 'Ally'], $names);
         $this->assertStringContainsString("NICKNAME:Al,Ally\r\n", $this->edit($vcard));
+
+        $escaped = $this->vcard('3.0', "FN:Bob\r\nN:;Bob;;;\r\nNICKNAME:Bob\\,Rob\r\n");
+        $this->assertSame(['Bob,Rob'], array_column(array_values($this->converter->cardFromVCard($escaped)['nicknames']), 'name'));
     }
 
     /** CT-10 (fixed by #1425): changing an entry's context replaces the old context. */
@@ -253,6 +262,46 @@ final class JsContactRoundTripLossTest extends TestCase
         $this->assertStringNotContainsString('X-ABLABEL', $out);
     }
 
+    /** CT-11 (fixed by #1429): ADR LABEL is read as `full` only, so editing the address adds no X-ABLabel. */
+    public function test_ct11_adr_label_is_full_only_and_edit_adds_no_x_ablabel(): void
+    {
+        $vcard = $this->vcard('4.0', "FN:John Doe\r\n"
+            ."ADR;TYPE=work;LABEL=\"Acme\\nDamrak 2\":;;Damrak 2;Amsterdam;;1012 LG;NL\r\n");
+        $addresses = $this->converter->cardFromVCard($vcard)['addresses'];
+        $id = array_key_first($addresses);
+        $this->assertArrayNotHasKey('label', $addresses[$id]);
+
+        $address = $addresses[$id];
+        foreach ($address['components'] as $i => $component) {
+            if (($component['kind'] ?? null) === 'locality') {
+                $address['components'][$i]['value'] = 'Haarlem';
+            }
+        }
+        $out = $this->edit($vcard, ['addresses' => [$id => $address]]);
+
+        $this->assertStringContainsString('Haarlem', $out);
+        $this->assertStringNotContainsString('Acme', $this->onlyXAbLabels($out));
+    }
+
+    /** CT-13 (fixed by #1431): a timestamp ANNIVERSARY is read as a Timestamp and keeps its time when edited. */
+    public function test_ct13_anniversary_timestamp_is_read_and_kept(): void
+    {
+        $vcard = $this->vcard('4.0', "FN:John Doe\r\nANNIVERSARY:20100601T120000Z\r\n");
+        $anniversaries = $this->converter->cardFromVCard($vcard)['anniversaries'];
+        $id = array_key_first($anniversaries);
+        $this->assertSame('Timestamp', $anniversaries[$id]['date']['@type']);
+
+        $anniversaries[$id]['date']['utc'] = '2011-06-01T12:00:00Z';
+        $out = $this->edit($vcard, ['anniversaries' => [$id => $anniversaries[$id]]]);
+
+        $this->assertStringContainsString('20110601T120000Z', $out);
+    }
+
+    private function onlyXAbLabels(string $vcard): string
+    {
+        return implode("\n", array_filter(explode("\r\n", $vcard), static fn (string $line): bool => stripos($line, 'X-ABLABEL') !== false));
+    }
+
     /** CT-12 (fixed for unrelated edits by #1418): a card-level TZ stays a property. */
     public function test_ct12_tz_property_survives_an_edit(): void
     {
@@ -270,6 +319,27 @@ final class JsContactRoundTripLossTest extends TestCase
         $out = $this->edit($this->vcard('4.0', "FN:John Doe\r\nANNIVERSARY:20100601T120000Z\r\n"));
 
         $this->assertStringContainsString("ANNIVERSARY:20100601T120000Z\r\n", $out);
+    }
+
+    /** #1457: editing an Apple group's members keeps the stored member lines and writes no MEMBER on vCard 3.0. */
+    public function test_group_member_edits_keep_stored_member_lines(): void
+    {
+        $vcard = "BEGIN:VCARD\r\nVERSION:3.0\r\nPRODID:-//Apple Inc.//macOS 26.6.2//EN\r\nN:Family\r\nFN:Family\r\n"
+            ."X-ADDRESSBOOKSERVER-KIND:group\r\n"
+            ."X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n"
+            ."X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A2222222-2222-4222-8222-222222222222\r\n"
+            ."UID:B3333333-3333-4333-8333-333333333333\r\nEND:VCARD\r\n";
+        $members = $this->converter->cardFromVCard($vcard)['members'];
+
+        $added = $this->edit($vcard, ['members' => $members + ['urn:uuid:a4444444-4444-4444-8444-444444444444' => true]]);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n", $added);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A2222222-2222-4222-8222-222222222222\r\n", $added);
+        $this->assertSame(1, substr_count(strtolower($added), 'a4444444-4444-4444-8444-444444444444'));
+        $this->assertStringNotContainsString("\r\nMEMBER:", $added);
+
+        $removed = $this->edit($vcard, ['members' => ['urn:uuid:a2222222-2222-4222-8222-222222222222' => null]]);
+        $this->assertStringContainsString("X-ADDRESSBOOKSERVER-MEMBER:urn:uuid:A1111111-1111-4111-8111-111111111111\r\n", $removed);
+        $this->assertStringNotContainsStringIgnoringCase('a2222222', $removed);
     }
 
     private function vcard(string $version, string $body): string

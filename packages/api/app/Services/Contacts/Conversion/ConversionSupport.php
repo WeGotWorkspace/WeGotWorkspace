@@ -328,6 +328,27 @@ final class ConversionSupport
     }
 
     /**
+     * Writes pref: as a PREF parameter on vCard 4.0, and as TYPE=pref on vCard 3.0,
+     * which has no PREF parameter (CT-6, #1424).
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public static function withPref(array $params, mixed $pref, string $version): array
+    {
+        if ($pref === null) {
+            return $params;
+        }
+        if ($version === '3.0') {
+            $params['type'] = [...(array) ($params['type'] ?? []), 'pref'];
+        } else {
+            $params['pref'] = (string) $pref;
+        }
+
+        return $params;
+    }
+
+    /**
      * vCardParams without the group: the group is the property's group, not a
      * GROUP= parameter (CT-2, #1420).
      *
