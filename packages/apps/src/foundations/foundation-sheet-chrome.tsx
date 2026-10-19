@@ -137,7 +137,6 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
         borderColor: "color-mix(in oklch, var(--color-we-got-dark) 10%, transparent)",
         backgroundColor: "color-mix(in oklch, var(--color-we-got-soft) 70%, white)",
       }}
-      aria-label={`Copy ${copyValue}`}
     >
       {swatch}
       <span className="min-w-0 flex-1">
