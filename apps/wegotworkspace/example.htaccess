@@ -6,6 +6,7 @@ Options -Indexes -MultiViews
 # BEGIN wgw-deny
 RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
 RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
 # END wgw-deny
 
 # Conservative shared-host upload cap (PHP default is 8M). Ignored on PHP-FPM;
@@ -72,7 +73,7 @@ RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
     # Never expose runtime internals, config, or source trees directly.
     RewriteRule ^(?:wgw-plugins|wgw-content)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:wgw-src|src|resources|vendor|scripts|patches|config|public|packages)(?:/|$) - [F,L,NC]
-    RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php|\.env)$ - [F,L,NC]
+    RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php(?:\.bak\.[^/]*)?|\.env)$ - [F,L,NC]
 
     # Copy Authorization into the env var Sabre's stack reads.
     RewriteCond %{HTTP:Authorization} .+

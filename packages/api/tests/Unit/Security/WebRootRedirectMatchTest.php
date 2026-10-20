@@ -111,6 +111,7 @@ final class WebRootRedirectMatchTest extends TestCase
             '/.well-known/carddav',
             '/sub/.env',
             '/dav/files/u/.env',
+            '/files/users/alice/wgw-config.php.bak.notes',
         ];
     }
 
@@ -128,6 +129,7 @@ final class WebRootRedirectMatchTest extends TestCase
             '/wgw-content/x',
             '/packages/api/.env',
             '/wgw-plugins/x.php',
+            '/wgw-config.php.bak.20260709-120000',
         ];
     }
 
@@ -163,6 +165,7 @@ final class WebRootRedirectMatchTest extends TestCase
 # BEGIN wgw-deny
 RedirectMatch 404 ^/(?:wgw-content|wgw-plugins|packages)(?:/|$)
 RedirectMatch 404 ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$)
+RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
 # END wgw-deny
 BLOCK;
     }

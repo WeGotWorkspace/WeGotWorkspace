@@ -66,6 +66,72 @@ PHP);
         $this->assertNotEmpty(glob($this->installRoot.'/wgw-config.php.bak.*'));
     }
 
+    public function test_backup_goes_to_the_data_directory_not_the_published_root(): void
+    {
+        mkdir($this->installRoot.'/wgw-content', 0775, true);
+        file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+return [
+    'data_dir' => './wgw-content',
+    'pdo' => ['sqlite_file' => './wgw-content/db.sqlite'],
+];
+PHP);
+
+        $this->assertTrue(app(WgwConfigMigrator::class)->migrateIfNeeded());
+
+        $this->assertSame([], glob($this->installRoot.'/wgw-config.php.bak.*'));
+        $backups = glob($this->installRoot.'/wgw-content/config-backups/wgw-config.php.bak.*');
+        $this->assertCount(1, $backups);
+        $this->assertSame('0600', substr(sprintf('%o', fileperms($backups[0])), -4));
+    }
+
+    public function test_moves_old_backups_out_of_the_published_root(): void
+    {
+        mkdir($this->installRoot.'/wgw-content', 0775, true);
+        WgwInstallFixture::writeRuntimeEnv($this->installRoot, [
+            'WGW_DATA_DIR' => './wgw-content',
+            'WGW_DB_CONNECTION' => 'mysql',
+            'WGW_DB_HOST' => 'db.example',
+            'WGW_DB_DATABASE' => 'wgw',
+        ]);
+        $old = $this->installRoot.'/wgw-config.php.bak.20260709-120000';
+        file_put_contents($old, "<?php return ['pdo' => ['dsn' => 'mysql:host=db', 'password' => 'secret']];\n");
+
+        $this->assertFalse(app(WgwConfigMigrator::class)->migrateIfNeeded());
+
+        $this->assertFileDoesNotExist($old);
+        $this->assertFileExists($this->installRoot.'/wgw-content/config-backups/wgw-config.php.bak.20260709-120000');
+    }
+
+    public function test_recovers_database_config_from_a_backup_in_the_data_directory(): void
+    {
+        mkdir($this->installRoot.'/wgw-content/config-backups', 0700, true);
+        file_put_contents($this->installRoot.'/wgw-content/config-backups/wgw-config.php.bak.20260709-120000', <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+return [
+    'data_dir' => './wgw-content',
+    'pdo' => ['sqlite_file' => './wgw-content/db.sqlite'],
+];
+PHP);
+        $envPath = $this->installRoot.'/packages/api/.env';
+        if (! is_file($envPath) && is_file($this->installRoot.'/packages/api/.env.example')) {
+            copy($this->installRoot.'/packages/api/.env.example', $envPath);
+        }
+        $env = (string) file_get_contents($envPath);
+        $env = (string) preg_replace('/^WGW_DB_.*$/m', '', $env);
+        file_put_contents($envPath, $env);
+
+        $this->assertTrue(app(WgwConfigMigrator::class)->migrateIfNeeded());
+
+        $this->assertStringContainsString('WGW_DB_CONNECTION=sqlite', (string) file_get_contents($envPath));
+    }
+
     public function test_migrates_mysql_dsn_config_to_env(): void
     {
         file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
