@@ -390,9 +390,7 @@ select {
     --input-font-size-md: 1rem;
     /* Chip field reads `--tag-font-size`, not the input size steps. */
     --tag-font-size: 1rem;
-    /* 16px belongs in a taller control — only the field itself. */
-    --control-height-sm: 2.5rem;
-    --control-height-md: 2.75rem;
+    /* Height stays on the shared scale so fields line up with selects and buttons. */
     font-size: 1rem;
   }
 
