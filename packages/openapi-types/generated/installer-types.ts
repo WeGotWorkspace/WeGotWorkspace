@@ -17,6 +17,7 @@ export type InstallerChecks = components["schemas"]["InstallerChecks"];
 export type InstallerDataDir = components["schemas"]["InstallerDataDir"];
 export type InstallerDbDriver = components["schemas"]["InstallerDbDriver"];
 export type InstallerDbState = components["schemas"]["InstallerDbState"];
+export type InstallerErrorCode = components["schemas"]["InstallerErrorCode"];
 export type InstallerRuntimeState = components["schemas"]["InstallerRuntimeState"];
 export type InstallerStep = components["schemas"]["InstallerStep"];
 export type OkResponse = components["schemas"]["OkResponse"];

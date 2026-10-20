@@ -184,9 +184,9 @@
       "securityWarnings": {
         "type": "array",
         "items": {
-          "type": "string"
+          "$ref": "#/components/schemas/AdminSecurityWarning"
         },
-        "description": "Present when APP_DEBUG is on or APP_ENV is not production."
+        "description": "Configuration problems the admin should fix. Empty when there are none."
       }
     },
     "required": [
@@ -203,5 +203,28 @@
       "logoutUrl",
       "securityWarnings"
     ]
+  },
+  "AdminSecurityWarning": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["code", "message"],
+    "properties": {
+      "code": {
+        "type": "string",
+        "enum": [
+          "production_settings_applied",
+          "app_debug_on",
+          "app_env_not_production",
+          "app_url_local",
+          "app_url_unset",
+          "data_dir_published"
+        ],
+        "description": "Stable identifier. Clients act on this, not on the message. app_url_local and app_url_unset both mean APP_URL does not name the public site."
+      },
+      "message": {
+        "type": "string",
+        "description": "English text for display."
+      }
+    }
   }
 }

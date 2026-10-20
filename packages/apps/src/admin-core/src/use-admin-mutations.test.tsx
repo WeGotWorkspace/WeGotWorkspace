@@ -94,8 +94,11 @@ describe("useAdminMutations", () => {
     );
   });
   it("reports a saved site address by the refreshed warnings", async () => {
-    const appUrlWarning =
-      "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.";
+    const appUrlWarning = {
+      code: "app_url_unset" as const,
+      message:
+        "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.",
+    };
     const { data } = createAdminAppBootstrap();
     const start = { ...data, securityWarnings: [appUrlWarning] };
     const setAppUrl = vi

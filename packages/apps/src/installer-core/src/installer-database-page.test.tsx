@@ -150,6 +150,7 @@ describe("InstallerDatabasePage", () => {
         initialEngine="sqlite"
         dataDirPath="/home/user/wgw-content"
         connectionError="That directory is inside the published website. Choose a folder outside it."
+        connectionErrorCode="data_dir_published"
       />,
     );
     const field = screen.getByLabelText("Data folder");
@@ -173,11 +174,41 @@ describe("InstallerDatabasePage", () => {
         initialEngine="sqlite"
         dataDirPath="/home/user/wgw-content"
         connectionError="That directory is not writable by the web server."
+        connectionErrorCode="data_dir_not_writable"
       />,
     );
     expect(screen.getByLabelText("Data folder").getAttribute("aria-invalid")).toBe("true");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(screen.getByRole("alert").textContent).toContain("not writable by the web server");
+  });
+
+  it("places a rejection by its code, whatever the server text says", () => {
+    const { rerender } = render(
+      <InstallerDatabasePage initialEngine="sqlite" dataDirPath="/home/user/wgw-content" />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/srv/taken" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="Deze map hoort bij een andere installatie."
+        connectionErrorCode="data_dir_owned"
+      />,
+    );
+    expect(screen.getByLabelText("Data folder").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("alert").textContent).toContain("andere installatie");
+
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="That directory is not writable by the web server."
+      />,
+    );
+    expect(screen.getByLabelText("Data folder").getAttribute("aria-invalid")).not.toBe("true");
   });
 
   it("submits sqlite without credentials", () => {

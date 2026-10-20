@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Installer;
 
 use App\Services\Installer\DataDirChoice;
+use App\Services\Installer\DataDirRejected;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwInstallFixture;
 use Tests\TestCase;
@@ -108,7 +109,9 @@ final class DataDirInstallTest extends TestCase
             'sqlite_path' => './wgw-content/db.sqlite',
             'data_dir' => 'wgw-content',
         ]);
-        $rejected->assertOk()->assertJsonPath('ok', false);
+        $rejected->assertOk()
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error_code', DataDirRejected::NOT_ABSOLUTE);
         $this->assertSame(
             'Enter an absolute path for the data directory.',
             $rejected->json('error'),
@@ -139,6 +142,77 @@ final class DataDirInstallTest extends TestCase
         $this->assertFileDoesNotExist($install.'/wgw-content/db.sqlite');
         $db = new \PDO('sqlite:'.$outside.'/db.sqlite');
         $this->assertSame('admin', (string) $db->query('SELECT username FROM users')->fetchColumn());
+    }
+
+    public function test_every_refused_data_directory_carries_its_code(): void
+    {
+        $install = $this->installRoot();
+        $owned = $this->root.'/taken';
+        mkdir($owned, 0775, true);
+        file_put_contents($owned.'/.wgw-owner', "/some/other/install\n");
+        file_put_contents($owned.'/db.sqlite', 'keep');
+
+        $this->postAction('welcome_next')->assertOk();
+        $this->postAction('requirements_next', ['db_driver' => 'sqlite'])->assertOk();
+
+        $cases = [
+            DataDirRejected::NOT_ABSOLUTE => 'wgw-content',
+            DataDirRejected::PARENT_MISSING => $this->root.'/missing/data',
+            DataDirRejected::PUBLISHED => $install.'/private-data',
+            DataDirRejected::OWNED => $owned,
+        ];
+        foreach (['database_test', 'database_next'] as $action) {
+            foreach ($cases as $code => $dataDir) {
+                $this->postAction($action, [
+                    'db_driver' => 'sqlite',
+                    'sqlite_path' => './wgw-content/db.sqlite',
+                    'data_dir' => $dataDir,
+                ])->assertOk()
+                    ->assertJsonPath('ok', false)
+                    ->assertJsonPath('error_code', $code);
+            }
+        }
+    }
+
+    public function test_an_unwritable_parent_is_refused_with_its_code(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('root writes through directory permissions.');
+        }
+        $locked = $this->root.'/locked';
+        mkdir($locked, 0555, true);
+
+        $this->postAction('welcome_next')->assertOk();
+        $this->postAction('requirements_next', ['db_driver' => 'sqlite'])->assertOk();
+
+        try {
+            $this->postAction('database_next', [
+                'db_driver' => 'sqlite',
+                'sqlite_path' => './wgw-content/db.sqlite',
+                'data_dir' => $locked.'/data',
+            ])->assertOk()
+                ->assertJsonPath('ok', false)
+                ->assertJsonPath('error_code', DataDirRejected::NOT_WRITABLE);
+        } finally {
+            chmod($locked, 0755);
+        }
+    }
+
+    public function test_a_database_failure_has_no_data_directory_code(): void
+    {
+        $this->postAction('welcome_next')->assertOk();
+        $this->postAction('requirements_next', ['db_driver' => 'mysql'])->assertOk();
+
+        $response = $this->postAction('database_test', [
+            'db_driver' => 'mysql',
+            'mysql_host' => '127.0.0.1',
+            'mysql_port' => 1,
+            'mysql_db' => 'wgw',
+            'mysql_user' => 'wgw',
+            'mysql_password' => 'secret',
+        ])->assertOk()->assertJsonPath('ok', false);
+
+        $this->assertArrayNotHasKey('error_code', $response->json());
     }
 
     public function test_fallback_is_shown_absolute_and_stored_relative(): void

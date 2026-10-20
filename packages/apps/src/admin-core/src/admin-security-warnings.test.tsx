@@ -1,12 +1,23 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminSecurityWarnings } from "@/admin-core/src/admin-workspace";
+import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
 import { isLoopbackOrigin } from "@/admin-core/src/admin-workspace-utils";
 
-const APP_URL_WARNING =
-  "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.";
-const LOCAL_APP_URL_WARNING =
-  "APP_URL is a local address (http://localhost:8080). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.";
+const APP_URL_WARNING: AdminSecurityWarning = {
+  code: "app_url_unset",
+  message:
+    "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.",
+};
+const LOCAL_APP_URL_WARNING: AdminSecurityWarning = {
+  code: "app_url_local",
+  message:
+    "APP_URL is a local address (http://localhost:8080). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.",
+};
+const DEBUG_WARNING: AdminSecurityWarning = {
+  code: "app_debug_on",
+  message: "APP_DEBUG is on. Error responses can include exception details.",
+};
 
 afterEach(() => {
   cleanup();
@@ -103,12 +114,25 @@ describe("AdminSecurityWarnings", () => {
   it("leaves other security warnings without a button", () => {
     render(
       <AdminSecurityWarnings
-        warnings={["APP_DEBUG is on. Error responses can include exception details."]}
+        warnings={[DEBUG_WARNING]}
         baseUri="/"
         origin="https://team.example.org"
       />,
     );
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("knows the APP_URL warning by its code, whatever the message says", () => {
+    render(
+      <AdminSecurityWarnings
+        warnings={[{ code: "app_url_unset", message: "De site-URL ontbreekt." }]}
+        baseUri="/"
+        origin="https://team.example.org"
+        onUseThisAddress={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Use this address" })).toBeTruthy();
+    expect(screen.getByText(/De site-URL ontbreekt\./)).toBeTruthy();
   });
 });
 

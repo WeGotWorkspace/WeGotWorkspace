@@ -8115,7 +8115,9 @@ export interface components {
         };
         InstallerActionResponse: {
             ok: boolean;
+            /** @description English text for display. */
             error?: string;
+            error_code?: components["schemas"]["InstallerErrorCode"];
             redirect?: string;
             state?: components["schemas"]["InstallerRuntimeState"];
         };
@@ -8415,8 +8417,8 @@ export interface components {
             mcp: components["schemas"]["AdminMcpSettings"];
             currentUser: string;
             logoutUrl: string;
-            /** @description Present when APP_DEBUG is on or APP_ENV is not production. */
-            securityWarnings: string[];
+            /** @description Configuration problems the admin should fix. Empty when there are none. */
+            securityWarnings: components["schemas"]["AdminSecurityWarning"][];
         };
         UpdateApplyResponse: components["schemas"]["UpdateApplyResult"];
         /**
@@ -12104,6 +12106,20 @@ export interface components {
              */
             channel: "stable" | "beta" | "edge";
         };
+        AdminSecurityWarning: {
+            /**
+             * @description Stable identifier. Clients act on this, not on the message. app_url_local and app_url_unset both mean APP_URL does not name the public site.
+             * @enum {string}
+             */
+            code: "production_settings_applied" | "app_debug_on" | "app_env_not_production" | "app_url_local" | "app_url_unset" | "data_dir_published";
+            /** @description English text for display. */
+            message: string;
+        };
+        /**
+         * @description Set when ok is false and the failure has a stable identifier. Clients act on this, not on the error text. The data_dir_* codes mean the typed data directory was refused.
+         * @enum {string}
+         */
+        InstallerErrorCode: "data_dir_not_absolute" | "data_dir_parent_missing" | "data_dir_published" | "data_dir_not_writable" | "data_dir_owned";
     };
     responses: {
         /** @description Invalid request */

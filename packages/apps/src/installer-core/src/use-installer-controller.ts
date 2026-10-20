@@ -13,6 +13,8 @@ import {
   installerScreenFromState,
   formatInstallerDatabaseError,
   installerHasDatabaseFromEnv,
+  InstallerActionError,
+  isInstallerDataDirError,
   isUsernameTakenError,
   type InstallerScreen,
 } from "@/installer-core/src/installer-flow";
@@ -20,6 +22,7 @@ import type {
   WgwInstallerActionResponse,
   WgwInstallerRuntimeState,
 } from "@/installer-core/src/installer-types";
+import type { WgwInstallerErrorCode } from "@/lib/api/wgw";
 import type { InstallerWorkspaceProps } from "@/installer-core/src/installer-workspace-props";
 import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
@@ -33,6 +36,7 @@ export function useInstallerController({
   const [installing, setInstalling] = useState(false);
   const [usernameTaken, setUsernameTaken] = useState(false);
   const [databaseError, setDatabaseError] = useState<string | null>(null);
+  const [databaseErrorCode, setDatabaseErrorCode] = useState<WgwInstallerErrorCode | null>(null);
   const [openingWorkspace, setOpeningWorkspace] = useState(false);
   const freshAdminRef = useRef<{ username: string; password: string } | null>(null);
 
@@ -56,7 +60,10 @@ export function useInstallerController({
       const response = await fn();
       applyState(response.state);
       if (!response.ok) {
-        throw new Error(response.error || response.state?.flash || "Installer action failed.");
+        throw new InstallerActionError(
+          response.error || response.state?.flash || "Installer action failed.",
+          response.error_code ?? null,
+        );
       }
       return response;
     },
@@ -113,6 +120,7 @@ export function useInstallerController({
       if (!operations || actionPending) return;
       setActionPending(true);
       setDatabaseError(null);
+      setDatabaseErrorCode(null);
       try {
         if (values.engine === "mysql") {
           const test = await runAction(() =>
@@ -126,7 +134,10 @@ export function useInstallerController({
         setScreen("account");
       } catch (error) {
         const raw = error instanceof Error ? error.message : "Could not save the database.";
-        setDatabaseError(formatInstallerDatabaseError(raw));
+        const code = error instanceof InstallerActionError ? error.code : null;
+        // A refused data folder is already a sentence for the admin; only connection failures need a rewrite.
+        setDatabaseError(isInstallerDataDirError(code) ? raw : formatInstallerDatabaseError(raw));
+        setDatabaseErrorCode(code);
       } finally {
         setActionPending(false);
       }
@@ -228,6 +239,7 @@ export function useInstallerController({
     installing,
     usernameTaken,
     databaseError,
+    databaseErrorCode,
     openingWorkspace,
     startSetup,
     continueDatabase,

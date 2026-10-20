@@ -6,6 +6,7 @@ import type {
   WgwInstallerRuntimeState,
 } from "@/installer-core/src/installer-types";
 import { toInstallerServerChecks } from "@/installer-core/src/installer-models";
+import type { WgwInstallerErrorCode } from "@/lib/api/wgw";
 import { DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";
 
 export type InstallerScreen = "welcome" | "database" | "account" | "ready" | "interrupt";
@@ -122,14 +123,32 @@ export function isUsernameTakenError(message: string): boolean {
   return /username/i.test(message) && /taken|already exists/i.test(message);
 }
 
-/** Turn a raw installer/PDO failure into a short line for the Database screen. */
-/** Server copy from `DataDirCandidateResolver::validateOverride`: a typed folder was refused. */
-export function isInstallerDataDirError(message: string): boolean {
-  return /data directory|published website|another installation|not writable by the web server/i.test(
-    message,
-  );
+/** A failed installer action, with the server's `error_code` when it sent one. */
+export class InstallerActionError extends Error {
+  constructor(
+    message: string,
+    readonly code: WgwInstallerErrorCode | null = null,
+  ) {
+    super(message);
+    this.name = "InstallerActionError";
+  }
 }
 
+/** Every code is listed, so a new one has to be placed on or off the data folder field. */
+const DATA_DIR_ERROR_CODES: Record<WgwInstallerErrorCode, boolean> = {
+  data_dir_not_absolute: true,
+  data_dir_parent_missing: true,
+  data_dir_published: true,
+  data_dir_not_writable: true,
+  data_dir_owned: true,
+};
+
+/** The server refused the typed data folder. */
+export function isInstallerDataDirError(code: WgwInstallerErrorCode | null | undefined): boolean {
+  return code != null && DATA_DIR_ERROR_CODES[code] === true;
+}
+
+/** Turn a raw installer/PDO failure into a short line for the Database screen. */
 export function formatInstallerDatabaseError(message: string): string {
   const text = message
     .replace(/<[^>]*>/g, " ")
@@ -150,8 +169,7 @@ export function formatInstallerDatabaseError(message: string): string {
   if (
     /^could not reach mysql/i.test(text) ||
     /^mysql rejected/i.test(text) ||
-    /^that database does not exist/i.test(text) ||
-    isInstallerDataDirError(text)
+    /^that database does not exist/i.test(text)
   ) {
     return text.endsWith(".") ? text : `${text}.`;
   }
