@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Check, Download, Eraser, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { Callout } from "@/callout/src/callout";
@@ -10,6 +10,17 @@ import {
   type SegmentedControlOption,
 } from "@/segmented-control/src/segmented-control";
 import { Tag } from "@/tag/src/tag";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/ui/alert-dialog";
+import { buttonVariants } from "@/ui/button";
 import {
   formatByteCount,
   formatHumanDateTime,
@@ -30,20 +41,33 @@ const UPDATE_CHANNEL_OPTIONS: SegmentedControlOption<AdminUpdateChannel>[] = [
   { value: "edge", label: "Edge" },
 ];
 
-const UPDATE_CHANNEL_NOTES: Record<AdminUpdateChannel, { title: string; message: string } | null> =
-  {
-    stable: null,
-    beta: {
-      title: "Beta channel",
-      message:
-        "Offers prereleases and stable releases, whichever is newer. Switching back to stable does not downgrade: this install stays on its version until stable catches up.",
-    },
-    edge: {
-      title: "Edge channel: not for production data",
-      message:
-        "Every merge to main ships here. Database changes only move forward, so this install cannot go back to beta or stable. Use edge for testing only.",
-    },
-  };
+type UpdateChannelNote = { title: string; message: string };
+
+// Below 1.0 there is no production-ready release yet: stable is the most
+// tested build, not a compatibility promise.
+const PRE_1_0_STABLE_NOTE: UpdateChannelNote = {
+  title: "Stable, before 1.0",
+  message:
+    "Stable is the most tested build, but WeGotWorkspace has not reached 1.0 yet. Releases can still change behaviour. Keep a backup before you update.",
+};
+
+function isPre1_0(version: string | null | undefined): boolean {
+  return /^v?0\./.test(version ?? "");
+}
+
+const UPDATE_CHANNEL_NOTES: Record<AdminUpdateChannel, UpdateChannelNote | null> = {
+  stable: null,
+  beta: {
+    title: "Beta channel",
+    message:
+      "Offers prereleases and stable releases, whichever is newer. Switching back to stable does not downgrade: this install stays on its version until stable catches up.",
+  },
+  edge: {
+    title: "Edge channel: not for production data",
+    message:
+      "Every merge to main ships here. Database changes only move forward, so this install cannot go back to beta or stable. Use edge for testing only.",
+  },
+};
 
 export type AdminUpdatesPaneProps = {
   controller: AdminControllerState;
@@ -60,7 +84,19 @@ export function AdminUpdatesPane({
 }: AdminUpdatesPaneProps) {
   const isDockerChannel = controller.updates.installChannel === "docker";
   const updateChannel = controller.updates.updateChannel;
-  const updateChannelNote = UPDATE_CHANNEL_NOTES[updateChannel];
+  const updateChannelNote =
+    updateChannel === "stable" && isPre1_0(controller.updates.installedVersion)
+      ? PRE_1_0_STABLE_NOTE
+      : UPDATE_CHANNEL_NOTES[updateChannel];
+  const [confirmEdgeOpen, setConfirmEdgeOpen] = useState(false);
+  // Edge cannot be undone once an edge build is installed, so it is never one click.
+  const chooseUpdateChannel = (channel: AdminUpdateChannel) => {
+    if (channel === "edge" && updateChannel !== "edge") {
+      setConfirmEdgeOpen(true);
+      return;
+    }
+    void controller.actions.setUpdateChannel(channel);
+  };
   const updateLogRows = useMemo(
     () =>
       controller.updateLogLines.map((line, index) => parseUpdateLogLine(line, index)).slice(-25),
@@ -173,7 +209,7 @@ export function AdminUpdatesPane({
                 </div>
                 <SegmentedControl
                   value={updateChannel}
-                  onChange={controller.actions.setUpdateChannel}
+                  onChange={chooseUpdateChannel}
                   options={UPDATE_CHANNEL_OPTIONS}
                   size="sm"
                   disabled={controller.savingUpdateChannel || controller.updates.inProgress}
@@ -384,6 +420,31 @@ export function AdminUpdatesPane({
           rowClassName="admin-data-table-row"
         />
       </Card>
+
+      <AlertDialog open={confirmEdgeOpen} onOpenChange={setConfirmEdgeOpen}>
+        <AlertDialogContent className="admin-dialog-surface">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch to the edge channel?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Edge offers a build of every merge to main. Once this install updates to an edge
+              build, it cannot go back to beta or stable: database changes only move forward. Use
+              edge only on a test install, never with production data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
+              onClick={() => {
+                setConfirmEdgeOpen(false);
+                void controller.actions.setUpdateChannel("edge");
+              }}
+            >
+              Switch to edge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

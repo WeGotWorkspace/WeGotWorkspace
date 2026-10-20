@@ -74,6 +74,53 @@ describe("AdminUpdatesPane update channel", () => {
     expect(screen.getByText("Running the latest beta release.")).toBeTruthy();
   });
 
+  it("says stable is not 1.0 yet on a 0.x install", () => {
+    render(<Harness updates={{ installedVersion: "0.1.122" }} />);
+
+    expect(screen.getByText("Stable, before 1.0")).toBeTruthy();
+  });
+
+  it("drops the pre-1.0 note from 1.0 on", () => {
+    render(<Harness updates={{ installedVersion: "1.0.0" }} />);
+
+    expect(screen.queryByText("Stable, before 1.0")).toBeNull();
+  });
+
+  it("asks before switching to edge and stays put on cancel", async () => {
+    const channelSpy = vi.fn<AdminAPIOperations["setUpdateChannel"]>();
+    render(<Harness channelSpy={channelSpy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edge" }));
+
+    expect(
+      await screen.findByRole("alertdialog", { name: "Switch to the edge channel?" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+    });
+    expect(channelSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Stable" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  it("switches to edge after confirming", async () => {
+    const channelSpy = vi.fn<AdminAPIOperations["setUpdateChannel"]>();
+    render(<Harness channelSpy={channelSpy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edge" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Switch to edge" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Edge" }).getAttribute("aria-pressed")).toBe(
+        "true",
+      );
+    });
+    expect(channelSpy).toHaveBeenCalledWith("edge", undefined);
+  });
+
   it("warns that edge is not for production data", () => {
     render(<Harness updates={{ updateChannel: "edge" }} />);
 
