@@ -5,11 +5,8 @@ import { Callout } from "@/callout/src/callout";
 import { Card } from "@/card/src/card";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import { MenuItem } from "@/menu-item/src/menu-item";
-import {
-  SegmentedControl,
-  type SegmentedControlOption,
-} from "@/segmented-control/src/segmented-control";
 import { Tag } from "@/tag/src/tag";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +32,7 @@ import type { AdminControllerState } from "@/admin-core/src/use-admin-controller
 const DOCKER_INSTALL_DOCS_URL =
   "https://github.com/WeGotWorkspace/wegotworkspace/blob/main/docs/install-docker.md";
 
-const UPDATE_CHANNEL_OPTIONS: SegmentedControlOption<AdminUpdateChannel>[] = [
+const UPDATE_CHANNEL_OPTIONS: { value: AdminUpdateChannel; label: string }[] = [
   { value: "stable", label: "Stable" },
   { value: "beta", label: "Beta" },
   { value: "edge", label: "Edge" },
@@ -205,16 +202,28 @@ export function AdminUpdatesPane({
               </div>
               <div>
                 <div className="admin-updates-stat-label" id="admin-update-channel-label">
-                  Channel
+                  Update channel
                 </div>
-                <SegmentedControl
+                <Select
                   value={updateChannel}
-                  onChange={chooseUpdateChannel}
-                  options={UPDATE_CHANNEL_OPTIONS}
-                  size="sm"
+                  onValueChange={(value) => chooseUpdateChannel(value as AdminUpdateChannel)}
                   disabled={controller.savingUpdateChannel || controller.updates.inProgress}
-                  aria-label="Update channel"
-                />
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="w-28"
+                    aria-labelledby="admin-update-channel-label"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UPDATE_CHANNEL_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex-1 min-w-32">
                 <div className="admin-updates-stat-label">Last checked</div>
