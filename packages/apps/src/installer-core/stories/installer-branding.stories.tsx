@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { createBrandingStoryMeta } from "@/branding-playground";
-import { createInstallerAppBootstrap } from "@/lib/api/mock/installer-bootstrap";
+import {
+  MOCK_DATA_DIR_PATH,
+  createInstallerAppBootstrap,
+} from "@/lib/api/mock/installer-bootstrap";
 import { InstallerAccountPage } from "@/installer-core/src/installer-account-page";
 import { InstallerAttentionPage } from "@/installer-core/src/installer-attention-page";
 import { installerCopy } from "@/installer-core/src/installer-copy";
@@ -76,6 +79,10 @@ export const InteractiveFlow: Story = {
         canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
       ).toBeInTheDocument(),
     );
+    await expect(canvas.getByRole("textbox", { name: installerCopy.dataDirLabel })).toHaveAttribute(
+      "placeholder",
+      MOCK_DATA_DIR_PATH,
+    );
   },
 };
 
@@ -91,7 +98,7 @@ export const Welcome: Story = {
     await expect(canvas.getByRole("button", { name: "Get started" })).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
     await expect(canvas.getByText("Welcome, current")).toBeInTheDocument();
-    await expect(canvas.getByText("Database")).toBeInTheDocument();
+    await expect(canvas.getByText("Your data")).toBeInTheDocument();
     // BrandLockup wordmark is aria-hidden; assert old marketing heroes stay gone.
     await expect(canvas.queryByText(/© .*WeGotWorkspace/)).toBeNull();
     await expect(canvas.queryByText("Files on every device")).toBeNull();
@@ -100,17 +107,19 @@ export const Welcome: Story = {
 };
 
 export const Database: Story = {
-  name: "Your database",
+  name: "Your data",
   tags: ["vitest-ci"],
-  render: () => <InstallerDatabasePage />,
+  render: () => <InstallerDatabasePage dataDirPath={MOCK_DATA_DIR_PATH} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
       canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
     ).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
-    await expect(canvas.getByText("Database, current")).toBeInTheDocument();
-    const engines = within(canvas.getByRole("group", { name: "Type" })).getAllByRole("button");
+    await expect(canvas.getByText("Your data, current")).toBeInTheDocument();
+    const engines = within(canvas.getByRole("group", { name: "Database type" })).getAllByRole(
+      "button",
+    );
     await expect(engines[0]).toHaveAccessibleName("MySQL / MariaDB");
     await expect(engines[0]).toHaveAttribute("aria-pressed", "true");
     await expect(engines[1]).toHaveAccessibleName("SQLite");
@@ -122,19 +131,44 @@ export const Database: Story = {
     await expect(panels).toHaveLength(2);
     await expect(panels[1]).toHaveClass("installer__engine-panel--hidden");
     await expect(canvas.queryByLabelText("Database file")).toBeNull();
+    const dataDir = canvas.getByRole("textbox", { name: installerCopy.dataDirLabel });
+    await expect(dataDir).toHaveAttribute("placeholder", MOCK_DATA_DIR_PATH);
+    await expect(dataDir).toHaveValue("");
+    await expect(canvas.queryByRole("alert")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Continue" })).toBeInTheDocument();
   },
 };
 
 export const DatabaseSqlite: Story = {
-  name: "Your database (SQLite)",
+  name: "Your data (SQLite)",
   tags: ["vitest-ci"],
-  render: () => <InstallerDatabasePage initialEngine="sqlite" />,
+  render: () => <InstallerDatabasePage initialEngine="sqlite" dataDirPath={MOCK_DATA_DIR_PATH} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText("Uses the default SQLite file.")).toBeInTheDocument();
     await expect(canvas.queryByRole("textbox", { name: "Host" })).toBeNull();
     await expect(canvas.getByRole("button", { name: "MySQL / MariaDB" })).toBeInTheDocument();
+  },
+};
+
+export const DatabaseDataFolderPublic: Story = {
+  name: "Your data (folder inside website)",
+  tags: ["vitest-ci"],
+  render: () => (
+    <InstallerDatabasePage
+      initialEngine="sqlite"
+      dataDirPath="/var/www/html/wgw-content"
+      dataDirInsideWebRoot
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("alert")).toHaveTextContent(installerCopy.dataDirPublicSuggested);
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: installerCopy.dataDirLabel }),
+      "/var/wgw-data",
+    );
+    await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };
 
@@ -154,7 +188,7 @@ export const Account: Story = {
       canvas.getByRole("heading", { name: installerCopy.accountTitle }),
     ).toBeInTheDocument();
     await expect(progressItems(canvas)).toHaveLength(4);
-    await expect(canvas.getByText("Database, done")).toBeInTheDocument();
+    await expect(canvas.getByText("Your data, done")).toBeInTheDocument();
     await expect(canvas.getByText("Your account, current")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Username")).toHaveValue("jane");
     await expect(canvas.getByLabelText("Email")).toHaveValue("jane@example.com");

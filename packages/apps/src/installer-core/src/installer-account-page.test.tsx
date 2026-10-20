@@ -67,15 +67,7 @@ describe("InstallerAccountPage", () => {
       username: "jane",
       email: "jane@example.com",
       password: "hunter2hunter",
-      appUrl: window.location.origin,
     });
-  });
-
-  it("prefills the site address from the browser origin", () => {
-    render(<InstallerAccountPage />);
-    expect((screen.getByLabelText("Site address") as HTMLInputElement).value).toBe(
-      window.location.origin,
-    );
   });
 
   it("collapses username feedback until an invalid slug is shown", () => {
@@ -193,7 +185,7 @@ describe("InstallerAccountPage", () => {
     render(<InstallerAccountPage initialUsername="jane" />);
     const progress = screen.getByRole("list", { name: "Setup progress" });
     expect(within(progress).getAllByRole("listitem")).toHaveLength(4);
-    expect(screen.getByText("Database, done")).toBeTruthy();
+    expect(screen.getByText("Your data, done")).toBeTruthy();
     expect(screen.getByText("Your account, current")).toBeTruthy();
   });
 

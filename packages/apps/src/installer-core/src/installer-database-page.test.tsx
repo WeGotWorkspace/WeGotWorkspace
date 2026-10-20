@@ -16,10 +16,12 @@ vi.mock("@tanstack/react-router", () => ({
 describe("InstallerDatabasePage", () => {
   it("defaults to MySQL with connection fields", () => {
     render(<InstallerDatabasePage />);
-    expect(screen.getByRole("heading", { name: "Your database." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your data." })).toBeTruthy();
     expect(document.querySelector(".installer__hero-your")?.textContent).toBe("Your");
-    expect(document.querySelector(".installer__hero-noun")?.textContent).toBe("database");
-    const engines = within(screen.getByRole("group", { name: "Type" })).getAllByRole("button");
+    expect(document.querySelector(".installer__hero-noun")?.textContent).toBe("data");
+    const engines = within(screen.getByRole("group", { name: "Database type" })).getAllByRole(
+      "button",
+    );
     expect(engines[0].getAttribute("aria-label")).toBe("MySQL / MariaDB");
     expect(engines[0].getAttribute("aria-pressed")).toBe("true");
     expect(engines[1].getAttribute("aria-label")).toBe("SQLite");
@@ -39,7 +41,7 @@ describe("InstallerDatabasePage", () => {
     expect(screen.queryByLabelText("Database file")).toBeNull();
     const progress = screen.getByRole("list", { name: "Setup progress" });
     expect(within(progress).getAllByRole("listitem")).toHaveLength(4);
-    expect(screen.getByText("Database, current")).toBeTruthy();
+    expect(screen.getByText("Your data, current")).toBeTruthy();
   });
 
   it("shows SQLite hint when that engine is chosen", () => {
@@ -60,19 +62,33 @@ describe("InstallerDatabasePage", () => {
     expect(screen.getByRole("alert").textContent).toContain("Could not reach MySQL");
   });
 
-  it("shows the proposed data folder and submits an override", () => {
+  it("uses the suggested data folder as placeholder and leaves it to the server when empty", () => {
     const onContinue = vi.fn();
     render(
       <InstallerDatabasePage
         initialEngine="sqlite"
         dataDirPath="/home/user/wgw-content"
-        dataDirReason="outside"
         onContinue={onContinue}
       />,
     );
-    expect(screen.getByText("/home/user/wgw-content")).toBeTruthy();
-    expect(screen.getByText(/outside the published website/i)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Different folder"), {
+    const field = screen.getByLabelText("Data folder") as HTMLInputElement;
+    expect(field.placeholder).toBe("/home/user/wgw-content");
+    expect(field.value).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenCalledWith({ engine: "sqlite" });
+  });
+
+  it("submits a typed data folder", () => {
+    const onContinue = vi.fn();
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        onContinue={onContinue}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
       target: { value: "/srv/wgw-data" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -80,6 +96,44 @@ describe("InstallerDatabasePage", () => {
       engine: "sqlite",
       dataDir: "/srv/wgw-data",
     });
+  });
+
+  it("warns when the suggested data folder is inside the website", () => {
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/var/www/html/wgw-content"
+        dataDirInsideWebRoot
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toMatch(/public/i);
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/var/wgw-data" },
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("moves a published-folder rejection under the field until the path changes", () => {
+    const { rerender } = render(
+      <InstallerDatabasePage initialEngine="sqlite" dataDirPath="/home/user/wgw-content" />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/var/www/html/data" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="That directory is inside the published website. Choose a folder outside it."
+      />,
+    );
+    const field = screen.getByLabelText("Data folder");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toMatch(/inside the website/i);
+    fireEvent.change(field, { target: { value: "/var/wgw-data" } });
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("submits sqlite without credentials", () => {

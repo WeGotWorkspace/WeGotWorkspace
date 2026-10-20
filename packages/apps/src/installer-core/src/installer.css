@@ -120,6 +120,15 @@
   interpolate-size: allow-keywords;
 }
 
+/* Same 16px rhythm as the MySQL fields, whichever engine is showing. */
+.installer__engine-panel .installer__hint {
+  @apply mb-0;
+}
+
+.installer__engine-panels + .installer__field {
+  @apply mt-4;
+}
+
 .installer__engine-panel {
   overflow: hidden;
   height: auto;
@@ -157,6 +166,32 @@
 
 .installer__mysql-host {
   @apply sm:col-span-2;
+}
+
+/* Shared `.input` / `.input__field` keep size, type and focus in step with the
+ * other fields. The installer's pick reads as the value until you type. */
+.installer__default-field {
+  --input-placeholder-color: var(--workspace-foreground);
+  @apply gap-2;
+}
+
+.installer__default-field:focus-within {
+  --input-placeholder-color: color-mix(in oklab, var(--workspace-foreground) 40%, transparent);
+}
+
+.installer__default-field:has([aria-invalid="true"]) {
+  border-color: var(--installer-status-warn);
+}
+
+.installer__default-field-warning {
+  @apply mt-2 mb-0 flex items-start gap-2 rounded-lg px-3 py-2 text-sm;
+  color: var(--workspace-foreground);
+  background-color: color-mix(in oklab, var(--installer-status-warn) 14%, transparent);
+}
+
+.installer__default-field-warning-icon {
+  @apply mt-0.5 size-4 shrink-0;
+  color: var(--installer-status-warn);
 }
 
 .installer__progress {

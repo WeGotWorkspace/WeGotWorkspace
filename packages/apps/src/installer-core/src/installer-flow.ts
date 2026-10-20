@@ -61,28 +61,6 @@ export function buildInstallerSitePayload(
   };
 }
 
-/** True when the address is http(s), has a host, and its path is empty or the install base. */
-export function isInstallerAppUrlAcceptable(value: string, installBase = "/"): boolean {
-  const trimmed = value.trim();
-  if (trimmed === "" || /[\s\\@?#]/.test(trimmed)) return false;
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return false;
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
-  if (url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "") {
-    return false;
-  }
-  const path = url.pathname.replace(/\/+$/, "") || "/";
-  const base =
-    installBase.trim() === "" || installBase.trim() === "/"
-      ? "/"
-      : `/${installBase.trim().replace(/^\/+|\/+$/g, "")}`;
-  return path === "/" || path === base;
-}
-
 export function buildInstallerInstallPayload(
   username: string,
   password: string,

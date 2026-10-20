@@ -7,7 +7,6 @@ import {
 } from "@/installer-core/src/installer-copy";
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
-import { isInstallerAppUrlAcceptable } from "@/installer-core/src/installer-flow";
 import {
   isInstallerEmailValid,
   isInstallerUsernameValid,
@@ -22,15 +21,12 @@ export type InstallerAccountValues = {
   username: string;
   email: string;
   password: string;
-  appUrl: string;
 };
 
 export type InstallerAccountPageProps = {
   initialUsername?: string;
   initialEmail?: string;
   initialPassword?: string;
-  initialAppUrl?: string;
-  installBase?: string;
   includeDatabaseStep?: boolean;
   usernameTaken?: boolean;
   installing?: boolean;
@@ -87,8 +83,6 @@ export function InstallerAccountPage({
   initialUsername = "",
   initialEmail = "",
   initialPassword = "",
-  initialAppUrl = typeof window === "undefined" ? "" : window.location.origin,
-  installBase = "/",
   includeDatabaseStep = true,
   usernameTaken = false,
   installing = false,
@@ -97,23 +91,15 @@ export function InstallerAccountPage({
   const usernameId = useId();
   const emailId = useId();
   const passwordId = useId();
-  const appUrlId = useId();
 
   const [username, setUsername] = useState(initialUsername);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
-  const [appUrl, setAppUrl] = useState(initialAppUrl);
 
   const usernameValid = isInstallerUsernameValid(username);
   const emailValid = isInstallerEmailValid(email);
-  const appUrlValid = isInstallerAppUrlAcceptable(appUrl, installBase);
   const canSubmit =
-    usernameValid &&
-    emailValid &&
-    password.length >= 10 &&
-    appUrlValid &&
-    !usernameTaken &&
-    !installing;
+    usernameValid && emailValid && password.length >= 10 && !usernameTaken && !installing;
 
   const usernameFormatInvalid = username.length > 0 && !usernameValid;
   const emailFormatInvalid = email.length > 0 && !emailValid;
@@ -125,7 +111,7 @@ export function InstallerAccountPage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSubmit) return;
-    onCreateWorkspace?.({ username, email, password, appUrl: appUrl.trim() });
+    onCreateWorkspace?.({ username, email, password });
   };
 
   const progressLabel = INSTALLER_PROGRESS_STEPS[0];
@@ -201,27 +187,6 @@ export function InstallerAccountPage({
               <p className="installer__hint installer__hint--error">{copy.passwordHint}</p>
             ) : (
               <p className="installer__hint">{copy.passwordHint}</p>
-            )}
-          </InstallerFieldFeedback>
-        </div>
-        <div className="installer__field">
-          <FieldLabelRow htmlFor={appUrlId} label={copy.siteAddress}>
-            <Input
-              id={appUrlId}
-              name="app_url"
-              value={appUrl}
-              autoComplete="url"
-              spellCheck={false}
-              required
-              disabled={installing}
-              onChange={(event) => setAppUrl(event.target.value)}
-            />
-          </FieldLabelRow>
-          <InstallerFieldFeedback>
-            {appUrl.length > 0 && !appUrlValid ? (
-              <p className="installer__hint installer__hint--error">{copy.siteAddressInvalid}</p>
-            ) : (
-              <p className="installer__hint">{copy.siteAddressHint}</p>
             )}
           </InstallerFieldFeedback>
         </div>

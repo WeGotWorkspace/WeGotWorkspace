@@ -150,7 +150,7 @@ export function useInstallerController({
               values.username,
               values.password,
               values.email,
-              values.appUrl,
+              window.location.origin,
             ),
           ),
         );

@@ -13,7 +13,7 @@ export type InstallerWorkspaceProps = InstallerWorkspaceBaseProps & {
 
 const SCREEN_TITLES = {
   welcome: "Installer",
-  database: "Your database",
+  database: "Your data",
   account: "Your account",
   ready: "You got workspace",
   interrupt: "Needs attention",
@@ -47,7 +47,7 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
           username: controller.installerState?.db.mysql_user,
         }}
         dataDirPath={controller.installerState?.data_dir?.path}
-        dataDirReason={controller.installerState?.data_dir?.reason}
+        dataDirInsideWebRoot={controller.installerState?.data_dir?.inside_web_root}
         connectionError={controller.databaseError}
         onContinue={(values) => void controller.continueDatabase(values)}
       />
@@ -60,7 +60,6 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
         includeDatabaseStep={controller.includeDatabaseStep}
         initialUsername={controller.installerState?.admin_username}
         initialEmail={controller.installerState?.admin_email}
-        installBase={controller.installerState?.base_uri ?? "/"}
         usernameTaken={controller.usernameTaken}
         installing={controller.installing}
         onCreateWorkspace={(values) => void controller.createWorkspace(values)}
