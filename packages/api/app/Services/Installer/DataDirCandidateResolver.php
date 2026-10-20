@@ -349,6 +349,15 @@ final class DataDirCandidateResolver
         return $this->normalize($realInstall !== false ? $realInstall : $installRoot);
     }
 
+    /**
+     * The absolute folder a data directory setting points at. A relative
+     * setting is resolved against the install root, as the runtime does.
+     */
+    public function absolutePath(string $dataDir): string
+    {
+        return $this->resolveDataDir($dataDir);
+    }
+
     private function resolveDataDir(string $dataDir): string
     {
         $dataDir = $this->normalize(trim($dataDir));
@@ -363,8 +372,16 @@ final class DataDirCandidateResolver
         }
 
         $real = realpath($dataDir);
+        if ($real !== false) {
+            return $this->normalize($real);
+        }
 
-        return $this->normalize($real !== false ? $real : $dataDir);
+        // Not created yet: resolve the parent so a symlinked root still matches.
+        $parentReal = realpath(dirname($dataDir));
+
+        return $parentReal !== false
+            ? $this->normalize($parentReal).'/'.basename($dataDir)
+            : $dataDir;
     }
 
     private function installRoot(): string
@@ -385,12 +402,7 @@ final class DataDirCandidateResolver
             return true;
         }
 
-        $leftReal = realpath($left);
-        $rightReal = realpath($right);
-
-        return $leftReal !== false
-            && $rightReal !== false
-            && $this->normalize($leftReal) === $this->normalize($rightReal);
+        return $this->resolveDataDir($left) === $this->resolveDataDir($right);
     }
 
     private function isInside(string $path, string $root): bool
