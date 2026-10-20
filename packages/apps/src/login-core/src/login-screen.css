@@ -8,7 +8,6 @@
 .login-screen {
   background-color: var(--workspace-sidebar-surface);
   color: var(--workspace-foreground);
-  color-scheme: light;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
