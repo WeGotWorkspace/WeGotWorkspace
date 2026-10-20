@@ -71,7 +71,7 @@ final class WebRootRedirectMatchTest extends TestCase
         $this->assertStringContainsString($this->managedDenyBlock(), $htaccess);
     }
 
-    public function test_install_nginx_snippet_denies_plugins_packages_and_anchored_dotfiles(): void
+    public function test_install_nginx_snippet_denies_plugins_packages_dotfiles_and_config_backups(): void
     {
         $install = (string) file_get_contents(dirname(__DIR__, 5).'/INSTALL.md');
 
@@ -81,6 +81,11 @@ final class WebRootRedirectMatchTest extends TestCase
         );
         $this->assertStringContainsString(
             'location ~ ^/\.(?:git|svn|hg|env|htaccess|htpasswd|user\.ini)(?:[/.]|$) { deny all; }',
+            $install,
+        );
+        // Same pattern as the RedirectMatch rule in the wgw-deny block.
+        $this->assertStringContainsString(
+            'location ~ ^/wgw-config\.php\.bak(?:\.|$) { deny all; }',
             $install,
         );
     }
