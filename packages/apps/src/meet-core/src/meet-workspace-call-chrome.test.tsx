@@ -1,5 +1,5 @@
 import { createRef, useState, type ComponentProps, type ReactNode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -119,23 +119,30 @@ describe("MeetWorkspace in-channel call chrome", () => {
     installMatchMedia();
   });
 
+  // This case renders three workspace states. A named role query recomputes
+  // jsdom styles for every button on the ~700-node tree after each re-render
+  // (~100ms locally, several times that on CI), which pushed it past the 5s
+  // timeout. The call chrome is aria-labelled, so label lookups and a
+  // sidebar-scoped channel query keep the same assertions cheap.
   it("hides joined chrome after switching to another channel and does not hang up", async () => {
-    const { leaveCall } = await renderWorkspace();
+    const { leaveCall, container } = await renderWorkspace();
+    const channelButton = (name: RegExp) =>
+      within(container.querySelector<HTMLElement>(".app-sidebar")!).getByRole("button", { name });
 
-    expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
-    expect(screen.getByRole("button", { name: meetLabels.devices })).toBeTruthy();
+    expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
+    expect(screen.getByLabelText(meetLabels.devices)).toBeInstanceOf(HTMLButtonElement);
 
-    fireEvent.click(screen.getByRole("button", { name: /^random/i }));
+    fireEvent.click(channelButton(/^random/i));
 
-    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
-    expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.devices)).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
-    expect(screen.getByRole("button", { name: /^Meet$/ })).toBeTruthy();
+    expect(screen.getByLabelText(meetLabels.meet)).toBeInstanceOf(HTMLButtonElement);
     expect(leaveCall).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /^design/i }));
+    fireEvent.click(channelButton(/^design/i));
 
-    expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
+    expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
     expect(leaveCall).not.toHaveBeenCalled();
   });
 
