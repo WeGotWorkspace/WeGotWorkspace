@@ -38,6 +38,7 @@ export function useAdminController({
     settingsForm: shell.settingsForm,
     setSettingsForm: shell.setSettingsForm,
     mailDelivery: shell.mailDelivery,
+    securityWarnings: shell.securityWarnings,
     actions: mutations.actions,
   };
 }

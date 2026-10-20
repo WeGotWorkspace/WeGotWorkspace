@@ -1,3 +1,4 @@
+import { isAppUrlWarning } from "@/admin-core/src/admin-workspace-utils";
 import {
   adminSettingsFormToMap,
   buildAdminSettingsFormState,
@@ -131,6 +132,10 @@ export function useAdminSettingsMutations({
     try {
       const next = await operations.setAppUrl(url);
       applyAdminData(next);
+      if (next.securityWarnings.some(isAppUrlWarning)) {
+        showError("The address was saved, but the server still reports APP_URL as unset.");
+        return false;
+      }
       showSuccess("Site address saved");
       return true;
     } catch (error) {
