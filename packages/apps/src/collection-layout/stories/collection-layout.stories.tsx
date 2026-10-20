@@ -24,7 +24,7 @@ export const Default: Story = {
           </h2>
           <p
             className="text-[10px] mt-2 uppercase tracking-[0.18em]"
-            style={{ color: "color-mix(in oklab, var(--color-we-got-dark) 45%, transparent)" }}
+            style={{ color: "color-mix(in oklab, var(--color-we-got-dark) 72%, transparent)" }}
           >
             12 Items
           </p>

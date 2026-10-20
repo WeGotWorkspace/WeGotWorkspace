@@ -35,7 +35,7 @@ describe("TextEditorFormatBar", () => {
 
     expect((screen.getByRole("button", { name: "Bold" }) as HTMLButtonElement).disabled).toBe(true);
     expect(
-      (screen.getByRole("button", { name: "Heading level" }) as HTMLButtonElement).disabled,
+      (screen.getByRole("button", { name: "Text, heading level" }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect((screen.getByRole("button", { name: "Link" }) as HTMLButtonElement).disabled).toBe(true);
     expect(

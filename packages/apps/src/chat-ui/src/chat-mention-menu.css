@@ -32,5 +32,5 @@
 
 .chat-mention-menu__empty {
   @apply px-3 py-2 text-sm;
-  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
+  color: var(--chat-muted, color-mix(in oklab, var(--workspace-foreground) 72%, transparent));
 }

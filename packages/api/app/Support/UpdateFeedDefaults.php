@@ -25,7 +25,9 @@ final class UpdateFeedDefaults
 
     public static function manifestUrlFor(string $channel): string
     {
-        return match (self::normalizeChannel($channel)) {
+        $channel = self::normalizeChannel($channel);
+
+        return match ($channel) {
             self::CHANNEL_BETA, self::CHANNEL_EDGE => self::CHANNEL_RELEASE_BASE.$channel.'/manifest.json',
             default => self::MANIFEST_URL,
         };
@@ -42,7 +44,7 @@ final class UpdateFeedDefaults
             return $explicit;
         }
 
-        return self::manifestUrlFor(self::normalizeChannel($channel));
+        return self::manifestUrlFor(is_string($channel) ? $channel : '');
     }
 
     /** Unknown or empty values fall back to stable. */

@@ -297,7 +297,7 @@
 .contacts-detail-view__label--none {
   font-style: italic;
   font-size: 0.9375rem;
-  color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
 }
 
 .contacts-detail-view__channel-row--editable .input,

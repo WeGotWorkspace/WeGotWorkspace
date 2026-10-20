@@ -32,6 +32,9 @@ import { NoteCollabYDocProvider } from "@/note-detail-view/src/use-note-title-fi
 import "@/text-editor-core/src/text-editor.css";
 import "@/note-detail-view/src/note-text-editor-body.css";
 
+/** Accessible name of the note body textbox. */
+const NOTE_EDITOR_ARIA_LABEL = "Note";
+
 /** Debounce Yjs hydrate/remote bursts before pushing list preview. */
 const BODY_PREVIEW_SYNC_DEBOUNCE_MS = 50;
 
@@ -278,6 +281,7 @@ export function NoteCollabEditorSurface({
       format="markdown"
       formatBar={false}
       editable={editable}
+      ariaLabel={NOTE_EDITOR_ARIA_LABEL}
       autofocus={autofocus}
       className={cn("note-text-editor-body", className)}
       onContentChange={onMarkdownChange}
@@ -301,6 +305,7 @@ function NoteSoloBody({
     editable,
     autofocus: false,
     placeholder: "Press '/' for commands…",
+    ariaLabel: NOTE_EDITOR_ARIA_LABEL,
   });
 
   return (

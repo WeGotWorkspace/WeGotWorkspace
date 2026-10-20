@@ -8003,7 +8003,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["AdminUpdateChannelSaveRequest"];
+                        "application/json": components["schemas"]["AdminUpdateChannelSaveResponse"];
                     };
                 };
                 /** @description Docker install, an update is running, or the environment file is not writable */
@@ -12093,6 +12093,13 @@ export interface components {
         AdminUpdateChannelSaveRequest: {
             /**
              * @description Release feed the web updater follows. Edge is built from main and is not for production data.
+             * @enum {string}
+             */
+            channel: "stable" | "beta" | "edge";
+        };
+        AdminUpdateChannelSaveResponse: {
+            /**
+             * @description The saved update channel.
              * @enum {string}
              */
             channel: "stable" | "beta" | "edge";

@@ -99,7 +99,7 @@ export function TokenSection({ title, note, children }: TokenSectionProps) {
         {note ? (
           <p
             className="text-sm leading-relaxed"
-            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 62%, transparent)" }}
+            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 72%, transparent)" }}
           >
             {note}
           </p>
@@ -137,7 +137,6 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
         borderColor: "color-mix(in oklch, var(--color-we-got-dark) 10%, transparent)",
         backgroundColor: "color-mix(in oklch, var(--color-we-got-soft) 70%, white)",
       }}
-      aria-label={`Copy ${copyValue}`}
     >
       {swatch}
       <span className="min-w-0 flex-1">
@@ -145,7 +144,7 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
         {meta ? (
           <span
             className="mt-0.5 block truncate font-mono text-[0.7rem]"
-            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 55%, transparent)" }}
+            style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 72%, transparent)" }}
           >
             {meta}
           </span>
@@ -154,7 +153,7 @@ export function CopyTokenRow({ label, copyValue, meta, swatch, sample }: CopyRow
       </span>
       <span
         className="shrink-0 text-xs font-medium"
-        style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 55%, transparent)" }}
+        style={{ color: "color-mix(in oklch, var(--color-we-got-dark) 72%, transparent)" }}
       >
         {copied ? "Copied" : "Copy"}
       </span>

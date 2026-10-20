@@ -47,6 +47,7 @@ export function SettingsOfflinePane() {
             </p>
           </div>
           <Switch
+            id="offline-content-sync"
             checked={contentSyncEnabled}
             onCheckedChange={(checked) => persist({ contentSyncEnabled: checked })}
           />

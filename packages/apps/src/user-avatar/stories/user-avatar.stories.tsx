@@ -107,7 +107,7 @@ export const SizeMatrix: Story = {
       {(["xs", "sm", "md", "lg", "xl", "2xl"] as const).map((size) => (
         <div key={size} className="flex flex-col items-center gap-2">
           <UserAvatar displayName="Ada Lovelace" compact size={size} />
-          <span className="text-xs opacity-60">{size}</span>
+          <span className="text-xs opacity-80">{size}</span>
         </div>
       ))}
     </div>

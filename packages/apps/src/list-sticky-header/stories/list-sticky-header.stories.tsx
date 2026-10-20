@@ -35,7 +35,12 @@ const LETTERS = ["A", "B", "C"] as const;
 export const ContactsLetters: Story = {
   name: "Contacts letters",
   render: () => (
-    <div className="list-sticky-header-story-scroll">
+    <div
+      className="list-sticky-header-story-scroll"
+      role="region"
+      aria-label="Contacts"
+      tabIndex={0}
+    >
       {LETTERS.map((letter) => (
         <section key={letter} aria-labelledby={`list-sticky-story-${letter}`}>
           <ListStickyHeader id={`list-sticky-story-${letter}`} emphasis={letter} />
@@ -53,7 +58,12 @@ export const ContactsLetters: Story = {
 export const ChatDays: Story = {
   name: "Chat days",
   render: () => (
-    <div className="list-sticky-header-story-scroll list-sticky-header-story-scroll--chat">
+    <div
+      className="list-sticky-header-story-scroll list-sticky-header-story-scroll--chat"
+      role="region"
+      aria-label="Messages"
+      tabIndex={0}
+    >
       {(
         [
           { emphasis: "Yesterday", rest: "Aug 31" },

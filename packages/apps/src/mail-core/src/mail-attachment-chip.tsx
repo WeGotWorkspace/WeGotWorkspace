@@ -38,6 +38,8 @@ export function MailAttachmentChip({
   const metaLabel = mailAttachmentMetaLabel(name, sizeBytes);
   const isRemove = Boolean(onRemove);
   const actionLabel = isRemove ? removeLabel : `Download ${name}`;
+  // The name and meta stay in the accessible name so it holds the visible text (WCAG 2.5.3).
+  const accessibleName = metaLabel ? `${actionLabel} ${metaLabel}` : actionLabel;
   const TrailingIcon = isRemove ? X : Download;
 
   const chipClassName = cn("mail-attachment-chip", "mail-attachment-chip--interactive", className);
@@ -49,6 +51,7 @@ export function MailAttachmentChip({
       </span>
       <div className="mail-attachment-chip__copy">
         <div className="mail-attachment-chip__name">{name}</div>
+        {/* Keeps name and meta separate words in the text alternative. */}{" "}
         {metaLabel ? <div className="mail-attachment-chip__meta">{metaLabel}</div> : null}
       </div>
       <TrailingIcon
@@ -65,7 +68,7 @@ export function MailAttachmentChip({
         download={name}
         rel="noopener"
         className={chipClassName}
-        aria-label={actionLabel}
+        aria-label={accessibleName}
       >
         {chipBody}
       </a>
@@ -73,7 +76,7 @@ export function MailAttachmentChip({
       <button
         type="button"
         className={chipClassName}
-        aria-label={actionLabel}
+        aria-label={accessibleName}
         disabled={disabled || (isRemove ? !onRemove : !onDownload)}
         onClick={isRemove ? onRemove : onDownload}
       >

@@ -51,6 +51,7 @@ export function DocsMainPane({
         format={controller.editorFormat}
         content={controller.content}
         editable={!controller.readOnly}
+        ariaLabel={controller.labels.editor}
         sheetFill
         viewSource={viewSource}
         formatBar={

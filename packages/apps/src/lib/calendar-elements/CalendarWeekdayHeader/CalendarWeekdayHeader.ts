@@ -195,7 +195,6 @@ export class CalendarWeekdayHeader extends BaseElement {
               <button
                 type="button"
                 class="weekday-date-button"
-                .ariaLabel=${fullDateLabel}
                 .ariaCurrent=${isToday ? "date" : null}
                 @click=${(clickEvent: MouseEvent) => this.#emitDaySelection(day, index, clickEvent)}
               >
@@ -207,6 +206,7 @@ export class CalendarWeekdayHeader extends BaseElement {
                 <span class="weekday-day-number ${isToday ? "is-today" : ""}">
                   ${numberFormatter.format(day.day)}
                 </span>
+                <span class="weekday-full-date">, ${fullDateLabel}</span>
               </button>
               <button
                 type="button"

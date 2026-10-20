@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, Download, Eraser, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/button/src/button";
-import { Callout } from "@/callout/src/callout";
+import { Callout, type CalloutSeverity } from "@/callout/src/callout";
 import { Card } from "@/card/src/card";
 import { DataTable, type DataTableColumn } from "@/data-table/src/data-table";
 import { MenuItem } from "@/menu-item/src/menu-item";
@@ -85,6 +85,30 @@ export function AdminUpdatesPane({
     updateChannel === "stable" && isPre1_0(controller.updates.installedVersion)
       ? PRE_1_0_STABLE_NOTE
       : UPDATE_CHANNEL_NOTES[updateChannel];
+  const releaseStatus: { severity: CalloutSeverity; title: string; message: string } = controller
+    .updates.inProgress
+    ? {
+        severity: "warning",
+        title: "Update in progress",
+        message: `Applying ${controller.updates.current?.from ?? controller.updates.installedVersion} -> ${controller.updates.current?.to ?? controller.updates.latest?.version ?? "latest"} (${controller.updates.phase?.replace(/_/g, " ") ?? "processing"}).`,
+      }
+    : controller.updates.updateAvailable
+      ? {
+          severity: "warning",
+          title: "Update available",
+          message: `${controller.updates.latest?.version ?? "A new release"} is available on the ${updateChannel} channel.`,
+        }
+      : controller.updates.lastCheckedAt
+        ? {
+            severity: "success",
+            title: "You're up to date",
+            message: `Running the latest ${updateChannel} release.`,
+          }
+        : {
+            severity: "info",
+            title: "Not checked yet",
+            message: `Check for updates to see what the ${updateChannel} channel offers.`,
+          };
   const [confirmEdgeOpen, setConfirmEdgeOpen] = useState(false);
   // Edge cannot be undone once an edge build is installed, so it is never one click.
   const chooseUpdateChannel = (channel: AdminUpdateChannel) => {
@@ -281,27 +305,9 @@ export function AdminUpdatesPane({
             ) : null}
             <Callout
               className="mt-5"
-              severity={
-                controller.updates.inProgress
-                  ? "warning"
-                  : controller.updates.updateAvailable
-                    ? "warning"
-                    : "success"
-              }
-              title={
-                controller.updates.inProgress
-                  ? "Update in progress"
-                  : controller.updates.updateAvailable
-                    ? "Update available"
-                    : "You're up to date"
-              }
-              message={
-                controller.updates.inProgress
-                  ? `Applying ${controller.updates.current?.from ?? controller.updates.installedVersion} -> ${controller.updates.current?.to ?? controller.updates.latest?.version ?? "latest"} (${controller.updates.phase?.replace(/_/g, " ") ?? "processing"}).`
-                  : controller.updates.updateAvailable
-                    ? `${controller.updates.latest?.version ?? "A new release"} is available on the ${updateChannel} channel.`
-                    : `Running the latest ${updateChannel} release.`
-              }
+              severity={releaseStatus.severity}
+              title={releaseStatus.title}
+              message={releaseStatus.message}
             />
             {controller.updates.inProgress ? (
               <div className="admin-updates-progress-card">

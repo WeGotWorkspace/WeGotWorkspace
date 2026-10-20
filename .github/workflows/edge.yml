@@ -24,21 +24,22 @@ permissions:
 
 jobs:
   version:
+    # A manual run from another branch or tag would publish that tree as the
+    # newest edge build. Edge is main only.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       value: ${{ steps.next.outputs.value }}
     steps:
       - uses: actions/checkout@v7
-      # Next patch after the last release, plus the run number:
-      # VERSION 0.1.121 -> 0.1.122-edge.<run>. The next stable release sorts
-      # above every edge build of its own version.
+      # VERSION 0.1.121 -> 0.1.122-edge.<run>; 1.3.0-beta.1 -> 1.3.0-edge.<run>.
+      # The next stable release sorts above every edge build before it.
       - id: next
         run: |
           set -euo pipefail
-          base="$(tr -d '\n' < apps/wegotworkspace/VERSION)"
-          IFS=. read -r major minor patch <<< "${base%%-*}"
-          echo "value=${major}.${minor}.$((patch + 1))-edge.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          version="$(node tools/edge-version.mjs "$(cat apps/wegotworkspace/VERSION)" "$GITHUB_RUN_NUMBER")"
+          echo "value=${version}" >> "$GITHUB_OUTPUT"
 
   prepare:
     needs: version
@@ -117,8 +118,14 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
+          zips=(dist/releases/wegotworkspace-deploy-*.zip)
+          # The manifest points at this ZIP: never publish one without it.
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "Expected one deploy ZIP, found ${#zips[@]}" >&2
+            exit 1
+          fi
           node tools/publish-release-channel.mjs edge dist/releases \
-            dist/releases/wegotworkspace-deploy-*.zip \
+            "${zips[0]}" \
             dist/releases/install \
             dist/releases/setup.sh \
             dist/releases/docker-compose.yml \

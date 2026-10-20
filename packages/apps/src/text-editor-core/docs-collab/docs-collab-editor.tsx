@@ -19,6 +19,7 @@ import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
 import { useTextEditorSourceSync } from "@/text-editor-core/src/use-text-editor-source-sync";
 import type { DocsUILabels } from "@/docs-core/src/docs-labels";
+import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 import { DocsCollabCommentControl } from "./docs-collab-comment-control";
 
 import "@/text-editor-core/src/text-editor.css";
@@ -33,6 +34,8 @@ export type DocsCollabEditorProps = {
   viewSource?: boolean;
   /** When false, the TipTap surface rejects typing (view / comment-only). */
   editable?: boolean;
+  /** Accessible name of the editable textbox (e.g. "Document", "Note"). */
+  ariaLabel?: string;
   /**
    * TipTap mount focus. Default focuses the end of an editable doc (existing
    * notes) without scrolling the caret into view — the workspace detail
@@ -79,6 +82,7 @@ export function DocsCollabEditor({
   sheetFill = false,
   viewSource = false,
   editable = true,
+  ariaLabel,
   autofocus,
   formattingDisabled = false,
   className,
@@ -107,7 +111,9 @@ export function DocsCollabEditor({
 
   const editorProps = useMemo(
     () => ({
-      attributes: { class: "text-editor-prose focus:outline-none" },
+      // Recomputed on `editable` changes: TipTap's useEditor pushes the new editorProps via
+      // setOptions, which replaces the root attributes (role/name) on the live view.
+      attributes: textEditorRootAttributes({ editable, ariaLabel }),
       handleClick: (_view: unknown, pos: number, event: MouseEvent) => {
         const commentId = getCommentMarkIdFromTarget(event.target);
         if (commentId) {
@@ -122,7 +128,7 @@ export function DocsCollabEditor({
         return false;
       },
     }),
-    [],
+    [editable, ariaLabel],
   );
 
   const resolvedAutofocus = autofocus ?? (editable ? "end" : false);

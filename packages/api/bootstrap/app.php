@@ -13,6 +13,7 @@ use App\Http\Middleware\FilterMcpConsentScopes;
 use App\Http\Middleware\McpCors;
 use App\Http\Middleware\ProtectMcpConsent;
 use App\Http\Middleware\RejectSpaJwtOnMcp;
+use App\Http\Middleware\ReplayMcpConsentDecision;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
@@ -75,6 +76,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             WgwSecurityHeaders::class,
             ProtectMcpConsent::class,
+            ReplayMcpConsentDecision::class,
             FilterMcpConsentScopes::class,
         ]);
         $middleware->appendToGroup('api', [

@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { DocsSuggestionsFloatingLayer } from "@/text-editor-core/docs-collab/docs-suggestions";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
+import { textEditorRootAttributes } from "@/text-editor-core/src/text-editor-root-attributes";
 
 import { replaceSuggestion } from "./docs-suggestion-card.stories.fixtures";
 
@@ -18,7 +19,7 @@ function FloatingLayerHarness() {
     content:
       '<p>Review the <span data-change-id="change-replace-1">final</span> launch checklist.</p>',
     editorProps: {
-      attributes: { class: "text-editor-prose focus:outline-none" },
+      attributes: textEditorRootAttributes({ editable: true }),
     },
     immediatelyRender: false,
   });

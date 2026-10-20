@@ -43,16 +43,20 @@ export function useAdminUpdateMutations({
   const setUpdateChannel = async (channel: AdminUpdateChannel) => {
     if (channel === updates.updateChannel) return;
     setSavingUpdateChannel(true);
+    let switched = false;
     try {
       const next = await operations?.setUpdateChannel(channel);
       if (!next) return;
       setUpdates(next);
       showSuccess(`Update channel set to ${channel}`);
+      switched = true;
     } catch (error) {
       showError(mutationErrorMessage(error, "Could not change the update channel"));
     } finally {
       setSavingUpdateChannel(false);
     }
+    // The API drops the previous channel's check: look at the new feed now.
+    if (switched) await checkUpdates();
   };
 
   /** Re-fetch update state (including server checks) without running POST /updates/check. */

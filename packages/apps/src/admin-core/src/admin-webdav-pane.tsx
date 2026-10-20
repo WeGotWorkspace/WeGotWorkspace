@@ -65,14 +65,14 @@ export function AdminWebdavPane({ controller }: AdminWebdavPaneProps) {
   return (
     <>
       <Card title="Server defaults">
-        <FormField label="Default timezone">
+        <FormField htmlFor="admin-webdav-timezone" label="Default timezone">
           <Select
             value={controller.settingsForm.timezone}
             onValueChange={(value) =>
               controller.setSettingsForm((prev) => ({ ...prev, timezone: value }))
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="admin-webdav-timezone">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-72">

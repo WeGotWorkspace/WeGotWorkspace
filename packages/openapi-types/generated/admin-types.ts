@@ -32,6 +32,7 @@ export type AdminSettingsValueMap = components["schemas"]["AdminSettingsValueMap
 export type AdminSettingValue = components["schemas"]["AdminSettingValue"];
 export type AdminStateResponse = components["schemas"]["AdminStateResponse"];
 export type AdminUpdateChannelSaveRequest = components["schemas"]["AdminUpdateChannelSaveRequest"];
+export type AdminUpdateChannelSaveResponse = components["schemas"]["AdminUpdateChannelSaveResponse"];
 export type AdminUserCreateRequest = components["schemas"]["AdminUserCreateRequest"];
 export type AdminUserGroupList = components["schemas"]["AdminUserGroupList"];
 export type AdminUserSummary = components["schemas"]["AdminUserSummary"];

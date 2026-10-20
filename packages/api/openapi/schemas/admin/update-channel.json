@@ -2,12 +2,36 @@
   "AdminUpdateChannelSaveRequest": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["channel"],
+    "required": [
+      "channel"
+    ],
     "properties": {
       "channel": {
         "type": "string",
-        "enum": ["stable", "beta", "edge"],
+        "enum": [
+          "stable",
+          "beta",
+          "edge"
+        ],
         "description": "Release feed the web updater follows. Edge is built from main and is not for production data."
+      }
+    }
+  },
+  "AdminUpdateChannelSaveResponse": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "channel"
+    ],
+    "properties": {
+      "channel": {
+        "type": "string",
+        "enum": [
+          "stable",
+          "beta",
+          "edge"
+        ],
+        "description": "The saved update channel."
       }
     }
   }
