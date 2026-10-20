@@ -120,19 +120,18 @@ describe("installer-flow", () => {
     );
   });
 
-  it("passes every data folder rejection through as written", () => {
-    // Keep in sync with DataDirCandidateResolver::validateOverride.
-    for (const message of [
-      "Enter an absolute path for the data directory.",
-      "The parent of that data directory does not exist.",
-      "That directory is inside the published website. Choose a folder outside it.",
-      "That directory is not writable by the web server.",
-      "That directory belongs to another installation.",
-    ]) {
-      expect(isInstallerDataDirError(message)).toBe(true);
-      expect(formatInstallerDatabaseError(message)).toBe(message);
+  it("knows a data folder rejection by its code", () => {
+    for (const code of [
+      "data_dir_not_absolute",
+      "data_dir_parent_missing",
+      "data_dir_published",
+      "data_dir_not_writable",
+      "data_dir_owned",
+    ] as const) {
+      expect(isInstallerDataDirError(code)).toBe(true);
     }
-    expect(isInstallerDataDirError("SQLSTATE[HY000] [2002] Connection refused")).toBe(false);
+    expect(isInstallerDataDirError(null)).toBe(false);
+    expect(isInstallerDataDirError(undefined)).toBe(false);
   });
 
   it("hides optional check failures from the interrupt list", () => {

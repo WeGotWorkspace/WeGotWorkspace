@@ -26,6 +26,7 @@ export type AdminMailSettings = components["schemas"]["AdminMailSettings"];
 export type AdminMcpSettings = components["schemas"]["AdminMcpSettings"];
 export type AdminRtcSettings = components["schemas"]["AdminRtcSettings"];
 export type AdminSavedSettingKeyList = components["schemas"]["AdminSavedSettingKeyList"];
+export type AdminSecurityWarning = components["schemas"]["AdminSecurityWarning"];
 export type AdminSettingsSaveRequest = components["schemas"]["AdminSettingsSaveRequest"];
 export type AdminSettingsSaveResponse = components["schemas"]["AdminSettingsSaveResponse"];
 export type AdminSettingsValueMap = components["schemas"]["AdminSettingsValueMap"];

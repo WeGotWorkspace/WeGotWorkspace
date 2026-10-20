@@ -5,7 +5,7 @@ import { InstallerDefaultField } from "@/installer-core/src/installer-default-fi
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
 import { isInstallerDataDirError } from "@/installer-core/src/installer-flow";
-import type { WgwInstallerRuntimeState } from "@/lib/api/wgw";
+import type { WgwInstallerErrorCode, WgwInstallerRuntimeState } from "@/lib/api/wgw";
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -36,6 +36,8 @@ export type InstallerDatabasePageProps = {
   dataDirInsideWebRoot?: boolean;
   onContinue?: (values: InstallerDatabaseValues) => void;
   connectionError?: string | null;
+  /** The server's `error_code` for `connectionError`; a data folder code puts the error under the field. */
+  connectionErrorCode?: WgwInstallerErrorCode | null;
 };
 
 const DEFAULT_MYSQL: InstallerMysqlDraft = {
@@ -70,10 +72,6 @@ function InstallerDatabasePageTitle() {
   );
 }
 
-function isPublishedFolderError(message: string): boolean {
-  return /inside the published website/i.test(message);
-}
-
 function insideWebRootWarning(reason: InstallerDataDirReason | undefined): string {
   switch (reason) {
     case "environment":
@@ -103,6 +101,7 @@ export function InstallerDatabasePage({
   dataDirInsideWebRoot = false,
   onContinue,
   connectionError,
+  connectionErrorCode,
 }: InstallerDatabasePageProps) {
   const mysqlHostId = useId();
   const mysqlPortId = useId();
@@ -139,11 +138,13 @@ export function InstallerDatabasePage({
   // The server is the one that knows the web root, so a typed folder is only
   // flagged after it rejects it; the suggestion carries its own flag.
   const dataDirError =
-    connectionError != null && isInstallerDataDirError(connectionError) ? connectionError : null;
+    connectionError != null && isInstallerDataDirError(connectionErrorCode)
+      ? connectionError
+      : null;
   const dataDirRejected = dataDirError != null && submittedDataDir === dataDir.trim();
   const keepsServerChoice = dataDir.trim() === "" || dataDir.trim() === dataDirPath;
   const dataDirWarning = dataDirRejected
-    ? isPublishedFolderError(dataDirError)
+    ? connectionErrorCode === "data_dir_published"
       ? copy.dataDirPublic
       : dataDirError
     : keepsServerChoice && dataDirInsideWebRoot

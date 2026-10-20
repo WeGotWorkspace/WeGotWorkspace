@@ -285,8 +285,10 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->json('securityWarnings');
 
         $this->assertIsArray($warnings);
-        $this->assertNotEmpty($warnings);
-        $joined = implode("\n", $warnings);
+        $codes = array_column($warnings, 'code');
+        $this->assertContains('app_debug_on', $codes);
+        $this->assertContains('app_env_not_production', $codes);
+        $joined = implode("\n", array_column($warnings, 'message'));
         $this->assertStringContainsString('APP_DEBUG', $joined);
         $this->assertStringContainsString('production', $joined);
 
@@ -299,9 +301,13 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->json('securityWarnings');
         $this->assertIsArray($unset);
         $this->assertContains(
-            "APP_URL is a local address (http://localhost). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.",
+            [
+                'code' => 'app_url_local',
+                'message' => "APP_URL is a local address (http://localhost). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.",
+            ],
             $unset,
         );
+        $this->assertNotContains('app_url_unset', array_column($unset, 'code'));
 
         config(['app.url' => '']);
         $empty = $this->withBearer($this->login('alice')['access_token'])
@@ -310,7 +316,10 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->json('securityWarnings');
         $this->assertIsArray($empty);
         $this->assertContains(
-            'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.',
+            [
+                'code' => 'app_url_unset',
+                'message' => 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.',
+            ],
             $empty,
         );
     }

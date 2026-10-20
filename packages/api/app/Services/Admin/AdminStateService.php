@@ -77,7 +77,9 @@ final class AdminStateService
     }
 
     /**
-     * @return list<string>
+     * Each warning carries a stable `code`; the admin page acts on the code, never on the message.
+     *
+     * @return list<array{code: string, message: string}>
      */
     private function securityWarnings(): array
     {
@@ -91,25 +93,33 @@ final class AdminStateService
             }
             if ($applied) {
                 AppSetting::setValue('shipped_env_hardened', true);
-                $warnings[] = 'Production settings were applied; reload the page';
+                $warnings[] = $this->warning('production_settings_applied', 'Production settings were applied; reload the page');
             }
         }
         if (config('app.debug') === true) {
-            $warnings[] = 'APP_DEBUG is on. Error responses can include exception details.';
+            $warnings[] = $this->warning('app_debug_on', 'APP_DEBUG is on. Error responses can include exception details.');
         }
         if (! app()->environment('production')) {
-            $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
+            $warnings[] = $this->warning('app_env_not_production', 'APP_ENV is '.app()->environment().', not production.');
         }
         if (PublicAppUrl::isLoopback()) {
-            $warnings[] = 'APP_URL is a local address ('.rtrim((string) config('app.url'), '/').'). Host checks and password-reset mail stay off until it is the site\'s public address: reset links must point there.';
+            $warnings[] = $this->warning('app_url_local', 'APP_URL is a local address ('.rtrim((string) config('app.url'), '/').'). Host checks and password-reset mail stay off until it is the site\'s public address: reset links must point there.');
         } elseif (! PublicAppUrl::isConfigured()) {
-            $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
+            $warnings[] = $this->warning('app_url_unset', 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.');
         }
         if ($this->dataDirs->configuredDirectoryIsPublished()) {
-            $warnings[] = 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.';
+            $warnings[] = $this->warning('data_dir_published', 'The data directory is inside the published website. Move it outside the web root so the database and signing key are not downloadable.');
         }
 
         return $warnings;
+    }
+
+    /**
+     * @return array{code: string, message: string}
+     */
+    private function warning(string $code, string $message): array
+    {
+        return ['code' => $code, 'message' => $message];
     }
 
     private function imipExternalEnabled(): bool

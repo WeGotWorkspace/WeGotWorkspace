@@ -6,6 +6,7 @@ namespace Tests\Unit\Installer;
 
 use App\Services\Installer\DataDirCandidateResolver;
 use App\Services\Installer\DataDirChoice;
+use App\Services\Installer\DataDirRejected;
 use App\Support\AppPaths;
 use App\Support\WgwInstallConfig;
 use Tests\TestCase;
@@ -216,14 +217,16 @@ final class DataDirCandidateResolverTest extends TestCase
         try {
             $resolver->validateOverride('wgw-content', $install);
             $this->fail('A relative override must be rejected.');
-        } catch (\RuntimeException $e) {
+        } catch (DataDirRejected $e) {
+            $this->assertSame(DataDirRejected::NOT_ABSOLUTE, $e->errorCode);
             $this->assertSame('Enter an absolute path for the data directory.', $e->getMessage());
         }
 
         try {
             $resolver->validateOverride($install.'/private-data', $install);
             $this->fail('An in-tree override must be rejected.');
-        } catch (\RuntimeException $e) {
+        } catch (DataDirRejected $e) {
+            $this->assertSame(DataDirRejected::PUBLISHED, $e->errorCode);
             $this->assertSame('That directory is inside the published website. Choose a folder outside it.', $e->getMessage());
         }
     }

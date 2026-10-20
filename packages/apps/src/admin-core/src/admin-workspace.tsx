@@ -12,6 +12,7 @@ import { ViewHeader } from "@/view-header/src/view-header";
 import { useAdminController } from "@/admin-core/src/use-admin-controller";
 import { useDocumentTitle } from "@/lib/document-title";
 import type { AdminWorkspaceProps } from "@/admin-core/src/admin-workspace-props";
+import type { AdminSecurityWarning } from "@/admin-core/src/admin-types";
 import { AdminBackupsPane } from "@/admin-core/src/admin-backups-pane";
 import { AdminEmailDeliveryPane } from "@/admin-core/src/admin-email-delivery-pane";
 import { AdminMailPane } from "@/admin-core/src/admin-mail-pane";
@@ -38,7 +39,7 @@ export function AdminSecurityWarnings({
   onUseThisAddress,
 }: {
   /** From the latest admin state: a saved address clears the warning only once the server agrees. */
-  warnings: readonly string[];
+  warnings: readonly AdminSecurityWarning[];
   baseUri: string;
   /** Browser origin; a prop so tests can pass a public one. */
   origin?: string;
@@ -60,13 +61,13 @@ export function AdminSecurityWarnings({
         // On a local address the admin cannot fix it from here: inform, do not alarm.
         const localNote = isAppUrl && local;
         const message = localNote
-          ? `${warning} To set it, open Admin on the site's public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume).`
+          ? `${warning.message} To set it, open Admin on the site's public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume).`
           : offer
-            ? `${warning} "Use this address" saves ${url} as the site address.`
-            : warning;
+            ? `${warning.message} "Use this address" saves ${url} as the site address.`
+            : warning.message;
         return (
           <Callout
-            key={warning}
+            key={warning.code}
             severity={localNote ? "info" : "error"}
             title={localNote ? "Local address" : "Security warning"}
             message={message}

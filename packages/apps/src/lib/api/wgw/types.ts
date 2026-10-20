@@ -28,6 +28,7 @@ import type {
   AdminGroupUpdateRequest,
   AdminMailSettings,
   AdminSettingsSaveRequest,
+  AdminSecurityWarning,
   AdminStateResponse,
   AdminUserCreateRequest,
   AdminUserSummary,
@@ -82,6 +83,7 @@ import type {
   InstallerCheck,
   InstallerDbDriver,
   InstallerDbState,
+  InstallerErrorCode,
   InstallerRuntimeState,
   InstallerStep,
 } from "@wgw/openapi-types/installer-types";
@@ -213,6 +215,7 @@ export type WgwSettingsUserMailServer = SettingsUserMailServer;
 export type WgwSettingsMailRequest = SettingsMailRequest;
 
 export type WgwAdminStateResponse = AdminStateResponse;
+export type WgwAdminSecurityWarning = AdminSecurityWarning;
 export type WgwAdminUserSummary = AdminUserSummary;
 export type WgwAdminGroupSummary = AdminGroupSummary;
 export type WgwAdminMailSettings = AdminMailSettings;
@@ -323,3 +326,4 @@ export type WgwInstallerAction = InstallerAction;
 export type WgwInstallerActionPayload = InstallerActionPayload;
 export type WgwInstallerActionRequest = InstallerActionRequest;
 export type WgwInstallerActionResponse = InstallerActionResponse;
+export type WgwInstallerErrorCode = InstallerErrorCode;

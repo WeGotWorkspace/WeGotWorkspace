@@ -98,29 +98,29 @@ final class DataDirCandidateResolver
     {
         $path = $this->normalize($path);
         if (! $this->isAbsolute($path)) {
-            throw new \RuntimeException('Enter an absolute path for the data directory.');
+            throw DataDirRejected::notAbsolute();
         }
 
         $parentReal = realpath(dirname($path));
         if ($parentReal === false) {
-            throw new \RuntimeException('The parent of that data directory does not exist.');
+            throw DataDirRejected::parentMissing();
         }
 
         $candidate = $this->normalize($parentReal).'/'.basename($path);
         if ($this->isInside($candidate, $this->boundary($documentRoot, $this->installRoot()))) {
-            throw new \RuntimeException('That directory is inside the published website. Choose a folder outside it.');
+            throw DataDirRejected::published();
         }
 
         if (! $this->parentAcceptsWrites($parentReal)) {
-            throw new \RuntimeException('That directory is not writable by the web server.');
+            throw DataDirRejected::notWritable();
         }
 
         $failure = $this->claim($candidate, $this->ownerId($this->installRoot()));
         if ($failure === 'owned') {
-            throw new \RuntimeException('That directory belongs to another installation.');
+            throw DataDirRejected::owned();
         }
         if ($failure !== null) {
-            throw new \RuntimeException('That directory is not writable by the web server.');
+            throw DataDirRejected::notWritable();
         }
 
         return new DataDirChoice($candidate, DataDirChoice::REASON_OUTSIDE, false);

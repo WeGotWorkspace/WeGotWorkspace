@@ -32,7 +32,7 @@ final class AdminStateEnvHardeningTest extends WgwDatabaseTestCase
         $written = (string) file_get_contents($writable);
         $this->assertSame('production', WgwApiEnvFile::readValue($written, 'APP_ENV'));
         $this->assertContains(
-            'Production settings were applied; reload the page',
+            ['code' => 'production_settings_applied', 'message' => 'Production settings were applied; reload the page'],
             $snapshot['securityWarnings'],
         );
 
@@ -45,11 +45,11 @@ final class AdminStateEnvHardeningTest extends WgwDatabaseTestCase
         }
 
         $this->assertSame('local', WgwApiEnvFile::readValue((string) file_get_contents($readOnly), 'APP_ENV'));
-        $this->assertContains('APP_ENV is local, not production.', $kept['securityWarnings']);
-        $this->assertNotContains(
-            'Production settings were applied; reload the page',
+        $this->assertContains(
+            ['code' => 'app_env_not_production', 'message' => 'APP_ENV is local, not production.'],
             $kept['securityWarnings'],
         );
+        $this->assertNotContains('production_settings_applied', array_column($kept['securityWarnings'], 'code'));
     }
 
     public function test_admin_state_keeps_app_debug_after_a_successful_hardening_rewrite(): void
@@ -68,7 +68,7 @@ final class AdminStateEnvHardeningTest extends WgwDatabaseTestCase
 
         $this->assertSame('true', WgwApiEnvFile::readValue((string) file_get_contents($path), 'APP_DEBUG'));
         $this->assertContains(
-            'APP_DEBUG is on. Error responses can include exception details.',
+            ['code' => 'app_debug_on', 'message' => 'APP_DEBUG is on. Error responses can include exception details.'],
             $again['securityWarnings'],
         );
     }

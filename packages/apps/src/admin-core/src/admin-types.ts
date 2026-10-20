@@ -1,3 +1,5 @@
+import type { WgwAdminSecurityWarning } from "@/lib/api/wgw";
+
 export type AdminSection =
   | "users"
   | "mail"
@@ -8,6 +10,9 @@ export type AdminSection =
   | "updates"
   | "search"
   | "mcp";
+
+/** A configuration problem from the admin state. Act on `code`; `message` is for display. */
+export type AdminSecurityWarning = WgwAdminSecurityWarning;
 
 export type AdminMailDeliveryTransport = "auto" | "smtp" | "php" | "sendmail";
 
@@ -230,7 +235,7 @@ export type AdminUIData = {
   searchReindex: AdminSearchReindexState;
   currentUser: string;
   logoutUrl: string;
-  securityWarnings: string[];
+  securityWarnings: AdminSecurityWarning[];
   updateLogLines: string[];
 };
 

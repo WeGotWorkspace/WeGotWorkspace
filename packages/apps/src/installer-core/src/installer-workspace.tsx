@@ -50,6 +50,7 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
         dataDirReason={controller.installerState?.data_dir?.reason}
         dataDirInsideWebRoot={controller.installerState?.data_dir?.inside_web_root}
         connectionError={controller.databaseError}
+        connectionErrorCode={controller.databaseErrorCode}
         onContinue={(values) => void controller.continueDatabase(values)}
       />
     );
