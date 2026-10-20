@@ -97,7 +97,7 @@
 
 .docs-collab-card__time {
   @apply text-[11px] leading-tight;
-  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 65%, transparent));
+  color: var(--docs-muted, color-mix(in oklab, var(--workspace-foreground) 82%, transparent));
 }
 
 .docs-collab-card__actions {

@@ -83,7 +83,8 @@ export function TasksComposerDuePicker({
         <button
           type="button"
           className={triggerClassName}
-          aria-label={labels.addTaskDue}
+          // Field name + the visible value, so the name contains what is on screen (WCAG 2.5.3).
+          aria-label={`${labels.addTaskDue}: ${displayLabel}`}
           disabled={disabled}
         >
           <span className="tasks-main-view__composer-select-option">

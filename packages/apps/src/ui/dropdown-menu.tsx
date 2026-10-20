@@ -5,6 +5,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
 import { bridgePortalThemeFromOpenTrigger } from "@/ui/portal-theme-vars";
 import "@/ui/dropdown-menu.css";
 
@@ -81,15 +82,16 @@ const DropdownMenuContent = React.forwardRef<
   const contentRef = React.useRef<React.ElementRef<typeof DropdownMenuPrimitive.Content> | null>(
     null,
   );
+  // Menus are modal: the outside is inert while open, not only aria-hidden.
+  const inertOutsideRef = useInertOutsideLayerRef(ref);
 
   const assignContentRef = React.useCallback(
     (node: React.ElementRef<typeof DropdownMenuPrimitive.Content> | null) => {
       contentRef.current = node;
       if (node) bridgePortalThemeFromOpenTrigger(node);
-      if (typeof ref === "function") ref(node);
-      else if (ref) ref.current = node;
+      inertOutsideRef(node);
     },
-    [ref],
+    [inertOutsideRef],
   );
 
   React.useLayoutEffect(() => {

@@ -7,6 +7,7 @@ import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 import "@/ui/overlay-paper.css";
 import { buttonVariants } from "@/ui/button";
+import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
 
 const AlertDialog = AlertDialogPrimitive.Root;
 
@@ -29,13 +30,20 @@ const AlertDialogOverlay = React.forwardRef<
 ));
 AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 
+/** Radix content whose outside is inert while open, not only aria-hidden. */
+const AlertDialogContentLayer = React.forwardRef<
+  React.ElementRef<typeof AlertDialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
+>((props, ref) => <AlertDialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+AlertDialogContentLayer.displayName = "AlertDialogContentLayer";
+
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
-    <AlertDialogPrimitive.Content
+    <AlertDialogContentLayer
       ref={ref}
       className={cn(
         "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
@@ -44,7 +52,7 @@ const AlertDialogContent = React.forwardRef<
       {...props}
     >
       {wrapModalSurfaceChildren(children)}
-    </AlertDialogPrimitive.Content>
+    </AlertDialogContentLayer>
   </AlertDialogPortal>
 ));
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName;

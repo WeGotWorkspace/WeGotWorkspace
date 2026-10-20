@@ -9,6 +9,9 @@ import type { TaskDueFields } from "@/tasks-core/src/tasks-task-utils";
 import { TooltipProvider } from "@/ui/tooltip";
 import "@/tasks-core/src/tasks-main-view.css";
 
+/** The due trigger is named "Due date: <value>"; match on the field-name prefix. */
+const dueTriggerName = new RegExp(`^${defaultTasksLabels.addTaskDue}:`);
+
 function StatefulDuePicker({ onChange, ...props }: ComponentProps<typeof TasksComposerDuePicker>) {
   const [dueValue, setDueValue] = useState<TaskDueFields>({
     due: props.due,
@@ -83,7 +86,7 @@ describe("TasksComposerDuePicker", () => {
   it("writes a date-only due and keeps the popover open for time", () => {
     const { onChange } = renderDuePicker();
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+    fireEvent.click(screen.getByLabelText(dueTriggerName));
     selectDay(now);
 
     expect(onChange).toHaveBeenCalledWith({
@@ -102,7 +105,7 @@ describe("TasksComposerDuePicker", () => {
       timeZone: null,
     });
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+    fireEvent.click(screen.getByLabelText(dueTriggerName));
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.dueAddTime }));
 
     expect(onChange).toHaveBeenCalledWith(
@@ -123,7 +126,7 @@ describe("TasksComposerDuePicker", () => {
       timeZone: "Europe/Amsterdam",
     });
 
-    const trigger = screen.getByLabelText(defaultTasksLabels.addTaskDue);
+    const trigger = screen.getByLabelText(dueTriggerName);
     expect(trigger.textContent).toContain(defaultTasksLabels.dueToday);
     expect(trigger.textContent).toMatch(/\d{1,2}:\d{2}/);
 
@@ -147,7 +150,7 @@ describe("TasksComposerDuePicker", () => {
       timeZone: "Europe/Amsterdam",
     });
 
-    fireEvent.click(screen.getByLabelText(defaultTasksLabels.addTaskDue));
+    fireEvent.click(screen.getByLabelText(dueTriggerName));
     fireEvent.click(screen.getByRole("button", { name: defaultTasksLabels.dueDateOnly }));
 
     expect(onChange).toHaveBeenCalledWith({

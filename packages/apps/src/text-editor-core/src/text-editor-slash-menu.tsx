@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { Editor } from "@tiptap/react";
 import { subscribeEditorLayoutUpdates } from "@/text-editor-core/src/text-editor-overlay-utils";
@@ -160,6 +160,7 @@ function readSlashQuery(editor: Editor): string | null {
 }
 
 export function TextEditorSlashMenu({ editor, onInsertImage }: TextEditorSlashMenuProps) {
+  const labelId = useId();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -233,13 +234,17 @@ export function TextEditorSlashMenu({ editor, onInsertImage }: TextEditorSlashMe
       style={{ top: pos.top, left: pos.left }}
       className="text-editor-slash-menu no-print"
     >
-      <div className="text-editor-slash-menu__label">Basic blocks</div>
-      <ul className="text-editor-slash-menu__list" role="listbox">
+      <div id={labelId} className="text-editor-slash-menu__label">
+        Basic blocks
+      </div>
+      <ul className="text-editor-slash-menu__list" role="listbox" aria-labelledby={labelId}>
         {filtered.map((c, i) => (
           <li
             key={c.title}
             role="option"
             aria-selected={i === active}
+            // Focus stays in the editor; -1 keeps the scrolling list reachable for AT.
+            tabIndex={-1}
             onMouseDown={(e) => {
               e.preventDefault();
               c.run(editor);

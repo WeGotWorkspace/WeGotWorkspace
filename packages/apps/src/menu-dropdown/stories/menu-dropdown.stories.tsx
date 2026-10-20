@@ -48,7 +48,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Open menu" }));
-    await userEvent.click(screen.getByRole("button", { name: "Notes" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Notes" }));
     await expect(notesClick).toHaveBeenCalledOnce();
   },
 };

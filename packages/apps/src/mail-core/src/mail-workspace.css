@@ -36,7 +36,7 @@
   --mail-detail-tag-primary-fg: var(--workspace-accent-foreground);
   --mail-detail-tag-primary-bg: color-mix(in oklch, var(--workspace-foreground) 88%, transparent);
   --mail-detail-tag-muted-bg: color-mix(in oklch, var(--workspace-foreground) 6%, transparent);
-  --mail-detail-tag-muted-fg: color-mix(in oklch, var(--workspace-foreground) 65%, transparent);
+  --mail-detail-tag-muted-fg: color-mix(in oklch, var(--workspace-foreground) 78%, transparent);
 
   --loading-spinner-color: color-mix(in oklch, var(--workspace-foreground) 45%, transparent);
   --mail-swipe-star-color: var(--color-emerald);

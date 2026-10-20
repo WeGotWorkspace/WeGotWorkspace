@@ -53,7 +53,7 @@ export const Default: Story = {
     await expect(args.onCreateNote).toHaveBeenCalledOnce();
 
     await userEvent.click(canvas.getByRole("button", { name: defaultNotesLabels.newNoteMenu }));
-    await userEvent.click(screen.getByRole("button", { name: defaultNotesLabels.addNotebook }));
+    await userEvent.click(screen.getByRole("menuitem", { name: defaultNotesLabels.addNotebook }));
     await expect(args.onCreateNotebook).toHaveBeenCalledOnce();
   },
 };

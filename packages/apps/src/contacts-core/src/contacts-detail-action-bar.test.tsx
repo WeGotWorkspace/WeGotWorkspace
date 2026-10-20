@@ -164,14 +164,14 @@ describe("ContactsDetailActionBar", () => {
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);
     fireEvent.click(
-      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("menuitem", {
         name: defaultContactsLabels.downloadVCard,
       }),
     );
     fireEvent.pointerDown(trigger);
     fireEvent.click(trigger);
     fireEvent.click(
-      within(screen.getByRole("menu", { name: "More actions" })).getByRole("button", {
+      within(screen.getByRole("menu", { name: "More actions" })).getByRole("menuitem", {
         name: defaultContactsLabels.delete,
       }),
     );

@@ -341,7 +341,7 @@
 
 .drive-workspace .drive-location-label {
   @apply flex min-w-0 items-center gap-1.5 text-sm;
-  color: color-mix(in oklab, var(--workspace-foreground) 65%, transparent);
+  color: color-mix(in oklab, var(--workspace-foreground) 75%, transparent);
 }
 
 .drive-workspace .drive-location-label__icon {

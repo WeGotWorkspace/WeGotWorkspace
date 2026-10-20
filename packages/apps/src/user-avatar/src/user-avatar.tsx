@@ -137,6 +137,7 @@ export function UserAvatar({
     setImageFailed(false);
   }, [imageSrc]);
 
+  const markShowsInitials = !showImage && fallback == null;
   const sizeClass = USER_AVATAR_SIZE_CLASS[size] ?? USER_AVATAR_SIZE_CLASS.md;
 
   const markContent = showImage ? (
@@ -165,7 +166,13 @@ export function UserAvatar({
     (presenceLabel ? `${resolvedName} avatar, ${presenceLabel}` : `${resolvedName} avatar`);
 
   const circle = onClick ? (
-    <button type="button" onClick={onClick} aria-label={avatarLabel} className="user-avatar__mark">
+    <button
+      type="button"
+      onClick={onClick}
+      // Visible initials stay in the name so voice control can target them (WCAG 2.5.3).
+      aria-label={markShowsInitials ? `${avatarLabel}, ${initials}` : avatarLabel}
+      className="user-avatar__mark"
+    >
       {markContent}
     </button>
   ) : (

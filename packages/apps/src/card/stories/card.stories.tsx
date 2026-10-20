@@ -18,11 +18,16 @@ type Story = StoryObj<typeof Card>;
 export const ReadonlySummary: Story = {
   render: () => (
     <Card title="Readonly">
-      <FormField label="Username" readOnly>
-        <Input value="elias.linden" readOnly className="cursor-default" />
+      <FormField label="Username" readOnly htmlFor="card-story-username">
+        <Input id="card-story-username" value="elias.linden" readOnly className="cursor-default" />
       </FormField>
-      <FormField label="Email" readOnly>
-        <Input value="elias@northlight.studio" readOnly className="cursor-default" />
+      <FormField label="Email" readOnly htmlFor="card-story-readonly-email">
+        <Input
+          id="card-story-readonly-email"
+          value="elias@northlight.studio"
+          readOnly
+          className="cursor-default"
+        />
       </FormField>
     </Card>
   ),
@@ -31,11 +36,11 @@ export const ReadonlySummary: Story = {
 export const EditableFormLike: Story = {
   render: () => (
     <Card title="Identity">
-      <FormField label="Display name">
-        <Input defaultValue="Elias Linden" />
+      <FormField label="Display name" htmlFor="card-story-display-name">
+        <Input id="card-story-display-name" defaultValue="Elias Linden" />
       </FormField>
-      <FormField label="Email">
-        <Input defaultValue="elias@northlight.studio" type="email" />
+      <FormField label="Email" htmlFor="card-story-email">
+        <Input id="card-story-email" defaultValue="elias@northlight.studio" type="email" />
       </FormField>
       <div className="flex justify-end pt-2">
         <Button
@@ -78,8 +83,13 @@ export const WithTitleIconAndDescription: Story = {
       title="Anyone with the link"
       description="No sign-in required — anyone with the URL can view this doc."
     >
-      <FormField label="Share URL" readOnly>
-        <Input value="https://example.com/s/abc123" readOnly className="cursor-default" />
+      <FormField label="Share URL" readOnly htmlFor="card-story-share-url">
+        <Input
+          id="card-story-share-url"
+          value="https://example.com/s/abc123"
+          readOnly
+          className="cursor-default"
+        />
       </FormField>
     </Card>
   ),
