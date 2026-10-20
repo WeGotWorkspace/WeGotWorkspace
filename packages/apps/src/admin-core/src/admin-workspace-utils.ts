@@ -14,9 +14,11 @@ export function appUrlFromBrowserLocation(origin: string, baseUri: string): stri
  */
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** Matches the API's "APP_URL is not set" security warning by its text. */
+/** Matches the API's APP_URL warnings (unset, or a local address) by their text. */
 export function isAppUrlWarning(warning: string): boolean {
-  return warning.startsWith("APP_URL is not set");
+  return (
+    warning.startsWith("APP_URL is not set") || warning.startsWith("APP_URL is a local address")
+  );
 }
 
 export function isLoopbackOrigin(origin: string): boolean {

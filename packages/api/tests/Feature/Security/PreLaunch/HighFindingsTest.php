@@ -299,8 +299,19 @@ final class HighFindingsTest extends WgwDatabaseTestCase
             ->json('securityWarnings');
         $this->assertIsArray($unset);
         $this->assertContains(
-            'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.',
+            "APP_URL is a local address (http://localhost). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.",
             $unset,
+        );
+
+        config(['app.url' => '']);
+        $empty = $this->withBearer($this->login('alice')['access_token'])
+            ->getJson('/api/v1/admin/state')
+            ->assertOk()
+            ->json('securityWarnings');
+        $this->assertIsArray($empty);
+        $this->assertContains(
+            'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.',
+            $empty,
         );
     }
 

@@ -57,18 +57,18 @@ export function AdminSecurityWarnings({
       {warnings.map((warning) => {
         const isAppUrl = isAppUrlWarning(warning);
         const offer = isAppUrl && url !== "" && !local;
-        const message = !isAppUrl
-          ? warning
-          : local
-            ? `${warning} This page is open on ${origin}, a local address that cannot be the site address. Open Admin through the site's public address, or set APP_URL on the server.`
-            : offer
-              ? `${warning} "Use this address" saves ${url} as the site address.`
-              : warning;
+        // On a local address the admin cannot fix it from here: inform, do not alarm.
+        const localNote = isAppUrl && local;
+        const message = localNote
+          ? `${warning} To set it, open Admin on the site's public address, or set APP_URL in packages/api/.env (Docker: api.env on the config volume).`
+          : offer
+            ? `${warning} "Use this address" saves ${url} as the site address.`
+            : warning;
         return (
           <Callout
             key={warning}
-            severity="error"
-            title="Security warning"
+            severity={localNote ? "info" : "error"}
+            title={localNote ? "Local address" : "Security warning"}
             message={message}
             action={
               offer ? (

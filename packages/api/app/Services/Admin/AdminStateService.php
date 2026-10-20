@@ -100,7 +100,9 @@ final class AdminStateService
         if (! app()->environment('production')) {
             $warnings[] = 'APP_ENV is '.app()->environment().', not production.';
         }
-        if (! PublicAppUrl::isConfigured()) {
+        if (PublicAppUrl::isLoopback()) {
+            $warnings[] = 'APP_URL is a local address ('.rtrim((string) config('app.url'), '/').'). Host checks and password-reset mail stay off until it is the site\'s public address: reset links must point there.';
+        } elseif (! PublicAppUrl::isConfigured()) {
             $warnings[] = 'APP_URL is not set; the Host header is not validated and password-reset mail is disabled.';
         }
         if ($this->dataDirs->configuredDirectoryIsPublished()) {

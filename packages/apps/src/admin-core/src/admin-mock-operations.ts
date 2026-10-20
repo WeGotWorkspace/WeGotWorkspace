@@ -1,3 +1,4 @@
+import { isAppUrlWarning } from "@/admin-core/src/admin-workspace-utils";
 import type {
   AdminAPIOperations,
   AdminUIData,
@@ -173,7 +174,7 @@ export function createMockAdminOperations(seed: AdminUIData): AdminAPIOperations
     setAppUrl: async (_url, opts) => {
       await sleep(120, opts?.signal);
       current.securityWarnings = current.securityWarnings.filter(
-        (warning) => !warning.startsWith("APP_URL is not set"),
+        (warning) => !isAppUrlWarning(warning),
       );
       return snapshot();
     },
