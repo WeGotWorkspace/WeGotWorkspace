@@ -115,9 +115,10 @@
   --secondary: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
   --secondary-foreground: var(--workspace-foreground);
   --muted: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));
+  /* 68% clears WCAG AA (4.5:1) on the surface and on the --muted wash; 55% was ~3.7:1. */
   --muted-foreground: color-mix(
     in oklch,
-    var(--workspace-foreground) 55%,
+    var(--workspace-foreground) 68%,
     var(--workspace-surface)
   );
   --accent: color-mix(in oklch, var(--workspace-foreground) 6%, var(--workspace-surface));

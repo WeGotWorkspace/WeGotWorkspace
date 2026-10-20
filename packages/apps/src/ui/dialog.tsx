@@ -6,6 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
 import { DialogCloseButton } from "@/ui/dialog-close-button";
 import { withNestedLayerDismissGuard } from "@/ui/dialog-nested-layer";
+import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
 import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-children";
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
@@ -34,6 +35,13 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/** Radix content whose outside is inert while open, not only aria-hidden. */
+const DialogContentLayer = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>((props, ref) => <DialogPrimitive.Content ref={useInertOutsideLayerRef(ref)} {...props} />);
+DialogContentLayer.displayName = "DialogContentLayer";
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -44,7 +52,7 @@ const DialogContent = React.forwardRef<
   ) => (
     <DialogPortal>
       <DialogOverlay />
-      <DialogPrimitive.Content
+      <DialogContentLayer
         ref={ref}
         className={cn(
           "overlay-paper ui-modal-surface ui-modal-surface--center fixed z-50 w-full max-w-lg border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 rounded-[length:var(--control-radius)]",
@@ -59,7 +67,7 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Close asChild>
           <DialogCloseButton />
         </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
+      </DialogContentLayer>
     </DialogPortal>
   ),
 );

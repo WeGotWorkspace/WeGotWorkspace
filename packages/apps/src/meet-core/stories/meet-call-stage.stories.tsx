@@ -173,6 +173,15 @@ export const ScreenShare: Story = {
   },
 };
 
+/**
+ * Idle pin/mute controls are revealed on hover or focus-within; synthetic
+ * pointer events do not hover, so focus the control first (the keyboard path).
+ */
+async function clickPeerControl(button: HTMLElement) {
+  button.focus();
+  await userEvent.click(button);
+}
+
 export const PinnedPeer: Story = {
   name: "Pinned peer",
   args: {
@@ -183,7 +192,7 @@ export const PinnedPeer: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
+    await clickPeerControl(
       canvas.getByRole("button", { name: meetLabels.pinParticipant("Alex Morgan") }),
     );
     await expect(canvasElement.querySelector("[data-featured='pin']")).toBeTruthy();
@@ -199,7 +208,7 @@ export const PinnedPeer: Story = {
       canvas.queryByRole("button", { name: meetLabels.unpinParticipant("Jamie Lee") }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(
+    await clickPeerControl(
       canvas.getAllByRole("button", { name: meetLabels.pinParticipant("Jamie Lee") })[0]!,
     );
     await expect(
@@ -209,7 +218,7 @@ export const PinnedPeer: Story = {
       canvasElement.querySelector(".meet-call-stage__share-main")?.textContent,
     ).toContain("Jamie Lee");
 
-    await userEvent.click(
+    await clickPeerControl(
       canvas.getAllByRole("button", { name: meetLabels.unpinParticipant("Jamie Lee") })[0]!,
     );
     await expect(canvasElement.querySelector(".meet-call-stage__share")).toBeNull();

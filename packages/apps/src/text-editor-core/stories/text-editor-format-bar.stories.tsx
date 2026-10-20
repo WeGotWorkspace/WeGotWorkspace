@@ -35,7 +35,11 @@ function TextEditorFormatBarDemo({ format, groups, showPrint, editable }: Format
   return (
     <div className="text-editor text-editor--format-bar-story flex h-[min(420px,70dvh)] w-full flex-col">
       <TextEditorFormatBar editor={editor} groups={groups} showPrint={showPrint} />
-      <div className="text-editor-format-bar-story__body">
+      {/* A read-only body has nothing focusable; keep the scroll box reachable. */}
+      <div
+        className="text-editor-format-bar-story__body"
+        {...(editable ? {} : { role: "region", "aria-label": "Document", tabIndex: 0 })}
+      >
         <EditorContent editor={editor} />
       </div>
     </div>

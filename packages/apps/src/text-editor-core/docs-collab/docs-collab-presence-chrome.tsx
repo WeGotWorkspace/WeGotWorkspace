@@ -21,6 +21,7 @@ export function DocsCollabPresenceChrome({
         <TooltipTrigger asChild>
           <span
             className="docs-collab-presence-chrome__icon-trigger"
+            role="img"
             aria-label="Online collaborators"
           >
             <Users className="docs-collab-presence-chrome__icon" aria-hidden />

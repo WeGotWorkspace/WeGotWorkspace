@@ -251,8 +251,13 @@ button.user-avatar__mark:hover {
 .user-avatar__subtitle {
   @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs;
   line-height: var(--user-avatar-subtitle-leading);
+  /* Follows a label-color override so a recoloured name keeps a readable subtitle. */
   color: var(
     --user-avatar-subtitle-color,
-    color-mix(in oklab, var(--workspace-foreground) 65%, transparent)
+    color-mix(
+      in oklab,
+      var(--user-avatar-label-color, var(--workspace-foreground)) 65%,
+      transparent
+    )
   );
 }

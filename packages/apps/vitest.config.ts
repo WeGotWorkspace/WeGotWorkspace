@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
+import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,6 +91,9 @@ export default defineConfig({
           },
         },
         plugins: [
+          // Same CSS as Storybook dev and Chromatic: without it every `@apply`
+          // body is empty and the a11y gate checks half-styled components.
+          tailwindcss(),
           storybookTest({
             configDir: path.join(__dirname, ".storybook"),
             tags: storybookVitestTags,

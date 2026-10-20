@@ -12,6 +12,10 @@ const storyChrome = {
   toggleSidebar: () => {},
 } as const;
 
+// Stable references: a fresh `[]` per render rebuilds the bootstrap data and loops.
+const EMPTY_PRESET = { notesOverride: [] };
+const LOADING_PRESET = { listLoading: true };
+
 export type NotesListPanePreset = "default" | "empty" | "loading" | "inNotebook";
 
 export function NotesListPaneHarness({
@@ -24,11 +28,7 @@ export function NotesListPaneHarness({
   failedSyncCount?: number;
 }) {
   const controller = useNotesPaneStoryController(
-    preset === "empty"
-      ? { notesOverride: [] }
-      : preset === "loading"
-        ? { listLoading: true }
-        : undefined,
+    preset === "empty" ? EMPTY_PRESET : preset === "loading" ? LOADING_PRESET : undefined,
   );
 
   const firstNotebook = controller.notes[0]?.notebook ?? "";
