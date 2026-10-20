@@ -5,6 +5,8 @@ import { isLoopbackOrigin } from "@/admin-core/src/admin-workspace-utils";
 
 const APP_URL_WARNING =
   "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.";
+const LOCAL_APP_URL_WARNING =
+  "APP_URL is a local address (http://localhost:8080). Host checks and password-reset mail stay off until it is the site's public address: reset links must point there.";
 
 afterEach(() => {
   cleanup();
@@ -67,10 +69,10 @@ describe("AdminSecurityWarnings", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("explains instead of offering a local address the server would ignore", () => {
+  it("informs instead of alarming on a local address, and says where to set it", () => {
     render(
       <AdminSecurityWarnings
-        warnings={[APP_URL_WARNING]}
+        warnings={[LOCAL_APP_URL_WARNING]}
         baseUri="/"
         origin="http://localhost:8080"
         onUseThisAddress={vi.fn()}
@@ -78,7 +80,24 @@ describe("AdminSecurityWarnings", () => {
     );
 
     expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText(/a local address that cannot be the site address/)).toBeTruthy();
+    expect(screen.getByText("Local address")).toBeTruthy();
+    expect(screen.queryByText("Security warning")).toBeNull();
+    expect(screen.getByText(/open Admin on the site's public address/)).toBeTruthy();
+    expect(screen.getByText(/packages\/api\/\.env/)).toBeTruthy();
+  });
+
+  it("offers the fix for a local APP_URL when Admin is open on the public address", () => {
+    render(
+      <AdminSecurityWarnings
+        warnings={[LOCAL_APP_URL_WARNING]}
+        baseUri="/"
+        origin="https://team.example.org"
+        onUseThisAddress={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Security warning")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use this address" })).toBeTruthy();
   });
 
   it("leaves other security warnings without a button", () => {

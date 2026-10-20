@@ -31,5 +31,14 @@ final class PublicAppUrlTest extends TestCase
         config(['app.url' => '']);
 
         $this->assertFalse(PublicAppUrl::isConfigured());
+        $this->assertFalse(PublicAppUrl::isLoopback());
+    }
+
+    public function test_is_loopback_only_for_a_local_app_url(): void
+    {
+        foreach (['http://localhost:8080' => true, 'http://[::1]' => true, 'https://team.example.org' => false] as $url => $loopback) {
+            config(['app.url' => $url]);
+            $this->assertSame($loopback, PublicAppUrl::isLoopback(), $url);
+        }
     }
 }
