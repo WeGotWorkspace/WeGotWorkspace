@@ -1,5 +1,3 @@
-import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/workspace-pwa-head";
-
 /**
  * Device-level colour theme. Stored on this browser, not on the account.
  * `index.html` runs the same resolution inline before first paint; keep the
@@ -7,6 +5,14 @@ import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/workspace-pwa-head";
  */
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
+
+/**
+ * Installed window chrome (`theme-color` meta) per scheme: the sidebar surface
+ * (`--scheme-sidebar-surface`), so the title bar reads as part of the page.
+ * Manifests cannot vary by scheme and carry the light value.
+ * `pwa-document-shell.test.ts` guards the copies in `index.html` and CSS.
+ */
+export const WORKSPACE_PWA_THEME_COLORS = { light: "#fff5e9", dark: "#1c1c1c" } as const;
 
 const STORAGE_KEY = "wgw.theme";
 const CHANGE_EVENT = "wgw-theme";

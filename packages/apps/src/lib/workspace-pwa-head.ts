@@ -13,21 +13,6 @@ import {
  */
 export const WORKSPACE_PWA_ICON_CACHE_VERSION = pwaIconCacheVersion.version;
 
-/**
- * Installed window chrome per colour scheme: the sidebar surface
- * (`--scheme-sidebar-surface`), so the title bar reads as part of the page.
- * `index.html` and `syncDocumentTheme` write the `theme-color` meta from these;
- * keep the inline script's hexes in sync. Launcher tiles stay on
- * `WORKSPACE_APP_ACCENT`.
- */
-export const WORKSPACE_PWA_THEME_COLORS = { light: "#fff5e9", dark: "#1c1c1c" } as const;
-
-/**
- * Manifest `theme_color` / `background_color`. Manifests cannot vary by scheme,
- * so they carry the light surface until the page sets the meta.
- */
-export const WORKSPACE_PWA_THEME_COLOR = WORKSPACE_PWA_THEME_COLORS.light;
-
 /** Mail stays an app id for icons and mail-core. The live shell does not install its PWA. */
 export type WorkspacePwaAppKey = Exclude<WorkspaceAppId, "mail"> | "home";
 
