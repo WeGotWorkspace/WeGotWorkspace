@@ -3,7 +3,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { writePackagesHtaccess } from "./build-wegotworkspace-release.mjs";
+import {
+  releaseNotesUrl,
+  releasePackageUrl,
+  writePackagesHtaccess,
+} from "./build-wegotworkspace-release.mjs";
 
 describe("release packages deny file", () => {
   it("writes packages/.htaccess that denies all access", () => {
@@ -16,5 +20,32 @@ describe("release packages deny file", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("release manifest URLs", () => {
+  it("leaves package and notes URLs empty without a release tag", () => {
+    assert.equal(releasePackageUrl("wegotworkspace-deploy-1.0.0.zip", {}), "");
+    assert.equal(releaseNotesUrl({}), "");
+  });
+
+  it("points the package at the hosting release, not the channel feed", () => {
+    const env = { WGW_RELEASE_TAG: "v1.0.0-beta.1" };
+    assert.equal(
+      releasePackageUrl("wegotworkspace-deploy-1.0.0-beta.1.zip", env),
+      "https://github.com/WeGotWorkspace/wegotworkspace/releases/download/v1.0.0-beta.1/wegotworkspace-deploy-1.0.0-beta.1.zip",
+    );
+    assert.equal(
+      releaseNotesUrl(env),
+      "https://github.com/WeGotWorkspace/wegotworkspace/releases/tag/v1.0.0-beta.1",
+    );
+  });
+
+  it("prefers an explicit notes URL", () => {
+    const env = {
+      WGW_RELEASE_TAG: "channel-edge",
+      WGW_RELEASE_NOTES_URL: "https://example.test/commit/abc",
+    };
+    assert.equal(releaseNotesUrl(env), "https://example.test/commit/abc");
   });
 });

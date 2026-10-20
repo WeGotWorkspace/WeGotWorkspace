@@ -102,6 +102,7 @@ const DEFAULT_DATA: AdminUIData = {
   },
   updates: {
     installChannel: null,
+    updateChannel: "stable",
     installedVersion: "0.0.0",
     schemaVersion: 0,
     latest: null,

@@ -26,6 +26,7 @@ const ACTION_NAMES = [
   "sendMailDeliveryTest",
   "refresh",
   "checkUpdates",
+  "setUpdateChannel",
   "refreshServerChecks",
   "clearUpdateLog",
   "refreshUpdateLog",

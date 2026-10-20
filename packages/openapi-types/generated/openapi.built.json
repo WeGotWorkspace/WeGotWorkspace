@@ -1157,10 +1157,20 @@
                             "null"
                         ],
                         "description": "Docker image tag from WGW_IMAGE when install channel is docker."
+                    },
+                    "updateChannel": {
+                        "type": "string",
+                        "enum": [
+                            "stable",
+                            "beta",
+                            "edge"
+                        ],
+                        "description": "Release feed the updater follows. Docker installs set it on the host (WGW_UPDATE_CHANNEL); edge is built from main and is not for production data."
                     }
                 },
                 "required": [
                     "installChannel",
+                    "updateChannel",
                     "installedVersion",
                     "schemaVersion",
                     "latest",
@@ -12169,6 +12179,42 @@
                         "description": "SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY."
                     }
                 }
+            },
+            "AdminUpdateChannelSaveRequest": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "channel"
+                ],
+                "properties": {
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "stable",
+                            "beta",
+                            "edge"
+                        ],
+                        "description": "Release feed the web updater follows. Edge is built from main and is not for production data."
+                    }
+                }
+            },
+            "AdminUpdateChannelSaveResponse": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "channel"
+                ],
+                "properties": {
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "stable",
+                            "beta",
+                            "edge"
+                        ],
+                        "description": "The saved update channel."
+                    }
+                }
             }
         },
         "responses": {
@@ -20285,6 +20331,48 @@
                     }
                 },
                 "x-wgw-access": "guest"
+            }
+        },
+        "/admin/updates/channel": {
+            "put": {
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Choose the update channel for the web updater",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminUpdateChannelSaveRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Update channel saved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminUpdateChannelSaveResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Docker install, an update is running, or the environment file is not writable"
+                    },
+                    "422": {
+                        "description": "Channel is not stable, beta, or edge"
+                    }
+                },
+                "x-wgw-access": "admin"
             }
         }
     }

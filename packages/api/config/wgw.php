@@ -11,7 +11,10 @@ return [
     'data_dir' => env('WGW_DATA_DIR'),
     /** True while the current wgw connection came from an installer probe, not runtime env. */
     'installer_db_applied' => false,
+    /** Explicit release feed. Empty or the stable default means: follow update_channel. */
     'update_feed_url' => env('WGW_UPDATE_FEED_URL', UpdateFeedDefaults::MANIFEST_URL),
+    /** Update channel: `stable` (default), `beta`, or `edge` (builds from main; not for production data). */
+    'update_channel' => env('WGW_UPDATE_CHANNEL', UpdateFeedDefaults::CHANNEL_STABLE),
 
     /**
      * JMAP envelope blob store (RFC 8620 §6). maxSizeUpload is advertised on

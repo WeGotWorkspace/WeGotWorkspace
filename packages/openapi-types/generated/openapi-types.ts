@@ -7975,6 +7975,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/updates/channel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose the update channel for the web updater */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AdminUpdateChannelSaveRequest"];
+                };
+            };
+            responses: {
+                /** @description Update channel saved */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AdminUpdateChannelSaveResponse"];
+                    };
+                };
+                /** @description Docker install, an update is running, or the environment file is not writable */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Channel is not stable, beta, or edge */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8343,6 +8397,11 @@ export interface components {
             installChannel: string | null;
             /** @description Docker image tag from WGW_IMAGE when install channel is docker. */
             imageTag?: string | null;
+            /**
+             * @description Release feed the updater follows. Docker installs set it on the host (WGW_UPDATE_CHANNEL); edge is built from main and is not for production data.
+             * @enum {string}
+             */
+            updateChannel: "stable" | "beta" | "edge";
         };
         AdminStateResponse: {
             users: components["schemas"]["AdminUserSummary"][];
@@ -12030,6 +12089,20 @@ export interface components {
             yjsLen: number | null;
             /** @description SUMMARY projection. Omit it when the document has not adopted a title, so a body save does not clear SUMMARY. */
             title?: string;
+        };
+        AdminUpdateChannelSaveRequest: {
+            /**
+             * @description Release feed the web updater follows. Edge is built from main and is not for production data.
+             * @enum {string}
+             */
+            channel: "stable" | "beta" | "edge";
+        };
+        AdminUpdateChannelSaveResponse: {
+            /**
+             * @description The saved update channel.
+             * @enum {string}
+             */
+            channel: "stable" | "beta" | "edge";
         };
     };
     responses: {

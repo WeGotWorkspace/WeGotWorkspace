@@ -169,8 +169,12 @@ export type AdminUpdateResult = {
   finishedAt: string | null;
 };
 
+/** Release feed the updater follows. Edge is built from main; not for production data. */
+export type AdminUpdateChannel = "stable" | "beta" | "edge";
+
 export type AdminUpdateState = {
   installChannel: string | null;
+  updateChannel: AdminUpdateChannel;
   installedVersion: string;
   imageTag?: string | null;
   schemaVersion: number;
@@ -239,6 +243,10 @@ export type AdminAPIOperations = {
   setAppUrl: (url: string, opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
   sendMailDeliveryTest: (opts?: { signal?: AbortSignal; to?: string }) => Promise<AdminUIData>;
   checkUpdates: (opts?: { signal?: AbortSignal }) => Promise<AdminUIData>;
+  setUpdateChannel: (
+    channel: AdminUpdateChannel,
+    opts?: { signal?: AbortSignal },
+  ) => Promise<AdminUpdateState>;
   refreshUpdateState: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   applyUpdate: (version?: string, opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;
   cancelUpdate: (opts?: { signal?: AbortSignal }) => Promise<AdminUpdateState>;

@@ -78,6 +78,30 @@ final class ReleaseFeedClientTest extends TestCase
         $this->assertSame('https://github.com/acme/wgw/releases/tag/v0.3.0', $manifest['notes_url']);
     }
 
+    public function test_channel_feed_falls_back_to_its_own_release_not_latest(): void
+    {
+        $feed = 'https://github.com/acme/wgw/releases/download/channel-beta/manifest.json';
+        $betaManifest = 'https://github.com/acme/wgw/releases/download/channel-beta/manifest-asset.json';
+        FakeHttps::$bodies['https://api.github.com/repos/acme/wgw/releases/latest'] = (string) json_encode([
+            'tag_name' => 'v1.0.0',
+            'assets' => [['name' => 'manifest.json', 'browser_download_url' => 'https://updates.test/stable.json']],
+        ]);
+        FakeHttps::$bodies['https://updates.test/stable.json'] = (string) json_encode(['version' => '1.0.0']);
+        FakeHttps::$bodies['https://api.github.com/repos/acme/wgw/releases/tags/channel-beta'] = (string) json_encode([
+            'tag_name' => 'channel-beta',
+            'assets' => [['name' => 'manifest.json', 'browser_download_url' => $betaManifest]],
+        ]);
+        FakeHttps::$bodies[$betaManifest] = (string) json_encode([
+            'version' => '1.1.0-beta.1',
+            'package_url' => 'https://github.com/acme/wgw/releases/download/v1.1.0-beta.1/wegotworkspace-deploy-1.1.0-beta.1.zip',
+        ]);
+
+        $manifest = (new ReleaseFeedClient)->fetchLatest($feed);
+
+        $this->assertIsArray($manifest);
+        $this->assertSame('1.1.0-beta.1', $manifest['version']);
+    }
+
     public function test_handles_unavailable_feed(): void
     {
         $client = new ReleaseFeedClient;

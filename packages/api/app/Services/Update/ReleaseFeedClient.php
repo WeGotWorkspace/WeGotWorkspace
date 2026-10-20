@@ -166,10 +166,18 @@ final class ReleaseFeedClient
         if ($section !== 'releases') {
             return null;
         }
-        if ($sub !== 'latest' && $sub !== 'download') {
-            return null;
+        $api = 'https://api.github.com/repos/'.$owner.'/'.$repo.'/releases/';
+        if ($sub === 'latest') {
+            return $api.'latest';
+        }
+        // releases/download/<tag>/manifest.json is one release (a channel
+        // feed or a pinned version), never "latest": falling back to latest
+        // would move a beta or edge install onto the stable feed.
+        $tag = $segments[4] ?? '';
+        if ($sub === 'download' && $tag !== '' && preg_match('/^[A-Za-z0-9._-]+$/', $tag) === 1) {
+            return $api.'tags/'.rawurlencode($tag);
         }
 
-        return 'https://api.github.com/repos/'.$owner.'/'.$repo.'/releases/latest';
+        return null;
     }
 }

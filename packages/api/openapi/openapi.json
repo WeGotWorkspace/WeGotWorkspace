@@ -2943,6 +2943,48 @@
         "x-wgw-access": "admin"
       }
     },
+    "/admin/updates/channel": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Choose the update channel for the web updater",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateChannelSaveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update channel saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUpdateChannelSaveResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Docker install, an update is running, or the environment file is not writable"
+          },
+          "422": {
+            "description": "Channel is not stable, beta, or edge"
+          }
+        },
+        "x-wgw-access": "admin"
+      }
+    },
     "/admin/updates/log": {
       "get": {
         "tags": [

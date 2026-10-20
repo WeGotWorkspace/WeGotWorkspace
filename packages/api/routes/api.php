@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobContr
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
 use App\Http\Controllers\Api\V1\Admin\UpdateBackupController as AdminUpdateBackupController;
+use App\Http\Controllers\Api\V1\Admin\UpdateChannelController as AdminUpdateChannelController;
 use App\Http\Controllers\Api\V1\Admin\UpdateJobController as AdminUpdateJobController;
 use App\Http\Controllers\Api\V1\Admin\UpdateLogController as AdminUpdateLogController;
 use App\Http\Controllers\Api\V1\Admin\UpdateStateController as AdminUpdateStateController;
@@ -389,6 +390,7 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
     Route::put('settings', AdminSettingsController::class);
     Route::post('mail-delivery/test', AdminMailDeliveryTestController::class);
     Route::get('updates/state', AdminUpdateStateController::class);
+    Route::put('updates/channel', AdminUpdateChannelController::class);
     Route::get('updates/log', [AdminUpdateLogController::class, 'show']);
     Route::delete('updates/log', [AdminUpdateLogController::class, 'destroy']);
     Route::post('update-jobs', [AdminUpdateJobController::class, 'store']);

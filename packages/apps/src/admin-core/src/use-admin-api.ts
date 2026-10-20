@@ -52,6 +52,7 @@ export function useAdminAPI(source?: AdminApiSource) {
       },
       updates: {
         installChannel: null,
+        updateChannel: "stable",
         installedVersion: "",
         schemaVersion: 0,
         latest: null,
