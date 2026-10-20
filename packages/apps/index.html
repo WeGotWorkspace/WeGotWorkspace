@@ -6,6 +6,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- Installed window chrome. Hexes match `WORKSPACE_PWA_THEME_COLORS`. -->
+    <meta name="theme-color" content="#fff5e9" />
     <!--
       Synchronous paint. iOS samples html/body background before module CSS and
       otherwise keeps an opaque status-bar gap. App CSS overrides the color.
@@ -37,6 +39,9 @@
           stored === "dark" ||
           (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.dataset.theme = dark ? "dark" : "light";
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", dark ? "#1c1c1c" : "#fff5e9");
       })();
     </script>
     <title>WeGotWorkspace</title>
