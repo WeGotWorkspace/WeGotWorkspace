@@ -1,3 +1,5 @@
+import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/workspace-pwa-head";
+
 /**
  * Device-level colour theme. Stored on this browser, not on the account.
  * `index.html` runs the same resolution inline before first paint; keep the
@@ -53,13 +55,27 @@ export function subscribeThemePreference(listener: () => void): () => void {
   };
 }
 
+/** Installed window chrome follows the resolved theme. `index.html` ships the meta. */
+function applyThemeColorMeta(theme: ResolvedTheme): void {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.append(meta);
+  }
+  meta.content = WORKSPACE_PWA_THEME_COLORS[theme];
+}
+
 /**
- * Keep `data-theme` on <html> in step with the stored preference and, for
- * System, the OS setting. Call once from the SPA entry. Returns a disposer.
+ * Keep `data-theme` on <html> and the `theme-color` meta in step with the
+ * stored preference and, for System, the OS setting. Call once from the SPA
+ * entry. Returns a disposer.
  */
 export function syncDocumentTheme(root: HTMLElement = document.documentElement): () => void {
   const apply = () => {
-    root.dataset.theme = resolveTheme(readThemePreference());
+    const theme = resolveTheme(readThemePreference());
+    root.dataset.theme = theme;
+    applyThemeColorMeta(theme);
   };
   apply();
   const unsubscribe = subscribeThemePreference(apply);

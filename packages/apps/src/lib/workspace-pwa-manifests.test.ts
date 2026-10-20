@@ -78,9 +78,9 @@ describe("workspace PWA manifests", () => {
     expect(notes).not.toMatch(/#f6d176|#f0bc3a|#fef8ea/i);
   });
 
-  it("paints every installed window with the sand UI accent", () => {
+  it("paints every installed window with the light sidebar surface", () => {
     const styles = readFileSync(join(import.meta.dirname, "../styles.css"), "utf8");
-    expect(styles).toContain(`--color-we-got-sand: ${WORKSPACE_PWA_THEME_COLOR};`);
+    expect(styles).toContain(`--color-we-got-soft: ${WORKSPACE_PWA_THEME_COLOR};`);
 
     for (const name of [...WORKSPACE_APP_IDS, "home"]) {
       const manifest = readManifest(name);
