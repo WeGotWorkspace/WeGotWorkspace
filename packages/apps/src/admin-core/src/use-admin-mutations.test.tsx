@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminAppBootstrap } from "@/lib/api/mock/admin-bootstrap";
 import { useAdminMutations } from "@/admin-core/src/use-admin-mutations";
 import { useAdminShell } from "@/admin-core/src/use-admin-shell";
+import type { AdminAPIOperations } from "@/admin-core/src/admin-types";
 
 const toast = vi.hoisted(() => ({
   showSuccess: vi.fn(),
@@ -91,5 +92,37 @@ describe("useAdminMutations", () => {
     expect(result.current.shell.groups.map((group) => group.id)).toContain(
       "principals/groups/ops-team",
     );
+  });
+  it("reports a saved site address by the refreshed warnings", async () => {
+    const appUrlWarning =
+      "APP_URL is not set; the Host header is not validated and password-reset mail is disabled.";
+    const { data } = createAdminAppBootstrap();
+    const start = { ...data, securityWarnings: [appUrlWarning] };
+    const setAppUrl = vi
+      .fn<AdminAPIOperations["setAppUrl"]>()
+      .mockResolvedValueOnce(start)
+      .mockResolvedValueOnce({ ...data, securityWarnings: [] });
+    const operations = { setAppUrl } as unknown as AdminAPIOperations;
+    const { result } = renderHook(() => {
+      const shell = useAdminShell({ data: start });
+      const mutations = useAdminMutations({ shell, operations });
+      return { shell, mutations };
+    });
+
+    await act(async () => {
+      expect(await result.current.mutations.actions.useThisAddress("http://x.test")).toBe(false);
+    });
+    expect(toast.showError).toHaveBeenCalledWith(
+      "The address was saved, but the server still reports APP_URL as unset.",
+    );
+    expect(result.current.shell.securityWarnings).toEqual([appUrlWarning]);
+
+    await act(async () => {
+      expect(
+        await result.current.mutations.actions.useThisAddress("https://team.example.org"),
+      ).toBe(true);
+    });
+    expect(toast.showSuccess).toHaveBeenCalledWith("Site address saved");
+    expect(result.current.shell.securityWarnings).toEqual([]);
   });
 });

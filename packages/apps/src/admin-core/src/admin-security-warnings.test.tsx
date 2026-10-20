@@ -22,7 +22,10 @@ describe("AdminSecurityWarnings", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Use https://team.example.org/office" }));
+    expect(
+      screen.getByText(/saves https:\/\/team\.example\.org\/office as the site address/),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use this address" }));
 
     await waitFor(() => {
       expect(onUseThisAddress).toHaveBeenCalledWith("https://team.example.org/office");
@@ -40,12 +43,12 @@ describe("AdminSecurityWarnings", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Use https://team.example.org" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use this address" }));
     await waitFor(() => {
       expect(onUseThisAddress).toHaveBeenCalled();
     });
     // The server still reports the warning: it stays.
-    expect(screen.getByText(APP_URL_WARNING)).toBeTruthy();
+    expect(screen.getByText(/APP_URL is not set/)).toBeTruthy();
 
     rerender(
       <AdminSecurityWarnings
@@ -55,7 +58,13 @@ describe("AdminSecurityWarnings", () => {
         onUseThisAddress={onUseThisAddress}
       />,
     );
-    expect(screen.queryByText(APP_URL_WARNING)).toBeNull();
+    expect(screen.queryByText(/APP_URL is not set/)).toBeNull();
+  });
+
+  it("offers no button without a browser origin", () => {
+    render(<AdminSecurityWarnings warnings={[APP_URL_WARNING]} baseUri="/" origin="" />);
+
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("explains instead of offering a local address the server would ignore", () => {

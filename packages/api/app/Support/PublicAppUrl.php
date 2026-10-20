@@ -72,7 +72,8 @@ final class PublicAppUrl
             return null;
         }
         $host = strtolower($host);
-        if (in_array($host, self::LOOPBACK_HOSTS, true)) {
+        // parse_url keeps the brackets of an IPv6 literal: http://[::1] gives "[::1]".
+        if (in_array(trim($host, '[]'), self::LOOPBACK_HOSTS, true)) {
             return null;
         }
 

@@ -8,8 +8,16 @@ export function appUrlFromBrowserLocation(origin: string, baseUri: string): stri
   return `${trimmedOrigin}/${base.replace(/^\/+|\/+$/g, "")}`;
 }
 
-/** Same hosts the API treats as an unset APP_URL (PublicAppUrl::LOOPBACK_HOSTS). */
-const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+/**
+ * Same hosts the API treats as an unset APP_URL (PublicAppUrl::LOOPBACK_HOSTS).
+ * URL.hostname keeps IPv6 brackets; the API strips them before comparing.
+ */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Matches the API's "APP_URL is not set" security warning by its text. */
+export function isAppUrlWarning(warning: string): boolean {
+  return warning.startsWith("APP_URL is not set");
+}
 
 export function isLoopbackOrigin(origin: string): boolean {
   try {

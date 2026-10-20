@@ -25,17 +25,16 @@ import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
 import {
   appUrlFromBrowserLocation,
+  isAppUrlWarning,
   isLoopbackOrigin,
 } from "@/admin-core/src/admin-workspace-utils";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
 
-const APP_URL_WARNING_PREFIX = "APP_URL is not set";
-
 export function AdminSecurityWarnings({
   warnings,
   baseUri,
-  origin = window.location.origin,
+  origin = globalThis.location?.origin ?? "",
   onUseThisAddress,
 }: {
   /** From the latest admin state: a saved address clears the warning only once the server agrees. */
@@ -49,37 +48,32 @@ export function AdminSecurityWarnings({
   if (warnings.length === 0) {
     return null;
   }
-  const url = appUrlFromBrowserLocation(origin, baseUri);
+  const url = origin === "" ? "" : appUrlFromBrowserLocation(origin, baseUri);
   // The server ignores a loopback APP_URL, so saving it would change nothing.
-  const local = isLoopbackOrigin(origin);
+  const local = origin !== "" && isLoopbackOrigin(origin);
 
   return (
     <div className="admin-security-warnings">
       {warnings.map((warning) => {
-        const isAppUrl = warning.startsWith(APP_URL_WARNING_PREFIX);
+        const isAppUrl = isAppUrlWarning(warning);
+        const offer = isAppUrl && url !== "" && !local;
+        const message = !isAppUrl
+          ? warning
+          : local
+            ? `${warning} This page is open on ${origin}, a local address that cannot be the site address. Open Admin through the site's public address, or set APP_URL on the server.`
+            : offer
+              ? `${warning} "Use this address" saves ${url} as the site address.`
+              : warning;
         return (
           <Callout
             key={warning}
             severity="error"
             title="Security warning"
-            message={
-              isAppUrl && local ? (
-                <>
-                  <p>{warning}</p>
-                  <p>
-                    This page is open on {origin}, a local address that cannot be the site address.
-                    Open Admin through the site&apos;s public address and set it there, or set
-                    APP_URL on the server.
-                  </p>
-                </>
-              ) : (
-                warning
-              )
-            }
+            message={message}
             action={
-              isAppUrl && !local ? (
+              offer ? (
                 <Button
-                  label={`Use ${url}`}
+                  label="Use this address"
                   variant="outline"
                   size="sm"
                   disabled={pending || onUseThisAddress == null}
