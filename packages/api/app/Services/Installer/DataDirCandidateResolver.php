@@ -74,7 +74,7 @@ final class DataDirCandidateResolver
     public function isInsidePublishedTree(string $dataDir, ?string $documentRoot = null): bool
     {
         return $this->isInside(
-            $this->resolveDataDir($dataDir),
+            $this->absolutePath($dataDir),
             $this->boundary($documentRoot, $this->installRoot()),
         );
     }
@@ -293,7 +293,8 @@ final class DataDirCandidateResolver
             return false;
         }
 
-        return $this->samePath(trim($contents), $owner);
+        // Ownership is the install root string the marker was written with, not path equivalence.
+        return $this->normalize(trim($contents)) === $this->normalize($owner);
     }
 
     private function releaseUnusedReservation(DataDirChoice $proposal, DataDirChoice $chosen): void
@@ -355,11 +356,6 @@ final class DataDirCandidateResolver
      */
     public function absolutePath(string $dataDir): string
     {
-        return $this->resolveDataDir($dataDir);
-    }
-
-    private function resolveDataDir(string $dataDir): string
-    {
         $dataDir = $this->normalize(trim($dataDir));
         if ($dataDir === '' || $dataDir === '.') {
             $dataDir = $this->normalize($this->installRoot()).'/wgw-content';
@@ -402,7 +398,7 @@ final class DataDirCandidateResolver
             return true;
         }
 
-        return $this->resolveDataDir($left) === $this->resolveDataDir($right);
+        return $this->absolutePath($left) === $this->absolutePath($right);
     }
 
     private function isInside(string $path, string $root): bool

@@ -47,6 +47,12 @@ export function installerDefaultEngine(state: WgwInstallerRuntimeState | null): 
   return "mysql";
 }
 
+/** The public address of this install: the browser origin plus the install base path. */
+export function installerAppUrl(origin: string, baseUri: string | undefined): string {
+  const base = (baseUri ?? "/").trim().replace(/^\/+|\/+$/g, "");
+  return base === "" ? origin : `${origin}/${base}`;
+}
+
 export function buildInstallerSitePayload(
   state: WgwInstallerRuntimeState | null,
 ): InstallerSitePayload {

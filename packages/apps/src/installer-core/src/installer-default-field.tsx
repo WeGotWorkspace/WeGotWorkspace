@@ -4,35 +4,39 @@ import { FieldLabelRow } from "@/ui/field-label-row";
 
 export type InstallerDefaultFieldProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
-  "value" | "onChange" | "placeholder" | "className"
+  "value" | "onChange" | "className"
 > & {
   label: string;
-  /** What the installer uses while the field is empty; shown as the placeholder. */
-  defaultValue: string;
   value: string;
   onValueChange: (value: string) => void;
-  /** Shown under the field; marks the field invalid when `invalid` is set. */
+  /** Plain note under the field, read with it. */
+  hint?: ReactNode;
+  /** Highlighted note under the field; marks the field invalid when `invalid` is set. */
   warning?: ReactNode;
   invalid?: boolean;
+  /** Announce the warning as it appears, for a server reply rather than a standing note. */
+  announceWarning?: boolean;
 };
 
 /**
- * One field whose placeholder is the value the installer picked. Leave it
- * empty to keep that value, or type to replace it.
+ * A field that starts on the value the installer picked. Keep it, copy it,
+ * or type over it.
  */
 export function InstallerDefaultField({
   label,
-  defaultValue,
   value,
   onValueChange,
+  hint,
   warning,
   invalid = false,
+  announceWarning = false,
   id,
   ...inputProps
 }: InstallerDefaultFieldProps) {
   const fallbackId = useId();
   const fieldId = id ?? fallbackId;
-  const warningId = useId();
+  const noteId = useId();
+  const note = warning ?? hint;
 
   return (
     <div className="installer__field">
@@ -43,20 +47,27 @@ export function InstallerDefaultField({
             id={fieldId}
             className="input__field"
             value={value}
-            placeholder={defaultValue}
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
             aria-invalid={invalid || undefined}
-            aria-describedby={warning ? warningId : undefined}
+            aria-describedby={note ? noteId : undefined}
             onChange={(event: ChangeEvent<HTMLInputElement>) => onValueChange(event.target.value)}
           />
         </div>
       </FieldLabelRow>
       {warning ? (
-        <p className="installer__default-field-warning" id={warningId} role="alert">
+        <p
+          className="installer__default-field-warning"
+          id={noteId}
+          role={announceWarning ? "alert" : undefined}
+        >
           <TriangleAlert className="installer__default-field-warning-icon" aria-hidden />
           <span>{warning}</span>
+        </p>
+      ) : hint ? (
+        <p className="installer__hint" id={noteId}>
+          {hint}
         </p>
       ) : null}
     </div>

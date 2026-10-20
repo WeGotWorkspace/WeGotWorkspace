@@ -62,7 +62,7 @@ describe("InstallerDatabasePage", () => {
     expect(screen.getByRole("alert").textContent).toContain("Could not reach MySQL");
   });
 
-  it("uses the suggested data folder as placeholder and leaves it to the server when empty", () => {
+  it("starts on the suggested data folder and leaves it to the server when kept", () => {
     const onContinue = vi.fn();
     render(
       <InstallerDatabasePage
@@ -72,11 +72,13 @@ describe("InstallerDatabasePage", () => {
       />,
     );
     const field = screen.getByLabelText("Data folder") as HTMLInputElement;
-    expect(field.placeholder).toBe("/home/user/wgw-content");
-    expect(field.value).toBe("");
+    expect(field.value).toBe("/home/user/wgw-content");
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(onContinue).toHaveBeenCalledWith({ engine: "sqlite" });
+    expect(onContinue).toHaveBeenLastCalledWith({ engine: "sqlite" });
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenLastCalledWith({ engine: "sqlite" });
   });
 
   it("submits a typed data folder", () => {
@@ -98,19 +100,41 @@ describe("InstallerDatabasePage", () => {
     });
   });
 
-  it("warns when the suggested data folder is inside the website", () => {
+  it.each([
+    ["fallback_unavailable", "No writable folder outside the website was found"],
+    ["fallback_owned", "belongs to another installation"],
+    ["environment", "WGW_DATA_DIR on the server points inside the website"],
+  ] as const)("says why a %s folder is inside the website", (reason, text) => {
     render(
       <InstallerDatabasePage
         initialEngine="sqlite"
         dataDirPath="/var/www/html/wgw-content"
+        dataDirReason={reason}
         dataDirInsideWebRoot
       />,
     );
-    expect(screen.getByRole("alert").textContent).toMatch(/inside the website/i);
-    fireEvent.change(screen.getByLabelText("Data folder"), {
-      target: { value: "/var/wgw-data" },
-    });
+    const field = screen.getByLabelText("Data folder");
+    // A standing note is read with the field, not announced as an alert.
     expect(screen.queryByRole("alert")).toBeNull();
+    expect(field.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.getElementById(field.getAttribute("aria-describedby")!)?.textContent).toContain(
+      text,
+    );
+    fireEvent.change(field, { target: { value: "/var/wgw-data" } });
+    expect(screen.queryByText(text, { exact: false })).toBeNull();
+  });
+
+  it("names the server setting when WGW_DATA_DIR chose the folder", () => {
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/srv/wgw"
+        dataDirReason="environment"
+      />,
+    );
+    expect(screen.getByText("Set on the server with WGW_DATA_DIR.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Data folder"), { target: { value: "/srv/other" } });
+    expect(screen.queryByText("Set on the server with WGW_DATA_DIR.")).toBeNull();
   });
 
   it("moves a published-folder rejection under the field until the path changes", () => {

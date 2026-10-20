@@ -5,6 +5,7 @@ import { InstallerDefaultField } from "@/installer-core/src/installer-default-fi
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
 import { isInstallerDataDirError } from "@/installer-core/src/installer-flow";
+import type { WgwInstallerRuntimeState } from "@/lib/api/wgw";
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -23,11 +24,15 @@ export type InstallerDatabaseValues = (
   { engine: "sqlite" } | { engine: "mysql"; mysql: InstallerMysqlDraft }
 ) & { dataDir?: string };
 
+export type InstallerDataDirReason = NonNullable<WgwInstallerRuntimeState["data_dir"]>["reason"];
+
 export type InstallerDatabasePageProps = {
   initialEngine?: InstallerDatabaseEngine;
   initialMysql?: Partial<InstallerMysqlDraft>;
   dataDirPath?: string;
-  /** The suggested folder is inside the published website (a fallback). */
+  /** Why the server picked `dataDirPath`. */
+  dataDirReason?: InstallerDataDirReason;
+  /** The suggested folder is inside the published website. */
   dataDirInsideWebRoot?: boolean;
   onContinue?: (values: InstallerDatabaseValues) => void;
   connectionError?: string | null;
@@ -69,6 +74,17 @@ function isPublishedFolderError(message: string): boolean {
   return /inside the published website/i.test(message);
 }
 
+function insideWebRootWarning(reason: InstallerDataDirReason | undefined): string {
+  switch (reason) {
+    case "environment":
+      return copy.dataDirInsideEnvironment;
+    case "fallback_owned":
+      return copy.dataDirInsideOwned;
+    default:
+      return copy.dataDirInsideUnavailable;
+  }
+}
+
 function enginePanelProps(active: boolean) {
   return {
     className: active
@@ -83,6 +99,7 @@ export function InstallerDatabasePage({
   initialEngine = "mysql",
   initialMysql,
   dataDirPath,
+  dataDirReason,
   dataDirInsideWebRoot = false,
   onContinue,
   connectionError,
@@ -97,7 +114,7 @@ export function InstallerDatabasePage({
   const [mysql, setMysql] = useState<InstallerMysqlDraft>(() =>
     mysqlDraftFromInitial(initialMysql),
   );
-  const [dataDirOverride, setDataDirOverride] = useState("");
+  const [dataDir, setDataDir] = useState(dataDirPath ?? "");
   const [submittedDataDir, setSubmittedDataDir] = useState<string | null>(null);
 
   const mysqlReady =
@@ -110,12 +127,12 @@ export function InstallerDatabasePage({
   const handleSubmit = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     if (!canSubmit) return;
-    // An empty field keeps the server's own choice, so only a typed folder is sent.
-    const chosenDataDir = dataDirOverride.trim();
-    setSubmittedDataDir(chosenDataDir);
+    // The server keeps its own choice unless a different folder was typed.
+    const typed = dataDir.trim();
+    setSubmittedDataDir(typed);
     onContinue?.({
       ...(engine === "sqlite" ? { engine: "sqlite" } : { engine: "mysql", mysql }),
-      ...(chosenDataDir ? { dataDir: chosenDataDir } : {}),
+      ...(typed !== "" && typed !== dataDirPath ? { dataDir: typed } : {}),
     });
   };
 
@@ -123,14 +140,17 @@ export function InstallerDatabasePage({
   // flagged after it rejects it; the suggestion carries its own flag.
   const dataDirError =
     connectionError != null && isInstallerDataDirError(connectionError) ? connectionError : null;
-  const dataDirRejected = dataDirError != null && submittedDataDir === dataDirOverride.trim();
+  const dataDirRejected = dataDirError != null && submittedDataDir === dataDir.trim();
+  const keepsServerChoice = dataDir.trim() === "" || dataDir.trim() === dataDirPath;
   const dataDirWarning = dataDirRejected
     ? isPublishedFolderError(dataDirError)
       ? copy.dataDirPublic
       : dataDirError
-    : dataDirOverride.trim() === "" && dataDirInsideWebRoot
-      ? copy.dataDirPublic
+    : keepsServerChoice && dataDirInsideWebRoot
+      ? insideWebRootWarning(dataDirReason)
       : null;
+  const dataDirHint =
+    keepsServerChoice && dataDirReason === "environment" ? copy.dataDirEnvironment : null;
   // Editing the path answers the rejection, so it does not move to the bottom.
   const generalError = dataDirError != null ? null : connectionError;
 
@@ -223,11 +243,13 @@ export function InstallerDatabasePage({
           <InstallerDefaultField
             label={copy.dataDirLabel}
             name="dataDir"
-            defaultValue={dataDirPath}
-            value={dataDirOverride}
-            onValueChange={setDataDirOverride}
+            placeholder={dataDirPath}
+            value={dataDir}
+            onValueChange={setDataDir}
             invalid={dataDirRejected}
             warning={dataDirWarning}
+            announceWarning={dataDirRejected}
+            hint={dataDirHint}
           />
         ) : null}
 

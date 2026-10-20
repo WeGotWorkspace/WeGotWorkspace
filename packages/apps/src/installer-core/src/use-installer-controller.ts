@@ -6,6 +6,7 @@ import type { InstallerDatabaseValues } from "@/installer-core/src/installer-dat
 import {
   buildInstallerDatabasePayload,
   buildInstallerInstallPayload,
+  installerAppUrl,
   buildInstallerSitePayload,
   installerBlockingChecks,
   installerDefaultEngine,
@@ -150,7 +151,7 @@ export function useInstallerController({
               values.username,
               values.password,
               values.email,
-              window.location.origin,
+              installerAppUrl(window.location.origin, installerState?.base_uri),
             ),
           ),
         );

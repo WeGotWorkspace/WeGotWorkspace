@@ -170,15 +170,6 @@
 
 /* Shared `.input` / `.input__field` keep size, type and focus in step with the
  * other fields. The installer's pick reads as the value until you type. */
-.installer__default-field {
-  --input-placeholder-color: var(--workspace-foreground);
-  @apply gap-2;
-}
-
-.installer__default-field:focus-within {
-  --input-placeholder-color: color-mix(in oklab, var(--workspace-foreground) 40%, transparent);
-}
-
 .installer__default-field:has([aria-invalid="true"]) {
   border-color: var(--installer-status-warn);
 }

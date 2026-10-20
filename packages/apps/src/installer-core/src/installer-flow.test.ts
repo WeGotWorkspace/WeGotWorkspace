@@ -10,6 +10,7 @@ import {
   installerHasDatabaseFromEnv,
   isUsernameTakenError,
   formatInstallerDatabaseError,
+  installerAppUrl,
   isInstallerDataDirError,
 } from "@/installer-core/src/installer-flow";
 import type { WgwInstallerRuntimeState } from "@/installer-core/src/installer-types";
@@ -106,6 +107,16 @@ describe("installer-flow", () => {
     ).toBe("Could not reach MySQL at 127.0.0.1:3306. Check the host and port, or use SQLite.");
     expect(formatInstallerDatabaseError("SQLSTATE[HY000] [1045] Access denied for user")).toBe(
       "MySQL rejected that username or password.",
+    );
+  });
+
+  it("keeps the install base in the app url", () => {
+    expect(installerAppUrl("https://example.org", "/")).toBe("https://example.org");
+    expect(installerAppUrl("https://example.org", undefined)).toBe("https://example.org");
+    expect(installerAppUrl("https://example.org", "/office")).toBe("https://example.org/office");
+    expect(installerAppUrl("https://example.org", "/office/")).toBe("https://example.org/office");
+    expect(installerAppUrl("http://10.0.0.5:8080", "office/wgw")).toBe(
+      "http://10.0.0.5:8080/office/wgw",
     );
   });
 

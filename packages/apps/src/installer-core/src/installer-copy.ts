@@ -21,7 +21,14 @@ export const installerCopy = {
   sqliteHint: "Uses the default SQLite file.",
   dataDirLabel: "Data folder",
   dataDirPublic:
-    "This folder is inside the website, so anyone could download the database. Pick one outside it.",
+    "That folder is inside the website, so anyone could download the database. Pick one outside it.",
+  dataDirInsideUnavailable:
+    "No writable folder outside the website was found, so this one is inside it, where anyone could download the database. A folder outside the website keeps it private.",
+  dataDirInsideOwned:
+    "The folder outside the website belongs to another installation, so this one is inside it, where anyone could download the database. A folder outside the website keeps it private.",
+  dataDirInsideEnvironment:
+    "WGW_DATA_DIR on the server points inside the website, so anyone could download the database. A folder outside the website keeps it private.",
+  dataDirEnvironment: "Set on the server with WGW_DATA_DIR.",
   mysqlHost: "Host",
   mysqlPort: "Port",
   mysqlDatabase: "Database",

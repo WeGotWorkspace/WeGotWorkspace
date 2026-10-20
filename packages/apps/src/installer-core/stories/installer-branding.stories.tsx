@@ -79,8 +79,7 @@ export const InteractiveFlow: Story = {
         canvas.getByRole("heading", { name: installerCopy.databaseTitle }),
       ).toBeInTheDocument(),
     );
-    await expect(canvas.getByRole("textbox", { name: installerCopy.dataDirLabel })).toHaveAttribute(
-      "placeholder",
+    await expect(canvas.getByRole("textbox", { name: installerCopy.dataDirLabel })).toHaveValue(
       MOCK_DATA_DIR_PATH,
     );
   },
@@ -132,8 +131,7 @@ export const Database: Story = {
     await expect(panels[1]).toHaveClass("installer__engine-panel--hidden");
     await expect(canvas.queryByLabelText("Database file")).toBeNull();
     const dataDir = canvas.getByRole("textbox", { name: installerCopy.dataDirLabel });
-    await expect(dataDir).toHaveAttribute("placeholder", MOCK_DATA_DIR_PATH);
-    await expect(dataDir).toHaveValue("");
+    await expect(dataDir).toHaveValue(MOCK_DATA_DIR_PATH);
     await expect(canvas.queryByRole("alert")).toBeNull();
     await expect(canvas.getByRole("button", { name: "Continue" })).toBeInTheDocument();
   },
@@ -158,17 +156,17 @@ export const DatabaseDataFolderPublic: Story = {
     <InstallerDatabasePage
       initialEngine="sqlite"
       dataDirPath="/var/www/html/wgw-content"
+      dataDirReason="fallback_unavailable"
       dataDirInsideWebRoot
     />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("alert")).toHaveTextContent(installerCopy.dataDirPublic);
-    await userEvent.type(
-      canvas.getByRole("textbox", { name: installerCopy.dataDirLabel }),
-      "/var/wgw-data",
-    );
-    await expect(canvas.queryByRole("alert")).toBeNull();
+    await expect(canvas.getByText(installerCopy.dataDirInsideUnavailable)).toBeInTheDocument();
+    const field = canvas.getByRole("textbox", { name: installerCopy.dataDirLabel });
+    await userEvent.clear(field);
+    await userEvent.type(field, "/var/wgw-data");
+    await expect(canvas.queryByText(installerCopy.dataDirInsideUnavailable)).toBeNull();
   },
 };
 

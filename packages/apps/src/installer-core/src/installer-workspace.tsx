@@ -47,6 +47,7 @@ export function InstallerWorkspace({ data, operations, onOpenWorkspace }: Instal
           username: controller.installerState?.db.mysql_user,
         }}
         dataDirPath={controller.installerState?.data_dir?.path}
+        dataDirReason={controller.installerState?.data_dir?.reason}
         dataDirInsideWebRoot={controller.installerState?.data_dir?.inside_web_root}
         connectionError={controller.databaseError}
         onContinue={(values) => void controller.continueDatabase(values)}
