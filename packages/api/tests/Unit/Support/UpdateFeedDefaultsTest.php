@@ -18,6 +18,14 @@ final class UpdateFeedDefaultsTest extends TestCase
         $this->assertSame(self::CHANNEL_BASE.'edge/manifest.json', UpdateFeedDefaults::manifestUrlFor('edge'));
     }
 
+    public function test_the_feed_url_uses_the_normalized_channel(): void
+    {
+        // WGW_UPDATE_CHANNEL=Beta in a hand-edited .env.
+        $this->assertSame(self::CHANNEL_BASE.'beta/manifest.json', UpdateFeedDefaults::manifestUrlFor(' Beta '));
+        $this->assertSame(self::CHANNEL_BASE.'edge/manifest.json', UpdateFeedDefaults::feedUrl(null, 'EDGE'));
+        $this->assertSame(UpdateFeedDefaults::MANIFEST_URL, UpdateFeedDefaults::manifestUrlFor('nightly'));
+    }
+
     public function test_unknown_or_empty_channel_is_stable(): void
     {
         foreach ([null, '', 'nightly', 42] as $value) {

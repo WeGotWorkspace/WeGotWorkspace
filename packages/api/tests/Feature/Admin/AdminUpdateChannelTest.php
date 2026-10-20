@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Services\Update\UpdateStateStore;
 use App\Storage\WgwStorage;
 use App\Support\UpdateFeedDefaults;
 use Illuminate\Support\Facades\File;
@@ -94,6 +95,27 @@ final class AdminUpdateChannelTest extends WgwDatabaseTestCase
         $this->withBearer($this->adminBearerToken())
             ->putJson('/api/v1/admin/updates/channel', ['channel' => 'nightly'])
             ->assertStatus(422);
+
+        $this->assertStringNotContainsString('WGW_UPDATE_CHANNEL', $this->envFile());
+    }
+
+    public function test_channel_must_be_lowercase_as_documented(): void
+    {
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/updates/channel', ['channel' => 'BETA'])
+            ->assertStatus(422);
+
+        $this->assertStringNotContainsString('WGW_UPDATE_CHANNEL', $this->envFile());
+    }
+
+    public function test_channel_cannot_change_while_an_update_runs(): void
+    {
+        app(WgwStorage::class)->data()->put(app(UpdateStateStore::class)->lockPath(), '');
+
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/updates/channel', ['channel' => 'beta'])
+            ->assertStatus(409)
+            ->assertSee('An update is running', false);
 
         $this->assertStringNotContainsString('WGW_UPDATE_CHANNEL', $this->envFile());
     }

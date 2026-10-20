@@ -255,14 +255,20 @@ is_edge_version() {
   esac
 }
 
+validate_channel() {
+  case "$1" in
+    stable | beta | edge) return 0 ;;
+    *) die "Unknown update channel: $1 (expected stable, beta, or edge)" ;;
+  esac
+}
+
 # Channel from --channel, else WGW_UPDATE_CHANNEL in .env, else stable.
+# Sources .env: call it in a subshell, $(update_channel).
 update_channel() {
   load_env
   channel="${WGW_CHANNEL_FLAG:-${WGW_UPDATE_CHANNEL:-stable}}"
-  case "$channel" in
-    stable | beta | edge) printf '%s' "$channel" ;;
-    *) die "Unknown update channel: ${channel} (expected stable, beta, or edge)" ;;
-  esac
+  validate_channel "$channel"
+  printf '%s' "$channel"
 }
 
 # Stable is GitHub's latest release (prereleases excluded). Beta and edge are
@@ -378,6 +384,21 @@ semver_cmp() {
     esac
   done
   return 0
+}
+
+# An edge build and a beta or rc of the same X.Y.Z do not tell which is
+# newer: edge builds of X.Y.Z run before and after those tags. So an edge
+# install skips them and waits for a newer edge build or the X.Y.Z release.
+# Same rule as ReleaseVersion::isUpgrade in the API.
+edge_skips() {
+  skip_target=$(normalize_semver "$1")
+  skip_installed=$(normalize_semver "$2")
+  case "$skip_installed" in *-edge.*) ;; *) return 1 ;; esac
+  case "$skip_target" in
+    *-edge.*) return 1 ;;
+    *-*) [ "${skip_target%%-*}" = "${skip_installed%%-*}" ] ;;
+    *) return 1 ;;
+  esac
 }
 
 confirm_upgrade() {
@@ -664,8 +685,8 @@ cmd_check() {
   semver_cmp "$installed" "$latest" || cmp=$?
   if [ "$cmp" -eq 0 ]; then
     log "Up to date (${installed})"
-  elif [ "$cmp" -eq 1 ]; then
-    log "Installed ${installed} is newer than published ${latest}"
+  elif [ "$cmp" -eq 1 ] || edge_skips "$latest" "$installed"; then
+    log "Installed ${installed} is not older than published ${latest}"
   else
     log "${latest} available (installed: ${installed})"
     log "Run: bash setup.sh upgrade"
@@ -689,8 +710,8 @@ cmd_upgrade() {
   if [ -z "${WGW_UPGRADE_VERSION:-}" ] && [ "$installed" != "latest" ]; then
     cmp=0
     semver_cmp "$target" "$installed" || cmp=$?
-    if [ "$cmp" -eq 2 ]; then
-      log "Installed ${installed} is newer than the $(update_channel) channel's ${target}."
+    if [ "$cmp" -eq 2 ] || edge_skips "$target" "$installed"; then
+      log "Installed ${installed} is not older than the $(update_channel) channel's ${target}."
       log "Staying on ${installed} until the channel catches up."
       save_update_channel "${WGW_INSTALL_DIR}/${ENV_FILE}"
       return 0
@@ -777,8 +798,8 @@ parse_args() {
         ;;
       --channel)
         [ $# -ge 2 ] || die "--channel requires a value"
+        validate_channel "$2"
         WGW_CHANNEL_FLAG=$2
-        update_channel >/dev/null
         shift 2
         ;;
       --upgrade)

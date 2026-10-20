@@ -23,8 +23,9 @@ final class AdminUpdateChannelSaveRequest extends FormRequest
         ];
     }
 
+    /** Exactly as sent: the contract allows only lowercase stable, beta, or edge (422 otherwise). */
     public function channelValue(): string
     {
-        return strtolower(trim((string) $this->validated('channel')));
+        return (string) $this->validated('channel');
     }
 }

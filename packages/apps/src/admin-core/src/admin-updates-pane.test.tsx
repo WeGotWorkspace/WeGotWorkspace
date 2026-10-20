@@ -67,7 +67,7 @@ describe("AdminUpdatesPane update channel", () => {
     render(<Harness channelSpy={channelSpy} />);
 
     expect(channelSelect().textContent).toBe("Stable");
-    expect(screen.getByText("Running the latest stable release.")).toBeTruthy();
+    expect(screen.getByText("Not checked yet")).toBeTruthy();
 
     pickChannel("Beta");
 
@@ -76,7 +76,15 @@ describe("AdminUpdatesPane update channel", () => {
     });
     expect(channelSpy).toHaveBeenCalledWith("beta", undefined);
     expect(screen.getByText("Beta channel")).toBeTruthy();
-    expect(screen.getByText("Running the latest beta release.")).toBeTruthy();
+    // The switch checks the beta feed right away.
+    expect(await screen.findByText("Running the latest beta release.")).toBeTruthy();
+  });
+
+  it("does not claim up to date before the first check", () => {
+    render(<Harness updates={{ lastCheckedAt: null, updateAvailable: false }} />);
+
+    expect(screen.getByText("Not checked yet")).toBeTruthy();
+    expect(screen.queryByText("You're up to date")).toBeNull();
   });
 
   it("says stable is not 1.0 yet on a 0.x install", () => {

@@ -56,16 +56,50 @@ describe("channelTag", () => {
 });
 
 describe("staleZipAssets", () => {
-  it("lists only older deploy ZIPs", () => {
-    const names = [
-      "manifest.json",
-      "wegotworkspace-deploy-0.1.122-edge.4.zip",
-      "wegotworkspace-deploy-0.1.122-edge.5.zip",
-      "docker-compose.yml",
-    ];
+  const names = [
+    "manifest.json",
+    "wegotworkspace-deploy-0.1.122-edge.4.zip",
+    "wegotworkspace-deploy-0.1.122-edge.10.zip",
+    "wegotworkspace-deploy-0.1.122-edge.5.zip",
+    "wegotworkspace-deploy-0.1.122-edge.11.zip",
+    "docker-compose.yml",
+  ];
+
+  it("keeps the new ZIP and the newest older one", () => {
+    // An install that checked before this publish still downloads edge.10.
     assert.deepEqual(
-      staleZipAssets(names, "wegotworkspace-deploy-0.1.122-edge.5.zip"),
-      ["wegotworkspace-deploy-0.1.122-edge.4.zip"],
+      staleZipAssets(names, ["wegotworkspace-deploy-0.1.122-edge.11.zip"]),
+      [
+        "wegotworkspace-deploy-0.1.122-edge.5.zip",
+        "wegotworkspace-deploy-0.1.122-edge.4.zip",
+      ],
+    );
+  });
+
+  it("deletes nothing on the first or second publish", () => {
+    assert.deepEqual(
+      staleZipAssets(
+        ["wegotworkspace-deploy-0.1.122-edge.4.zip"],
+        ["wegotworkspace-deploy-0.1.122-edge.4.zip"],
+      ),
+      [],
+    );
+    assert.deepEqual(
+      staleZipAssets(
+        [
+          "wegotworkspace-deploy-0.1.122-edge.4.zip",
+          "wegotworkspace-deploy-0.1.122-edge.5.zip",
+        ],
+        ["wegotworkspace-deploy-0.1.122-edge.5.zip"],
+      ),
+      [],
+    );
+  });
+
+  it("never lists other assets", () => {
+    assert.deepEqual(
+      staleZipAssets(names, []).includes("manifest.json"),
+      false,
     );
   });
 });

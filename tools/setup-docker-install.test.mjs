@@ -154,6 +154,31 @@ test("--channel rejects an unknown channel", () => {
   assert.match(result.stderr, /Unknown update channel: nightly/);
 });
 
+test("edge_skips holds an edge install back from a beta or rc of the same version", () => {
+  const skips = (target, installed) => runLib(`edge_skips "${target}" "${installed}"`).status === 0;
+  assert.equal(skips("0.1.123-rc.1", "0.1.123-edge.40"), true);
+  assert.equal(skips("0.1.123-beta.1", "0.1.123-edge.40"), true);
+  assert.equal(skips("0.1.123-edge.41", "0.1.123-edge.40"), false);
+  assert.equal(skips("0.1.123", "0.1.123-edge.40"), false);
+  assert.equal(skips("0.1.124-beta.1", "0.1.123-edge.40"), false);
+  assert.equal(skips("0.1.123-edge.50", "0.1.123-beta.1"), false);
+});
+
+test("--channel does not load .env over flags and environment", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "wgw-channel-flag-"));
+  writeFileSync(path.join(dir, ".env"), mysqlEnv());
+  try {
+    // Stub the command: only argument parsing is under test.
+    const snippet =
+      'cmd_install() { printf "%s %s" "$WGW_HTTP_PORT" "$WGW_CHANNEL_FLAG"; }; parse_args install --channel beta';
+    const result = runLib(snippet, { WGW_INSTALL_DIR: dir, WGW_HTTP_PORT: "9090" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, "9090 beta");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("edge assets come from the rolling channel-edge release", () => {
   const base = "https://github.com/WeGotWorkspace/wegotworkspace/releases";
   assert.equal(

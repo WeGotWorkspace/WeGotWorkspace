@@ -2970,7 +2970,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminUpdateChannelSaveRequest"
+                  "$ref": "#/components/schemas/AdminUpdateChannelSaveResponse"
                 }
               }
             }

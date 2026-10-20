@@ -84,14 +84,30 @@ export function channelTag(channel) {
   return `channel-${channel}`;
 }
 
-/** Deploy ZIPs on the channel release that the new manifest no longer uses. */
-export function staleZipAssets(assetNames, keepName) {
-  return assetNames.filter(
-    (name) =>
-      name !== keepName &&
-      name.startsWith("wegotworkspace-deploy-") &&
-      name.endsWith(".zip"),
-  );
+const DEPLOY_ZIP = /^wegotworkspace-deploy-(.+)\.zip$/;
+
+/**
+ * Deploy ZIPs on the channel release to delete after a publish.
+ *
+ * Keeps the ZIPs the new manifest uses plus the newest older one: an install
+ * that checked before this publish applies the package_url it stored then,
+ * so that ZIP must outlive one more publish.
+ */
+export function staleZipAssets(assetNames, keepNames) {
+  const keep = new Set(keepNames);
+  const older = assetNames
+    .filter((name) => DEPLOY_ZIP.test(name) && !keep.has(name))
+    .sort((a, b) => compareZipVersions(b, a));
+  return older.slice(1);
+}
+
+function compareZipVersions(a, b) {
+  try {
+    return compareVersions(DEPLOY_ZIP.exec(a)[1], DEPLOY_ZIP.exec(b)[1]);
+  } catch {
+    // A name that is not a version sorts as oldest.
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
 }
 
 function gh(args, options = {}) {
@@ -102,39 +118,44 @@ function gh(args, options = {}) {
   });
 }
 
+/** Asset names on a release, or null when the release does not exist. */
 function releaseAssetNames(tag) {
   try {
-    const out = gh([
-      "release",
-      "view",
-      tag,
-      "--json",
-      "assets",
-      "--jq",
-      ".assets[].name",
-    ]);
+    const out = gh(
+      ["release", "view", tag, "--json", "assets", "--jq", ".assets[].name"],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
     return out.split("\n").filter((line) => line !== "");
-  } catch {
-    return null;
+  } catch (error) {
+    if (/release not found/i.test(String(error.stderr ?? ""))) {
+      return null;
+    }
+    // Any other failure (network, auth) must stop the publish: treating it
+    // as "nothing published" would let an older manifest replace a newer one.
+    process.stderr.write(String(error.stderr ?? ""));
+    throw error;
   }
 }
 
+/** Version the channel offers now, or null when it has no manifest yet. */
 function publishedVersion(tag) {
-  try {
-    const raw = gh([
-      "release",
-      "download",
-      tag,
-      "--pattern",
-      "manifest.json",
-      "--output",
-      "-",
-    ]);
-    const version = JSON.parse(raw).version;
-    return typeof version === "string" ? version : null;
-  } catch {
+  if (!(releaseAssetNames(tag) ?? []).includes("manifest.json")) {
     return null;
   }
+  const raw = gh([
+    "release",
+    "download",
+    tag,
+    "--pattern",
+    "manifest.json",
+    "--output",
+    "-",
+  ]);
+  const version = JSON.parse(raw).version;
+  if (typeof version !== "string" || version === "") {
+    throw new Error(`${tag} manifest.json has no version`);
+  }
+  return version;
 }
 
 function ensureChannelRelease(tag, channel) {
@@ -181,17 +202,24 @@ function main(argv) {
   if (assets.length > 0) {
     gh(["release", "upload", tag, "--clobber", ...assets]);
   }
+  const signed = existsSync(signaturePath);
   const feed = [manifestPath];
-  if (existsSync(signaturePath)) {
+  if (signed) {
     feed.push(signaturePath);
   }
   gh(["release", "upload", tag, "--clobber", ...feed]);
 
-  const keepZip = assets
+  const published = releaseAssetNames(tag) ?? [];
+  // A signature left from an earlier signed publish would not match this
+  // manifest, and updaters would reject the feed.
+  if (!signed && published.includes("manifest.sig")) {
+    gh(["release", "delete-asset", tag, "manifest.sig", "--yes"]);
+  }
+  const keepZips = assets
     .map((asset) => basename(asset))
-    .find((name) => name.endsWith(".zip"));
-  if (keepZip !== undefined) {
-    for (const name of staleZipAssets(releaseAssetNames(tag) ?? [], keepZip)) {
+    .filter((name) => DEPLOY_ZIP.test(name));
+  if (keepZips.length > 0) {
+    for (const name of staleZipAssets(published, keepZips)) {
       gh(["release", "delete-asset", tag, name, "--yes"]);
     }
   }
