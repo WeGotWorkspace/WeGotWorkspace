@@ -20,8 +20,6 @@ export const installerCopy = {
   mysql: "MySQL / MariaDB",
   sqliteHint: "Uses the default SQLite file.",
   dataDirLabel: "Data folder",
-  dataDirPublicSuggested:
-    "No safe folder outside the website was found, so this one is public. Enter a folder outside the website.",
   dataDirPublic:
     "This folder is inside the website, so anyone could download the database. Pick one outside it.",
   mysqlHost: "Host",

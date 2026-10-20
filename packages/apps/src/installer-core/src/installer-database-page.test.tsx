@@ -106,7 +106,7 @@ describe("InstallerDatabasePage", () => {
         dataDirInsideWebRoot
       />,
     );
-    expect(screen.getByRole("alert").textContent).toMatch(/public/i);
+    expect(screen.getByRole("alert").textContent).toMatch(/inside the website/i);
     fireEvent.change(screen.getByLabelText("Data folder"), {
       target: { value: "/var/wgw-data" },
     });
@@ -134,6 +134,26 @@ describe("InstallerDatabasePage", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/inside the website/i);
     fireEvent.change(field, { target: { value: "/var/wgw-data" } });
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows other data folder rejections under the field too", () => {
+    const { rerender } = render(
+      <InstallerDatabasePage initialEngine="sqlite" dataDirPath="/home/user/wgw-content" />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/srv/locked" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="That directory is not writable by the web server."
+      />,
+    );
+    expect(screen.getByLabelText("Data folder").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toContain("not writable by the web server");
   });
 
   it("submits sqlite without credentials", () => {

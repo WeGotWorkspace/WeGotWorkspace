@@ -4,6 +4,7 @@ import { installerCopy as copy } from "@/installer-core/src/installer-copy";
 import { InstallerDefaultField } from "@/installer-core/src/installer-default-field";
 import { InstallerHeadline } from "@/installer-core/src/installer-headline";
 import { InstallerLayout } from "@/installer-core/src/installer-layout";
+import { isInstallerDataDirError } from "@/installer-core/src/installer-flow";
 import { SegmentedControl } from "@/segmented-control/src/segmented-control";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { Input } from "@/ui/input";
@@ -64,7 +65,6 @@ function InstallerDatabasePageTitle() {
   );
 }
 
-/** Server copy from `DataDirCandidateResolver::validateOverride`. */
 function isPublishedFolderError(message: string): boolean {
   return /inside the published website/i.test(message);
 }
@@ -121,15 +121,18 @@ export function InstallerDatabasePage({
 
   // The server is the one that knows the web root, so a typed folder is only
   // flagged after it rejects it; the suggestion carries its own flag.
-  const publishedFolderError = connectionError != null && isPublishedFolderError(connectionError);
-  const dataDirRejected = publishedFolderError && submittedDataDir === dataDirOverride.trim();
+  const dataDirError =
+    connectionError != null && isInstallerDataDirError(connectionError) ? connectionError : null;
+  const dataDirRejected = dataDirError != null && submittedDataDir === dataDirOverride.trim();
   const dataDirWarning = dataDirRejected
-    ? copy.dataDirPublic
+    ? isPublishedFolderError(dataDirError)
+      ? copy.dataDirPublic
+      : dataDirError
     : dataDirOverride.trim() === "" && dataDirInsideWebRoot
-      ? copy.dataDirPublicSuggested
+      ? copy.dataDirPublic
       : null;
   // Editing the path answers the rejection, so it does not move to the bottom.
-  const generalError = publishedFolderError ? null : connectionError;
+  const generalError = dataDirError != null ? null : connectionError;
 
   return (
     <InstallerLayout title={<InstallerDatabasePageTitle />} step="database">

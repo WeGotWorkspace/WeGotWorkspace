@@ -163,7 +163,7 @@ export const DatabaseDataFolderPublic: Story = {
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole("alert")).toHaveTextContent(installerCopy.dataDirPublicSuggested);
+    await expect(canvas.getByRole("alert")).toHaveTextContent(installerCopy.dataDirPublic);
     await userEvent.type(
       canvas.getByRole("textbox", { name: installerCopy.dataDirLabel }),
       "/var/wgw-data",

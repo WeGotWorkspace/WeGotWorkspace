@@ -381,7 +381,7 @@ final class DataDirCandidateResolver
 
         return $parentReal !== false
             ? $this->normalize($parentReal).'/'.basename($dataDir)
-            : $dataDir;
+            : $this->normalize($dataDir);
     }
 
     private function installRoot(): string

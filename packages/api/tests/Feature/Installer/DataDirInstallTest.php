@@ -141,6 +141,40 @@ final class DataDirInstallTest extends TestCase
         $this->assertSame('admin', (string) $db->query('SELECT username FROM users')->fetchColumn());
     }
 
+    public function test_fallback_is_shown_absolute_and_stored_relative(): void
+    {
+        $install = $this->installRoot();
+        $suffix = substr(hash('sha256', $this->real($install)), 0, 8);
+        foreach (['wgw-content', 'wgw-content-'.$suffix] as $name) {
+            mkdir($this->root.'/'.$name, 0775, true);
+            file_put_contents($this->root.'/'.$name.'/.wgw-owner', "/some/other/install\n");
+        }
+        $shown = $this->real($install).'/wgw-content';
+
+        $this->postAction('welcome_next')->assertOk();
+        $this->postAction('requirements_next', ['db_driver' => 'sqlite'])->assertOk()
+            ->assertJsonPath('state.data_dir.path', $shown)
+            ->assertJsonPath('state.data_dir.reason', DataDirChoice::REASON_FALLBACK_OWNED)
+            ->assertJsonPath('state.data_dir.inside_web_root', true);
+
+        // Typing the shown path back is the same choice, not a rejected override.
+        $this->postAction('database_next', [
+            'db_driver' => 'sqlite',
+            'sqlite_path' => './wgw-content/db.sqlite',
+            'data_dir' => $shown,
+        ])->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('state.data_dir.path', $shown)
+            ->assertJsonPath('state.data_dir.reason', DataDirChoice::REASON_FALLBACK_OWNED);
+
+        $this->postAction('site_next', $this->sitePayload())->assertOk()->assertJsonPath('ok', true);
+        $this->postAction('install', $this->installPayload())->assertOk()->assertJsonPath('ok', true);
+
+        $env = (string) file_get_contents($install.'/packages/api/.env');
+        $this->assertStringContainsString('WGW_DATA_DIR='.DataDirChoice::FALLBACK_PATH."\n", $env);
+        $this->assertFileExists($install.'/wgw-content/db.sqlite');
+    }
+
     private function installRoot(): string
     {
         return $this->root.'/public';

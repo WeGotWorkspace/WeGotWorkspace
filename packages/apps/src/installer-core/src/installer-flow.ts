@@ -117,6 +117,13 @@ export function isUsernameTakenError(message: string): boolean {
 }
 
 /** Turn a raw installer/PDO failure into a short line for the Database screen. */
+/** Server copy from `DataDirCandidateResolver::validateOverride`: a typed folder was refused. */
+export function isInstallerDataDirError(message: string): boolean {
+  return /data directory|published website|another installation|not writable by the web server/i.test(
+    message,
+  );
+}
+
 export function formatInstallerDatabaseError(message: string): string {
   const text = message
     .replace(/<[^>]*>/g, " ")
@@ -138,7 +145,7 @@ export function formatInstallerDatabaseError(message: string): string {
     /^could not reach mysql/i.test(text) ||
     /^mysql rejected/i.test(text) ||
     /^that database does not exist/i.test(text) ||
-    /data directory|published website|another installation/i.test(text)
+    isInstallerDataDirError(text)
   ) {
     return text.endsWith(".") ? text : `${text}.`;
   }
