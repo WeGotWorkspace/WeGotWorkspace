@@ -144,13 +144,15 @@ final class WgwConfigMigrator
             return null;
         }
 
-        return LegacyConfigBackups::latest($installRoot, self::envDataDir($envPath));
+        return LegacyConfigBackups::latest($installRoot, self::envDataDir($envPath), dirname($envPath));
     }
 
     /** A migrated install keeps no credential backups in the published install root. */
     private static function relocateLegacyBackups(string $installRoot, string $envPath): void
     {
-        if (WgwApiEnvFile::hasDatabaseConfigKeys($envPath)) {
+        // Runs on every boot: the glob comes first so most requests stop there.
+        if (LegacyConfigBackups::hasInstallRootBackups($installRoot)
+            && WgwApiEnvFile::hasDatabaseConfigKeys($envPath)) {
             LegacyConfigBackups::relocate($installRoot, self::envDataDir($envPath));
         }
     }
@@ -194,10 +196,9 @@ final class WgwConfigMigrator
         if (! $alreadyApplied) {
             $timestamp = date('Ymd-His');
             $legacyActive = $installRoot.'/wgw-config.php';
-            if (is_file($legacyActive)
-                && ! LegacyConfigBackups::write($installRoot, $pairs['WGW_DATA_DIR'], $legacyActive, $timestamp)) {
-                // No usable data directory: the install-root copy is denied by the managed .htaccess block.
-                @copy($legacyActive, $installRoot.'/wgw-config.php.bak.'.$timestamp);
+            if (is_file($legacyActive)) {
+                // Data directory, else packages/api; never the published install root.
+                LegacyConfigBackups::write($installRoot, $pairs['WGW_DATA_DIR'], dirname($envPath), $legacyActive, $timestamp);
             }
             if (is_file($envPath)) {
                 @copy($envPath, $envPath.'.bak.'.$timestamp);

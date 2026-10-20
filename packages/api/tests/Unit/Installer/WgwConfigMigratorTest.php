@@ -43,6 +43,7 @@ final class WgwConfigMigratorTest extends TestCase
 
     public function test_migrates_sqlite_array_config_to_env(): void
     {
+        mkdir($this->installRoot.'/wgw-content', 0775, true);
         file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
 <?php
 
@@ -63,7 +64,8 @@ PHP);
         $this->assertStringContainsString('WGW_DB_CONNECTION=sqlite', $env);
         $this->assertStringContainsString('WGW_DB_DATABASE=./wgw-content/db.sqlite', $env);
         $this->assertStringContainsString('WGW_UPDATE_FEED_URL=https://example.test/manifest.json', $env);
-        $this->assertNotEmpty(glob($this->installRoot.'/wgw-config.php.bak.*'));
+        $this->assertSame([], glob($this->installRoot.'/wgw-config.php.bak.*'));
+        $this->assertNotEmpty(glob($this->installRoot.'/wgw-content/config-backups/wgw-config.php.bak.*'));
     }
 
     public function test_backup_goes_to_the_data_directory_not_the_published_root(): void
@@ -86,6 +88,45 @@ PHP);
         $backups = glob($this->installRoot.'/wgw-content/config-backups/wgw-config.php.bak.*');
         $this->assertCount(1, $backups);
         $this->assertSame('0600', substr(sprintf('%o', fileperms($backups[0])), -4));
+    }
+
+    public function test_backup_falls_back_to_packages_api_without_a_data_directory(): void
+    {
+        file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+return [
+    'data_dir' => './missing-content',
+    'pdo' => ['sqlite_file' => './missing-content/db.sqlite'],
+];
+PHP);
+
+        $this->assertTrue(app(WgwConfigMigrator::class)->migrateIfNeeded());
+
+        $this->assertSame([], glob($this->installRoot.'/wgw-config.php.bak.*'));
+        $this->assertCount(1, glob($this->installRoot.'/packages/api/wgw-config.php.bak.*'));
+    }
+
+    public function test_a_data_directory_under_another_name_gets_a_deny_file(): void
+    {
+        mkdir($this->installRoot.'/site-data', 0775, true);
+        file_put_contents($this->installRoot.'/wgw-config.php', <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+return [
+    'data_dir' => './site-data',
+    'pdo' => ['sqlite_file' => './site-data/db.sqlite'],
+];
+PHP);
+
+        $this->assertTrue(app(WgwConfigMigrator::class)->migrateIfNeeded());
+
+        $this->assertCount(1, glob($this->installRoot.'/site-data/config-backups/wgw-config.php.bak.*'));
+        $this->assertStringContainsString('Require all denied', (string) file_get_contents($this->installRoot.'/site-data/.htaccess'));
     }
 
     public function test_moves_old_backups_out_of_the_published_root(): void

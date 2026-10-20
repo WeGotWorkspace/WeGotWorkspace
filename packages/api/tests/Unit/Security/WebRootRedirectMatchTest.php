@@ -130,6 +130,7 @@ final class WebRootRedirectMatchTest extends TestCase
             '/packages/api/.env',
             '/wgw-plugins/x.php',
             '/wgw-config.php.bak.20260709-120000',
+            '/wgw-config.php.bak',
         ];
     }
 

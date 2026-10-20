@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Support\WebRootDeny;
+
 /**
  * Backups of a migrated legacy wgw-config.php.
  *
- * The file holds database credentials. It used to be copied next to the
- * install root as wgw-config.php.bak.<timestamp>, inside the published
- * website, where no deny rule matched it. Backups now live in the data
- * directory under config-backups/, and older ones are moved there.
+ * They used to be written next to the install root, inside the published
+ * website. Backups now live in the data directory under config-backups/,
+ * or in packages/api when the data directory is not usable. Both are
+ * denied by the web server. Older install-root backups are moved.
  */
 final class LegacyConfigBackups
 {
@@ -21,36 +23,39 @@ final class LegacyConfigBackups
         return self::resolve($installRoot, $dataDir).'/config-backups';
     }
 
-    /** Copies $source to a new backup. Returns false when the data directory is not usable. */
-    public static function write(string $installRoot, string $dataDir, string $source, string $timestamp): bool
+    /**
+     * Copies $source to a new backup in the data directory, else in $apiRoot.
+     * Returns false when neither can be written.
+     */
+    public static function write(string $installRoot, string $dataDir, string $apiRoot, string $source, string $timestamp): bool
     {
-        $dir = self::ensureDir($installRoot, $dataDir);
-        if ($dir === null) {
-            return false;
+        foreach ([self::ensureDir($installRoot, $dataDir), self::writableDir($apiRoot)] as $dir) {
+            if ($dir !== null && self::copyPrivate($source, $dir.'/'.self::PREFIX.$timestamp)) {
+                return true;
+            }
         }
-        $target = $dir.'/'.self::PREFIX.$timestamp;
-        if (! @copy($source, $target)) {
-            return false;
-        }
-        @chmod($target, 0600);
 
-        return true;
+        return false;
     }
 
-    /** Newest backup in the data directory or, from older installs, the install root. */
-    public static function latest(string $installRoot, string $dataDir): ?string
+    /**
+     * Newest backup: the data directory first, then packages/api, then the
+     * install root of older installs.
+     */
+    public static function latest(string $installRoot, string $dataDir, string $apiRoot): ?string
     {
-        $found = array_merge(
-            self::globBackups(self::dir($installRoot, $dataDir)),
-            self::globBackups(rtrim($installRoot, '/')),
-        );
-        if ($found === []) {
-            return null;
-        }
-        usort($found, static fn (string $a, string $b): int => strcmp(basename($a), basename($b)));
-        $latest = end($found);
+        foreach ([self::dir($installRoot, $dataDir), rtrim($apiRoot, '/'), rtrim($installRoot, '/')] as $dir) {
+            $found = self::globBackups($dir);
+            if ($found === []) {
+                continue;
+            }
+            sort($found);
+            $latest = end($found);
 
-        return is_readable($latest) ? $latest : null;
+            return is_readable($latest) ? $latest : null;
+        }
+
+        return null;
     }
 
     /** Moves backups out of the install root. Leaves them when the data directory is not usable. */
@@ -72,17 +77,49 @@ final class LegacyConfigBackups
         }
     }
 
+    public static function hasInstallRootBackups(string $installRoot): bool
+    {
+        return self::globBackups(rtrim($installRoot, '/')) !== [];
+    }
+
     private static function ensureDir(string $installRoot, string $dataDir): ?string
     {
-        if (! is_dir(self::resolve($installRoot, $dataDir))) {
+        $data = self::resolve($installRoot, $dataDir);
+        if (! is_dir($data)) {
             return null;
         }
+        // A data directory inside the web root under another name than
+        // wgw-content is covered only by its own deny file.
+        WebRootDeny::ensure($data);
         $dir = self::dir($installRoot, $dataDir);
         if (! is_dir($dir) && ! @mkdir($dir, 0700, true) && ! is_dir($dir)) {
             return null;
         }
 
-        return is_writable($dir) ? $dir : null;
+        return self::writableDir($dir);
+    }
+
+    private static function writableDir(string $dir): ?string
+    {
+        $dir = rtrim($dir, '/');
+
+        return $dir !== '' && is_dir($dir) && is_writable($dir) ? $dir : null;
+    }
+
+    /** Restricts the target before it holds any content. */
+    private static function copyPrivate(string $source, string $target): bool
+    {
+        if (! @touch($target) || ! @chmod($target, 0600)) {
+            return false;
+        }
+        $content = @file_get_contents($source);
+        if (! is_string($content) || @file_put_contents($target, $content, LOCK_EX) === false) {
+            @unlink($target);
+
+            return false;
+        }
+
+        return true;
     }
 
     /** @return list<string> */

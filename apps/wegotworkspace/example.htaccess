@@ -73,7 +73,7 @@ RedirectMatch 404 ^/wgw-config\.php\.bak(?:\.|$)
     # Never expose runtime internals, config, or source trees directly.
     RewriteRule ^(?:wgw-plugins|wgw-content)(?:/|$) - [F,L,NC]
     RewriteRule ^(?:wgw-src|src|resources|vendor|scripts|patches|config|public|packages)(?:/|$) - [F,L,NC]
-    RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php(?:\.bak\.[^/]*)?|\.env)$ - [F,L,NC]
+    RewriteRule ^(?:composer\.(?:json|lock)|package\.json|wgw-config(?:\.sample)?\.php(?:\.bak(?:\.[^/]*)?)?|\.env)$ - [F,L,NC]
 
     # Copy Authorization into the env var Sabre's stack reads.
     RewriteCond %{HTTP:Authorization} .+
