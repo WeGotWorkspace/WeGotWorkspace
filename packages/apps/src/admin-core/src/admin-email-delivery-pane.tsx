@@ -11,6 +11,7 @@ import {
 } from "@/admin-core/src/admin-mail-delivery";
 import { MailDeliveryTestDialog } from "@/admin-core/src/mail-delivery-test-dialog";
 import { SECURITY_OPTIONS } from "@/admin-core/src/admin-workspace-utils";
+import { FeatureRow } from "@/admin-core/src/admin-workspace-widgets";
 import type { AdminMailDeliveryCapability } from "@/admin-core/src/admin-types";
 import type { AdminControllerState } from "@/admin-core/src/use-admin-controller";
 
@@ -200,6 +201,47 @@ export function AdminEmailDeliveryPane({ controller }: AdminEmailDeliveryPanePro
             />
           </div>
         ) : null}
+      </Card>
+
+      <Card title="Invitations">
+        <FeatureRow
+          label="External invitations"
+          desc="Email new invitations to people outside this instance. Updates to people already invited, cancellations, and RSVP replies still send."
+          value={controller.settingsForm.imipExternalEnabled}
+          onChange={(next) =>
+            controller.setSettingsForm((prev) => ({ ...prev, imipExternalEnabled: next }))
+          }
+        />
+        <FormField htmlFor="admin-email-delivery-imip-hourly-limit" label="Hourly invitation limit">
+          <Input
+            id="admin-email-delivery-imip-hourly-limit"
+            type="number"
+            min={1}
+            value={controller.settingsForm.imipHourlyLimit}
+            onChange={(event) => {
+              const value = event.target.value;
+              controller.setSettingsForm((prev) => ({
+                ...prev,
+                imipHourlyLimit: value,
+              }));
+            }}
+          />
+        </FormField>
+        <FormField htmlFor="admin-email-delivery-imip-daily-limit" label="Daily invitation limit">
+          <Input
+            id="admin-email-delivery-imip-daily-limit"
+            type="number"
+            min={1}
+            value={controller.settingsForm.imipDailyLimit}
+            onChange={(event) => {
+              const value = event.target.value;
+              controller.setSettingsForm((prev) => ({
+                ...prev,
+                imipDailyLimit: value,
+              }));
+            }}
+          />
+        </FormField>
       </Card>
 
       <div className="admin-email-delivery-pane__actions">
