@@ -8,6 +8,17 @@ export function appUrlFromBrowserLocation(origin: string, baseUri: string): stri
   return `${trimmedOrigin}/${base.replace(/^\/+|\/+$/g, "")}`;
 }
 
+/** Same hosts the API treats as an unset APP_URL (PublicAppUrl::LOOPBACK_HOSTS). */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+export function isLoopbackOrigin(origin: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export type UpdateLogRow = { id: string; date: string | null; level: string; message: string };
 
 export type ServerCheckTone = "error" | "warning" | "success";

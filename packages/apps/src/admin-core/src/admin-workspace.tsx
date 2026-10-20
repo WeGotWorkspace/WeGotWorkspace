@@ -23,54 +23,70 @@ import { AdminMcpPane } from "@/admin-core/src/admin-mcp-pane";
 import { AdminWebdavPane } from "@/admin-core/src/admin-webdav-pane";
 import { AdminWebRootProbe } from "@/admin-core/src/admin-web-root-probe";
 import { AdminWorkspaceModals } from "@/admin-core/src/admin-workspace-modals";
-import { appUrlFromBrowserLocation } from "@/admin-core/src/admin-workspace-utils";
+import {
+  appUrlFromBrowserLocation,
+  isLoopbackOrigin,
+} from "@/admin-core/src/admin-workspace-utils";
 import { cn } from "@/lib/utils";
 import "@/admin-core/src/admin-workspace.css";
+
+const APP_URL_WARNING_PREFIX = "APP_URL is not set";
 
 export function AdminSecurityWarnings({
   warnings,
   baseUri,
+  origin = window.location.origin,
   onUseThisAddress,
 }: {
+  /** From the latest admin state: a saved address clears the warning only once the server agrees. */
   warnings: readonly string[];
   baseUri: string;
+  /** Browser origin; a prop so tests can pass a public one. */
+  origin?: string;
   onUseThisAddress?: (url: string) => Promise<boolean | void> | boolean | void;
 }) {
   const [pending, setPending] = useState(false);
-  const [appUrlSaved, setAppUrlSaved] = useState(false);
-  const visibleWarnings = appUrlSaved
-    ? warnings.filter((warning) => !warning.startsWith("APP_URL is not set"))
-    : warnings;
-  if (visibleWarnings.length === 0) {
+  if (warnings.length === 0) {
     return null;
   }
+  const url = appUrlFromBrowserLocation(origin, baseUri);
+  // The server ignores a loopback APP_URL, so saving it would change nothing.
+  const local = isLoopbackOrigin(origin);
 
   return (
     <div className="admin-security-warnings">
-      {visibleWarnings.map((warning) => {
-        const isAppUrl = warning.startsWith("APP_URL is not set");
+      {warnings.map((warning) => {
+        const isAppUrl = warning.startsWith(APP_URL_WARNING_PREFIX);
         return (
           <Callout
             key={warning}
             severity="error"
             title="Security warning"
-            message={warning}
+            message={
+              isAppUrl && local ? (
+                <>
+                  <p>{warning}</p>
+                  <p>
+                    This page is open on {origin}, a local address that cannot be the site address.
+                    Open Admin through the site&apos;s public address and set it there, or set
+                    APP_URL on the server.
+                  </p>
+                </>
+              ) : (
+                warning
+              )
+            }
             action={
-              isAppUrl ? (
+              isAppUrl && !local ? (
                 <Button
-                  label="Use this address"
+                  label={`Use ${url}`}
                   variant="outline"
                   size="sm"
                   disabled={pending || onUseThisAddress == null}
                   onClick={() => {
                     if (onUseThisAddress == null) return;
-                    const url = appUrlFromBrowserLocation(window.location.origin, baseUri);
                     setPending(true);
-                    void Promise.resolve(onUseThisAddress(url))
-                      .then((saved) => {
-                        if (saved === true) setAppUrlSaved(true);
-                      })
-                      .finally(() => setPending(false));
+                    void Promise.resolve(onUseThisAddress(url)).finally(() => setPending(false));
                   }}
                 />
               ) : undefined
@@ -165,7 +181,7 @@ export function AdminWorkspace(props: AdminWorkspaceProps) {
           <>
             <AdminWebRootProbe />
             <AdminSecurityWarnings
-              warnings={data.securityWarnings}
+              warnings={controller.securityWarnings}
               baseUri={data.webdav.baseUri}
               onUseThisAddress={(url) => controller.actions.useThisAddress(url)}
             />
