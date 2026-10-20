@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const indexHtml = readFileSync(join(here, "../../index.html"), "utf8");
@@ -23,5 +24,16 @@ describe("PWA document shell", () => {
     expect(stylesCss).toMatch(/body \{\s*background-color:\s*var\(--color-background\);/);
     expect(stylesCss).not.toMatch(/html \{[^}]*background-color:\s*var\(--color-ink\)/);
     expect(stylesCss).toMatch(/html\.pwa-standalone \.app-sidebar \{[\s\S]*height:\s*100lvh/);
+  });
+
+  it("keeps the first-paint theme-color in step with the scheme surfaces", () => {
+    expect(indexHtml).toContain(
+      `<meta name="theme-color" content="${WORKSPACE_PWA_THEME_COLORS.light}" />`,
+    );
+    expect(indexHtml).toContain(
+      `dark ? "${WORKSPACE_PWA_THEME_COLORS.dark}" : "${WORKSPACE_PWA_THEME_COLORS.light}"`,
+    );
+    expect(stylesCss).toContain(`--color-we-got-soft: ${WORKSPACE_PWA_THEME_COLORS.light};`);
+    expect(stylesCss).toContain(`--scheme-sidebar-surface: ${WORKSPACE_PWA_THEME_COLORS.dark};`);
   });
 });

@@ -2,10 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
-import {
-  WORKSPACE_PWA_ICON_CACHE_VERSION,
-  WORKSPACE_PWA_THEME_COLOR,
-} from "@/lib/workspace-pwa-head";
+import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
+import { WORKSPACE_PWA_ICON_CACHE_VERSION } from "@/lib/workspace-pwa-head";
 
 const manifestsDir = join(import.meta.dirname, "../../public/manifests");
 
@@ -78,14 +76,14 @@ describe("workspace PWA manifests", () => {
     expect(notes).not.toMatch(/#f6d176|#f0bc3a|#fef8ea/i);
   });
 
-  it("paints every installed window with the sand UI accent", () => {
+  it("paints every installed window with the light sidebar surface", () => {
     const styles = readFileSync(join(import.meta.dirname, "../styles.css"), "utf8");
-    expect(styles).toContain(`--color-we-got-sand: ${WORKSPACE_PWA_THEME_COLOR};`);
+    expect(styles).toContain(`--color-we-got-soft: ${WORKSPACE_PWA_THEME_COLORS.light};`);
 
     for (const name of [...WORKSPACE_APP_IDS, "home"]) {
       const manifest = readManifest(name);
-      expect(manifest.theme_color).toBe(WORKSPACE_PWA_THEME_COLOR);
-      expect(manifest.background_color).toBe(WORKSPACE_PWA_THEME_COLOR);
+      expect(manifest.theme_color).toBe(WORKSPACE_PWA_THEME_COLORS.light);
+      expect(manifest.background_color).toBe(WORKSPACE_PWA_THEME_COLORS.light);
     }
   });
 

@@ -6,6 +6,14 @@
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
 
+/**
+ * Installed window chrome (`theme-color` meta) per scheme: the sidebar surface
+ * (`--scheme-sidebar-surface`), so the title bar reads as part of the page.
+ * Manifests cannot vary by scheme and carry the light value.
+ * `pwa-document-shell.test.ts` guards the copies in `index.html` and CSS.
+ */
+export const WORKSPACE_PWA_THEME_COLORS = { light: "#fff5e9", dark: "#1c1c1c" } as const;
+
 const STORAGE_KEY = "wgw.theme";
 const CHANGE_EVENT = "wgw-theme";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -53,13 +61,27 @@ export function subscribeThemePreference(listener: () => void): () => void {
   };
 }
 
+/** Installed window chrome follows the resolved theme. `index.html` ships the meta. */
+function applyThemeColorMeta(theme: ResolvedTheme): void {
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.append(meta);
+  }
+  meta.content = WORKSPACE_PWA_THEME_COLORS[theme];
+}
+
 /**
- * Keep `data-theme` on <html> in step with the stored preference and, for
- * System, the OS setting. Call once from the SPA entry. Returns a disposer.
+ * Keep `data-theme` on <html> and the `theme-color` meta in step with the
+ * stored preference and, for System, the OS setting. Call once from the SPA
+ * entry. Returns a disposer.
  */
 export function syncDocumentTheme(root: HTMLElement = document.documentElement): () => void {
   const apply = () => {
-    root.dataset.theme = resolveTheme(readThemePreference());
+    const theme = resolveTheme(readThemePreference());
+    root.dataset.theme = theme;
+    applyThemeColorMeta(theme);
   };
   apply();
   const unsubscribe = subscribeThemePreference(apply);
