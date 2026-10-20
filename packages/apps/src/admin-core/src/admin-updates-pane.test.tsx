@@ -52,22 +52,27 @@ function Harness({
   );
 }
 
+function channelSelect() {
+  return screen.getByRole("combobox", { name: "Update channel" });
+}
+
+function pickChannel(label: string) {
+  fireEvent.click(channelSelect());
+  fireEvent.click(screen.getByRole("option", { name: label }));
+}
+
 describe("AdminUpdatesPane update channel", () => {
   it("switches a ZIP install to the beta channel", async () => {
     const channelSpy = vi.fn<AdminAPIOperations["setUpdateChannel"]>();
     render(<Harness channelSpy={channelSpy} />);
 
-    expect(screen.getByRole("button", { name: "Stable" }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    expect(channelSelect().textContent).toBe("Stable");
     expect(screen.getByText("Running the latest stable release.")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Beta" }));
+    pickChannel("Beta");
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Beta" }).getAttribute("aria-pressed")).toBe(
-        "true",
-      );
+      expect(channelSelect().textContent).toBe("Beta");
     });
     expect(channelSpy).toHaveBeenCalledWith("beta", undefined);
     expect(screen.getByText("Beta channel")).toBeTruthy();
@@ -90,7 +95,7 @@ describe("AdminUpdatesPane update channel", () => {
     const channelSpy = vi.fn<AdminAPIOperations["setUpdateChannel"]>();
     render(<Harness channelSpy={channelSpy} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edge" }));
+    pickChannel("Edge");
 
     expect(
       await screen.findByRole("alertdialog", { name: "Switch to the edge channel?" }),
@@ -101,22 +106,18 @@ describe("AdminUpdatesPane update channel", () => {
       expect(screen.queryByRole("alertdialog")).toBeNull();
     });
     expect(channelSpy).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Stable" }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    expect(channelSelect().textContent).toBe("Stable");
   });
 
   it("switches to edge after confirming", async () => {
     const channelSpy = vi.fn<AdminAPIOperations["setUpdateChannel"]>();
     render(<Harness channelSpy={channelSpy} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Edge" }));
+    pickChannel("Edge");
     fireEvent.click(await screen.findByRole("button", { name: "Switch to edge" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Edge" }).getAttribute("aria-pressed")).toBe(
-        "true",
-      );
+      expect(channelSelect().textContent).toBe("Edge");
     });
     expect(channelSpy).toHaveBeenCalledWith("edge", undefined);
   });
@@ -130,13 +131,13 @@ describe("AdminUpdatesPane update channel", () => {
   it("locks the channel while an update runs", () => {
     render(<Harness updates={{ inProgress: true, phase: "downloading" }} />);
 
-    expect((screen.getByRole("button", { name: "Edge" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((channelSelect() as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("shows the channel read-only on Docker installs", () => {
     render(<Harness updates={{ installChannel: "docker", updateChannel: "beta" }} />);
 
-    expect(screen.queryByRole("group", { name: "Update channel" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Update channel" })).toBeNull();
     expect(screen.getByText("beta")).toBeTruthy();
     expect(screen.getByText("bash setup.sh upgrade --channel beta")).toBeTruthy();
   });
