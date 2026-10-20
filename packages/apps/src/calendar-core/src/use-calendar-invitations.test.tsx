@@ -209,6 +209,18 @@ describe("useCalendarInvitations", () => {
     expect(onSchedulingConflict).toHaveBeenCalledWith(["invite-1.ics"]);
   });
 
+  it("ignores empty scheduling conflict reports from clean outbox flushes", async () => {
+    const onSchedulingConflict = vi.fn();
+    const operations = operationsWithList(vi.fn().mockResolvedValue([]));
+    renderHook(() => useCalendarInvitations(operations, { onSchedulingConflict }));
+
+    await act(async () => {
+      reportCalendarsSchedulingConflicts([]);
+    });
+
+    expect(onSchedulingConflict).not.toHaveBeenCalled();
+  });
+
   it("applies RSVP locally while offline and skips the live inbox refresh", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
     const invite: CalendarSchedulingNotification = {
