@@ -10,6 +10,8 @@ import {
   installerHasDatabaseFromEnv,
   isUsernameTakenError,
   formatInstallerDatabaseError,
+  installerAppUrl,
+  isInstallerDataDirError,
 } from "@/installer-core/src/installer-flow";
 import type { WgwInstallerRuntimeState } from "@/installer-core/src/installer-types";
 
@@ -106,6 +108,31 @@ describe("installer-flow", () => {
     expect(formatInstallerDatabaseError("SQLSTATE[HY000] [1045] Access denied for user")).toBe(
       "MySQL rejected that username or password.",
     );
+  });
+
+  it("keeps the install base in the app url", () => {
+    expect(installerAppUrl("https://example.org", "/")).toBe("https://example.org");
+    expect(installerAppUrl("https://example.org", undefined)).toBe("https://example.org");
+    expect(installerAppUrl("https://example.org", "/office")).toBe("https://example.org/office");
+    expect(installerAppUrl("https://example.org", "/office/")).toBe("https://example.org/office");
+    expect(installerAppUrl("http://10.0.0.5:8080", "office/wgw")).toBe(
+      "http://10.0.0.5:8080/office/wgw",
+    );
+  });
+
+  it("passes every data folder rejection through as written", () => {
+    // Keep in sync with DataDirCandidateResolver::validateOverride.
+    for (const message of [
+      "Enter an absolute path for the data directory.",
+      "The parent of that data directory does not exist.",
+      "That directory is inside the published website. Choose a folder outside it.",
+      "That directory is not writable by the web server.",
+      "That directory belongs to another installation.",
+    ]) {
+      expect(isInstallerDataDirError(message)).toBe(true);
+      expect(formatInstallerDatabaseError(message)).toBe(message);
+    }
+    expect(isInstallerDataDirError("SQLSTATE[HY000] [2002] Connection refused")).toBe(false);
   });
 
   it("hides optional check failures from the interrupt list", () => {

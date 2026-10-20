@@ -12,26 +12,23 @@ export const installerCopy = {
   emailInvalid: "Enter a valid email address.",
   password: "Password",
   passwordHint: "At least 10 characters.",
-  siteAddress: "Site address",
-  siteAddressHint: "Public address of this install. Confirm it before continuing.",
-  siteAddressInvalid: "Use http or https, with a host and no extra path.",
   usernameTaken: "That username is taken. Pick another.",
   usernameInvalid: "Use 2–63 lowercase letters, numbers, - or _.",
-  databaseTitle: "Your database.",
-  databaseType: "Type",
+  databaseTitle: "Your data.",
+  databaseType: "Database type",
   sqlite: "SQLite",
   mysql: "MySQL / MariaDB",
   sqliteHint: "Uses the default SQLite file.",
   dataDirLabel: "Data folder",
-  dataDirOutside:
-    "This folder sits outside the published website, so the web server cannot serve the database or keys.",
-  dataDirEnvironment: "Using the data folder set on the server.",
-  dataDirFallbackOwned:
-    "Another installation already uses the folder outside this website. This install keeps its data inside the website folder until you choose a different absolute path.",
-  dataDirFallbackUnavailable:
-    "No writable folder outside the published website was available. This install keeps its data inside the website folder until you choose a different absolute path.",
-  dataDirOverride: "Different folder",
-  dataDirOverrideHint: "Absolute path. Leave empty to use the folder above.",
+  dataDirPublic:
+    "That folder is inside the website, so anyone could download the database. Pick one outside it.",
+  dataDirInsideUnavailable:
+    "No writable folder outside the website was found, so this one is inside it, where anyone could download the database. A folder outside the website keeps it private.",
+  dataDirInsideOwned:
+    "The folder outside the website belongs to another installation, so this one is inside it, where anyone could download the database. A folder outside the website keeps it private.",
+  dataDirInsideEnvironment:
+    "WGW_DATA_DIR on the server points inside the website, so anyone could download the database. A folder outside the website keeps it private.",
+  dataDirEnvironment: "Set on the server with WGW_DATA_DIR.",
   mysqlHost: "Host",
   mysqlPort: "Port",
   mysqlDatabase: "Database",
@@ -47,16 +44,3 @@ export const installerCopy = {
   rerunChecks: "Re-run checks",
   rerunChecksBusy: "Checking...",
 } as const;
-
-export function dataDirReasonText(reason: string | undefined): string {
-  switch (reason) {
-    case "environment":
-      return installerCopy.dataDirEnvironment;
-    case "fallback_owned":
-      return installerCopy.dataDirFallbackOwned;
-    case "fallback_unavailable":
-      return installerCopy.dataDirFallbackUnavailable;
-    default:
-      return installerCopy.dataDirOutside;
-  }
-}

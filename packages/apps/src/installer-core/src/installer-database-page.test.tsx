@@ -16,10 +16,12 @@ vi.mock("@tanstack/react-router", () => ({
 describe("InstallerDatabasePage", () => {
   it("defaults to MySQL with connection fields", () => {
     render(<InstallerDatabasePage />);
-    expect(screen.getByRole("heading", { name: "Your database." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your data." })).toBeTruthy();
     expect(document.querySelector(".installer__hero-your")?.textContent).toBe("Your");
-    expect(document.querySelector(".installer__hero-noun")?.textContent).toBe("database");
-    const engines = within(screen.getByRole("group", { name: "Type" })).getAllByRole("button");
+    expect(document.querySelector(".installer__hero-noun")?.textContent).toBe("data");
+    const engines = within(screen.getByRole("group", { name: "Database type" })).getAllByRole(
+      "button",
+    );
     expect(engines[0].getAttribute("aria-label")).toBe("MySQL / MariaDB");
     expect(engines[0].getAttribute("aria-pressed")).toBe("true");
     expect(engines[1].getAttribute("aria-label")).toBe("SQLite");
@@ -39,7 +41,7 @@ describe("InstallerDatabasePage", () => {
     expect(screen.queryByLabelText("Database file")).toBeNull();
     const progress = screen.getByRole("list", { name: "Setup progress" });
     expect(within(progress).getAllByRole("listitem")).toHaveLength(4);
-    expect(screen.getByText("Database, current")).toBeTruthy();
+    expect(screen.getByText("Your data, current")).toBeTruthy();
   });
 
   it("shows SQLite hint when that engine is chosen", () => {
@@ -60,19 +62,35 @@ describe("InstallerDatabasePage", () => {
     expect(screen.getByRole("alert").textContent).toContain("Could not reach MySQL");
   });
 
-  it("shows the proposed data folder and submits an override", () => {
+  it("starts on the suggested data folder and leaves it to the server when kept", () => {
     const onContinue = vi.fn();
     render(
       <InstallerDatabasePage
         initialEngine="sqlite"
         dataDirPath="/home/user/wgw-content"
-        dataDirReason="outside"
         onContinue={onContinue}
       />,
     );
-    expect(screen.getByText("/home/user/wgw-content")).toBeTruthy();
-    expect(screen.getByText(/outside the published website/i)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Different folder"), {
+    const field = screen.getByLabelText("Data folder") as HTMLInputElement;
+    expect(field.value).toBe("/home/user/wgw-content");
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenLastCalledWith({ engine: "sqlite" });
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenLastCalledWith({ engine: "sqlite" });
+  });
+
+  it("submits a typed data folder", () => {
+    const onContinue = vi.fn();
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        onContinue={onContinue}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
       target: { value: "/srv/wgw-data" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -80,6 +98,86 @@ describe("InstallerDatabasePage", () => {
       engine: "sqlite",
       dataDir: "/srv/wgw-data",
     });
+  });
+
+  it.each([
+    ["fallback_unavailable", "No writable folder outside the website was found"],
+    ["fallback_owned", "belongs to another installation"],
+    ["environment", "WGW_DATA_DIR on the server points inside the website"],
+  ] as const)("says why a %s folder is inside the website", (reason, text) => {
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/var/www/html/wgw-content"
+        dataDirReason={reason}
+        dataDirInsideWebRoot
+      />,
+    );
+    const field = screen.getByLabelText("Data folder");
+    // A standing note is read with the field, not announced as an alert.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(field.getAttribute("aria-describedby")).toBeTruthy();
+    expect(document.getElementById(field.getAttribute("aria-describedby")!)?.textContent).toContain(
+      text,
+    );
+    fireEvent.change(field, { target: { value: "/var/wgw-data" } });
+    expect(screen.queryByText(text, { exact: false })).toBeNull();
+  });
+
+  it("names the server setting when WGW_DATA_DIR chose the folder", () => {
+    render(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/srv/wgw"
+        dataDirReason="environment"
+      />,
+    );
+    expect(screen.getByText("Set on the server with WGW_DATA_DIR.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Data folder"), { target: { value: "/srv/other" } });
+    expect(screen.queryByText("Set on the server with WGW_DATA_DIR.")).toBeNull();
+  });
+
+  it("moves a published-folder rejection under the field until the path changes", () => {
+    const { rerender } = render(
+      <InstallerDatabasePage initialEngine="sqlite" dataDirPath="/home/user/wgw-content" />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/var/www/html/data" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="That directory is inside the published website. Choose a folder outside it."
+      />,
+    );
+    const field = screen.getByLabelText("Data folder");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toMatch(/inside the website/i);
+    fireEvent.change(field, { target: { value: "/var/wgw-data" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows other data folder rejections under the field too", () => {
+    const { rerender } = render(
+      <InstallerDatabasePage initialEngine="sqlite" dataDirPath="/home/user/wgw-content" />,
+    );
+    fireEvent.change(screen.getByLabelText("Data folder"), {
+      target: { value: "/srv/locked" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    rerender(
+      <InstallerDatabasePage
+        initialEngine="sqlite"
+        dataDirPath="/home/user/wgw-content"
+        connectionError="That directory is not writable by the web server."
+      />,
+    );
+    expect(screen.getByLabelText("Data folder").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert").textContent).toContain("not writable by the web server");
   });
 
   it("submits sqlite without credentials", () => {
