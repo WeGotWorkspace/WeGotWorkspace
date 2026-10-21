@@ -420,6 +420,26 @@ describe("wgw auth refresh behavior", () => {
     });
   });
 
+  it("posts one refresh when it cannot reach the server", async () => {
+    setOnline(true);
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    await expect(wgwFetch("/admin/updates")).rejects.toBeInstanceOf(TypeError);
+
+    const refreshPosts = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).endsWith("/auth/refresh"),
+    );
+    expect(refreshPosts).toHaveLength(1);
+  });
+
   it("does not surface an API 401 as sign-out when the refresh fails transiently", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) + 3_600),
