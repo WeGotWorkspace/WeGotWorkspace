@@ -37,6 +37,7 @@ import {
   removeNoteFromCache,
   removeNotebookFromCache,
   removeOutboxMutationsForNote,
+  renameNotebookInCache,
   upsertNoteInCache,
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
@@ -51,6 +52,7 @@ import {
   notesNotesTable,
 } from "@/lib/offline/notes/notes-schema";
 import { enqueueOrphanPendingLocalCreates } from "@/lib/offline/notes/notes-orphan-heal";
+import { clearCreateInFlight, markCreateInFlight } from "@/lib/offline/notes/notes-adopted-ids";
 import {
   baseUpdatedAt,
   metadataSelection,
@@ -107,19 +109,6 @@ async function dropLocalIfServerGone(
   if (!isNotesPersistGone(error)) return false;
   await dropLocalNoteAfterServerGone(username, noteId);
   return true;
-}
-
-async function renameCachedNotebook(username: string, from: string, to: string): Promise<void> {
-  const cached = await readNotesBootstrapFromCache(username);
-  if (!cached) return;
-  cached.data.notebooks = cached.data.notebooks.map((name) => (name === from ? to : name));
-  cached.data.notebookCollections = (cached.data.notebookCollections ?? []).map((item) =>
-    item.name === from ? { ...item, name: to } : item,
-  );
-  cached.data.notes = cached.data.notes.map((note) =>
-    note.notebook === from ? { ...note, notebook: to } : note,
-  );
-  await writeNotesBootstrapToCache(username, cached);
 }
 
 function cachedMoveTarget(
@@ -343,17 +332,25 @@ async function createLocalTempNoteOnline(
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
   opts?: NoteUpsertOpts,
 ): Promise<Note> {
-  const saved = await createNoteItem(
-    wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
-    { signal: opts?.signal },
-  );
-  if (isLocalTempNoteId(saved.id)) {
-    return queueOfflineUpsert(username, { ...saved, id: note.id }, { tempNoteId: note.id });
+  // Until the POST settles (adopted, or failed and queued), another tab's
+  // healer must not create this note too.
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await markCreateInFlight(db, note.id);
+  try {
+    const saved = await createNoteItem(
+      wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
+      { signal: opts?.signal },
+    );
+    if (isLocalTempNoteId(saved.id)) {
+      return await queueOfflineUpsert(username, { ...saved, id: note.id }, { tempNoteId: note.id });
+    }
+    await adoptServerCreatedNote(username, note.id, saved);
+    opts?.onCreated?.(saved);
+    await runner.flush();
+    return saved;
+  } finally {
+    await clearCreateInFlight(db, note.id);
   }
-  await adoptServerCreatedNote(username, note.id, saved);
-  opts?.onCreated?.(saved);
-  await runner.flush();
-  return saved;
 }
 
 async function upsertNoteOnline(
@@ -584,7 +581,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
     },
     renameNotebook: async (from, to, opts) => {
       if (!readBrowserOnline()) {
-        await renameCachedNotebook(username, from, to);
+        await renameNotebookInCache(username, from, to);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
@@ -595,11 +592,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       }
       try {
         await renameNotebookApi(from, to, opts);
-        await renameCachedNotebook(username, from, to);
+        await renameNotebookInCache(username, from, to);
         await runner.flush();
       } catch (error) {
         rethrowUnlessOfflineQueue(error, opts?.signal);
-        await renameCachedNotebook(username, from, to);
+        await renameNotebookInCache(username, from, to);
         await enqueueOutboxMutation(username, {
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,

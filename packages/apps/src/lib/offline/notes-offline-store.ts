@@ -2,7 +2,12 @@ import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
 import { rememberOfflineNotesUsername } from "@/lib/offline/offline-session";
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import type { EntityTable } from "dexie";
+import {
+  offlineAccountKeyFromUsername,
+  offlineDbForAccount,
+  type WgwOfflineDatabase,
+} from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
   isSyncNoticeOutboxRow,
@@ -22,6 +27,11 @@ import {
   adoptedNoteIdFor,
   readAndPruneAdoptedNoteIds,
 } from "@/lib/offline/notes/notes-adopted-ids";
+import {
+  hasTagDelta,
+  mergeNoteTagDeltas,
+  type NoteTagDelta,
+} from "@/lib/offline/notes/notes-tag-delta";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import {
   enrichNote,
@@ -82,11 +92,6 @@ const NOTE_PENDING_FIELDS: readonly NotePendingField[] = [
   "delete",
 ];
 
-export type NoteTagDelta = {
-  tagsAdd?: string[];
-  tagsRemove?: string[];
-};
-
 export type NotesUpsertPayload = {
   noteId: string;
   metadata: NoteUpsertMetadata;
@@ -125,6 +130,16 @@ function metaKeyForNotebookState(notebook: string): string {
   return `notes:notebook:${notebook}:state`;
 }
 
+/** The note in a cache row, or null when the row is missing or unreadable. */
+export function noteFromRow(row: OfflineNoteRow | undefined): Note | null {
+  if (!row) return null;
+  try {
+    return JSON.parse(row.data) as Note;
+  } catch {
+    return null;
+  }
+}
+
 export function noteRow(note: Note, pendingSync: boolean): OfflineNoteRow {
   return {
     id: note.id,
@@ -161,14 +176,16 @@ export function parseNotebookCacheRow(row: OfflineNotebookRow): NotesNotebookCol
   return { id: row.id, name: row.id };
 }
 
-function collectionsForCache(bootstrap: NotesAppBootstrap): NotesNotebookCollection[] {
-  const collections = bootstrap.data.notebookCollections ?? [];
+function collectionsForCache(
+  collections: readonly NotesNotebookCollection[],
+  notebookNames: readonly string[],
+): NotesNotebookCollection[] {
   const seen = new Set<string>();
   for (const collection of collections) {
     seen.add(collection.id);
     seen.add(collection.name);
   }
-  const extras = (bootstrap.data.notebooks ?? [])
+  const extras = notebookNames
     .filter((name) => !seen.has(name))
     .map((name): NotesNotebookCollection => ({ id: name, name }));
   return [...collections, ...extras];
@@ -185,6 +202,45 @@ function mergeNotebookIntoList(
   return collections.map((item, i) => (i === index ? { ...item, ...notebook } : item));
 }
 
+/** Cached notebook list: the meta list (or the rows), plus any row it lacks. */
+async function readCachedCollections(db: WgwOfflineDatabase): Promise<NotesNotebookCollection[]> {
+  const fromRows = (await notesNotebooksTable(db).toArray()).map(parseNotebookCacheRow);
+  const collectionsRow = await db.meta.get(META_NOTEBOOK_COLLECTIONS);
+  const fromMeta = collectionsRow?.value
+    ? (JSON.parse(collectionsRow.value) as NotesNotebookCollection[])
+    : undefined;
+  return collectionsForCache(
+    fromMeta && fromMeta.length > 0 ? fromMeta : fromRows,
+    fromRows.map((item) => item.name),
+  );
+}
+
+async function writeCachedCollections(
+  db: WgwOfflineDatabase,
+  collections: readonly NotesNotebookCollection[],
+): Promise<void> {
+  await db.meta.put({ key: META_NOTEBOOK_COLLECTIONS, value: JSON.stringify(collections) });
+}
+
+/** Rewrite the cached notes `map` changes. Other rows are not touched. */
+async function rewriteCachedNotes(
+  notes: EntityTable<OfflineNoteRow, "id">,
+  map: (note: Note) => Note,
+): Promise<void> {
+  await notes.toCollection().modify((row) => {
+    let note: Note;
+    try {
+      note = JSON.parse(row.data) as Note;
+    } catch {
+      return;
+    }
+    const next = map(note);
+    if (next === note) return;
+    row.data = JSON.stringify(next);
+    row.notebookId = next.notebook;
+  });
+}
+
 export async function readNotesBootstrapFromCache(
   username: string,
 ): Promise<NotesAppBootstrap | null> {
@@ -197,20 +253,7 @@ export async function readNotesBootstrapFromCache(
   if (books.length === 0 && notes.length === 0) return null;
 
   const session = JSON.parse(sessionRow.value) as NotesAppBootstrap["session"];
-  const fromRows = books.map(parseNotebookCacheRow);
-  const collectionsRow = await db.meta.get(META_NOTEBOOK_COLLECTIONS);
-  const fromMeta = collectionsRow?.value
-    ? (JSON.parse(collectionsRow.value) as NotesNotebookCollection[])
-    : undefined;
-  const notebookCollections = collectionsForCache({
-    session,
-    data: {
-      notes: [],
-      notebooks: fromRows.map((item) => item.name),
-      tags: [],
-      notebookCollections: fromMeta && fromMeta.length > 0 ? fromMeta : fromRows,
-    },
-  });
+  const notebookCollections = await readCachedCollections(db);
   const notebooks = [
     ...new Set(notebookCollections.filter(isOwnedPersonalNotebook).map((item) => item.name)),
   ];
@@ -270,7 +313,10 @@ export async function writeNotesBootstrapToCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
   const books = notesNotebooksTable(db);
-  const collections = collectionsForCache(bootstrap);
+  const collections = collectionsForCache(
+    bootstrap.data.notebookCollections ?? [],
+    bootstrap.data.notebooks ?? [],
+  );
   rememberOfflineNotesUsername(username);
   await db.transaction("rw", [notes, books, db.meta], async () => {
     const adopted = await readAndPruneAdoptedNoteIds(db);
@@ -283,7 +329,7 @@ export async function writeNotesBootstrapToCache(
       [...new Set(adopted.values())].filter((id) => !snapshotIds.has(id)),
     );
     await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
-    await db.meta.put({ key: META_NOTEBOOK_COLLECTIONS, value: JSON.stringify(collections) });
+    await writeCachedCollections(db, collections);
     if (bootstrap.data.groups !== undefined) {
       await db.meta.put({ key: META_GROUPS, value: JSON.stringify(bootstrap.data.groups) });
     }
@@ -327,13 +373,7 @@ export async function upsertNoteInCache(
 /** One cached note, or null when the id is absent or the row is unreadable. */
 export async function getNoteFromCache(username: string, noteId: string): Promise<Note | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const row = await notesNotesTable(db).get(noteId);
-  if (!row) return null;
-  try {
-    return JSON.parse(row.data) as Note;
-  } catch {
-    return null;
-  }
+  return noteFromRow(await notesNotesTable(db).get(noteId));
 }
 
 /**
@@ -356,41 +396,59 @@ export async function upsertNoteBodyPreviewInCache(username: string, note: Note)
   });
 }
 
+/**
+ * Cache a created or changed notebook. Only the notebook rows, the notebook
+ * list and, on a rename, that notebook's notes are written, so a note another
+ * writer saved meanwhile is not reverted.
+ */
 export async function upsertNotebookInCache(
   username: string,
   notebook: NotesNotebookCollection,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const books = notesNotebooksTable(db);
-  if (notebook.id !== notebook.name) {
-    const byName = await books.get(notebook.name);
-    if (byName) await books.delete(notebook.name);
-  }
-  await books.put({
-    id: notebook.id,
-    data: JSON.stringify(notebook),
+  const notes = notesNotesTable(db);
+  await db.transaction("rw", [books, notes, db.meta], async () => {
+    if (notebook.id !== notebook.name && (await books.get(notebook.name))) {
+      await books.delete(notebook.name);
+    }
+    await books.put({ id: notebook.id, data: JSON.stringify(notebook) });
+    if (!(await db.meta.get(META_SESSION))) return;
+    const collections = await readCachedCollections(db);
+    const previousName = collections.find((item) => item.id === notebook.id)?.name;
+    await writeCachedCollections(db, mergeNotebookIntoList(collections, notebook));
+    if (!previousName || previousName === notebook.name) return;
+    const rename = { notebookId: notebook.id, fromName: previousName, toName: notebook.name };
+    await rewriteCachedNotes(notes, (note) => notesWithRenamedNotebook([note], rename)[0] ?? note);
   });
-  const cached = await readNotesBootstrapFromCache(username);
-  if (!cached) return;
-  const previous = (cached.data.notebookCollections ?? []).find((item) => item.id === notebook.id);
-  const previousName = previous?.name;
-  cached.data.notebookCollections = mergeNotebookIntoList(
-    cached.data.notebookCollections ?? [],
-    notebook,
-  );
-  if (previousName && previousName !== notebook.name) {
-    cached.data.notes = notesWithRenamedNotebook(cached.data.notes, {
-      notebookId: notebook.id,
-      fromName: previousName,
-      toName: notebook.name,
-    });
-    cached.data.notebooks = cached.data.notebooks.map((name) =>
-      name === previousName ? notebook.name : name,
+}
+
+/** Rename a notebook by name in the cache, without rewriting other notes. */
+export async function renameNotebookInCache(
+  username: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const books = notesNotebooksTable(db);
+  const notes = notesNotesTable(db);
+  await db.transaction("rw", [books, notes, db.meta], async () => {
+    for (const row of await books.toArray()) {
+      const collection = parseNotebookCacheRow(row);
+      if (collection.name !== from) continue;
+      await books.put({ id: row.id, data: JSON.stringify({ ...collection, name: to }) });
+    }
+    if (await db.meta.get(META_SESSION)) {
+      const collections = await readCachedCollections(db);
+      await writeCachedCollections(
+        db,
+        collections.map((item) => (item.name === from ? { ...item, name: to } : item)),
+      );
+    }
+    await rewriteCachedNotes(notes, (note) =>
+      note.notebook === from ? { ...note, notebook: to } : note,
     );
-  } else if (isOwnedPersonalNotebook(notebook) && !cached.data.notebooks.includes(notebook.name)) {
-    cached.data.notebooks = [...cached.data.notebooks, notebook.name];
-  }
-  await writeNotesBootstrapToCache(username, cached);
+  });
 }
 
 function noteBelongsToNotebook(
@@ -407,6 +465,10 @@ function noteBelongsToNotebook(
   );
 }
 
+/**
+ * Drop a notebook from the cache, and move or drop its notes. Only the
+ * notebook rows, the notebook list and that notebook's notes are written.
+ */
 export async function removeNotebookFromCache(
   username: string,
   notebookIdOrName: string,
@@ -425,55 +487,42 @@ export async function removeNotebookFromCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const books = notesNotebooksTable(db);
   const notes = notesNotesTable(db);
-  const rows = await books.toArray();
-  const matchedIds = new Set<string>([notebookIdOrName]);
-  const matchedNames = new Set<string>([notebookIdOrName]);
-  for (const row of rows) {
-    const collection = parseNotebookCacheRow(row);
-    if (collection.id === notebookIdOrName || collection.name === notebookIdOrName) {
-      matchedIds.add(collection.id);
-      matchedNames.add(collection.name);
-      await books.delete(row.id);
+  await db.transaction("rw", [books, notes, db.meta], async () => {
+    const matchedIds = new Set<string>([notebookIdOrName]);
+    const matchedNames = new Set<string>([notebookIdOrName]);
+    for (const row of await books.toArray()) {
+      const collection = parseNotebookCacheRow(row);
+      if (collection.id === notebookIdOrName || collection.name === notebookIdOrName) {
+        matchedIds.add(collection.id);
+        matchedNames.add(collection.name);
+        await books.delete(row.id);
+      }
     }
-  }
-  const noteRows = await notes.toArray();
-  for (const row of noteRows) {
-    let note: Note;
-    try {
-      note = JSON.parse(row.data) as Note;
-    } catch {
-      continue;
+    for (const row of await notes.toArray()) {
+      const note = noteFromRow(row);
+      if (!note || !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)) {
+        continue;
+      }
+      if (moveNotesTo) {
+        await notes.put(noteRow(noteAfterNotebookMove(note, moveNotesTo), row.pendingSync));
+        continue;
+      }
+      if (keepPending && row.pendingSync) continue;
+      await notes.delete(row.id);
     }
-    if (!noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)) continue;
     if (moveNotesTo) {
-      await upsertNoteInCache(username, noteAfterNotebookMove(note, moveNotesTo), row.pendingSync);
-      continue;
+      await db.meta.delete(metaKeyForNotebookState(moveNotesTo.id));
+      for (const id of matchedIds) {
+        await db.meta.delete(metaKeyForNotebookState(id));
+      }
     }
-    if (keepPending && row.pendingSync) continue;
-    await notes.delete(row.id);
-  }
-  if (moveNotesTo) {
-    await db.meta.delete(metaKeyForNotebookState(moveNotesTo.id));
-    for (const id of matchedIds) {
-      await db.meta.delete(metaKeyForNotebookState(id));
-    }
-  }
-  const cached = await readNotesBootstrapFromCache(username);
-  if (!cached) return;
-  cached.data.notebookCollections = (cached.data.notebookCollections ?? []).filter(
-    (item) => !matchedIds.has(item.id) && !matchedNames.has(item.name),
-  );
-  cached.data.notebooks = cached.data.notebooks.filter((name) => !matchedNames.has(name));
-  cached.data.notes = moveNotesTo
-    ? cached.data.notes.map((note) =>
-        noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames)
-          ? noteAfterNotebookMove(note, moveNotesTo)
-          : note,
-      )
-    : cached.data.notes.filter(
-        (note) => !noteBelongsToNotebook(note, notebookIdOrName, matchedIds, matchedNames),
-      );
-  await writeNotesBootstrapToCache(username, cached);
+    if (!(await db.meta.get(META_SESSION))) return;
+    const collections = await readCachedCollections(db);
+    await writeCachedCollections(
+      db,
+      collections.filter((item) => !matchedIds.has(item.id) && !matchedNames.has(item.name)),
+    );
+  });
 }
 
 export async function removeNoteFromCache(username: string, noteId: string): Promise<void> {
@@ -615,44 +664,6 @@ export async function removeOutboxMutationsForNote(
       // ignore malformed payloads
     }
   }
-}
-
-function normalizedTags(tags: readonly string[] | undefined): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const tag of tags ?? []) {
-    const normalized = tag.trim().toLowerCase();
-    if (!normalized || seen.has(normalized)) continue;
-    seen.add(normalized);
-    out.push(normalized);
-  }
-  return out;
-}
-
-function hasTagDelta(metadata: NoteTagDelta): boolean {
-  return (metadata.tagsAdd?.length ?? 0) > 0 || (metadata.tagsRemove?.length ?? 0) > 0;
-}
-
-/**
- * Later operation wins for one tag. Adding or removing the same tag twice
- * matches doing it once. An add followed by a remove of that tag ends removed.
- */
-export function mergeNoteTagDeltas(existing: NoteTagDelta, incoming: NoteTagDelta): NoteTagDelta {
-  let tagsAdd = normalizedTags(existing.tagsAdd);
-  let tagsRemove = normalizedTags(existing.tagsRemove);
-  const without = (tags: string[], tag: string) => tags.filter((item) => item !== tag);
-  for (const tag of normalizedTags(incoming.tagsRemove)) {
-    tagsAdd = without(tagsAdd, tag);
-    if (!tagsRemove.includes(tag)) tagsRemove = [...tagsRemove, tag];
-  }
-  for (const tag of normalizedTags(incoming.tagsAdd)) {
-    tagsRemove = without(tagsRemove, tag);
-    if (!tagsAdd.includes(tag)) tagsAdd = [...tagsAdd, tag];
-  }
-  return {
-    ...(tagsAdd.length > 0 ? { tagsAdd } : {}),
-    ...(tagsRemove.length > 0 ? { tagsRemove } : {}),
-  };
 }
 
 function metadataWithTagDelta(

@@ -27,7 +27,6 @@ import {
   type NotesUpsertPayload,
   upsertNoteInCache,
   upsertNotebookInCache,
-  writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
 import { adoptServerNoteInCache, adoptedServerNoteId } from "@/lib/offline/notes-temp-adoption";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
@@ -229,11 +228,10 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
     }
   }
 
+  // Each row already updated the cache. Writing a read-back snapshot over the
+  // table would drop a note another writer saved meanwhile.
   const nextBootstrap = await readNotesBootstrapFromCache(username);
-  if (nextBootstrap) {
-    nextBootstrap.session = cached.session;
-    await writeNotesBootstrapToCache(username, nextBootstrap);
-  }
+  if (nextBootstrap) nextBootstrap.session = cached.session;
 
   return { stateMismatches, bootstrap: nextBootstrap };
 }

@@ -10,7 +10,7 @@ import {
   upsertNoteInCache,
 } from "@/lib/offline/notes-offline-store";
 import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
-import { adoptedNoteIdFor } from "@/lib/offline/notes/notes-adopted-ids";
+import { adoptedNoteIdFor, isCreateInFlight } from "@/lib/offline/notes/notes-adopted-ids";
 import { baseUpdatedAt, metadataSelection } from "@/lib/offline/notes/notes-metadata-selection";
 
 /**
@@ -74,6 +74,8 @@ export async function enqueueOrphanPendingLocalCreates(
       await foldAdoptedLocalNote(username, note, serverId, liveNotes);
       continue;
     }
+    // Its POST is still out, maybe in another tab (see markCreateInFlight).
+    if (await isCreateInFlight(db, id)) continue;
     await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), note.id);
   }
 }

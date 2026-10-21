@@ -1,22 +1,13 @@
 import type { Note } from "@/lib/models/note";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
-import { enqueueCoalescedNoteUpdate, noteRow } from "@/lib/offline/notes-offline-store";
+import {
+  enqueueCoalescedNoteUpdate,
+  noteFromRow,
+  noteRow,
+} from "@/lib/offline/notes-offline-store";
 import { adoptedNoteIdFor, recordAdoptedNoteId } from "@/lib/offline/notes/notes-adopted-ids";
 import { baseUpdatedAt } from "@/lib/offline/notes/notes-metadata-selection";
-import {
-  isLocalTempNoteId,
-  notesNotesTable,
-  type OfflineNoteRow,
-} from "@/lib/offline/notes/notes-schema";
-
-function noteFromRow(row: OfflineNoteRow | undefined): Note | null {
-  if (!row) return null;
-  try {
-    return JSON.parse(row.data) as Note;
-  } catch {
-    return null;
-  }
-}
+import { isLocalTempNoteId, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 
 /**
  * Cache `saved` from the server. When it was created from `localId`, also

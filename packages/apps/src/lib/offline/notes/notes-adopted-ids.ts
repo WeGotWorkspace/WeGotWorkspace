@@ -62,3 +62,30 @@ export async function readAndPruneAdoptedNoteIds(
   if (expired.length > 0) await db.meta.bulkDelete(expired);
   return adopted;
 }
+
+/**
+ * A `local-*` create whose POST is out. The healer must not create it again
+ * meanwhile: another tab sees the same pending row without an outbox row or
+ * mapping. A tab can close mid-POST, so the marker expires. After that the
+ * client cannot tell whether the server created the note, and the healer
+ * creates it again; an idempotent server create is the planned fix.
+ */
+const CREATE_IN_FLIGHT_PREFIX = "notes:createInFlight:";
+export const CREATE_IN_FLIGHT_TTL_MS = 5 * 60 * 1000;
+
+export async function markCreateInFlight(db: WgwOfflineDatabase, localId: string): Promise<void> {
+  await db.meta.put({ key: `${CREATE_IN_FLIGHT_PREFIX}${localId}`, value: String(Date.now()) });
+}
+
+export async function clearCreateInFlight(db: WgwOfflineDatabase, localId: string): Promise<void> {
+  await db.meta.delete(`${CREATE_IN_FLIGHT_PREFIX}${localId}`);
+}
+
+/** True while a fresh marker exists. A stale marker is removed. */
+export async function isCreateInFlight(db: WgwOfflineDatabase, localId: string): Promise<boolean> {
+  const row = await db.meta.get(`${CREATE_IN_FLIGHT_PREFIX}${localId}`);
+  if (!row) return false;
+  if (Date.now() - Number(row.value) < CREATE_IN_FLIGHT_TTL_MS) return true;
+  await clearCreateInFlight(db, localId);
+  return false;
+}
