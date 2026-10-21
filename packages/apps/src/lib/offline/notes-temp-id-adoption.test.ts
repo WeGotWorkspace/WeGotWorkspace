@@ -463,6 +463,22 @@ describe("healing an adopted row whose server note left the cache", () => {
   });
 });
 
+describe("an offline create whose local-* row is already cached", () => {
+  it("is adopted when the outbox flushes, leaving no pending temp row", async () => {
+    await upsertNoteInCache(username, localNote, true);
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await createHybridNotesOperations(username).upsertNote(localNote);
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
+
+    await flushNotesOutbox(username);
+
+    expect(createNoteItem).toHaveBeenCalledOnce();
+    expect(await notesTable().get(tempId)).toBeUndefined();
+    expect(await listPendingNoteIds(username)).toEqual([]);
+  });
+});
+
 describe("title on an offline create", () => {
   it("rides on the queued create when typed before the note syncs", async () => {
     vi.mocked(readBrowserOnline).mockReturnValue(false);
