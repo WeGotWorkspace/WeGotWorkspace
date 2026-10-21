@@ -30,6 +30,24 @@ type WeGotWorkspaceLogoutProps = {
 const OFFLINE_LOGOUT_WARNING =
   "You're offline. Signing out clears this device, but the server cannot end your session. It stays valid until it expires.";
 
+const REACHABILITY_TIMEOUT_MS = 2_500;
+
+/**
+ * Probe, not the connectivity snapshot: a fresh /logout tab has no started hub, and
+ * navigator.onLine stays true under the DevTools service-worker offline toggle. The probe has
+ * no timeout of its own, and it answers `true` when aborted, so a timed-out probe is offline.
+ */
+async function probeReachableWithin(timeoutMs = REACHABILITY_TIMEOUT_MS): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const reachable = await probeBrowserReachable(controller.signal);
+    return reachable && !controller.signal.aborted;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function unsyncedLogoutWarning(count: number | null): string {
   if (count === null) return "Unsynced changes on this device will be discarded.";
   if (count === 1) return "This device has 1 unsynced change. It will be discarded.";
@@ -39,9 +57,7 @@ function unsyncedLogoutWarning(count: number | null): string {
 export function WeGotWorkspaceLogout({
   countUnsyncedChanges = countDiscardedUnsyncedChanges,
   isGuestSession = wgwIsGuestSession,
-  // Probe, not the connectivity snapshot: a fresh /logout tab has no started hub,
-  // and navigator.onLine stays true under the DevTools service-worker offline toggle.
-  isOnline = probeBrowserReachable,
+  isOnline = probeReachableWithin,
   completeLogout = wgwCompleteLogoutNavigation,
 }: WeGotWorkspaceLogoutProps = {}) {
   const navigate = useNavigate();
