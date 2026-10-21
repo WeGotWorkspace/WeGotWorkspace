@@ -23,9 +23,7 @@ export async function loginToDocs(page: Page, fileSearchPath?: string): Promise<
   } else {
     await expect(page.locator(".docs-workspace")).toBeVisible({ timeout: 30_000 });
   }
-  await expect(
-    page.getByRole("status", { name: /Offline — changes sync when reconnected/i }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("img", { name: /avatar, offline$/i })).toHaveCount(0);
 }
 
 /** Navigate to the Docs home (no `file` param) and wait for the browse list shell. */
@@ -203,9 +201,7 @@ export async function prepareDocsForOfflineSync(page: Page, fileName: string): P
   await seedDocAtPath(page, `/${searchPath}`, "# E2E seed\n");
   await page.goto(docsUrlForFile(`/${searchPath}`));
   await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
-  await expect(
-    page.getByRole("status", { name: /Offline — changes sync when reconnected/i }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("img", { name: /avatar, offline$/i })).toHaveCount(0);
   return `/${searchPath}`;
 }
 
@@ -214,9 +210,7 @@ export async function prepareGroupDocForOfflineSync(page: Page, apiPath: string)
   await clearDocsOfflineStore(page);
   await page.goto(docsUrlForFile(apiPath));
   await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
-  await expect(
-    page.getByRole("status", { name: /Offline — changes sync when reconnected/i }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("img", { name: /avatar, offline$/i })).toHaveCount(0);
   return apiPath;
 }
 
@@ -225,7 +219,7 @@ export async function currentEditorText(page: Page): Promise<string> {
 }
 
 export async function expectOfflineIndicator(page: Page): Promise<void> {
-  await expect(page.getByText(/Offline — changes sync when reconnected/i)).toBeVisible({
+  await expect(page.getByRole("img", { name: /avatar, offline$/i })).toBeVisible({
     timeout: 15_000,
   });
 }

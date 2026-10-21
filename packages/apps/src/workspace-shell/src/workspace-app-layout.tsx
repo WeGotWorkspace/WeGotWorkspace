@@ -1,8 +1,10 @@
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { IconButton } from "@/button/src/button";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/ui/tooltip";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import { workspaceUserInitials, type WorkspaceSession } from "@/lib/workspace/workspace-session";
 import { cn } from "@/lib/utils";
@@ -131,6 +133,7 @@ export function WorkspaceUserFooter({
   detailLine,
   onLogoutClick,
 }: WorkspaceUserFooterProps) {
+  const { online } = useConnectivity();
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
   const trimmedInitials = initials.trim();
@@ -140,11 +143,28 @@ export function WorkspaceUserFooter({
   const handleLogout = () => onLogoutClick?.();
   return (
     <div className="workspace-app-layout__user-footer">
-      <UserAvatar
-        displayName={avatarName}
-        subtitle={trimmedDetailLine || undefined}
-        className="flex-1 min-w-0"
-      />
+      {online ? (
+        <UserAvatar
+          displayName={avatarName}
+          subtitle={trimmedDetailLine || undefined}
+          className="flex-1 min-w-0"
+        />
+      ) : (
+        // The amber pip is the shared "not synced yet" mark (also the pending-save pip).
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex-1 min-w-0" data-connectivity="offline">
+              <UserAvatar
+                displayName={avatarName}
+                subtitle={trimmedDetailLine || undefined}
+                presence="away"
+                ariaLabel={`${avatarName} avatar, offline`}
+              />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>Offline</TooltipContent>
+        </Tooltip>
+      )}
       <IconButton
         label="Log out"
         icon={<LogOut />}
