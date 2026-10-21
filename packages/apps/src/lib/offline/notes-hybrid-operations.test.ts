@@ -95,7 +95,7 @@ describe("createHybridNotesOperations", () => {
     await notesNotesTable(db).clear();
     await notesNotebooksTable(db).clear();
     await db.meta.clear();
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
   });
 
   afterEach(() => {
@@ -543,7 +543,7 @@ describe("fetchNotesHybridBootstrap", () => {
     await notesNotesTable(db).clear();
     await notesNotebooksTable(db).clear();
     await db.meta.clear();
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
   });
 
   it("returns flushed cache content instead of the pre-flush live bootstrap", async () => {
@@ -599,13 +599,17 @@ describe("fetchNotesHybridBootstrap", () => {
   it("backfills empty cached body from server while outbox is pending", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notes: [{ ...note, excerpt: "", body: [""], wordCount: 0 }],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notes: [{ ...note, excerpt: "", body: [""], wordCount: 0 }],
+        },
       },
-    });
+      Date.now(),
+    );
     await enqueueCoalescedNoteUpdate(username, note.id, { ...note, tags: ["queued"] }, note.date);
 
     vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
@@ -634,21 +638,25 @@ describe("fetchNotesHybridBootstrap", () => {
   it("keeps cached list preview when server body is empty and outbox is idle", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notes: [
-          {
-            ...note,
-            excerpt: "Typed preview still in Dexie",
-            body: ["Typed preview still in Dexie"],
-            wordCount: 5,
-            tags: ["local"],
-          },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notes: [
+            {
+              ...note,
+              excerpt: "Typed preview still in Dexie",
+              body: ["Typed preview still in Dexie"],
+              wordCount: 5,
+              tags: ["local"],
+            },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
       ...bootstrap,
@@ -678,7 +686,7 @@ describe("fetchNotesHybridBootstrap", () => {
   it("keeps live notebookCollections after a Dexie cache merge", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
 
     vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
       ...bootstrap,
@@ -706,14 +714,18 @@ describe("fetchNotesHybridBootstrap", () => {
   it("replaces Dexie ghost notebooks when the live list is empty", async () => {
     const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [],
-        notebooks: ["EmptyGhost", "AlsoGone"],
-        tags: [],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [],
+          notebooks: ["EmptyGhost", "AlsoGone"],
+          tags: [],
+        },
       },
-    });
+      Date.now(),
+    );
 
     vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
       ...bootstrap,
@@ -735,14 +747,18 @@ describe("fetchNotesHybridBootstrap", () => {
     const { deleteNotebook } = await import("@/lib/api/wgw/notes");
     vi.mocked(deleteNotebook).mockResolvedValue(undefined);
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [],
-        notebooks: ["Drafts", "EmptyGhost"],
-        tags: [],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [],
+          notebooks: ["Drafts", "EmptyGhost"],
+          tags: [],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const operations = createHybridNotesOperations(username);
     await operations.deleteNotebook("EmptyGhost", { kind: "purge" });
@@ -755,21 +771,25 @@ describe("fetchNotesHybridBootstrap", () => {
     const { deleteNotebook } = await import("@/lib/api/wgw/notes");
     vi.mocked(deleteNotebook).mockResolvedValue(undefined);
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [
-          { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
-          { ...note, id: "gone", notebook: "Scratch", notebookId: "notes-scratch" },
-        ],
-        notebooks: ["Drafts", "Scratch"],
-        tags: [],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts" },
-          { id: "notes-scratch", name: "Scratch" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [
+            { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
+            { ...note, id: "gone", notebook: "Scratch", notebookId: "notes-scratch" },
+          ],
+          notebooks: ["Drafts", "Scratch"],
+          tags: [],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts" },
+            { id: "notes-scratch", name: "Scratch" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const operations = createHybridNotesOperations(username);
     await operations.deleteNotebook("Scratch", { kind: "purge" });
@@ -783,21 +803,25 @@ describe("fetchNotesHybridBootstrap", () => {
     const { deleteNotebook } = await import("@/lib/api/wgw/notes");
     vi.mocked(deleteNotebook).mockResolvedValue(undefined);
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        notes: [
-          { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
-          { ...note, id: "moved", notebook: "Scratch", notebookId: "notes-scratch" },
-        ],
-        notebooks: ["Drafts", "Scratch"],
-        tags: [],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts", scope: "personal" },
-          { id: "notes-scratch", name: "Scratch", scope: "personal" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          notes: [
+            { ...note, id: "keep", notebook: "Drafts", notebookId: "notes-drafts" },
+            { ...note, id: "moved", notebook: "Scratch", notebookId: "notes-scratch" },
+          ],
+          notebooks: ["Drafts", "Scratch"],
+          tags: [],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts", scope: "personal" },
+            { id: "notes-scratch", name: "Scratch", scope: "personal" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const operations = createHybridNotesOperations(username);
     await operations.deleteNotebook("notes-scratch", { kind: "move", target: "notes-drafts" });
@@ -831,17 +855,21 @@ describe("fetchNotesHybridBootstrap", () => {
       scope: "personal",
     });
 
-    await writeNotesBootstrapToCache(username, {
-      ...bootstrap,
-      data: {
-        ...bootstrap.data,
-        notebooks: ["Drafts", "General"],
-        notebookCollections: [
-          { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
-          { id: "notes-general", name: "General", color: "#0ea5e9" },
-        ],
+    await writeNotesBootstrapToCache(
+      username,
+      {
+        ...bootstrap,
+        data: {
+          ...bootstrap.data,
+          notebooks: ["Drafts", "General"],
+          notebookCollections: [
+            { id: "notes-drafts", name: "Drafts", color: "#14b8a6" },
+            { id: "notes-general", name: "General", color: "#0ea5e9" },
+          ],
+        },
       },
-    });
+      Date.now(),
+    );
 
     const operations = createHybridNotesOperations(username);
     const created = await operations.createNotebook("Ideas", { color: "#ec4899" });

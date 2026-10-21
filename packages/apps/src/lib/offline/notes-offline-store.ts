@@ -305,10 +305,16 @@ function pendingRowOverServer(row: OfflineNoteRow, server: Note | undefined): Of
  * Replace the cached bootstrap in one transaction, so a write that lands in
  * between cannot be cleared or put back. Adopted `local-*` ids are dropped:
  * nothing would ever sync them, and their server note is already cached.
+ *
+ * `takenAt` is when the snapshot was taken (epoch ms): when a live fetch was
+ * sent, or when the cache was read. An adopted server note the snapshot lacks
+ * is kept only when it was adopted at or after `takenAt`; the snapshot then
+ * predates the create. Otherwise the snapshot wins: the note was deleted.
  */
 export async function writeNotesBootstrapToCache(
   username: string,
   bootstrap: NotesAppBootstrap,
+  takenAt: number,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
@@ -323,11 +329,11 @@ export async function writeNotesBootstrapToCache(
     const pendingRows = await notes
       .filter((row) => row.pendingSync && !adopted.has(row.id))
       .toArray();
-    // A snapshot read before a create does not have its server note yet.
     const snapshotIds = new Set(bootstrap.data.notes.map((note) => note.id));
-    const adoptedRows = await notes.bulkGet(
-      [...new Set(adopted.values())].filter((id) => !snapshotIds.has(id)),
-    );
+    const newerThanSnapshot = [...adopted.values()]
+      .filter(({ serverId, at }) => at >= takenAt && !snapshotIds.has(serverId))
+      .map(({ serverId }) => serverId);
+    const adoptedRows = await notes.bulkGet([...new Set(newerThanSnapshot)]);
     await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
     await writeCachedCollections(db, collections);
     if (bootstrap.data.groups !== undefined) {

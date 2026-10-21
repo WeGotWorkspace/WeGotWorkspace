@@ -12,7 +12,8 @@ import type { WgwOfflineDatabase } from "@/lib/offline/core/offline-db";
 const ADOPTED_NOTE_ID_PREFIX = "notes:adoptedId:";
 export const ADOPTED_ID_TTL_MS = 24 * 60 * 60 * 1000;
 
-type AdoptedNoteId = { serverId: string; at: number };
+/** `at`: when the server accepted the create (epoch ms). */
+export type AdoptedNoteId = { serverId: string; at: number };
 
 function parseAdoptedNoteId(value: string): AdoptedNoteId {
   try {
@@ -44,20 +45,21 @@ export async function adoptedNoteIdFor(
 }
 
 /**
- * Every adopted `local-*` id, mapped to its server id. Mappings older than
- * {@link ADOPTED_ID_TTL_MS} are still returned once, then deleted.
+ * Every adopted `local-*` id, mapped to its server id and adoption time.
+ * Mappings older than {@link ADOPTED_ID_TTL_MS} are still returned once, then
+ * deleted.
  */
 export async function readAndPruneAdoptedNoteIds(
   db: WgwOfflineDatabase,
-): Promise<Map<string, string>> {
+): Promise<Map<string, AdoptedNoteId>> {
   const rows = await db.meta.where("key").startsWith(ADOPTED_NOTE_ID_PREFIX).toArray();
   const cutoff = Date.now() - ADOPTED_ID_TTL_MS;
-  const adopted = new Map<string, string>();
+  const adopted = new Map<string, AdoptedNoteId>();
   const expired: string[] = [];
   for (const row of rows) {
-    const { serverId, at } = parseAdoptedNoteId(row.value);
-    adopted.set(row.key.slice(ADOPTED_NOTE_ID_PREFIX.length), serverId);
-    if (at < cutoff) expired.push(row.key);
+    const mapping = parseAdoptedNoteId(row.value);
+    adopted.set(row.key.slice(ADOPTED_NOTE_ID_PREFIX.length), mapping);
+    if (mapping.at < cutoff) expired.push(row.key);
   }
   if (expired.length > 0) await db.meta.bulkDelete(expired);
   return adopted;

@@ -88,7 +88,7 @@ beforeEach(async () => {
   await notesNotesTable(db).clear();
   await notesNotebooksTable(db).clear();
   await db.meta.clear();
-  await writeNotesBootstrapToCache(username, bootstrap);
+  await writeNotesBootstrapToCache(username, bootstrap, Date.now());
 });
 
 afterEach(() => {
@@ -128,7 +128,11 @@ describe("local-* row after an online create", () => {
     });
 
     await upsertNoteBodyPreviewInCache(username, { ...localNote, title: "Ha" });
-    await writeNotesBootstrapToCache(username, (await readNotesBootstrapFromCache(username))!);
+    await writeNotesBootstrapToCache(
+      username,
+      (await readNotesBootstrapFromCache(username))!,
+      Date.now(),
+    );
 
     expect(await notesTable().get(tempId)).toBeUndefined();
   });
@@ -143,7 +147,7 @@ describe("local-* row after an online create", () => {
       updatedAt: Date.now(),
     });
 
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
 
     expect(await listPendingNoteIds(username)).toEqual([]);
   });
@@ -293,7 +297,7 @@ describe("adopted id mappings", () => {
     vi.mocked(createNoteItem).mockResolvedValue({ ...serverNote, id: "fresh-server-id" });
     await createHybridNotesOperations(username).upsertNote({ ...localNote, id: freshLocalId });
 
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
 
     expect(await adoptedNoteIdFor(db, tempId)).toBeNull();
     expect(await adoptedNoteIdFor(db, freshLocalId)).toBe("fresh-server-id");
@@ -347,7 +351,7 @@ describe("writeNotesBootstrapToCache", () => {
     const pending = { ...existing, id: "note-2", title: "Written meanwhile" };
 
     await Promise.all([
-      writeNotesBootstrapToCache(username, bootstrap),
+      writeNotesBootstrapToCache(username, bootstrap, Date.now()),
       upsertNoteInCache(username, pending, true),
     ]);
 

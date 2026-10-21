@@ -646,6 +646,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
 export async function fetchNotesHybridBootstrap(): Promise<
   Awaited<ReturnType<typeof fetchNotesLiveBootstrap>>
 > {
+  // Before the request: a create adopted after this time may be missing from the list.
+  const takenAt = Date.now();
   const bootstrap = await fetchNotesLiveBootstrap();
   const username = bootstrap.session.user.username;
   if (!username) {
@@ -694,14 +696,14 @@ export async function fetchNotesHybridBootstrap(): Promise<
       ];
     }
     cached.data.notes = await enrichNotesListPreviewsFromCollabOffline(username, cached.data.notes);
-    await writeNotesBootstrapToCache(username, cached);
+    await writeNotesBootstrapToCache(username, cached, takenAt);
     return cached;
   }
   bootstrap.data.notes = await enrichNotesListPreviewsFromCollabOffline(
     username,
     bootstrap.data.notes,
   );
-  await writeNotesBootstrapToCache(username, bootstrap);
+  await writeNotesBootstrapToCache(username, bootstrap, takenAt);
   return bootstrap;
 }
 

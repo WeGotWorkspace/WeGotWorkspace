@@ -79,7 +79,7 @@ beforeEach(async () => {
   await notesNotesTable(db()).clear();
   await notesNotebooksTable(db()).clear();
   await db().meta.clear();
-  await writeNotesBootstrapToCache(username, bootstrap);
+  await writeNotesBootstrapToCache(username, bootstrap, Date.now());
 });
 
 afterEach(() => {
