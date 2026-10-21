@@ -5,9 +5,27 @@ import {
   noteFromRow,
   noteRow,
 } from "@/lib/offline/notes-offline-store";
-import { adoptedNoteIdFor, recordAdoptedNoteId } from "@/lib/offline/notes/notes-adopted-ids";
+import {
+  adoptedNoteIdFor,
+  markCreateInFlight,
+  recordAdoptedNoteId,
+} from "@/lib/offline/notes/notes-adopted-ids";
 import { baseUpdatedAt } from "@/lib/offline/notes/notes-metadata-selection";
 import { isLocalTempNoteId, notesNotesTable } from "@/lib/offline/notes/notes-schema";
+
+/**
+ * Cache a new `local-*` note as pending and mark its create in flight, in one
+ * transaction: a healer in another tab sees either no row or a marked row,
+ * never a pending row it would create a second time.
+ */
+export async function writePendingLocalCreate(username: string, note: Note): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const notes = notesNotesTable(db);
+  await db.transaction("rw", [notes, db.meta], async () => {
+    await markCreateInFlight(db, note.id);
+    await notes.put(noteRow(note, true));
+  });
+}
 
 /**
  * Cache `saved` from the server. When it was created from `localId`, also

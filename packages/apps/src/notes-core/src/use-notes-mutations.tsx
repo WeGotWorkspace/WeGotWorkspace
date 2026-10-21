@@ -38,6 +38,7 @@ import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteBodyPreviewInCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { writePendingLocalCreate } from "@/lib/offline/notes-temp-adoption";
 import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
 import { notebookSelectionEquals } from "./notes-notebook-select";
@@ -101,12 +102,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     if (pending) await pending.catch(() => undefined);
   }, []);
 
-  const persistOptimisticNote = useCallback((note: Note, pendingSync = true): Promise<void> => {
+  const persistOptimisticNote = useCallback((note: Note, pendingSync = true) => {
     const username = readOfflineNotesUsername();
-    if (!username) return Promise.resolve();
-    const write = upsertNoteInCache(username, note, pendingSync);
-    persistBestEffort(write);
-    return write;
+    if (username) persistBestEffort(upsertNoteInCache(username, note, pendingSync));
   }, []);
 
   const dropGoneNote = useCallback(
@@ -686,7 +684,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     openMobileDetail();
     // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
     if (operations) {
-      void persistOptimisticNote(note, true);
+      // Row and in-flight marker in one write, so another tab's healer cannot POST it too.
+      const username = readOfflineNotesUsername();
+      if (username) persistBestEffort(writePendingLocalCreate(username, note));
       // Runs on onCreated (before the post-create sync) and again on resolve; idempotent.
       const remap = (saved: Note) => {
         if (saved.id === id) return;

@@ -74,7 +74,8 @@ export async function enqueueOrphanPendingLocalCreates(
       await foldAdoptedLocalNote(username, note, serverId, liveNotes);
       continue;
     }
-    // Its POST is still out, maybe in another tab (see markCreateInFlight).
+    // Its POST is still out, maybe in another tab. A stale marker falls through
+    // and the note is created again (see markCreateInFlight, #1514).
     if (await isCreateInFlight(db, id)) continue;
     await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), note.id);
   }

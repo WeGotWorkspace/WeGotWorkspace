@@ -70,7 +70,8 @@ export async function readAndPruneAdoptedNoteIds(
  * meanwhile: another tab sees the same pending row without an outbox row or
  * mapping. A tab can close mid-POST, so the marker expires. After that the
  * client cannot tell whether the server created the note, and the healer
- * creates it again; an idempotent server create is the planned fix.
+ * creates it again. An idempotent server create fixes that case:
+ * WeGotWorkspace/WeGotWorkspace#1514.
  */
 const CREATE_IN_FLIGHT_PREFIX = "notes:createInFlight:";
 export const CREATE_IN_FLIGHT_TTL_MS = 5 * 60 * 1000;

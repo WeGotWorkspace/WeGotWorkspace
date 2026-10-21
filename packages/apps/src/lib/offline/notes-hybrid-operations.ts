@@ -179,6 +179,8 @@ async function resolveCachedNote(
   if (row) {
     return JSON.parse(row.data) as Note;
   }
+  // The server never has a local-* id: a cache miss is simply "not found".
+  if (isLocalTempNoteId(noteId)) return undefined;
 
   const cached = await readNotesBootstrapFromCache(username);
   const fromCache = cached?.data.notes.find((n) => n.id === noteId);
@@ -217,16 +219,23 @@ async function queueOfflineUpsert(
   { tempNoteId, tagDelta, previous, fields }: QueuedUpsert = {},
 ): Promise<Note> {
   await upsertNoteInCache(username, note, true);
-  const delta = isLocalTempNoteId(note.id) ? undefined : tagDelta;
+  const localCreate = isLocalTempNoteId(note.id);
+  const delta = localCreate ? undefined : tagDelta;
   await enqueueCoalescedNoteUpdate(
     username,
     note.id,
     note,
     baseUpdatedAt(note),
-    tempNoteId,
+    // A local-* row cached before this call still needs adopting on flush.
+    tempNoteId ?? (localCreate ? note.id : undefined),
     delta,
     metadataSelection(previous, note, !!delta, fields),
   );
+  if (localCreate) {
+    // The outbox row now carries this create; the healer no longer needs a marker.
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await clearCreateInFlight(db, note.id);
+  }
   return note;
 }
 
@@ -413,6 +422,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       // which may already hold edits made after this one (a tag, a star).
       const fields = isLocalTempNoteId(note.id) ? undefined : opts?.fields;
       const patch = fields ? { id: note.id, ...noteFieldsPatch(note, fields) } : note;
+      // Without a cached copy, keep the full note locally rather than a partial
+      // one; metadataSelection still limits what goes on the wire.
       const merged = existing ? applyNoteUpdate(existing, patch) : note;
       const tagDelta = tagDeltaFromOpts(opts);
       const queued = { tagDelta, previous: existing, fields };

@@ -237,6 +237,7 @@ async function rewriteCachedNotes(
     const next = map(note);
     if (next === note) return;
     row.data = JSON.stringify(next);
+    // The index field holds the notebook name, as in noteRow.
     row.notebookId = next.notebook;
   });
 }
@@ -333,6 +334,7 @@ export async function writeNotesBootstrapToCache(
     const newerThanSnapshot = [...adopted.values()]
       .filter(({ serverId, at }) => at >= takenAt && !snapshotIds.has(serverId))
       .map(({ serverId }) => serverId);
+    // A pending server row (an early title) is not in adoptedRows; pendingRows keeps it.
     const adoptedRows = await notes.bulkGet([...new Set(newerThanSnapshot)]);
     await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
     await writeCachedCollections(db, collections);

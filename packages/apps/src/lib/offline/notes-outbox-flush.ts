@@ -138,7 +138,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           continue;
         }
         const saved = result.saved;
-        const tempId = upsert.tempNoteId;
+        // Rows queued before tempNoteId was always set still name the temp id as noteId.
+        const tempId = upsert.tempNoteId ?? (isLocalTempNoteId(noteId) ? noteId : undefined);
         if (tempId && tempId !== saved.id) {
           await migrateNoteCollabPersistenceAfterIdRemap({
             username,
