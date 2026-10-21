@@ -195,3 +195,46 @@ describe("useNotesMutations createNote", () => {
     );
   });
 });
+
+describe("useNotesMutations updateNote", () => {
+  const existing: Note = {
+    id: "note-1",
+    category: "Note",
+    date: "2026-10-21T15:00:00.000Z",
+    excerpt: "",
+    body: [""],
+    notebook: "Drafts",
+    tags: [],
+    wordCount: 0,
+  };
+
+  function renderWithNote() {
+    const queueAutoSaveToast = vi.fn();
+    const setNotes = vi.fn((update: unknown) => {
+      if (typeof update === "function") update([existing]);
+    });
+    const shell = buildShell({
+      notes: [existing],
+      setNotes: setNotes as NotesShellState["setNotes"],
+      queueAutoSaveToast,
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+    return { result, queueAutoSaveToast };
+  }
+
+  it("shows the saved toast for a metadata edit", () => {
+    const { result, queueAutoSaveToast } = renderWithNote();
+
+    act(() => result.current.updateNote("note-1", { title: "Ha" }));
+
+    expect(queueAutoSaveToast).toHaveBeenCalledOnce();
+  });
+
+  it("saves a title typed without a document without the saved toast", () => {
+    const { result, queueAutoSaveToast } = renderWithNote();
+
+    act(() => result.current.updateNote("note-1", { title: "Ha" }, { autoSaveToast: false }));
+
+    expect(queueAutoSaveToast).not.toHaveBeenCalled();
+  });
+});

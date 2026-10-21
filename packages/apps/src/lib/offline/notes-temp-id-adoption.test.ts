@@ -16,6 +16,8 @@ import {
   createHybridNotesOperations,
   fetchNotesHybridBootstrap,
 } from "@/lib/offline/notes-hybrid-operations";
+import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { adoptedNoteIdFor } from "@/lib/offline/notes/notes-adopted-ids";
 
 vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/notes")>();
@@ -141,6 +143,61 @@ describe("local-* row after an online create", () => {
     await writeNotesBootstrapToCache(username, bootstrap);
 
     expect(await listPendingNoteIds(username)).toEqual([]);
+  });
+});
+
+describe("a write on an adopted local-* id", () => {
+  it("updates the server note online instead of creating a second one", async () => {
+    await createOnline();
+    vi.mocked(createNoteItem).mockClear();
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    const saved = await createHybridNotesOperations(username).upsertNote({
+      ...localNote,
+      title: "Ha",
+    });
+
+    expect(createNoteItem).not.toHaveBeenCalled();
+    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
+    expect(saved.id).toBe(serverId);
+  });
+
+  it("is flushed as an update on the server note when it was queued offline", async () => {
+    await createOnline();
+    vi.mocked(createNoteItem).mockClear();
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await createHybridNotesOperations(username).upsertNote({ ...localNote, title: "Ha" });
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    await flushNotesOutbox(username);
+
+    expect(createNoteItem).not.toHaveBeenCalled();
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
+    expect(await listOutboxMutations(username)).toHaveLength(0);
+    expect(await notesTable().get(tempId)).toBeUndefined();
+  });
+});
+
+describe("adopted id mappings", () => {
+  it("are pruned by a bootstrap write after a day, and kept before that", async () => {
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const dayAndAnHourAgo = Date.now() - 25 * 60 * 60 * 1000;
+    const now = vi.spyOn(Date, "now").mockReturnValue(dayAndAnHourAgo);
+    await createOnline();
+    now.mockRestore();
+    const freshLocalId = "local-8b8f0000000000000000000000000002";
+    await upsertNoteInCache(username, { ...localNote, id: freshLocalId }, true);
+    vi.mocked(createNoteItem).mockResolvedValue({ ...serverNote, id: "fresh-server-id" });
+    await createHybridNotesOperations(username).upsertNote({ ...localNote, id: freshLocalId });
+
+    await writeNotesBootstrapToCache(username, bootstrap);
+
+    expect(await adoptedNoteIdFor(db, tempId)).toBeNull();
+    expect(await adoptedNoteIdFor(db, freshLocalId)).toBe("fresh-server-id");
   });
 });
 
