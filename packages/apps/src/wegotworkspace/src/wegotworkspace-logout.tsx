@@ -83,7 +83,12 @@ export function WeGotWorkspaceLogout({
         } catch {
           count = null;
         }
-        const isOffline = !(await isOnline());
+        let isOffline = true;
+        try {
+          isOffline = !(await isOnline());
+        } catch {
+          // Unknown reachability: ask, as offline, rather than hang on "Signing out...".
+        }
         if (cancelled) return;
         if (count === null || count > 0 || isOffline) {
           setUnsyncedCount(count);
