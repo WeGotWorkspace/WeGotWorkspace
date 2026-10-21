@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-logout";
 
 const navigate = vi.fn();
@@ -9,10 +9,19 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 describe("WeGotWorkspaceLogout", () => {
+  beforeEach(() => {
+    // The reachability probe answers: the server is up.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 200 })),
+    );
+  });
+
   afterEach(() => {
     cleanup();
     navigate.mockReset();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("signs out immediately when nothing is unsynced", async () => {
@@ -139,6 +148,31 @@ describe("WeGotWorkspaceLogout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     await waitFor(() => expect(completeLogout).toHaveBeenCalledOnce());
+  });
+
+  it("probes reachability itself when navigator.onLine is stale", async () => {
+    // A fresh /logout tab has no started connectivity hub, and the DevTools
+    // service-worker offline toggle leaves navigator.onLine true.
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByText("Sign out while offline?")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ method: "HEAD" }),
+    );
+    expect(completeLogout).not.toHaveBeenCalled();
   });
 
   it("names both the offline session and the unsynced changes", async () => {
