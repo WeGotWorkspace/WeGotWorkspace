@@ -1,4 +1,5 @@
 import { LogOut } from "lucide-react";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { UserAvatar } from "@/user-avatar/src/user-avatar";
 import {
   DropdownMenu,
@@ -17,6 +18,8 @@ export function WorkspaceShellHeaderUserMenu({
   displayName,
   onLogout,
 }: WorkspaceShellHeaderUserMenuProps) {
+  // Offline sign-out cannot revoke the refresh token and discards unsynced changes.
+  const { online } = useConnectivity();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -37,8 +40,9 @@ export function WorkspaceShellHeaderUserMenu({
         <DropdownMenuItem className="text-xs opacity-60 focus:bg-transparent">
           {displayName}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
-          <LogOut className="size-4 mr-2" /> Sign out
+        <DropdownMenuItem onSelect={onLogout} disabled={!online} className="cursor-pointer">
+          <LogOut className="size-4 mr-2" />
+          {online ? "Sign out" : "Sign out is unavailable offline"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
