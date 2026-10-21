@@ -26,9 +26,8 @@ import {
 } from "@/lib/offline/core/browser-online";
 import {
   adoptServerNoteInCache,
-  createTempNoteId,
+  adoptedServerNoteId,
   dropLocalNoteAfterServerGone,
-  isLocalTempNoteId,
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
@@ -42,7 +41,12 @@ import {
 } from "@/lib/offline/notes-offline-store";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
-import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import {
+  createTempNoteId,
+  isLocalTempNoteId,
+  NOTES_DOMAIN,
+  notesNotesTable,
+} from "@/lib/offline/notes/notes-schema";
 import { enqueueOrphanPendingLocalCreates } from "@/lib/offline/notes/notes-orphan-heal";
 import { baseUpdatedAt, metadataSelection } from "@/lib/offline/notes/notes-metadata-selection";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
@@ -305,7 +309,7 @@ async function adoptServerCreatedNote(
       archived: saved.archived,
     });
   }
-  await adoptServerNoteInCache(username, localId, saved);
+  await adoptServerNoteInCache(username, saved, localId);
 }
 
 function groupSlugOpts(
@@ -329,7 +333,7 @@ async function createLocalTempNoteOnline(
 ): Promise<Note> {
   const saved = await createNoteItem(
     wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
-    opts,
+    { signal: opts?.signal },
   );
   if (isLocalTempNoteId(saved.id)) {
     return queueOfflineUpsert(username, { ...saved, id: note.id }, note.id);
@@ -361,7 +365,7 @@ async function upsertNoteOnline(
   });
   const request = delta ? { ...metadataRequest, ...delta } : metadataRequest;
   try {
-    const saved = await updateNoteItem(note.id, request, opts);
+    const saved = await updateNoteItem(note.id, request, { signal: opts?.signal });
     await upsertNoteInCache(username, saved, false);
     await runner.flush();
     return saved;
@@ -389,7 +393,11 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
   const runner = runnerFor(username);
 
   return {
-    upsertNote: async (note, opts) => {
+    upsertNote: async (input, opts) => {
+      // A stale local-* row (reload, other tab) of a note the server already
+      // has writes to that note, online or queued, instead of creating another.
+      const adoptedId = await adoptedServerNoteId(username, input.id);
+      const note = adoptedId ? { ...input, id: adoptedId } : input;
       const existing = note.id
         ? await resolveCachedNote(username, note.id, opts?.signal)
         : undefined;

@@ -1,5 +1,5 @@
 import type { Note } from "@/lib/models/note";
-import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 
 export function baseUpdatedAt(note: Note): string | undefined {
   if (note.etag) return note.etag;

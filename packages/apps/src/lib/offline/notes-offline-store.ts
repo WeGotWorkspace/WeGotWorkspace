@@ -11,6 +11,7 @@ import {
 } from "@/lib/offline/core/outbox-store";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
+  isLocalTempNoteId,
   NOTES_DOMAIN,
   notesNotebooksTable,
   notesNotesTable,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/offline/notes/notes-schema";
 import {
   adoptedNoteIdFor,
-  readAdoptedNoteIds,
+  readAndPruneAdoptedNoteIds,
   recordAdoptedNoteId,
 } from "@/lib/offline/notes/notes-adopted-ids";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
@@ -273,7 +274,7 @@ export async function writeNotesBootstrapToCache(
   const collections = collectionsForCache(bootstrap);
   rememberOfflineNotesUsername(username);
   await db.transaction("rw", [notes, books, db.meta], async () => {
-    const adopted = await readAdoptedNoteIds(db);
+    const adopted = await readAndPruneAdoptedNoteIds(db);
     const pendingRows = await notes
       .filter((row) => row.pendingSync && !adopted.has(row.id))
       .toArray();
@@ -317,13 +318,13 @@ export async function upsertNoteInCache(
 }
 
 /**
- * The server accepted a `local-*` create as `saved`. Record the mapping, drop
- * the temp row and cache the server note in one step.
+ * Cache `saved` from the server. When it was created from `localId`, also
+ * record the mapping and drop the temp row, in the same transaction.
  */
 export async function adoptServerNoteInCache(
   username: string,
-  localId: string,
   saved: Note,
+  localId?: string,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
@@ -334,6 +335,15 @@ export async function adoptServerNoteInCache(
     }
     await notes.put(noteRow(saved, false));
   });
+}
+
+/** Server id a `local-*` create was adopted as, or null. */
+export async function adoptedServerNoteId(
+  username: string,
+  localId: string,
+): Promise<string | null> {
+  if (!isLocalTempNoteId(localId)) return null;
+  return adoptedNoteIdFor(offlineDbForAccount(offlineAccountKeyFromUsername(username)), localId);
 }
 
 /** One cached note, or null when the id is absent or the row is unreadable. */
@@ -762,14 +772,6 @@ export async function enqueueCoalescedNoteUpdate(
     buildUpdatePayload: (entityId, patch) => ({ ...patch, noteId: entityId }),
     readPatchFromPayload: (payload) => payload as NotesUpsertPayload,
   });
-}
-
-export function createTempNoteId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
-}
-
-export function isLocalTempNoteId(id: string | undefined): boolean {
-  return !!id?.startsWith("local-");
 }
 
 export function noteUpdatedAtMs(value: string | undefined): number {

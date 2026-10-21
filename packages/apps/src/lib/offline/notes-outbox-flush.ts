@@ -14,12 +14,12 @@ import {
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
+import { isLocalTempNoteId, NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
   adoptServerNoteInCache,
+  adoptedServerNoteId,
   dropLocalNoteAfterServerGone,
-  isLocalTempNoteId,
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
@@ -51,7 +51,12 @@ async function flushOutboxNoteUpsert(
 ): Promise<{ saved: Note } | { conflict: true } | { gone: true }> {
   const createRequest = { ...metadataRequest, notebook: metadata.notebook, body: "" };
   if (isLocalTempNoteId(noteId)) {
-    return { saved: await createNoteItem(createRequest) };
+    const serverId = await adoptedServerNoteId(username, noteId);
+    if (!serverId) return { saved: await createNoteItem(createRequest) };
+    // Queued for a local-* id the server already created: PATCH that note.
+    // No notebook (not a move) and no etag: the base is the local row's date.
+    const { notebook: _notebook, notebookId: _notebookId, etag: _etag, ...patch } = metadataRequest;
+    return { saved: await updateNoteItem(serverId, { ...patch, id: serverId }) };
   }
   try {
     return { saved: await updateNoteItem(noteId, metadataRequest) };
@@ -145,7 +150,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             archived: upsert.metadata.archived,
           });
         }
-        await adoptServerNoteInCache(username, tempId ?? "", saved);
+        await adoptServerNoteInCache(username, saved, tempId);
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =

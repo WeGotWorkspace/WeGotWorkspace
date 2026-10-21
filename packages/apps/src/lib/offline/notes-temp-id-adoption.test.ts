@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
+  enqueueCoalescedNoteUpdate,
   listOutboxMutations,
   listPendingNoteIds,
   readNotesBootstrapFromCache,
@@ -179,6 +180,31 @@ describe("a write on an adopted local-* id", () => {
     expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
     expect(await listOutboxMutations(username)).toHaveLength(0);
     expect(await notesTable().get(tempId)).toBeUndefined();
+  });
+});
+
+describe("an outbox create for an adopted local-* id", () => {
+  it("flushes as an update on the server note", async () => {
+    await createOnline();
+    vi.mocked(createNoteItem).mockClear();
+    await enqueueCoalescedNoteUpdate(
+      username,
+      tempId,
+      { ...localNote, title: "Ha" },
+      localNote.date,
+      tempId,
+    );
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    await flushNotesOutbox(username);
+
+    expect(createNoteItem).not.toHaveBeenCalled();
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ id: serverId, title: "Ha" });
+    expect(request).not.toHaveProperty("notebook");
+    expect(request).not.toHaveProperty("etag");
+    expect(await listOutboxMutations(username)).toHaveLength(0);
   });
 });
 

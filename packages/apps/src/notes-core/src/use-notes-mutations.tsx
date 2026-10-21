@@ -14,7 +14,7 @@ import {
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
-import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
   createNoteSaveDebouncer,
@@ -613,7 +613,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [toggleNoteTag],
   );
   const updateNote = useCallback(
-    (id: string, patch: Partial<Note>) => {
+    (id: string, patch: Partial<Note>, options?: { autoSaveToast?: boolean }) => {
       // Metadata only (title/tags/notebook/starred). Body is owned by the collab
       // document and never travels through the Notes upsert path.
       updateAndPersistNote(
@@ -623,7 +623,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           ...patch,
           ...(patch.title !== undefined ? { date: new Date().toISOString() } : {}),
         }),
-        { autoSaveToast: true },
+        { autoSaveToast: options?.autoSaveToast ?? true },
       );
     },
     [updateAndPersistNote],

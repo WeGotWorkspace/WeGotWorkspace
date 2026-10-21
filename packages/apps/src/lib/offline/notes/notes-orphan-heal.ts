@@ -3,13 +3,13 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import {
   enqueueCoalescedNoteUpdate,
   getNoteFromCache,
-  isLocalTempNoteId,
   listOutboxMutations,
   listPendingNoteIds,
   notesOutboxNoteId,
   removeNoteFromCache,
   upsertNoteInCache,
 } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { adoptedNoteIdFor } from "@/lib/offline/notes/notes-adopted-ids";
 import { baseUpdatedAt, metadataSelection } from "@/lib/offline/notes/notes-metadata-selection";
 
@@ -25,6 +25,8 @@ async function foldAdoptedLocalNote(
   serverId: string,
 ): Promise<void> {
   const server = await getNoteFromCache(username, serverId);
+  // No cached server note means the note was deleted on the server since the
+  // adoption. Dropping the row, with its title, is deliberate.
   if (server && local.title?.trim() && !server.title?.trim()) {
     const folded: Note = { ...server, title: local.title };
     await upsertNoteInCache(username, folded, true);
