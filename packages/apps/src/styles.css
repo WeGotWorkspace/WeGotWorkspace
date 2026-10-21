@@ -249,6 +249,23 @@
 }
 
 /*
+ * Sync-pending status: a save or sync that has not reached the server yet.
+ * Blue so amber (`--color-warning`) only means offline / needs attention.
+ * Not brand blue (reads as selected) and not `--color-info` (too light for a dot).
+ * Both values clear 4.5:1 on paper, rail and tag washes, so text can use them too.
+ * Lives on `:root` (not `@theme inline`) so the dark theme can swap it.
+ */
+:root {
+  --color-sync-pending: #2b65d0;
+  --color-sync-pending: oklch(from #2b65d0 l c h);
+}
+
+:root[data-theme="dark"] {
+  --color-sync-pending: #6d9cf2;
+  --color-sync-pending: oklch(from #6d9cf2 l c h);
+}
+
+/*
  * Dark theme (beta). `theme-preference.ts` resolves Auto / Light / Dark to
  * `data-theme` on <html> before first paint, so only one selector is needed.
  * Paper is neutral near-black; ink is Soft. Everything downstream derives.

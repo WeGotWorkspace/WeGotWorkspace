@@ -128,6 +128,11 @@
   background-color: var(--user-avatar-presence-away, #eab308);
 }
 
+/* Save / sync still in flight (not someone's presence). */
+.user-avatar__presence--pending {
+  background-color: var(--user-avatar-presence-pending, var(--color-sync-pending));
+}
+
 .user-avatar__presence--offline {
   background-color: transparent;
   box-shadow:

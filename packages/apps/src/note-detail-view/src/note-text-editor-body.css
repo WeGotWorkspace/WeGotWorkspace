@@ -36,9 +36,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-warning);
+  color: var(--color-sync-pending);
 }
 
 .note-detail-view__pending-sync .loading-spinner {
-  color: var(--color-warning);
+  color: var(--color-sync-pending);
 }

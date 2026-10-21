@@ -150,7 +150,7 @@ export function WorkspaceUserFooter({
   const connectivityLabel = online ? "online" : "offline";
   return (
     <div className="workspace-app-layout__user-footer">
-      {/* Green = online; amber is the shared "not synced yet" mark (also the pending-save pip). */}
+      {/* Green = online; amber = the signed-in user is offline (pending syncs are blue). */}
       <Tooltip>
         <TooltipTrigger asChild>
           <div

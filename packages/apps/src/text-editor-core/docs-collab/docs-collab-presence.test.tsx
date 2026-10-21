@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("DocsCollabPresence status dots", () => {
-  it("marks live peers green and a connecting peer amber, and skips you and warnings", () => {
+  it("marks live peers green and a connecting peer blue (pending), and skips you and warnings", () => {
     const { container } = render(
       <TooltipProvider>
         <DocsCollabPresence
@@ -23,9 +23,9 @@ describe("DocsCollabPresence status dots", () => {
     const dots = [...container.querySelectorAll("[data-presence]")].map((dot) =>
       dot.getAttribute("data-presence"),
     );
-    expect(dots).toEqual(["online", "away"]);
+    expect(dots).toEqual(["online", "pending"]);
     expect(container.querySelector(".user-avatar__presence--online")).toBeTruthy();
-    expect(container.querySelector(".user-avatar__presence--away")).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--pending")).toBeTruthy();
     expect(container.textContent).not.toMatch(/Live with/);
   });
 });

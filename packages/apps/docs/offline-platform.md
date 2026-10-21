@@ -12,20 +12,20 @@ Docs now uses the collaboration stack for editable text files:
 
 ## What the core gives you
 
-| Concern                                                                   | Module                                                                                                                             |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Dexie factory + version/migration registry                                | [`core/offline-db.ts`](../src/lib/offline/core/offline-db.ts)                                                                      |
-| Enforced per-domain Dexie version blocks                                  | [`core/offline-version-allocation.ts`](../src/lib/offline/core/offline-version-allocation.ts)                                      |
-| Generic outbox CRUD (`enqueue`/`list`/`remove`/`markError`/`isRetryable`) | [`core/outbox-store.ts`](../src/lib/offline/core/outbox-store.ts)                                                                  |
-| Coalesce pending update rows for the same entity                          | [`core/outbox-coalescing.ts`](../src/lib/offline/core/outbox-coalescing.ts)                                                        |
-| Key/value meta + sync tokens                                              | [`core/meta-store.ts`](../src/lib/offline/core/meta-store.ts)                                                                      |
-| Online/offline detection + snapshots                                      | [`core/browser-online.ts`](../src/lib/offline/core/browser-online.ts) (via [`use-connectivity`](../src/hooks/use-connectivity.ts)) |
-| Serialized flush runner + per-account registry                            | [`core/connectivity-sync-runner.ts`](../src/lib/offline/core/connectivity-sync-runner.ts)                                          |
-| Cache-then-network bootstrap                                              | [`core/use-hybrid-bootstrap.ts`](../src/lib/offline/core/use-hybrid-bootstrap.ts)                                                  |
-| Per-domain account session (`wgw.offline.<domain>.username`)              | [`core/offline-account.ts`](../src/lib/offline/core/offline-account.ts)                                                            |
-| Generic conflict channel `createSyncConflictChannel<TId>()`               | [`core/sync-conflicts.ts`](../src/lib/offline/core/sync-conflicts.ts)                                                              |
-| Sidebar offline pip (amber dot + "Offline" tooltip on the account avatar) | [`workspace-app-layout.tsx`](../src/workspace-shell/src/workspace-app-layout.tsx) (`WorkspaceUserFooter`)                          |
-| Shared type contracts                                                     | [`core/types.ts`](../src/lib/offline/core/types.ts)                                                                                |
+| Concern                                                                             | Module                                                                                                                             |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Dexie factory + version/migration registry                                          | [`core/offline-db.ts`](../src/lib/offline/core/offline-db.ts)                                                                      |
+| Enforced per-domain Dexie version blocks                                            | [`core/offline-version-allocation.ts`](../src/lib/offline/core/offline-version-allocation.ts)                                      |
+| Generic outbox CRUD (`enqueue`/`list`/`remove`/`markError`/`isRetryable`)           | [`core/outbox-store.ts`](../src/lib/offline/core/outbox-store.ts)                                                                  |
+| Coalesce pending update rows for the same entity                                    | [`core/outbox-coalescing.ts`](../src/lib/offline/core/outbox-coalescing.ts)                                                        |
+| Key/value meta + sync tokens                                                        | [`core/meta-store.ts`](../src/lib/offline/core/meta-store.ts)                                                                      |
+| Online/offline detection + snapshots                                                | [`core/browser-online.ts`](../src/lib/offline/core/browser-online.ts) (via [`use-connectivity`](../src/hooks/use-connectivity.ts)) |
+| Serialized flush runner + per-account registry                                      | [`core/connectivity-sync-runner.ts`](../src/lib/offline/core/connectivity-sync-runner.ts)                                          |
+| Cache-then-network bootstrap                                                        | [`core/use-hybrid-bootstrap.ts`](../src/lib/offline/core/use-hybrid-bootstrap.ts)                                                  |
+| Per-domain account session (`wgw.offline.<domain>.username`)                        | [`core/offline-account.ts`](../src/lib/offline/core/offline-account.ts)                                                            |
+| Generic conflict channel `createSyncConflictChannel<TId>()`                         | [`core/sync-conflicts.ts`](../src/lib/offline/core/sync-conflicts.ts)                                                              |
+| Sidebar connectivity pip (green online; amber + italic "Offline" line when offline) | [`workspace-app-layout.tsx`](../src/workspace-shell/src/workspace-app-layout.tsx) (`WorkspaceUserFooter`)                          |
+| Shared type contracts                                                               | [`core/types.ts`](../src/lib/offline/core/types.ts)                                                                                |
 
 The core defines Dexie **version 1** = `{ meta, outbox }`. Each domain owns a **non-overlapping version block** enforced at registration time (see [Version allocation](#version-allocation)). Contacts uses **2–9**, Notes **10–19**.
 
@@ -243,13 +243,13 @@ function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> 
 - **Reconnect flush:** use [`useOnReconnect`](../src/hooks/use-connectivity.ts) to flush and re-read the cache; bump a `syncRevision` counter so pending/failed hooks refresh (Notes and Docs pattern).
 - **Sync toast:** show a "Changes synced" toast when reconnect flush completes via [`use-offline-sync-toast.ts`](../src/lib/offline/use-offline-sync-toast.ts) (`useOfflineSyncToast` / `useOfflinePendingToast`). Notes: [`notes-app.tsx`](../src/notes-core/src/notes-app.tsx); Docs collab pending: [`docs-app.tsx`](../src/docs-core/src/docs-app.tsx).
 - **Conflicts:** create one `createSyncConflictChannel<string>()` instance; report from flush/save, set the listener from your screen, and resolve in a modal. Docs collab save failures after CRDT re-merge attempt use [`docs-sync-conflicts.ts`](../src/lib/offline/docs/docs-sync-conflicts.ts) and [`docs-conflict-dialog.tsx`](../src/text-editor-core/docs-collab/docs-conflict-dialog.tsx) (Keep mine / Use server).
-- **Pending badge:** poll your "pending" selector and render a dot. Docs home shows amber badges on drive rows only while body auto-sync or collab/outbox flush is pending — not a green "available offline" dot when synced (`drive-browser` optional props).
+- **Pending badge:** poll your "pending" selector and render a dot in `--color-sync-pending` (blue; amber stays reserved for offline and warnings). Docs home shows these badges on drive rows only while body auto-sync or collab/outbox flush is pending — not a green "available offline" dot when synced (`drive-browser` optional props).
 - **Retry callout:** Docs collab wires [`useDocsCollabFailedSync`](../src/text-editor-core/docs-collab/use-docs-collab-failed-sync.ts) in [`docs-collab-workspace.tsx`](../src/text-editor-core/docs-collab/docs-collab-workspace.tsx) with `saveNow` retry.
 - **Body auto-sync:** Docs runs progressive home-list hydration (`docs-body-sync.ts`) and uses Dexie `docs_availability` (v21) as the auto-sync index.
 
 ### 6. Mount nothing extra for the shell indicator
 
-The sidebar account footer ([`WorkspaceUserFooter`](../src/workspace-shell/src/workspace-app-layout.tsx)) reads `useConnectivity()` and, while offline, puts an amber presence pip on the user avatar with an "Offline" tooltip — no per-app wiring needed.
+The sidebar account footer ([`WorkspaceUserFooter`](../src/workspace-shell/src/workspace-app-layout.tsx)) reads `useConnectivity()` and shows a green presence pip on the user avatar while online; while offline the pip turns amber and the username line reads _Offline_ — no per-app wiring needed. There is deliberately no other offline indicator.
 
 ## Outbox coalescing
 

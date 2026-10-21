@@ -103,7 +103,7 @@ function selectTwoItems(viewMode: "list" | "grid") {
 }
 
 describe("DocsHomePane offline badges", () => {
-  it("shows amber pending badge but not green available badge", () => {
+  it("shows blue pending badge but not green available badge", () => {
     render(
       <TooltipProvider>
         <DocsHomePane
