@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
@@ -59,6 +60,8 @@ type WorkspaceUserFooterProps = {
   /** Optional second line (e.g. email) under the display name. */
   detailLine?: string;
   onLogoutClick?: () => void;
+  /** Force connectivity state (Storybook/tests). When omitted, uses {@link useConnectivity}. */
+  online?: boolean;
 };
 
 type WorkspaceSidebarToggleProps = {
@@ -132,8 +135,11 @@ export function WorkspaceUserFooter({
   initials,
   detailLine,
   onLogoutClick,
+  online: onlineOverride,
 }: WorkspaceUserFooterProps) {
-  const { online } = useConnectivity();
+  const { online: hookOnline } = useConnectivity();
+  const online = onlineOverride ?? hookOnline;
+  const connectivityAnnouncement = useConnectivityAnnouncement(online);
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
   const trimmedInitials = initials.trim();
@@ -147,7 +153,12 @@ export function WorkspaceUserFooter({
       {/* Green = online; amber is the shared "not synced yet" mark (also the pending-save pip). */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex-1 min-w-0" data-connectivity={connectivityLabel}>
+          {/* Focusable so keyboard users reach the tooltip; the state is also in the avatar name. */}
+          <div
+            className="workspace-app-layout__user-identity"
+            data-connectivity={connectivityLabel}
+            tabIndex={0}
+          >
             <UserAvatar
               displayName={avatarName}
               subtitle={trimmedDetailLine || undefined}
@@ -158,6 +169,9 @@ export function WorkspaceUserFooter({
         </TooltipTrigger>
         <TooltipContent>{online ? "Online" : "Offline"}</TooltipContent>
       </Tooltip>
+      <span role="status" className="sr-only">
+        {connectivityAnnouncement}
+      </span>
       <IconButton
         label="Log out"
         icon={<LogOut />}
@@ -167,6 +181,20 @@ export function WorkspaceUserFooter({
       />
     </div>
   );
+}
+
+/** Announces connectivity flips after mount (not the initial state). */
+function useConnectivityAnnouncement(online: boolean): string {
+  const [announcement, setAnnouncement] = useState("");
+  const previousOnline = useRef(online);
+
+  useEffect(() => {
+    if (previousOnline.current === online) return;
+    previousOnline.current = online;
+    setAnnouncement(online ? "Back online" : "Offline");
+  }, [online]);
+
+  return announcement;
 }
 
 export type WorkspaceSidebarSettingsItem = {

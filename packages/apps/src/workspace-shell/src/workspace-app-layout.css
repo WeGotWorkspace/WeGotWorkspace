@@ -52,6 +52,8 @@
 .workspace-app-layout__user-footer {
   @apply py-4 md:py-6 flex items-center gap-2 shrink-0 border-t;
   padding-inline: var(--app-sidebar-padding-x, 1rem);
+  /* Punch the presence pip out of the sidebar wash, not the main surface. */
+  --user-avatar-presence-ring: var(--app-sidebar-bg, var(--workspace-sidebar-surface));
   color: var(
     --workspace-user-footer-text-color,
     color-mix(in oklab, var(--workspace-foreground) 70%, transparent)
@@ -60,6 +62,15 @@
     --workspace-user-footer-border-color,
     color-mix(in oklab, var(--workspace-foreground) 10%, transparent)
   );
+}
+
+.workspace-app-layout__user-identity {
+  @apply flex-1 min-w-0 rounded-md;
+}
+
+.workspace-app-layout__user-identity:focus-visible {
+  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
+  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
 }
 
 .workspace-sidebar-account-footer {

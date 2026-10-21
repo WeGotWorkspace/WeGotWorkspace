@@ -129,3 +129,27 @@ export const AccountFooterWithoutSettings: Story = {
     await expect(canvas.getByRole("button", { name: "Log out" })).toBeTruthy();
   },
 };
+
+export const AccountFooterOnline: Story = {
+  render: () => (
+    <div className="w-64 border">
+      <WorkspaceUserFooter name="Demo User" initials="DU" detailLine="demo.user" online />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("img", { name: "Demo User avatar, online" })).toBeTruthy();
+  },
+};
+
+export const AccountFooterOffline: Story = {
+  render: () => (
+    <div className="w-64 border">
+      <WorkspaceUserFooter name="Demo User" initials="DU" detailLine="demo.user" online={false} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("img", { name: "Demo User avatar, offline" })).toBeTruthy();
+  },
+};
