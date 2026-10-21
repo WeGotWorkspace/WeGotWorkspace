@@ -1,7 +1,11 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { wgwHasAuthenticatedSession } from "@/lib/api/wgw/http";
+import {
+  wgwHasAuthenticatedSession,
+  wgwIsGuestSession,
+  wgwRedirectGuestShareReauth,
+} from "@/lib/api/wgw/http";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 
 vi.mock("@/lib/api/wgw/http", () => ({
@@ -15,6 +19,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(true);
+  vi.mocked(wgwIsGuestSession).mockReturnValue(false);
+  vi.mocked(wgwRedirectGuestShareReauth).mockReturnValue(false);
 });
 
 function renderBootstrapError(message: string) {
@@ -142,5 +148,47 @@ describe("WorkspaceLiveAppShell", () => {
     expect(screen.getByText("Could not load installer")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
     expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("keeps the error panel when an expired guest share session is gone", () => {
+    vi.stubEnv("DEV", false);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, pathname: "/drive", assign });
+    vi.mocked(wgwIsGuestSession).mockReturnValue(true);
+    const shell = (phase: "loading" | "error") => (
+      <WorkspaceLiveAppShell
+        phase={phase}
+        error={phase === "error" ? new Error("Share session expired. Open the link again.") : null}
+        retry={() => undefined}
+        errorTitle="Could not load files"
+        successVersion={0}
+        render={() => <div>workspace chrome</div>}
+      />
+    );
+
+    const { rerender } = render(shell("loading"));
+    // wgwEnsureSession() clears an expired guest before the shell sees the error.
+    vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
+    vi.mocked(wgwIsGuestSession).mockReturnValue(false);
+    rerender(shell("error"));
+
+    expect(screen.getByText("Could not load files")).toBeTruthy();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("sends a guest without a share token to login when reauth cannot return", () => {
+    vi.stubEnv("DEV", false);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, pathname: "/drive", assign });
+    vi.mocked(wgwIsGuestSession).mockReturnValue(true);
+    vi.mocked(wgwRedirectGuestShareReauth).mockImplementation(() => {
+      vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
+      return false;
+    });
+
+    renderBootstrapError("Request failed (401)");
+
+    expect(wgwRedirectGuestShareReauth).toHaveBeenCalled();
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining("/login"));
   });
 });
