@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 import { DRIVE_DOCS_EDITOR_STORY_FILES } from "@/drive-core/src/drive-docs-story-files";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
@@ -120,5 +120,48 @@ export const ListViewSelectionMode: Story = {
     await userEvent.pointer({ keys: "[MouseRight>]", target: row });
     await expect(row).toHaveAttribute("data-selection-mode", "true");
     await expect(canvasElement.querySelector(".drive-list-row__checkbox")).toBeTruthy();
+  },
+};
+
+/** Dark tokens live on `:root[data-theme="dark"]`, so the story flips <html>. */
+function DarkThemeRoot({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.dataset.theme;
+    root.dataset.theme = "dark";
+    return () => {
+      if (previous === undefined) delete root.dataset.theme;
+      else root.dataset.theme = previous;
+    };
+  }, []);
+  return children;
+}
+
+/** The accent fill is light in the dark theme; the checkmark must stay dark on it. */
+export const ListViewSelectionModeDark: Story = {
+  name: "List view selection mode (dark theme)",
+  tags: ["vitest-ci"],
+  args: { preset: "default", viewMode: "list" },
+  decorators: [
+    (Story) => (
+      <DarkThemeRoot>
+        <Story />
+      </DarkThemeRoot>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = canvas.getByText("Studio Assets").closest("tr");
+    if (!row) throw new Error("Expected Studio Assets row");
+    await userEvent.pointer({ keys: "[MouseRight>]", target: row });
+    const icon = await waitFor(() => {
+      const found = canvasElement.querySelector<SVGElement>(
+        ".drive-selection-checkbox--selected .drive-selection-checkbox__icon",
+      );
+      if (!found) throw new Error("Expected a selected checkbox checkmark");
+      return found;
+    });
+    // `--scheme-on-ink` in the dark theme, not a fixed white.
+    await expect(getComputedStyle(icon).color).toBe("rgb(17, 17, 17)");
   },
 };
