@@ -84,7 +84,7 @@ describe("flushNotesOutbox", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await db.meta.clear();
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
   });
 
   it("flushes a coalesced offline upsert once", async () => {

@@ -14,10 +14,9 @@ import {
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useWorkspaceSelectionPresentation } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
-import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { createTempNoteId, isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import {
   AUTOSAVE_WRITE_DEBOUNCE_MS,
-  createNoteSaveDebouncer,
   filterVisibleNotes,
   mapNotesWithBodyMarkdown,
   isValidNewTag,
@@ -33,10 +32,13 @@ import {
   persistBestEffort,
 } from "./notes-note-utils";
 import { resolveNotesCreateTarget } from "./notes-create-target";
+import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
+import type { NoteMetadataField } from "./notes-types";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import { noteAllowsStructureManage } from "./notes-structure-rights";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import { upsertNoteBodyPreviewInCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { writePendingLocalCreate } from "@/lib/offline/notes-temp-adoption";
 import { persistNoteKeepingSyncRace, persistNoteOrDropGone } from "./notes-persist-access";
 import { useNotesBatchActions } from "./use-notes-batch-actions";
 import { notebookSelectionEquals } from "./notes-notebook-select";
@@ -100,19 +102,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     if (pending) await pending.catch(() => undefined);
   }, []);
 
-  const persistOptimisticNote = useCallback(
-    (note: Note, pendingSync = true): Promise<void> => {
-      const username = readOfflineNotesUsername();
-      if (!username) return Promise.resolve();
-      const write = (async () => {
-        if (isLocalTempNoteId(note.id) && resolveNoteId(note.id) !== note.id) return;
-        await upsertNoteInCache(username, note, pendingSync);
-      })();
-      persistBestEffort(write);
-      return write;
-    },
-    [resolveNoteId],
-  );
+  const persistOptimisticNote = useCallback((note: Note, pendingSync = true) => {
+    const username = readOfflineNotesUsername();
+    if (username) persistBestEffort(upsertNoteInCache(username, note, pendingSync));
+  }, []);
 
   const dropGoneNote = useCallback(
     (noteId: string) => {
@@ -133,14 +126,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     const debouncer = debouncerRef.current;
     return () => {
       if (operations) {
-        debouncer.flushAll((note) => persistBestEffort(operations.upsertNote(note)));
+        debouncer.flushAll((note, save) => persistBestEffort(operations.upsertNote(note, save)));
       }
     };
   }, [operations]);
 
   useEffect(() => {
     if (wasOnlineRef.current && !online && operations) {
-      debouncerRef.current.flushAll((note) => persistBestEffort(operations.upsertNote(note)));
+      const debouncer = debouncerRef.current;
+      debouncer.flushAll((note, save) => persistBestEffort(operations.upsertNote(note, save)));
     }
     wasOnlineRef.current = online;
   }, [online, operations]);
@@ -161,10 +155,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   const updateAndPersistNote = useCallback(
     (noteId: string, updater: (note: Note) => Note, options?: { autoSaveToast?: boolean }) => {
       let updated: Note | undefined;
+      let fields: NoteMetadataField[] = [];
       setNotes((prev) =>
         prev.map((note) => {
           if (note.id !== noteId) return note;
           updated = updater(note);
+          fields = changedNoteMetadataFields(note, updated);
           return updated;
         }),
       );
@@ -175,11 +171,11 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         persistOptimisticNote(updated, true);
         if (operations) {
           const ops = operations;
-          const persist = (note: Note) => {
+          const persist = (note: Note, save: { fields: NoteMetadataField[] }) => {
             persistBestEffort(
               waitForInFlightCreate(note.id).then(() => {
                 const persistId = resolveNoteId(note.id);
-                return ops.upsertNote({ ...note, id: persistId }).then((saved) => {
+                return ops.upsertNote({ ...note, id: persistId }, save).then((saved) => {
                   setNotes((prev) =>
                     prev.map((row) =>
                       row.id === persistId || row.id === note.id
@@ -204,9 +200,9 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             );
           };
           if (online) {
-            debouncerRef.current.schedule(noteId, updated, persist);
+            debouncerRef.current.schedule(noteId, updated, persist, fields);
           } else {
-            persist(updated);
+            persist(updated, { fields });
           }
         }
       }
@@ -613,7 +609,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     [toggleNoteTag],
   );
   const updateNote = useCallback(
-    (id: string, patch: Partial<Note>) => {
+    (id: string, patch: Partial<Note>, options?: { autoSaveToast?: boolean }) => {
       // Metadata only (title/tags/notebook/starred). Body is owned by the collab
       // document and never travels through the Notes upsert path.
       updateAndPersistNote(
@@ -623,7 +619,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
           ...patch,
           ...(patch.title !== undefined ? { date: new Date().toISOString() } : {}),
         }),
-        { autoSaveToast: true },
+        { autoSaveToast: options?.autoSaveToast ?? true },
       );
     },
     [updateAndPersistNote],
@@ -688,38 +684,39 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     openMobileDetail();
     // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
     if (operations) {
-      void persistOptimisticNote(note, true);
-      const persist = operations.upsertNote(note).then((saved) => {
-        if (saved.id !== id) {
-          noteIdRemapRef.current.set(id, saved.id);
-          debouncerRef.current.remapId(id, saved.id);
-          setNotes((prev) =>
-            prev.map((row) =>
-              row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
-            ),
-          );
-          setActiveId((current) => (current === id ? saved.id : current));
-          setSelectedIds((current) =>
-            current.some((rowId) => rowId === id)
-              ? current.map((rowId) => (rowId === id ? saved.id : rowId))
-              : current,
-          );
-        }
+      // Row and in-flight marker in one write, so another tab's healer cannot POST it too.
+      const username = readOfflineNotesUsername();
+      if (username) persistBestEffort(writePendingLocalCreate(username, note));
+      // Runs on onCreated (before the post-create sync) and again on resolve; idempotent.
+      const remap = (saved: Note) => {
+        if (saved.id === id) return;
+        noteIdRemapRef.current.set(id, saved.id);
+        debouncerRef.current.remapId(id, saved.id);
+        setNotes((prev) =>
+          prev.map((row) =>
+            row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
+          ),
+        );
+        setActiveId((current) => (current === id ? saved.id : current));
+        setSelectedIds((current) =>
+          current.some((rowId) => rowId === id)
+            ? current.map((rowId) => (rowId === id ? saved.id : rowId))
+            : current,
+        );
+      };
+      const persist = operations.upsertNote(note, { onCreated: remap }).then((saved) => {
+        remap(saved);
         if (isLocalTempNoteId(saved.id)) {
           showMutationError(L.createNoteFailedMessage(target.notebook));
           return saved;
         }
-        persistOptimisticNote(saved, false);
+        // No cache write: the adoption cached the server note, maybe with an early title.
         return saved;
       });
       createInFlightRef.current.set(id, persist);
       void persist
-        .catch(() => {
-          showMutationError(L.syncFailedMessage);
-        })
-        .finally(() => {
-          createInFlightRef.current.delete(id);
-        });
+        .catch(() => showMutationError(L.syncFailedMessage))
+        .finally(() => createInFlightRef.current.delete(id));
     }
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [

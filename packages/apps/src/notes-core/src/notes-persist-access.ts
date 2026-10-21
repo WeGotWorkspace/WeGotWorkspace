@@ -1,5 +1,5 @@
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 
 export const NOTES_ACCESS_LOST_MESSAGE =
   "You no longer have access to this note. Unsaved edits were not stored.";

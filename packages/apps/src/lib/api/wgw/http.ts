@@ -7,6 +7,10 @@ import { readLoggedOutMarker, setLoggedOutMarker } from "@/lib/api/wgw/logged-ou
 import { appendRefreshFailure, appendSessionCleared } from "@/lib/api/wgw/session-debug";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import * as offlineWipe from "@/lib/offline/core/offline-wipe";
+import { tunnelMutatingHttpMethod } from "@/lib/api/wgw/http-method-tunnel";
+import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
+
+export { WgwSessionRenewalError };
 
 /** When true, mail/notes routes load from WeGotWorkspace instead of mock adapters. */
 export function wgwLiveApiEnabled(): boolean {
@@ -51,6 +55,8 @@ let storageWriteFailed = false;
 let refreshFailureCount = 0;
 let refreshFailureWindowStartedAt: number | null = null;
 let refreshRejectedByAuth = false;
+/** Last refresh attempt never reached the server (network error while `navigator.onLine`). */
+let refreshUnreachable = false;
 let legacySwept = false;
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
@@ -178,6 +184,7 @@ function isExpiredAt(timestamp: number | null, marginSec: number): boolean {
 function resetRefreshFailures(): void {
   refreshFailureCount = 0;
   refreshFailureWindowStartedAt = null;
+  refreshUnreachable = false;
 }
 
 function noteRefreshFailure(): void {
@@ -612,7 +619,9 @@ export async function wgwEnsureSession(): Promise<void> {
     }
     const refreshed = await wgwTryRefresh();
     if (refreshed && accessToken) return;
-    if (!readBrowserOnline() && accessToken) return;
+    // Unreachable is offline: the request fails as a network error and hybrid reads fall back to cache.
+    if (accessToken && (!readBrowserOnline() || refreshUnreachable)) return;
+    if (accessToken) throw new WgwSessionRenewalError();
   }
 
   if (accessToken && !readBrowserOnline()) return;
@@ -639,7 +648,8 @@ function failRefresh(error: unknown): false {
     noteRefreshFailure();
     maybeClearOnRetryCap();
   }
-  const reason = http !== null ? "http" : isFetchNetworkError(error) ? "network" : "error";
+  refreshUnreachable = http === null && isFetchNetworkError(error);
+  const reason = http !== null ? "http" : refreshUnreachable ? "network" : "error";
   appendRefreshFailure(reason, {
     status: http?.status ?? null,
     message: error instanceof Error ? error.message : null,
@@ -653,6 +663,7 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = withAuthRefreshLock(async () => {
+    refreshUnreachable = false;
     readTokensFromStorage();
     if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
     if (sessionKind !== "member") return false;
@@ -706,11 +717,10 @@ export async function wgwEnsureFreshAccessToken(): Promise<string | null> {
   if (accessToken && !isAccessTokenExpired()) return accessToken;
 
   if (sessionKind === "member") {
-    if (readBrowserOnline()) {
+    // wgwEnsureSession() just found the server unreachable: do not post the refresh twice.
+    if (readBrowserOnline() && !refreshUnreachable) {
       const refreshed = await wgwTryRefresh();
       if (refreshed && accessToken) return accessToken;
-    } else if (accessToken) {
-      return accessToken;
     }
   }
 
@@ -729,24 +739,6 @@ export async function wgwAwaitSessionRefreshForReconnect(): Promise<void> {
   } catch {
     // Reconnect flows should proceed and let callers surface retry UI.
   }
-}
-
-const TUNNELED_HTTP_METHODS = new Set(["PUT", "PATCH", "DELETE"]);
-
-/**
- * Some Apache/nginx frontends redirect PUT/PATCH/DELETE with 301/302, which browsers
- * follow as GET. Tunnel through POST + Symfony/Laravel method override instead.
- */
-function tunnelMutatingHttpMethod(init: RequestInit): RequestInit {
-  const method = (init.method ?? "GET").toUpperCase();
-  if (!TUNNELED_HTTP_METHODS.has(method)) {
-    return init;
-  }
-
-  const headers = new Headers(init.headers);
-  headers.set("X-HTTP-Method-Override", method);
-
-  return { ...init, method: "POST", headers };
 }
 
 export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -770,6 +762,8 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
   if (res.status === 401) {
     const ok = await wgwTryRefresh(token);
     if (ok && accessToken) res = await doOnce(accessToken);
+    // Refresh failed but was not rejected: the session stands, so this 401 is not a sign-out.
+    else if (accessToken && sessionKind === "member") throw new WgwSessionRenewalError();
   }
   return res;
 }

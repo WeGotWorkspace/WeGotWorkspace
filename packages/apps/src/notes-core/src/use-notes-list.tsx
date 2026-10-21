@@ -5,7 +5,7 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { afterViewTransition } from "@/lib/view-transition";
-import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import {
   filterNotesByHiddenNotebooks,
   filterVisibleNotes,

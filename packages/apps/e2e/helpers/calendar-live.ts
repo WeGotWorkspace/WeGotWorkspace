@@ -87,7 +87,7 @@ export async function calendarCacheReady(page: Page): Promise<boolean> {
 }
 
 export async function expectCalendarOffline(page: Page): Promise<void> {
-  await expect(page.getByText(/Offline — changes sync when reconnected/i)).toBeVisible({
+  await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.locator(".calendar-workspace")).toBeVisible();
@@ -95,7 +95,7 @@ export async function expectCalendarOffline(page: Page): Promise<void> {
 }
 
 export async function expectCalendarOnline(page: Page): Promise<void> {
-  await expect(page.getByText(/Offline — changes sync when reconnected/i)).toHaveCount(0, {
+  await expect(page.locator('[data-connectivity="online"]')).toBeVisible({
     timeout: 20_000,
   });
   await expect(page.locator(".calendar-workspace")).toBeVisible();

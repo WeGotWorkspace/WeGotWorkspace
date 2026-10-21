@@ -63,7 +63,7 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
-import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -211,6 +211,7 @@ export function NotesWorkspace({
     toggleNoteTag,
     addNoteTag,
     applyLocalBodyMarkdown,
+    updateNote,
     setNotes,
     groups,
     canManageNotebooks,
@@ -645,6 +646,12 @@ export function NotesWorkspace({
                 onAutoFocusTitleConsumed={() => setFocusTitleAfterCreate(false)}
                 onTitleChange={
                   noteReadOnly ? undefined : (title) => projectNoteTitle(setNotes, active.id, title)
+                }
+                onTitleEdit={
+                  // Saved like a collab title: no "Saved" toast.
+                  noteReadOnly
+                    ? undefined
+                    : (title) => updateNote(active.id, { title }, { autoSaveToast: false })
                 }
                 tags={active.tags}
                 availableTags={tags.filter(isValidNewTag)}

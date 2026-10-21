@@ -77,6 +77,7 @@ describe("useNotesController empty create persist", () => {
         body: [""],
         wordCount: 0,
       }),
+      expect.objectContaining({ onCreated: expect.any(Function) }),
     );
     expect(operations.upsertNote.mock.calls[0]?.[0]).not.toHaveProperty("title");
 

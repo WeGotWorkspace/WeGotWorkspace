@@ -52,6 +52,9 @@ export type NotesUIData = {
 export type DeleteNotebookAction =
   { kind: "move"; target: string } | { kind: "purge" } | { kind: "purge-if-empty" };
 
+/** Metadata a single edit can change. */
+export type NoteMetadataField = "title" | "tags" | "starred" | "notebook";
+
 /**
  * Backend-agnostic notes operations consumed by notes UI/controller.
  * Implement this for any provider (WGW, custom API, local-only, etc).
@@ -59,7 +62,18 @@ export type DeleteNotebookAction =
 export type NotesAPIOperations = {
   upsertNote: (
     note: Note,
-    opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+    opts?: {
+      signal?: AbortSignal;
+      tagsAdd?: string[];
+      tagsRemove?: string[];
+      /** A `local-*` create got its server id. Fires before follow-up sync work. */
+      onCreated?: (saved: Note) => void;
+      /**
+       * The fields this edit changed, decided when the edit was made. Only these
+       * are sent. Without it, the note is diffed against the cached copy.
+       */
+      fields?: readonly NoteMetadataField[];
+    },
   ) => Promise<Note>;
   deleteNote: (
     note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,

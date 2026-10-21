@@ -29,66 +29,7 @@ export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void
 /** Delay after the last edit before flushing a debounced API save (ms). */
 export const AUTOSAVE_WRITE_DEBOUNCE_MS = 1200;
 
-type PersistFn = (note: Note) => void;
-
-/**
- * Per-note debounced save scheduler.
- *
- * Call `schedule(noteId, note, persist)` on each edit; the actual persist call
- * fires only after `delayMs` of inactivity for that note.
- * Call `flushAll(persist)` to immediately fire any pending saves (e.g. on unmount).
- */
-export function createNoteSaveDebouncer(delayMs: number) {
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
-  const pending = new Map<string, { note: Note; persist: PersistFn }>();
-
-  function arm(noteId: string, delay: number): void {
-    const existing = timers.get(noteId);
-    if (existing) clearTimeout(existing);
-    const timer = setTimeout(() => {
-      const p = pending.get(noteId);
-      if (p) {
-        p.persist(p.note);
-        pending.delete(noteId);
-      }
-      timers.delete(noteId);
-    }, delay);
-    timers.set(noteId, timer);
-  }
-
-  function schedule(noteId: string, note: Note, persist: PersistFn): void {
-    pending.set(noteId, { note, persist });
-    arm(noteId, delayMs);
-  }
-
-  function flushAll(persist: PersistFn): void {
-    for (const timer of timers.values()) {
-      clearTimeout(timer);
-    }
-    for (const row of pending.values()) {
-      persist(row.note);
-    }
-    timers.clear();
-    pending.clear();
-  }
-
-  /** Move a pending save onto the remapped server id so title/metadata PATCH hits the UID. */
-  function remapId(fromId: string, toId: string): void {
-    if (fromId === toId) return;
-    const row = pending.get(fromId);
-    const timer = timers.get(fromId);
-    if (timer) {
-      clearTimeout(timer);
-      timers.delete(fromId);
-    }
-    if (!row) return;
-    pending.delete(fromId);
-    pending.set(toId, { note: { ...row.note, id: toId }, persist: row.persist });
-    arm(toId, delayMs);
-  }
-
-  return { schedule, flushAll, remapId };
-}
+export { createNoteSaveDebouncer } from "@/notes-core/src/notes-save-debouncer";
 
 export function plainTextFromBody(body: string[] | undefined): string {
   return markdownToPlainText(noteBodyToMarkdown(body ?? []));
