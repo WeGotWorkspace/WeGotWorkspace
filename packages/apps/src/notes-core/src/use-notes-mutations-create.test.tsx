@@ -131,6 +131,7 @@ describe("useNotesMutations createNote", () => {
         scope: "group",
         groupSlug: "eng",
       }),
+      expect.objectContaining({ onCreated: expect.any(Function) }),
     );
   });
 
@@ -190,6 +191,7 @@ describe("useNotesMutations createNote", () => {
         notebook: "Drafts",
         notebookId: "drafts",
       }),
+      expect.objectContaining({ onCreated: expect.any(Function) }),
     );
   });
 });

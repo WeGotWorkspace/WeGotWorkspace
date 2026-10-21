@@ -1075,6 +1075,7 @@ describe("useNotesController create from Starred and Archive", () => {
           notebook: "Drafts",
           tags: [],
         }),
+        expect.objectContaining({ onCreated: expect.any(Function) }),
       );
       const payload = upsertNote.mock.calls[0]?.[0] as Note;
       expect(payload.starred).toBeFalsy();

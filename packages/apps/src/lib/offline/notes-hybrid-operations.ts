@@ -25,14 +25,13 @@ import {
   readBrowserOnline,
 } from "@/lib/offline/core/browser-online";
 import {
+  adoptServerNoteInCache,
   createTempNoteId,
   dropLocalNoteAfterServerGone,
   isLocalTempNoteId,
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
-  listPendingNoteIds,
-  notesOutboxNoteId,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
   removeNotebookFromCache,
@@ -44,6 +43,8 @@ import {
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import { enqueueOrphanPendingLocalCreates } from "@/lib/offline/notes/notes-orphan-heal";
+import { baseUpdatedAt, metadataSelection } from "@/lib/offline/notes/notes-metadata-selection";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
@@ -129,12 +130,6 @@ function cachedMoveTarget(
   };
 }
 
-function baseUpdatedAt(note: Note): string | undefined {
-  if (note.etag) return note.etag;
-  if (note.updatedAt) return note.updatedAt;
-  return note.date !== "—" ? note.date : undefined;
-}
-
 function applyNoteUpdate(existing: Note, patch: Note): Note {
   const { etag: patchEtag, ...rest } = patch;
   return {
@@ -159,6 +154,8 @@ function tempNoteIdForCreate(existing: Note | undefined, note: Note): string | u
   if (note.id?.trim()) return undefined;
   return createTempNoteId();
 }
+
+type NoteUpsertOpts = Parameters<NotesAPIOperations["upsertNote"]>[1];
 
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
 
@@ -196,54 +193,6 @@ async function resolveCachedNote(
   }
 }
 
-function sameTags(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((tag, index) => tag === right[index]);
-}
-
-function notebookMoved(previous: Note, note: Note): boolean {
-  const prevId = previous.notebookId?.trim() ?? "";
-  const nextId = note.notebookId?.trim() ?? "";
-  if (prevId !== "" && nextId !== "" && prevId !== nextId) return true;
-  const prevName = previous.notebook.trim();
-  const nextName = note.notebook.trim();
-  return prevName !== "" && nextName !== "" && prevName !== nextName;
-}
-
-/** Which snapshot fields this write is allowed to put on the PATCH. */
-function metadataSelection(
-  previous: Note | undefined,
-  note: Note,
-  hasDelta: boolean,
-): {
-  includeTitle: boolean;
-  includeTags: boolean;
-  includeStarred: boolean;
-  includeNotebook: boolean;
-} {
-  if (isLocalTempNoteId(note.id)) {
-    return {
-      includeTitle: note.title !== undefined,
-      includeTags: !hasDelta,
-      includeStarred: note.starred !== undefined,
-      includeNotebook: false,
-    };
-  }
-  if (!previous) {
-    return {
-      includeTitle: false,
-      includeTags: false,
-      includeStarred: false,
-      includeNotebook: false,
-    };
-  }
-  return {
-    includeTitle: note.title !== previous.title,
-    includeTags: !hasDelta && !sameTags(previous.tags, note.tags),
-    includeStarred: (note.starred ?? false) !== (previous.starred ?? false),
-    includeNotebook: notebookMoved(previous, note),
-  };
-}
-
 function tagDeltaFromOpts(opts?: {
   tagsAdd?: string[];
   tagsRemove?: string[];
@@ -274,23 +223,6 @@ async function queueOfflineUpsert(
     metadataSelection(previous, note, !!delta),
   );
   return note;
-}
-
-/** Heal pending local-* rows that have no outbox so flush can POST them. */
-async function enqueueOrphanPendingLocalCreates(username: string): Promise<void> {
-  const pendingIds = await listPendingNoteIds(username);
-  if (pendingIds.length === 0) return;
-  const queued = new Set(
-    (await listOutboxMutations(username))
-      .map((row) => notesOutboxNoteId(row))
-      .filter((id): id is string => !!id),
-  );
-  for (const id of pendingIds) {
-    if (!isLocalTempNoteId(id) || queued.has(id)) continue;
-    const note = await resolveCachedNote(username, id);
-    if (!note) continue;
-    await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), note.id);
-  }
 }
 
 async function queueOfflineDelete(
@@ -372,9 +304,8 @@ async function adoptServerCreatedNote(
       savedNoteId: saved.id,
       archived: saved.archived,
     });
-    await removeNoteFromCache(username, localId);
   }
-  await upsertNoteInCache(username, saved, false);
+  await adoptServerNoteInCache(username, localId, saved);
 }
 
 function groupSlugOpts(
@@ -394,7 +325,7 @@ async function createLocalTempNoteOnline(
   username: string,
   note: Note,
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
-  opts?: { signal?: AbortSignal },
+  opts?: NoteUpsertOpts,
 ): Promise<Note> {
   const saved = await createNoteItem(
     wgwNoteUpsertFromNote(note, { starred: !!note.starred, archived: !!note.archived }),
@@ -404,6 +335,7 @@ async function createLocalTempNoteOnline(
     return queueOfflineUpsert(username, { ...saved, id: note.id }, note.id);
   }
   await adoptServerCreatedNote(username, note.id, saved);
+  opts?.onCreated?.(saved);
   await runner.flush();
   return saved;
 }
@@ -412,7 +344,7 @@ async function upsertNoteOnline(
   username: string,
   note: Note,
   runner: ConnectivitySyncRunner<OutboxFlushResult>,
-  opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+  opts?: NoteUpsertOpts,
   previous?: Note,
 ): Promise<Note> {
   if (isLocalTempNoteId(note.id)) {

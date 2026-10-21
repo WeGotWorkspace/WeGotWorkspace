@@ -17,6 +17,7 @@ import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
+  adoptServerNoteInCache,
   dropLocalNoteAfterServerGone,
   isLocalTempNoteId,
   listOutboxMutations,
@@ -143,9 +144,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             savedNoteId: saved.id,
             archived: upsert.metadata.archived,
           });
-          await removeNoteFromCache(username, tempId);
         }
-        await upsertNoteInCache(username, saved, false);
+        await adoptServerNoteInCache(username, tempId ?? "", saved);
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =

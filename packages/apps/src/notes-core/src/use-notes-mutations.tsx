@@ -689,22 +689,25 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     // Persist immediately; an empty body is a valid VJOURNAL and must not DELETE.
     if (operations) {
       void persistOptimisticNote(note, true);
-      const persist = operations.upsertNote(note).then((saved) => {
-        if (saved.id !== id) {
-          noteIdRemapRef.current.set(id, saved.id);
-          debouncerRef.current.remapId(id, saved.id);
-          setNotes((prev) =>
-            prev.map((row) =>
-              row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
-            ),
-          );
-          setActiveId((current) => (current === id ? saved.id : current));
-          setSelectedIds((current) =>
-            current.some((rowId) => rowId === id)
-              ? current.map((rowId) => (rowId === id ? saved.id : rowId))
-              : current,
-          );
-        }
+      // Runs on onCreated (before the post-create sync) and again on resolve; idempotent.
+      const remap = (saved: Note) => {
+        if (saved.id === id) return;
+        noteIdRemapRef.current.set(id, saved.id);
+        debouncerRef.current.remapId(id, saved.id);
+        setNotes((prev) =>
+          prev.map((row) =>
+            row.id === id ? mergeCreatedNotePreservingLocalOptimistic(saved, row) : row,
+          ),
+        );
+        setActiveId((current) => (current === id ? saved.id : current));
+        setSelectedIds((current) =>
+          current.some((rowId) => rowId === id)
+            ? current.map((rowId) => (rowId === id ? saved.id : rowId))
+            : current,
+        );
+      };
+      const persist = operations.upsertNote(note, { onCreated: remap }).then((saved) => {
+        remap(saved);
         if (isLocalTempNoteId(saved.id)) {
           showMutationError(L.createNoteFailedMessage(target.notebook));
           return saved;
@@ -714,12 +717,8 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       });
       createInFlightRef.current.set(id, persist);
       void persist
-        .catch(() => {
-          showMutationError(L.syncFailedMessage);
-        })
-        .finally(() => {
-          createInFlightRef.current.delete(id);
-        });
+        .catch(() => showMutationError(L.syncFailedMessage))
+        .finally(() => createInFlightRef.current.delete(id));
     }
     show(L.toastNewNote, { icon: <Plus className="size-4" /> });
   }, [

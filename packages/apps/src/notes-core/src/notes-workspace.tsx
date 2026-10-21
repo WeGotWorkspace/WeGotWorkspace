@@ -211,6 +211,7 @@ export function NotesWorkspace({
     toggleNoteTag,
     addNoteTag,
     applyLocalBodyMarkdown,
+    updateNote,
     setNotes,
     groups,
     canManageNotebooks,
@@ -646,6 +647,7 @@ export function NotesWorkspace({
                 onTitleChange={
                   noteReadOnly ? undefined : (title) => projectNoteTitle(setNotes, active.id, title)
                 }
+                onTitleEdit={noteReadOnly ? undefined : (title) => updateNote(active.id, { title })}
                 tags={active.tags}
                 availableTags={tags.filter(isValidNewTag)}
                 acceptTag={isValidNewTag}

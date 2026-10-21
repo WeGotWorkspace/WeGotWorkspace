@@ -17,6 +17,11 @@ import {
   type OfflineNotebookRow,
   type OfflineNoteRow,
 } from "@/lib/offline/notes/notes-schema";
+import {
+  adoptedNoteIdFor,
+  readAdoptedNoteIds,
+  recordAdoptedNoteId,
+} from "@/lib/offline/notes/notes-adopted-ids";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import {
   enrichNote,
@@ -227,6 +232,37 @@ export async function readNotesBootstrapFromCache(
   };
 }
 
+/**
+ * Pending metadata must not wipe a server body that the local row never got
+ * (common for pre-optimistic-sync historical notes → “Untitled note” in list).
+ */
+function pendingRowOverServer(row: OfflineNoteRow, server: Note | undefined): OfflineNoteRow {
+  let pending: Note;
+  try {
+    pending = JSON.parse(row.data) as Note;
+  } catch {
+    return row;
+  }
+  if (server && !noteHasListableBody(pending) && noteHasListableBody(server)) {
+    return noteRow(
+      enrichNote({
+        ...pending,
+        body: server.body,
+        excerpt: server.excerpt,
+        wordCount: server.wordCount,
+        date: server.date !== "—" ? server.date : pending.date,
+      }),
+      true,
+    );
+  }
+  return noteRow(enrichNote(pending), true);
+}
+
+/**
+ * Replace the cached bootstrap in one transaction, so a write that lands in
+ * between cannot be cleared or put back. Adopted `local-*` ids are dropped:
+ * nothing would ever sync them, and their server note is already cached.
+ */
 export async function writeNotesBootstrapToCache(
   username: string,
   bootstrap: NotesAppBootstrap,
@@ -234,67 +270,70 @@ export async function writeNotesBootstrapToCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
   const books = notesNotebooksTable(db);
-  const pendingRows = await notes.filter((row) => row.pendingSync).toArray();
-  await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
   const collections = collectionsForCache(bootstrap);
-  await db.meta.put({
-    key: META_NOTEBOOK_COLLECTIONS,
-    value: JSON.stringify(collections),
-  });
-  if (bootstrap.data.groups !== undefined) {
-    await db.meta.put({
-      key: META_GROUPS,
-      value: JSON.stringify(bootstrap.data.groups),
-    });
-  }
   rememberOfflineNotesUsername(username);
-  await books.clear();
-  await books.bulkPut(
-    collections.map((collection) => ({
-      id: collection.id,
-      data: JSON.stringify(collection),
-    })),
-  );
-  await notes.clear();
-  const serverNotes = bootstrap.data.notes.map((note) => enrichNote(note));
-  await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
-  if (pendingRows.length > 0) {
+  await db.transaction("rw", [notes, books, db.meta], async () => {
+    const adopted = await readAdoptedNoteIds(db);
+    const pendingRows = await notes
+      .filter((row) => row.pendingSync && !adopted.has(row.id))
+      .toArray();
+    await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+    await db.meta.put({ key: META_NOTEBOOK_COLLECTIONS, value: JSON.stringify(collections) });
+    if (bootstrap.data.groups !== undefined) {
+      await db.meta.put({ key: META_GROUPS, value: JSON.stringify(bootstrap.data.groups) });
+    }
+    await books.clear();
+    await books.bulkPut(
+      collections.map((collection) => ({ id: collection.id, data: JSON.stringify(collection) })),
+    );
+    await notes.clear();
+    const serverNotes = bootstrap.data.notes
+      .filter((note) => !adopted.has(note.id))
+      .map((note) => enrichNote(note));
+    await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
     const serverById = new Map(serverNotes.map((note) => [note.id, note]));
-    // Pending metadata must not wipe a server body that the local row never got
-    // (common for pre-optimistic-sync historical notes → “Untitled note” in list).
-    const mergedPending = pendingRows.map((row) => {
-      let pending: Note;
-      try {
-        pending = JSON.parse(row.data) as Note;
-      } catch {
-        return row;
-      }
-      const server = serverById.get(row.id);
-      if (server && !noteHasListableBody(pending) && noteHasListableBody(server)) {
-        return noteRow(
-          enrichNote({
-            ...pending,
-            body: server.body,
-            excerpt: server.excerpt,
-            wordCount: server.wordCount,
-            date: server.date !== "—" ? server.date : pending.date,
-          }),
-          true,
-        );
-      }
-      return noteRow(enrichNote(pending), true);
-    });
-    await notes.bulkPut(mergedPending);
-  }
+    await notes.bulkPut(
+      pendingRows.map((row) => pendingRowOverServer(row, serverById.get(row.id))),
+    );
+  });
 }
 
+/** Skips a `local-*` id the server already adopted, so the temp row stays deleted. */
 export async function upsertNoteInCache(
   username: string,
   note: Note,
   pendingSync = false,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await notesNotesTable(db).put(noteRow(note, pendingSync));
+  const notes = notesNotesTable(db);
+  if (!isLocalTempNoteId(note.id)) {
+    await notes.put(noteRow(note, pendingSync));
+    return;
+  }
+  await db.transaction("rw", [notes, db.meta], async () => {
+    if (await adoptedNoteIdFor(db, note.id)) return;
+    await notes.put(noteRow(note, pendingSync));
+  });
+}
+
+/**
+ * The server accepted a `local-*` create as `saved`. Record the mapping, drop
+ * the temp row and cache the server note in one step.
+ */
+export async function adoptServerNoteInCache(
+  username: string,
+  localId: string,
+  saved: Note,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const notes = notesNotesTable(db);
+  await db.transaction("rw", [notes, db.meta], async () => {
+    if (localId && localId !== saved.id) {
+      await recordAdoptedNoteId(db, localId, saved.id);
+      await notes.delete(localId);
+    }
+    await notes.put(noteRow(saved, false));
+  });
 }
 
 /** One cached note, or null when the id is absent or the row is unreadable. */
@@ -312,14 +351,21 @@ export async function getNoteFromCache(username: string, noteId: string): Promis
 /**
  * Update the Dexie list-preview body without touching metadata `pendingSync`.
  * Body is owned by the collab document — this must not stamp unsynced metadata.
- * Does not insert a missing row so remapped `local-*` ids stay deleted.
+ * Does not insert a missing row so remapped `local-*` ids stay deleted, and
+ * drops a stale `local-*` row the server already adopted.
  */
 export async function upsertNoteBodyPreviewInCache(username: string, note: Note): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = notesNotesTable(db);
-  const existing = await table.get(note.id);
-  if (!existing) return;
-  await table.put(noteRow(note, existing.pendingSync));
+  await db.transaction("rw", [table, db.meta], async () => {
+    const existing = await table.get(note.id);
+    if (!existing) return;
+    if (isLocalTempNoteId(note.id) && (await adoptedNoteIdFor(db, note.id))) {
+      await table.delete(note.id);
+      return;
+    }
+    await table.put(noteRow(note, existing.pendingSync));
+  });
 }
 
 export async function upsertNotebookInCache(

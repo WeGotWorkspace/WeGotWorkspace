@@ -54,6 +54,8 @@ export type NoteDetailViewProps = {
    */
   storedTitle?: string | null;
   onTitleChange?: (title: string) => void;
+  /** Saves a title typed while no document is open. See {@link useNoteTitleField}. */
+  onTitleEdit?: (title: string) => void;
   titlePlaceholder?: string;
   /**
    * After create: land in the title. Stays applied across `noteId` remap
@@ -90,6 +92,7 @@ export function NoteDetailView({
   title = "",
   storedTitle,
   onTitleChange,
+  onTitleEdit,
   titlePlaceholder = "Title",
   autoFocusTitle = false,
   onAutoFocusTitleConsumed,
@@ -109,6 +112,7 @@ export function NoteDetailView({
     storedTitle,
     readOnly,
     onTitleChange,
+    onTitleEdit,
   });
   const titleReadOnly = titleField.onChange == null;
   const titleFieldId = useId();

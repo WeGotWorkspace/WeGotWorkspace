@@ -59,7 +59,13 @@ export type DeleteNotebookAction =
 export type NotesAPIOperations = {
   upsertNote: (
     note: Note,
-    opts?: { signal?: AbortSignal; tagsAdd?: string[]; tagsRemove?: string[] },
+    opts?: {
+      signal?: AbortSignal;
+      tagsAdd?: string[];
+      tagsRemove?: string[];
+      /** A `local-*` create got its server id. Fires before follow-up sync work. */
+      onCreated?: (saved: Note) => void;
+    },
   ) => Promise<Note>;
   deleteNote: (
     note: Pick<Note, "id" | "notebook" | "archived" | "groupSlug" | "scope">,
