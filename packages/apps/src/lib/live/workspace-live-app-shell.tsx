@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactElement } from "react";
 import {
   wgwHasAuthenticatedSession,
@@ -33,8 +33,10 @@ export function WorkspaceLiveAppShell({
   const normalized = message.toLowerCase();
   // `http.ts` alone decides sign-out: it clears the stored session when the server rejects
   // the refresh. A bootstrap error with a stored session is transient or a permission
-  // failure, and must not sign every installed PWA out.
-  const isSessionGone = phase === "error" && !wgwHasAuthenticatedSession();
+  // failure, and must not sign every installed PWA out. Only a session this page had,
+  // and lost, redirects: /install and other public pages load without one.
+  const hadSessionRef = useRef(wgwHasAuthenticatedSession());
+  const isSessionGone = phase === "error" && hadSessionRef.current && !wgwHasAuthenticatedSession();
   const isGuestShareAccessError =
     wgwIsGuestSession() &&
     (normalized.includes("(401)") ||
@@ -51,7 +53,7 @@ export function WorkspaceLiveAppShell({
       return;
     }
     // Re-read: a guest reauth without a share token has just cleared the session.
-    if (wgwHasAuthenticatedSession()) return;
+    if (!hadSessionRef.current || wgwHasAuthenticatedSession()) return;
     // Storybook and local Vite dev: stay on the page and show the error panel instead of a blank
     // iframe / broken `/login` navigation. Production keeps the redirect to the real login route.
     if (import.meta.env.DEV) return;
