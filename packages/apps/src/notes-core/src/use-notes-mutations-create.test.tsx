@@ -134,6 +134,36 @@ describe("useNotesMutations createNote", () => {
     );
   });
 
+  it("moves the open note to the server id before the post-create sync finishes", async () => {
+    const saved = { id: "ad0f28e6-0000-4000-8000-000000000001" } as Note;
+    const upsertNote = vi.fn(
+      (note: Note, opts?: { onCreated?: (created: Note) => void }): Promise<Note> => {
+        opts?.onCreated?.({ ...note, ...saved });
+        return new Promise<Note>(() => undefined);
+      },
+    );
+    const setActiveId = vi.fn();
+    const shell = buildShell({
+      operations: {
+        ...buildShell().operations,
+        upsertNote,
+      } as NotesShellState["operations"],
+    });
+
+    const { result } = renderHook(() =>
+      useNotesMutations({ shell, list: buildList({ setActiveId }) }),
+    );
+
+    await act(async () => {
+      result.current.createNote();
+    });
+
+    const remap = setActiveId.mock.calls
+      .map(([arg]) => arg)
+      .find((arg) => typeof arg === "function");
+    expect(remap?.(upsertNote.mock.calls[0]?.[0].id)).toBe(saved.id);
+  });
+
   it("creates in the selected personal notebook by id", async () => {
     const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
     const shell = buildShell({
