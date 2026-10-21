@@ -427,7 +427,7 @@ describe("wgw auth refresh behavior", () => {
       accessExpiresAt: Date.now() - 60_000,
       refreshExpiresAt: Date.now() + 60_000,
     });
-    const fetchMock = vi.fn(async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => {
       throw new TypeError("Failed to fetch");
     });
     globalThis.fetch = fetchMock as typeof fetch;

@@ -717,11 +717,10 @@ export async function wgwEnsureFreshAccessToken(): Promise<string | null> {
   if (accessToken && !isAccessTokenExpired()) return accessToken;
 
   if (sessionKind === "member") {
-    if (readBrowserOnline()) {
+    // wgwEnsureSession() just found the server unreachable: do not post the refresh twice.
+    if (readBrowserOnline() && !refreshUnreachable) {
       const refreshed = await wgwTryRefresh();
       if (refreshed && accessToken) return accessToken;
-    } else if (accessToken) {
-      return accessToken;
     }
   }
 
