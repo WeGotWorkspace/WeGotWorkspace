@@ -25,10 +25,11 @@ final class AuthenticateWgwApi
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $principal = $this->bearerAuth->authenticate($request->header('Authorization'));
+        $header = $request->header('Authorization');
+        $principal = $this->bearerAuth->authenticate($header);
         if ($principal === null) {
             // Unreadable keys are a server fault, as on /auth/refresh. A 401 here signs clients out.
-            if ($this->jwtConfig->signingConfig() === null) {
+            if ($this->bearerAuth->extractBearerToken($header) !== null && $this->jwtConfig->signingConfig() === null) {
                 throw new ApiHttpException(503, 'JWT key configuration missing.', 'config_error');
             }
             throw new ApiHttpException(401, 'Missing or invalid bearer token.', 'unauthorized');
