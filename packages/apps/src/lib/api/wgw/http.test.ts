@@ -23,6 +23,7 @@ import {
   wgwResetPasswordWithToken,
   wgwRedirectGuestShareReauth,
   wgwRefreshInFlight,
+  WgwSessionRenewalError,
 } from "./http";
 import { decodeJwtExp } from "./jwt-exp";
 
@@ -335,8 +336,9 @@ describe("wgw auth refresh behavior", () => {
 
   it("keeps session when retry cap hits with unknown refresh expiry", async () => {
     setOnline(true);
+    const staleAccess = makeJwt(Math.floor(Date.now() / 1_000) - 100);
     installSession({
-      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessToken: staleAccess,
       accessExpiresAt: Date.now() - 60_000,
     });
     globalThis.fetch = vi.fn(async () => {
@@ -344,9 +346,27 @@ describe("wgw auth refresh behavior", () => {
     }) as typeof fetch;
 
     for (let i = 0; i < 3; i += 1) {
-      await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+      await expect(wgwEnsureFreshAccessToken()).resolves.toBe(staleAccess);
     }
 
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+  });
+
+  it("treats an unreachable refresh as offline while navigator.onLine stays true", async () => {
+    setOnline(true);
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
+      accessExpiresAt: Date.now() - 60_000,
+      refreshExpiresAt: Date.now() + 60_000,
+    });
+    globalThis.fetch = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as typeof fetch;
+
+    const error = await wgwFetch("/admin/updates/apply", { method: "POST" }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(TypeError);
+    expect(String(error)).not.toContain("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(true);
   });
 
@@ -400,6 +420,51 @@ describe("wgw auth refresh behavior", () => {
     });
   });
 
+  it("does not surface an API 401 as sign-out when the refresh fails transiently", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) + 3_600),
+      accessExpiresAt: Date.now() + 3_600_000,
+      refreshExpiresAt: Date.now() + 86_400_000,
+    });
+    globalThis.fetch = vi.fn(async (input) => {
+      if (String(input).endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ error: "JWT key configuration missing." }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "Missing or invalid bearer token." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    await expect(wgwFetch("/admin/updates")).rejects.toBeInstanceOf(WgwSessionRenewalError);
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+  });
+
+  it("returns the API 401 once the server rejects the refresh", async () => {
+    installSession({
+      accessToken: makeJwt(Math.floor(Date.now() / 1_000) + 3_600),
+      accessExpiresAt: Date.now() + 3_600_000,
+      refreshExpiresAt: Date.now() + 86_400_000,
+    });
+    globalThis.fetch = vi.fn(async (input) => {
+      const error = String(input).endsWith("/auth/refresh")
+        ? "Invalid refresh token."
+        : "Missing or invalid bearer token.";
+      return new Response(JSON.stringify({ error }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const res = await wgwFetch("/admin/updates");
+
+    expect(res.status).toBe(401);
+    expect(wgwHasAuthenticatedSession()).toBe(false);
+  });
+
   it("records a non-401 refresh failure without clearing the session", async () => {
     installSession({
       accessToken: makeJwt(Math.floor(Date.now() / 1_000) - 100),
@@ -413,7 +478,10 @@ describe("wgw auth refresh behavior", () => {
       });
     }) as typeof fetch;
 
-    await expect(wgwEnsureFreshAccessToken()).rejects.toThrow("Missing auth session");
+    const error = await wgwEnsureFreshAccessToken().catch((e) => e);
+    expect(error).toBeInstanceOf(WgwSessionRenewalError);
+    expect(error).toMatchObject({ status: 503 });
+    expect(String(error)).not.toContain("Missing auth session");
     expect(wgwHasAuthenticatedSession()).toBe(true);
     expect(
       sessionDebugRing().find((record) => record.event === "wgw.refresh.failed"),

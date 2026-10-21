@@ -1,17 +1,34 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { wgwHasAuthenticatedSession } from "@/lib/api/wgw/http";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
 
 vi.mock("@/lib/api/wgw/http", () => ({
-  clearWgwSession: vi.fn(),
+  wgwHasAuthenticatedSession: vi.fn(() => true),
   wgwIsGuestSession: vi.fn(() => false),
   wgwRedirectGuestShareReauth: vi.fn(() => false),
 }));
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(true);
 });
+
+function renderBootstrapError(message: string) {
+  return render(
+    <WorkspaceLiveAppShell
+      phase="error"
+      error={new Error(message)}
+      retry={() => undefined}
+      errorTitle="Could not load admin"
+      successVersion={0}
+      render={() => <div>should not render</div>}
+    />,
+  );
+}
 
 describe("WorkspaceLiveAppShell", () => {
   it("mounts workspace UI during loading without a full-page spinner", () => {
@@ -63,5 +80,32 @@ describe("WorkspaceLiveAppShell", () => {
     expect(screen.queryByText("should not render")).toBeNull();
     screen.getByRole("button", { name: "Retry" }).click();
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    "Request failed (401)",
+    "Request failed (403)",
+    "Missing auth session. Sign in to continue.",
+  ])("keeps the session and stays on the page for %j while a session is stored", (message) => {
+    vi.stubEnv("DEV", false);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, pathname: "/admin", assign });
+
+    renderBootstrapError(message);
+
+    expect(screen.getByText("Could not load admin")).toBeTruthy();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login once the stored session is gone", () => {
+    vi.stubEnv("DEV", false);
+    vi.mocked(wgwHasAuthenticatedSession).mockReturnValue(false);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, pathname: "/admin", assign });
+
+    renderBootstrapError("Request failed (401)");
+
+    expect(screen.queryByText("Could not load admin")).toBeNull();
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining("/login"));
   });
 });
