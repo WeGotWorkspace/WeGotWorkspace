@@ -1,6 +1,5 @@
 import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
 import { IconButton } from "@/button/src/button";
-import { useConnectivity } from "@/hooks/use-connectivity";
 import { useNotificationsInbox } from "@/notifications-core/src/notifications-inbox-context";
 import { useInboxBadgePulseAttr } from "@/notifications-core/src/use-inbox-badge-pulse";
 import { SidebarLogo } from "@/sidebar-logo/src/sidebar-logo";
@@ -132,8 +131,6 @@ export function WorkspaceUserFooter({
   detailLine,
   onLogoutClick,
 }: WorkspaceUserFooterProps) {
-  // Offline sign-out cannot revoke the refresh token and discards unsynced changes.
-  const { online } = useConnectivity();
   const trimmedName = name.trim();
   const trimmedDetailLine = detailLine?.trim() ?? "";
   const trimmedInitials = initials.trim();
@@ -149,10 +146,9 @@ export function WorkspaceUserFooter({
         className="flex-1 min-w-0"
       />
       <IconButton
-        label={online ? "Log out" : "Log out is unavailable offline"}
+        label="Log out"
         icon={<LogOut />}
         onClick={handleLogout}
-        disabled={!online}
         variant="outline"
         size="md"
       />
