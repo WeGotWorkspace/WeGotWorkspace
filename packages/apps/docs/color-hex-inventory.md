@@ -1,6 +1,6 @@
 # Color hex inventory
 
-Leftover raw hex under `packages/apps` that are **not** We Got brand primitives (`--color-we-got-*`) or status token sources (`--color-error` / `--color-warning` / `--color-success` / `--color-info`).
+Leftover raw hex under `packages/apps` that are **not** We Got brand primitives (`--color-we-got-*`) or status token sources (`--color-error` / `--color-warning` / `--color-success` / `--color-info` / `--color-sync-pending`).
 
 This is a tech-debt queue from the brand color-token pass. It does **not** rewrite every site. Classify each row as:
 
@@ -12,7 +12,7 @@ This is a tech-debt queue from the brand color-token pass. It does **not** rewri
 
 Excluded from this list on purpose:
 
-- Primitive / status **source** hexes in `styles.css` (`#fff5e9`, `#003311`, `#0045ff`, …, `#b14242`, `#c98a1f`, `#3a8f5a`, `#a3c4e8`)
+- Primitive / status **source** hexes in `styles.css` (`#fff5e9`, `#003311`, `#0045ff`, …, `#b14242`, `#c98a1f`, `#3a8f5a`, `#a3c4e8`, `#2b65d0` / `#6d9cf2` sync-pending light / dark)
 - `#ffffff` / `#000000` used as Docs full-rail on-color, primary button fg, or gradient masks (component on-color, not a second palette)
 - Test / Storybook / mock fixture hexes (unless they define a shipped palette)
 

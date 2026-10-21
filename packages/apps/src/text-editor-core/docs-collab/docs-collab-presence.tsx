@@ -73,7 +73,7 @@ export function DocsCollabPresence({
                 fallback="..."
                 className="docs-collab-presence__avatar docs-collab-presence__avatar--connecting"
                 ariaLabel={connectingSummary}
-                presence="away"
+                presence="pending"
               />
             </span>
           </TooltipTrigger>

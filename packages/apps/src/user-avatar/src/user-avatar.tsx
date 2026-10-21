@@ -26,8 +26,12 @@ export {
  */
 export type UserAvatarSize = ControlSize | "2xl";
 
-/** Presence pip: online green, away amber, offline transparent + ink ring. */
-export type UserAvatarPresence = "online" | "offline" | "away";
+/**
+ * Presence pip: online green, away amber, offline transparent + ink ring.
+ * `pending` (blue, `--color-sync-pending`) is not a person's status: it marks a save
+ * or sync still in flight. Use it for that instead of `away`.
+ */
+export type UserAvatarPresence = "online" | "offline" | "away" | "pending";
 
 const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {
   xs: "user-avatar--xs",
@@ -160,7 +164,9 @@ export function UserAvatar({
         ? "away"
         : presence === "offline"
           ? "offline"
-          : null;
+          : presence === "pending"
+            ? "syncing"
+            : null;
   const avatarLabel =
     ariaLabel ??
     (presenceLabel ? `${resolvedName} avatar, ${presenceLabel}` : `${resolvedName} avatar`);

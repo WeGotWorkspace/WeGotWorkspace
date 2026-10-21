@@ -185,11 +185,11 @@
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy {
-  --tag-fg: var(--color-warning);
+  --tag-fg: var(--color-sync-pending);
 }
 
 .docs-workspace .workspace-detail-footer__meta-tag--busy .loading-spinner {
-  color: var(--color-warning);
+  color: var(--color-sync-pending);
 }
 
 .docs-workspace__header-actions .button.docs-workspace__source-toggle--active {
