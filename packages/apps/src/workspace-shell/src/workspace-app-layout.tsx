@@ -153,15 +153,15 @@ export function WorkspaceUserFooter({
       {/* Green = online; amber is the shared "not synced yet" mark (also the pending-save pip). */}
       <Tooltip>
         <TooltipTrigger asChild>
-          {/* Focusable so keyboard users reach the tooltip; the state is also in the avatar name. */}
           <div
             className="workspace-app-layout__user-identity"
             data-connectivity={connectivityLabel}
-            tabIndex={0}
           >
             <UserAvatar
               displayName={avatarName}
-              subtitle={trimmedDetailLine || undefined}
+              subtitle={
+                online ? trimmedDetailLine || undefined : <span className="italic">Offline</span>
+              }
               presence={online ? "online" : "away"}
               ariaLabel={`${avatarName} avatar, ${connectivityLabel}`}
             />

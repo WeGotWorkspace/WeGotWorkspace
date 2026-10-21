@@ -65,12 +65,7 @@
 }
 
 .workspace-app-layout__user-identity {
-  @apply flex-1 min-w-0 rounded-md;
-}
-
-.workspace-app-layout__user-identity:focus-visible {
-  @apply outline-none ring-2 ring-offset-1 ring-offset-transparent;
-  --tw-ring-color: color-mix(in oklab, currentColor 35%, transparent);
+  @apply flex-1 min-w-0;
 }
 
 .workspace-sidebar-account-footer {
