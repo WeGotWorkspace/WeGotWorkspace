@@ -5,8 +5,32 @@ import type { Note } from "@/lib/models/note";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 import { useNotesMutations } from "./use-notes-mutations";
-import { getNoteFromCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import {
+  getNoteFromCache,
+  upsertNoteInCache,
+  writeNotesBootstrapToCache,
+} from "@/lib/offline/notes-offline-store";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+import {
+  createHybridNotesOperations,
+  fetchNotesHybridBootstrap,
+} from "@/lib/offline/notes-hybrid-operations";
+import { createNoteItem, fetchNotesLiveBootstrap } from "@/lib/api/wgw/notes";
+import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
+
+vi.mock("@/lib/api/wgw/notes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/wgw/notes")>()),
+  createNoteItem: vi.fn(),
+  updateNoteItem: vi.fn(),
+  fetchNotesLiveBootstrap: vi.fn(),
+}));
+
+vi.mock("@/lib/offline/core/browser-online", () => ({
+  readBrowserOnline: vi.fn(() => true),
+  getConnectivitySnapshot: vi.fn(() => true),
+  isFetchNetworkError: vi.fn(() => false),
+  subscribeBrowserOnline: vi.fn(() => () => undefined),
+}));
 
 vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
@@ -197,6 +221,57 @@ describe("useNotesMutations createNote", () => {
     });
 
     expect((await getNoteFromCache(cacheUser, saved.id))?.title).toBe("Ha");
+    vi.mocked(readOfflineNotesUsername).mockReturnValue(null);
+  });
+
+  it("is not created by another tab's healer before this create's POST", async () => {
+    const raceUser = "create-race-user";
+    vi.mocked(readOfflineNotesUsername).mockReturnValue(raceUser);
+    const bootstrap = {
+      session: {
+        ...mockWorkspaceSession,
+        user: { ...mockWorkspaceSession.user, username: raceUser },
+      },
+      data: { notes: [], notebooks: ["Drafts"], tags: [] },
+    };
+    await writeNotesBootstrapToCache(raceUser, bootstrap, Date.now());
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(bootstrap);
+    vi.mocked(createNoteItem).mockImplementation(async (body) => ({
+      ...({ id: "unused" } as Note),
+      ...(body as Partial<Note>),
+      id: `server-${vi.mocked(createNoteItem).mock.calls.length}`,
+      category: "Note",
+      date: "2026-10-21T15:00:00.000Z",
+      excerpt: "",
+      body: [""],
+      notebook: "Drafts",
+      tags: [],
+      wordCount: 0,
+    }));
+    const hybrid = createHybridNotesOperations(raceUser);
+    let postsByHealer = -1;
+    const operations = {
+      ...hybrid,
+      upsertNote: async (note: Note, opts?: Parameters<typeof hybrid.upsertNote>[1]) => {
+        // Another tab loads Notes before this tab's create has reached its POST.
+        await fetchNotesHybridBootstrap();
+        postsByHealer = vi.mocked(createNoteItem).mock.calls.length;
+        return hybrid.upsertNote(note, opts);
+      },
+    };
+    const shell = buildShell({ operations: operations as NotesShellState["operations"] });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+    });
+    await vi.waitFor(() => expect(createNoteItem).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(postsByHealer).toBe(0);
+    expect(createNoteItem).toHaveBeenCalledOnce();
     vi.mocked(readOfflineNotesUsername).mockReturnValue(null);
   });
 

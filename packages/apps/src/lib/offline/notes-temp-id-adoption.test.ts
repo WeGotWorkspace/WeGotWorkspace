@@ -360,6 +360,17 @@ describe("writeNotesBootstrapToCache", () => {
   });
 });
 
+describe("an online create of a local-* note that is not cached", () => {
+  it("asks the server only to create it", async () => {
+    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
+
+    await createHybridNotesOperations(username).upsertNote(localNote);
+
+    expect(fetchNotesLiveBootstrap).not.toHaveBeenCalled();
+    expect(createNoteItem).toHaveBeenCalledOnce();
+  });
+});
+
 describe("a create still in flight in another tab", () => {
   const liveWithout = { ...bootstrap, data: { ...bootstrap.data, notes: [existing] } };
 
