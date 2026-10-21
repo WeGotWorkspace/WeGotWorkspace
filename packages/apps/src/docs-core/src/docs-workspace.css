@@ -246,6 +246,11 @@
   --text-editor-shadow-sheet: var(--sheet-shadow);
 }
 
+/* Dark theme: keep the letter, drop its shadow — it does not read on the near-black canvas. */
+:root[data-theme="dark"] .docs-workspace .text-editor {
+  --text-editor-shadow-sheet: none;
+}
+
 .docs-workspace__editor .text-editor-format-bar {
   flex-shrink: 0;
   box-sizing: border-box;

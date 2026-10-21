@@ -29,21 +29,9 @@
       ) {
         document.documentElement.classList.add("pwa-standalone");
       }
-      // Same resolution as `src/lib/theme-preference.ts`, before first paint.
-      (function () {
-        var stored = null;
-        try {
-          stored = localStorage.getItem("wgw.theme");
-        } catch (e) {}
-        var dark =
-          stored === "dark" ||
-          (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.dataset.theme = dark ? "dark" : "light";
-        document
-          .querySelector('meta[name="theme-color"]')
-          .setAttribute("content", dark ? "#1c1c1c" : "#fff5e9");
-      })();
     </script>
+    <!-- Theme before first paint. Runtime HTML loads the same file. -->
+    <script src="/assets/theme-boot.js"></script>
     <title>WeGotWorkspace</title>
     <link
       rel="preload"
