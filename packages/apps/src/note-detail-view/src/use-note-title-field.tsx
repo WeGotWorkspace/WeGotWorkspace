@@ -43,7 +43,13 @@ type UseNoteTitleFieldOptions = {
   /** Stored SUMMARY. Null means never set; "" means the user blanked it. */
   storedTitle?: string | null;
   readOnly: boolean;
+  /** Title shown changed, from a user edit or the document. Projection only. */
   onTitleChange?: (title: string) => void;
+  /**
+   * User edit while no document is open (a `local-*` note, or the document is
+   * still loading). Must save the title: nothing else will.
+   */
+  onTitleEdit?: (title: string) => void;
 };
 
 /**
@@ -83,7 +89,8 @@ export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
 
   const value = useSyncExternalStore(subscribe, getSnapshot, () => options.title);
 
-  const editable = !options.readOnly && (ydoc != null || options.onTitleChange != null);
+  const saveWithoutDoc = options.onTitleEdit ?? options.onTitleChange;
+  const editable = !options.readOnly && (ydoc != null || saveWithoutDoc != null);
   const onChange = editable
     ? (next: string) => {
         if (ydoc) {
@@ -91,7 +98,7 @@ export function useNoteTitleField(options: UseNoteTitleFieldOptions): {
           onLocalTitleEdit?.();
           return;
         }
-        options.onTitleChange?.(next);
+        saveWithoutDoc?.(next);
       }
     : undefined;
 

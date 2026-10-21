@@ -14,11 +14,10 @@ import {
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
+import { isLocalTempNoteId, NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
   dropLocalNoteAfterServerGone,
-  isLocalTempNoteId,
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
@@ -28,8 +27,8 @@ import {
   type NotesUpsertPayload,
   upsertNoteInCache,
   upsertNotebookInCache,
-  writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { adoptServerNoteInCache, adoptedServerNoteId } from "@/lib/offline/notes-temp-adoption";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {
@@ -50,7 +49,12 @@ async function flushOutboxNoteUpsert(
 ): Promise<{ saved: Note } | { conflict: true } | { gone: true }> {
   const createRequest = { ...metadataRequest, notebook: metadata.notebook, body: "" };
   if (isLocalTempNoteId(noteId)) {
-    return { saved: await createNoteItem(createRequest) };
+    const serverId = await adoptedServerNoteId(username, noteId);
+    if (!serverId) return { saved: await createNoteItem(createRequest) };
+    // Queued for a local-* id the server already created: PATCH that note.
+    // No notebook (not a move) and no etag: the base is the local row's date.
+    const { notebook: _notebook, notebookId: _notebookId, etag: _etag, ...patch } = metadataRequest;
+    return { saved: await updateNoteItem(serverId, { ...patch, id: serverId }) };
   }
   try {
     return { saved: await updateNoteItem(noteId, metadataRequest) };
@@ -134,7 +138,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           continue;
         }
         const saved = result.saved;
-        const tempId = upsert.tempNoteId;
+        // Rows queued before tempNoteId was always set still name the temp id as noteId.
+        const tempId = upsert.tempNoteId ?? (isLocalTempNoteId(noteId) ? noteId : undefined);
         if (tempId && tempId !== saved.id) {
           await migrateNoteCollabPersistenceAfterIdRemap({
             username,
@@ -143,9 +148,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
             savedNoteId: saved.id,
             archived: upsert.metadata.archived,
           });
-          await removeNoteFromCache(username, tempId);
         }
-        await upsertNoteInCache(username, saved, false);
+        await adoptServerNoteInCache(username, saved, tempId);
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =
@@ -225,11 +229,10 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
     }
   }
 
+  // Each row already updated the cache. Writing a read-back snapshot over the
+  // table would drop a note another writer saved meanwhile.
   const nextBootstrap = await readNotesBootstrapFromCache(username);
-  if (nextBootstrap) {
-    nextBootstrap.session = cached.session;
-    await writeNotesBootstrapToCache(username, nextBootstrap);
-  }
+  if (nextBootstrap) nextBootstrap.session = cached.session;
 
   return { stateMismatches, bootstrap: nextBootstrap };
 }

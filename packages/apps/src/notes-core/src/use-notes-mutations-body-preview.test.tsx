@@ -85,7 +85,7 @@ describe("applyLocalBodyMarkdown Dexie pendingSync", () => {
     toastApi.show.mockReset();
     toastApi.showError.mockReset();
     rememberOfflineNotesUsername(username);
-    await writeNotesBootstrapToCache(username, bootstrap);
+    await writeNotesBootstrapToCache(username, bootstrap, Date.now());
     Object.defineProperty(window, "matchMedia", {
       writable: true,
       value: vi.fn().mockImplementation((query: string) => ({

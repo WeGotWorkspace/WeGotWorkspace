@@ -1,5 +1,5 @@
 import { wgwApiBaseUrl, wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
-import { isLocalTempNoteId } from "@/lib/offline/notes-offline-store";
+import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { encodeFileRoomId } from "@/lib/rtc/room-id";
 import { isNotesPersistForbidden } from "@/notes-core/src/notes-persist-access";
 import type { DocsCollabUrls } from "@/text-editor-core/docs-collab";

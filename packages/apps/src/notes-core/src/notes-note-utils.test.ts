@@ -921,7 +921,7 @@ describe("createNoteSaveDebouncer", () => {
     schedule("n-1", sampleNote, persist);
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(sampleNote);
+    expect(persist).toHaveBeenCalledWith(sampleNote, { fields: [] });
   });
 
   it("resets the timer when schedule is called again before delay elapses", () => {
@@ -936,7 +936,7 @@ describe("createNoteSaveDebouncer", () => {
     expect(persist).not.toHaveBeenCalled();
     vi.advanceTimersByTime(200);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(updatedNote);
+    expect(persist).toHaveBeenCalledWith(updatedNote, { fields: [] });
   });
 
   it("persists the latest note value when rapid edits arrive", () => {
@@ -951,7 +951,7 @@ describe("createNoteSaveDebouncer", () => {
     schedule("n-1", v3, persist);
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith(v3);
+    expect(persist).toHaveBeenCalledWith(v3, { fields: [] });
   });
 
   it("tracks different notes independently", () => {
@@ -990,11 +990,23 @@ describe("createNoteSaveDebouncer", () => {
     const persist = vi.fn();
     const { schedule, remapId } = createNoteSaveDebouncer(500);
     const titled = { ...sampleNote, id: "local-temp", title: "Event" };
-    schedule("local-temp", titled, persist);
+    schedule("local-temp", titled, persist, ["title"]);
     remapId("local-temp", "n-server");
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith({ ...titled, id: "n-server" });
+    expect(persist).toHaveBeenCalledWith({ ...titled, id: "n-server" }, { fields: ["title"] });
+  });
+
+  it("sends the union of the fields the debounced edits changed", () => {
+    vi.useFakeTimers();
+    const persist = vi.fn();
+    const { schedule } = createNoteSaveDebouncer(500);
+    schedule("n-1", { ...sampleNote, tags: ["a"] }, persist, ["tags"]);
+    schedule("n-1", { ...sampleNote, tags: ["a"], title: "T" }, persist, ["title"]);
+    vi.advanceTimersByTime(500);
+    expect(persist).toHaveBeenCalledWith(expect.objectContaining({ title: "T" }), {
+      fields: ["title", "tags"],
+    });
   });
 });
 
