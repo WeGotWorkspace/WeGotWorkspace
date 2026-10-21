@@ -621,7 +621,7 @@ export async function wgwEnsureSession(): Promise<void> {
     if (refreshed && accessToken) return;
     // Unreachable is offline: the request fails as a network error and hybrid reads fall back to cache.
     if (accessToken && (!readBrowserOnline() || refreshUnreachable)) return;
-    if (accessToken && sessionKind === "member") throw new WgwSessionRenewalError();
+    if (accessToken) throw new WgwSessionRenewalError();
   }
 
   if (accessToken && !readBrowserOnline()) return;
@@ -663,6 +663,7 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = withAuthRefreshLock(async () => {
+    refreshUnreachable = false;
     readTokensFromStorage();
     if (accessToken && accessToken !== rejectedAccessToken && !isAccessTokenExpired()) return true;
     if (sessionKind !== "member") return false;
@@ -675,7 +676,6 @@ async function wgwTryRefresh(rejectedAccessToken?: string): Promise<boolean> {
       return false;
     }
 
-    refreshUnreachable = false;
     try {
       const res = await postJson("/auth/refresh", {});
       const tokens = await readTokenResponse(res);
