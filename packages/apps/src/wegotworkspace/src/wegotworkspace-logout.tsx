@@ -5,6 +5,7 @@ import {
   wgwIsGuestSession,
   type WgwLogoutNavigation,
 } from "@/lib/api/wgw/http";
+import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import { countDiscardedUnsyncedChanges } from "@/lib/offline/core/offline-wipe";
 import { buttonVariants } from "@/ui/button";
 import {
@@ -21,8 +22,13 @@ import {
 type WeGotWorkspaceLogoutProps = {
   countUnsyncedChanges?: () => Promise<number>;
   isGuestSession?: () => boolean;
+  isOnline?: () => boolean;
   completeLogout?: () => Promise<WgwLogoutNavigation>;
 };
+
+// Offline, the revoke step fails and nothing retries it later.
+const OFFLINE_LOGOUT_WARNING =
+  "You're offline. Signing out clears this device, but the server cannot end your session. It stays valid until it expires.";
 
 function unsyncedLogoutWarning(count: number | null): string {
   if (count === null) return "Unsynced changes on this device will be discarded.";
@@ -33,12 +39,14 @@ function unsyncedLogoutWarning(count: number | null): string {
 export function WeGotWorkspaceLogout({
   countUnsyncedChanges = countDiscardedUnsyncedChanges,
   isGuestSession = wgwIsGuestSession,
+  isOnline = getConnectivitySnapshot,
   completeLogout = wgwCompleteLogoutNavigation,
 }: WeGotWorkspaceLogoutProps = {}) {
   const navigate = useNavigate();
   const leaving = useRef(false);
   const [phase, setPhase] = useState<"pending" | "confirm" | "signing-out">("pending");
   const [unsyncedCount, setUnsyncedCount] = useState<number | null>(0);
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,8 +66,10 @@ export function WeGotWorkspaceLogout({
           count = null;
         }
         if (cancelled) return;
-        if (count === null || count > 0) {
+        const isOffline = !isOnline();
+        if (count === null || count > 0 || isOffline) {
           setUnsyncedCount(count);
+          setOffline(isOffline);
           setPhase("confirm");
           return;
         }
@@ -72,7 +82,7 @@ export function WeGotWorkspaceLogout({
     return () => {
       cancelled = true;
     };
-  }, [completeLogout, countUnsyncedChanges, isGuestSession, navigate]);
+  }, [completeLogout, countUnsyncedChanges, isGuestSession, isOnline, navigate]);
 
   async function confirmSignOut() {
     if (leaving.current) return;
@@ -102,8 +112,17 @@ export function WeGotWorkspaceLogout({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Discard unsynced changes?</AlertDialogTitle>
-            <AlertDialogDescription>{unsyncedLogoutWarning(unsyncedCount)}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {unsyncedCount === 0 ? "Sign out while offline?" : "Discard unsynced changes?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {[
+                offline ? OFFLINE_LOGOUT_WARNING : null,
+                unsyncedCount === 0 ? null : unsyncedLogoutWarning(unsyncedCount),
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
