@@ -216,8 +216,10 @@
   background-color: var(--color-emerald);
 }
 
+/* Pair of the accent fill: white on Dark ink, near-black on Soft ink in the dark theme. */
 .drive-workspace .drive-selection-checkbox__icon {
-  @apply size-3 text-white;
+  @apply size-3;
+  color: var(--workspace-accent-foreground);
 }
 
 /*

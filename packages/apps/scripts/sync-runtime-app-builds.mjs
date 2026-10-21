@@ -59,10 +59,23 @@ function renderFontPreloadTags(assetBase, files = RUNTIME_FONT_PRELOADS) {
     .join("\n");
 }
 
-function renderIndexHtml({
+/**
+ * The synchronous html/body paint from the built `index.html`. Runtime HTML
+ * replaces that file, so it carries the block over instead of a second copy.
+ */
+export function readFirstPaintStyle(indexHtml) {
+  const style = indexHtml.match(/<style>[\s\S]*?<\/style>/)?.[0];
+  if (!style) {
+    throw new Error("Built index.html has no first-paint <style> block.");
+  }
+  return style;
+}
+
+export function renderIndexHtml({
   title,
   scriptPath,
   cssPath,
+  firstPaintStyle,
   assetBase = "",
   fontPreloads = RUNTIME_FONT_PRELOADS,
 }) {
@@ -73,6 +86,8 @@ function renderIndexHtml({
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
 ${renderFontPreloadTags(assetBase, fontPreloads)}
+    ${firstPaintStyle}
+    <script src="${assetBase}/assets/theme-boot.js"></script>
     <script type="module" crossorigin src="${scriptPath}"></script>
     <link rel="stylesheet" crossorigin href="${cssPath}">
   </head>
@@ -96,6 +111,9 @@ export function syncRuntimeAppBuilds() {
   }
 
   const pwaServiceWorkerFiles = listPwaServiceWorkerFiles(distRoot);
+  const firstPaintStyle = readFirstPaintStyle(
+    readFileSync(resolve(distRoot, "index.html"), "utf8"),
+  );
 
   for (const module of modules) {
     const targetDist = resolve(runtimeAppsRoot, module.name, "dist");
@@ -137,6 +155,7 @@ export function syncRuntimeAppBuilds() {
       title: module.title,
       scriptPath: `${assetBase}/assets/${mainJs}`,
       cssPath: `${assetBase}/assets/${mainCss}`,
+      firstPaintStyle,
       assetBase,
       fontPreloads,
     });

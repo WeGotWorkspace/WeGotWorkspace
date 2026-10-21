@@ -239,6 +239,11 @@
   }
 }
 
+/* Dark theme: keep the paper card, drop its shadow — it does not read on the near-black desk. */
+:root[data-theme="dark"] .notes-workspace {
+  --paper-sheet-shadow: none;
+}
+
 /*
  * Empty detail (“Select a note”): pin CollectionState ~40% down the scroll
  * pane (not dead center). Asymmetric flex spacers 2:3 ≈ 40%/60%; Drive keeps
