@@ -189,6 +189,21 @@ final class JwtRejectionTest extends WgwDatabaseTestCase
             ]);
     }
 
+    public function test_missing_jwt_keys_keep_401_without_a_bearer_token(): void
+    {
+        config([
+            'wgw.jwt.private_key' => '',
+            'wgw.jwt.public_key' => '',
+            'wgw.jwt.private_key_path' => '/nonexistent/api-jwt-private.pem',
+            'wgw.jwt.public_key_path' => '/nonexistent/api-jwt-public.pem',
+            'wgw.data_dir' => sys_get_temp_dir().'/wgw-no-jwt-keys-'.uniqid('', true),
+        ]);
+
+        $this->getJson('/api/v1/me')
+            ->assertUnauthorized()
+            ->assertJson(['code' => 'unauthorized']);
+    }
+
     private function assertBearerRejected(string $token): void
     {
         $this->withBearer($token)->getJson('/api/v1/me')
