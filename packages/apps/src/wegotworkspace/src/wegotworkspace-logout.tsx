@@ -5,7 +5,7 @@ import {
   wgwIsGuestSession,
   type WgwLogoutNavigation,
 } from "@/lib/api/wgw/http";
-import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
+import { probeBrowserReachable } from "@/lib/offline/core/browser-online";
 import { countDiscardedUnsyncedChanges } from "@/lib/offline/core/offline-wipe";
 import { buttonVariants } from "@/ui/button";
 import {
@@ -22,7 +22,7 @@ import {
 type WeGotWorkspaceLogoutProps = {
   countUnsyncedChanges?: () => Promise<number>;
   isGuestSession?: () => boolean;
-  isOnline?: () => boolean;
+  isOnline?: () => boolean | Promise<boolean>;
   completeLogout?: () => Promise<WgwLogoutNavigation>;
 };
 
@@ -39,7 +39,9 @@ function unsyncedLogoutWarning(count: number | null): string {
 export function WeGotWorkspaceLogout({
   countUnsyncedChanges = countDiscardedUnsyncedChanges,
   isGuestSession = wgwIsGuestSession,
-  isOnline = getConnectivitySnapshot,
+  // Probe, not the connectivity snapshot: a fresh /logout tab has no started hub,
+  // and navigator.onLine stays true under the DevTools service-worker offline toggle.
+  isOnline = probeBrowserReachable,
   completeLogout = wgwCompleteLogoutNavigation,
 }: WeGotWorkspaceLogoutProps = {}) {
   const navigate = useNavigate();
@@ -65,8 +67,8 @@ export function WeGotWorkspaceLogout({
         } catch {
           count = null;
         }
+        const isOffline = !(await isOnline());
         if (cancelled) return;
-        const isOffline = !isOnline();
         if (count === null || count > 0 || isOffline) {
           setUnsyncedCount(count);
           setOffline(isOffline);
@@ -113,7 +115,9 @@ export function WeGotWorkspaceLogout({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {unsyncedCount === 0 ? "Sign out while offline?" : "Discard unsynced changes?"}
+              {offline && unsyncedCount === 0
+                ? "Sign out while offline?"
+                : "Discard unsynced changes?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {[
