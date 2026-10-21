@@ -33,7 +33,14 @@ describe("runtime index.html", () => {
   });
 
   it("ships no inline script, which the runtime CSP would block", () => {
-    expect(html).not.toMatch(/<script>/);
+    const scriptAttributes = html
+      .split("<script")
+      .slice(1)
+      .map((rest) => rest.slice(0, rest.indexOf(">")));
+    expect(scriptAttributes).toHaveLength(2);
+    for (const attributes of scriptAttributes) {
+      expect(attributes).toContain(' src="');
+    }
   });
 
   it("fails the sync when the built index.html lost its first-paint style", () => {
