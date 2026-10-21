@@ -17,8 +17,6 @@ import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status
 import { isLocalTempNoteId, NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
-  adoptServerNoteInCache,
-  adoptedServerNoteId,
   dropLocalNoteAfterServerGone,
   listOutboxMutations,
   markOutboxError,
@@ -31,6 +29,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { adoptServerNoteInCache, adoptedServerNoteId } from "@/lib/offline/notes-temp-adoption";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 
 export type OutboxFlushResult = {

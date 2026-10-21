@@ -23,10 +23,15 @@ async function foldAdoptedLocalNote(
   username: string,
   local: Note,
   serverId: string,
+  liveNotes: readonly Note[],
 ): Promise<void> {
-  const server = await getNoteFromCache(username, serverId);
-  // No cached server note means the note was deleted on the server since the
-  // adoption. Dropping the row, with its title, is deliberate.
+  // The cache can miss the server note (a stale snapshot was written), so
+  // the live payload counts too. Only a note missing from both was deleted
+  // on the server, and then dropping the row with its title is deliberate.
+  const server =
+    (await getNoteFromCache(username, serverId)) ??
+    liveNotes.find((note) => note.id === serverId) ??
+    null;
   if (server && local.title?.trim() && !server.title?.trim()) {
     const folded: Note = { ...server, title: local.title };
     await upsertNoteInCache(username, folded, true);
@@ -45,9 +50,13 @@ async function foldAdoptedLocalNote(
 
 /**
  * Heal pending local-* rows that have no outbox. An adopted id folds onto its
- * server note; any other row is queued so flush can POST it.
+ * server note; any other row is queued so flush can POST it. `liveNotes` is
+ * the server's current list, fetched before this runs.
  */
-export async function enqueueOrphanPendingLocalCreates(username: string): Promise<void> {
+export async function enqueueOrphanPendingLocalCreates(
+  username: string,
+  liveNotes: readonly Note[],
+): Promise<void> {
   const pendingIds = await listPendingNoteIds(username);
   if (pendingIds.length === 0) return;
   const queued = new Set(
@@ -62,7 +71,7 @@ export async function enqueueOrphanPendingLocalCreates(username: string): Promis
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     const serverId = await adoptedNoteIdFor(db, id);
     if (serverId) {
-      await foldAdoptedLocalNote(username, note, serverId);
+      await foldAdoptedLocalNote(username, note, serverId, liveNotes);
       continue;
     }
     await enqueueCoalescedNoteUpdate(username, note.id, note, baseUpdatedAt(note), note.id);

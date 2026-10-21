@@ -21,7 +21,6 @@ import {
 import {
   adoptedNoteIdFor,
   readAndPruneAdoptedNoteIds,
-  recordAdoptedNoteId,
 } from "@/lib/offline/notes/notes-adopted-ids";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import {
@@ -126,7 +125,7 @@ function metaKeyForNotebookState(notebook: string): string {
   return `notes:notebook:${notebook}:state`;
 }
 
-function noteRow(note: Note, pendingSync: boolean): OfflineNoteRow {
+export function noteRow(note: Note, pendingSync: boolean): OfflineNoteRow {
   return {
     id: note.id,
     notebookId: note.notebook,
@@ -278,6 +277,11 @@ export async function writeNotesBootstrapToCache(
     const pendingRows = await notes
       .filter((row) => row.pendingSync && !adopted.has(row.id))
       .toArray();
+    // A snapshot read before a create does not have its server note yet.
+    const snapshotIds = new Set(bootstrap.data.notes.map((note) => note.id));
+    const adoptedRows = await notes.bulkGet(
+      [...new Set(adopted.values())].filter((id) => !snapshotIds.has(id)),
+    );
     await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
     await db.meta.put({ key: META_NOTEBOOK_COLLECTIONS, value: JSON.stringify(collections) });
     if (bootstrap.data.groups !== undefined) {
@@ -292,6 +296,9 @@ export async function writeNotesBootstrapToCache(
       .filter((note) => !adopted.has(note.id))
       .map((note) => enrichNote(note));
     await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
+    await notes.bulkPut(
+      adoptedRows.filter((row): row is OfflineNoteRow => row != null && !row.pendingSync),
+    );
     const serverById = new Map(serverNotes.map((note) => [note.id, note]));
     await notes.bulkPut(
       pendingRows.map((row) => pendingRowOverServer(row, serverById.get(row.id))),
@@ -315,35 +322,6 @@ export async function upsertNoteInCache(
     if (await adoptedNoteIdFor(db, note.id)) return;
     await notes.put(noteRow(note, pendingSync));
   });
-}
-
-/**
- * Cache `saved` from the server. When it was created from `localId`, also
- * record the mapping and drop the temp row, in the same transaction.
- */
-export async function adoptServerNoteInCache(
-  username: string,
-  saved: Note,
-  localId?: string,
-): Promise<void> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const notes = notesNotesTable(db);
-  await db.transaction("rw", [notes, db.meta], async () => {
-    if (localId && localId !== saved.id) {
-      await recordAdoptedNoteId(db, localId, saved.id);
-      await notes.delete(localId);
-    }
-    await notes.put(noteRow(saved, false));
-  });
-}
-
-/** Server id a `local-*` create was adopted as, or null. */
-export async function adoptedServerNoteId(
-  username: string,
-  localId: string,
-): Promise<string | null> {
-  if (!isLocalTempNoteId(localId)) return null;
-  return adoptedNoteIdFor(offlineDbForAccount(offlineAccountKeyFromUsername(username)), localId);
 }
 
 /** One cached note, or null when the id is absent or the row is unreadable. */

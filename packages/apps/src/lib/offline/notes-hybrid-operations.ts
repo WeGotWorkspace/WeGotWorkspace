@@ -1,5 +1,9 @@
 import type { Note } from "@/lib/models/note";
-import type { NotesAPIOperations, NotesNotebookCollection } from "@/notes-core/src/notes-types";
+import type {
+  NoteMetadataField,
+  NotesAPIOperations,
+  NotesNotebookCollection,
+} from "@/notes-core/src/notes-types";
 import {
   backfillNotesContentFromServer,
   preserveLocalListableBodiesOnServerNotes,
@@ -25,8 +29,6 @@ import {
   readBrowserOnline,
 } from "@/lib/offline/core/browser-online";
 import {
-  adoptServerNoteInCache,
-  adoptedServerNoteId,
   dropLocalNoteAfterServerGone,
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
@@ -39,6 +41,7 @@ import {
   upsertNotebookInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
+import { adoptServerNoteInCache, adoptedServerNoteId } from "@/lib/offline/notes-temp-adoption";
 import { isNotesPersistGone, persistHttpStatus } from "@/notes-core/src/notes-persist-access";
 import { migrateNoteCollabPersistenceAfterIdRemap } from "@/lib/offline/notes/notes-collab-persistence-migrate";
 import {
@@ -48,7 +51,11 @@ import {
   notesNotesTable,
 } from "@/lib/offline/notes/notes-schema";
 import { enqueueOrphanPendingLocalCreates } from "@/lib/offline/notes/notes-orphan-heal";
-import { baseUpdatedAt, metadataSelection } from "@/lib/offline/notes/notes-metadata-selection";
+import {
+  baseUpdatedAt,
+  metadataSelection,
+  noteFieldsPatch,
+} from "@/lib/offline/notes/notes-metadata-selection";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
@@ -134,7 +141,7 @@ function cachedMoveTarget(
   };
 }
 
-function applyNoteUpdate(existing: Note, patch: Note): Note {
+function applyNoteUpdate(existing: Note, patch: Partial<Note>): Note {
   const { etag: patchEtag, ...rest } = patch;
   return {
     ...existing,
@@ -208,12 +215,17 @@ function tagDeltaFromOpts(opts?: {
   };
 }
 
+type QueuedUpsert = {
+  tempNoteId?: string;
+  tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] };
+  previous?: Note;
+  fields?: readonly NoteMetadataField[];
+};
+
 async function queueOfflineUpsert(
   username: string,
   note: Note,
-  tempNoteId?: string,
-  tagDelta?: { tagsAdd?: string[]; tagsRemove?: string[] },
-  previous?: Note,
+  { tempNoteId, tagDelta, previous, fields }: QueuedUpsert = {},
 ): Promise<Note> {
   await upsertNoteInCache(username, note, true);
   const delta = isLocalTempNoteId(note.id) ? undefined : tagDelta;
@@ -224,7 +236,7 @@ async function queueOfflineUpsert(
     baseUpdatedAt(note),
     tempNoteId,
     delta,
-    metadataSelection(previous, note, !!delta),
+    metadataSelection(previous, note, !!delta, fields),
   );
   return note;
 }
@@ -336,7 +348,7 @@ async function createLocalTempNoteOnline(
     { signal: opts?.signal },
   );
   if (isLocalTempNoteId(saved.id)) {
-    return queueOfflineUpsert(username, { ...saved, id: note.id }, note.id);
+    return queueOfflineUpsert(username, { ...saved, id: note.id }, { tempNoteId: note.id });
   }
   await adoptServerCreatedNote(username, note.id, saved);
   opts?.onCreated?.(saved);
@@ -355,7 +367,7 @@ async function upsertNoteOnline(
     return createLocalTempNoteOnline(username, note, runner, opts);
   }
   const delta = tagDeltaFromOpts(opts);
-  const selection = metadataSelection(previous, note, !!delta);
+  const selection = metadataSelection(previous, note, !!delta, opts?.fields);
   const metadataRequest = wgwNoteMetadataFromNote(note, {
     ...(selection.includeStarred ? { starred: !!note.starred } : {}),
     archived: !!note.archived,
@@ -376,13 +388,12 @@ async function upsertNoteOnline(
     // fails belongs in the outbox (shouldQueueNotesUpsert).
     if (status !== 404) throw error;
     if (await isNeverSyncedPendingNote(username, note.id)) {
-      return queueOfflineUpsert(
-        username,
-        note,
-        tempNoteIdForCreate(undefined, note),
-        delta,
+      return queueOfflineUpsert(username, note, {
+        tempNoteId: tempNoteIdForCreate(undefined, note),
+        tagDelta: delta,
         previous,
-      );
+        fields: opts?.fields,
+      });
     }
     await dropLocalNoteAfterServerGone(username, note.id);
     throw error;
@@ -401,12 +412,17 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
       const existing = note.id
         ? await resolveCachedNote(username, note.id, opts?.signal)
         : undefined;
-      const merged = existing ? applyNoteUpdate(existing, note) : note;
+      // A debounced save names its fields: lay only those over the cached copy,
+      // which may already hold edits made after this one (a tag, a star).
+      const fields = isLocalTempNoteId(note.id) ? undefined : opts?.fields;
+      const patch = fields ? { id: note.id, ...noteFieldsPatch(note, fields) } : note;
+      const merged = existing ? applyNoteUpdate(existing, patch) : note;
       const tagDelta = tagDeltaFromOpts(opts);
+      const queued = { tagDelta, previous: existing, fields };
       if (!readBrowserOnline()) {
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
+        return queueOfflineUpsert(username, optimistic, { ...queued, tempNoteId: tempId });
       }
       try {
         return await enqueueNoteMetadataWrite(merged.id, () =>
@@ -418,7 +434,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         }
         const tempId = tempNoteIdForCreate(existing, merged);
         const optimistic = tempId ? { ...merged, id: tempId } : merged;
-        return queueOfflineUpsert(username, optimistic, tempId, tagDelta, existing);
+        return queueOfflineUpsert(username, optimistic, { ...queued, tempNoteId: tempId });
       }
     },
     deleteNote: async (note, opts) => {
@@ -639,7 +655,7 @@ export async function fetchNotesHybridBootstrap(): Promise<
     throw new Error("Notes bootstrap missing username");
   }
   if (readBrowserOnline()) {
-    await enqueueOrphanPendingLocalCreates(username);
+    await enqueueOrphanPendingLocalCreates(username, bootstrap.data.notes);
   }
   const hadOutbox = readBrowserOnline() && (await listOutboxMutations(username)).length > 0;
   if (readBrowserOnline()) {
