@@ -25,12 +25,19 @@ describe("WorkspaceUserFooter connectivity pip", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows no pip while online", () => {
+  it("puts a green pip on the avatar and an Online tooltip while online", async () => {
     vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
     const { container } = renderFooter();
 
-    expect(screen.getByRole("img", { name: "Ada Lovelace avatar" })).toBeTruthy();
-    expect(container.querySelector(".user-avatar__presence")).toBeNull();
+    expect(screen.getByRole("img", { name: "Ada Lovelace avatar, online" })).toBeTruthy();
+    expect(container.querySelector(".user-avatar__presence--online")).not.toBeNull();
+
+    const trigger = container.querySelector('[data-connectivity="online"]');
+    if (!trigger) throw new Error("missing online tooltip trigger");
+    fireEvent.focus(trigger);
+    await waitFor(() => {
+      expect(screen.getByRole("tooltip").textContent).toBe("Online");
+    });
   });
 
   it("puts an amber pip on the avatar and an Offline tooltip while offline", async () => {

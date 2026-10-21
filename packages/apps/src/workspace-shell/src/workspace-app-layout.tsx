@@ -141,30 +141,23 @@ export function WorkspaceUserFooter({
   if (!hasIdentity) return null;
   const avatarName = trimmedName || trimmedInitials;
   const handleLogout = () => onLogoutClick?.();
+  const connectivityLabel = online ? "online" : "offline";
   return (
     <div className="workspace-app-layout__user-footer">
-      {online ? (
-        <UserAvatar
-          displayName={avatarName}
-          subtitle={trimmedDetailLine || undefined}
-          className="flex-1 min-w-0"
-        />
-      ) : (
-        // The amber pip is the shared "not synced yet" mark (also the pending-save pip).
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex-1 min-w-0" data-connectivity="offline">
-              <UserAvatar
-                displayName={avatarName}
-                subtitle={trimmedDetailLine || undefined}
-                presence="away"
-                ariaLabel={`${avatarName} avatar, offline`}
-              />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>Offline</TooltipContent>
-        </Tooltip>
-      )}
+      {/* Green = online; amber is the shared "not synced yet" mark (also the pending-save pip). */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex-1 min-w-0" data-connectivity={connectivityLabel}>
+            <UserAvatar
+              displayName={avatarName}
+              subtitle={trimmedDetailLine || undefined}
+              presence={online ? "online" : "away"}
+              ariaLabel={`${avatarName} avatar, ${connectivityLabel}`}
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>{online ? "Online" : "Offline"}</TooltipContent>
+      </Tooltip>
       <IconButton
         label="Log out"
         icon={<LogOut />}
