@@ -26,7 +26,12 @@ export {
  */
 export type UserAvatarSize = ControlSize | "2xl";
 
-/** Presence pip: online green, away amber, offline transparent + ink ring. */
+/**
+ * Presence pip: online green, away amber, offline transparent + ink ring.
+ * `away` doubles as the shared "not synced yet" mark: pending saves and the signed-in
+ * user's own offline state (sidebar account footer). Callers then override the
+ * accessible label; `offline` stays reserved for other people's presence.
+ */
 export type UserAvatarPresence = "online" | "offline" | "away";
 
 const USER_AVATAR_SIZE_CLASS: Record<UserAvatarSize, string> = {

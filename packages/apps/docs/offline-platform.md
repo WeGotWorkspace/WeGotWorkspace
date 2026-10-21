@@ -24,7 +24,7 @@ Docs now uses the collaboration stack for editable text files:
 | Cache-then-network bootstrap                                              | [`core/use-hybrid-bootstrap.ts`](../src/lib/offline/core/use-hybrid-bootstrap.ts)                                                  |
 | Per-domain account session (`wgw.offline.<domain>.username`)              | [`core/offline-account.ts`](../src/lib/offline/core/offline-account.ts)                                                            |
 | Generic conflict channel `createSyncConflictChannel<TId>()`               | [`core/sync-conflicts.ts`](../src/lib/offline/core/sync-conflicts.ts)                                                              |
-| Shell "Offline" pill                                                      | [`core/offline-status-indicator.tsx`](../src/lib/offline/core/offline-status-indicator.tsx)                                        |
+| Sidebar offline pip (amber dot + "Offline" tooltip on the account avatar) | [`workspace-app-layout.tsx`](../src/workspace-shell/src/workspace-app-layout.tsx) (`WorkspaceUserFooter`)                          |
 | Shared type contracts                                                     | [`core/types.ts`](../src/lib/offline/core/types.ts)                                                                                |
 
 The core defines Dexie **version 1** = `{ meta, outbox }`. Each domain owns a **non-overlapping version block** enforced at registration time (see [Version allocation](#version-allocation)). Contacts uses **2–9**, Notes **10–19**.
@@ -249,7 +249,7 @@ function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> 
 
 ### 6. Mount nothing extra for the shell indicator
 
-The shell already renders [`OfflineStatusIndicator`](../src/lib/offline/core/offline-status-indicator.tsx). It reads `useConnectivity()` and shows automatically when offline — no per-app wiring needed.
+The sidebar account footer ([`WorkspaceUserFooter`](../src/workspace-shell/src/workspace-app-layout.tsx)) reads `useConnectivity()` and, while offline, puts an amber presence pip on the user avatar with an "Offline" tooltip — no per-app wiring needed.
 
 ## Outbox coalescing
 

@@ -7,9 +7,7 @@ export async function loginToNotes(page: Page): Promise<void> {
   await page.goto("/notes");
   await expect(page.getByRole("button", { name: "New note" })).toBeVisible({ timeout: 30_000 });
   await waitForNotesListReady(page);
-  await expect(
-    page.getByRole("status", { name: /Offline — changes sync when reconnected/i }),
-  ).toHaveCount(0);
+  await expect(page.locator('[data-connectivity="online"]')).toBeVisible();
 }
 
 /** Drop the notes offline IndexedDB so e2e starts from server bootstrap (avoids stale local-* ids). */
@@ -48,7 +46,7 @@ export async function waitForNotesListReady(page: Page): Promise<void> {
 }
 
 export async function expectOfflineIndicator(page: Page): Promise<void> {
-  await expect(page.getByText(/Offline — changes sync when reconnected/i)).toBeVisible({
+  await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({
     timeout: 15_000,
   });
 }
