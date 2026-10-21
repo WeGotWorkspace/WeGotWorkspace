@@ -98,10 +98,11 @@ afterEach(() => {
 describe("local-* row after an online create", () => {
   it("is not written back by a bootstrap snapshot read before the create", async () => {
     await upsertNoteInCache(username, localNote, true);
+    const readAt = Date.now();
     const stale = await readNotesBootstrapFromCache(username);
 
     await createOnline();
-    await writeNotesBootstrapToCache(username, stale!);
+    await writeNotesBootstrapToCache(username, stale!, readAt);
 
     expect(await notesTable().get(tempId)).toBeUndefined();
     expect(await notesTable().get(serverId)).toBeDefined();
@@ -296,6 +297,48 @@ describe("adopted id mappings", () => {
 
     expect(await adoptedNoteIdFor(db, tempId)).toBeNull();
     expect(await adoptedNoteIdFor(db, freshLocalId)).toBe("fresh-server-id");
+  });
+});
+
+describe("an adopted server note missing from a snapshot", () => {
+  const withoutServerNote = { ...bootstrap, data: { ...bootstrap.data, notes: [existing] } };
+
+  /** Create the note at a fixed earlier time, so snapshot times compare cleanly. */
+  async function createOnlineEarlier(): Promise<number> {
+    const createdAt = Date.now() - 60_000;
+    const now = vi.spyOn(Date, "now").mockReturnValue(createdAt);
+    await createOnline();
+    now.mockRestore();
+    return createdAt;
+  }
+
+  it("is dropped by a snapshot taken after the create (deleted on the server)", async () => {
+    await createOnlineEarlier();
+
+    await writeNotesBootstrapToCache(username, withoutServerNote, Date.now());
+
+    expect(await notesTable().get(serverId)).toBeUndefined();
+  });
+
+  it("is dropped by a live list fetched after the create", async () => {
+    await createOnlineEarlier();
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(withoutServerNote);
+
+    await fetchNotesHybridBootstrap();
+
+    expect(await notesTable().get(serverId)).toBeUndefined();
+  });
+
+  it("is kept when the live list was fetched just before the create", async () => {
+    vi.mocked(fetchNotesLiveBootstrap).mockImplementationOnce(async () => {
+      // The create lands while this list is on its way back.
+      await createOnline();
+      return withoutServerNote;
+    });
+
+    await fetchNotesHybridBootstrap();
+
+    expect(await notesTable().get(serverId)).toBeDefined();
   });
 });
 
