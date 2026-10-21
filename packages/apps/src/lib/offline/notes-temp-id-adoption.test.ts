@@ -313,6 +313,42 @@ describe("writeNotesBootstrapToCache", () => {
   });
 });
 
+describe("a create still in flight in another tab", () => {
+  const liveWithout = { ...bootstrap, data: { ...bootstrap.data, notes: [existing] } };
+
+  it("is not created again by a healer run during the POST", async () => {
+    await upsertNoteInCache(username, localNote, true);
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(liveWithout);
+    vi.mocked(createNoteItem).mockImplementationOnce(async () => {
+      // Another tab loads Notes while this POST is still out.
+      await fetchNotesHybridBootstrap();
+      return serverNote;
+    });
+
+    await createHybridNotesOperations(username).upsertNote(localNote);
+
+    expect(createNoteItem).toHaveBeenCalledOnce();
+    expect(await listOutboxMutations(username)).toHaveLength(0);
+  });
+
+  it("is created again once the in-flight marker is stale", async () => {
+    // Own id: the abandoned POST below never settles and holds this id's write chain.
+    const abandoned = { ...localNote, id: "local-8b8f0000000000000000000000000003" };
+    await upsertNoteInCache(username, abandoned, true);
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(liveWithout);
+    // The tab that started the POST closed before it returned.
+    vi.mocked(createNoteItem).mockImplementationOnce(() => new Promise<Note>(() => undefined));
+    void createHybridNotesOperations(username).upsertNote(abandoned);
+    await vi.waitFor(() => expect(createNoteItem).toHaveBeenCalledOnce());
+    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
+
+    vi.spyOn(Date, "now").mockReturnValue(Date.now() + 10 * 60 * 1000);
+    await fetchNotesHybridBootstrap();
+
+    expect(createNoteItem).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("healing a pending local-* row without an outbox", () => {
   it("folds an adopted row onto the server note instead of creating a second note", async () => {
     await createOnline();
