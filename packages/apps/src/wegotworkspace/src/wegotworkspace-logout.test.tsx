@@ -208,6 +208,24 @@ describe("WeGotWorkspaceLogout", () => {
     vi.useRealTimers();
   });
 
+  it("asks as offline when the reachability check itself throws", async () => {
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        isOnline={async () => {
+          throw new TypeError("Invalid URL");
+        }}
+        completeLogout={completeLogout}
+      />,
+    );
+
+    expect(await screen.findByText("Sign out while offline?")).toBeTruthy();
+    expect(completeLogout).not.toHaveBeenCalled();
+  });
+
   it("names both the offline session and the unsynced changes", async () => {
     render(
       <WeGotWorkspaceLogout
