@@ -1,9 +1,17 @@
+import "fake-indexeddb/auto";
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 import { useNotesMutations } from "./use-notes-mutations";
+import { getNoteFromCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
+
+vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+  readOfflineNotesUsername: vi.fn(() => null),
+}));
 
 vi.mock("@/hooks/use-confirm-dialog", () => ({
   useConfirmDialog: () => ({
@@ -165,6 +173,33 @@ describe("useNotesMutations createNote", () => {
     expect(remap?.(upsertNote.mock.calls[0]?.[0].id)).toBe(saved.id);
   });
 
+  it("does not write the untitled create response over the cached server note", async () => {
+    const cacheUser = "create-cache-user";
+    vi.mocked(readOfflineNotesUsername).mockReturnValue(cacheUser);
+    const saved = { id: "ad0f28e6-0000-4000-8000-000000000002" } as Note;
+    const upsertNote = vi.fn(async (note: Note): Promise<Note> => {
+      const created = { ...note, ...saved };
+      // The adoption already cached the server note with the early title.
+      await upsertNoteInCache(cacheUser, { ...created, title: "Ha" }, true);
+      return created;
+    });
+    const shell = buildShell({
+      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+    });
+    await act(async () => {
+      await upsertNote.mock.results[0]?.value;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect((await getNoteFromCache(cacheUser, saved.id))?.title).toBe("Ha");
+    vi.mocked(readOfflineNotesUsername).mockReturnValue(null);
+  });
+
   it("creates in the selected personal notebook by id", async () => {
     const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
     const shell = buildShell({
@@ -197,6 +232,10 @@ describe("useNotesMutations createNote", () => {
 });
 
 describe("useNotesMutations updateNote", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const existing: Note = {
     id: "note-1",
     category: "Note",
@@ -228,6 +267,31 @@ describe("useNotesMutations updateNote", () => {
     act(() => result.current.updateNote("note-1", { title: "Ha" }));
 
     expect(queueAutoSaveToast).toHaveBeenCalledOnce();
+  });
+
+  it("names only the title as changed, so a tag added in the debounce window is not resent", async () => {
+    vi.useFakeTimers();
+    const upsertNote = vi.fn(async (note: Note) => note);
+    const setNotes = vi.fn((update: unknown) => {
+      if (typeof update === "function") update([existing]);
+    });
+    const shell = buildShell({
+      notes: [existing],
+      setNotes: setNotes as NotesShellState["setNotes"],
+      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    act(() => result.current.updateNote("note-1", { title: "Ha" }));
+    act(() => result.current.toggleNoteTag("note-1", "added-later", "add"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(upsertNote).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "note-1", title: "Ha" }),
+      expect.objectContaining({ fields: ["title"] }),
+    );
   });
 
   it("saves a title typed without a document without the saved toast", () => {

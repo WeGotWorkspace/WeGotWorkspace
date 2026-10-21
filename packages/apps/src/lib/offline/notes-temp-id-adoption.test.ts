@@ -104,6 +104,7 @@ describe("local-* row after an online create", () => {
     await writeNotesBootstrapToCache(username, stale!);
 
     expect(await notesTable().get(tempId)).toBeUndefined();
+    expect(await notesTable().get(serverId)).toBeDefined();
   });
 
   it("is not re-inserted by a late optimistic write", async () => {
@@ -144,6 +145,77 @@ describe("local-* row after an online create", () => {
     await writeNotesBootstrapToCache(username, bootstrap);
 
     expect(await listPendingNoteIds(username)).toEqual([]);
+  });
+});
+
+describe("a title typed while the online create is in flight", () => {
+  function typeTitleDuringCreate() {
+    vi.mocked(createNoteItem).mockImplementationOnce(async () => {
+      await upsertNoteInCache(username, { ...localNote, title: "Ha" }, true);
+      return serverNote;
+    });
+  }
+
+  it("reaches the server note", async () => {
+    await upsertNoteInCache(username, localNote, true);
+    typeTitleDuringCreate();
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    await createHybridNotesOperations(username).upsertNote(localNote);
+
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
+    expect(JSON.parse((await notesTable().get(serverId))?.data ?? "{}").title).toBe("Ha");
+  });
+
+  it("stays queued when the follow-up save cannot reach the server", async () => {
+    await upsertNoteInCache(username, localNote, true);
+    typeTitleDuringCreate();
+    vi.mocked(updateNoteItem).mockRejectedValue(new TypeError("network down"));
+
+    await createHybridNotesOperations(username).upsertNote(localNote);
+
+    const outbox = await listOutboxMutations(username);
+    expect(outbox).toHaveLength(1);
+    expect(JSON.parse(outbox[0]?.payload ?? "{}")).toMatchObject({
+      noteId: serverId,
+      metadata: { title: "Ha" },
+    });
+    const row = await notesTable().get(serverId);
+    expect(JSON.parse(row?.data ?? "{}").title).toBe("Ha");
+    expect(row?.pendingSync).toBe(true);
+  });
+});
+
+describe("a debounced save that names its changed fields", () => {
+  it("sends only the title, so a tag added after the keystroke is kept", async () => {
+    const cached: Note = { ...existing, title: "Old", tags: ["added-later"], etag: '"e2"' };
+    await upsertNoteInCache(username, cached, false);
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...cached, title: "New" });
+
+    await createHybridNotesOperations(username).upsertNote(
+      { ...existing, title: "New", tags: [] },
+      { fields: ["title"] },
+    );
+
+    const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
+    expect(request).toMatchObject({ title: "New" });
+    expect(request).not.toHaveProperty("tags");
+  });
+
+  it("sends the title for an adopted local-* row whose server note is not cached", async () => {
+    await createOnline();
+    await notesTable().delete(serverId);
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(bootstrap);
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    await createHybridNotesOperations(username).upsertNote(
+      { ...localNote, title: "Ha" },
+      { fields: ["title"] },
+    );
+
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
   });
 });
 
@@ -268,6 +340,32 @@ describe("healing a pending local-* row without an outbox", () => {
     expect(await listOutboxMutations(username)).toHaveLength(0);
     expect(result.data.notes.filter((row) => row.id === tempId)).toEqual([]);
     expect(result.data.notes.find((row) => row.id === serverId)?.title).toBe("Ha");
+  });
+});
+
+describe("healing an adopted row whose server note left the cache", () => {
+  it("folds the title onto the note from the live payload", async () => {
+    await createOnline();
+    await notesTable().delete(serverId);
+    await notesTable().put({
+      id: tempId,
+      notebookId: "Drafts",
+      data: JSON.stringify({ ...localNote, title: "Ha" }),
+      pendingSync: true,
+      updatedAt: Date.now(),
+    });
+    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
+      ...bootstrap,
+      data: { ...bootstrap.data, notes: [existing, serverNote] },
+    });
+    vi.mocked(updateNoteItem).mockResolvedValue({ ...serverNote, title: "Ha" });
+
+    await fetchNotesHybridBootstrap();
+
+    expect(createNoteItem).toHaveBeenCalledOnce();
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[0]).toBe(serverId);
+    expect(vi.mocked(updateNoteItem).mock.calls[0]?.[1]).toMatchObject({ title: "Ha" });
+    expect(await notesTable().get(tempId)).toBeUndefined();
   });
 });
 
