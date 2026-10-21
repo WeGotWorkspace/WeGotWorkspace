@@ -1,6 +1,6 @@
 /**
  * Device-level colour theme. Stored on this browser, not on the account.
- * `index.html` runs the same resolution inline before first paint; keep the
+ * `public/assets/theme-boot.js` runs the same resolution before first paint; keep the
  * storage key and attribute in sync with that script.
  */
 export type ThemePreference = "system" | "light" | "dark";
@@ -10,7 +10,7 @@ export type ResolvedTheme = "light" | "dark";
  * Installed window chrome (`theme-color` meta) per scheme: the sidebar surface
  * (`--scheme-sidebar-surface`), so the title bar reads as part of the page.
  * Manifests cannot vary by scheme and carry the light value.
- * `pwa-document-shell.test.ts` guards the copies in `index.html` and CSS.
+ * `pwa-document-shell.test.ts` guards the copies in `index.html`, `theme-boot.js` and CSS.
  */
 export const WORKSPACE_PWA_THEME_COLORS = { light: "#fff5e9", dark: "#1c1c1c" } as const;
 
