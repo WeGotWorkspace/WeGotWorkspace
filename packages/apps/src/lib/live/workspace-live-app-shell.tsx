@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import {
   wgwHasAuthenticatedSession,
@@ -35,10 +35,11 @@ export function WorkspaceLiveAppShell({
   // the refresh. A bootstrap error with a stored session is transient or a permission
   // failure, and must not sign every installed PWA out. Only a member session this page
   // had, and lost, redirects: /install loads without one, and a guest returns to /share.
-  const hadMemberSessionRef = useRef(wgwHasAuthenticatedSession() && !wgwIsGuestSession());
-  const isSessionGone =
-    phase === "error" && hadMemberSessionRef.current && !wgwHasAuthenticatedSession();
+  // Lazy: read storage once at mount, not on every render.
+  const [hadMemberSession] = useState(() => wgwHasAuthenticatedSession() && !wgwIsGuestSession());
+  const isSessionGone = phase === "error" && hadMemberSession && !wgwHasAuthenticatedSession();
   const isGuestShareAccessError =
+    phase === "error" &&
     wgwIsGuestSession() &&
     (normalized.includes("(401)") ||
       normalized.includes("(403)") ||
@@ -53,7 +54,7 @@ export function WorkspaceLiveAppShell({
     if (isGuestShareAccessError) {
       if (wgwRedirectGuestShareReauth()) return;
       // No share token to return to: the reauth cleared the guest, so login is the way back.
-    } else if (!hadMemberSessionRef.current || wgwHasAuthenticatedSession()) {
+    } else if (!hadMemberSession || wgwHasAuthenticatedSession()) {
       return;
     }
     // Storybook and local Vite dev: stay on the page and show the error panel instead of a blank
@@ -64,7 +65,7 @@ export function WorkspaceLiveAppShell({
       `${window.location.pathname}${window.location.search}${window.location.hash}`,
     );
     window.location.assign(buildWgwLoginHref(returnPath));
-  }, [isGuestShareAccessError, isSessionGone, phase]);
+  }, [hadMemberSession, isGuestShareAccessError, isSessionGone, phase]);
 
   if (phase === "error") {
     if (isGuestShareAccessError) {
