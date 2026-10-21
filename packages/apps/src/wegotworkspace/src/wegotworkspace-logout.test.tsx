@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeGotWorkspaceLogout } from "@/wegotworkspace/src/wegotworkspace-logout";
 
@@ -22,6 +22,7 @@ describe("WeGotWorkspaceLogout", () => {
     navigate.mockReset();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("signs out immediately when nothing is unsynced", async () => {
@@ -173,6 +174,38 @@ describe("WeGotWorkspaceLogout", () => {
       expect.objectContaining({ method: "HEAD" }),
     );
     expect(completeLogout).not.toHaveBeenCalled();
+  });
+
+  it("treats a probe that hangs as offline instead of waiting forever", async () => {
+    // Captive portal or half-open TCP: the HEAD neither answers nor fails until aborted.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("The operation was aborted.", "AbortError")),
+            );
+          }),
+      ),
+    );
+    const completeLogout = vi.fn().mockResolvedValue("member_login");
+
+    render(
+      <WeGotWorkspaceLogout
+        countUnsyncedChanges={async () => 0}
+        isGuestSession={() => false}
+        completeLogout={completeLogout}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500);
+    });
+
+    expect(screen.getByText("Sign out while offline?")).toBeTruthy();
+    expect(completeLogout).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("names both the offline session and the unsynced changes", async () => {
