@@ -33,10 +33,11 @@ export function WorkspaceLiveAppShell({
   const normalized = message.toLowerCase();
   // `http.ts` alone decides sign-out: it clears the stored session when the server rejects
   // the refresh. A bootstrap error with a stored session is transient or a permission
-  // failure, and must not sign every installed PWA out. Only a session this page had,
-  // and lost, redirects: /install and other public pages load without one.
-  const hadSessionRef = useRef(wgwHasAuthenticatedSession());
-  const isSessionGone = phase === "error" && hadSessionRef.current && !wgwHasAuthenticatedSession();
+  // failure, and must not sign every installed PWA out. Only a member session this page
+  // had, and lost, redirects: /install loads without one, and a guest returns to /share.
+  const hadMemberSessionRef = useRef(wgwHasAuthenticatedSession() && !wgwIsGuestSession());
+  const isSessionGone =
+    phase === "error" && hadMemberSessionRef.current && !wgwHasAuthenticatedSession();
   const isGuestShareAccessError =
     wgwIsGuestSession() &&
     (normalized.includes("(401)") ||
@@ -49,11 +50,12 @@ export function WorkspaceLiveAppShell({
 
   useEffect(() => {
     if (phase !== "error" || typeof window === "undefined") return;
-    if (isGuestShareAccessError && wgwRedirectGuestShareReauth()) {
+    if (isGuestShareAccessError) {
+      if (wgwRedirectGuestShareReauth()) return;
+      // No share token to return to: the reauth cleared the guest, so login is the way back.
+    } else if (!hadMemberSessionRef.current || wgwHasAuthenticatedSession()) {
       return;
     }
-    // Re-read: a guest reauth without a share token has just cleared the session.
-    if (!hadSessionRef.current || wgwHasAuthenticatedSession()) return;
     // Storybook and local Vite dev: stay on the page and show the error panel instead of a blank
     // iframe / broken `/login` navigation. Production keeps the redirect to the real login route.
     if (import.meta.env.DEV) return;
