@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support;
 
+use App\Database\WgwSqliteConnection;
 use App\Support\WgwConnectionConfigurator;
 use Illuminate\Support\Facades\DB;
 use PDO;
@@ -73,6 +74,39 @@ final class SqliteImmediateTransactionTest extends TestCase
 
             $this->assertTrue($lockedOut, 'A second writer got the lock while a transaction was open.');
             $connection->rollBack();
+        } finally {
+            DB::purge('wgw');
+            config(['database.connections.wgw' => $previous]);
+            @unlink($path);
+        }
+    }
+
+    public function test_the_php_83_fallback_takes_the_write_lock_at_begin(): void
+    {
+        $path = sys_get_temp_dir().'/wgw-fallback-'.uniqid('', true).'.sqlite';
+        touch($path);
+        $previous = config('database.connections.wgw');
+
+        try {
+            WgwConnectionConfigurator::applyFromInstallerDb(['driver' => 'sqlite', 'sqlite_path' => $path]);
+            $connection = DB::connection('wgw');
+            $this->assertInstanceOf(WgwSqliteConnection::class, $connection);
+            $connection->statement('create table probe (id integer)');
+
+            // The path PHP 8.3 takes, run directly so it is covered on every PHP.
+            $connection->beginWithWriteLock();
+
+            $other = new PDO('sqlite:'.$path, null, null, [PDO::ATTR_TIMEOUT => 0]);
+            $other->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $lockedOut = false;
+            try {
+                $other->exec('BEGIN IMMEDIATE');
+            } catch (PDOException) {
+                $lockedOut = true;
+            }
+
+            $this->assertTrue($lockedOut, 'A second writer got the lock while a transaction was open.');
+            $connection->getPdo()->rollBack();
         } finally {
             DB::purge('wgw');
             config(['database.connections.wgw' => $previous]);
