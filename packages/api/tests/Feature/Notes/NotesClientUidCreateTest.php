@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notes;
 
 use App\Models\CalendarObject;
+use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Support\Str;
@@ -74,6 +75,21 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $this->create('bob', $uid, 'Elsewhere', $other)
             ->assertStatus(409)
             ->assertJsonPath('code', 'alreadyExists');
+    }
+
+    public function test_a_retry_naming_the_notebook_another_way_still_finds_the_note(): void
+    {
+        $bob = Principal::forUsername('bob');
+        $this->assertNotNull($bob);
+        $this->addPrincipalToGroup($this->seedWgwGroup('principals/groups/eng', 'Engineering'), $bob);
+        app(UserCalendarCollectionsProvisioner::class)->ensureForGroupPrincipal('principals/groups/eng', 'Engineering');
+        $uid = (string) Str::uuid();
+        $this->create('bob', $uid, 'First', CalendarCollectionUris::groupNotebookApiId('eng'))->assertCreated();
+
+        // The same group notebook, named by its CalDAV uri instead of its API id.
+        $this->create('bob', $uid, 'Retry', CalendarCollectionUris::groupNotebookCalDavUri('eng'))
+            ->assertOk()
+            ->assertJsonPath('id', $uid);
     }
 
     public function test_a_uid_that_is_not_a_uuid_is_ignored_and_the_server_mints(): void
