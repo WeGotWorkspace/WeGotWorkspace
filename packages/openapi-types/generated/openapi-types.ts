@@ -5368,12 +5368,19 @@ export interface paths {
         put?: never;
         /**
          * JMAP blob upload
-         * @description Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.
+         * @description Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload (the smaller of WGW_JMAP_MAX_SIZE_UPLOAD and post_max_size). The body is streamed to storage and hashed on the way (#1500), so memory_limit does not bound a part. Optional Wgw-Part-Length / Wgw-Part-Sha256 headers declare the part; a stored part that differs is rejected and not stored. Two shapes mean "too large": 413 {error, code: "post_too_large"} from the front controller (declared Content-Length over post_max_size) and 400 with the RFC 8620 limit problem (over maxSizeUpload, or a body PHP discarded). A write the disk or hosting quota refuses is 507.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description Declared byte count of the part. A stored length that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Length"?: string;
+                    /** @description Declared sha256 of the part, 64 hex characters. A stored sha256 that differs is rejected (400 part-mismatch). */
+                    "Wgw-Part-Sha256"?: string;
+                    /** @description Open blob assembly (https://wegotworkspace.org/jmap/blob-assembly) this part is uploaded for. Records a claim so another assembly that consumes the same content-addressed part does not delete it. Unknown ids are ignored. */
+                    "Wgw-Assembly-Id"?: string;
+                };
                 path: {
                     accountId: string;
                 };
@@ -5394,13 +5401,23 @@ export interface paths {
                         "application/json": components["schemas"]["JmapBlobUploadResponse"];
                     };
                 };
-                /** @description Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit). */
+                /** @description Problem+json. type urn:ietf:params:jmap:error:limit with limit "maxSizeUpload": the body exceeds maxSizeUpload, or PHP discarded it (an empty body with a declared length, a post_max_size warning, or chunked transfer) — never stored as an empty part. type https://wegotworkspace.org/jmap/problem/part-mismatch: the stored part differs from Wgw-Part-Length / Wgw-Part-Sha256 (mismatch lists "length" and/or "sha256", with expectedLength/receivedLength or expectedSha256/receivedSha256); nothing is stored. type about:blank: a malformed declaration header. */
                 400: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/problem+json": Record<string, never>;
+                        "application/problem+json": {
+                            type?: string;
+                            status?: number;
+                            detail?: string;
+                            limit?: string;
+                            mismatch?: ("length" | "sha256")[];
+                            expectedLength?: number;
+                            receivedLength?: number;
+                            expectedSha256?: string;
+                            receivedSha256?: string;
+                        };
                     };
                 };
                 403: components["responses"]["JmapForbidden"];
@@ -5411,6 +5428,28 @@ export interface paths {
                     };
                     content: {
                         "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Front controller, before Laravel runs: the declared Content-Length exceeds post_max_size. */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            /** @enum {string} */
+                            code: "post_too_large";
+                        };
+                    };
+                };
+                /** @description The disk or the account's hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). Nothing is stored. */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
                     };
                 };
             };
@@ -5476,7 +5515,7 @@ export interface paths {
         put?: never;
         /**
          * JMAP batch API endpoint
-         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.
+         * @description RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as ["error", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits, plus 507 when a write the batch needed (a blob assembly step, a Blob/upload join) was refused because the disk or hosting quota is full (#1500; FileNode/set reports that as the overQuota SetError instead). ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.
          */
         post: {
             parameters: {
@@ -5510,6 +5549,15 @@ export interface paths {
                     };
                 };
                 403: components["responses"]["JmapForbidden"];
+                /** @description A write the batch needed was refused because the disk or hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). */
+                507: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["JmapProblemDetails"];
+                    };
+                };
             };
         };
         delete?: never;
