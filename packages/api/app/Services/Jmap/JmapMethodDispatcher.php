@@ -13,6 +13,8 @@ use App\Services\Jmap\Methods\BlobAssemblyAppendMethod;
 use App\Services\Jmap\Methods\BlobAssemblyFinishMethod;
 use App\Services\Jmap\Methods\BlobAssemblyGetMethod;
 use App\Services\Jmap\Methods\BlobAssemblySetMethod;
+use App\Services\Jmap\Methods\BlobGetMethod;
+use App\Services\Jmap\Methods\BlobUploadMethod;
 use App\Services\Jmap\Methods\CalendarChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventGetMethod;
@@ -88,6 +90,9 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        // urn:ietf:params:jmap:blob (RFC 9404, #1500)
+        BlobUploadMethod::class,
+        BlobGetMethod::class,
         // https://wegotworkspace.org/jmap/blob-assembly (WGW extension, #1500)
         BlobAssemblySetMethod::class,
         BlobAssemblyAppendMethod::class,
