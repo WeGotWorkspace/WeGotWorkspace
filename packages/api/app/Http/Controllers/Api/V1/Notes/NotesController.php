@@ -56,10 +56,11 @@ final class NotesController
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
         $payload = $request->validated();
         $uid = is_string($payload['uid'] ?? null) && Str::isUuid($payload['uid']) ? $payload['uid'] : null;
+        $notebookId = is_string($payload['notebookId'] ?? null) ? $payload['notebookId'] : '';
 
         // A client-chosen UID makes the create idempotent: a retry gets the
         // note it already made (200) instead of a second one.
-        $existing = $uid !== null ? $this->notes->existingCreateForRetry($principal['username'], $uid) : null;
+        $existing = $uid !== null ? $this->notes->existingCreateForRetry($principal['username'], $uid, $notebookId) : null;
         if ($existing !== null) {
             return JmapResourceResponse::json($existing, 200);
         }
@@ -69,7 +70,7 @@ final class NotesController
         } catch (ApiHttpException $exception) {
             // Two retries raced: the loser still gets the note the winner made.
             $existing = $uid !== null && $exception->errorCode() === 'alreadyExists'
-                ? $this->notes->existingCreateForRetry($principal['username'], $uid)
+                ? $this->notes->existingCreateForRetry($principal['username'], $uid, $notebookId)
                 : null;
             if ($existing === null) {
                 throw $exception;

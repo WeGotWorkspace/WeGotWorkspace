@@ -53,6 +53,8 @@ final class WgwConnectionConfigurator
                 'prefix' => '',
                 'foreign_key_constraints' => true,
                 'transaction_mode' => 'IMMEDIATE',
+                // Wait for another writer's lock instead of failing at once.
+                'busy_timeout' => 5000,
             ],
         ]);
         DB::purge('wgw');
@@ -120,6 +122,8 @@ final class WgwConnectionConfigurator
                 'prefix' => '',
                 'foreign_key_constraints' => true,
                 'transaction_mode' => 'IMMEDIATE',
+                // Wait for another writer's lock instead of failing at once.
+                'busy_timeout' => 5000,
             ],
         ]);
         DB::purge('wgw');
