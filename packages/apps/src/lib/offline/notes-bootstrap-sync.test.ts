@@ -1,54 +1,39 @@
-/** @vitest-environment jsdom */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   notifyNotesBootstrapUpdated,
   subscribeNotesBootstrapUpdated,
 } from "@/lib/offline/notes-bootstrap-sync";
 
-class MockBroadcastChannel {
-  static peers: MockBroadcastChannel[] = [];
-  onmessage: ((event: MessageEvent) => void) | null = null;
-
-  constructor(_name: string) {
-    MockBroadcastChannel.peers.push(this);
-  }
-
-  postMessage(data: unknown): void {
-    for (const peer of MockBroadcastChannel.peers) {
-      if (peer !== this) peer.onmessage?.({ data } as MessageEvent);
-    }
-  }
-
-  close(): void {
-    const index = MockBroadcastChannel.peers.indexOf(this);
-    if (index >= 0) MockBroadcastChannel.peers.splice(index, 1);
-  }
-}
+const delivered = () => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("notes-bootstrap-sync", () => {
-  beforeEach(() => {
-    MockBroadcastChannel.peers = [];
-    Reflect.deleteProperty(globalThis, "BroadcastChannel");
-    vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("notifies subscribers in other channel instances", () => {
+  it("hears another tab's update for the same account only", async () => {
     const onUpdate = vi.fn();
-    subscribeNotesBootstrapUpdated("alice", onUpdate);
-    notifyNotesBootstrapUpdated("alice");
+    const stop = subscribeNotesBootstrapUpdated("alice", onUpdate);
+    const otherTab = new BroadcastChannel("wgw.notes.bootstrap");
+
+    otherTab.postMessage({ type: "notes-bootstrap-updated", username: "bob" });
+    otherTab.postMessage({ type: "notes-bootstrap-updated", username: "alice" });
+    await delivered();
 
     expect(onUpdate).toHaveBeenCalledOnce();
+    stop();
+    otherTab.close();
   });
 
-  it("ignores updates for other usernames", () => {
+  it("tells other tabs, not this one", async () => {
     const onUpdate = vi.fn();
-    subscribeNotesBootstrapUpdated("alice", onUpdate);
-    notifyNotesBootstrapUpdated("bob");
+    const stop = subscribeNotesBootstrapUpdated("alice", onUpdate);
+    const otherTab = new BroadcastChannel("wgw.notes.bootstrap");
+    const heard: unknown[] = [];
+    otherTab.onmessage = (event) => heard.push(event.data);
+
+    notifyNotesBootstrapUpdated("alice");
+    await delivered();
 
     expect(onUpdate).not.toHaveBeenCalled();
+    expect(heard).toEqual([{ type: "notes-bootstrap-updated", username: "alice" }]);
+    stop();
+    otherTab.close();
   });
 });

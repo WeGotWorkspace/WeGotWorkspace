@@ -21,7 +21,6 @@ import {
   noteAllowsTagAssignment,
   isPlaceholderNoteListLabel,
   noteHasListableBody,
-  shouldDiscardEmptyCreatedNote,
   noteListExcerpt,
   noteListTitle,
   usableNoteListPreview,
@@ -508,40 +507,44 @@ describe("notes-note-utils", () => {
     expect(merged.notebookId).toBe("nb-ideas");
   });
 
-  it("never treats an empty created note as a disposable draft", () => {
-    expect(shouldDiscardEmptyCreatedNote({ title: undefined, body: [""], excerpt: "" })).toBe(
-      false,
-    );
-    expect(shouldDiscardEmptyCreatedNote({ title: "Event", body: [""], excerpt: "" })).toBe(false);
-  });
-
   it("keeps an empty untitled create when bootstrap omits the new note", () => {
     const created: Note = {
       ...sampleNote,
-      id: "local-abc0de",
+      id: "6e0c0de0-0000-4000-8000-000000000001",
       title: undefined,
       excerpt: "",
       body: [""],
       wordCount: 0,
       date: "2026-08-29T09:00:00.000Z",
+      createPending: true,
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
-    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc0de"]);
-    expect(merged.find((note) => note.id === "local-abc0de")?.body).toEqual([""]);
+    expect(merged.map((note) => note.id)).toEqual(["n-1", created.id]);
+    expect(merged.find((note) => note.id === created.id)?.body).toEqual([""]);
   });
 
   it("keeps an optimistic create (and its title) when bootstrap omits the new note", () => {
     const created: Note = {
       ...sampleNote,
-      id: "local-abc123",
+      id: "6e0c0de0-0000-4000-8000-000000000002",
       title: "Event",
       excerpt: "",
       body: [""],
       date: "2026-08-29T09:00:00.000Z",
+      createPending: true,
     };
     const merged = mergeBootstrapNotesPreservingOptimistic([sampleNote], [created, sampleNote]);
-    expect(merged.map((note) => note.id)).toEqual(["n-1", "local-abc123"]);
-    expect(merged.find((note) => note.id === "local-abc123")?.title).toBe("Event");
+    expect(merged.map((note) => note.id)).toEqual(["n-1", created.id]);
+    expect(merged.find((note) => note.id === created.id)?.title).toBe("Event");
+  });
+
+  it("drops a note the server list no longer has once it was created", () => {
+    const deletedElsewhere: Note = { ...sampleNote, id: "6e0c0de0-0000-4000-8000-000000000003" };
+    const merged = mergeBootstrapNotesPreservingOptimistic(
+      [sampleNote],
+      [deletedElsewhere, sampleNote],
+    );
+    expect(merged.map((note) => note.id)).toEqual(["n-1"]);
   });
 
   it("keeps a typed title when bootstrap still has an empty SUMMARY", () => {
@@ -995,18 +998,6 @@ describe("createNoteSaveDebouncer", () => {
     const { flushAll } = createNoteSaveDebouncer(500);
     flushAll(persist);
     expect(persist).not.toHaveBeenCalled();
-  });
-
-  it("remapId moves a pending save onto the server id", () => {
-    vi.useFakeTimers();
-    const persist = vi.fn();
-    const { schedule, remapId } = createNoteSaveDebouncer(500);
-    const titled = { ...sampleNote, id: "local-temp", title: "Event" };
-    schedule("local-temp", titled, persist, ["title"]);
-    remapId("local-temp", "n-server");
-    vi.advanceTimersByTime(500);
-    expect(persist).toHaveBeenCalledOnce();
-    expect(persist).toHaveBeenCalledWith({ ...titled, id: "n-server" }, { fields: ["title"] });
   });
 
   it("sends the union of the fields the debounced edits changed", () => {
