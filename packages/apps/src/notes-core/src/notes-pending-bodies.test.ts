@@ -40,4 +40,20 @@ describe("uploadPendingNoteBodies", () => {
     const names = (await indexedDB.databases()).map((row) => row.name);
     expect(names).not.toContain(`${withoutBody}:v2`);
   });
+
+  it("skips the sweep when the browser cannot list its databases", async () => {
+    await upsertNoteInCache("bodies-user", note("4b1c2d3e-0000-4000-8000-0000000000b3"), false);
+    const databases = indexedDB.databases;
+    Object.defineProperty(indexedDB, "databases", { configurable: true, value: undefined });
+    uploaded.mockClear();
+    try {
+      await uploadPendingNoteBodies("bodies-user");
+    } finally {
+      Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
+    }
+
+    // Probing blind would open (and create) a database per note; the editor
+    // still saves a room when it is opened.
+    expect(uploaded).not.toHaveBeenCalled();
+  });
 });
