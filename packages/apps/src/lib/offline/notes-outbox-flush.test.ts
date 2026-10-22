@@ -345,10 +345,14 @@ describe("flushNotesOutbox", () => {
   });
 
   it("runs the one-off legacy id upgrade once per page load, not on every flush", async () => {
+    // Its own account: the "already ran" memory is per page load and account.
+    const fresh = "legacy-once-user";
+    await writeNotesBootstrapToCache(fresh, bootstrap, Date.now());
     vi.mocked(upgradeLegacyLocalNotes).mockClear();
-    await flushNotesOutbox(username);
-    await flushNotesOutbox(username);
 
-    expect(vi.mocked(upgradeLegacyLocalNotes).mock.calls.length).toBeLessThanOrEqual(1);
+    await flushNotesOutbox(fresh);
+    await flushNotesOutbox(fresh);
+
+    expect(upgradeLegacyLocalNotes).toHaveBeenCalledTimes(1);
   });
 });
