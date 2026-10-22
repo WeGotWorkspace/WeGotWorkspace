@@ -18,13 +18,16 @@ export async function uploadPendingNoteBodies(username: string): Promise<void> {
   // One listing, then only notes that have a body database: probing a
   // missing one would create it.
   const existing = await listExistingIndexedDatabaseNames();
+  // No listing (older browsers): probing blind would open a database per
+  // note. Skip the sweep; the editor still saves a room when it is opened.
+  if (!existing) return;
   const rooms: PendingCollabRoom[] = [];
   for (const row of await notesNotesTable(db).toArray()) {
     const note = noteFromRow(row);
     if (!note || note.createPending) continue;
     const room = noteCollabRoomKey(note.id);
     const databaseName = docsCollabIndexedDbKey(room);
-    if (existing && !existing.has(databaseName)) continue;
+    if (!existing.has(databaseName)) continue;
     rooms.push({
       room,
       databaseName,
