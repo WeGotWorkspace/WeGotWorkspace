@@ -20,16 +20,31 @@ export function withCrossTabLock<T>(
   if (options?.maxWaitMs === undefined) {
     return locks.request(name, { mode: "exclusive" }, () => task()) as Promise<T>;
   }
-  // Give up waiting (AbortError) when another holder never lets go; once
-  // the lock is held, the timer no longer applies.
+  // Give up waiting when another holder never lets go; once the lock is held
+  // the timer no longer applies, and an abort from the task is the task's own.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.maxWaitMs);
-  return locks.request(name, { mode: "exclusive", signal: controller.signal }, () => {
-    clearTimeout(timer);
-    return task();
-  }) as Promise<T>;
+  let acquired = false;
+  return (
+    locks.request(name, { mode: "exclusive", signal: controller.signal }, () => {
+      acquired = true;
+      clearTimeout(timer);
+      return task();
+    }) as Promise<T>
+  ).catch((error: unknown) => {
+    if (!acquired && controller.signal.aborted) throw new CrossTabLockTimeoutError(name);
+    throw error;
+  });
+}
+
+/** The lock stayed taken longer than the caller would wait. */
+export class CrossTabLockTimeoutError extends Error {
+  constructor(name: string) {
+    super(`Gave up waiting for lock ${name}`);
+    this.name = "CrossTabLockTimeoutError";
+  }
 }
 
 export function isCrossTabLockTimeout(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
+  return error instanceof CrossTabLockTimeoutError;
 }

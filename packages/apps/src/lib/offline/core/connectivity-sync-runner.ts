@@ -81,26 +81,34 @@ export class ConnectivitySyncRunnerRegistry<T = void> {
       if (delay === undefined || !readBrowserOnline()) return;
       attempt += 1;
       retryTimer = setTimeout(() => {
+        // The flush reads this flag synchronously when it starts; when a flush
+        // is already running, it is cleared so a later Retry is not mistaken
+        // for this timer.
         timerFired = true;
         void runner.flush();
+        timerFired = false;
       }, delay);
     };
     const runner: ConnectivitySyncRunner<T> = new ConnectivitySyncRunner(async () => {
       const startedByTimer = timerFired;
       timerFired = false;
       try {
-        return await withCrossTabLock(outboxLockName(this.domain, username), flushTask, {
+        const result = await withCrossTabLock(outboxLockName(this.domain, username), flushTask, {
           maxWaitMs: LOCK_MAX_WAIT_MS,
         });
+        await retryIfStillFailing(startedByTimer);
+        return result;
       } catch (error) {
-        if (!isCrossTabLockTimeout(error)) throw error;
+        if (!isCrossTabLockTimeout(error)) {
+          await retryIfStillFailing(startedByTimer);
+          throw error;
+        }
         // Another tab holds the outbox and does not let go (a hung request, a
-        // throttled background tab). Do not wait on it forever: try later.
+        // throttled background tab). Nothing was sent, so no row has failed:
+        // try again later rather than wait for the next write or reconnect.
         clearTimeout(retryTimer);
         retryTimer = setTimeout(() => void runner.flush(), LOCK_BUSY_RETRY_MS);
         return undefined as T;
-      } finally {
-        await retryIfStillFailing(startedByTimer);
       }
     });
     this.runners.set(username, runner);
