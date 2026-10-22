@@ -594,7 +594,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$blobId.'/download-me.txt')
             ->assertOk();
-        $this->assertSame('file content here', $download->getContent());
+        $this->assertSame('file content here', $download->streamedContent());
 
         // carol cannot reach it through her own account path.
         $this->withBearer($this->carolBearerToken())

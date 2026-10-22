@@ -2959,7 +2959,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download file content */
+        /**
+         * Download file content
+         * @description Streams with a single `Range` request honoured (206 / 416) and `Content-Length` from the file at stream time (#1500).
+         */
         get: {
             parameters: {
                 query?: {
@@ -2968,15 +2971,41 @@ export interface paths {
                     /** @description FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`. */
                     id?: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                };
                 path?: never;
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Stream */
+                /** @description File content (inline). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
                 200: {
                     headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -5257,7 +5286,7 @@ export interface paths {
         };
         /**
          * JMAP blob download
-         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.
+         * @description Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.
          */
         get: {
             parameters: {
@@ -5265,7 +5294,10 @@ export interface paths {
                     /** @description Overrides the response Content-Type. */
                     type?: string;
                 };
-                header?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                };
                 path: {
                     accountId: string;
                     blobId: string;
@@ -5275,9 +5307,22 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Blob content */
+                /** @description Blob content. `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
                 200: {
                     headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
                         [name: string]: unknown;
                     };
                     content: {
@@ -5293,6 +5338,14 @@ export interface paths {
                     content: {
                         "application/problem+json": Record<string, never>;
                     };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -8022,6 +8075,167 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/download-tickets/{accountId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a download ticket for one blob
+         * @description WGW extension (#1500). A native browser download cannot send the Authorization header, so the client asks for a ticket for one blobId and hands the browser the returned URL. The ticket is bound to this blobId, this account, and the sign-in session of the access token (its refresh-token family): signing out, a password change, or a revoked device ends it. It expires at `min(last request + idle time (30 min), issue + lifetime (24 h))`; every accepted request moves the idle expiry forward, and it never expires while a response streams. An access token minted before session binding existed gets 403 `session_required` (refresh the token and retry).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    accountId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description Any blobId the account can download through downloadUrl. */
+                        blobId: string;
+                        /** @description File name for Content-Disposition. */
+                        name: string;
+                        /** @description Optional Content-Type override. */
+                        type?: string | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description Ticket issued. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed. */
+                            url: string;
+                            /** Format: date-time */
+                            idleExpires: string;
+                            /** Format: date-time */
+                            absoluteExpires: string;
+                        };
+                    };
+                };
+                400: components["responses"]["JmapBadRequest"];
+                /** @description `session_required`: the access token carries no session binding; or the caller lacks the role. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+                /** @description Unknown blob, a blob the account cannot read, or accountId does not match the principal. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>;
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jmap/download-ticket/{secret}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a blob through a ticket
+         * @description WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served. */
+                    Range?: string;
+                };
+                path: {
+                    secret: string;
+                    /** @description Display only; Content-Disposition uses the name the ticket was issued with. */
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Blob content as an attachment (`X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time. */
+                200: {
+                    headers: {
+                        "Accept-Ranges"?: "bytes";
+                        "Content-Length"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description The requested byte range, with `Content-Range: bytes a-b/size`. */
+                206: {
+                    headers: {
+                        "Content-Range"?: string;
+                        "Content-Length"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description Unknown, expired, or revoked ticket, or the blob is no longer readable (problem+json). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": Record<string, never>;
+                    };
+                };
+                /** @description Unsatisfiable range; `Content-Range: bytes *\/size`. */
+                416: {
+                    headers: {
+                        "Content-Range"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;

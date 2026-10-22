@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Jmap\Blobs;
 
 use App\Services\Jmap\Assembly\BlobAssemblyService;
+use App\Services\Jmap\Download\DownloadTicketService;
 use App\Services\Jmap\FileNodes\FileNodeBlobAttacher;
 use App\Services\Jmap\FileNodes\FileNodeHashJobRunner;
 use App\Storage\WgwStorage;
@@ -18,7 +19,8 @@ use Illuminate\Support\Carbon;
  *  - expired assemblies (their file and part claims; finished ones only
  *    their row) — first, so their parts become ordinary expired blobs,
  *  - expired blobs, honouring every reference checker,
- *  - staged attach copies nobody resumed, and orphaned temp files,
+ *  - staged attach copies nobody resumed, orphaned temp files, and
+ *    expired download tickets,
  *  - one slice of pending content hashes of files discovered on disk.
  */
 final class JmapBlobMaintenance
@@ -37,6 +39,7 @@ final class JmapBlobMaintenance
         private readonly BlobAssemblyService $assemblies,
         private readonly FileNodeBlobAttacher $attacher,
         private readonly FileNodeHashJobRunner $hashJobs,
+        private readonly DownloadTicketService $tickets,
         private readonly WgwStorage $storage,
     ) {}
 
@@ -89,6 +92,7 @@ final class JmapBlobMaintenance
         $blobs = $this->collector->collect(limit: $blobLimit);
         $staging = $this->attacher->expireStaging($tempLimit);
         $temp = $this->sweepTempFiles($tempLimit);
+        $this->tickets->pruneExpired();
         $hashed = 0;
         while ($hashBudget > 0) {
             $budget = min($hashBudget, JmapBlobLimits::stepBudgetBytes());

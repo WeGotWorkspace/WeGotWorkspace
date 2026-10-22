@@ -92,6 +92,35 @@ final class RefreshTokenRepository
         $this->cleanupExpired();
     }
 
+    /**
+     * Family (one sign-in session) of a plaintext refresh token, or null.
+     */
+    public function familyIdFor(string $token): ?string
+    {
+        $family = ApiRefreshToken::query()->where('token_hash', self::hashToken($token))->value('family_id');
+
+        return is_string($family) && $family !== '' ? $family : null;
+    }
+
+    /**
+     * True while the session still has an unrevoked, unexpired refresh token.
+     * Sign-out, a revoked device (revokeFamily), and a password change
+     * (revokeAllForUsername) all end it.
+     */
+    public function isFamilyLive(string $username, string $familyId): bool
+    {
+        if ($familyId === '') {
+            return false;
+        }
+
+        return ApiRefreshToken::query()
+            ->where('family_id', $familyId)
+            ->where('username', $username)
+            ->where('revoked', 0)
+            ->where('expires_at', '>', time())
+            ->exists();
+    }
+
     public function revokeAllForUsername(string $username): void
     {
         $this->cleanupExpired();

@@ -55,7 +55,7 @@ final class JmapFileNodeAclTest extends WgwDatabaseTestCase
         $jmapDownload = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$created['blobId'].'/notes.md')
             ->assertOk();
-        $this->assertStringContainsString('Hello drive', $jmapDownload->getContent());
+        $this->assertStringContainsString('Hello drive', $jmapDownload->streamedContent());
     }
 
     public function test_cross_user_create_is_denied(): void

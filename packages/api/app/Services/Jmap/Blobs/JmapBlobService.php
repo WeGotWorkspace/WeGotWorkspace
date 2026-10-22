@@ -214,6 +214,32 @@ final class JmapBlobService
         ];
     }
 
+    /**
+     * Streamed variant for /jmap/download: the bytes are never read into a
+     * PHP string.
+     */
+    public function retrieveContent(string $username, string $blobId): ?BlobContent
+    {
+        $row = $this->find($username, $blobId);
+        if ($row === null) {
+            return null;
+        }
+        $key = $this->blobKey($username, $blobId);
+        $disk = $this->storage->data();
+
+        return new BlobContent(
+            is_string($row->media_type) && $row->media_type !== '' ? $row->media_type : 'application/octet-stream',
+            static function () use ($disk, $key) {
+                try {
+                    return $disk->readStream($key);
+                } catch (\Throwable) {
+                    // Gone between resolving and streaming.
+                    return null;
+                }
+            },
+        );
+    }
+
     public function delete(string $username, string $blobId): void
     {
         $this->deleteQuietly($this->storage->data(), $this->blobKey($username, $blobId));

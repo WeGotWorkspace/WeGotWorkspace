@@ -4111,14 +4111,80 @@
               "type": "string"
             },
             "description": "FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`."
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
           }
         ],
         "responses": {
           "200": {
-            "description": "Stream"
+            "description": "File content (inline). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "bytes"
+                  ]
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
-        "x-wgw-access": "guest"
+        "x-wgw-access": "guest",
+        "description": "Streams with a single `Range` request honoured (206 / 416) and `Content-Length` from the file at stream time (#1500)."
       }
     },
     "/files/context": {
@@ -8211,7 +8277,7 @@
           "JMAP"
         ],
         "summary": "JMAP blob download",
-        "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
+        "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.",
         "security": [
           {
             "bearerAuth": []
@@ -8251,16 +8317,73 @@
               "type": "string"
             },
             "description": "Overrides the response Content-Type."
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
           }
         ],
         "responses": {
           "200": {
-            "description": "Blob content",
+            "description": "Blob content. `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "bytes"
+                  ]
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
             "content": {
               "application/octet-stream": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -8277,6 +8400,230 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          }
+        }
+      }
+    },
+    "/jmap/download-tickets/{accountId}": {
+      "post": {
+        "tags": [
+          "JMAP"
+        ],
+        "summary": "Issue a download ticket for one blob",
+        "description": "WGW extension (#1500). A native browser download cannot send the Authorization header, so the client asks for a ticket for one blobId and hands the browser the returned URL. The ticket is bound to this blobId, this account, and the sign-in session of the access token (its refresh-token family): signing out, a password change, or a revoked device ends it. It expires at `min(last request + idle time (30 min), issue + lifetime (24 h))`; every accepted request moves the idle expiry forward, and it never expires while a response streams. An access token minted before session binding existed gets 403 `session_required` (refresh the token and retry).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-wgw-access": "user",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "blobId",
+                  "name"
+                ],
+                "properties": {
+                  "blobId": {
+                    "type": "string",
+                    "description": "Any blobId the account can download through downloadUrl."
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "description": "File name for Content-Disposition."
+                  },
+                  "type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Optional Content-Type override."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "idleExpires",
+                    "absoluteExpires"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "description": "Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed."
+                    },
+                    "idleExpires": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "absoluteExpires": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/JmapBadRequest"
+          },
+          "403": {
+            "description": "`session_required`: the access token carries no session binding; or the caller lacks the role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown blob, a blob the account cannot read, or accountId does not match the principal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jmap/download-ticket/{secret}/{name}": {
+      "get": {
+        "tags": [
+          "JMAP"
+        ],
+        "summary": "Download a blob through a ticket",
+        "description": "WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.",
+        "x-wgw-access": "guest",
+        "parameters": [
+          {
+            "name": "secret",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Display only; Content-Disposition uses the name the ticket was issued with."
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blob content as an attachment (`X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+            "headers": {
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "bytes"
+                  ]
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown, expired, or revoked ticket, or the blob is no longer readable (problem+json).",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
           }
         }
       }
