@@ -95,7 +95,7 @@ final class AuthTokenService
     }
 
     /**
-     * @param  array{username: string, role: 'guest'|'user'|'admin'}  $principal
+     * @param  array{username: string, role: 'guest'|'user'|'admin', sid?: string}  $principal
      */
     public function revoke(?array $principal, ?string $bearerToken, ?string $refreshToken): void
     {
@@ -210,12 +210,17 @@ final class AuthTokenService
             $user = User::query()->where('username', $username)->first(['id']);
             $uid = $user === null ? 0 : (int) $user->id;
         }
-        $access = $this->jwtTokens->issue([
+        $claims = [
             'sub' => $username,
             'role' => $role,
             'exp' => time() + $ttl,
             'uid' => $uid,
-        ]);
+        ];
+        $sid = $this->refreshTokens->familyIdFor($refreshToken);
+        if ($sid !== null) {
+            $claims['sid'] = $sid;
+        }
+        $access = $this->jwtTokens->issue($claims);
 
         return [
             'access_token' => $access,
