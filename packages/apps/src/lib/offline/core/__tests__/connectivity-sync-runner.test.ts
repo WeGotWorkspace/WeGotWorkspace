@@ -4,6 +4,7 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import { isCrossTabLockTimeout } from "@/lib/offline/core/cross-tab-lock";
 import {
   enqueueOutboxMutation,
   listOutboxMutations,
@@ -113,19 +114,27 @@ describe("ConnectivitySyncRunnerRegistry across tabs", () => {
     Reflect.deleteProperty(navigator, "locks");
   });
 
-  it("does not hang behind a tab that never lets go, and tries again later", async () => {
+  it("does not hang behind a stuck tab, and sends its own rows once that tab lets go", async () => {
     installSerialWebLocks();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
+      let release!: () => void;
       const stuckTab = new ConnectivitySyncRunnerRegistry<void>("hang").getOrCreate(
         "ada",
-        () => new Promise<void>(() => undefined),
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
       );
       const otherTask = vi.fn(async () => undefined);
       const otherTab = new ConnectivitySyncRunnerRegistry<void>("hang").getOrCreate(
         "ada",
         otherTask,
       );
+      // IndexedDB answers outside the fake clock.
+      const settle = async () => {
+        for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
+      };
 
       void stuckTab.flush();
       let settled = false;
@@ -133,17 +142,23 @@ describe("ConnectivitySyncRunnerRegistry across tabs", () => {
         settled = true;
       });
       await vi.advanceTimersByTimeAsync(30_000);
-      // IndexedDB answers outside the fake clock.
-      for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
-
+      await settle();
       expect(settled).toBe(true);
       expect(otherTask).not.toHaveBeenCalled();
-      // A later attempt is queued again instead of giving up for good.
+
+      // The stuck tab finishes; this tab's queued retry now gets the lock.
+      release();
+      await settle();
       await vi.advanceTimersByTimeAsync(5_000);
-      expect(otherTask).not.toHaveBeenCalled();
+      await settle();
+      expect(otherTask).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("tells a lock timeout apart from an AbortError thrown by the flush itself", () => {
+    expect(isCrossTabLockTimeout(new DOMException("aborted fetch", "AbortError"))).toBe(false);
   });
 
   it("never runs two tabs' flushes of one domain and account at the same time", async () => {
