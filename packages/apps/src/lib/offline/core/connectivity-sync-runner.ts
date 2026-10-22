@@ -1,5 +1,5 @@
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import {
   isRetryableOutboxRow,
   listOutboxMutationsForDomain,
@@ -7,6 +7,10 @@ import {
 
 /** Waits before trying again after a busy or failing server; then a person retries. */
 const RETRY_DELAYS_MS = [5_000, 15_000, 60_000, 300_000];
+
+/** How long a flush waits for another tab's flush before it tries again later. */
+const LOCK_MAX_WAIT_MS = 30_000;
+const LOCK_BUSY_RETRY_MS = 5_000;
 
 type FlushTask<T> = () => Promise<T>;
 
@@ -20,7 +24,11 @@ export function withOutboxLock<T>(
   username: string,
   task: () => Promise<T>,
 ): Promise<T> {
-  return withCrossTabLock(`wgw-outbox:${domain}:${username}`, task);
+  return withCrossTabLock(outboxLockName(domain, username), task);
+}
+
+function outboxLockName(domain: string, username: string): string {
+  return `wgw-outbox:${domain}:${username}`;
 }
 
 /** Serializes flush attempts so a single in-flight sync never overlaps itself. */
@@ -77,12 +85,23 @@ export class ConnectivitySyncRunnerRegistry<T = void> {
         void runner.flush();
       }, delay);
     };
-    const runner: ConnectivitySyncRunner<T> = new ConnectivitySyncRunner(() => {
+    const runner: ConnectivitySyncRunner<T> = new ConnectivitySyncRunner(async () => {
       const startedByTimer = timerFired;
       timerFired = false;
-      return withOutboxLock(this.domain, username, flushTask).finally(() =>
-        retryIfStillFailing(startedByTimer),
-      );
+      try {
+        return await withCrossTabLock(outboxLockName(this.domain, username), flushTask, {
+          maxWaitMs: LOCK_MAX_WAIT_MS,
+        });
+      } catch (error) {
+        if (!isCrossTabLockTimeout(error)) throw error;
+        // Another tab holds the outbox and does not let go (a hung request, a
+        // throttled background tab). Do not wait on it forever: try later.
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => void runner.flush(), LOCK_BUSY_RETRY_MS);
+        return undefined as T;
+      } finally {
+        await retryIfStillFailing(startedByTimer);
+      }
     });
     this.runners.set(username, runner);
     return runner;
