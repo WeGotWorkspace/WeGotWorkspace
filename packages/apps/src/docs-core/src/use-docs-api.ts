@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
+import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { subscribeOfflineDeviceContentSettings } from "@/lib/offline/core/offline-device-settings";
 import { syncDocsBodiesFromHomeListing } from "@/lib/offline/docs/docs-body-sync";
+import { getDocsSyncRunner } from "@/lib/offline/docs/docs-hybrid-operations";
 import { resolveDocsOfflineUsername } from "@/lib/offline/offline-session";
 import type { DocsAppBootstrap, DocsUIData } from "@/docs-core/src/docs-types";
 import { createDefaultDocsApiSource, type DocsApiSource } from "@/docs-core/src/docs-api-source";
+import { uploadPendingDocBodies } from "@/docs-core/src/docs-pending-bodies";
 
 const DOCS_BOOTSTRAP_CACHE_KEY = "wgw.docs.bootstrap.session";
 
@@ -20,6 +23,20 @@ function readCachedDocsBootstrap(): DocsAppBootstrap | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Send what was queued offline first, on every Docs page (not only the home
+ * listing), then bodies typed offline in documents since closed, so the
+ * listing synced next already shows those changes.
+ */
+async function sendQueuedThenSyncBodies(username: string, signal?: AbortSignal): Promise<void> {
+  if (readBrowserOnline()) {
+    await getDocsSyncRunner(username).flush();
+    await uploadPendingDocBodies(username);
+  }
+  if (signal?.aborted) return;
+  await syncDocsBodiesFromHomeListing(username, { signal });
 }
 
 function cacheDocsBootstrap(bootstrap: DocsAppBootstrap): void {
@@ -56,9 +73,7 @@ export function useDocsAPI(source?: DocsApiSource) {
   useEffect(() => {
     if (phase !== "ready" || !offlineUsername) return;
     const controller = new AbortController();
-    void syncDocsBodiesFromHomeListing(offlineUsername, { signal: controller.signal }).catch(
-      () => undefined,
-    );
+    void sendQueuedThenSyncBodies(offlineUsername, controller.signal).catch(() => undefined);
     return () => controller.abort();
   }, [offlineUsername, phase]);
 
@@ -75,7 +90,7 @@ export function useDocsAPI(source?: DocsApiSource) {
   useOnReconnect(
     useCallback(() => {
       if (!offlineUsername) return;
-      void syncDocsBodiesFromHomeListing(offlineUsername).catch(() => undefined);
+      void sendQueuedThenSyncBodies(offlineUsername).catch(() => undefined);
     }, [offlineUsername]),
   );
 

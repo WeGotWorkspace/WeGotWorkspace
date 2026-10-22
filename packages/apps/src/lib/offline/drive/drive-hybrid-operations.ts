@@ -63,7 +63,7 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (!isFetchNetworkError(error)) throw error;
 }
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<DriveOutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<DriveOutboxFlushResult>(DRIVE_DOMAIN);
 
 async function flushDriveOutboxTask(username: string): Promise<DriveOutboxFlushResult> {
   const result = await flushDriveOutbox(username);

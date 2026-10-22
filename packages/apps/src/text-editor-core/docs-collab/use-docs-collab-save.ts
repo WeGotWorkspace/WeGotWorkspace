@@ -92,7 +92,12 @@ export function useDocsCollabSave({
   const persistToServer = useCallback(async (): Promise<void> => {
     // First, before the offline pending mark. persistCollabSave checks it too.
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
-    if (urls.roomNotPersistent) return;
+    // Not on the server yet: keep the edit marked unsaved so it uploads once the
+    // room is persistent (the note's create landed).
+    if (urls.roomNotPersistent) {
+      await markPendingWhenUnsaved();
+      return;
+    }
     if (refs.externalWriteHoldRef.current) return;
     if (refs.saveInFlightRef.current) return;
     if (!getConnectivitySnapshot()) {
@@ -231,7 +236,10 @@ export function useDocsCollabSave({
     (getMarkdown: () => string) => {
       refs.getMarkdownRef.current = getMarkdown;
       const nextMarkdown = getMarkdown();
-      if (nextMarkdown === refs.lastKnownMarkdownRef.current) return;
+      // The Y.Doc listener already marks a local edit dirty. An edit back to
+      // the last known text (a note opened offline and emptied) still saves.
+      const changed = nextMarkdown !== refs.lastKnownMarkdownRef.current;
+      if (!changed && !refs.localDirtySinceLastSaveRef.current) return;
       refs.lastKnownMarkdownRef.current = nextMarkdown;
       refs.localDirtySinceLastSaveRef.current = true;
       if (!getConnectivitySnapshot()) {

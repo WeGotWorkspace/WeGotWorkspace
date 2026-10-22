@@ -14,6 +14,7 @@ import { useDocsCollabSave } from "./use-docs-collab-save";
 import { useDocsCollabSessionRefs } from "./use-docs-collab-session-refs";
 import { useDocsCollabTabSync } from "./use-docs-collab-tab-sync";
 import { docsCollabRoomKey } from "./docs-collab-persistence";
+import { holdOpenCollabRoom } from "./docs-collab-sync-registry";
 
 export {
   DEFAULT_DOCS_COLLAB_URLS,
@@ -145,6 +146,8 @@ export function useDocsCollab({
   useEffect(() => {
     refs.sessionRef.current = session;
   }, [session, refs]);
+
+  useEffect(() => holdOpenCollabRoom(room), [room]);
 
   useEffect(() => {
     if (!isTransientDocStatus(docStatus)) return;

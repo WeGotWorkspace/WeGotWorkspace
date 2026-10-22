@@ -372,6 +372,9 @@ export function useDocsCollabJoin({
         }
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
+        // Edits made before the server answered (offline, on the cached text)
+        // are not on the server either, also when they emptied the document.
+        keptLocalEdits = refs.localDirtySinceLastSaveRef.current;
       }
 
       const hadSnapshot = snapshot.kind === "snapshot";
@@ -394,7 +397,13 @@ export function useDocsCollabJoin({
         refs.localDirtySinceLastSaveRef.current = false;
       }
 
-      if (settlement !== "prompted" && !refs.seedDoneRef.current && isYDocEmpty(ydoc)) {
+      // An empty document the person emptied is not one that never loaded.
+      if (
+        settlement !== "prompted" &&
+        !keptLocalEdits &&
+        !refs.seedDoneRef.current &&
+        isYDocEmpty(ydoc)
+      ) {
         const meshSession = refs.meshRef.current;
         if (shouldApplyImmediateSeed(meshSession, ydoc, refs.seedDoneRef.current, seed)) {
           applyContentSeedToYDoc(ydoc, seed, documentFormat);

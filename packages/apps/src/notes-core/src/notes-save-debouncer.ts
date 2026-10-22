@@ -77,20 +77,5 @@ export function createNoteSaveDebouncer(delayMs: number) {
     pending.clear();
   }
 
-  /** Move a pending save onto the remapped server id so title/metadata PATCH hits the UID. */
-  function remapId(fromId: string, toId: string): void {
-    if (fromId === toId) return;
-    const row = pending.get(fromId);
-    const timer = timers.get(fromId);
-    if (timer) {
-      clearTimeout(timer);
-      timers.delete(fromId);
-    }
-    if (!row) return;
-    pending.delete(fromId);
-    pending.set(toId, { ...row, note: { ...row.note, id: toId } });
-    arm(toId, delayMs);
-  }
-
-  return { schedule, flushAll, remapId };
+  return { schedule, flushAll };
 }

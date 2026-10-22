@@ -59,7 +59,7 @@ function rethrowUnlessOfflineQueue(error: unknown, opts?: ContactsMutationOpts):
   if (!isFetchNetworkError(error)) throw error;
 }
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>(CONTACTS_DOMAIN);
 
 async function flushContactsOutboxAndReport(username: string): Promise<OutboxFlushResult> {
   const result = await flushContactsOutbox(username);
@@ -316,7 +316,7 @@ export async function fetchContactsHybridBootstrap(
     throw new Error("Contacts bootstrap missing username");
   }
   if (readBrowserOnline()) {
-    await flushContactsOutboxAndReport(username);
+    await runnerFor(username).flush();
   }
   await writeContactsBootstrapToCache(username, bootstrap);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);

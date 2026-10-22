@@ -126,9 +126,11 @@ final class NoteRepository
         }
         $this->collectionAccess->assertCollectionWritable($instance, 'This notebook is read-only.');
 
-        // Decision 7: room key = UID. Always mint so clients cannot aim at
-        // another principal's collab room. Client-supplied `uid` is ignored.
-        $uid = (string) Str::uuid();
+        // Decision 7: room key = UID. A client UUID is safe as a room key only
+        // because note UIDs are unique across all notebooks (REST, CalDAV and
+        // move all check), so it can never name another note's room.
+        $clientUid = $payload['uid'] ?? null;
+        $uid = is_string($clientUid) && Str::isUuid($clientUid) ? strtolower($clientUid) : (string) Str::uuid();
         $this->moveHelper->assertUidAvailable($uid);
 
         $note = [
@@ -443,6 +445,29 @@ final class NoteRepository
             'etag' => DocCollabDocumentService::sidecarEtag($bytes),
             'externalWrite' => $this->yjsProjection->isExternalContentWrite($row, $located['object']),
         ];
+    }
+
+    /**
+     * The note a repeated create (same client UID) already made, when the
+     * caller may write it: a retry after a lost response, or another tab that
+     * sent the same queued create. Null when the UID is free, or belongs to a
+     * note the caller cannot write.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function existingCreateForRetry(string $username, string $uid): ?array
+    {
+        $located = $this->findAccessibleNote($username, strtolower($uid));
+        if ($located === null) {
+            return null;
+        }
+        try {
+            $this->collectionAccess->assertCollectionWritable($located['instance'], 'This notebook is read-only.');
+        } catch (ApiHttpException) {
+            return null;
+        }
+
+        return $this->show($username, strtolower($uid));
     }
 
     /**

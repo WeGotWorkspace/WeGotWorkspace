@@ -21,15 +21,6 @@ export type OfflineNoteRow = {
 
 export const NOTES_DOMAIN = "notes";
 
-/** Client id for a note the server has not created yet. */
-export function createTempNoteId(): string {
-  return `local-${crypto.randomUUID().replace(/-/g, "")}`;
-}
-
-export function isLocalTempNoteId(id: string | undefined): boolean {
-  return !!id?.startsWith("local-");
-}
-
 /**
  * Notes Dexie tables, registered as additive versions on top of the core
  * `{ meta, outbox }` baseline (v1):

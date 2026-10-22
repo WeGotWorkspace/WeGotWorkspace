@@ -93,7 +93,9 @@ async function withSubscriptionUrls(
   };
 }
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<CalendarOutboxFlushResult>(
+  CALENDARS_DOMAIN,
+);
 
 async function flushCalendarsOutboxAndReport(username: string): Promise<CalendarOutboxFlushResult> {
   if (!readBrowserOnline()) {
@@ -464,12 +466,12 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   // payload, which would revert optimistic patches in the UI).
   await writeCalendarBootstrapToCache(username, bootstrap);
   if (readBrowserOnline()) {
-    await flushCalendarsOutboxAndReport(username);
+    await runnerFor(username).flush();
     const refreshed = await refreshStaleCalendarSubscriptionsLive().catch(() => false);
     if (refreshed) {
       bootstrap = await fetchCalendarLiveBootstrap();
       await writeCalendarBootstrapToCache(username, bootstrap);
-      await flushCalendarsOutboxAndReport(username);
+      await runnerFor(username).flush();
     }
     const merged = (await readCalendarBootstrapFromCache(username)) ?? bootstrap;
     bootstrap = await withSubscriptionUrls(merged).catch(() => merged);

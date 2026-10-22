@@ -337,6 +337,7 @@ export function NotesWorkspace({
   );
 
   const activeNoteId = active?.id;
+  const activeCreatePending = active?.createPending === true;
 
   useEffect(() => {
     if (!wgwLiveApiEnabled() || !activeNoteId) {
@@ -348,12 +349,12 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    // A local-* note gets a local-only room (`roomNotPersistent`): the body is
-    // kept in IndexedDB and moves to the server UID when the create is adopted.
-    // Without it the body editor kept nothing and the typed text was lost.
+    // Until its create reaches the server the room is local-only: the body is
+    // kept in IndexedDB under the note's final UID, then saved once it exists.
     setAccessLost(false);
     let cancelled = false;
     void buildNoteCollabUrls(activeNoteId, {
+      createPending: activeCreatePending,
       onPersistForbidden: () => {
         setAccessLost(true);
         setNoteCollabUrls(undefined);
@@ -373,7 +374,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [activeNoteId, session.user.username]);
+  }, [activeCreatePending, activeNoteId, session.user.username]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).

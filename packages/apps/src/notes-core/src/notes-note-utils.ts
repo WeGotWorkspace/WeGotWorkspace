@@ -20,9 +20,9 @@ export {
   tagDeltaOpts,
 } from "@/notes-core/src/note-tag";
 
-export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void, noteId?: string) {
+export function persistBestEffort(promise: Promise<unknown>, onGone?: () => void) {
   promise.catch((error) => {
-    if (onGone && isNotesPersistGone(error, noteId)) onGone();
+    if (onGone && isNotesPersistGone(error)) onGone();
   });
 }
 
@@ -35,7 +35,7 @@ export function plainTextFromBody(body: string[] | undefined): string {
   return markdownToPlainText(noteBodyToMarkdown(body ?? []));
 }
 
-/** Offline-created notes keep `local-*` ids until flush remaps to a VJOURNAL UID. */
+/** Temporary id an older app gave offline-created notes; it may still show as a label. */
 const LOCAL_NOTE_ID_RE = /^local-[0-9a-f-]+$/i;
 
 /**
@@ -61,16 +61,6 @@ export function usableNoteListPreview(text: string, noteId?: string): string {
 /** True when the note has plain-text body content suitable for list preview/title. */
 export function noteHasListableBody(note: Pick<Note, "body"> & { id?: string }): boolean {
   return usableNoteListPreview(plainTextFromBody(note.body), note.id).length > 0;
-}
-
-/**
- * Docs-style “untitled + empty body → delete” is off for Notes.
- * A created VJOURNAL stays, even with empty SUMMARY and DESCRIPTION.
- */
-export function shouldDiscardEmptyCreatedNote(
-  _note: Pick<Note, "title" | "body" | "excerpt">,
-): boolean {
-  return false;
 }
 
 export function computeWordCount(body: string[]): number {
@@ -309,15 +299,12 @@ export function mergeBootstrapNotesPreservingOptimistic(
     });
   });
 
-  // Keep in-flight local-* creates a stale list payload has not seen yet. Dropping
+  // Keep notes made here that a stale list payload has not seen yet. Dropping
   // them cleared selection and made a just-titled note vanish from editor + list.
-  // Empty DESCRIPTION is not a discard reason (Notes persist created items).
+  // An empty note stays too: Notes keep a created VJOURNAL even when it is empty.
   const serverIds = new Set(serverNotes.map((note) => note.id));
   for (const local of localNotes) {
-    if (!serverIds.has(local.id) && LOCAL_NOTE_ID_RE.test(local.id)) {
-      if (shouldDiscardEmptyCreatedNote(local)) continue;
-      merged.push(enrichNote(local));
-    }
+    if (!serverIds.has(local.id) && local.createPending) merged.push(enrichNote(local));
   }
   return merged;
 }

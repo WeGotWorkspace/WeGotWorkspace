@@ -39,6 +39,7 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
+import { uploadPendingNoteBodies } from "./notes-pending-bodies";
 
 /** Live JMAP inbound poll (REST `/changes` is reconnect / mock-tier fallback). */
 const ONLINE_CHANGES_POLL_MS = 10_000;
@@ -166,6 +167,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     flush: async () => {
       if (!offlineUsername) return;
       await getNotesSyncRunner(offlineUsername).flush();
+      await uploadPendingNoteBodies(offlineUsername);
       await applyInboundRefresh();
       notifyNotesBootstrapUpdated(offlineUsername);
     },
