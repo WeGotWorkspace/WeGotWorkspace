@@ -1531,7 +1531,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a note */
+        /**
+         * Create a note
+         * @description Send `uid` (a UUID the client picked) to make the create idempotent; a `uid` that is not a UUID is ignored. If that note already exists in a notebook the caller can write, it is returned with 200 instead of a second note. A UID held by any other note is a 409. Without `uid` the server mints one.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -1545,6 +1548,15 @@ export interface paths {
                 };
             };
             responses: {
+                /** @description The note a repeated create with the same `uid` already made */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Note"];
+                    };
+                };
                 /** @description Created note */
                 201: {
                     headers: {
