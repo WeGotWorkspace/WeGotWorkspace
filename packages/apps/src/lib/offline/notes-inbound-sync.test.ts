@@ -119,6 +119,48 @@ describe("syncNotesInboundFromRest", () => {
     expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-2");
   });
 
+  it("without a token, lists each notebook once and drops cached notes the server no longer has", async () => {
+    readToken.mockImplementation(async (_user: string, key: string) =>
+      key === NOTES_NOTEBOOKS_TOKEN_KEY ? "tok-1" : null,
+    );
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockResolvedValue({
+      newState: "note-tok-9",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNotes.mockResolvedValue([
+      { id: "n-kept", notebookId: "notes-general", title: "Kept", body: "", categories: [] },
+    ]);
+    readCache.mockResolvedValue({
+      data: {
+        notebookCollections: [{ id: "notes-general", name: "General" }],
+        notes: [
+          { id: "n-kept", notebookId: "notes-general", notebook: "General" },
+          { id: "n-deleted-elsewhere", notebookId: "notes-general", notebook: "General" },
+        ],
+      },
+    });
+
+    const result = await syncNotesInboundFromRest("ada");
+
+    expect(result.usedFullResync).toBe(true);
+    expect(listNotes).toHaveBeenCalledWith({ notebookId: "notes-general" });
+    // One list, not one GET per note.
+    expect(getNote).not.toHaveBeenCalled();
+    expect(ingestNote).toHaveBeenCalledWith("ada", expect.objectContaining({ id: "n-kept" }));
+    expect(ingestNoteDestroyed).toHaveBeenCalledWith("ada", "n-deleted-elsewhere");
+    expect(ingestNoteDestroyed).not.toHaveBeenCalledWith("ada", "n-kept");
+    expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-9");
+  });
+
   it("does not destroy a note that moved into another notebook in the same poll", async () => {
     readCache.mockResolvedValue({
       data: {

@@ -97,7 +97,8 @@ describe("updateNoteItem metadata conflict retry", () => {
     );
   });
 
-  it("omits notebookId on retry when someone else moved the note", async () => {
+  it("keeps this tab's move on a 412 retry: the last move wins", async () => {
+    // Another tab moved it to Work. This tab then moves it to General.
     vi.mocked(getNote).mockResolvedValue({
       ...activeRow,
       notebookId: "notes-work",
@@ -105,7 +106,7 @@ describe("updateNoteItem metadata conflict retry", () => {
     });
     vi.mocked(patchNote)
       .mockRejectedValueOnce(preconditionFailed())
-      .mockResolvedValueOnce({ ...activeRow, notebookId: "notes-work", etag: '"after"' });
+      .mockResolvedValueOnce({ ...activeRow, notebookId: "notes-general", etag: '"after"' });
 
     await updateNoteItem("n-1", {
       id: "n-1",
@@ -117,11 +118,11 @@ describe("updateNoteItem metadata conflict retry", () => {
     });
 
     const retry = vi.mocked(patchNote).mock.calls[1]?.[1];
-    expect(vi.mocked(patchNote).mock.calls[0]?.[1]).toMatchObject({
+    expect(retry).toMatchObject({
       notebookId: "notes-general",
+      title: "From A",
+      categories: ["focus"],
     });
-    expect(retry).not.toHaveProperty("notebookId");
-    expect(retry).toMatchObject({ title: "From A", categories: ["focus"] });
   });
 
   it("sends the fresh ETag on the retry", async () => {

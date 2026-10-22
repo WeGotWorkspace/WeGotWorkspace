@@ -1,10 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { IndexeddbPersistence } from "y-indexeddb";
-import * as Y from "yjs";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { Note } from "@/lib/models/note";
-import { hasNoteCollabOfflinePersistence } from "@/lib/offline/notes/notes-collab-rooms";
 import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
@@ -16,8 +13,6 @@ import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
-import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
-import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 const username = "bob";
 
@@ -40,18 +35,6 @@ const bootstrap = {
     tags: ["essay"],
   },
 };
-
-async function collabRoomHasBody(indexedDbName: string): Promise<boolean> {
-  const ydoc = new Y.Doc();
-  const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
-  try {
-    await persistence.whenSynced;
-    return ydoc.getXmlFragment("default").length > 0;
-  } finally {
-    await persistence.destroy();
-    ydoc.destroy();
-  }
-}
 
 const { updateNoteItem, createNoteItem, deleteNoteItem, archiveNoteItem } = vi.hoisted(() => ({
   updateNoteItem: vi.fn(),
@@ -102,7 +85,9 @@ describe("flushNotesOutbox", () => {
     expect(updateNoteItem).toHaveBeenCalledOnce();
     // Metadata-only PUT: the request must never carry the note body.
     const [, request] = updateNoteItem.mock.calls[0] ?? [];
-    expect(request).toMatchObject({ notebook: "Drafts", tags: ["essay"] });
+    expect(request).toMatchObject({ tags: ["essay"] });
+    // Not a move: an older queued save must not put a stale notebook back.
+    expect(request).not.toHaveProperty("notebook");
     expect(request).not.toHaveProperty("body");
     expect(request).not.toHaveProperty("title");
     expect(result.stateMismatches).toEqual([]);
@@ -141,11 +126,10 @@ describe("flushNotesOutbox", () => {
   });
 
   it("retries a stale-etag tag upsert after create without reporting a conflict", async () => {
-    const tempId = "local-just-created";
     const serverId = "11111111-2222-3333-4444-555555555555";
     const tagged = { ...note, id: serverId, tags: ["focus"], etag: '"etag-minted"' };
     await upsertNoteInCache(username, tagged, true);
-    await enqueueCoalescedNoteUpdate(username, serverId, tagged, '"etag-stale"', tempId);
+    await enqueueCoalescedNoteUpdate(username, serverId, tagged, '"etag-stale"');
 
     updateNoteItem
       .mockRejectedValueOnce(Object.assign(new Error("precondition"), { status: 412 }))
@@ -160,60 +144,19 @@ describe("flushNotesOutbox", () => {
     expect(JSON.parse(row?.data ?? "{}").tags).toEqual(["focus"]);
   });
 
-  it("creates a server note and drops the local temp id from cache", async () => {
-    const tempId = "local-offline-create";
-    const offlineNote: Note = {
-      ...note,
-      id: tempId,
-      body: ["Created offline"],
-    };
-
-    await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
-
-    const saved = { ...note, id: "server-note-99", body: ["Created offline"] };
-    createNoteItem.mockResolvedValue(saved);
+  it("creates a queued note under its own UID", async () => {
+    const uid = "0ff1c0de-0000-4000-8000-000000000099";
+    const offlineNote: Note = { ...note, id: uid, body: ["Created offline"], createPending: true };
+    await upsertNoteInCache(username, offlineNote, true);
+    await enqueueCoalescedNoteUpdate(username, uid, offlineNote, offlineNote.date, true);
+    createNoteItem.mockResolvedValue({ ...note, id: uid, body: ["Created offline"] });
 
     const result = await flushNotesOutbox(username);
 
     expect(updateNoteItem).not.toHaveBeenCalled();
-    expect(createNoteItem).toHaveBeenCalledOnce();
-    expect(result.bootstrap?.data.notes.some((row) => row.id === "server-note-99")).toBe(true);
-    expect(result.bootstrap?.data.notes.some((row) => row.id === tempId)).toBe(false);
-  });
-
-  it("migrates collab persistence from temp id to saved id", async () => {
-    const tempId = "local-body-id";
-    const savedId = "server-body-id";
-    const notebook = "Drafts";
-    const tempRoom = noteCollabRoomKey(tempId);
-    const savedRoom = noteCollabRoomKey(savedId);
-    for (const indexedDbName of [tempRoom, docsCollabIndexedDbKey(tempRoom)]) {
-      const ydoc = new Y.Doc();
-      ydoc.getXmlFragment("default").insert(0, [new Y.XmlElement("paragraph")]);
-      const persistence = new IndexeddbPersistence(indexedDbName, ydoc);
-      await persistence.whenSynced;
-      await persistence.destroy();
-      ydoc.destroy();
-    }
-
-    const offlineNote: Note = {
-      ...note,
-      id: tempId,
-      notebook,
-      body: ["Created offline body"],
-    };
-    await enqueueCoalescedNoteUpdate(username, tempId, offlineNote, offlineNote.date, tempId);
-
-    createNoteItem.mockResolvedValue({ ...offlineNote, id: savedId });
-
-    await flushNotesOutbox(username);
-
-    await expect(hasNoteCollabOfflinePersistence(tempId)).resolves.toBe(false);
-    await expect(collabRoomHasBody(tempRoom)).resolves.toBe(false);
-    await expect(collabRoomHasBody(docsCollabIndexedDbKey(tempRoom))).resolves.toBe(false);
-    await expect(hasNoteCollabOfflinePersistence(savedId)).resolves.toBe(true);
-    await expect(collabRoomHasBody(savedRoom)).resolves.toBe(true);
-    await expect(collabRoomHasBody(docsCollabIndexedDbKey(savedRoom))).resolves.toBe(true);
+    expect(createNoteItem).toHaveBeenCalledWith(expect.objectContaining({ id: uid }));
+    const created = result.bootstrap?.data.notes.find((row) => row.id === uid);
+    expect(created?.createPending).toBeUndefined();
   });
 
   it("clears pendingSync after a successful flush", async () => {
@@ -381,7 +324,7 @@ describe("flushNotesOutbox", () => {
       tempId,
       offlineNote,
       offlineNote.date,
-      tempId,
+      true,
       undefined,
       { includeTitle: true, includeNotebook: false },
     );
