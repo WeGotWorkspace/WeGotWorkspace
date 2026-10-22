@@ -367,7 +367,9 @@ async function moveIndexedDbPersistence(fromName: string, toName: string): Promi
     try {
       await newPersistence.whenSynced;
       if (update) Y.applyUpdate(newDoc, update);
-      if (pendingServerSave) await newPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
+      // A temp room never reaches the server, so a moved body is unsaved even
+      // without the flag. Without it the server-id session would not upload it.
+      if (pendingServerSave || hasBody) await newPersistence.set(PENDING_SERVER_SAVE_KEY, 1);
     } finally {
       await newPersistence.destroy();
       newDoc.destroy();

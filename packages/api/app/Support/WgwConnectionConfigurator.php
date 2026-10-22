@@ -52,6 +52,7 @@ final class WgwConnectionConfigurator
                 'database' => $path,
                 'prefix' => '',
                 'foreign_key_constraints' => true,
+                'transaction_mode' => 'IMMEDIATE',
             ],
         ]);
         DB::purge('wgw');
@@ -118,6 +119,7 @@ final class WgwConnectionConfigurator
                 'database' => $database,
                 'prefix' => '',
                 'foreign_key_constraints' => true,
+                'transaction_mode' => 'IMMEDIATE',
             ],
         ]);
         DB::purge('wgw');

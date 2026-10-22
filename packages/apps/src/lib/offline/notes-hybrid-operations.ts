@@ -59,6 +59,8 @@ import {
   noteFieldsPatch,
 } from "@/lib/offline/notes/notes-metadata-selection";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import { notifyOtherTabsOnStructuralChanges } from "@/lib/offline/notes/notes-cross-tab-notify";
 import { flushNotesOutbox, type OutboxFlushResult } from "@/lib/offline/notes-outbox-flush";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
@@ -159,6 +161,12 @@ type NoteUpsertOpts = Parameters<NotesAPIOperations["upsertNote"]>[1];
 
 const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
 
+/** One outbox writer per account across tabs: heal and flush run under it. */
+function withNotesOutboxLock<T>(username: string, task: () => Promise<T>): Promise<T> {
+  return withCrossTabLock(`wgw-outbox:notes:${username}`, task);
+}
+
+/** Caller holds the outbox lock. */
 async function flushNotesOutboxAndReport(username: string): Promise<OutboxFlushResult> {
   const result = await flushNotesOutbox(username);
   reportNotesSyncConflicts(result.stateMismatches);
@@ -166,7 +174,9 @@ async function flushNotesOutboxAndReport(username: string): Promise<OutboxFlushR
 }
 
 function runnerFor(username: string): ConnectivitySyncRunner<OutboxFlushResult> {
-  return syncRunnerRegistry.getOrCreate(username, async () => flushNotesOutboxAndReport(username));
+  return syncRunnerRegistry.getOrCreate(username, () =>
+    withNotesOutboxLock(username, () => flushNotesOutboxAndReport(username)),
+  );
 }
 
 async function resolveCachedNote(
@@ -409,7 +419,7 @@ async function upsertNoteOnline(
 export function createHybridNotesOperations(username: string): NotesAPIOperations {
   const runner = runnerFor(username);
 
-  return {
+  return notifyOtherTabsOnStructuralChanges(username, {
     upsertNote: async (input, opts) => {
       // A stale local-* row (reload, other tab) of a note the server already
       // has writes to that note, online or queued, instead of creating another.
@@ -651,7 +661,7 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         });
       }
     },
-  };
+  });
 }
 
 export async function fetchNotesHybridBootstrap(): Promise<
@@ -664,13 +674,16 @@ export async function fetchNotesHybridBootstrap(): Promise<
   if (!username) {
     throw new Error("Notes bootstrap missing username");
   }
-  if (readBrowserOnline()) {
-    await enqueueOrphanPendingLocalCreates(username, bootstrap.data.notes);
-  }
-  const hadOutbox = readBrowserOnline() && (await listOutboxMutations(username)).length > 0;
-  if (readBrowserOnline()) {
-    await flushNotesOutboxAndReport(username);
-  }
+  // Heal and flush in one hold of the lock: another tab loading at the same time
+  // must not queue or send the same create too.
+  const hadOutbox = readBrowserOnline()
+    ? await withNotesOutboxLock(username, async () => {
+        await enqueueOrphanPendingLocalCreates(username, bootstrap.data.notes);
+        const queued = (await listOutboxMutations(username)).length > 0;
+        await flushNotesOutboxAndReport(username);
+        return queued;
+      })
+    : false;
   const cached = await readNotesBootstrapFromCache(username);
   if (cached) {
     cached.session = bootstrap.session;

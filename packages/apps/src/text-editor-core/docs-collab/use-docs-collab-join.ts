@@ -491,7 +491,9 @@ export function useDocsCollabJoin({
     teardown();
 
     const online = getConnectivitySnapshot();
-    const allowServerRequests = online && roomServerAllowed(room);
+    // A room without a server id yet (offline-created note) is a local draft:
+    // the server has nothing to load, join, or save until the id is remapped.
+    const allowServerRequests = online && roomServerAllowed(room) && !urls.roomNotPersistent;
     refs.seedDoneRef.current = false;
     setDocStatus("");
 
@@ -597,7 +599,8 @@ export function useDocsCollabJoin({
         markDocReady();
       }
       setStatus("Editing offline");
-      setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
+      if (urls.roomNotPersistent && online) setDocStatus("");
+      else setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
       void authTokenPromise.then((token) => {
         if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
         refs.authTokenRef.current = token;
@@ -639,6 +642,7 @@ export function useDocsCollabJoin({
     urls.authToken,
     urls.authTokenUrl,
     urls.authUser,
+    urls.roomNotPersistent,
     userName,
   ]);
 
@@ -649,13 +653,22 @@ export function useDocsCollabJoin({
     if (serverJoinStartedRef.current) return;
     if (refs.joinedRoomRef.current !== room) return;
     if (!getConnectivitySnapshot() || !roomServerAllowed(room)) return;
+    if (urls.roomNotPersistent) return;
     const name = userName.trim();
     if (!name) return;
     const generation = refs.joinGenerationRef.current;
     void finishAuthenticatedJoin(generation, name, token).catch((error) => {
       console.warn("[docs-collab] delayed auth join failed", error);
     });
-  }, [finishAuthenticatedJoin, joined, refs, room, urls.authToken, userName]);
+  }, [
+    finishAuthenticatedJoin,
+    joined,
+    refs,
+    room,
+    urls.authToken,
+    urls.roomNotPersistent,
+    userName,
+  ]);
 
   return {
     session,

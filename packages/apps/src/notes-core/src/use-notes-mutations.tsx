@@ -706,11 +706,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       };
       const persist = operations.upsertNote(note, { onCreated: remap }).then((saved) => {
         remap(saved);
-        if (isLocalTempNoteId(saved.id)) {
+        // A temp id back: queued offline (expected) or refused online. Adoption did the cache write.
+        if (isLocalTempNoteId(saved.id) && online) {
           showMutationError(L.createNoteFailedMessage(target.notebook));
-          return saved;
         }
-        // No cache write: the adoption cached the server note, maybe with an early title.
         return saved;
       });
       createInFlightRef.current.set(id, persist);
@@ -727,6 +726,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     canCreateNote,
     notebookCollections,
     notebooks,
+    online,
     operations,
     persistOptimisticNote,
     openMobileDetail,

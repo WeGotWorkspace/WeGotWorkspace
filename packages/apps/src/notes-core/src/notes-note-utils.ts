@@ -207,9 +207,11 @@ export function noteTagsEqual(a: string[], b: string[]): boolean {
  * vanish until the delayed upsert / a later refresh.
  */
 function noteTitleForMerge(local: Note, saved: Note): string | undefined {
-  const localTitle = local.title?.trim();
-  const savedTitle = saved.title?.trim();
-  return localTitle || savedTitle || undefined;
+  // Trim only to test for content. The title field is controlled by this value,
+  // so returning a trimmed copy ate a space typed just before a save landed.
+  if (local.title?.trim()) return local.title;
+  if (saved.title?.trim()) return saved.title;
+  return undefined;
 }
 
 export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: Note): Note {
@@ -220,7 +222,7 @@ export function mergeCreatedNotePreservingLocalOptimistic(saved: Note, local: No
   // which is often stale vs the collab preview. Keep any local listable body.
   const preserveBody = noteHasListableBody(local);
   const title = noteTitleForMerge(local, saved);
-  const titleDiffer = (title ?? "") !== (saved.title?.trim() ?? "");
+  const titleDiffer = (title?.trim() ?? "") !== (saved.title?.trim() ?? "");
   const notebook = local.notebook || saved.notebook;
   const preserveNotebook = !!local.notebook && local.notebook !== saved.notebook;
   // When keeping optimistic metadata, ensure display date is at least the

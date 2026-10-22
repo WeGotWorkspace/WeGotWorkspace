@@ -10,6 +10,7 @@ import {
   markCreateInFlight,
   recordAdoptedNoteId,
 } from "@/lib/offline/notes/notes-adopted-ids";
+import { announceNoteAdoption } from "@/lib/offline/notes/notes-adoption-events";
 import { baseUpdatedAt } from "@/lib/offline/notes/notes-metadata-selection";
 import { isLocalTempNoteId, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 
@@ -29,7 +30,8 @@ export async function writePendingLocalCreate(username: string, note: Note): Pro
 
 /**
  * Cache `saved` from the server. When it was created from `localId`, also
- * record the mapping and drop the temp row, in the same transaction.
+ * record the mapping and drop the temp row, in the same transaction, then tell
+ * the open Notes UI (this tab and others) so it swaps the temp row and id.
  *
  * A title typed while the create was in flight sits only on the temp row and
  * in a debounced save. When the server note has none, it moves onto the cached
@@ -40,10 +42,16 @@ export async function adoptServerNoteInCache(
   saved: Note,
   localId?: string,
 ): Promise<void> {
+  const adoptedFrom = localId && localId !== saved.id ? localId : undefined;
+  await writeAdoption(username, saved, adoptedFrom);
+  if (adoptedFrom) announceNoteAdoption({ username, localId: adoptedFrom, serverId: saved.id });
+}
+
+async function writeAdoption(username: string, saved: Note, localId?: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
   await db.transaction("rw", [notes, db.meta, db.outbox], async () => {
-    if (!localId || localId === saved.id) {
+    if (!localId) {
       await notes.put(noteRow(saved, false));
       return;
     }

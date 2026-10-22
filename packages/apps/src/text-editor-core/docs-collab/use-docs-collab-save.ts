@@ -189,14 +189,17 @@ export function useDocsCollabSave({
     }
   }, [markPendingWhenUnsaved, refs, room, setDocStatus, setLastSavedAt, updatePendingState, urls]);
 
-  const scheduleSave = useCallback(() => {
+  // A failed save re-arms itself with the backoff already set. Without this a
+  // transient 5xx left the body unsaved until the next keystroke or reload.
+  // Terminal failures set the next attempt to infinity, so they stop here.
+  const scheduleSave: () => void = useCallback(() => {
     if (refs.nextSaveAttemptAtRef.current === Number.POSITIVE_INFINITY) return;
     if (!refs.localDirtySinceLastSaveRef.current && !refs.pendingServerSaveRef.current) return;
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     const delayMs = computeSaveDelayMs(refs.nextSaveAttemptAtRef.current);
     refs.saveTimerRef.current = setTimeout(() => {
       refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => undefined);
+      void persistToServer().catch(() => scheduleSave());
     }, delayMs);
   }, [persistToServer, refs]);
 
@@ -205,9 +208,9 @@ export function useDocsCollabSave({
     if (refs.saveTimerRef.current) clearTimeout(refs.saveTimerRef.current);
     refs.saveTimerRef.current = setTimeout(() => {
       refs.saveTimerRef.current = null;
-      void persistToServer().catch(() => undefined);
+      void persistToServer().catch(() => scheduleSave());
     }, 0);
-  }, [persistToServer, refs]);
+  }, [persistToServer, refs, scheduleSave]);
 
   const registerMarkdownGetter = useCallback(
     (getMarkdown: () => string) => {

@@ -63,7 +63,6 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -349,10 +348,9 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    if (isLocalTempNoteId(activeNoteId)) {
-      setNoteCollabUrls(undefined);
-      return;
-    }
+    // A local-* note gets a local-only room (`roomNotPersistent`): the body is
+    // kept in IndexedDB and moves to the server UID when the create is adopted.
+    // Without it the body editor kept nothing and the typed text was lost.
     setAccessLost(false);
     let cancelled = false;
     void buildNoteCollabUrls(activeNoteId, {

@@ -44,6 +44,9 @@ return [
             'busy_timeout' => null,
             'journal_mode' => null,
             'synchronous' => null,
+            // Take the write lock at BEGIN: a read-then-write transaction that
+            // waits for the lock later fails with "database is locked".
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
@@ -129,6 +132,8 @@ return [
             'engine' => null,
             'options' => wgw_mysql_pdo_options(),
             'foreign_key_constraints' => true,
+            // SQLite only (MySQL ignores it). See the sqlite connection above.
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
     ],

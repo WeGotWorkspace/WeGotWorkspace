@@ -120,6 +120,8 @@ export function useDocsCollabReconnect({
     const ydoc = refs.ydocRef.current;
     const persistence = refs.persistenceRef.current;
     if (!ydoc || !persistence || !joined) return;
+    // A local draft room (no server id yet) has no mesh or server state to rejoin.
+    if (urls.roomNotPersistent) return;
     refs.reconnectInFlightRef.current = true;
     // A 404 stays terminal. A 403 lifts here so a restored ACL can save.
     if (refs.saveTerminalKindRef.current === "forbidden") {
@@ -188,6 +190,7 @@ export function useDocsCollabReconnect({
     restartMeshAfterReconnect,
     room,
     setDocStatus,
+    urls.roomNotPersistent,
   ]);
 
   useOnReconnect(() => {
