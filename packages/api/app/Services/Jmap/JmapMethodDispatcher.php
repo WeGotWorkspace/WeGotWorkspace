@@ -47,6 +47,10 @@ use App\Services\Jmap\Methods\NoteChangesMethod;
 use App\Services\Jmap\Methods\NoteGetMethod;
 use App\Services\Jmap\Methods\NoteQueryChangesMethod;
 use App\Services\Jmap\Methods\NoteSetMethod;
+use App\Services\Jmap\Methods\QuotaChangesMethod;
+use App\Services\Jmap\Methods\QuotaGetMethod;
+use App\Services\Jmap\Methods\QuotaQueryChangesMethod;
+use App\Services\Jmap\Methods\QuotaQueryMethod;
 
 /**
  * JMAP method dispatcher (RFC 8620 §3.2–3.7): processes methodCalls in
@@ -112,6 +116,11 @@ final class JmapMethodDispatcher
         ChatChannelChangesMethod::class,
         ChatMessageGetMethod::class,
         ChatMessageChangesMethod::class,
+        // urn:ietf:params:jmap:quota (RFC 9425; one Drive quota per writable root)
+        QuotaGetMethod::class,
+        QuotaChangesMethod::class,
+        QuotaQueryMethod::class,
+        QuotaQueryChangesMethod::class,
     ];
 
     /** @var array<string, JmapMethodInterface> */
