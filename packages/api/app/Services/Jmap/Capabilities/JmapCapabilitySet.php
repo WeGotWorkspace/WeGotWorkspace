@@ -90,15 +90,18 @@ final class JmapCapabilitySet
     }
 
     /**
-     * Account-level `accountCapabilities` map for the (single) account.
+     * Account-level `accountCapabilities` map for the (single) account. An
+     * empty capability is the empty JSON object (RFC 9425 §2.1, RFC 9404),
+     * never `[]`.
      *
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array<string, mixed>|object>
      */
     public function accountCapabilities(): array
     {
         $capabilities = [];
         foreach ($this->enabledProviders() as $provider) {
-            $capabilities[$provider->urn()] = $provider->accountCapability();
+            $capability = $provider->accountCapability();
+            $capabilities[$provider->urn()] = $capability === [] ? new \stdClass : $capability;
         }
 
         return $capabilities;
