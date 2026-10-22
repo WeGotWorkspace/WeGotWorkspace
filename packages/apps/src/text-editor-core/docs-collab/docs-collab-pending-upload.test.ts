@@ -4,8 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
-import { type PendingCollabRoom, uploadPendingCollabRooms } from "./docs-collab-pending-upload";
-import { holdOpenCollabRoom } from "./docs-collab-sync-registry";
+import {
+  collabUploadLockName,
+  type PendingCollabRoom,
+  uploadPendingCollabRooms,
+} from "./docs-collab-pending-upload";
+import { holdCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import type { DocsCollabUrls } from "./docs-collab-types";
 import { EXTERNAL_WRITE_HEADER } from "./docs-collab-external-write";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
@@ -58,13 +62,44 @@ function server({ snapshotHeaders = {}, putStatus = 200 } = {}) {
   });
 }
 
+/** Web Locks as a browser runs them, shared by every "tab" in this test. */
+function installWebLocks(): void {
+  const held = new Set<string>();
+  const waiting = new Map<string, Array<() => void>>();
+  const locks = {
+    async request(
+      name: string,
+      options: { ifAvailable?: boolean },
+      callback: (lock: object | null) => Promise<unknown>,
+    ) {
+      if (held.has(name)) {
+        if (options.ifAvailable) return callback(null);
+        await new Promise<void>((resolve) =>
+          waiting.set(name, [...(waiting.get(name) ?? []), resolve]),
+        );
+      }
+      held.add(name);
+      try {
+        return await callback({ name });
+      } finally {
+        held.delete(name);
+        const next = waiting.get(name)?.shift();
+        next?.();
+      }
+    },
+  };
+  Object.defineProperty(navigator, "locks", { configurable: true, value: locks });
+}
+
 beforeEach(() => {
+  installWebLocks();
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 afterEach(() => {
+  Reflect.deleteProperty(navigator, "locks");
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -91,15 +126,28 @@ describe("uploadPendingCollabRooms", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("skips the room open in this tab: its editor saves it", async () => {
+  it("skips a room an open editor holds, in this tab or another", async () => {
     server();
-    const room = await leftRoom("Open here");
-    const release = holdOpenCollabRoom(room.room);
+    const room = await leftRoom("Open elsewhere");
+    const release = holdCrossTabLock(collabUploadLockName(room.databaseName));
+    await Promise.resolve();
 
     await uploadPendingCollabRooms([room]);
     release();
 
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(await stillPending(room)).toBe(true);
+  });
+
+  it("leaves the flag when the save was skipped (a room not on the server yet)", async () => {
+    server();
+    const room = await leftRoom("Local only");
+    const urls = await room.urls();
+    const localOnly = { ...room, urls: () => ({ ...urls, roomNotPersistent: true }) };
+
+    await uploadPendingCollabRooms([localOnly]);
+
+    expect(puts()).toHaveLength(0);
     expect(await stillPending(room)).toBe(true);
   });
 
