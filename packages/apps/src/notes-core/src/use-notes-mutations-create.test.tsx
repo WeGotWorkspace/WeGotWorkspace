@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
 import type { NotesListState } from "./use-notes-list";
@@ -44,8 +44,10 @@ vi.mock("@/hooks/use-confirm-dialog", () => ({
   }),
 }));
 
+const connectivity = vi.hoisted(() => ({ online: true }));
+
 vi.mock("@/hooks/use-connectivity", () => ({
-  useConnectivity: () => ({ online: true }),
+  useConnectivity: () => ({ online: connectivity.online }),
 }));
 
 function buildShell(overrides: Partial<NotesShellState> = {}): NotesShellState {
@@ -108,6 +110,52 @@ function buildList(overrides: Partial<NotesListState> = {}): NotesListState {
 }
 
 describe("useNotesMutations createNote", () => {
+  afterEach(() => {
+    connectivity.online = true;
+  });
+
+  it("does not report a failure for a create queued while offline", async () => {
+    connectivity.online = false;
+    const showMutationError = vi.fn();
+    // Offline, the hybrid layer queues the create and hands back the temp note.
+    const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+    const shell = buildShell({
+      showMutationError,
+      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(upsertNote).toHaveBeenCalled());
+    await act(async () => {
+      await upsertNote.mock.results[0]?.value;
+    });
+    expect(showMutationError).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure when an online create ends up queued", async () => {
+    const showMutationError = vi.fn();
+    const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+    const shell = buildShell({
+      showMutationError,
+      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+      await Promise.resolve();
+    });
+
+    await waitFor(() =>
+      expect(showMutationError).toHaveBeenCalledWith("Could not create a note in “Drafts”."),
+    );
+  });
+
   it("uses setView (not selectView) and sets activeId before opening mobile detail", () => {
     const setView = vi.fn();
     const setNotes = vi.fn();

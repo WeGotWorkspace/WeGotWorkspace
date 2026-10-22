@@ -172,6 +172,29 @@ describe("useNotesAPI", () => {
     expect(mockShowError).toHaveBeenCalledWith(defaultNotesLabels.toastListRefreshFailed);
   });
 
+  it("still re-reads the local cache when the server cannot be reached", async () => {
+    // Another tab archived a note into the shared cache. This tab is offline:
+    // the /changes call fails, but the list must still show the cached state.
+    mockInbound.mockRejectedValue(new TypeError("Failed to fetch"));
+    const source: NotesApiSource = {
+      loadBootstrap: mockLoadBootstrap,
+      createOperations: () => undefined,
+    };
+
+    const { result } = renderHook(() => useNotesAPI(source));
+
+    act(() => {
+      result.current.refreshList();
+    });
+
+    await waitFor(() => {
+      expect(result.current.listRefreshing).toBe(false);
+    });
+
+    expect(mockPatchBootstrap).toHaveBeenCalled();
+    expect(result.current.bootstrapRevision).toBe(1);
+  });
+
   it("flushes the outbox, then inbound /changes, on reconnect", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,

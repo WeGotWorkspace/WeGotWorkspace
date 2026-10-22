@@ -441,6 +441,18 @@ describe("notes-note-utils", () => {
     expect(noteListTitle(merged)).toBe("Meeting notes");
   });
 
+  it("keeps the title exactly as typed, including a trailing space", () => {
+    // A save that lands while the user is mid-word must not trim the field:
+    // the next keystroke would glue onto the previous word.
+    const local: Note = { ...sampleNote, id: "n-server", title: "Groceries for " };
+    const saved: Note = { ...sampleNote, id: "n-server", title: "Groceries for " };
+    expect(mergeCreatedNotePreservingLocalOptimistic(saved, local).title).toBe("Groceries for ");
+    const fromServer: Note = { ...sampleNote, id: "n-server", title: "Groceries for" };
+    expect(mergeCreatedNotePreservingLocalOptimistic(fromServer, local).title).toBe(
+      "Groceries for ",
+    );
+  });
+
   it("keeps a local listable body when the metadata response still has the old DESCRIPTION", () => {
     const local: Note = {
       ...sampleNote,
