@@ -31,6 +31,15 @@ export function uuidFromLegacyLocalId(id: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/** A queued row's payload, or null when it is not JSON (the store skips those). */
+function parsePayload(payload: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 export async function upgradeLegacyLocalNotes(username: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const notes = notesNotesTable(db);
@@ -38,8 +47,8 @@ export async function upgradeLegacyLocalNotes(username: string): Promise<void> {
   const queued = await db.outbox.filter((row) => row.domain === NOTES_DOMAIN).toArray();
   const legacyIds = new Set(rows.map((row) => row.id));
   for (const row of queued) {
-    const noteId = (JSON.parse(row.payload) as { noteId?: string; tempNoteId?: string }).noteId;
-    if (isLegacyLocalNoteId(noteId)) legacyIds.add(noteId as string);
+    const noteId = parsePayload(row.payload)?.noteId;
+    if (typeof noteId === "string" && isLegacyLocalNoteId(noteId)) legacyIds.add(noteId);
   }
 
   for (const localId of legacyIds) {
@@ -48,8 +57,8 @@ export async function upgradeLegacyLocalNotes(username: string): Promise<void> {
       const cached = noteFromRow(await notes.get(localId));
       let hasCreate = false;
       for (const row of await db.outbox.filter((r) => r.domain === NOTES_DOMAIN).toArray()) {
-        const payload = JSON.parse(row.payload) as Record<string, unknown>;
-        if (payload.noteId !== localId && payload.tempNoteId !== localId) continue;
+        const payload = parsePayload(row.payload);
+        if (!payload || (payload.noteId !== localId && payload.tempNoteId !== localId)) continue;
         delete payload.tempNoteId;
         payload.noteId = uid;
         if (row.op === "upsert") {

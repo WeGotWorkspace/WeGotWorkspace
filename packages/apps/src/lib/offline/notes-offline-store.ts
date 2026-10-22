@@ -373,7 +373,9 @@ export async function upsertNoteBodyPreviewInCache(username: string, note: Note)
   await db.transaction("rw", [table], async () => {
     const existing = await table.get(note.id);
     if (!existing) return;
-    await table.put(noteRow(note, existing.pendingSync));
+    // A preview touch is not a newer note: keep its time, or a bootstrap
+    // would keep a note the server deleted meanwhile.
+    await table.put({ ...noteRow(note, existing.pendingSync), updatedAt: existing.updatedAt });
   });
 }
 
@@ -485,7 +487,10 @@ export async function removeNotebookFromCache(
         continue;
       }
       if (moveNotesTo) {
-        await notes.put(noteRow(noteAfterNotebookMove(note, moveNotesTo), row.pendingSync));
+        await notes.put({
+          ...noteRow(noteAfterNotebookMove(note, moveNotesTo), row.pendingSync),
+          updatedAt: row.updatedAt,
+        });
         continue;
       }
       if (keepPending && row.pendingSync) continue;
