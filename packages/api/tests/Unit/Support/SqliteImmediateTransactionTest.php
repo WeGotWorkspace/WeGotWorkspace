@@ -31,6 +31,8 @@ final class SqliteImmediateTransactionTest extends TestCase
     {
         $path = sys_get_temp_dir().'/wgw-immediate-'.uniqid('', true).'.sqlite';
         touch($path);
+        // Later tests in this process must keep the wgw connection they had.
+        $previous = config('database.connections.wgw');
 
         try {
             WgwConnectionConfigurator::applyFromInstallerDb(['driver' => 'sqlite', 'sqlite_path' => $path]);
@@ -53,6 +55,7 @@ final class SqliteImmediateTransactionTest extends TestCase
             $connection->rollBack();
         } finally {
             DB::purge('wgw');
+            config(['database.connections.wgw' => $previous]);
             @unlink($path);
         }
     }
