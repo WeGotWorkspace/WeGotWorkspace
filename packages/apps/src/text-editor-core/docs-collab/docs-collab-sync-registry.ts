@@ -40,3 +40,19 @@ export function subscribeDocsCollabSyncState(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
+
+const openRooms = new Map<string, number>();
+
+/** An editor in this tab has the room open and saves it itself. Returns the release. */
+export function holdOpenCollabRoom(room: string): () => void {
+  openRooms.set(room, (openRooms.get(room) ?? 0) + 1);
+  return () => {
+    const left = (openRooms.get(room) ?? 1) - 1;
+    if (left > 0) openRooms.set(room, left);
+    else openRooms.delete(room);
+  };
+}
+
+export function isCollabRoomOpen(room: string): boolean {
+  return openRooms.has(room);
+}
