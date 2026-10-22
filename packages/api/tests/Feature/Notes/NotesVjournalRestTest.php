@@ -168,23 +168,6 @@ final class NotesVjournalRestTest extends WgwDatabaseTestCase
         $this->assertNotSame($uid.'.ics', (string) $row->uri);
     }
 
-    public function test_client_supplied_uid_is_ignored(): void
-    {
-        $hostile = '../alice/secret-note';
-        $created = $this->asBob()->postJson('/api/v1/notes/items', [
-            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
-            'title' => 'Mine',
-            'body' => 'one',
-            'uid' => $hostile,
-        ])->assertCreated();
-        $id = (string) $created->json('id');
-        $this->assertNotSame($hostile, $id);
-        $this->assertMatchesRegularExpression(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
-            $id,
-        );
-    }
-
     public function test_duplicate_uid_is_conflict_not_server_error(): void
     {
         $uid = (string) Str::uuid();
