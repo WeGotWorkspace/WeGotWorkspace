@@ -62,6 +62,20 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
     }
 
+    public function test_a_create_aimed_at_another_notebook_does_not_return_an_existing_note(): void
+    {
+        $uid = (string) Str::uuid();
+        $this->create('bob', $uid, 'In General')->assertCreated();
+        $other = (string) $this->asUser('bob')
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'Elsewhere'])
+            ->assertCreated()
+            ->json('id');
+
+        $this->create('bob', $uid, 'Elsewhere', $other)
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'alreadyExists');
+    }
+
     public function test_a_uid_that_is_not_a_uuid_is_ignored_and_the_server_mints(): void
     {
         // A slash would make the room key read as a Drive path. An older app
@@ -83,10 +97,14 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $this->assertTrue(Str::isUuid($id));
     }
 
-    private function create(string $username, string $uid, string $title = 'Note'): TestResponse
-    {
+    private function create(
+        string $username,
+        string $uid,
+        string $title = 'Note',
+        string $notebookId = CalendarCollectionUris::NOTE_GENERAL,
+    ): TestResponse {
         return $this->asUser($username)->postJson('/api/v1/notes/items', [
-            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'notebookId' => $notebookId,
             'uid' => $uid,
             'title' => $title,
             'body' => '',

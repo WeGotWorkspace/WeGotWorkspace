@@ -15,7 +15,8 @@ use Tests\TestCase;
  * SQLite a deferred transaction only takes the write lock at its first write,
  * so two requests at once (a create and its first save) ended in "database is
  * locked" (HTTP 500) instead of one waiting for the other. An immediate
- * transaction takes the write lock at BEGIN, so the second writer waits.
+ * transaction takes the write lock at BEGIN, and the busy timeout lets the
+ * second writer wait for it instead of failing at once.
  */
 final class SqliteImmediateTransactionTest extends TestCase
 {
@@ -25,6 +26,25 @@ final class SqliteImmediateTransactionTest extends TestCase
 
         $this->assertSame('IMMEDIATE', $connections['wgw']['transaction_mode']);
         $this->assertSame('IMMEDIATE', $connections['sqlite']['transaction_mode']);
+        $this->assertSame(5000, $connections['wgw']['busy_timeout']);
+        $this->assertSame(5000, $connections['sqlite']['busy_timeout']);
+    }
+
+    public function test_an_installer_sqlite_connection_waits_for_the_write_lock(): void
+    {
+        $path = sys_get_temp_dir().'/wgw-busy-'.uniqid('', true).'.sqlite';
+        touch($path);
+        $previous = config('database.connections.wgw');
+
+        try {
+            WgwConnectionConfigurator::applyFromInstallerDb(['driver' => 'sqlite', 'sqlite_path' => $path]);
+
+            $this->assertSame(5000, config('database.connections.wgw.busy_timeout'));
+        } finally {
+            DB::purge('wgw');
+            config(['database.connections.wgw' => $previous]);
+            @unlink($path);
+        }
     }
 
     public function test_an_installer_sqlite_transaction_holds_the_write_lock_from_begin(): void
