@@ -17,6 +17,7 @@ import {
 } from "@/lib/offline/notes-jmap-inbound";
 import {
   listNoteIdsBlockingSyncToken,
+  listOutboxNoteIds,
   readNotesBootstrapFromCache,
   readSyncToken,
   writeSyncToken,
@@ -102,6 +103,8 @@ export async function syncNotesInboundFromRest(
   // lacks was deleted elsewhere. Its rows are ingested as they are (no GET each).
   const listedRows = new Map<string, Awaited<ReturnType<typeof listNotes>>[number]>();
   const cachedBefore = await readNotesBootstrapFromCache(username);
+  // Still in the outbox is "not sent yet", not "deleted": leave those alone.
+  const queuedIds = await listOutboxNoteIds(username);
   const pruned: string[] = [];
   const fullList = async (notebookId: string) => {
     usedFullResync = true;
@@ -109,7 +112,9 @@ export async function syncNotesInboundFromRest(
     for (const item of items) listedRows.set(item.id, item);
     const listed = new Set(items.map((item) => item.id));
     for (const note of cachedBefore?.data.notes ?? []) {
-      if (note.notebookId === notebookId && !listed.has(note.id)) pruned.push(note.id);
+      if (note.notebookId !== notebookId || listed.has(note.id)) continue;
+      if (note.createPending || queuedIds.has(note.id)) continue;
+      pruned.push(note.id);
     }
     deltas.push({
       notebookId,

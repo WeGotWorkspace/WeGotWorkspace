@@ -53,12 +53,17 @@ export async function upgradeLegacyLocalNotes(username: string): Promise<void> {
 
   for (const localId of legacyIds) {
     const uid = uuidFromLegacyLocalId(localId);
+    // The body room first: copying is safe to repeat, and if this stops
+    // halfway the note keeps its old id, so the next run finds it again.
+    await migrateNoteCollabRoom(localId, uid);
     await db.transaction("rw", [notes, db.outbox], async () => {
       const cached = noteFromRow(await notes.get(localId));
       let hasCreate = false;
       for (const row of await db.outbox.filter((r) => r.domain === NOTES_DOMAIN).toArray()) {
         const payload = parsePayload(row.payload);
-        if (!payload || (payload.noteId !== localId && payload.tempNoteId !== localId)) continue;
+        // Same match as the collecting pass: a row whose noteId is already a
+        // server id targets that note, whatever its old tempNoteId says.
+        if (!payload || payload.noteId !== localId) continue;
         delete payload.tempNoteId;
         payload.noteId = uid;
         if (row.op === "upsert") {
@@ -73,7 +78,6 @@ export async function upgradeLegacyLocalNotes(username: string): Promise<void> {
       await notes.put(noteRow(note, true));
       if (!hasCreate) await enqueueCoalescedNoteUpdate(username, uid, note, undefined, true);
     });
-    await migrateNoteCollabRoom(localId, uid);
   }
 
   const staleMeta = await db.meta

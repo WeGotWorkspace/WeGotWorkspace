@@ -17,16 +17,10 @@ export type UseNotesTagRenameArgs = {
   shell: NotesShellState;
   queueMutation: QueueMutation;
   persistOptimisticNote: (note: Note, pendingSync?: boolean) => Promise<void>;
-  resolveNoteId: (id: string) => string;
-  waitForInFlightCreate: (id: string) => Promise<void>;
   dropGoneNote: (noteId: string) => void;
 };
 
-/**
- * Cache and gone-note helpers for a tag rename.
- * Create-in-flight id remap stays inside `useNotesMutations` (baselined; must not grow),
- * so `resolveNoteId` here is identity and `waitForInFlightCreate` is a no-op.
- */
+/** Cache and gone-note helpers for a tag rename. A note keeps its id from creation. */
 export function useNotesTagRenameCollaborators(shell: NotesShellState, list: NotesListState) {
   const { setNotes, setArchived } = shell;
   const { setSelectedIds, setActiveId } = list;
@@ -38,9 +32,6 @@ export function useNotesTagRenameCollaborators(shell: NotesShellState, list: Not
     persistBestEffort(write);
     return write;
   }, []);
-
-  const resolveNoteId = useCallback((id: string) => id, []);
-  const waitForInFlightCreate = useCallback(async () => undefined, []);
 
   const dropGoneNote = useCallback(
     (noteId: string) => {
@@ -57,7 +48,7 @@ export function useNotesTagRenameCollaborators(shell: NotesShellState, list: Not
     [setActiveId, setArchived, setNotes, setSelectedIds],
   );
 
-  return { persistOptimisticNote, resolveNoteId, waitForInFlightCreate, dropGoneNote };
+  return { persistOptimisticNote, dropGoneNote };
 }
 
 function tagViewMatches(view: string, tag: string): boolean {
@@ -68,8 +59,6 @@ export function useNotesTagRename({
   shell,
   queueMutation,
   persistOptimisticNote,
-  resolveNoteId,
-  waitForInFlightCreate,
   dropGoneNote,
 }: UseNotesTagRenameArgs) {
   const shellRef = useRef(shell);
@@ -128,15 +117,13 @@ export function useNotesTagRename({
         delta: { tagsAdd: string[]; tagsRemove?: string[] },
       ): Promise<void> =>
         Promise.all(
-          rows.map(async (row) => {
-            await waitForInFlightCreate(row.id);
-            const persistId = resolveNoteId(row.id);
-            return persistNoteKeepingSyncRace(
-              operations.upsertNote({ ...row, id: persistId }, delta),
+          rows.map((row) =>
+            persistNoteKeepingSyncRace(
+              operations.upsertNote(row, delta),
               () => dropGoneNote(row.id),
-              persistId,
-            );
-          }),
+              row.id,
+            ),
+          ),
         ).then(() => {});
       const requeueInverse = () => {
         const plain = plan.notes.filter((row) => !plan.mergedIds.includes(row.id));
@@ -184,14 +171,7 @@ export function useNotesTagRename({
         undoToastMessage: L.tagRenameUndone,
       });
     },
-    [
-      dropGoneNote,
-      persistOptimisticNote,
-      queueMutation,
-      resolveNoteId,
-      shell,
-      waitForInFlightCreate,
-    ],
+    [dropGoneNote, persistOptimisticNote, queueMutation, shell],
   );
 
   return { renameTag };

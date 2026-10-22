@@ -95,14 +95,30 @@ function noteMetadataUpsertRequest(
   };
 }
 
+const legacyUpgraded = new Set<string>();
+
+/**
+ * Notes queued by an older app version still carry a temporary id. Rewriting
+ * them is one-off work, so it runs once per page load per account; a failure
+ * is logged and tried again on the next load instead of stopping the flush.
+ */
+async function upgradeLegacyLocalNotesOnce(username: string): Promise<void> {
+  if (legacyUpgraded.has(username)) return;
+  try {
+    await upgradeLegacyLocalNotes(username);
+    legacyUpgraded.add(username);
+  } catch (error) {
+    console.warn("[notes] legacy local id upgrade failed", error);
+  }
+}
+
 export async function flushNotesOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readNotesBootstrapFromCache(username);
   if (!cached) {
     return { stateMismatches: [], bootstrap: null };
   }
 
-  // Notes queued by an older app version still carry a temporary id.
-  await upgradeLegacyLocalNotes(username);
+  await upgradeLegacyLocalNotesOnce(username);
   const rows = await listOutboxMutations(username);
   const stateMismatches: string[] = [];
 
