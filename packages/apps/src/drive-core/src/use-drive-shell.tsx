@@ -13,6 +13,7 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
+import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
@@ -216,6 +217,14 @@ export function useDriveShell({
     setHydratedFolderPath,
     commitView,
     showError,
+  });
+
+  useDriveUploadListingRefresh({
+    operations,
+    folderViewPath,
+    currentUsername,
+    groupRootNamesRef,
+    setFiles,
   });
 
   const selectView = useCallback(

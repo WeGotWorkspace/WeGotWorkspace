@@ -15,6 +15,7 @@ import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import type { DriveUploadProgress } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
+import { queueDriveUploadBatch } from "@/drive-core/src/drive-upload-listing";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
@@ -234,6 +235,20 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     if (!fileList || fileList.length === 0) return;
     const selected = Array.from(fileList);
     const targetParent = view.type === "folder" ? view.path : "My Drive";
+    const enqueueUploads = operations?.enqueueUploads;
+    const releaseUploadBatch = operations?.releaseUploadBatch;
+    if (enqueueUploads && releaseUploadBatch) {
+      // Placeholders appear through the queue subscription; nothing says "Uploaded" yet.
+      const cwd = apiPathFromUiPath(targetParent, currentUsername, groupRootNames);
+      if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
+      void queueDriveUploadBatch(
+        { enqueueUploads, releaseUploadBatch },
+        { cwd, files: selected },
+      ).catch((error: unknown) =>
+        showError(error instanceof Error ? error.message : String(error)),
+      );
+      return;
+    }
     const showProgress = (progress: DriveUploadProgress) => {
       const totalBytes = Math.max(1, progress.totalBytes);
       const percent = Math.min(100, Math.round((progress.uploadedBytes / totalBytes) * 100));

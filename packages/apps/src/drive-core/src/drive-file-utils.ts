@@ -98,9 +98,14 @@ export function driveFileFromEntry(
   const size = entry.type === "dir" ? "—" : entry.size > 0 ? formatBytesCompact(entry.size) : "0 B";
   const location =
     driveLocationLabel(normalizeApiVirtualPath(apiPath).replace(/^\/+/, ""), username) ?? undefined;
+  const upload = entry.upload ? { id: entry.upload.id, status: entry.upload.status } : undefined;
   return {
     id: apiPath,
-    notebook: entry.type === "dir" ? "Folder" : `File · ${size}`,
+    notebook: upload
+      ? `${driveLabels.uploadPlaceholderStatus[upload.status]} · ${size}`
+      : entry.type === "dir"
+        ? "Folder"
+        : `File · ${size}`,
     category: entry.type === "dir" ? "Folder" : "File",
     date,
     title: entry.name,
@@ -116,6 +121,7 @@ export function driveFileFromEntry(
     mayShare: entry.myRights?.mayShare,
     mayManageStructure: entry.myRights?.mayManageStructure,
     ...driveShareFlagsFromListing(entry),
+    ...(upload ? { upload } : {}),
   };
 }
 
