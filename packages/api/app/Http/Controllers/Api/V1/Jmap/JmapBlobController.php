@@ -6,12 +6,12 @@ namespace App\Http\Controllers\Api\V1\Jmap;
 
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
-use App\Services\Contacts\ContactBlobService;
+use App\Http\Support\RangeResponder;
 use App\Services\Jmap\Blobs\JmapBlobService;
-use App\Services\Jmap\FileNodes\FileNodeBlobResolver;
+use App\Services\Jmap\Blobs\JmapDownloadBlobResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * JMAP blob upload/download (RFC 8620 §6, #438), replacing the 501 stubs.
@@ -21,13 +21,14 @@ use Illuminate\Http\Response;
  * blob store (ContactBlobService, UUID-shaped), and drive file content via
  * node-derived `fnb-…` ids (FileNodeBlobResolver, #450) — every blobId the
  * envelope surfaces must be downloadable through the Session's downloadUrl.
+ * Downloads stream with single-range support (RangeResponder, #1500).
  */
 final class JmapBlobController
 {
     public function __construct(
         private readonly JmapBlobService $blobs,
-        private readonly ContactBlobService $contactBlobs,
-        private readonly FileNodeBlobResolver $fileNodeBlobs,
+        private readonly JmapDownloadBlobResolver $downloads,
+        private readonly RangeResponder $ranges,
     ) {}
 
     public function upload(Request $request, string $accountId): JsonResponse
@@ -77,28 +78,26 @@ final class JmapBlobController
         ], 201);
     }
 
-    public function download(Request $request, string $accountId, string $blobId, string $name): Response|JsonResponse
+    public function download(Request $request, string $accountId, string $blobId, string $name): Response
     {
         $username = $this->username($request);
         if ($accountId !== $username) {
             return $this->notFoundProblem('Account not found.');
         }
 
-        $blob = $this->blobs->retrieve($username, $blobId)
-            ?? $this->contactBlobs->retrieve($username, $blobId)
-            ?? $this->fileNodeBlobs->retrieve($username, $blobId);
-        if ($blob === null) {
+        $blob = $this->downloads->resolve($username, $blobId);
+        $stream = $blob?->open();
+        if ($blob === null || $stream === null) {
             return $this->notFoundProblem('Blob not found.');
         }
 
         $type = $request->query('type');
         $contentType = is_string($type) && $type !== ''
             ? $this->sanitizeHeaderValue($type)
-            : $blob['mediaType'];
+            : $blob->mediaType;
 
-        return response($blob['contents'], 200, [
+        return $this->ranges->respond($request, $stream, [
             'Content-Type' => $contentType,
-            'Content-Length' => (string) strlen($blob['contents']),
             'Content-Disposition' => 'attachment; filename="'.$this->sanitizeHeaderValue($name).'"',
             // Blob content is immutable per blobId (content-addressed).
             'Cache-Control' => 'private, immutable, max-age=31536000',

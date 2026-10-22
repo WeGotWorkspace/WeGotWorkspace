@@ -58,7 +58,7 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$blobId.'/note.txt')
             ->assertOk();
-        $this->assertSame('hello blob world', $download->getContent());
+        $this->assertSame('hello blob world', $download->streamedContent());
         // Symfony appends "; charset=utf-8" to text/* types — harmless.
         $this->assertStringStartsWith('text/plain', (string) $download->headers->get('Content-Type'));
         $this->assertStringContainsString('filename="note.txt"', (string) $download->headers->get('Content-Disposition'));
@@ -204,7 +204,7 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         $download = $this->withBearer($this->userBearerToken())
             ->get('/api/v1/jmap/download/bob/'.$mediaEntry['blobId'].'/photo.png')
             ->assertOk();
-        $this->assertSame('fake png bytes', $download->getContent());
+        $this->assertSame('fake png bytes', $download->streamedContent());
     }
 
     public function test_non_image_media_type_is_rejected_for_photos(): void
