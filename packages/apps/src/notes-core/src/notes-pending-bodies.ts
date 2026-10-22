@@ -3,7 +3,10 @@ import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offlin
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-core/docs-collab";
-import { docsCollabIndexedDbKey } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  docsCollabIndexedDbKey,
+  listExistingIndexedDatabaseNames,
+} from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { buildNoteCollabUrls } from "./note-collab-path";
 
 /**
@@ -12,14 +15,19 @@ import { buildNoteCollabUrls } from "./note-collab-path";
  */
 export async function uploadPendingNoteBodies(username: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  // One listing, then only notes that have a body database: probing a
+  // missing one would create it.
+  const existing = await listExistingIndexedDatabaseNames();
   const rooms: PendingCollabRoom[] = [];
   for (const row of await notesNotesTable(db).toArray()) {
     const note = noteFromRow(row);
     if (!note || note.createPending) continue;
     const room = noteCollabRoomKey(note.id);
+    const databaseName = docsCollabIndexedDbKey(room);
+    if (existing && !existing.has(databaseName)) continue;
     rooms.push({
       room,
-      databaseName: docsCollabIndexedDbKey(room),
+      databaseName,
       urls: () => buildNoteCollabUrls(note.id),
       format: "markdown",
     });

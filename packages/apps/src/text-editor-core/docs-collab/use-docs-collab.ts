@@ -14,7 +14,8 @@ import { useDocsCollabSave } from "./use-docs-collab-save";
 import { useDocsCollabSessionRefs } from "./use-docs-collab-session-refs";
 import { useDocsCollabTabSync } from "./use-docs-collab-tab-sync";
 import { docsCollabRoomKey } from "./docs-collab-persistence";
-import { holdOpenCollabRoom } from "./docs-collab-sync-registry";
+import { holdCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import { collabUploadLockName } from "./docs-collab-pending-upload";
 
 export {
   DEFAULT_DOCS_COLLAB_URLS,
@@ -147,7 +148,12 @@ export function useDocsCollab({
     refs.sessionRef.current = session;
   }, [session, refs]);
 
-  useEffect(() => holdOpenCollabRoom(room), [room]);
+  // While this editor has the room, a background save (any tab) leaves it alone.
+  useEffect(() => {
+    const databaseName = session ? refs.persistenceRef.current?.name : undefined;
+    if (!databaseName) return;
+    return holdCrossTabLock(collabUploadLockName(databaseName));
+  }, [refs, session]);
 
   useEffect(() => {
     if (!isTransientDocStatus(docStatus)) return;

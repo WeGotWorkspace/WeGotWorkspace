@@ -5,16 +5,19 @@ import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-
 import {
   docsCollabReadNames,
   docsCollabRoomKey,
+  listExistingIndexedDatabaseNames,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { collabDocumentFormat } from "@/text-editor-core/docs-collab/docs-collab-utils";
 
 /** Save document bodies typed offline in documents that are no longer open. */
 export async function uploadPendingDocBodies(username: string): Promise<void> {
+  // One listing for every file: only rooms that have a database are probed.
+  const existing = await listExistingIndexedDatabaseNames();
   const rooms: PendingCollabRoom[] = [];
   for (const path of await listAllCachedDriveEntryPaths(username)) {
     const room = docsCollabRoomKey(path);
     if (!room || !isDocsCollabEditablePath(room)) continue;
-    for (const databaseName of await docsCollabReadNames(room)) {
+    for (const databaseName of await docsCollabReadNames(room, existing)) {
       rooms.push({
         room,
         databaseName,

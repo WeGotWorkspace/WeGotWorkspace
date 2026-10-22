@@ -1,17 +1,22 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { wgwEnsureFreshAccessToken } from "@/lib/api/wgw/http";
-import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import { withCrossTabLockIfFree } from "@/lib/offline/core/cross-tab-lock";
 import { collabDatabaseHasPendingSave } from "@/lib/offline/core/offline-wipe";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { rememberSidecarEtag } from "./docs-collab-etag";
 import { persistCollabSave } from "./docs-collab-save-attempt";
 import { fetchYjsSnapshot } from "./docs-collab-server-io";
-import { isCollabRoomOpen, setDocsCollabSyncState } from "./docs-collab-sync-registry";
+import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import type { DocsCollabUrls } from "./docs-collab-types";
 import { SERVER_ORIGIN } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
+
+/** The lock an open editor holds for its room, and a background save tries. */
+export function collabUploadLockName(databaseName: string): string {
+  return `wgw-collab-upload:${databaseName}`;
+}
 
 export type PendingCollabRoom = {
   room: string;
@@ -34,7 +39,6 @@ export type PendingCollabRoom = {
  */
 export async function uploadPendingCollabRooms(rooms: readonly PendingCollabRoom[]): Promise<void> {
   for (const room of rooms) {
-    if (isCollabRoomOpen(room.room)) continue;
     try {
       await uploadPendingCollabRoom(room);
     } catch (error) {
@@ -49,8 +53,8 @@ async function uploadPendingCollabRoom({
   urls: buildUrls,
   format,
 }: PendingCollabRoom): Promise<void> {
-  // One tab at a time per room; the second finds the flag gone.
-  await withCrossTabLock(`wgw-collab-upload:${databaseName}`, async () => {
+  // An open editor holds this lock for as long as it has the room.
+  await withCrossTabLockIfFree(collabUploadLockName(databaseName), async () => {
     if (!(await collabDatabaseHasPendingSave(databaseName))) return;
     const urls = await buildUrls();
     const authToken = urls.authToken ?? (await wgwEnsureFreshAccessToken()) ?? undefined;
@@ -64,7 +68,7 @@ async function uploadPendingCollabRoom({
       if (snapshot.update) Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
 
       const read = () => readContentFromYDoc(ydoc, format);
-      await persistCollabSave({
+      const saved = await persistCollabSave({
         urls,
         room,
         ydoc,
@@ -73,6 +77,7 @@ async function uploadPendingCollabRoom({
         remergeAttempted: { current: false },
         markdownAfterMerge: read,
       });
+      if (saved.status !== "saved") return;
       await persistence.del(PENDING_SERVER_SAVE_KEY);
       setDocsCollabSyncState(room, { pendingServerSave: false, failedSync: false });
     } finally {

@@ -48,3 +48,27 @@ export class CrossTabLockTimeoutError extends Error {
 export function isCrossTabLockTimeout(error: unknown): boolean {
   return error instanceof CrossTabLockTimeoutError;
 }
+
+/** Like `withCrossTabLock`, but gives up at once (undefined) when another holder has the lock. */
+export function withCrossTabLockIfFree<T>(
+  name: string,
+  task: () => Promise<T>,
+): Promise<T | undefined> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof locks.request !== "function") return task();
+  return locks.request(name, { mode: "exclusive", ifAvailable: true }, (lock) =>
+    lock ? task() : undefined,
+  ) as Promise<T | undefined>;
+}
+
+/** Hold the lock until the returned release runs (for example while an editor is open). */
+export function holdCrossTabLock(name: string): () => void {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (!locks || typeof locks.request !== "function") return () => undefined;
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  void locks.request(name, { mode: "exclusive" }, () => held);
+  return release;
+}
