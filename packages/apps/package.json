@@ -123,7 +123,7 @@
     "@playwright/test": "^1.63.0",
     "@storybook/addon-a11y": "^10.6.0",
     "@storybook/addon-docs": "^10.6.0",
-    "@storybook/addon-vitest": "^10.6.0",
+    "@storybook/addon-vitest": "^10.6.2",
     "@storybook/react-vite": "^10.6.0",
     "@testing-library/react": "^16.3.3",
     "@types/mdast": "^4.0.4",
