@@ -5,6 +5,7 @@ import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
   listOutboxMutations,
   listPendingNoteIds,
+  upsertNoteBodyPreviewInCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -221,6 +222,31 @@ describe("a bootstrap snapshot", () => {
   });
 });
 
+describe("a bootstrap snapshot and a preview update", () => {
+  it("drops an older note deleted elsewhere even when its preview was rewritten during the request", async () => {
+    const old = {
+      ...newNote,
+      id: "4b1c2d3e-0000-4000-8000-000000000003",
+      createPending: undefined,
+    };
+    await notesTable().put({
+      id: old.id,
+      notebookId: "Drafts",
+      data: JSON.stringify(old),
+      pendingSync: false,
+      updatedAt: Date.now() - 60_000,
+    });
+    const takenAt = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    // The list rewrites the preview while the snapshot request is in flight.
+    await upsertNoteBodyPreviewInCache(username, { ...old, excerpt: "newer preview" });
+
+    await writeNotesBootstrapToCache(username, bootstrap, takenAt);
+
+    expect(await notesTable().get(old.id)).toBeUndefined();
+  });
+});
+
 describe("a note an older app queued with a temporary id", () => {
   it("is rewritten once to a UUID and queued as a create", async () => {
     const localId = "local-4b1c2d3e000040008000000000000009";
@@ -244,5 +270,19 @@ describe("a note an older app queued with a temporary id", () => {
     const [row] = await listOutboxMutations(username);
     expect(JSON.parse(row?.payload ?? "{}")).toMatchObject({ noteId: upgraded, create: true });
     expect(JSON.parse(row?.payload ?? "{}").tempNoteId).toBeUndefined();
+  });
+
+  it("skips a malformed queued row instead of stopping the upgrade", async () => {
+    const localId = "local-4b1c2d3e000040008000000000000010";
+    await upsertNoteInCache(username, { ...newNote, id: localId, createPending: undefined }, true);
+    await enqueueOutboxMutation(username, {
+      id: "broken-row",
+      domain: "notes",
+      op: "upsert",
+      payload: "{not json",
+    });
+
+    await expect(upgradeLegacyLocalNotes(username)).resolves.toBeUndefined();
+    expect(await notesTable().get("4b1c2d3e-0000-4000-8000-000000000010")).toBeDefined();
   });
 });
