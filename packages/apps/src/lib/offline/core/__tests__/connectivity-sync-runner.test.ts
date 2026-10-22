@@ -191,4 +191,41 @@ describe("ConnectivitySyncRunnerRegistry retries", () => {
 
     expect(flushTask).toHaveBeenCalledTimes(1);
   });
+
+  it("starts the ladder again on a flush it did not start itself (Retry, reconnect)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const username = "ladder-user";
+    await enqueueOutboxMutation(username, {
+      id: "row-1",
+      domain: "retry",
+      op: "upsert",
+      payload: "{}",
+    });
+    const flushTask = vi.fn(async () => {
+      await markOutboxError(username, "row-1", "failed (503)", 503);
+    });
+    const runner = new ConnectivitySyncRunnerRegistry("retry").getOrCreate(username, flushTask);
+
+    // IndexedDB answers outside the fake clock: let it settle between steps.
+    const settle = async () => {
+      for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
+    };
+    const step = async (ms: number) => {
+      await vi.advanceTimersByTimeAsync(ms);
+      await settle();
+    };
+
+    await runner.flush();
+    await settle();
+    for (const delay of [5_000, 15_000, 60_000, 300_000]) await step(delay);
+    expect(flushTask).toHaveBeenCalledTimes(5);
+    await step(600_000);
+    expect(flushTask).toHaveBeenCalledTimes(5);
+
+    // The person presses Retry: the server is still failing, so the ladder runs again.
+    await runner.flush();
+    await settle();
+    await step(5_000);
+    expect(flushTask).toHaveBeenCalledTimes(7);
+  });
 });
