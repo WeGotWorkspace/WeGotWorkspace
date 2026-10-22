@@ -6,6 +6,7 @@ namespace Tests\Feature\Jmap;
 
 use App\Models\JmapContentHashJob;
 use App\Models\JmapFileNode;
+use App\Services\Drive\DriveService;
 use App\Services\Jmap\FileNodes\FileNodeHashJobRunner;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\JmapCapabilities;
@@ -152,13 +153,13 @@ final class FileNodeContentHashTest extends WgwDatabaseTestCase
 
     public function test_a_folder_copy_inserts_the_subtree_with_hashes(): void
     {
-        $this->dav('MKCOL', '/files/users/bob/src')->assertSuccessful();
-        $this->dav('MKCOL', '/files/users/bob/src/inner')->assertSuccessful();
-        $this->dav('PUT', '/files/users/bob/src/one.txt', 'one')->assertSuccessful();
-        $this->dav('PUT', '/files/users/bob/src/inner/two.txt', 'two')->assertSuccessful();
-        JmapFileNode::query()->where('storage_key', 'users/bob/src/inner/two.txt')->update(['content_sha256' => str_repeat('cd', 32)]);
+        $this->dav('MKCOL', '/files/users/bob/my_src')->assertSuccessful();
+        $this->dav('MKCOL', '/files/users/bob/my_src/inner')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/my_src/one.txt', 'one')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/my_src/inner/two.txt', 'two')->assertSuccessful();
+        JmapFileNode::query()->where('storage_key', 'users/bob/my_src/inner/two.txt')->update(['content_sha256' => str_repeat('cd', 32)]);
 
-        $this->dav('COPY', '/files/users/bob/src', null, ['HTTP_DESTINATION' => '/files/users/bob/dst', 'HTTP_DEPTH' => 'infinity'])->assertSuccessful();
+        $this->dav('COPY', '/files/users/bob/my_src', null, ['HTTP_DESTINATION' => '/files/users/bob/dst', 'HTTP_DEPTH' => 'infinity'])->assertSuccessful();
 
         // Indexed at COPY time: no listing of dst has happened.
         $dst = $this->row('users/bob/dst');
@@ -290,5 +291,13 @@ final class FileNodeContentHashTest extends WgwDatabaseTestCase
         $index->recordCreate('users/bob/lazy.txt');
         $index->recordContentWrite('users/bob/lazy.txt');
         $this->assertSame(hash('sha256', 'lazy bytes'), $this->row('users/bob/lazy.txt')->content_sha256);
+    }
+
+    public function test_the_drive_text_write_path_stores_the_true_hash(): void
+    {
+        $drive = app(DriveService::class);
+        $drive->writeText(['username' => 'bob', 'role' => 'admin'], '/users/bob/mcp-note.md', '# written by a tool');
+
+        $this->assertSame(hash('sha256', '# written by a tool'), $this->row('users/bob/mcp-note.md')->content_sha256);
     }
 }

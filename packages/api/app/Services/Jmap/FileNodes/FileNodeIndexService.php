@@ -313,7 +313,7 @@ final class FileNodeIndexService
         if ($this->isHiddenKey($toKey)) {
             return null;
         }
-        $source = $this->isHiddenKey($fromKey) ? [] : $this->liveSelfAndDescendants($fromKey);
+        $source = $this->isHiddenKey($fromKey) ? [] : $this->liveSubtree($fromKey);
         if ($source === [] || (string) $source[0]->storage_key !== $fromKey) {
             return $this->recordCreate($toKey);
         }
@@ -704,6 +704,28 @@ final class FileNodeIndexService
 
     // ---------------------------------------------------------------
     // Helpers
+
+    /**
+     * Live row at $key plus live descendants, parents before children.
+     * `!` is the LIKE escape: portable to SQLite (no default escape) and
+     * MySQL (a backslash ESCAPE clause is a syntax error there).
+     *
+     * @return list<JmapFileNode>
+     */
+    private function liveSubtree(string $key): array
+    {
+        $pattern = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $key).'/%';
+
+        return array_values(JmapFileNode::query()
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($key, $pattern): void {
+                $query->where('storage_key', $key)
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$pattern]);
+            })
+            ->orderBy('storage_key')
+            ->get()
+            ->all());
+    }
 
     private function ensureParentIndexed(string $key): ?JmapFileNode
     {
