@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Models\JmapBlob;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobReferenceCheckerInterface;
+use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Support\Carbon;
@@ -153,7 +154,7 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
             }
         };
 
-        $result = (new JmapBlobGarbageCollector($service, [$checker]))->collect();
+        $result = (new JmapBlobGarbageCollector($service, new JmapBlobReferenceGuard([$checker])))->collect();
 
         $this->assertSame(['deleted' => 1, 'retained' => 1], $result);
         $this->assertNull($service->retrieve('bob', $expiredId));

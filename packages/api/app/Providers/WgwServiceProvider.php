@@ -12,7 +12,7 @@ use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Jmap\Blobs\DiskFreeSpaceSource;
 use App\Services\Jmap\Blobs\FreeSpaceSource;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
-use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
@@ -54,9 +54,8 @@ final class WgwServiceProvider extends ServiceProvider
             ),
         );
         $this->app->singleton(
-            JmapBlobGarbageCollector::class,
-            fn ($app): JmapBlobGarbageCollector => new JmapBlobGarbageCollector(
-                $app->make(JmapBlobService::class),
+            JmapBlobReferenceGuard::class,
+            fn ($app): JmapBlobReferenceGuard => new JmapBlobReferenceGuard(
                 array_map($app->make(...), JmapBlobGarbageCollector::CHECKERS),
             ),
         );

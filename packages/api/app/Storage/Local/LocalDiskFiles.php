@@ -23,6 +23,24 @@ class LocalDiskFiles
 {
     private const CHUNK = 1024 * 1024;
 
+    /**
+     * A php://temp stream holding $contents (spills to a temp file past
+     * 2 MB), positioned at the start.
+     *
+     * @return resource
+     */
+    public static function tempStream(string $contents = '')
+    {
+        $stream = fopen('php://temp', 'w+b');
+        if ($stream === false) {
+            throw new \RuntimeException('Could not open a temporary stream.');
+        }
+        fwrite($stream, $contents);
+        rewind($stream);
+
+        return $stream;
+    }
+
     public function isLocal(Filesystem $disk): bool
     {
         return $disk instanceof FilesystemAdapter && $disk->getAdapter() instanceof LocalFilesystemAdapter;
@@ -45,6 +63,9 @@ class LocalDiskFiles
         try {
             while (! feof($source) && ($maxBytes === null || $written < $maxBytes)) {
                 $want = $maxBytes === null ? self::CHUNK : min(self::CHUNK, $maxBytes - $written);
+                if ($want < 1) {
+                    break;
+                }
                 $chunk = fread($source, $want);
                 if ($chunk === false || $chunk === '') {
                     break;
@@ -56,7 +77,7 @@ class LocalDiskFiles
                 $written += strlen($chunk);
             }
             if (! fflush($target)) {
-                throw StorageFullException::fromLastError('flush');
+                throw StorageFullException::fromLastError('flush') ?? new StorageFullException('The storage is full.');
             }
         } finally {
             fclose($target);

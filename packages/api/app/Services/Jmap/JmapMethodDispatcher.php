@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Jmap;
 
 use App\Exceptions\ApiHttpException;
+use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\Methods\AddressBookChangesMethod;
 use App\Services\Jmap\Methods\AddressBookGetMethod;
 use App\Services\Jmap\Methods\AddressBookSetMethod;
+use App\Services\Jmap\Methods\BlobAssemblyAppendMethod;
+use App\Services\Jmap\Methods\BlobAssemblyFinishMethod;
+use App\Services\Jmap\Methods\BlobAssemblyGetMethod;
+use App\Services\Jmap\Methods\BlobAssemblySetMethod;
 use App\Services\Jmap\Methods\CalendarChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventChangesMethod;
 use App\Services\Jmap\Methods\CalendarEventGetMethod;
@@ -83,6 +88,11 @@ final class JmapMethodDispatcher
         FileNodeCopyMethod::class,
         FileNodeQueryMethod::class,
         FileNodeQueryChangesMethod::class,
+        // https://wegotworkspace.org/jmap/blob-assembly (WGW extension, #1500)
+        BlobAssemblySetMethod::class,
+        BlobAssemblyAppendMethod::class,
+        BlobAssemblyFinishMethod::class,
+        BlobAssemblyGetMethod::class,
         // urn:wgw:jmap:notes (vendor VJOURNAL envelope)
         NotebookGetMethod::class,
         NotebookChangesMethod::class,
@@ -183,6 +193,11 @@ final class JmapMethodDispatcher
                 $responses[] = ['error', $e->errorArgs(), $callId];
             } catch (ApiHttpException $e) {
                 $responses[] = ['error', $this->mapApiException($e), $callId];
+            } catch (StorageFullException $e) {
+                // A write the disk or hosting quota refused fails the whole
+                // request with 507 (JmapApiController), never a serverFail
+                // the client would retry forever.
+                throw $e;
             } catch (\Throwable $e) {
                 $responses[] = ['error', JmapSetErrors::serverFail($e), $callId];
             }
