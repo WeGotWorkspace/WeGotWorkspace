@@ -316,7 +316,10 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         ])->assertOk();
         $this->assertSame('report (2).txt', $renamed->json('methodResponses.0.1.created.k1.name'));
 
-        // replace: the existing node is destroyed and listed as such.
+        // replace: the existing node is destroyed and listed as such. The
+        // rename above attached the blob by moving it (#1500: the last
+        // reference consumes the upload), so this create uploads again.
+        $blobId = $this->uploadBlob('incoming');
         $replaced = $this->jmap([
             ['FileNode/set', ['accountId' => 'bob', 'onExists' => 'replace', 'create' => [
                 'k2' => ['parentId' => $homeId, 'name' => 'report.txt', 'blobId' => $blobId],
