@@ -56,10 +56,14 @@ export class ConnectivitySyncRunnerRegistry<T = void> {
   getOrCreate(username: string, flushTask: FlushTask<T>): ConnectivitySyncRunner<T> {
     const existing = this.runners.get(username);
     if (existing) return existing;
+    // The ladder counts only flushes its own timer started; any other flush
+    // (Retry, reconnect, a new write) starts it again from the first step.
     let attempt = 0;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    const retryIfStillFailing = async () => {
+    let timerFired = false;
+    const retryIfStillFailing = async (startedByTimer: boolean) => {
       clearTimeout(retryTimer);
+      if (!startedByTimer) attempt = 0;
       const rows = await listOutboxMutationsForDomain(username, this.domain);
       if (!rows.some(isRetryableOutboxRow)) {
         attempt = 0;
@@ -68,11 +72,18 @@ export class ConnectivitySyncRunnerRegistry<T = void> {
       const delay = RETRY_DELAYS_MS[attempt];
       if (delay === undefined || !readBrowserOnline()) return;
       attempt += 1;
-      retryTimer = setTimeout(() => void runner.flush(), delay);
+      retryTimer = setTimeout(() => {
+        timerFired = true;
+        void runner.flush();
+      }, delay);
     };
-    const runner: ConnectivitySyncRunner<T> = new ConnectivitySyncRunner(() =>
-      withOutboxLock(this.domain, username, flushTask).finally(retryIfStillFailing),
-    );
+    const runner: ConnectivitySyncRunner<T> = new ConnectivitySyncRunner(() => {
+      const startedByTimer = timerFired;
+      timerFired = false;
+      return withOutboxLock(this.domain, username, flushTask).finally(() =>
+        retryIfStillFailing(startedByTimer),
+      );
+    });
     this.runners.set(username, runner);
     return runner;
   }
