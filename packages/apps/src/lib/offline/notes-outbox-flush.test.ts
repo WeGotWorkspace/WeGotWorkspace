@@ -13,6 +13,7 @@ import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { flushNotesOutbox } from "@/lib/offline/notes-outbox-flush";
+import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 
 const username = "bob";
 
@@ -52,6 +53,12 @@ vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
     deleteNoteItem,
     archiveNoteItem,
   };
+});
+
+vi.mock("@/lib/offline/notes/notes-legacy-local-ids", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/offline/notes/notes-legacy-local-ids")>();
+  return { ...actual, upgradeLegacyLocalNotes: vi.fn(actual.upgradeLegacyLocalNotes) };
 });
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
@@ -335,5 +342,13 @@ describe("flushNotesOutbox", () => {
     expect(createNoteItem).toHaveBeenCalledWith(
       expect.objectContaining({ notebook: "Drafts", notebookId: "notes-drafts" }),
     );
+  });
+
+  it("runs the one-off legacy id upgrade once per page load, not on every flush", async () => {
+    vi.mocked(upgradeLegacyLocalNotes).mockClear();
+    await flushNotesOutbox(username);
+    await flushNotesOutbox(username);
+
+    expect(vi.mocked(upgradeLegacyLocalNotes).mock.calls.length).toBeLessThanOrEqual(1);
   });
 });

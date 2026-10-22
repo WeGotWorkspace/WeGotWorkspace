@@ -14,6 +14,7 @@ const readToken = vi.fn();
 const writeToken = vi.fn();
 const readCache = vi.fn();
 const blockingIds = vi.fn<() => Promise<Set<string>>>();
+const outboxIds = vi.fn<() => Promise<Set<string>>>();
 const ingestNote = vi.fn();
 const ingestNoteDestroyed = vi.fn();
 const ingestNotebook = vi.fn();
@@ -51,6 +52,7 @@ vi.mock("@/lib/offline/notes-offline-store", () => ({
   writeSyncToken: (...args: unknown[]) => writeToken(...args),
   readNotesBootstrapFromCache: () => readCache(),
   listNoteIdsBlockingSyncToken: () => blockingIds(),
+  listOutboxNoteIds: () => outboxIds(),
 }));
 
 vi.mock("@/lib/offline/notes-jmap-inbound", () => ({
@@ -78,6 +80,7 @@ describe("syncNotesInboundFromRest", () => {
     ingestNotebookDestroyed.mockReset();
     readToken.mockResolvedValue("tok-1");
     blockingIds.mockResolvedValue(new Set());
+    outboxIds.mockResolvedValue(new Set());
     readCache.mockResolvedValue({
       data: { notebookCollections: [{ id: "notes-general", name: "General" }], notes: [] },
     });
@@ -159,6 +162,35 @@ describe("syncNotesInboundFromRest", () => {
     expect(ingestNoteDestroyed).toHaveBeenCalledWith("ada", "n-deleted-elsewhere");
     expect(ingestNoteDestroyed).not.toHaveBeenCalledWith("ada", "n-kept");
     expect(writeToken).toHaveBeenCalledWith("ada", "notes-general", "note-tok-9");
+  });
+
+  it("does not prune a note that is still queued, so it is not reported as a conflict", async () => {
+    readToken.mockImplementation(async (_user: string, key: string) =>
+      key === NOTES_NOTEBOOKS_TOKEN_KEY ? "tok-1" : null,
+    );
+    listNotebookChanges.mockResolvedValue({
+      oldState: "tok-1",
+      newState: "tok-2",
+      created: [],
+      updated: [],
+      destroyed: [],
+    });
+    listNoteChanges.mockResolvedValue({ newState: "s", created: [], updated: [], destroyed: [] });
+    listNotes.mockResolvedValue([]);
+    outboxIds.mockResolvedValue(new Set(["n-in-outbox"]));
+    readCache.mockResolvedValue({
+      data: {
+        notebookCollections: [{ id: "notes-general", name: "General" }],
+        notes: [
+          { id: "n-create-pending", notebookId: "notes-general", createPending: true },
+          { id: "n-in-outbox", notebookId: "notes-general" },
+        ],
+      },
+    });
+
+    await syncNotesInboundFromRest("ada");
+
+    expect(ingestNoteDestroyed).not.toHaveBeenCalled();
   });
 
   it("does not destroy a note that moved into another notebook in the same poll", async () => {
@@ -332,6 +364,7 @@ describe("syncNotesInboundFromRest", () => {
 
   it("advances the sync token when the skipped destroy is a non-retryable stateMismatch", async () => {
     blockingIds.mockResolvedValue(new Set());
+    outboxIds.mockResolvedValue(new Set());
     listNotebookChanges.mockResolvedValue({
       oldState: "tok-1",
       newState: "tok-2",

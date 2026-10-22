@@ -19,6 +19,7 @@ import {
 import { type NoteCreated, subscribeNoteCreated } from "@/lib/offline/notes/notes-created-events";
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 import { enqueueOutboxMutation } from "@/lib/offline/core/outbox-store";
+import { migrateNoteCollabRoom } from "@/lib/offline/notes/notes-collab-rooms";
 
 vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/notes")>();
@@ -29,6 +30,11 @@ vi.mock("@/lib/api/wgw/notes", async (importOriginal) => {
     archiveNoteItem: vi.fn(),
     fetchNotesLiveBootstrap: vi.fn(),
   };
+});
+
+vi.mock("@/lib/offline/notes/notes-collab-rooms", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/notes/notes-collab-rooms")>();
+  return { ...actual, migrateNoteCollabRoom: vi.fn(actual.migrateNoteCollabRoom) };
 });
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
@@ -284,5 +290,37 @@ describe("a note an older app queued with a temporary id", () => {
 
     await expect(upgradeLegacyLocalNotes(username)).resolves.toBeUndefined();
     expect(await notesTable().get("4b1c2d3e-0000-4000-8000-000000000010")).toBeDefined();
+  });
+
+  it("moves the body room first: if that fails, the note keeps its old id for the next run", async () => {
+    const localId = "local-4b1c2d3e000040008000000000000011";
+    await upsertNoteInCache(username, { ...newNote, id: localId, createPending: undefined }, true);
+    vi.mocked(migrateNoteCollabRoom).mockRejectedValueOnce(new Error("tab closed"));
+
+    await expect(upgradeLegacyLocalNotes(username)).rejects.toThrow("tab closed");
+    expect(await notesTable().get(localId)).toBeDefined();
+
+    await upgradeLegacyLocalNotes(username);
+    expect(await notesTable().get(localId)).toBeUndefined();
+    expect(await notesTable().get("4b1c2d3e-0000-4000-8000-000000000011")).toBeDefined();
+  });
+
+  it("leaves a queued row that already targets a server id alone", async () => {
+    const serverId = "4b1c2d3e-0000-4000-8000-0000000000aa";
+    await enqueueOutboxMutation(username, {
+      id: "adopted-row",
+      domain: "notes",
+      op: "upsert",
+      payload: JSON.stringify({
+        noteId: serverId,
+        tempNoteId: "local-4b1c2d3e000040008000000000000012",
+        metadata: { notebook: "Drafts", tags: [] },
+      }),
+    });
+
+    await upgradeLegacyLocalNotes(username);
+
+    const [row] = await listOutboxMutations(username);
+    expect(JSON.parse(row?.payload ?? "{}").noteId).toBe(serverId);
   });
 });
