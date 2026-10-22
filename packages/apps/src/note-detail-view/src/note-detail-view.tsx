@@ -121,7 +121,12 @@ export function NoteDetailView({
 
   useLayoutEffect(() => {
     if (!autoFocusTitle || titleReadOnly || leftTitleRef.current) return;
-    titleRef.current?.focus();
+    const field = titleRef.current;
+    if (!field) return;
+    field.focus();
+    // The temp → server id remap rebuilds the field with its caret at the start,
+    // so the next letter went before the ones typed so far.
+    field.setSelectionRange(field.value.length, field.value.length);
   }, [autoFocusTitle, noteId, titleReadOnly]);
 
   function handleTitleBlur(event: FocusEvent<HTMLTextAreaElement>): void {

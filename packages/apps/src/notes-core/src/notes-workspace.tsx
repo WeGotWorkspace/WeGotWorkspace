@@ -63,7 +63,6 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
 import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
@@ -338,6 +337,7 @@ export function NotesWorkspace({
   );
 
   const activeNoteId = active?.id;
+  const activeCreatePending = active?.createPending === true;
 
   useEffect(() => {
     if (!wgwLiveApiEnabled() || !activeNoteId) {
@@ -349,13 +349,12 @@ export function NotesWorkspace({
       setNoteCollabUrls(undefined);
       return;
     }
-    if (isLocalTempNoteId(activeNoteId)) {
-      setNoteCollabUrls(undefined);
-      return;
-    }
+    // Until its create reaches the server the room is local-only: the body is
+    // kept in IndexedDB under the note's final UID, then saved once it exists.
     setAccessLost(false);
     let cancelled = false;
     void buildNoteCollabUrls(activeNoteId, {
+      createPending: activeCreatePending,
       onPersistForbidden: () => {
         setAccessLost(true);
         setNoteCollabUrls(undefined);
@@ -375,7 +374,7 @@ export function NotesWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [activeNoteId, session.user.username]);
+  }, [activeCreatePending, activeNoteId, session.user.username]);
 
   // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
   // only enabled against the live API (mock/Storybook uses the solo editor).

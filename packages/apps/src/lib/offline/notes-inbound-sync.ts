@@ -98,8 +98,36 @@ export async function syncNotesInboundFromRest(
 
   let usedFullResync = notebooks.usedFullResync;
   let changed = notebooks.changed;
+  // A full list is the whole notebook: what the cache has there and the list
+  // lacks was deleted elsewhere. Its rows are ingested as they are (no GET each).
+  const listedRows = new Map<string, Awaited<ReturnType<typeof listNotes>>[number]>();
+  const cachedBefore = await readNotesBootstrapFromCache(username);
+  const pruned: string[] = [];
+  const fullList = async (notebookId: string) => {
+    usedFullResync = true;
+    const items = await listNotes({ notebookId });
+    for (const item of items) listedRows.set(item.id, item);
+    const listed = new Set(items.map((item) => item.id));
+    for (const note of cachedBefore?.data.notes ?? []) {
+      if (note.notebookId === notebookId && !listed.has(note.id)) pruned.push(note.id);
+    }
+    deltas.push({
+      notebookId,
+      created: items.map((item) => item.id),
+      updated: [],
+      destroyed: [],
+      newState: (await listNoteChanges(notebookId, null)).newState,
+      usedFullResync: true,
+    });
+  };
+
   for (const notebookId of ids) {
     const since = await readSyncToken(username, notebookId);
+    // No token yet: "changes since 0" names every note and costs a GET each.
+    if (since === null) {
+      await fullList(notebookId);
+      continue;
+    }
     try {
       const delta = await listNoteChanges(notebookId, since);
       deltas.push({
@@ -117,16 +145,7 @@ export async function syncNotesInboundFromRest(
         continue;
       }
       if (!isNotesCannotCalculateChanges(error)) throw error;
-      usedFullResync = true;
-      const items = await listNotes({ notebookId });
-      deltas.push({
-        notebookId,
-        created: items.map((item) => item.id),
-        updated: [],
-        destroyed: [],
-        newState: (await listNoteChanges(notebookId, null)).newState,
-        usedFullResync: true,
-      });
+      await fullList(notebookId);
     }
   }
 
@@ -138,6 +157,7 @@ export async function syncNotesInboundFromRest(
     for (const id of delta.updated) updated.add(id);
     for (const id of delta.destroyed) destroyed.add(id);
   }
+  for (const id of pruned) destroyed.add(id);
   const upsertIds = [...created, ...[...updated].filter((id) => !created.has(id))];
   const destroyIds = [...destroyed].filter((id) => !created.has(id) && !updated.has(id));
 
@@ -148,7 +168,7 @@ export async function syncNotesInboundFromRest(
   // A skipped upsert (queued delete) or destroy holds the notebook token.
   // A stateMismatch row is absent from blockingIds, so it does not pin it.
   for (const id of upsertIds) {
-    const row = await getNote(id);
+    const row = listedRows.get(id) ?? (await getNote(id));
     const result = await ingestRemoteNote(username, noteFromVjournal(row, notebookRows));
     if (result === "upserted" || result === "merged-pending") changed = true;
     if (result === "skipped-pending" && blockingIds.has(id)) skippedIds.add(id);
