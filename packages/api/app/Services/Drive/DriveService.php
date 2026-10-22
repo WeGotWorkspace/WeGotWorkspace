@@ -174,7 +174,7 @@ final class DriveService
             }
             $disk->put($key, '');
         }
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key));
+        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordCreate($key, $type === 'dir' ? null : hash('sha256', '')));
         $this->eventDispatch->fireMutation($username, 'drive', 'created', 'files/'.$key);
 
         return 'Created';

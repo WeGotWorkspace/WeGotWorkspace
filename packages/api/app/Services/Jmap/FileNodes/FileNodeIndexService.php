@@ -33,6 +33,7 @@ final class FileNodeIndexService
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly CollabSidecarMover $sidecars,
         private readonly DocYjsStateStore $sidecarLinks,
+        private readonly FileNodeContentHasher $hasher,
     ) {}
 
     // ---------------------------------------------------------------
@@ -205,14 +206,20 @@ final class FileNodeIndexService
     // ---------------------------------------------------------------
     // Recording (called from DriveService, the DAV plugin, and FileNode/set)
 
-    public function recordCreate(string $key): ?JmapFileNode
+    /**
+     * Indexes a new key. `$sha256` is the hash a WGW write path computed
+     * while streaming the bytes; without one the file was discovered on
+     * disk and is hashed now (small files) or marked hash-pending.
+     * Directories keep a null hash.
+     */
+    public function recordCreate(string $key, ?string $sha256 = null): ?JmapFileNode
     {
         if ($this->isHiddenKey($key)) {
             return null;
         }
         $existing = $this->liveByKey($key);
         if ($existing !== null) {
-            return $this->recordContentWrite($key) ?? $existing;
+            return $this->recordContentWrite($key, $sha256) ?? $existing;
         }
 
         $parent = $this->ensureParentIndexed($key);
@@ -222,6 +229,7 @@ final class FileNodeIndexService
             return null;
         }
 
+        $sha256 ??= $isDir ? null : $this->hasher->discover($key);
         $seq = $this->nextSeq();
 
         $node = JmapFileNode::query()->create([
@@ -231,15 +239,27 @@ final class FileNodeIndexService
             'name' => basename($key),
             'is_dir' => $isDir,
             'size_bytes' => $isDir ? null : (int) ($disk->size($key) ?: 0),
-            'content_sha256' => null,
+            'content_sha256' => $sha256,
+            'hash_pending' => false,
             'created_seq' => $seq,
             'change_seq' => $seq,
         ]);
+        if (! $isDir && $sha256 === null) {
+            $this->hasher->markPending($node);
+            $node->saveQuietly();
+        }
         $this->syncSearch($key);
 
         return $node;
     }
 
+    /**
+     * The chokepoint for content writes (#1500): `content_sha256` is always
+     * the true sha256 of the file's bytes. Every WGW write path passes the
+     * hash it computed while streaming the write; a missing hash never
+     * nulls the stored value — the file is hashed now (small) or marked
+     * hash-pending, as a discovered file would be.
+     */
     public function recordContentWrite(string $key, ?string $sha256 = null): ?JmapFileNode
     {
         if ($this->isHiddenKey($key)) {
@@ -247,25 +267,106 @@ final class FileNodeIndexService
         }
         $row = $this->liveByKey($key);
         if ($row === null) {
-            $row = $this->recordCreate($key);
-            if ($row !== null && ! $row->is_dir && $sha256 !== null) {
-                // Fresh row: attach the known content hash without another
-                // seq bump (the create already announced the node).
-                $row->content_sha256 = $sha256;
-                $row->saveQuietly();
-            }
-
-            return $row;
+            return $this->recordCreate($key, $sha256);
         }
 
         $disk = $this->storage->files();
         $row->size_bytes = $row->is_dir ? null : (int) ($disk->size($key) ?: 0);
-        $row->content_sha256 = $row->is_dir ? null : $sha256;
+        if (! $row->is_dir) {
+            $sha256 ??= $this->hasher->discover($key);
+            if ($sha256 !== null) {
+                $row->content_sha256 = $sha256;
+                $this->hasher->clearPending($row);
+            } else {
+                $this->hasher->markPending($row);
+            }
+        }
         $row->change_seq = $this->nextSeq();
         $row->save();
         $this->syncSearch($key);
 
         return $row;
+    }
+
+    /**
+     * Stores the true hash a hash job computed for a hash-pending node and
+     * bumps change_seq, so FileNode/changes tells clients the blobId moved
+     * (once per discovered file).
+     */
+    public function recordHashResolved(JmapFileNode $node, string $sha256, int $size): void
+    {
+        $node->content_sha256 = $sha256;
+        $node->size_bytes = $size;
+        $this->hasher->clearPending($node);
+        $node->change_seq = $this->nextSeq();
+        $node->save();
+    }
+
+    /**
+     * DAV COPY: the destination has identical bytes, so the destination rows
+     * for the whole subtree are inserted in one bulk statement that maps the
+     * source storage_key prefix onto the destination and carries size_bytes
+     * and content_sha256 (and a pending hash) across — no file is read.
+     */
+    public function recordCopy(string $fromKey, string $toKey): ?JmapFileNode
+    {
+        if ($this->isHiddenKey($toKey)) {
+            return null;
+        }
+        $source = $this->isHiddenKey($fromKey) ? [] : $this->liveSelfAndDescendants($fromKey);
+        if ($source === [] || (string) $source[0]->storage_key !== $fromKey) {
+            return $this->recordCreate($toKey);
+        }
+        // An overwritten destination was deleted by the COPY first.
+        if ($this->liveByKey($toKey) !== null) {
+            $this->recordDelete($toKey);
+        }
+        $parent = $this->ensureParentIndexed($toKey);
+        $seq = $this->nextSeq();
+        $now = now();
+        $idMap = [];
+        $rows = [];
+        $pending = [];
+        foreach ($source as $row) {
+            $sourceKey = (string) $row->storage_key;
+            $newId = $this->mintNodeId();
+            $idMap[(string) $row->node_id] = $newId;
+            $destKey = $sourceKey === $fromKey ? $toKey : $toKey.substr($sourceKey, strlen($fromKey));
+            $rows[] = [
+                'node_id' => $newId,
+                'storage_key' => $destKey,
+                'parent_node_id' => $sourceKey === $fromKey
+                    ? $parent?->node_id
+                    : ($idMap[(string) $row->parent_node_id] ?? null),
+                'name' => basename($destKey),
+                'is_dir' => (bool) $row->is_dir,
+                'size_bytes' => $row->size_bytes,
+                'content_sha256' => $row->content_sha256,
+                'hash_pending' => (bool) $row->hash_pending,
+                'created_seq' => $seq,
+                'change_seq' => $seq,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            if ((bool) $row->hash_pending) {
+                $pending[] = $destKey;
+            }
+        }
+        // ~13 bound values per row: stay under SQLite's variable limit.
+        foreach (array_chunk($rows, 500) as $chunk) {
+            JmapFileNode::query()->insert($chunk);
+        }
+        foreach ($pending as $destKey) {
+            $node = $this->liveByKey($destKey);
+            if ($node !== null) {
+                $this->hasher->markPending($node);
+            }
+        }
+        foreach ($rows as $row) {
+            $this->syncSearch($row['storage_key']);
+        }
+
+        return $this->liveByKey($toKey);
     }
 
     /**

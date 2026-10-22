@@ -43,8 +43,7 @@ final class FileNodeBlobResolver
             return null;
         }
 
-        $sha = $this->mapper->ensureContentSha($node);
-        if (substr($sha, 0, 8) !== $matches[2]) {
+        if (! $this->mapper->isCurrentBlobId($node, $blobId)) {
             return null;
         }
 

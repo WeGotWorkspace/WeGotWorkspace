@@ -14,6 +14,7 @@ use App\Services\Jmap\Blobs\FreeSpaceSource;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobReferenceGuard;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
+use App\Services\Jmap\FileNodes\FileNodeContentHasher;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
@@ -34,6 +35,7 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
         $this->app->scoped(JmapRequestContext::class);
+        $this->app->scoped(FileNodeContentHasher::class);
         $this->app->singleton(FreeSpaceSource::class, DiskFreeSpaceSource::class);
 
         // JMAP envelope: the method-handler and capability-provider lists are
