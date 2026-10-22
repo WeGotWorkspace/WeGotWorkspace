@@ -80,11 +80,27 @@ describe("ConnectivitySyncRunnerRegistry", () => {
 function installSerialWebLocks(): void {
   const tails = new Map<string, Promise<unknown>>();
   const locks = {
-    request(name: string, _options: unknown, callback: () => Promise<unknown>) {
-      const run = (tails.get(name) ?? Promise.resolve()).then(() => callback());
+    request(
+      name: string,
+      options: { signal?: AbortSignal } | undefined,
+      callback: () => Promise<unknown>,
+    ) {
+      const previous = tails.get(name) ?? Promise.resolve();
+      const run = new Promise((resolve, reject) => {
+        let started = false;
+        // Like the browser: an abort while waiting rejects; once held, it does not.
+        options?.signal?.addEventListener("abort", () => {
+          if (!started) reject(new DOMException("Aborted", "AbortError"));
+        });
+        void previous.then(() => {
+          if (options?.signal?.aborted) return;
+          started = true;
+          Promise.resolve(callback()).then(resolve, reject);
+        });
+      });
       tails.set(
         name,
-        run.catch(() => undefined),
+        previous.then(() => run.catch(() => undefined)),
       );
       return run;
     },
@@ -95,6 +111,39 @@ function installSerialWebLocks(): void {
 describe("ConnectivitySyncRunnerRegistry across tabs", () => {
   afterEach(() => {
     Reflect.deleteProperty(navigator, "locks");
+  });
+
+  it("does not hang behind a tab that never lets go, and tries again later", async () => {
+    installSerialWebLocks();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const stuckTab = new ConnectivitySyncRunnerRegistry<void>("hang").getOrCreate(
+        "ada",
+        () => new Promise<void>(() => undefined),
+      );
+      const otherTask = vi.fn(async () => undefined);
+      const otherTab = new ConnectivitySyncRunnerRegistry<void>("hang").getOrCreate(
+        "ada",
+        otherTask,
+      );
+
+      void stuckTab.flush();
+      let settled = false;
+      void otherTab.flush().then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+      // IndexedDB answers outside the fake clock.
+      for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
+
+      expect(settled).toBe(true);
+      expect(otherTask).not.toHaveBeenCalled();
+      // A later attempt is queued again instead of giving up for good.
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(otherTask).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("never runs two tabs' flushes of one domain and account at the same time", async () => {
