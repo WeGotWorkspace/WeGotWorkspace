@@ -58,7 +58,7 @@ function rethrowUnlessOfflineQueue(error: unknown, opts?: TasksMutationOpts): vo
   if (!isFetchNetworkError(error)) throw error;
 }
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>(TASKS_DOMAIN);
 
 async function flushTasksOutboxAndReport(username: string): Promise<OutboxFlushResult> {
   const result = await flushTasksOutbox(username);
@@ -417,7 +417,7 @@ export async function fetchTasksHybridBootstrap(): Promise<
     throw new Error("Tasks bootstrap missing username");
   }
   if (readBrowserOnline()) {
-    await flushTasksOutboxAndReport(username);
+    await runnerFor(username).flush();
   }
   await writeTasksBootstrapToCache(username, bootstrap);
   return bootstrap;
