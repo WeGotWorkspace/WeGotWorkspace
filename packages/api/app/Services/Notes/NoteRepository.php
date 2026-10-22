@@ -461,8 +461,10 @@ final class NoteRepository
     {
         $located = $this->findAccessibleNote($username, strtolower($uid));
         // A retry targets the notebook the first create did. A note elsewhere
-        // with this UID is a different note: the caller gets the 409.
-        if ($located === null || $this->notebooks->apiIdForInstance($located['instance']) !== $notebookId) {
+        // with this UID is a different note: the caller gets the 409. Compare
+        // calendars, not ids: a group notebook has two accepted spellings.
+        $target = $this->notebooks->findAccessibleNotebook($username, $notebookId);
+        if ($located === null || $target === null || (int) $target->calendarid !== (int) $located['instance']->calendarid) {
             return null;
         }
         try {
