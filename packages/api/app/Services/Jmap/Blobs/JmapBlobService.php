@@ -32,7 +32,7 @@ final class JmapBlobService
 
     public static function maxSizeUpload(): int
     {
-        return max(0, (int) config('wgw.jmap.max_size_upload', 25_000_000));
+        return JmapBlobLimits::maxSizeUpload();
     }
 
     /**

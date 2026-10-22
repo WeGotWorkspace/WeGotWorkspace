@@ -108,7 +108,7 @@ final class JmapMethodDispatcher
      *
      * @param  list<JmapMethodInterface>  $methods
      */
-    public function __construct(array $methods)
+    public function __construct(array $methods, private readonly JmapRequestContext $context = new JmapRequestContext)
     {
         foreach ($methods as $method) {
             $this->register($method);
@@ -145,6 +145,7 @@ final class JmapMethodDispatcher
     public function dispatch(string $username, array $using, array $methodCalls): array
     {
         $responses = [];
+        $this->context->setUsing($using);
 
         foreach ($methodCalls as [$name, $args, $callId]) {
             try {

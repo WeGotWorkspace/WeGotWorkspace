@@ -9,10 +9,13 @@ use App\Services\Auth\SabreCredentialValidator;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
 use App\Services\Installer\InstallerIpv4Resolver;
 use App\Services\Installer\WgwConfigMigrator;
+use App\Services\Jmap\Blobs\DiskFreeSpaceSource;
+use App\Services\Jmap\Blobs\FreeSpaceSource;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
 use App\Services\Jmap\JmapMethodDispatcher;
+use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwDatabaseProbe;
@@ -30,6 +33,8 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+        $this->app->scoped(JmapRequestContext::class);
+        $this->app->singleton(FreeSpaceSource::class, DiskFreeSpaceSource::class);
 
         // JMAP envelope: the method-handler and capability-provider lists are
         // class constants (autowiring cannot construct lists); resolving them
@@ -38,6 +43,7 @@ final class WgwServiceProvider extends ServiceProvider
             JmapMethodDispatcher::class,
             fn ($app): JmapMethodDispatcher => new JmapMethodDispatcher(
                 array_map($app->make(...), JmapMethodDispatcher::METHODS),
+                $app->make(JmapRequestContext::class),
             ),
         );
         $this->app->singleton(
