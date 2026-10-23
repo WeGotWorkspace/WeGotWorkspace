@@ -63,6 +63,21 @@ final class EnsureAppKeyCommandTest extends TestCase
         $this->assertSame('base64:YWJj', config('app.key'));
     }
 
+    public function test_it_refuses_to_act_on_a_cached_config(): void
+    {
+        // A cached config does not reflect the .env just loaded. A cached empty
+        // key would otherwise make this replace a working key on every install.
+        $content = "APP_KEY=base64:YWJj\n";
+        file_put_contents($this->envDir.'/.env', $content);
+        // Laravel records at boot whether config came from bootstrap/cache.
+        $this->app->instance('config_loaded_from_cache', true);
+        config(['app.key' => '']);
+
+        $this->assertSame(Command::FAILURE, Artisan::call('wgw:ensure-app-key'));
+
+        $this->assertSame($content, file_get_contents($this->envDir.'/.env'));
+    }
+
     public function test_it_fails_when_there_is_no_app_key_line_to_fill(): void
     {
         $content = "APP_URL=http://localhost\n";
