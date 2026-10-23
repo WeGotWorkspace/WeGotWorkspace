@@ -50,40 +50,6 @@ final class MailDeliverySmtpTransport
         ];
     }
 
-    /**
-     * @param  array{host: string, port: int, security: string, smtpAuth: bool}  $transport
-     */
-    public static function describe(array $transport): string
-    {
-        return sprintf(
-            '%s:%d (%s)',
-            $transport['host'] !== '' ? $transport['host'] : '?',
-            $transport['port'],
-            $transport['security']
-        );
-    }
-
-    public static function canReachTcp(string $host, int $port, float $timeoutSec = 5.0): bool
-    {
-        if ($host === '' || $port < 1) {
-            return false;
-        }
-
-        $errno = 0;
-        $errstr = '';
-        $target = str_contains($host, ':') && ! str_starts_with($host, '[')
-            ? '['.$host.']'
-            : $host;
-        $fp = @fsockopen($target, $port, $errno, $errstr, $timeoutSec);
-        if (is_resource($fp)) {
-            fclose($fp);
-
-            return true;
-        }
-
-        return false;
-    }
-
     private static function isLocalHost(string $host): bool
     {
         $h = strtolower(trim($host));
