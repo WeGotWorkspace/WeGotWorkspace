@@ -5,7 +5,7 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
-import { Button, buttonVariants } from "@/ui/button";
+import { Button, buttonVariants } from "@/button/src/button";
 
 const CALENDAR_NAV_BUTTON_CLASS =
   "inline-flex size-8 min-h-8 min-w-8 shrink-0 select-none items-center justify-center p-0 aria-disabled:opacity-50";

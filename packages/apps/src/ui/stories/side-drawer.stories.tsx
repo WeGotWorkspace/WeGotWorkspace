@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Button } from "@/ui/button";
+import { Button } from "@/button/src/button";
 import { SideDrawer } from "@/ui/side-drawer";
 
 import "@/ui/side-drawer.css";
