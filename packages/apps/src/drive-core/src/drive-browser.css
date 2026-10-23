@@ -284,34 +284,17 @@
 
 .drive-workspace .drive-file-tile__preview > img,
 .drive-workspace .drive-file-tile__preview > video,
-.drive-workspace .drive-file-tile__preview .file-preview__fallback,
-.drive-workspace .drive-file-tile__preview .drive-media-preview__fallback {
+.drive-workspace .drive-file-tile__preview .file-preview__fallback {
   @apply absolute inset-0 h-full w-full;
 }
 
-.drive-workspace .file-preview__fallback,
-.drive-workspace .drive-media-preview__fallback {
+.drive-workspace .file-preview__fallback {
   @apply flex h-full w-full min-h-0 items-center justify-center opacity-80;
 }
 
-.drive-workspace .file-preview__fallback svg,
-.drive-workspace .drive-media-preview__fallback svg {
+.drive-workspace .file-preview__fallback svg {
   width: 3rem;
   height: 3rem;
-}
-
-@media (min-width: 30rem) {
-  .drive-workspace .drive-media-preview__fallback svg {
-    width: 3.5rem;
-    height: 3.5rem;
-  }
-}
-
-@media (min-width: 64rem) {
-  .drive-workspace .drive-media-preview__fallback svg {
-    width: 4rem;
-    height: 4rem;
-  }
 }
 
 .drive-workspace .drive-file-tile__kind-icon {
