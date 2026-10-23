@@ -331,6 +331,17 @@ describe("createHybridNotesOperations", () => {
     expect((await notesNotesTable(db).get(note.id))?.pendingSync).toBe(true);
   });
 
+  it("queues an offline archive with the note version it started from", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertNoteInCache(username, { ...note, etag: '"v7"' }, false);
+
+    await createHybridNotesOperations(username).archiveNote(note.id);
+
+    const [row] = await listOutboxMutations(username);
+    expect(row?.op).toBe("archive");
+    expect(row?.ifInState).toBe('"v7"');
+  });
+
   it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
     vi.mocked(archiveNoteItem).mockResolvedValue({ ...note, archived: true });
 
