@@ -19,15 +19,39 @@ fi
 if [ -f "${API_ROOT}/.env.example" ] && [ ! -f "${API_ROOT}/.env" ]; then
   cp "${API_ROOT}/.env.example" "${API_ROOT}/.env"
 fi
-if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
-  # Only fill an empty APP_KEY. `key:generate --force` replaces an existing
-  # key, which would rewrite the bind-mounted .env on every container start.
-  if [ -z "${APP_KEY:-}" ] && [ -z "$(sed -n 's/^APP_KEY=//p' "${API_ROOT}/.env" | head -n 1 | tr -d "\"'[:space:]")" ]; then
-    if ! grep -q '^APP_KEY=' "${API_ROOT}/.env"; then
-      printf '\nAPP_KEY=\n' >>"${API_ROOT}/.env"
-    fi
-    php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+# Generate APP_KEY only when it is missing or empty. `key:generate --force`
+# replaces an existing key, which would rewrite the bind-mounted .env on
+# every container start. Keep in sync with docker/install/docker-entrypoint.sh.
+app_key_value() {
+  # Laravel's dotenv uses the last APP_KEY line, so read that one.
+  sed -n 's/^APP_KEY=//p' "$1" | tail -n 1 | tr -d "\"'[:space:]"
+}
+
+ensure_app_key() {
+  env_file="$1"
+  if [ -n "${APP_KEY:-}" ] || [ -n "$(app_key_value "$env_file")" ]; then
+    return 0
   fi
+
+  # Leave one bare `APP_KEY=` line so key:generate can fill it in.
+  # `cat >` keeps the file (and any symlink) in place.
+  tmp="$(mktemp)"
+  awk 'BEGIN { done = 0 }
+    /^APP_KEY=/ { if (!done) { print "APP_KEY="; done = 1 } next }
+    { print }
+    END { if (!done) print "APP_KEY=" }' "$env_file" >"$tmp"
+  cat "$tmp" >"$env_file"
+  rm -f "$tmp"
+
+  # Non-fatal: the next start retries while the key is still empty.
+  if ! php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 \
+    || [ -z "$(app_key_value "$env_file")" ]; then
+    echo "[wgw-apache] Warning: could not generate APP_KEY in ${env_file}; will retry on next start." >&2
+  fi
+}
+
+if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
+  ensure_app_key "${API_ROOT}/.env"
   php "${API_ROOT}/artisan" wgw:dev-install --no-interaction >/dev/null 2>&1 || true
 fi
 

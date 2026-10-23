@@ -29,13 +29,15 @@ fi
 # Generate APP_KEY only when it is missing or empty. `key:generate --force`
 # replaces an existing key, and a new key on every boot breaks everything
 # sealed under the old one (refresh tokens, share links, collab ticket key).
+# Keep in sync with docker/apache/docker-entrypoint.sh.
+app_key_value() {
+  # Laravel's dotenv uses the last APP_KEY line, so read that one.
+  sed -n 's/^APP_KEY=//p' "$1" | tail -n 1 | tr -d "\"'[:space:]"
+}
+
 ensure_app_key() {
   env_file="$1"
-  if [ -n "${APP_KEY:-}" ]; then
-    return 0
-  fi
-  current="$(sed -n 's/^APP_KEY=//p' "$env_file" | head -n 1 | tr -d "\"'[:space:]")"
-  if [ -n "$current" ]; then
+  if [ -n "${APP_KEY:-}" ] || [ -n "$(app_key_value "$env_file")" ]; then
     return 0
   fi
 
@@ -49,7 +51,11 @@ ensure_app_key() {
   cat "$tmp" >"$env_file"
   rm -f "$tmp"
 
-  php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+  # Non-fatal: the next start retries while the key is still empty.
+  if ! php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 \
+    || [ -z "$(app_key_value "$env_file")" ]; then
+    echo "[wgw-install] Warning: could not generate APP_KEY in ${env_file}; will retry on next start." >&2
+  fi
 }
 
 if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then

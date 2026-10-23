@@ -171,7 +171,7 @@ PHP'
     "sed -i '/^WGW_DB_/d;/^WGW_DATA_DIR=/d' /vol/api.env"
 
   # Hash only; never print the key itself.
-  local key_hash_cmd='grep -Eq "^APP_KEY=.+" /vol/api.env && grep "^APP_KEY=" /vol/api.env | sha256sum'
+  local key_hash_cmd='grep -Eq "^APP_KEY=.+" /vol/api.env && grep "^APP_KEY=" /vol/api.env | sha256sum | cut -d" " -f1'
   local key_hash_before key_hash_after
   key_hash_before="$(docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c "$key_hash_cmd")" \
     || fail "Docker: APP_KEY missing or empty on config volume"
