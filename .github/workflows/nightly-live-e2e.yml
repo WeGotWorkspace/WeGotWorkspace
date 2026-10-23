@@ -122,9 +122,90 @@ jobs:
           path: coturn.log
           if-no-files-found: ignore
 
+  notes-sync-matrix:
+    name: Notes sync matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      WGW_DISABLE_LOGIN_THROTTLE: "1"
+      WGW_PROXY_TARGET: http://127.0.0.1:9080
+      VITE_WGW_USE_LIVE_API: "1"
+      VITE_WGW_API_BASE_URL: /api/v1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      - name: Prepare Laravel env
+        run: |
+          cp packages/api/.env.example packages/api/.env
+          # The example is production-safe. This job is a local dev bootstrap.
+          sed -i 's/^APP_ENV=.*/APP_ENV=local/' packages/api/.env
+          sed -i 's/^APP_DEBUG=.*/APP_DEBUG=true/' packages/api/.env
+          php packages/api/artisan key:generate --force --no-interaction
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-chromium-
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" != 'true' ]; then
+            pnpm --filter @wgw/apps exec playwright install chromium --with-deps
+          else
+            pnpm --filter @wgw/apps exec playwright install chromium
+          fi
+
+      - name: Bootstrap local dev install
+        run: php packages/api/artisan wgw:dev-install
+
+      - name: Run the Notes sync matrix
+        working-directory: packages/apps
+        run: pnpm exec playwright test --config playwright.matrix.config.mjs
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: notes-sync-matrix-artifacts
+          path: |
+            packages/apps/playwright-report/
+            packages/apps/test-results/
+          if-no-files-found: ignore
+
   notify-failure:
     name: Notify on failure
-    needs: live-specs
+    needs: [live-specs, notes-sync-matrix]
     if: failure() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -145,7 +226,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Download the `live-e2e-artifacts` artifact from that run for the HTML report and traces.",
+              "Download the `live-e2e-artifacts` or `notes-sync-matrix-artifacts` artifact from that run for the HTML report and traces.",
             ].join("\n");
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -171,7 +252,7 @@ jobs:
 
   notify-recovery:
     name: Close failure issue on success
-    needs: live-specs
+    needs: [live-specs, notes-sync-matrix]
     if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
