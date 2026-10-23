@@ -4,7 +4,6 @@ use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
-use App\Services\Installer\ApiRuntimeEnvService;
 use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
 use App\Services\Installer\DevContactCatalog;
@@ -54,28 +53,29 @@ Artisan::command('wgw:schema-migrate', function (WgwSchemaMigrator $migrator): i
     return Command::SUCCESS;
 })->purpose('Apply pending database/migrations/wgw migrations on the wgw connection');
 
-Artisan::command('wgw:ensure-env', function (ApiRuntimeEnvService $apiEnv): int {
-    // Docker entrypoints run this on every start. It fills APP_KEY only when it
-    // is missing or unusable and never replaces a usable key. Never print the key.
-    $result = $apiEnv->ensureAtApiRoot(base_path(), null);
-    if ($result['createdEnv']) {
-        $this->info('Created packages/api/.env from .env.example.');
-    }
-    if ($result['sanitizedEnv']) {
-        $this->info('Cleaned up packages/api/.env (invalid lines or line endings).');
-    }
-    if ($result['generatedKey']) {
-        $this->info('Generated APP_KEY in packages/api/.env.');
+Artisan::command('wgw:ensure-app-key', function (): int {
+    // Docker entrypoints run this on every start. Generate APP_KEY only when
+    // the key Laravel loaded is empty (first boot from .env.example); never
+    // replace one, or everything Crypt sealed under it is lost (refresh
+    // tokens, share links, collab ticket key). config('app.key') is what
+    // dotenv actually loaded, so duplicate lines, CRLF and quotes need no
+    // parsing here. Never print the key.
+    if ((string) config('app.key') !== '') {
+        return Command::SUCCESS;
     }
 
-    if (! $apiEnv->hasUsableAppKey(base_path('.env'))) {
-        $this->error('APP_KEY in '.base_path('.env').' is missing or unusable and was not changed. Fix it by hand: look for an unclosed quote or a malformed line, or set APP_KEY= to an empty value so the next start generates one.');
+    $this->callSilently('key:generate', ['--no-interaction' => true]);
+    // key:generate sets the loaded config when it wrote the key. A separate
+    // lookup on purpose: PHPStan would otherwise reuse the first result.
+    if ((string) $this->laravel->make('config')->get('app.key') === '') {
+        $this->error('Could not write APP_KEY to '.$this->laravel->environmentFilePath().'. Check that it has an APP_KEY= line.');
 
         return Command::FAILURE;
     }
+    $this->info('Generated APP_KEY.');
 
     return Command::SUCCESS;
-})->purpose('Create packages/api/.env and APP_KEY when missing or unusable; never replaces a usable key');
+})->purpose('Generate APP_KEY when it is empty; never replaces an existing key');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Installer;
 
 use App\Support\WgwApiEnvFile;
-use Dotenv\Exception\InvalidFileException;
 
 /**
  * Ensures packages/api runtime files exist on install and after in-place updates.
@@ -111,82 +110,20 @@ final class ApiRuntimeEnvService
         }
     }
 
-    /**
-     * The one rule for "this APP_KEY can stay". ensureAppKey() replaces
-     * anything else; wgw:ensure-env fails on anything else.
-     */
-    public static function isUsableAppKey(?string $appKey): bool
-    {
-        return $appKey !== null && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1;
-    }
-
-    public function hasUsableAppKey(string $envPath): bool
-    {
-        if (! is_readable($envPath)) {
-            return false;
-        }
-        try {
-            return self::isUsableAppKey(WgwApiEnvFile::readEffectiveValue((string) file_get_contents($envPath), 'APP_KEY'));
-        } catch (InvalidFileException) {
-            return false;
-        }
-    }
-
     public function ensureAppKey(string $envPath): bool
     {
         return $this->updateEnvFile($envPath, static function (string $content): ?string {
-            // Never replace a usable key: everything Crypt sealed under it
-            // (refresh tokens, share links, collab ticket key) would be lost.
-            // Read it the way Laravel does; if dotenv cannot parse the file,
-            // leave it alone rather than guess.
-            try {
-                $appKey = WgwApiEnvFile::readEffectiveValue($content, 'APP_KEY');
-            } catch (InvalidFileException) {
-                return null;
-            }
-            if (self::isUsableAppKey($appKey)) {
+            $appKey = WgwApiEnvFile::readValue($content, 'APP_KEY') ?? '';
+            if ($appKey !== '' && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1) {
                 return null;
             }
 
             $key = 'base64:'.base64_encode(random_bytes(32));
-            $line = '/^[ \t]*(?:export[ \t]+)?APP_KEY[ \t]*=[^\r\n]*(\r?\n|$)/m';
-            $hasLine = preg_match($line, $content) === 1;
-            if ($appKey === null && $hasLine) {
-                // There is an APP_KEY line but dotenv does not load it (an
-                // unclosed quote swallowed it). Do not overwrite a key the
-                // admin may still need; wgw:ensure-env reports it instead.
-                return null;
-            }
-            if ($hasLine) {
-                // Fill the first APP_KEY line and drop any others, so one line is left.
-                // Same line shapes dotenv accepts: indent, `export`, spaces around `=`.
-                $seen = false;
-                $next = (string) preg_replace_callback(
-                    $line,
-                    static function (array $m) use (&$seen, $key): string {
-                        if ($seen) {
-                            return '';
-                        }
-                        $seen = true;
-
-                        return "APP_KEY={$key}".$m[1];
-                    },
-                    $content,
-                );
-            } else {
-                $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
-                $next = ($content === '' ? '' : rtrim($content).$eol)."APP_KEY={$key}{$eol}";
+            if ($content === '' || ! WgwApiEnvFile::hasKey($content, 'APP_KEY')) {
+                return rtrim($content)."\nAPP_KEY={$key}\n";
             }
 
-            // Write only what Laravel will then load. An unclosed quote higher up
-            // makes dotenv swallow every later line, so a written key would never
-            // be seen and each start would add another one. Leave such a file
-            // alone; wgw:ensure-env reports it for a manual fix.
-            try {
-                return WgwApiEnvFile::readEffectiveValue($next, 'APP_KEY') === $key ? $next : null;
-            } catch (InvalidFileException) {
-                return null;
-            }
+            return WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
         });
     }
 

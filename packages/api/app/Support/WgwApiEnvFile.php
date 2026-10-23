@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support;
 
-use Dotenv\Exception\InvalidFileException;
-use Dotenv\Parser\Parser;
-
 /**
- * Read/write helpers for packages/api/.env without booting Laravel.
+ * Read/write helpers for packages/api/.env without booting Laravel Dotenv.
  */
 final class WgwApiEnvFile
 {
@@ -21,31 +18,6 @@ final class WgwApiEnvFile
         return self::readValue((string) file_get_contents($envPath), $key);
     }
 
-    /**
-     * The raw value Laravel loads for $key, parsed with dotenv's own parser:
-     * last entry wins, CRLF, `export`, spaces around `=`, quotes and inline
-     * comments behave exactly as at boot. Empty string for an empty value;
-     * null when the key is absent.
-     *
-     * @throws InvalidFileException when dotenv cannot parse the content (Laravel would not boot either)
-     */
-    public static function readEffectiveValue(string $content, string $key): ?string
-    {
-        $value = null;
-        foreach ((new Parser)->parse($content) as $entry) {
-            if ($entry->getName() === $key) {
-                $value = $entry->getValue()->map(static fn ($v) => $v->getChars())->getOrElse('');
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * First `KEY=` match only, value up to the first whitespace. This is not
-     * how dotenv reads duplicate or empty keys; use readEffectiveValue() when
-     * the loaded value matters.
-     */
     public static function readValue(string $content, string $key): ?string
     {
         if (preg_match('/^'.preg_quote($key, '/').'\s*=\s*(\S+)/m', $content, $match) !== 1) {

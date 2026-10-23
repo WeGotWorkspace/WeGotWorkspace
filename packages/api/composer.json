@@ -14,7 +14,6 @@
         "phpmailer/phpmailer": "^7.1",
         "sabre/dav": "^4.7",
         "swagger-api/swagger-ui": "^5.32",
-        "vlucas/phpdotenv": "^5.6.1",
         "zbateson/mail-mime-parser": "^4.0"
     },
     "suggest": {
