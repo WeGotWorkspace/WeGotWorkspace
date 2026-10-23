@@ -592,6 +592,22 @@ export async function writeSyncToken(
 }
 
 /** Note ids with any outbox row, including a non-retryable `stateMismatch`. */
+/**
+ * The note version each queued note write started from (its If-Match), per
+ * note. Inbound sync compares it with the server's version: the same version
+ * means the server has not seen the change yet, which is not a conflict.
+ */
+export async function listPendingNoteBases(username: string): Promise<Map<string, string[]>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  const bases = new Map<string, string[]>();
+  for (const row of rows) {
+    const noteId = notesOutboxNoteId(row);
+    if (!noteId || !row.ifInState) continue;
+    bases.set(noteId, [...(bases.get(noteId) ?? []), row.ifInState]);
+  }
+  return bases;
+}
+
 export async function listOutboxNoteIds(username: string): Promise<Set<string>> {
   const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const ids = new Set<string>();

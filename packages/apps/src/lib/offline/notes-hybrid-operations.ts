@@ -417,6 +417,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
+          // The version it started from: inbound sync tells "not sent yet" from a conflict.
+          ...(existing.etag ? { ifInState: existing.etag } : {}),
           payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         if (readBrowserOnline()) void runner.flush();
@@ -436,6 +438,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "archive",
+          // The version it started from: inbound sync tells "not sent yet" from a conflict.
+          ...(existing.etag ? { ifInState: existing.etag } : {}),
           payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
@@ -459,6 +463,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
+          // The version it started from: inbound sync tells "not sent yet" from a conflict.
+          ...(existing.etag ? { ifInState: existing.etag } : {}),
           payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         if (readBrowserOnline()) void runner.flush();
@@ -478,6 +484,8 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
           id: crypto.randomUUID(),
           domain: NOTES_DOMAIN,
           op: "restore",
+          // The version it started from: inbound sync tells "not sent yet" from a conflict.
+          ...(existing.etag ? { ifInState: existing.etag } : {}),
           payload: JSON.stringify({ noteId: id, ...(groupSlug ? { groupSlug } : {}) }),
         });
         return optimistic;
