@@ -33,8 +33,7 @@ final class WgwApiEnvFile
      */
     public static function readValue(string $content, string $key): ?string
     {
-        $line = '/^[ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=[^\r\n]*/m';
-        if (preg_match_all($line, $content, $matches) < 1) {
+        if (preg_match_all(self::lineRegex($key), $content, $matches) < 1) {
             return null;
         }
 
@@ -50,7 +49,7 @@ final class WgwApiEnvFile
 
     public static function hasKey(string $content, string $key): bool
     {
-        return preg_match('/^'.preg_quote($key, '/').'=.*/m', $content) === 1;
+        return preg_match(self::lineRegex($key), $content) === 1;
     }
 
     public static function setLine(string $content, string $key, string $value, bool $quote = true): string
@@ -59,10 +58,20 @@ final class WgwApiEnvFile
             ? $key.'='.self::quoteValue($value)
             : $key.'='.$value;
         if (self::hasKey($content, $key)) {
-            return (string) preg_replace('/^'.preg_quote($key, '/').'=.*/m', $line, $content);
+            // A callback, so `$1` or `\0` in the value is not read as a backreference.
+            return (string) preg_replace_callback(self::lineRegex($key), static fn (): string => $line, $content);
         }
 
         return rtrim($content)."\n".$line."\n";
+    }
+
+    /**
+     * Every line that sets $key, in the shapes dotenv accepts: indent,
+     * `export`, spaces around `=`. setLine() rewrites them all to `KEY=value`.
+     */
+    private static function lineRegex(string $key): string
+    {
+        return '/^[ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=[^\r\n]*/m';
     }
 
     public static function quoteValue(string $value): string

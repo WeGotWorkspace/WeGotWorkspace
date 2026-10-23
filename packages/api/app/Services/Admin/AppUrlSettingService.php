@@ -40,9 +40,6 @@ final class AppUrlSettingService
             if ($current === $normalized) {
                 return null;
             }
-            if (! WgwApiEnvFile::hasKey($content, 'APP_URL')) {
-                return rtrim($content)."\nAPP_URL={$normalized}\n";
-            }
 
             return WgwApiEnvFile::setLine($content, 'APP_URL', $normalized, quote: false);
         });

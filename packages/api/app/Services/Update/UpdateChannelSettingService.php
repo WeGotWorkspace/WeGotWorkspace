@@ -43,9 +43,6 @@ final class UpdateChannelSettingService
             if ((WgwApiEnvFile::readValue($content, 'WGW_UPDATE_CHANNEL') ?? '') === $channel) {
                 return null;
             }
-            if (! WgwApiEnvFile::hasKey($content, 'WGW_UPDATE_CHANNEL')) {
-                return rtrim($content)."\nWGW_UPDATE_CHANNEL={$channel}\n";
-            }
 
             return WgwApiEnvFile::setLine($content, 'WGW_UPDATE_CHANNEL', $channel, quote: false);
         });
