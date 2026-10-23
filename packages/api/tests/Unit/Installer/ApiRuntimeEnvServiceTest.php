@@ -107,6 +107,19 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
     }
 
+    public function test_ensure_patches_an_empty_app_url_followed_by_another_line(): void
+    {
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=\nSESSION_DRIVER=file\n");
+
+        $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, 'https://cloud.example.test');
+
+        $this->assertTrue($result['patchedUrl']);
+        $this->assertSame(
+            "APP_KEY=base64:YWJj\nAPP_URL=https://cloud.example.test\nSESSION_DRIVER=file\n",
+            file_get_contents($this->apiRoot.'/.env'),
+        );
+    }
+
     public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void
     {
         $volume = sys_get_temp_dir().'/wgw-env-vol-'.uniqid('', true);

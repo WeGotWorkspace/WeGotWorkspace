@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Dotenv\Exception\InvalidFileException;
+use Dotenv\Parser\Parser;
+use Dotenv\Parser\Value;
+
 /**
- * Read/write helpers for packages/api/.env without booting Laravel Dotenv.
+ * Read/write helpers for packages/api/.env without booting Laravel.
  */
 final class WgwApiEnvFile
 {
@@ -18,18 +22,34 @@ final class WgwApiEnvFile
         return self::readValue((string) file_get_contents($envPath), $key);
     }
 
+    /**
+     * The value dotenv loads for $key, read with dotenv's own parser but
+     * without throwing: the last line that sets $key wins and is parsed on its
+     * own, so a torn line elsewhere does not matter. Quotes, escapes, inline
+     * comments, CRLF, `export` and spaces around `=` behave as at boot. Empty
+     * string for an empty or unparsable value; null when no line sets $key.
+     * Values never continue onto the next line, so multi-line quoted values
+     * read as empty.
+     */
     public static function readValue(string $content, string $key): ?string
     {
-        if (preg_match('/^'.preg_quote($key, '/').'\s*=\s*(\S+)/m', $content, $match) !== 1) {
+        if (preg_match_all(self::lineRegex($key), $content, $matches) < 1) {
             return null;
         }
 
-        return trim($match[1], " \t\"'");
+        try {
+            $entries = (new Parser)->parse((string) end($matches[0]));
+        } catch (InvalidFileException) {
+            return '';
+        }
+        $value = end($entries);
+
+        return $value === false ? '' : $value->getValue()->map(static fn (Value $v): string => $v->getChars())->getOrElse('');
     }
 
     public static function hasKey(string $content, string $key): bool
     {
-        return preg_match('/^'.preg_quote($key, '/').'=.*/m', $content) === 1;
+        return preg_match(self::lineRegex($key), $content) === 1;
     }
 
     public static function setLine(string $content, string $key, string $value, bool $quote = true): string
@@ -38,10 +58,20 @@ final class WgwApiEnvFile
             ? $key.'='.self::quoteValue($value)
             : $key.'='.$value;
         if (self::hasKey($content, $key)) {
-            return (string) preg_replace('/^'.preg_quote($key, '/').'=.*/m', $line, $content);
+            // A callback, so `$1` or `\0` in the value is not read as a backreference.
+            return (string) preg_replace_callback(self::lineRegex($key), static fn (): string => $line, $content);
         }
 
         return rtrim($content)."\n".$line."\n";
+    }
+
+    /**
+     * Every line that sets $key, in the shapes dotenv accepts: indent,
+     * `export`, spaces around `=`. setLine() rewrites them all to `KEY=value`.
+     */
+    private static function lineRegex(string $key): string
+    {
+        return '/^[ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=[^\r\n]*/m';
     }
 
     public static function quoteValue(string $value): string

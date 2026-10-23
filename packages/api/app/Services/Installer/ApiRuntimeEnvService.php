@@ -119,9 +119,6 @@ final class ApiRuntimeEnvService
             }
 
             $key = 'base64:'.base64_encode(random_bytes(32));
-            if ($content === '' || ! WgwApiEnvFile::hasKey($content, 'APP_KEY')) {
-                return rtrim($content)."\nAPP_KEY={$key}\n";
-            }
 
             return WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
         });
@@ -138,9 +135,6 @@ final class ApiRuntimeEnvService
             $current = WgwApiEnvFile::readValue($content, 'APP_URL') ?? '';
             if ($current !== '' && $current !== 'http://localhost' && ! str_starts_with($current, 'http://127.0.0.1')) {
                 return null;
-            }
-            if (! WgwApiEnvFile::hasKey($content, 'APP_URL')) {
-                return rtrim($content)."\nAPP_URL={$appUrl}\n";
             }
 
             return WgwApiEnvFile::setLine($content, 'APP_URL', $appUrl, quote: false);
