@@ -29,7 +29,6 @@ use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use App\Support\PublicAppUrl;
-use App\Support\WgwApiEnvFile;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -63,21 +62,20 @@ Artisan::command('wgw:ensure-env', function (ApiRuntimeEnvService $apiEnv): int 
         $this->info('Created packages/api/.env from .env.example.');
     }
     if ($result['sanitizedEnv']) {
-        $this->info('Removed invalid lines from packages/api/.env.');
+        $this->info('Cleaned up packages/api/.env (invalid lines or line endings).');
     }
     if ($result['generatedKey']) {
         $this->info('Generated APP_KEY in packages/api/.env.');
     }
 
-    $appKey = WgwApiEnvFile::readEffectiveValue((string) @file_get_contents(base_path('.env')), 'APP_KEY') ?? '';
-    if ($appKey === '') {
-        $this->error('APP_KEY is still empty in packages/api/.env.');
+    if (! $apiEnv->hasUsableAppKey(base_path('.env'))) {
+        $this->error('APP_KEY in packages/api/.env is still missing or unusable.');
 
         return Command::FAILURE;
     }
 
     return Command::SUCCESS;
-})->purpose('Create packages/api/.env and APP_KEY when missing; never replaces an existing key');
+})->purpose('Create packages/api/.env and APP_KEY when missing or unusable; never replaces a usable key');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();
