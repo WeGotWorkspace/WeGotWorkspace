@@ -2308,7 +2308,8 @@
             ]
           },
           "uid": {
-            "type": "string"
+            "type": "string",
+            "description": "Client-chosen note UID (also the collab room key). Used only when it is a UUID; anything else is ignored and the server mints one. Unique across all notes. Makes the create idempotent: a repeat by the same caller returns the existing note with 200."
           }
         }
       },
@@ -6983,6 +6984,7 @@
           "Notes"
         ],
         "summary": "Create a note",
+        "description": "Send `uid` (a UUID the client picked) to make the create idempotent; a `uid` that is not a UUID is ignored. If that note already exists in a notebook the caller can write, it is returned with 200 instead of a second note. A UID held by any other note is a 409. Without `uid` the server mints one.",
         "security": [
           {
             "bearerAuth": []
@@ -7000,6 +7002,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "The note a repeated create with the same `uid` already made",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created note",
             "content": {

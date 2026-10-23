@@ -1,5 +1,4 @@
 import type { Note } from "@/lib/models/note";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import type { NoteMetadataField } from "@/notes-core/src/notes-types";
 
 export function baseUpdatedAt(note: Note): string | undefined {
@@ -12,19 +11,14 @@ function sameTags(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((tag, index) => tag === right[index]);
 }
 
-function notebookMoved(previous: Note, note: Note): boolean {
-  const prevId = previous.notebookId?.trim() ?? "";
-  const nextId = note.notebookId?.trim() ?? "";
-  if (prevId !== "" && nextId !== "" && prevId !== nextId) return true;
-  const prevName = previous.notebook.trim();
-  const nextName = note.notebook.trim();
-  return prevName !== "" && nextName !== "" && prevName !== nextName;
-}
-
 /**
  * Which snapshot fields this write is allowed to put on the PATCH. Named
  * `fields` win over a diff against `previous`, which may be newer than the
  * edit (a tag added while a title save was debounced).
+ *
+ * The notebook is sent only when the save names it: a move. A diff cannot
+ * tell a move from an older save that missed one, and sending that older
+ * notebook moved the note back.
  */
 export function metadataSelection(
   previous: Note | undefined,
@@ -37,7 +31,8 @@ export function metadataSelection(
   includeStarred: boolean;
   includeNotebook: boolean;
 } {
-  if (fields && !isLocalTempNoteId(note.id)) {
+  // A note not on the server yet sends its whole snapshot with the create.
+  if (fields && !note.createPending) {
     return {
       includeTitle: fields.includes("title"),
       includeTags: !hasDelta && fields.includes("tags"),
@@ -45,7 +40,7 @@ export function metadataSelection(
       includeNotebook: fields.includes("notebook"),
     };
   }
-  if (isLocalTempNoteId(note.id)) {
+  if (note.createPending) {
     return {
       includeTitle: note.title !== undefined,
       includeTags: !hasDelta,
@@ -65,7 +60,7 @@ export function metadataSelection(
     includeTitle: note.title !== previous.title,
     includeTags: !hasDelta && !sameTags(previous.tags, note.tags),
     includeStarred: (note.starred ?? false) !== (previous.starred ?? false),
-    includeNotebook: notebookMoved(previous, note),
+    includeNotebook: false,
   };
 }
 

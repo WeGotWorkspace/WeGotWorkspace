@@ -1,5 +1,4 @@
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 
 export const NOTES_ACCESS_LOST_MESSAGE =
   "You no longer have access to this note. Unsaved edits were not stored.";
@@ -19,32 +18,23 @@ export function isNotesPersistForbidden(error: unknown): boolean {
 }
 
 /**
- * Real-UID 404: the object is gone — drop Dexie so it cannot linger as a
- * zombie. `local-*` 404 is a create race, not gone. Auth / 412 / 5xx stay.
+ * 404: the object is gone — drop Dexie so it cannot linger as a zombie. A
+ * note not on the server yet is never written directly (its create waits in
+ * the outbox), so a 404 is never a create race. Auth / 412 / 5xx stay.
  */
-export function isNotesPersistGone(error: unknown, noteId?: string): boolean {
-  if (persistHttpStatus(error) !== 404) return false;
-  if (noteId && isLocalTempNoteId(noteId)) return false;
-  return true;
-}
-
-/** 412 or local-* 404: keep the optimistic metadata row. */
-export function isNotesMetadataSyncRace(error: unknown, noteId: string): boolean {
-  const status = persistHttpStatus(error);
-  if (status === 412) return true;
-  return status === 404 && isLocalTempNoteId(noteId);
+export function isNotesPersistGone(error: unknown): boolean {
+  return persistHttpStatus(error) === 404;
 }
 
 /** Drop the local ghost on a real-UID 404; rethrow anything else. */
 export async function persistNoteOrDropGone<T>(
   write: Promise<T>,
   onGone: () => void,
-  noteId?: string,
 ): Promise<T | undefined> {
   try {
     return await write;
   } catch (error) {
-    if (isNotesPersistGone(error, noteId)) {
+    if (isNotesPersistGone(error)) {
       onGone();
       return undefined;
     }
@@ -52,19 +42,17 @@ export async function persistNoteOrDropGone<T>(
   }
 }
 
-/** Metadata upsert: also swallow 412 / local-* 404 so the write queue stays up. */
+/** Metadata upsert: also swallow a 412 so the write queue stays up. */
 export async function persistNoteKeepingSyncRace<T>(
   write: Promise<T>,
   onGone: () => void,
   noteId: string,
 ): Promise<T | undefined> {
   try {
-    return await persistNoteOrDropGone(write, onGone, noteId);
+    return await persistNoteOrDropGone(write, onGone);
   } catch (error) {
-    if (isNotesMetadataSyncRace(error, noteId)) {
-      if (persistHttpStatus(error) === 412) {
-        console.warn(`[notes] metadata update lost a 412 sync race for note ${noteId}`);
-      }
+    if (persistHttpStatus(error) === 412) {
+      console.warn(`[notes] metadata update lost a 412 sync race for note ${noteId}`);
       return undefined;
     }
     throw error;

@@ -62,4 +62,6 @@ export {
 } from "./use-docs-collab";
 export type { DocsCollabUrls, DocsCollabSession, UseDocsCollabOptions } from "./use-docs-collab";
 export { useDocsCollabPendingSync } from "./use-docs-collab-pending-sync";
+export { uploadPendingCollabRooms } from "./docs-collab-pending-upload";
+export type { PendingCollabRoom } from "./docs-collab-pending-upload";
 export { useDocsCollabFailedSync } from "./use-docs-collab-failed-sync";

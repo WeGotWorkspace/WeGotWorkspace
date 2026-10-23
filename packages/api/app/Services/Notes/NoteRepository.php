@@ -126,11 +126,10 @@ final class NoteRepository
         }
         $this->collectionAccess->assertCollectionWritable($instance, 'This notebook is read-only.');
 
-        // Decision 7: room key = UID. Always mint so clients cannot aim at
-        // another principal's collab room. Client-supplied `uid` is ignored.
-        $uid = (string) Str::uuid();
-        $this->moveHelper->assertUidAvailable($uid);
-
+        // Decision 7: room key = UID. The app picks it (a UUID) so an offline
+        // create needs no temporary id; a UID another note has is a 409.
+        $clientUid = $payload['uid'] ?? null;
+        $uid = is_string($clientUid) && Str::isUuid($clientUid) ? strtolower($clientUid) : (string) Str::uuid();
         $note = [
             'id' => $uid,
             'title' => $payload['title'] ?? null,
@@ -141,12 +140,17 @@ final class NoteRepository
         $ics = $this->converter->toIcs($note, $allowStoredTags);
         $objectUri = $uid.'.ics';
 
+        // The check and the insert in one transaction: two creates with the
+        // same UID cannot both pass the check before either one is written.
         try {
-            $this->calBackend()->createCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
-                $objectUri,
-                $ics,
-            );
+            DB::connection('wgw')->transaction(function () use ($uid, $instance, $objectUri, $ics): void {
+                $this->moveHelper->assertUidAvailable($uid);
+                $this->calBackend()->createCalendarObject(
+                    [(int) $instance->calendarid, (int) $instance->id],
+                    $objectUri,
+                    $ics,
+                );
+            });
         } catch (QueryException|PDOException $exception) {
             NoteUidConflict::throwIf($exception);
             throw $exception;
@@ -443,6 +447,33 @@ final class NoteRepository
             'etag' => DocCollabDocumentService::sidecarEtag($bytes),
             'externalWrite' => $this->yjsProjection->isExternalContentWrite($row, $located['object']),
         ];
+    }
+
+    /**
+     * The note a repeated create (same client UID) already made, when the
+     * caller may write it: a retry after a lost response, or another tab that
+     * sent the same queued create. Null when the UID is free, belongs to a
+     * note the caller cannot write, or to a note in another notebook.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function existingCreateForRetry(string $username, string $uid, string $notebookId): ?array
+    {
+        $located = $this->findAccessibleNote($username, strtolower($uid));
+        // A retry targets the notebook the first create did. A note elsewhere
+        // with this UID is a different note: the caller gets the 409. Compare
+        // calendars, not ids: a group notebook has two accepted spellings.
+        $target = $this->notebooks->findAccessibleNotebook($username, $notebookId);
+        if ($located === null || $target === null || (int) $target->calendarid !== (int) $located['instance']->calendarid) {
+            return null;
+        }
+        try {
+            $this->collectionAccess->assertCollectionWritable($located['instance'], 'This notebook is read-only.');
+        } catch (ApiHttpException) {
+            return null;
+        }
+
+        return $this->show($username, strtolower($uid));
     }
 
     /**

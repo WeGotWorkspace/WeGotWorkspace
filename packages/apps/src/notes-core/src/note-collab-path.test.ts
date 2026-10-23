@@ -42,9 +42,11 @@ describe("buildNoteCollabUrls", () => {
     expect(onPersistSuccess).toHaveBeenCalledWith("saved body");
   });
 
-  it("marks an offline-created note so the shared save does not write yet", async () => {
+  it("keeps a note whose create is still queued in a local-only room", async () => {
     const { buildNoteCollabUrls } = await import("@/notes-core/src/note-collab-path");
-    const urls = await buildNoteCollabUrls("local-c55e3aa68b224beab477053dfeb10efd");
+    const urls = await buildNoteCollabUrls("c55e3aa6-8b22-4bea-b477-053dfeb10efd", {
+      createPending: true,
+    });
 
     expect(urls.roomNotPersistent).toBe(true);
     expect(urls.yjsUrl).toContain("?format=yjs");

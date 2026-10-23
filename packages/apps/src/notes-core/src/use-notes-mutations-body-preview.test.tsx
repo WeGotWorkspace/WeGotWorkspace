@@ -12,7 +12,6 @@ import {
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import {
   listPendingNoteIds,
-  removeNoteFromCache,
   upsertNoteInCache,
   writeNotesBootstrapToCache,
 } from "@/lib/offline/notes-offline-store";
@@ -131,113 +130,6 @@ describe("applyLocalBodyMarkdown Dexie pendingSync", () => {
     expect(await listPendingNoteIds(username)).toEqual([]);
   });
 
-  it("clears pendingSync after online create; hydrate does not set it true again", async () => {
-    let resolveCreate!: (note: Note) => void;
-    const operations = mockOperations(async (note) => {
-      const saved = await new Promise<Note>((resolve) => {
-        resolveCreate = resolve;
-      });
-      await removeNoteFromCache(username, note.id);
-      await upsertNoteInCache(username, saved, false);
-      return saved;
-    });
-    const data: NotesUIData = {
-      notes: [],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-    const { result } = renderHook(() =>
-      useNotesController({ data, listLoading: false, operations }),
-    );
-
-    act(() => {
-      result.current.createNote();
-    });
-    const createdId = result.current.activeId;
-    expect(createdId).toMatch(/^local-/);
-
-    await waitFor(async () => {
-      expect((await noteRow(createdId))?.pendingSync).toBe(true);
-    });
-
-    await act(async () => {
-      resolveCreate({ ...syncedNote, excerpt: "", body: [""], wordCount: 0 });
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(result.current.activeId).toBe(syncedNote.id);
-    });
-    await waitFor(async () => {
-      expect(await noteRow(createdId)).toBeUndefined();
-      expect((await noteRow(syncedNote.id))?.pendingSync).toBe(false);
-    });
-
-    act(() => {
-      result.current.applyLocalBodyMarkdown(createdId, "Hydrated after create", {
-        bumpDate: false,
-      });
-    });
-
-    await waitFor(async () => {
-      const server = await noteRow(syncedNote.id);
-      expect(JSON.parse(server?.data ?? "{}").body[0]).toContain("Hydrated after create");
-    });
-    expect((await noteRow(syncedNote.id))?.pendingSync).toBe(false);
-    expect(await noteRow(createdId)).toBeUndefined();
-    expect(await listPendingNoteIds(username)).toEqual([]);
-  });
-
-  it("does not re-insert a remapped local-* row or leave that id pending", async () => {
-    let resolveCreate!: (note: Note) => void;
-    const operations = mockOperations(
-      () =>
-        new Promise<Note>((resolve) => {
-          resolveCreate = resolve;
-        }),
-    );
-    const data: NotesUIData = {
-      notes: [],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-    const { result } = renderHook(() =>
-      useNotesController({ data, listLoading: false, operations }),
-    );
-
-    act(() => {
-      result.current.createNote();
-    });
-    const createdId = result.current.activeId;
-    expect(createdId).toMatch(/^local-/);
-    await waitFor(async () => expect(await noteRow(createdId)).toBeDefined());
-
-    await act(async () => {
-      resolveCreate({ ...syncedNote, excerpt: "", body: [""], wordCount: 0 });
-      await Promise.resolve();
-    });
-    expect(result.current.activeId).toBe(syncedNote.id);
-
-    await removeNoteFromCache(username, createdId);
-    await upsertNoteInCache(
-      username,
-      { ...syncedNote, excerpt: "", body: [""], wordCount: 0 },
-      false,
-    );
-
-    act(() => {
-      result.current.applyLocalBodyMarkdown(createdId, "Hello after remap", { bumpDate: false });
-    });
-
-    await waitFor(async () => {
-      const server = await noteRow(syncedNote.id);
-      expect(JSON.parse(server?.data ?? "{}").body[0]).toContain("Hello after remap");
-    });
-    expect(await noteRow(createdId)).toBeUndefined();
-    expect((await noteRow(syncedNote.id))?.pendingSync).toBe(false);
-    expect(await listPendingNoteIds(username)).toEqual([]);
-  });
-
   it("keeps a metadata-pending note pending after a body preview write", async () => {
     await upsertNoteInCache(username, syncedNote, true);
     const data: NotesUIData = {
@@ -259,36 +151,7 @@ describe("applyLocalBodyMarkdown Dexie pendingSync", () => {
     expect((await noteRow(syncedNote.id))?.pendingSync).toBe(true);
   });
 
-  it("surfaces a failed create and keeps pendingSync when upsert stays on local-*", async () => {
-    const operations = mockOperations(async (note) => note);
-    const data: NotesUIData = {
-      notes: [],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-    const { result } = renderHook(() =>
-      useNotesController({ data, listLoading: false, operations }),
-    );
-
-    act(() => {
-      result.current.createNote();
-    });
-    const createdId = result.current.activeId;
-    expect(createdId).toMatch(/^local-/);
-
-    await waitFor(() => {
-      expect(operations.upsertNote).toHaveBeenCalled();
-    });
-    await waitFor(async () => {
-      expect((await noteRow(createdId))?.pendingSync).toBe(true);
-    });
-    await waitFor(() => {
-      expect(toastApi.showError).toHaveBeenCalled();
-    });
-    expect(result.current.activeId).toBe(createdId);
-  });
-
-  it("surfaces a thrown create and does not clear pendingSync", async () => {
+  it("surfaces a thrown create and keeps the new note open", async () => {
     const operations = mockOperations(async () => {
       throw Object.assign(new Error("no such table"), { status: 500 });
     });
@@ -309,7 +172,6 @@ describe("applyLocalBodyMarkdown Dexie pendingSync", () => {
     await waitFor(() => {
       expect(toastApi.showError).toHaveBeenCalled();
     });
-    expect((await noteRow(createdId))?.pendingSync).toBe(true);
     expect(result.current.activeId).toBe(createdId);
   });
 });

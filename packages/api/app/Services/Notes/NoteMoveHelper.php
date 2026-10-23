@@ -26,9 +26,12 @@ final class NoteMoveHelper
      */
     public function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
     {
+        // Inside a create transaction this also holds the UID until the insert
+        // (MySQL row/gap lock; SQLite already holds the write lock).
         $query = CalendarObject::query()
             ->where('uid', $uid)
-            ->where('componenttype', 'VJOURNAL');
+            ->where('componenttype', 'VJOURNAL')
+            ->lockForUpdate();
         if ($exceptCalendarId !== null) {
             $query->where('calendarid', '!=', $exceptCalendarId);
         }
