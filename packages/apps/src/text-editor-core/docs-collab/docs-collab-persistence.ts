@@ -166,8 +166,14 @@ export async function resolveDocsCollabDatabase(
   };
 }
 
-/** Identity database first when the cache knows it, then path `:v2` and pre-v2 names. */
-export async function docsCollabReadNames(roomKey: string): Promise<string[]> {
+/**
+ * Identity database first when the cache knows it, then path `:v2` and pre-v2
+ * names. Pass `existing` when probing many rooms, to list the databases once.
+ */
+export async function docsCollabReadNames(
+  roomKey: string,
+  existing?: ReadonlySet<string> | null,
+): Promise<string[]> {
   const nodeId = await cachedNodeIdForRoom(roomKey);
   const names: string[] = [];
   if (nodeId) {
@@ -179,7 +185,7 @@ export async function docsCollabReadNames(roomKey: string): Promise<string[]> {
     names.push(docsCollabIndexedDbKey(slash, DOCS_COLLAB_PATH_DB_VERSION));
   }
   names.push(...docsCollabLegacyIndexedDbKeys(roomKey));
-  const listed = await listedIndexedDbNames();
+  const listed = existing === undefined ? await listedIndexedDbNames() : existing;
   if (!listed) return names;
   return names.filter((name) => listed.has(name));
 }

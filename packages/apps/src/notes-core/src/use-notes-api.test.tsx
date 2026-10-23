@@ -76,6 +76,9 @@ vi.mock("@/lib/jmap-client", () => ({
   },
 }));
 
+const mockUploadBodies = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("./notes-pending-bodies", () => ({ uploadPendingNoteBodies: mockUploadBodies }));
+
 vi.mock("@/lib/offline/notes-bootstrap-sync", () => ({
   notifyNotesBootstrapUpdated: vi.fn(),
   subscribeNotesBootstrapUpdated: vi.fn(() => () => undefined),
@@ -195,7 +198,7 @@ describe("useNotesAPI", () => {
     expect(result.current.bootstrapRevision).toBe(1);
   });
 
-  it("flushes the outbox, then inbound /changes, on reconnect", async () => {
+  it("flushes the outbox, saves left note bodies, then inbound /changes, on reconnect", async () => {
     const source: NotesApiSource = {
       loadBootstrap: mockLoadBootstrap,
       createOperations: () => undefined,
@@ -211,6 +214,7 @@ describe("useNotesAPI", () => {
 
     await waitFor(() => {
       expect(mockFlush).toHaveBeenCalledTimes(1);
+      expect(mockUploadBodies).toHaveBeenCalledWith("demo@example.com");
       expect(mockInbound).toHaveBeenCalled();
       expect(mockLoadBootstrap).not.toHaveBeenCalled();
       expect(notifyNotesBootstrapUpdated).toHaveBeenCalledWith("demo@example.com");
