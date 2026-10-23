@@ -178,11 +178,23 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     return subscribeNotesBootstrapUpdated(offlineUsername, () => {
       if (crossTabRefreshInFlightRef.current || reconnectSyncing || listRefreshing) return;
       crossTabRefreshInFlightRef.current = true;
-      void applyInboundRefresh().finally(() => {
-        crossTabRefreshInFlightRef.current = false;
-      });
+      // Offline, only the shared cache can have changed: no /changes call.
+      // Online, a failed sync is fine; applyInboundRefresh still re-reads it.
+      const refresh = online ? applyInboundRefresh() : patchFromCache();
+      void refresh
+        .catch(() => undefined)
+        .finally(() => {
+          crossTabRefreshInFlightRef.current = false;
+        });
     });
-  }, [applyInboundRefresh, listRefreshing, offlineUsername, reconnectSyncing]);
+  }, [
+    applyInboundRefresh,
+    listRefreshing,
+    offlineUsername,
+    online,
+    patchFromCache,
+    reconnectSyncing,
+  ]);
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
