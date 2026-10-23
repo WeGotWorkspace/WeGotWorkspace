@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Plugins;
+namespace Tests\Feature\Front;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Auth\UiSessionService;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwInstallFixture;
 use Tests\Support\WgwTestDisks;
 
 /**
- * Default boot. Flag-on coverage lives on the other plugin tests via WithPluginsEnabled.
- * A 404 here is the shipped contract. A 404 on those tests means the env never reached
- * route registration (including config:cache / route:cache).
+ * Installable plugins were removed (#1572). An upgraded install may still have a
+ * wgw-plugins/ tree on disk with an active manifest; nothing may route to it.
  */
-final class PluginsDisabledByDefaultTest extends WgwDatabaseTestCase
+final class PluginSurfaceRemovedTest extends WgwDatabaseTestCase
 {
     private string $installRoot = '';
 
@@ -80,7 +80,22 @@ final class PluginsDisabledByDefaultTest extends WgwDatabaseTestCase
         parent::tearDown();
     }
 
-    public function test_plugin_routes_and_html_are_absent(): void
+    public function test_no_plugin_routes_are_registered(): void
+    {
+        $pluginUris = [];
+        foreach (Route::getRoutes() as $route) {
+            $uri = $route->uri();
+            foreach (['api/v1/plugins', 'api/v1/admin/plugins'] as $prefix) {
+                if ($uri === $prefix || str_starts_with($uri, $prefix.'/')) {
+                    $pluginUris[] = $uri;
+                }
+            }
+        }
+
+        $this->assertSame([], $pluginUris);
+    }
+
+    public function test_former_plugin_endpoints_and_html_are_not_served(): void
     {
         $token = (string) $this->postJson('/api/v1/auth/token', [
             'username' => 'alice',
