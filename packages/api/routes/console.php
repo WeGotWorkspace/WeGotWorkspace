@@ -60,17 +60,18 @@ Artisan::command('wgw:ensure-app-key', function (): int {
     // (refresh tokens, share links, collab ticket key). config('app.key') is
     // what dotenv actually loaded, so duplicate lines, CRLF and quotes need no
     // parsing here. Never print the key.
-    //
-    // This only holds while config('app.key') comes from the .env just loaded.
-    // A cached config (config:cache / optimize) could hold an empty key while
-    // .env has a working one, so refuse to act then.
+    if ((string) config('app.key') !== '') {
+        // Doing nothing is safe wherever the value came from.
+        return Command::SUCCESS;
+    }
+
+    // The empty check above only holds while config('app.key') comes from the
+    // .env just loaded. A cached config (config:cache / optimize) could hold an
+    // empty key while .env has a working one, so never write then.
     if ($this->laravel->configurationIsCached()) {
         $this->error('Config is cached; not touching APP_KEY. Run config:clear, or set APP_KEY by hand.');
 
         return Command::FAILURE;
-    }
-    if ((string) config('app.key') !== '') {
-        return Command::SUCCESS;
     }
 
     // No --force on purpose: key:generate only asks for confirmation when a
@@ -87,7 +88,7 @@ Artisan::command('wgw:ensure-app-key', function (): int {
     $this->info('Generated APP_KEY.');
 
     return Command::SUCCESS;
-})->purpose('Generate APP_KEY when it is empty; never replaces an existing key');
+})->purpose('Generate APP_KEY when it is empty; never replaces a key Laravel loads');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();

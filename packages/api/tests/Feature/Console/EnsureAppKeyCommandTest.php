@@ -78,6 +78,20 @@ final class EnsureAppKeyCommandTest extends TestCase
         $this->assertSame($content, file_get_contents($this->envDir.'/.env'));
     }
 
+    public function test_it_stays_quiet_with_a_cached_config_and_a_loaded_key(): void
+    {
+        // Nothing would be written, so no warning on every start.
+        $content = "APP_KEY=base64:YWJj\n";
+        file_put_contents($this->envDir.'/.env', $content);
+        $this->app->instance('config_loaded_from_cache', true);
+        config(['app.key' => 'base64:YWJj']);
+
+        $this->assertSame(Command::SUCCESS, Artisan::call('wgw:ensure-app-key'));
+
+        $this->assertSame('', trim(Artisan::output()));
+        $this->assertSame($content, file_get_contents($this->envDir.'/.env'));
+    }
+
     public function test_it_fails_when_there_is_no_app_key_line_to_fill(): void
     {
         $content = "APP_URL=http://localhost\n";
