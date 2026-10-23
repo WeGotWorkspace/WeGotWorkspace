@@ -11,6 +11,7 @@ use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
+use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Notes\NoteTag;
 use App\Storage\StoragePaths;
@@ -23,10 +24,18 @@ use App\Storage\WgwStorage;
  * + nodeHasChildren, cycle protection on moves, and rights checks via the
  * drive's path-scoped access model.
  *
- * File content follows the copy-on-consume pattern (design decision 6): a
- * create/update references an uploaded `jb-` blob whose bytes are copied
- * into the file; afterwards the node's blobId is the node-derived `fnb-` id
- * and the upload may expire naturally.
+ * File content follows the consume pattern (design decision 6): a
+ * create/update references an uploaded `jb-` blob whose bytes are attached
+ * to the file by streaming — a move for the last reference, a streamed copy
+ * otherwise (FileNodeBlobAttacher, #1500); afterwards the node's blobId is
+ * the node-derived `fnb-` id.
+ *
+ * Version check (#1500, https://wegotworkspace.org/jmap/filenode-version-check):
+ * an update may carry `expectedBlobId`, accepted only when that capability
+ * is in `using`. If the node no longer has that blobId — or its hash is
+ * still pending — the update fails with `versionMismatch` and nothing is
+ * overwritten. *Replace* is such an update, never a create with
+ * onExists "replace" (that destroys the node and its shares).
  *
  * Note files (`.md` under `.notes`) accept a `note` {title, tags} patch.
  * Frontmatter does not parse or emit YAML `starred` — starring is Drive stars.
@@ -42,6 +51,9 @@ final class FileNodeSetService
     private const SUPPORTED_CREATE_PROPS = ['parentId', 'name', 'nodeType', 'blobId', 'size', 'type', 'modified'];
 
     private const SUPPORTED_UPDATE_PROPS = ['parentId', 'name', 'blobId', 'size'];
+
+    /** @var array<string, int> blobId → references left in this request */
+    private array $blobReferences = [];
 
     /** @var array<string, array<string, mixed>> */
     private array $created = [];
@@ -73,6 +85,8 @@ final class FileNodeSetService
         private readonly DriveStarService $stars,
         private readonly DriveShareAuthorizer $authorizer,
         private readonly FileNodeRelocator $relocator,
+        private readonly FileNodeBlobAttacher $attacher,
+        private readonly FileNodeVersionCheck $versionCheck,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -93,6 +107,7 @@ final class FileNodeSetService
     ): array {
         $this->created = $this->updated = $this->notCreated = $this->notUpdated = $this->notDestroyed = [];
         $this->destroyed = [];
+        $this->blobReferences = $this->countBlobReferences([...array_values($create), ...array_values($update)]);
 
         $principal = $this->accounts->principalFor($username);
         $roots = $this->accounts->rootsFor($username);
@@ -275,20 +290,8 @@ final class FileNodeSetService
             $disk->makeDirectory($key);
             $node = $this->index->recordCreate($key);
         } else {
-            $blobContents = null;
-            if ($hasBlob) {
-                $blob = $this->blobs->retrieve($username, (string) $blobId);
-                if ($blob === null) {
-                    throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
-                }
-                if (array_key_exists('size', $payload) && is_int($payload['size']) && $payload['size'] !== $blob['size']) {
-                    throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
-                }
-                $blobContents = $blob['contents'];
-            }
-            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
-            $disk->put($key, $contents);
-            $node = $this->index->recordContentWrite($key, hash('sha256', $contents));
+            $sha256 = $this->writeContent($username, $key, $name, $note, $hasBlob ? (string) $blobId : null, $payload['size'] ?? null);
+            $node = $this->index->recordContentWrite($key, $sha256);
         }
 
         if ($node === null) {
@@ -323,12 +326,15 @@ final class FileNodeSetService
             throw new FileNodeSetError(['type' => 'notFound', 'description' => 'FileNode not found.']);
         }
 
-        $unsupported = array_diff(array_keys($patch), self::SUPPORTED_UPDATE_PROPS);
+        $unsupported = array_diff(array_keys($patch), $this->versionCheck->supportedUpdateProps(self::SUPPORTED_UPDATE_PROPS));
         if ($unsupported !== []) {
             throw new FileNodeSetError($this->invalidProperties(
                 'Unsupported update properties: '.implode(', ', array_map(strval(...), $unsupported)).'.',
                 array_values(array_map(strval(...), $unsupported)),
             ));
+        }
+        if (array_key_exists('expectedBlobId', $patch)) {
+            $this->versionCheck->guard($node, $patch['expectedBlobId']);
         }
 
         $serverSet = [];
@@ -397,29 +403,15 @@ final class FileNodeSetService
             if (! $this->mapper->rightsFor((string) $node->storage_key, $principal)['mayModifyContent']) {
                 throw new FileNodeSetError(['type' => 'forbidden', 'description' => 'No permission to modify content.']);
             }
-            $blobContents = null;
+            $blobId = null;
             if (array_key_exists('blobId', $patch)) {
                 $blobId = $patch['blobId'];
                 if (! is_string($blobId) || $blobId === '') {
                     throw new FileNodeSetError($this->invalidProperties('blobId must be a non-empty id.', ['blobId']));
                 }
-                $blob = $this->blobs->retrieve($username, $blobId);
-                if ($blob === null) {
-                    throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
-                }
-                if (array_key_exists('size', $patch) && is_int($patch['size']) && $patch['size'] !== $blob['size']) {
-                    throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
-                }
-                $blobContents = $blob['contents'];
             }
-            $contents = $this->contentsForNoteWrite(
-                (string) $node->storage_key,
-                (string) $node->name,
-                $note,
-                $blobContents,
-            );
-            $this->storage->files()->put((string) $node->storage_key, $contents);
-            $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
+            $sha256 = $this->writeContent($username, (string) $node->storage_key, (string) $node->name, $note, $blobId, $patch['size'] ?? null);
+            $node = $this->index->recordContentWrite((string) $node->storage_key, $sha256) ?? $node;
             $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.(string) $node->storage_key);
             $shape = $this->mapper->toFileNode($node, $principal);
             $serverSet['size'] = $shape['size'];
@@ -430,6 +422,71 @@ final class FileNodeSetService
         }
 
         return $serverSet === [] ? null : $serverSet;
+    }
+
+    /**
+     * Writes a file's content and returns its true sha256: a blob is
+     * attached by streaming; note markdown under `.notes` (small, rewritten
+     * with its frontmatter) keeps the string path. A full disk is the
+     * overQuota SetError.
+     *
+     * @param  array{title?: string, tags?: list<string>}|null  $note
+     */
+    private function writeContent(string $username, string $key, string $name, ?array $note, ?string $blobId, mixed $size): string
+    {
+        $expectedSize = is_int($size) ? $size : null;
+        try {
+            if ($blobId !== null && ! $this->isNoteMarkdownKey($key, $name)) {
+                if ($note !== null) {
+                    throw new FileNodeSetError($this->invalidProperties('note is only valid on markdown files under .notes.', ['note']));
+                }
+                $remaining = ($this->blobReferences[$blobId] ?? 1) - 1;
+                $this->blobReferences[$blobId] = max(0, $remaining);
+
+                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize)['sha256'];
+            }
+
+            $blobContents = null;
+            if ($blobId !== null) {
+                $blob = $this->blobs->retrieve($username, $blobId);
+                if ($blob === null) {
+                    throw new FileNodeSetError($this->invalidProperties('Unknown blobId.', ['blobId']));
+                }
+                if ($expectedSize !== null && $expectedSize !== $blob['size']) {
+                    throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
+                }
+                $blobContents = $blob['contents'];
+            }
+            $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
+            $this->storage->files()->put($key, $contents);
+
+            return hash('sha256', $contents);
+        } catch (StorageFullException) {
+            throw new FileNodeSetError(['type' => 'overQuota', 'description' => 'The server has no space left for this file.']);
+        } catch (FileNodeSetError $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw StorageFullException::matches($e->getMessage()) || StorageFullException::fromThrowable($e) instanceof StorageFullException
+                ? new FileNodeSetError(['type' => 'overQuota', 'description' => 'The server has no space left for this file.'])
+                : $e;
+        }
+    }
+
+    /**
+     * @param  list<mixed>  $payloads
+     * @return array<string, int>
+     */
+    private function countBlobReferences(array $payloads): array
+    {
+        $counts = [];
+        foreach ($payloads as $payload) {
+            $blobId = is_array($payload) ? ($payload['blobId'] ?? null) : null;
+            if (is_string($blobId) && $blobId !== '') {
+                $counts[$blobId] = ($counts[$blobId] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
     }
 
     private function finalizeAttachmentFileName(JmapFileNode $node, JmapFileNode $parent): JmapFileNode

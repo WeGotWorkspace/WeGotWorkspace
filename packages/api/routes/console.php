@@ -17,7 +17,7 @@ use App\Services\Installer\InstallerVapidKeyGenerator;
 use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
-use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
+use App\Services\Jmap\Blobs\JmapBlobMaintenance;
 use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
 use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
@@ -411,16 +411,20 @@ Artisan::command('wgw:rtc:prune', function (RtcHousekeepingService $housekeeping
     return Command::SUCCESS;
 })->purpose('Sweep timed-out signaling peers and enforce 30-day retention on relay events');
 
-Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobGarbageCollector $collector): int {
-    $result = $collector->collect();
+Artisan::command('wgw:jmap:blobs-gc', function (JmapBlobMaintenance $maintenance): int {
+    $result = $maintenance->runFull();
     $this->info(sprintf(
-        'Deleted %d expired blob(s); retained %d referenced blob(s).',
-        $result['deleted'],
-        $result['retained'],
+        'Deleted %d expired blob(s); retained %d referenced blob(s); expired %d assembl(ies) and %d staged copy(ies); swept %d temp file(s); stored %d pending content hash(es).',
+        $result['blobsDeleted'],
+        $result['blobsRetained'],
+        $result['assembliesExpired'],
+        $result['stagingExpired'],
+        $result['tempFilesDeleted'],
+        $result['hashesStored'],
     ));
 
     return Command::SUCCESS;
-})->purpose('Delete expired, unreferenced JMAP envelope blobs (domain references are never collected)');
+})->purpose('Delete expired, unreferenced JMAP blobs, assemblies, and staged copies, and hash files discovered on disk (domain references are never collected)');
 
 Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler): int {
     $fired = $scheduler->scan();

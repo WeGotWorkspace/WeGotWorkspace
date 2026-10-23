@@ -7,6 +7,8 @@ namespace App\Services\Jmap\FileNodes;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAuthorizer;
+use App\Services\Jmap\JmapCapabilities;
+use App\Services\Jmap\JmapRequestContext;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 
@@ -26,6 +28,8 @@ final class FileNodeMapper
         private readonly DriveShareAuthorizer $authorizer,
         private readonly StoragePaths $paths,
         private readonly DriveGroupResolver $groups,
+        private readonly FileNodeContentHasher $hasher,
+        private readonly JmapRequestContext $context,
     ) {}
 
     /**
@@ -82,46 +86,78 @@ final class FileNodeMapper
             'shareWith' => null,
             'role' => null,
         ];
+        if (! $isDir && $this->context->uses(JmapCapabilities::FILENODE_VERSION_CHECK)) {
+            // WGW version-check extension: the client does not offer
+            // *Replace* for a file whose true hash is still pending.
+            $shape['contentHashPending'] = (bool) $node->hash_pending;
+        }
 
         return $shape;
     }
 
     /**
-     * Node-derived content blobId: fnb-{nodeId}-{sha8}. The sha component
-     * makes the id change with the content (draft-14 allows a mutable
-     * blobId; the download resolver verifies it against the current sha).
+     * Node-derived content blobId: fnb-{nodeId}-{8 hex}. The 8 hex are the
+     * start of the true sha256, so the id changes with the content
+     * (draft-14 allows a mutable blobId). While the node's hash is pending
+     * they are a provisional version from size and mtime instead; the id
+     * changes once more when the true hash lands.
      */
     public function blobId(JmapFileNode $node): string
     {
         $sha = $this->ensureContentSha($node);
+        if ($sha !== null) {
+            return 'fnb-'.$node->node_id.'-'.substr($sha, 0, 8);
+        }
 
-        return 'fnb-'.$node->node_id.'-'.substr($sha, 0, 8);
+        return 'fnb-'.$node->node_id.'-'.($this->hasher->provisional((string) $node->storage_key) ?? '00000000');
     }
 
-    public function ensureContentSha(JmapFileNode $node): string
+    /**
+     * Whether $blobId is the node's current blobId: the same strict
+     * comparison for a content hash and for a provisional version, so a
+     * provisional id minted before an out-of-band overwrite is a miss.
+     */
+    public function isCurrentBlobId(JmapFileNode $node, string $blobId): bool
     {
+        if ((bool) $node->is_dir) {
+            return false;
+        }
+        if ((bool) $node->hash_pending && $this->hasher->provisional((string) $node->storage_key) === null) {
+            return false;
+        }
+
+        return hash_equals($this->blobId($node), $blobId);
+    }
+
+    /**
+     * The node's true sha256, or null while it is hash-pending. Legacy rows
+     * without a hash go through the same bounded hashing as discovered
+     * files: hashed now when small, otherwise marked hash-pending — a large
+     * file is never hashed whole inside a request.
+     */
+    public function ensureContentSha(JmapFileNode $node): ?string
+    {
+        if ((bool) $node->hash_pending || (bool) $node->is_dir) {
+            return null;
+        }
         $existing = $node->content_sha256;
         if (is_string($existing) && $existing !== '') {
             return $existing;
         }
 
-        $key = (string) $node->storage_key;
-        $disk = $this->storage->files();
-        $sha = hash('sha256', '');
-        try {
-            $stream = $disk->readStream($key);
-            if (is_resource($stream)) {
-                $context = hash_init('sha256');
-                hash_update_stream($context, $stream);
-                fclose($stream);
-                $sha = hash_final($context);
+        $sha = $this->hasher->discover((string) $node->storage_key);
+        if ($sha === null) {
+            if ($this->hasher->basis((string) $node->storage_key) === null) {
+                // Missing content: the download resolver 404s.
+                return hash('sha256', '');
             }
-        } catch (\Throwable) {
-            // Missing content hashes as empty; the download resolver 404s.
-        }
+            $this->hasher->markPending($node);
+            $node->saveQuietly();
 
-        // Persist without bumping change_seq: lazily computing a hash is not
-        // a change to the node.
+            return null;
+        }
+        // Persist without bumping change_seq: this id was never exposed in
+        // another form, so nothing about the node changed.
         $node->content_sha256 = $sha;
         $node->saveQuietly();
 

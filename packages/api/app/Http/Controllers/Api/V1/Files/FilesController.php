@@ -100,6 +100,7 @@ final class FilesController
             return $this->drive->downloadResponseByNodeId(
                 $this->principal($request),
                 $nodeId,
+                $request,
             );
         } catch (DriveForbiddenException $e) {
             throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
@@ -131,6 +132,7 @@ final class FilesController
             return $this->drive->downloadResponse(
                 $this->principal($request),
                 $this->requirePath($request),
+                $request,
             );
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');

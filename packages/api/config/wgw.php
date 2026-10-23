@@ -24,6 +24,19 @@ return [
     'jmap' => [
         'max_size_upload' => (int) env('WGW_JMAP_MAX_SIZE_UPLOAD', 25_000_000),
         'blob_ttl_hours' => (int) env('WGW_JMAP_BLOB_TTL_HOURS', 24),
+        // RFC 9404 maxSizeBlobSet in octets; empty or "null" means no limit.
+        'max_size_blob_set' => env('WGW_JMAP_MAX_SIZE_BLOB_SET', 4_000_000_000),
+        // Step budget = max_execution_time (0 → step_unlimited_seconds) × share × throughput.
+        'step_time_share' => (float) env('WGW_JMAP_STEP_TIME_SHARE', 0.5),
+        'step_throughput_bytes' => (int) env('WGW_JMAP_STEP_THROUGHPUT_BYTES', 8 * 1024 * 1024),
+        'step_unlimited_seconds' => (int) env('WGW_JMAP_STEP_UNLIMITED_SECONDS', 60),
+        'assembly_ttl_hours' => (int) env('WGW_JMAP_ASSEMBLY_TTL_HOURS', 24),
+        // Files discovered on disk up to this size are hashed during the walk.
+        'discovery_hash_max_bytes' => (int) env('WGW_JMAP_DISCOVERY_HASH_MAX_BYTES', 4 * 1024 * 1024),
+        // Share of /jmap/upload and Blob/upload requests that run bounded cleanup.
+        'maintenance_share' => (float) env('WGW_JMAP_MAINTENANCE_SHARE', 0.05),
+        'download_ticket_idle_minutes' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_IDLE_MINUTES', 30),
+        'download_ticket_lifetime_hours' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_LIFETIME_HOURS', 24),
     ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
