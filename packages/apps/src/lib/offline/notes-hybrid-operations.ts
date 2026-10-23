@@ -157,7 +157,7 @@ function tempNoteIdForCreate(existing: Note | undefined, note: Note): string | u
 
 type NoteUpsertOpts = Parameters<NotesAPIOperations["upsertNote"]>[1];
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>(NOTES_DOMAIN);
 
 async function flushNotesOutboxAndReport(username: string): Promise<OutboxFlushResult> {
   const result = await flushNotesOutbox(username);
@@ -669,7 +669,8 @@ export async function fetchNotesHybridBootstrap(): Promise<
   }
   const hadOutbox = readBrowserOnline() && (await listOutboxMutations(username)).length > 0;
   if (readBrowserOnline()) {
-    await flushNotesOutboxAndReport(username);
+    // Through the runner: the outbox lock keeps two tabs from sending twice.
+    await runnerFor(username).flush();
   }
   const cached = await readNotesBootstrapFromCache(username);
   if (cached) {
