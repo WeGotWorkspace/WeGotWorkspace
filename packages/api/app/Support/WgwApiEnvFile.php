@@ -42,17 +42,24 @@ final class WgwApiEnvFile
     }
 
     /**
-     * First `KEY=` match only, value up to the first whitespace. This is not
-     * how dotenv reads duplicate or empty keys; use readEffectiveValue() when
-     * the loaded value matters.
+     * The value dotenv loads for $key, without throwing: the last line that
+     * sets $key wins and is parsed on its own with {@see readEffectiveValue()},
+     * so a torn line elsewhere does not matter. Empty string for an empty or
+     * unparsable value; null when no line sets $key. Values never continue
+     * onto the next line, so multi-line quoted values read as empty.
      */
     public static function readValue(string $content, string $key): ?string
     {
-        if (preg_match('/^'.preg_quote($key, '/').'\s*=\s*(\S+)/m', $content, $match) !== 1) {
+        $line = '/^[ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=[^\r\n]*/m';
+        if (preg_match_all($line, $content, $matches) < 1) {
             return null;
         }
 
-        return trim($match[1], " \t\"'");
+        try {
+            return self::readEffectiveValue((string) end($matches[0]), $key) ?? '';
+        } catch (InvalidFileException) {
+            return '';
+        }
     }
 
     public static function hasKey(string $content, string $key): bool
