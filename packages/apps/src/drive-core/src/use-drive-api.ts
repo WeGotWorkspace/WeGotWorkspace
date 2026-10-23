@@ -17,6 +17,7 @@ import {
   flushDriveOutboxForAccount,
 } from "@/lib/offline/drive/drive-hybrid-operations";
 import { syncDriveMetadataTree } from "@/lib/offline/drive/drive-metadata-sync";
+import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
 import {
   readDriveBootstrapFromCache,
   writeDriveBootstrapToCache,
@@ -123,6 +124,12 @@ export function useDriveAPI(source?: DriveApiSource) {
     bootstrapRef.current = data;
     return triggerOfflineSync(offlineUsername, data);
   }, [data, offlineUsername, phase, successVersion, triggerOfflineSync]);
+
+  useEffect(() => {
+    // Resume queued uploads on app start. The uploader outlives this view on purpose.
+    if (!liveEnabled || wgwIsGuestSession() || !offlineUsername || phase !== "ready") return;
+    startDriveUploader(offlineUsername);
+  }, [liveEnabled, offlineUsername, phase]);
 
   useEffect(() => {
     if (wgwIsGuestSession() || !offlineUsername || phase !== "ready" || !data) return;

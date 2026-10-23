@@ -255,8 +255,16 @@ export type WgwDriveRootPath = DriveRootPath;
  * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
  * unset: guests have no offline cache, so the id is not backfilled there.
  */
+/** UI-only marker on a cached placeholder row for a file still in the upload queue. */
+export type WgwDriveUploadPlaceholder = {
+  /** Upload queue item id. */
+  id: string;
+  batchId: string;
+  status: "queued" | "uploading" | "failed";
+};
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;
+  upload?: WgwDriveUploadPlaceholder;
 };
 /** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */
 export type WgwDriveDirectoryData = Omit<DriveDirectoryData, "files"> & {

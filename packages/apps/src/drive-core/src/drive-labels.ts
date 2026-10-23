@@ -28,6 +28,12 @@ export const driveLabels = {
   newButtonMenu: "More create options",
   newFolder: "New folder",
   uploadFiles: "Upload files",
+  /** Placeholder row of a file still in the upload queue (#1502 adds the progress ring). */
+  uploadPlaceholderStatus: {
+    queued: "Waiting to upload",
+    uploading: "Uploading",
+    failed: "Upload failed",
+  },
   newMarkdown: "New document",
   gridView: "Grid view",
   listView: "List view",

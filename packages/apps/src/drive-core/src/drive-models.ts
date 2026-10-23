@@ -23,6 +23,8 @@ export type DriveFile = Note & {
   hasTeamShare?: boolean;
   /** Top-level drive location label (e.g. `My Drive`, shared drive name) for cross-drive listings. */
   location?: string;
+  /** Set on a placeholder for a file still in the upload queue. */
+  upload?: { id: string; status: "queued" | "uploading" | "failed" };
 };
 
 export type ViewKey =
