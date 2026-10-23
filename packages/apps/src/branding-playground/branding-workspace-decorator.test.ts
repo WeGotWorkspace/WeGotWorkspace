@@ -13,24 +13,24 @@ import { iconBrandingCssprops } from "@/branding-playground/branding-cssprops";
 
 describe("resolveBrandingIconMarkup", () => {
   it("returns undefined for current (no override)", () => {
-    expect(resolveBrandingIconMarkup({ iconPreset: "current" }, "mail")).toBeUndefined();
+    expect(resolveBrandingIconMarkup({ iconPreset: "current" }, "tasks")).toBeUndefined();
   });
 
   it("returns another app’s inline SVG for a preset id", () => {
-    expect(resolveBrandingIconMarkup({ iconPreset: "notes" }, "mail")).toBe(
+    expect(resolveBrandingIconMarkup({ iconPreset: "notes" }, "tasks")).toBe(
       WORKSPACE_APP_ICON_INLINE.notes,
     );
   });
 
   it("returns trimmed custom markup when preset is custom", () => {
     expect(
-      resolveBrandingIconMarkup({ iconPreset: "custom", svgMarkup: "  <svg />  " }, "mail"),
+      resolveBrandingIconMarkup({ iconPreset: "custom", svgMarkup: "  <svg />  " }, "tasks"),
     ).toBe("<svg />");
   });
 
   it("ignores empty custom markup", () => {
     expect(
-      resolveBrandingIconMarkup({ iconPreset: "custom", svgMarkup: "   " }, "mail"),
+      resolveBrandingIconMarkup({ iconPreset: "custom", svgMarkup: "   " }, "tasks"),
     ).toBeUndefined();
   });
 });
@@ -42,7 +42,7 @@ describe("icon cssprop shapes match production switch-trigger", () => {
     expect(map).not.toHaveProperty("wai-detail");
   });
 
-  it("mail/contacts/settings: bg + fg only", () => {
+  it("contacts/settings: bg + fg only", () => {
     expect(Object.keys(iconBrandingCssprops({ bg: "#de4b0e", fg: "#ffbdc2" })).sort()).toEqual([
       "workspace-icon-foreground",
       "workspace-icon-surface",

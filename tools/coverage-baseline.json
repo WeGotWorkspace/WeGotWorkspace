@@ -68,7 +68,6 @@
   "packages/apps/src/lib/jmap-client": 75.2,
   "packages/apps/src/lib/keyboard": 100,
   "packages/apps/src/lib/live": 34.15,
-  "packages/apps/src/lib/mail": 100,
   "packages/apps/src/lib/models": 100,
   "packages/apps/src/lib/offline": 66.44,
   "packages/apps/src/lib/rtc": 66.41,

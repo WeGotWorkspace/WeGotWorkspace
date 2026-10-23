@@ -1,14 +1,10 @@
-import type {
-  SettingsMailRequest,
-  SettingsProfileRequest,
-} from "@wgw/openapi-types/settings-types";
+import type { SettingsProfileRequest } from "@wgw/openapi-types/settings-types";
 
 export const BUILTIN_PANEL_IDS = [
   "profile",
   "memberships",
   "offline",
   "assistants",
-  "mail",
   "calendar",
   "tasks",
   "contacts",
@@ -17,7 +13,7 @@ export const BUILTIN_PANEL_IDS = [
   "about",
 ] as const;
 
-/** Handwritten / JIT ids for `openPanel`. `"mial"` is a type error. */
+/** Handwritten / JIT ids for `openPanel`. `"calender"` is a type error. */
 export type BuiltinPanelId = (typeof BUILTIN_PANEL_IDS)[number];
 
 /** Registry and URL segment id. Do not write `BuiltinPanelId | string`. */
@@ -45,20 +41,6 @@ export type SettingsGroup = {
   displayName: string;
 };
 
-export type SettingsMailCredentials = {
-  imapUsername: string;
-  imapHasPassword: boolean;
-};
-
-export type SettingsMailServer = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecurity: string;
-};
-
 export type SettingsMcpShareCall = {
   tool: string;
   outcome: string;
@@ -80,8 +62,6 @@ export type SettingsMcpGrant = {
 export type SettingsUIData = {
   user: SettingsUser;
   groups: SettingsGroup[];
-  mail: SettingsMailCredentials;
-  mailServer: SettingsMailServer;
   logoutUrl: string;
   /** Admin MCP kill-switch. Settings hides Connected assistants when false. */
   mcpEnabled: boolean;
@@ -90,10 +70,6 @@ export type SettingsUIData = {
 export type SettingsAPIOperations = {
   saveProfile: (
     input: SettingsProfileRequest,
-    opts?: { signal?: AbortSignal },
-  ) => Promise<SettingsUIData>;
-  saveMail: (
-    input: SettingsMailRequest,
     opts?: { signal?: AbortSignal },
   ) => Promise<SettingsUIData>;
   listMcpGrants?: (opts?: { signal?: AbortSignal }) => Promise<SettingsMcpGrant[]>;

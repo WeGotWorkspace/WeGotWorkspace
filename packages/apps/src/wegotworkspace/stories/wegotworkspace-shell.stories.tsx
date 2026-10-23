@@ -46,7 +46,7 @@ export const WegotworkspaceRouter: Story = {
 
 export const WegotworkspaceRoutes: Story = {
   name: "WegotworkspaceRoutes",
-  render: () => <WeGotWorkspace initialPath="/mail" />,
+  render: () => <WeGotWorkspace initialPath="/calendar" />,
 };
 
 export const WegotworkspaceRouterShared: Story = {

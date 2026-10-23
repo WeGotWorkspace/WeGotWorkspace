@@ -123,11 +123,13 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
     expect(screen.getByRole("heading", { name: "Offline" })).toBeTruthy();
   });
 
-  it("explains a direct mailbox-login link without offering the form", async () => {
-    await renderSettingsApp("/settings/mail");
+  it("sends a retired /settings/mail link to Profile", async () => {
+    const { history } = await renderSettingsApp("/settings/mail");
     expect(screen.queryByRole("button", { name: "Mail" })).toBeNull();
-    expect(screen.getByText(/does not read a mailbox/i)).toBeTruthy();
-    expect(screen.queryByLabelText(/IMAP\/SMTP login/i)).toBeNull();
+    await waitFor(() => {
+      expect(history.location.pathname).toBe("/settings");
+    });
+    expect(screen.getByRole("heading", { name: "Profile" })).toBeTruthy();
   });
 
   it("opens Calendar display settings from a deep link", async () => {
@@ -163,7 +165,7 @@ describe("SettingsApp sidebar click → URL", { timeout: 15_000 }, () => {
   });
 
   it("does not snap back to Settings after navigating to another app", async () => {
-    const { history, router } = await renderSettingsApp("/settings/mail");
+    const { history, router } = await renderSettingsApp("/settings/calendar");
 
     await router.navigate({ to: "/contacts" });
 

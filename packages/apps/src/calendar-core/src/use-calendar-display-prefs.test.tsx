@@ -65,7 +65,7 @@ describe("useCalendarDisplayPrefs", () => {
       visibleHoursStart: 8,
     });
     act(() => {
-      notifySettingsSliceSaved({ panelId: "mail", sliceId: "mail-accounts" });
+      notifySettingsSliceSaved({ panelId: "profile", sliceId: "profile" });
     });
     expect(result.current.timeZone).toBe("Europe/Berlin");
 

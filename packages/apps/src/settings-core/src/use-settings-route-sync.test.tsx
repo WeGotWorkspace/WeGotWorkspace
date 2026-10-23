@@ -71,12 +71,12 @@ describe("useSettingsRouteSync", () => {
     const { result } = renderHook(() => useSettingsRouteSync(true));
 
     act(() => {
-      result.current.onSectionChange("mail");
+      result.current.onSectionChange("calendar");
     });
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/settings/$section",
-      params: { section: "mail" },
+      params: { section: "calendar" },
       replace: false,
     });
   });
