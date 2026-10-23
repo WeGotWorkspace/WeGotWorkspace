@@ -26,8 +26,34 @@ if [ -d "$CONFIG_VOL" ]; then
   ln -sf "${CONFIG_VOL}/api.env" "$target"
 fi
 
-if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
+# Generate APP_KEY only when it is missing or empty. `key:generate --force`
+# replaces an existing key, and a new key on every boot breaks everything
+# sealed under the old one (refresh tokens, share links, collab ticket key).
+ensure_app_key() {
+  env_file="$1"
+  if [ -n "${APP_KEY:-}" ]; then
+    return 0
+  fi
+  current="$(sed -n 's/^APP_KEY=//p' "$env_file" | head -n 1 | tr -d "\"'[:space:]")"
+  if [ -n "$current" ]; then
+    return 0
+  fi
+
+  # Leave one bare `APP_KEY=` line so key:generate can fill it in.
+  # `cat >` keeps the symlink to the config volume and the file mode.
+  tmp="$(mktemp)"
+  awk 'BEGIN { done = 0 }
+    /^APP_KEY=/ { if (!done) { print "APP_KEY="; done = 1 } next }
+    { print }
+    END { if (!done) print "APP_KEY=" }' "$env_file" >"$tmp"
+  cat "$tmp" >"$env_file"
+  rm -f "$tmp"
+
   php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+}
+
+if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
+  ensure_app_key "${API_ROOT}/.env"
 fi
 
 DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"

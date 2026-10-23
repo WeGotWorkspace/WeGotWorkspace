@@ -20,7 +20,14 @@ if [ -f "${API_ROOT}/.env.example" ] && [ ! -f "${API_ROOT}/.env" ]; then
   cp "${API_ROOT}/.env.example" "${API_ROOT}/.env"
 fi
 if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
-  php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+  # Only fill an empty APP_KEY. `key:generate --force` replaces an existing
+  # key, which would rewrite the bind-mounted .env on every container start.
+  if [ -z "${APP_KEY:-}" ] && [ -z "$(sed -n 's/^APP_KEY=//p' "${API_ROOT}/.env" | head -n 1 | tr -d "\"'[:space:]")" ]; then
+    if ! grep -q '^APP_KEY=' "${API_ROOT}/.env"; then
+      printf '\nAPP_KEY=\n' >>"${API_ROOT}/.env"
+    fi
+    php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 || true
+  fi
   php "${API_ROOT}/artisan" wgw:dev-install --no-interaction >/dev/null 2>&1 || true
 fi
 
