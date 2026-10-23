@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Dotenv\Exception\InvalidFileException;
 use Dotenv\Parser\Parser;
+use Dotenv\Parser\Value;
 
 /**
  * Read/write helpers for packages/api/.env without booting Laravel.
@@ -22,31 +23,13 @@ final class WgwApiEnvFile
     }
 
     /**
-     * The raw value Laravel loads for $key, parsed with dotenv's own parser:
-     * last entry wins, CRLF, `export`, spaces around `=`, quotes and inline
-     * comments behave exactly as at boot. Empty string for an empty value;
-     * null when the key is absent.
-     *
-     * @throws InvalidFileException when dotenv cannot parse the content (Laravel would not boot either)
-     */
-    public static function readEffectiveValue(string $content, string $key): ?string
-    {
-        $value = null;
-        foreach ((new Parser)->parse($content) as $entry) {
-            if ($entry->getName() === $key) {
-                $value = $entry->getValue()->map(static fn ($v) => $v->getChars())->getOrElse('');
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * The value dotenv loads for $key, without throwing: the last line that
-     * sets $key wins and is parsed on its own with {@see readEffectiveValue()},
-     * so a torn line elsewhere does not matter. Empty string for an empty or
-     * unparsable value; null when no line sets $key. Values never continue
-     * onto the next line, so multi-line quoted values read as empty.
+     * The value dotenv loads for $key, read with dotenv's own parser but
+     * without throwing: the last line that sets $key wins and is parsed on its
+     * own, so a torn line elsewhere does not matter. Quotes, escapes, inline
+     * comments, CRLF, `export` and spaces around `=` behave as at boot. Empty
+     * string for an empty or unparsable value; null when no line sets $key.
+     * Values never continue onto the next line, so multi-line quoted values
+     * read as empty.
      */
     public static function readValue(string $content, string $key): ?string
     {
@@ -56,10 +39,13 @@ final class WgwApiEnvFile
         }
 
         try {
-            return self::readEffectiveValue((string) end($matches[0]), $key) ?? '';
+            $entries = (new Parser)->parse((string) end($matches[0]));
         } catch (InvalidFileException) {
             return '';
         }
+        $value = end($entries);
+
+        return $value === false ? '' : $value->getValue()->map(static fn (Value $v): string => $v->getChars())->getOrElse('');
     }
 
     public static function hasKey(string $content, string $key): bool

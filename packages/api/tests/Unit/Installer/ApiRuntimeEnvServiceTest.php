@@ -7,10 +7,8 @@ namespace Tests\Unit\Installer;
 use App\Services\Installer\ApiRuntimeEnvService;
 use App\Services\Installer\InstallerEnvWriter;
 use App\Support\AppPaths;
-use App\Support\WgwApiEnvFile;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ApiRuntimeEnvServiceTest extends TestCase
@@ -109,19 +107,6 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
     }
 
-    public function test_ensure_keeps_a_key_after_an_empty_app_key_line(): void
-    {
-        // dotenv uses the last APP_KEY line. Reading the first (empty) one, or
-        // reading across the line break, would replace the key in use.
-        $content = "APP_KEY=\nAPP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n";
-        file_put_contents($this->apiRoot.'/.env', $content);
-
-        $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, null);
-
-        $this->assertFalse($result['generatedKey']);
-        $this->assertSame($content, file_get_contents($this->apiRoot.'/.env'));
-    }
-
     public function test_ensure_patches_an_empty_app_url_followed_by_another_line(): void
     {
         file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=\nSESSION_DRIVER=file\n");
@@ -133,105 +118,6 @@ final class ApiRuntimeEnvServiceTest extends TestCase
             "APP_KEY=base64:YWJj\nAPP_URL=https://cloud.example.test\nSESSION_DRIVER=file\n",
             file_get_contents($this->apiRoot.'/.env'),
         );
-    }
-
-    /**
-     * Usable keys as dotenv loads them; each must be left untouched.
-     *
-     * @return array<string, array{string}>
-     */
-    public static function usableKeys(): array
-    {
-        return [
-            'quoted' => ["APP_KEY=\"base64:YWJj\"\n"],
-            'crlf' => ["APP_KEY=base64:YWJj\r\nAPP_URL=https://existing.test\r\n"],
-            'crlf, empty line first' => ["APP_KEY=\r\nAPP_KEY=base64:YWJj\r\n"],
-            'spaces around =' => ["APP_KEY = base64:YWJj\nAPP_URL=https://existing.test\n"],
-            'indent and export' => ["  export APP_KEY=base64:YWJj\n"],
-            'inline comment' => ["APP_KEY=base64:YWJj # do not change\n"],
-            'last line without newline' => ['APP_KEY=base64:YWJj'],
-        ];
-    }
-
-    #[DataProvider('usableKeys')]
-    public function test_ensure_keeps_a_usable_key(string $content): void
-    {
-        $env = $this->apiRoot.'/.env';
-        file_put_contents($env, $content);
-        $service = new ApiRuntimeEnvService;
-        $this->assertTrue($service->hasUsableAppKey($env));
-
-        // ensureAppKey is also what the installer wizard and update runner use.
-        $this->assertFalse($service->ensureAppKey($env));
-        $this->assertSame($content, file_get_contents($env));
-
-        // The full path may normalise line endings, but never the key.
-        $this->assertFalse($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
-        $this->assertSame('base64:YWJj', WgwApiEnvFile::readEffectiveValue((string) file_get_contents($env), 'APP_KEY'));
-    }
-
-    public function test_ensure_app_key_fills_an_empty_crlf_line_in_place(): void
-    {
-        $env = $this->apiRoot.'/.env';
-        file_put_contents($env, "APP_NAME=x\r\nAPP_KEY=\r\nAPP_URL=https://existing.test\r\n");
-        $service = new ApiRuntimeEnvService;
-
-        $this->assertTrue($service->ensureAppKey($env));
-        $this->assertMatchesRegularExpression(
-            '/\AAPP_NAME=x\r\nAPP_KEY=base64:[A-Za-z0-9+\/]{43}=\r\nAPP_URL=https:\/\/existing\.test\r\n\z/',
-            (string) file_get_contents($env),
-        );
-        $this->assertFalse($service->ensureAppKey($env));
-    }
-
-    public function test_ensure_app_key_leaves_an_unparsable_file_alone(): void
-    {
-        // dotenv rejects a line without `=`, so Laravel would not boot with this
-        // either. Never guess and overwrite.
-        $content = "APP_KEY=base64:YWJj\nNOT A SETTING\n";
-        $env = $this->apiRoot.'/.env';
-        file_put_contents($env, $content);
-        $service = new ApiRuntimeEnvService;
-
-        $this->assertFalse($service->ensureAppKey($env));
-        $this->assertSame($content, file_get_contents($env));
-        $this->assertFalse($service->hasUsableAppKey($env));
-    }
-
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function missingOrUnusableKeys(): array
-    {
-        return [
-            'empty' => ["APP_KEY=\nAPP_URL=https://existing.test\n"],
-            'empty quotes' => ["APP_KEY=\"\"\nAPP_URL=https://existing.test\n"],
-            'truncated' => ["APP_KEY=base64:\nAPP_URL=https://existing.test\n"],
-            'not base64' => ["APP_KEY=changeme\nAPP_URL=https://existing.test\n"],
-            'missing line' => ["APP_URL=https://existing.test\n"],
-            'real key then empty line' => ["APP_KEY=base64:YWJj\nAPP_KEY=\nAPP_URL=https://existing.test\n"],
-            'crlf empty' => ["APP_KEY=\r\nAPP_URL=https://existing.test\r\n"],
-            'spaces around =, empty' => ["APP_KEY = \nAPP_URL=https://existing.test\n"],
-        ];
-    }
-
-    #[DataProvider('missingOrUnusableKeys')]
-    public function test_ensure_fills_a_missing_or_unusable_key_once(string $content): void
-    {
-        $env = $this->apiRoot.'/.env';
-        file_put_contents($env, $content);
-        $service = new ApiRuntimeEnvService;
-        $this->assertFalse($service->hasUsableAppKey($env));
-
-        $this->assertTrue($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
-        $after = (string) file_get_contents($env);
-        $this->assertSame(1, preg_match_all('/^APP_KEY=base64:[A-Za-z0-9+\/]{43}=\r?$/m', $after));
-        $this->assertSame(1, preg_match_all('/^APP_KEY[ \t]*=/m', $after));
-        $this->assertStringContainsString('APP_URL=https://existing.test', $after);
-        $this->assertTrue($service->hasUsableAppKey($env));
-
-        $this->assertFalse($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
-        $this->assertSame($after, file_get_contents($env));
     }
 
     public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void

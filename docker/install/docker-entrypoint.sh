@@ -26,13 +26,12 @@ if [ -d "$CONFIG_VOL" ]; then
   ln -sf "${CONFIG_VOL}/api.env" "$target"
 fi
 
-# Create .env / APP_KEY only when missing or unusable; never replace a usable
-# key. A new key on every start broke everything sealed under the old one
-# (refresh tokens, share links, collab ticket key). Rules and tests live in
-# ApiRuntimeEnvService. Non-fatal: the next start retries.
+# Generate APP_KEY only when it is empty (first boot). Never replace it:
+# `key:generate --force` on every start broke everything sealed under the old
+# key (refresh tokens, share links, collab ticket key). Non-fatal.
 if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
-  if ! php "${API_ROOT}/artisan" wgw:ensure-env --no-interaction; then
-    echo "[wgw-install] Warning: could not ensure APP_KEY in ${API_ROOT}/.env; will retry on next start." >&2
+  if ! php "${API_ROOT}/artisan" wgw:ensure-app-key --no-interaction; then
+    echo "[wgw-install] Warning: could not generate APP_KEY in ${API_ROOT}/.env; check that file by hand (see the message above)." >&2
   fi
 fi
 

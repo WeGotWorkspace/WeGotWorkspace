@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Installer;
 
 use App\Support\WgwApiEnvFile;
-use Dotenv\Exception\InvalidFileException;
 
 /**
  * Ensures packages/api runtime files exist on install and after in-place updates.
@@ -111,66 +110,20 @@ final class ApiRuntimeEnvService
         }
     }
 
-    /**
-     * The one rule for "this APP_KEY can stay". ensureAppKey() replaces
-     * anything else; wgw:ensure-env fails on anything else.
-     */
-    public static function isUsableAppKey(?string $appKey): bool
-    {
-        return $appKey !== null && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1;
-    }
-
-    public function hasUsableAppKey(string $envPath): bool
-    {
-        if (! is_readable($envPath)) {
-            return false;
-        }
-        try {
-            return self::isUsableAppKey(WgwApiEnvFile::readEffectiveValue((string) file_get_contents($envPath), 'APP_KEY'));
-        } catch (InvalidFileException) {
-            return false;
-        }
-    }
-
     public function ensureAppKey(string $envPath): bool
     {
         return $this->updateEnvFile($envPath, static function (string $content): ?string {
-            // Never replace a usable key: everything Crypt sealed under it
-            // (refresh tokens, share links, collab ticket key) would be lost.
-            // Read it the way Laravel does; if dotenv cannot parse the file,
-            // leave it alone rather than guess.
-            try {
-                $appKey = WgwApiEnvFile::readEffectiveValue($content, 'APP_KEY');
-            } catch (InvalidFileException) {
-                return null;
-            }
-            if (self::isUsableAppKey($appKey)) {
+            $appKey = WgwApiEnvFile::readValue($content, 'APP_KEY') ?? '';
+            if ($appKey !== '' && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1) {
                 return null;
             }
 
             $key = 'base64:'.base64_encode(random_bytes(32));
-            if ($appKey === null) {
-                $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
-
-                return ($content === '' ? '' : rtrim($content).$eol)."APP_KEY={$key}{$eol}";
+            if ($content === '' || ! WgwApiEnvFile::hasKey($content, 'APP_KEY')) {
+                return rtrim($content)."\nAPP_KEY={$key}\n";
             }
 
-            // Fill the first APP_KEY line and drop any others, so one line is left.
-            // Same line shapes dotenv accepts: indent, `export`, spaces around `=`.
-            $seen = false;
-
-            return (string) preg_replace_callback(
-                '/^[ \t]*(?:export[ \t]+)?APP_KEY[ \t]*=[^\r\n]*(\r?\n|$)/m',
-                static function (array $m) use (&$seen, $key): string {
-                    if ($seen) {
-                        return '';
-                    }
-                    $seen = true;
-
-                    return "APP_KEY={$key}".$m[1];
-                },
-                $content,
-            );
+            return WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
         });
     }
 

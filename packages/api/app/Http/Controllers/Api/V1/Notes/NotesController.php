@@ -16,6 +16,7 @@ use App\Services\Notes\NoteCollaborativeWrite;
 use App\Services\Notes\NoteRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 final class NotesController
@@ -53,11 +54,30 @@ final class NotesController
     public function store(NoteCreateRequest $request): JsonResponse
     {
         $principal = $request->attributes->get(AuthenticateWgwApi::PRINCIPAL_ATTRIBUTE);
+        $payload = $request->validated();
+        $uid = is_string($payload['uid'] ?? null) && Str::isUuid($payload['uid']) ? $payload['uid'] : null;
+        $notebookId = is_string($payload['notebookId'] ?? null) ? $payload['notebookId'] : '';
 
-        return JmapResourceResponse::json(
-            $this->notes->create($principal['username'], $request->validated()),
-            201,
-        );
+        // A client-chosen UID makes the create idempotent: a retry gets the
+        // note it already made (200) instead of a second one.
+        $existing = $uid !== null ? $this->notes->existingCreateForRetry($principal['username'], $uid, $notebookId) : null;
+        if ($existing !== null) {
+            return JmapResourceResponse::json($existing, 200);
+        }
+
+        try {
+            return JmapResourceResponse::json($this->notes->create($principal['username'], $payload), 201);
+        } catch (ApiHttpException $exception) {
+            // Two retries raced: the loser still gets the note the winner made.
+            $existing = $uid !== null && $exception->errorCode() === 'alreadyExists'
+                ? $this->notes->existingCreateForRetry($principal['username'], $uid, $notebookId)
+                : null;
+            if ($existing === null) {
+                throw $exception;
+            }
+
+            return JmapResourceResponse::json($existing, 200);
+        }
     }
 
     public function putCollaboration(NoteCollaborativePutRequest $request, string $noteId): JsonResponse

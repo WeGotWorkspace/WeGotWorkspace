@@ -341,18 +341,18 @@ function noteMetadataPatchAfterConflict(
   fresh: NotesVjournalNote,
   localTags: readonly string[] | undefined,
 ): NoteMetadataPatch {
-  const notebookStillMatches =
-    first.notebookId !== undefined && fresh.notebookId === first.notebookId;
+  // Only a move sends the notebook, and the last move wins.
+  const move = first.notebookId !== undefined ? { notebookId: first.notebookId } : {};
   if (isTagDeltaPatch(first)) {
     return {
-      ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+      ...move,
       ...(first.title !== undefined ? { title: first.title } : {}),
       ...(first.categoriesAdd !== undefined ? { categoriesAdd: first.categoriesAdd } : {}),
       ...(first.categoriesRemove !== undefined ? { categoriesRemove: first.categoriesRemove } : {}),
     };
   }
   return {
-    ...(notebookStillMatches ? { notebookId: first.notebookId } : {}),
+    ...move,
     ...(first.title !== undefined ? { title: first.title } : {}),
     ...(first.categories !== undefined
       ? { categories: unionNoteTags(fresh.categories, localTags ?? []) }
@@ -380,8 +380,8 @@ export async function updateNoteItem(
     if (!isNotePreconditionFailed(error)) throw error;
     // Someone else wrote first. A tag delta is applied on the server to
     // whatever is stored, so the retry sends that same delta. A full tag
-    // list still unions with the fresh set. A different notebook means they
-    // moved it, so this retry leaves that move.
+    // list still unions with the fresh set. A notebook here is this tab's
+    // move, and the last move wins.
     const fresh = await getNote(id, opts);
     patched = await apply(fresh.etag, noteMetadataPatchAfterConflict(firstPatch, fresh, body.tags));
   }
