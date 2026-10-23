@@ -4,6 +4,7 @@ use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\GroupMemberUriBackfill;
+use App\Services\Installer\ApiRuntimeEnvService;
 use App\Services\Installer\DevCalendarEventCatalog;
 use App\Services\Installer\DevCalendarEventSeeder;
 use App\Services\Installer\DevContactCatalog;
@@ -28,6 +29,7 @@ use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
 use App\Services\Tasks\InboxTaskListProvisioner;
 use App\Support\PublicAppUrl;
+use App\Support\WgwApiEnvFile;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -52,6 +54,30 @@ Artisan::command('wgw:schema-migrate', function (WgwSchemaMigrator $migrator): i
 
     return Command::SUCCESS;
 })->purpose('Apply pending database/migrations/wgw migrations on the wgw connection');
+
+Artisan::command('wgw:ensure-env', function (ApiRuntimeEnvService $apiEnv): int {
+    // Docker entrypoints run this on every start. It fills APP_KEY only when it
+    // is missing or unusable and never replaces a usable key. Never print the key.
+    $result = $apiEnv->ensureAtApiRoot(base_path(), null);
+    if ($result['createdEnv']) {
+        $this->info('Created packages/api/.env from .env.example.');
+    }
+    if ($result['sanitizedEnv']) {
+        $this->info('Removed invalid lines from packages/api/.env.');
+    }
+    if ($result['generatedKey']) {
+        $this->info('Generated APP_KEY in packages/api/.env.');
+    }
+
+    $appKey = WgwApiEnvFile::readEffectiveValue((string) @file_get_contents(base_path('.env')), 'APP_KEY') ?? '';
+    if ($appKey === '') {
+        $this->error('APP_KEY is still empty in packages/api/.env.');
+
+        return Command::FAILURE;
+    }
+
+    return Command::SUCCESS;
+})->purpose('Create packages/api/.env and APP_KEY when missing; never replaces an existing key');
 
 Artisan::command('wgw:jwt-keys', function (InstallerJwtKeyGenerator $jwtKeys): int {
     $jwtKeys->ensureKeys();

@@ -18,6 +18,20 @@ final class WgwApiEnvFile
         return self::readValue((string) file_get_contents($envPath), $key);
     }
 
+    /**
+     * The value Laravel's dotenv loads: the last `KEY=` line wins, and the
+     * value never continues onto the next line. Empty string when the last
+     * line is empty; null when the key is absent.
+     */
+    public static function readEffectiveValue(string $content, string $key): ?string
+    {
+        if (preg_match_all('/^'.preg_quote($key, '/').'[ \t]*=([^\r\n]*)$/m', $content, $matches) < 1) {
+            return null;
+        }
+
+        return trim((string) end($matches[1]), " \t\"'");
+    }
+
     public static function readValue(string $content, string $key): ?string
     {
         if (preg_match('/^'.preg_quote($key, '/').'\s*=\s*(\S+)/m', $content, $match) !== 1) {

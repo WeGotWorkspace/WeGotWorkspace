@@ -9,6 +9,7 @@ use App\Services\Installer\InstallerEnvWriter;
 use App\Support\AppPaths;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ApiRuntimeEnvServiceTest extends TestCase
@@ -105,6 +106,61 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertFalse($result['generatedKey']);
         $this->assertFalse($result['patchedUrl']);
         $this->assertSame("APP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n", file_get_contents($this->apiRoot.'/.env'));
+    }
+
+    public function test_ensure_keeps_a_key_after_an_empty_app_key_line(): void
+    {
+        // dotenv uses the last APP_KEY line. Reading the first (empty) one, or
+        // reading across the line break, would replace the key in use.
+        $content = "APP_KEY=\nAPP_KEY=base64:YWJj\nAPP_URL=https://existing.test\n";
+        file_put_contents($this->apiRoot.'/.env', $content);
+
+        $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, null);
+
+        $this->assertFalse($result['generatedKey']);
+        $this->assertSame($content, file_get_contents($this->apiRoot.'/.env'));
+    }
+
+    public function test_ensure_keeps_a_quoted_key(): void
+    {
+        $content = "APP_KEY=\"base64:YWJj\"\n";
+        file_put_contents($this->apiRoot.'/.env', $content);
+
+        $result = (new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, null);
+
+        $this->assertFalse($result['generatedKey']);
+        $this->assertSame($content, file_get_contents($this->apiRoot.'/.env'));
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function missingOrUnusableKeys(): array
+    {
+        return [
+            'empty' => ["APP_KEY=\nAPP_URL=https://existing.test\n"],
+            'empty quotes' => ["APP_KEY=\"\"\nAPP_URL=https://existing.test\n"],
+            'truncated' => ["APP_KEY=base64:\nAPP_URL=https://existing.test\n"],
+            'missing line' => ["APP_URL=https://existing.test\n"],
+            'real key then empty line' => ["APP_KEY=base64:YWJj\nAPP_KEY=\nAPP_URL=https://existing.test\n"],
+        ];
+    }
+
+    #[DataProvider('missingOrUnusableKeys')]
+    public function test_ensure_fills_a_missing_or_unusable_key_once(string $content): void
+    {
+        $env = $this->apiRoot.'/.env';
+        file_put_contents($env, $content);
+        $service = new ApiRuntimeEnvService;
+
+        $this->assertTrue($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
+        $after = (string) file_get_contents($env);
+        $this->assertSame(1, preg_match_all('/^APP_KEY=base64:[A-Za-z0-9+\/]{43}=$/m', $after));
+        $this->assertSame(1, substr_count($after, 'APP_KEY='));
+        $this->assertStringContainsString('APP_URL=https://existing.test', $after);
+
+        $this->assertFalse($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
+        $this->assertSame($after, file_get_contents($env));
     }
 
     public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void

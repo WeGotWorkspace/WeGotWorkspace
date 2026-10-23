@@ -26,40 +26,14 @@ if [ -d "$CONFIG_VOL" ]; then
   ln -sf "${CONFIG_VOL}/api.env" "$target"
 fi
 
-# Generate APP_KEY only when it is missing or empty. `key:generate --force`
-# replaces an existing key, and a new key on every boot breaks everything
-# sealed under the old one (refresh tokens, share links, collab ticket key).
-# Keep in sync with docker/apache/docker-entrypoint.sh.
-app_key_value() {
-  # Laravel's dotenv uses the last APP_KEY line, so read that one.
-  sed -n 's/^APP_KEY=//p' "$1" | tail -n 1 | tr -d "\"'[:space:]"
-}
-
-ensure_app_key() {
-  env_file="$1"
-  if [ -n "${APP_KEY:-}" ] || [ -n "$(app_key_value "$env_file")" ]; then
-    return 0
-  fi
-
-  # Leave one bare `APP_KEY=` line so key:generate can fill it in.
-  # `cat >` keeps the symlink to the config volume and the file mode.
-  tmp="$(mktemp)"
-  awk 'BEGIN { done = 0 }
-    /^APP_KEY=/ { if (!done) { print "APP_KEY="; done = 1 } next }
-    { print }
-    END { if (!done) print "APP_KEY=" }' "$env_file" >"$tmp"
-  cat "$tmp" >"$env_file"
-  rm -f "$tmp"
-
-  # Non-fatal: the next start retries while the key is still empty.
-  if ! php "${API_ROOT}/artisan" key:generate --force --no-interaction >/dev/null 2>&1 \
-    || [ -z "$(app_key_value "$env_file")" ]; then
-    echo "[wgw-install] Warning: could not generate APP_KEY in ${env_file}; will retry on next start." >&2
-  fi
-}
-
+# Create .env / APP_KEY only when missing or unusable; never replace a usable
+# key. A new key on every start broke everything sealed under the old one
+# (refresh tokens, share links, collab ticket key). Rules and tests live in
+# ApiRuntimeEnvService. Non-fatal: the next start retries.
 if [ -f "${API_ROOT}/artisan" ] && [ -f "${API_ROOT}/.env" ]; then
-  ensure_app_key "${API_ROOT}/.env"
+  if ! php "${API_ROOT}/artisan" wgw:ensure-env --no-interaction; then
+    echo "[wgw-install] Warning: could not ensure APP_KEY in ${API_ROOT}/.env; will retry on next start." >&2
+  fi
 fi
 
 DATA_DIR="${WGW_DATA_DIR:-${INSTALL_ROOT}/wgw-content}"

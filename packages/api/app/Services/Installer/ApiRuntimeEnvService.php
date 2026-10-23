@@ -113,7 +113,9 @@ final class ApiRuntimeEnvService
     public function ensureAppKey(string $envPath): bool
     {
         return $this->updateEnvFile($envPath, static function (string $content): ?string {
-            $appKey = WgwApiEnvFile::readValue($content, 'APP_KEY') ?? '';
+            // Never replace a usable key: everything Crypt sealed under it
+            // (refresh tokens, share links, collab ticket key) would be lost.
+            $appKey = WgwApiEnvFile::readEffectiveValue($content, 'APP_KEY') ?? '';
             if ($appKey !== '' && preg_match('/^base64:[A-Za-z0-9+\/=]+$/', $appKey) === 1) {
                 return null;
             }
@@ -123,7 +125,21 @@ final class ApiRuntimeEnvService
                 return rtrim($content)."\nAPP_KEY={$key}\n";
             }
 
-            return WgwApiEnvFile::setLine($content, 'APP_KEY', $key, quote: false);
+            // Fill the first APP_KEY line and drop any others, so one line is left.
+            $seen = false;
+
+            return (string) preg_replace_callback(
+                '/^APP_KEY=[^\r\n]*(\r?\n|$)/m',
+                static function (array $m) use (&$seen, $key): string {
+                    if ($seen) {
+                        return '';
+                    }
+                    $seen = true;
+
+                    return "APP_KEY={$key}".$m[1];
+                },
+                $content,
+            );
         });
     }
 
