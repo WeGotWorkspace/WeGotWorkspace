@@ -9,13 +9,10 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\Support\UiDistFixture;
 use Tests\Support\WgwInstallFixture;
-use Tests\Support\WithPluginsEnabled;
 use Tests\TestCase;
 
 final class WebRootKernelServeTest extends TestCase
 {
-    use WithPluginsEnabled;
-
     private ?string $repoRoot = null;
 
     protected function tearDown(): void
@@ -28,7 +25,11 @@ final class WebRootKernelServeTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_shell_dist_asset_and_plugin_ui_stay_served_through_the_kernel(): void
+    /**
+     * An upgraded install can still hold a wgw-plugins/ tree. The deny file is written
+     * into it, and its old app route redirects home instead of serving the plugin asset.
+     */
+    public function test_shell_dist_asset_is_served_and_a_leftover_plugin_tree_is_not(): void
     {
         $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
         $installRoot = $this->repoRoot.'/apps/wegotworkspace';
@@ -64,11 +65,14 @@ final class WebRootKernelServeTest extends TestCase
             'text/css; charset=utf-8',
             'PHPUnit fixture',
         );
-        $this->assertKernelFile(
-            $this->get('/apps/demo-ui/plugin-ui.js'),
-            'application/javascript; charset=utf-8',
-            'pluginUiAsset',
-        );
+
+        $plugin = $this->get('/apps/demo-ui/plugin-ui.js');
+        $plugin->assertStatus(302)->assertHeader('Location', url('/'));
+        $plugin->assertDontSee('pluginUiAsset', false);
+
+        $direct = $this->get('/wgw-plugins/demo-plugin/assets/plugin-ui.js');
+        $direct->assertNotFound();
+        $direct->assertDontSee('pluginUiAsset', false);
     }
 
     private function assertKernelFile(TestResponse $response, string $contentType, string $needle): void

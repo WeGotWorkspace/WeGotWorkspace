@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\V1\Admin\AppUrlController as AdminAppUrlController;
 use App\Http\Controllers\Api\V1\Admin\GroupMemberController as AdminGroupMemberController;
 use App\Http\Controllers\Api\V1\Admin\GroupsController as AdminGroupsController;
 use App\Http\Controllers\Api\V1\Admin\MailDeliveryTestController as AdminMailDeliveryTestController;
-use App\Http\Controllers\Api\V1\Admin\PluginInstallController as AdminPluginInstallController;
 use App\Http\Controllers\Api\V1\Admin\SearchJobController as AdminSearchJobController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\Admin\StateController as AdminStateController;
@@ -49,9 +48,6 @@ use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
 use App\Http\Controllers\Api\V1\Notify\NotificationsController;
 use App\Http\Controllers\Api\V1\Notify\PushSubscriptionsController;
-use App\Http\Controllers\Api\V1\Plugins\ActivationController as PluginsActivationController;
-use App\Http\Controllers\Api\V1\Plugins\IndexController as PluginsIndexController;
-use App\Http\Controllers\Api\V1\Plugins\SessionController as PluginsSessionController;
 use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
@@ -207,12 +203,6 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::get('search/results/{resultId}/content', [UnifiedSearchDownloadController::class, 'contentByResultId'])
         ->where('resultId', '.+');
 
-    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
-    if (config('wgw.plugins.enabled')) {
-        Route::get('plugins', PluginsIndexController::class);
-        Route::post('plugins/{id}/session', PluginsSessionController::class)
-            ->where('id', '[a-z0-9_-]+');
-    }
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
     Route::put('settings/mail', SettingsMailController::class);
@@ -400,12 +390,6 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:admin'])->prefix('a
     Route::get('search/jobs/current', [AdminSearchJobController::class, 'showCurrent']);
     Route::delete('search/jobs/{jobId}', [AdminSearchJobController::class, 'destroy'])
         ->where('jobId', '[a-z0-9_-]+');
-    // Unsupported in the beta (test-only). OpenAPI omits these paths while the flag is off.
-    if (config('wgw.plugins.enabled')) {
-        Route::post('plugins', AdminPluginInstallController::class);
-        Route::put('plugins/{id}/activation', PluginsActivationController::class)
-            ->where('id', '[a-z0-9_-]+');
-    }
     Route::get('backups/{name}', [AdminUpdateBackupController::class, 'show']);
     Route::delete('backups/{name}', [AdminUpdateBackupController::class, 'destroy']);
     Route::put('groups/{group}/members/{username}', [AdminGroupMemberController::class, 'store']);
