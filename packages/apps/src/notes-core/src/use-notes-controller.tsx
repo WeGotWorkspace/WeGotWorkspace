@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import { useWorkspaceListKeyboardShortcuts } from "@/hooks/use-workspace-list-keyboard-shortcuts";
 import type { NotesUILabels } from "./notes-labels";
 import type { NotesAPIOperations, NotesUIData } from "./notes-types";
+import { useNoteCreated } from "./use-note-created";
+import { useNoteDropped } from "./use-note-dropped";
 import { useNotesList } from "./use-notes-list";
 import { useNotesMutations } from "./use-notes-mutations";
 import { useNotesNotebookMutations } from "./use-notes-notebook-mutations";
@@ -45,6 +47,10 @@ export function useNotesController({
     onViewChange,
   });
   const list = useNotesList({ shell, initialNoteId, onNoteChange });
+  useNoteCreated(shell.setNotes);
+  useNoteDropped(shell.setNotes, (title) =>
+    shell.showMutationError(shell.L.noteDeletedElsewhere(title)),
+  );
 
   const selectView = useCallback(
     (nextView: string) => {

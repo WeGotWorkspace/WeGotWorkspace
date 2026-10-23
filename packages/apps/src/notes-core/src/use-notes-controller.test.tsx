@@ -39,13 +39,6 @@ const localNote: Note = {
   wordCount: 2,
 };
 
-const syncedNote: Note = {
-  ...localNote,
-  id: "server-note-99",
-  excerpt: "Synced excerpt",
-  body: ["Synced body"],
-};
-
 function clickSelect(result: { current: ReturnType<typeof useNotesController> }, id: string) {
   act(() => {
     result.current.handleSelect(id, {
@@ -74,33 +67,6 @@ describe("useNotesController bootstrap sync", () => {
         dispatchEvent: vi.fn(),
       })),
     });
-  });
-
-  it("follows activeId when a local temp note is remapped during sync", () => {
-    const initialData: NotesUIData = {
-      notes: [localNote],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-    const syncedData: NotesUIData = {
-      notes: [syncedNote],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-
-    const { result, rerender } = renderHook(
-      ({ data }: { data: NotesUIData }) => useNotesController({ data, listLoading: false }),
-      { initialProps: { data: initialData } },
-    );
-
-    clickSelect(result, localNote.id);
-    expect(result.current.activeId).toBe(localNote.id);
-
-    rerender({ data: syncedData });
-
-    expect(result.current.activeId).toBe(syncedNote.id);
-    expect(result.current.active?.id).toBe(syncedNote.id);
-    expect(result.current.active?.body).toEqual(["Draft body"]);
   });
 
   it("updates active.tags when toggleNoteTag assigns a tag", () => {
@@ -206,6 +172,51 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.notes.find((note) => note.id === "note-1")?.tags).toEqual(["draft"]);
   });
 
+  it("names the notebook field when it saves a move, so only a move sends it", async () => {
+    vi.useFakeTimers();
+    try {
+      const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+      const data: NotesUIData = {
+        notes: [{ ...localNote, id: "note-1", notebook: "Drafts", notebookId: "notes-drafts" }],
+        notebooks: ["Drafts", "Work"],
+        notebookCollections: [
+          { id: "notes-drafts", name: "Drafts" },
+          { id: "notes-work", name: "Work" },
+        ],
+        tags: [],
+      };
+      const { result } = renderHook(() =>
+        useNotesController({
+          data,
+          listLoading: false,
+          operations: {
+            upsertNote,
+            deleteNote: vi.fn(),
+            archiveNote: vi.fn(),
+            restoreNote: vi.fn(),
+            createNotebook: vi.fn(),
+            renameNotebook: vi.fn(),
+            deleteNotebook: vi.fn(),
+          },
+        }),
+      );
+
+      act(() => {
+        result.current.moveToNotebook(["note-1"], "Work");
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500);
+      });
+
+      expect(upsertNote).toHaveBeenCalledWith(
+        expect.objectContaining({ notebookId: "notes-work" }),
+        expect.objectContaining({ fields: ["notebook"] }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("persists tag edits as a delta", async () => {
     vi.useFakeTimers();
     try {
@@ -303,65 +314,6 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.active?.tags).toEqual(["focus"]);
   });
 
-  it("preserves tags when create remaps local-* id to server id", async () => {
-    let resolveCreate!: (note: Note) => void;
-    const operations = {
-      upsertNote: vi.fn(
-        () =>
-          new Promise<Note>((resolve) => {
-            resolveCreate = resolve;
-          }),
-      ),
-      deleteNote: vi.fn(),
-      archiveNote: vi.fn(),
-      restoreNote: vi.fn(),
-      createNotebook: vi.fn(),
-      renameNotebook: vi.fn(),
-      deleteNotebook: vi.fn(),
-    };
-
-    const data: NotesUIData = {
-      notes: [],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-
-    const { result } = renderHook(() =>
-      useNotesController({ data, listLoading: false, operations }),
-    );
-
-    act(() => {
-      result.current.createNote();
-    });
-    const tempId = result.current.activeId;
-    expect(tempId).toMatch(/^local-/);
-
-    act(() => {
-      result.current.toggleNoteTag(tempId, "focus");
-    });
-    expect(result.current.active?.tags).toEqual(["focus"]);
-
-    const serverDate = new Date().toISOString();
-    await act(async () => {
-      resolveCreate({
-        id: "n-server-1",
-        category: "Note",
-        date: serverDate,
-        updatedAt: serverDate,
-        excerpt: "",
-        body: [""],
-        notebook: "Drafts",
-        tags: [],
-        wordCount: 0,
-      });
-      await Promise.resolve();
-    });
-
-    expect(result.current.activeId).toBe("n-server-1");
-    expect(result.current.active?.tags).toEqual(["focus"]);
-    expect(result.current.notes.find((note) => note.id === "n-server-1")?.tags).toEqual(["focus"]);
-  });
-
   it("keeps the new note selected and listed after the title is edited", () => {
     const data: NotesUIData = {
       notes: [],
@@ -374,7 +326,7 @@ describe("useNotesController bootstrap sync", () => {
       result.current.createNote();
     });
     const createdId = result.current.activeId;
-    expect(createdId).toMatch(/^local-/);
+    expect(createdId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
     act(() => {
       result.current.updateNote(createdId, { title: "Event" });
@@ -386,62 +338,6 @@ describe("useNotesController bootstrap sync", () => {
     expect(result.current.notes.find((note) => note.id === createdId)?.title).toBe("Event");
     expect(result.current.visibleNotes.map((note) => note.id)).toContain(createdId);
     expect(result.current.visibleNotes.find((note) => note.id === createdId)?.title).toBe("Event");
-  });
-
-  it("keeps the typed title selected after create remaps local-* to a server id", async () => {
-    let resolveCreate!: (note: Note) => void;
-    const operations = {
-      upsertNote: vi.fn(
-        () =>
-          new Promise<Note>((resolve) => {
-            resolveCreate = resolve;
-          }),
-      ),
-      deleteNote: vi.fn(),
-      archiveNote: vi.fn(),
-      restoreNote: vi.fn(),
-      createNotebook: vi.fn(),
-      renameNotebook: vi.fn(),
-      deleteNotebook: vi.fn(),
-    };
-    const data: NotesUIData = {
-      notes: [],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-    const { result } = renderHook(() =>
-      useNotesController({ data, listLoading: false, operations }),
-    );
-
-    act(() => {
-      result.current.createNote();
-    });
-    const tempId = result.current.activeId;
-    act(() => {
-      result.current.updateNote(tempId, { title: "Event" });
-    });
-
-    const serverDate = new Date().toISOString();
-    await act(async () => {
-      resolveCreate({
-        id: "n-server-title",
-        category: "Note",
-        date: serverDate,
-        updatedAt: serverDate,
-        excerpt: "",
-        body: [""],
-        notebook: "Drafts",
-        tags: [],
-        wordCount: 0,
-      });
-      await Promise.resolve();
-    });
-
-    expect(result.current.activeId).toBe("n-server-title");
-    expect(result.current.selectedIds).toEqual(["n-server-title"]);
-    expect(result.current.active?.title).toBe("Event");
-    expect(result.current.notes.find((note) => note.id === "n-server-title")?.title).toBe("Event");
-    expect(result.current.visibleNotes.map((note) => note.id)).toEqual(["n-server-title"]);
   });
 
   it("does not drop a just-created titled note when bootstrap is still stale", () => {
@@ -525,45 +421,6 @@ describe("useNotesController bootstrap sync", () => {
       result.current.applyLocalBodyMarkdown(createdId, "Hello\n\nworld");
     });
     expect(result.current.active?.title).toBe("Event");
-  });
-
-  it("preserves tags when bootstrap remaps local-* to a server id", () => {
-    const taggedLocal: Note = {
-      ...localNote,
-      tags: ["focus"],
-      date: "2026-08-10T12:00:00.000Z",
-    };
-    const initialData: NotesUIData = {
-      notes: [taggedLocal],
-      notebooks: ["Drafts"],
-      tags: ["focus"],
-    };
-    const syncedData: NotesUIData = {
-      notes: [
-        {
-          ...syncedNote,
-          tags: [],
-          date: "2026-08-10T11:00:00.000Z",
-          excerpt: taggedLocal.excerpt,
-          body: taggedLocal.body,
-        },
-      ],
-      notebooks: ["Drafts"],
-      tags: [],
-    };
-
-    const { result, rerender } = renderHook(
-      ({ data }: { data: NotesUIData }) => useNotesController({ data, listLoading: false }),
-      { initialProps: { data: initialData } },
-    );
-
-    clickSelect(result, taggedLocal.id);
-    expect(result.current.active?.tags).toEqual(["focus"]);
-
-    rerender({ data: syncedData });
-
-    expect(result.current.activeId).toBe(syncedNote.id);
-    expect(result.current.active?.tags).toEqual(["focus"]);
   });
 
   it("renames the active notebook view when renameNotebook runs", () => {
@@ -1064,7 +921,7 @@ describe("useNotesController create from Starred and Archive", () => {
       expect(result.current.view).toBe("all");
       expect(onViewChange).toHaveBeenCalledWith("all");
       const created = result.current.notes[0];
-      expect(created?.id).toMatch(/^local-/);
+      expect(created?.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
       expect(created?.notebook).toBe("Drafts");
       expect(created?.starred).toBeFalsy();
       expect(created?.archived).toBeFalsy();
@@ -1074,8 +931,8 @@ describe("useNotesController create from Starred and Archive", () => {
         expect.objectContaining({
           notebook: "Drafts",
           tags: [],
+          createPending: true,
         }),
-        expect.objectContaining({ onCreated: expect.any(Function) }),
       );
       const payload = upsertNote.mock.calls[0]?.[0] as Note;
       expect(payload.starred).toBeFalsy();

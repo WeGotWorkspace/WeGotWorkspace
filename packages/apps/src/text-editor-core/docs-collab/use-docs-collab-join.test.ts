@@ -527,6 +527,40 @@ describe("useDocsCollabJoin server bootstrap", () => {
     server.destroy();
   });
 
+  it("keeps an offline edit when the server has no collab state yet (204)", async () => {
+    const room = "docs/bootstrap-no-sidecar.md";
+    // Opened offline before: the local copy came from the cached text.
+    const cached = new Y.Doc();
+    writeBody(cached, "Body to clear");
+    await storeLocalCopy(room, cached);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).includes("format=yjs")
+          ? new Response(null, { status: 204 })
+          : new Response("Body to clear\n", { status: 200 }),
+      ),
+    );
+    const { hook, pendingCalls } = renderJoinedSession(room);
+    await act(async () => {
+      await hook.result.current.join();
+    });
+    const local = hook.result.current.refs.ydocRef.current;
+    if (!local) throw new Error("expected a joined doc");
+
+    // Cleared while offline, then the connection comes back.
+    const fragment = local.getXmlFragment("default");
+    fragment.delete(0, fragment.length);
+    await bootstrap(hook);
+
+    expect(bodyText(local)).toBe("");
+    expect(hook.result.current.refs.localDirtySinceLastSaveRef.current).toBe(true);
+    expect(pendingCalls).toContain(true);
+
+    closeSession(hook);
+    cached.destroy();
+  });
+
   it("drops a stale local seed but keeps what was typed on top of it", async () => {
     const room = "docs/bootstrap-stale-seed.md";
     const stale = new Y.Doc();

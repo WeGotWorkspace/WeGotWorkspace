@@ -270,15 +270,28 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 
 ## Offline and collaboration
 
-|                  | v1 Notes                                                                                                        |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive)             |
-| Offline path     | Dexie working set + UID-keyed y-indexeddb crash buffer; two devices merge; an outside write is the only prompt  |
-| Transport        | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
-| Stars            | Notes stars table (not Drive `/files/star`)                                                                     |
-| Collab           | Yjs + RTC mesh; room = `UID`; no server sidecar                                                                 |
+|                  | v1 Notes                                                                                                                                                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive)                                                                                                                                                                  |
+| Offline path     | Dexie working set + UID-keyed y-indexeddb crash buffer; two devices merge; an outside write is the only prompt. A note made here is `createPending`: its create waits in the outbox (one Web Lock across tabs) and its room stays local-only until the server has it |
+| Transport        | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same                                                                                                                                                      |
+| Stars            | Notes stars table (not Drive `/files/star`)                                                                                                                                                                                                                          |
+| Collab           | Yjs + RTC mesh; room = `UID`; no server sidecar                                                                                                                                                                                                                      |
 
 See Decision 6 (outside write) and Decision 8 (mid-session ACL).
+
+### When two tabs or people change the same note
+
+One tab can be offline while another, or another person, keeps working. The rules:
+
+| What changed                    | Rule                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Body, title typed in the editor | Yjs merges both. Nothing is lost.                                                                                    |
+| Tags added or removed           | Sent as a per-tag delta, so both changes stay.                                                                       |
+| Notebook, archive               | The last write to reach the server wins. Only a move sends the notebook, so an older save never moves a note back.   |
+| Delete, access removed          | Delete and lost access win over an offline edit, and the person is told: "… was deleted elsewhere" or "Access lost". |
+
+Every open tab shows the server state once it is back online, without a reload. A tab without a sync token lists each notebook once and drops cached notes the list no longer has. A queued write that failed for a passing reason (429, 5xx) is sent again by itself after 5 s, 15 s, 1 min and 5 min.
 
 ---
 

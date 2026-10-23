@@ -134,8 +134,13 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   const applyInboundRefresh = useCallback(async () => {
     if (!offlineUsername) return;
     const notebookIds = (data?.data.notebookCollections ?? []).map((item) => item.id);
-    await syncNotesInboundFromRest(offlineUsername, notebookIds);
-    await patchFromCache();
+    try {
+      await syncNotesInboundFromRest(offlineUsername, notebookIds);
+    } finally {
+      // Another tab may have written the shared cache (an archive, a create).
+      // Show it even when this tab cannot reach the server to sync.
+      await patchFromCache();
+    }
   }, [data?.data.notebookCollections, offlineUsername, patchFromCache]);
 
   const refreshList = useCallback(() => {
