@@ -41,9 +41,12 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            'busy_timeout' => 5000,
             'journal_mode' => null,
             'synchronous' => null,
+            // Take the write lock at BEGIN: a read-then-write transaction that
+            // waits for the lock later fails with "database is locked".
+            'transaction_mode' => 'IMMEDIATE',
         ],
 
         'mysql' => [
@@ -129,6 +132,9 @@ return [
             'engine' => null,
             'options' => wgw_mysql_pdo_options(),
             'foreign_key_constraints' => true,
+            // SQLite only (MySQL ignores it). See the sqlite connection above.
+            'transaction_mode' => 'IMMEDIATE',
+            'busy_timeout' => 5000,
         ],
 
     ],
