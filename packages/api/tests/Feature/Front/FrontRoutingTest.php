@@ -154,9 +154,10 @@ final class FrontRoutingTest extends TestCase
     }
 
     /**
-     * 302, not 301. Plugins return after the beta; a permanent redirect would stick in browsers.
+     * Plugins were removed; bookmarks still hit /apps. 302, not 301: a permanent redirect would
+     * stick in browsers if the prefix is reused.
      */
-    public function test_installed_plugin_app_paths_redirect_home_temporarily(): void
+    public function test_removed_plugin_app_paths_redirect_home_temporarily(): void
     {
         $this->repoRoot = UiDistFixture::bootstrapMonorepoLayout();
         $installRoot = $this->repoRoot.'/apps/wegotworkspace';
