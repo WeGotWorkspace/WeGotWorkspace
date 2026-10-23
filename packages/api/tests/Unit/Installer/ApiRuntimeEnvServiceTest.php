@@ -171,6 +171,49 @@ final class ApiRuntimeEnvServiceTest extends TestCase
         $this->assertFalse($service->ensureAppKey($env));
     }
 
+    /**
+     * dotenv parses these without an error but loads no APP_KEY, and a new
+     * line appended at the end would be swallowed the same way.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function keysDotenvCannotReach(): array
+    {
+        return [
+            'open quote on the key line' => ["APP_KEY=\"base64:YWJj\nAPP_URL=https://existing.test\n"],
+            'open quote above a usable key' => ["APP_NAME=\"My Team\nAPP_KEY=base64:YWJj\n"],
+        ];
+    }
+
+    #[DataProvider('keysDotenvCannotReach')]
+    public function test_ensure_never_writes_a_key_dotenv_would_not_load(string $content): void
+    {
+        $env = $this->apiRoot.'/.env';
+        file_put_contents($env, $content);
+        $service = new ApiRuntimeEnvService;
+
+        for ($start = 1; $start <= 3; $start++) {
+            $this->assertFalse($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey'], "start {$start}");
+            $this->assertSame($content, file_get_contents($env), "start {$start}");
+        }
+        $this->assertFalse($service->hasUsableAppKey($env));
+    }
+
+    public function test_ensure_fills_a_bare_export_app_key_line(): void
+    {
+        // dotenv loads `export APP_KEY` (no `=`) as an empty value.
+        $env = $this->apiRoot.'/.env';
+        file_put_contents($env, "export APP_KEY\nAPP_URL=https://existing.test\n");
+        $service = new ApiRuntimeEnvService;
+
+        $this->assertTrue($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
+        $this->assertTrue($service->hasUsableAppKey($env));
+        $after = (string) file_get_contents($env);
+
+        $this->assertFalse($service->ensureAtApiRoot($this->apiRoot, null)['generatedKey']);
+        $this->assertSame($after, file_get_contents($env));
+    }
+
     public function test_ensure_app_key_leaves_an_unparsable_file_alone(): void
     {
         // dotenv rejects a line without `=`, so Laravel would not boot with this

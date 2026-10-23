@@ -69,7 +69,7 @@ Artisan::command('wgw:ensure-env', function (ApiRuntimeEnvService $apiEnv): int 
     }
 
     if (! $apiEnv->hasUsableAppKey(base_path('.env'))) {
-        $this->error('APP_KEY in packages/api/.env is still missing or unusable.');
+        $this->error('APP_KEY in '.base_path('.env').' is missing or unusable and was not changed. Fix it by hand: look for an unclosed quote or a malformed line, or set APP_KEY= to an empty value so the next start generates one.');
 
         return Command::FAILURE;
     }

@@ -149,28 +149,44 @@ final class ApiRuntimeEnvService
             }
 
             $key = 'base64:'.base64_encode(random_bytes(32));
-            if ($appKey === null) {
-                $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
+            $line = '/^[ \t]*(?:export[ \t]+)?APP_KEY[ \t]*=[^\r\n]*(\r?\n|$)/m';
+            $hasLine = preg_match($line, $content) === 1;
+            if ($appKey === null && $hasLine) {
+                // There is an APP_KEY line but dotenv does not load it (an
+                // unclosed quote swallowed it). Do not overwrite a key the
+                // admin may still need; wgw:ensure-env reports it instead.
+                return null;
+            }
+            if ($hasLine) {
+                // Fill the first APP_KEY line and drop any others, so one line is left.
+                // Same line shapes dotenv accepts: indent, `export`, spaces around `=`.
+                $seen = false;
+                $next = (string) preg_replace_callback(
+                    $line,
+                    static function (array $m) use (&$seen, $key): string {
+                        if ($seen) {
+                            return '';
+                        }
+                        $seen = true;
 
-                return ($content === '' ? '' : rtrim($content).$eol)."APP_KEY={$key}{$eol}";
+                        return "APP_KEY={$key}".$m[1];
+                    },
+                    $content,
+                );
+            } else {
+                $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
+                $next = ($content === '' ? '' : rtrim($content).$eol)."APP_KEY={$key}{$eol}";
             }
 
-            // Fill the first APP_KEY line and drop any others, so one line is left.
-            // Same line shapes dotenv accepts: indent, `export`, spaces around `=`.
-            $seen = false;
-
-            return (string) preg_replace_callback(
-                '/^[ \t]*(?:export[ \t]+)?APP_KEY[ \t]*=[^\r\n]*(\r?\n|$)/m',
-                static function (array $m) use (&$seen, $key): string {
-                    if ($seen) {
-                        return '';
-                    }
-                    $seen = true;
-
-                    return "APP_KEY={$key}".$m[1];
-                },
-                $content,
-            );
+            // Write only what Laravel will then load. An unclosed quote higher up
+            // makes dotenv swallow every later line, so a written key would never
+            // be seen and each start would add another one. Leave such a file
+            // alone; wgw:ensure-env reports it for a manual fix.
+            try {
+                return WgwApiEnvFile::readEffectiveValue($next, 'APP_KEY') === $key ? $next : null;
+            } catch (InvalidFileException) {
+                return null;
+            }
         });
     }
 
