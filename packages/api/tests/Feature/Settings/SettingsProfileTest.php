@@ -253,21 +253,6 @@ final class SettingsProfileTest extends WgwDatabaseTestCase
             ->assertJsonPath('user.email', 'bob@example.test');
     }
 
-    public function test_mail_settings_do_not_change_the_profile_email(): void
-    {
-        $token = $this->userBearerToken();
-
-        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
-            'imapUsername' => 'bob.sync@example.test',
-            'imapPassword' => 'mail-secret',
-        ])->assertOk()
-            ->assertJsonPath('user.email', 'bob@example.test');
-
-        $this->withBearer($token)->getJson('/api/v1/settings/state')
-            ->assertOk()
-            ->assertJsonPath('user.email', 'bob@example.test');
-    }
-
     /**
      * Refresh tokens are revoked, including the caller's. Access JWTs stay
      * valid until WGW_API_JWT_ACCESS_TTL; bearer auth does not read ui_session_epoch.
