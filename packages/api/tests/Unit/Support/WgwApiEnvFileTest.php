@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Support;
 
 use App\Support\WgwApiEnvFile;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class WgwApiEnvFileTest extends TestCase
@@ -64,11 +65,14 @@ ENV;
 
     public function test_read_value_round_trips_quoted_values(): void
     {
-        foreach (['Team Mail', 'say "hi"', 'back\\slash', "it's", ''] as $value) {
-            $content = WgwApiEnvFile::setLine("APP_NAME=x\n", 'MAIL_FROM_NAME', $value);
+        foreach (['Team Mail', 'say "hi"', 'back\\slash', "it's", '', 'pa$1ss', 'a\\0b'] as $value) {
+            // Append a missing key, then replace an existing one.
+            foreach (["APP_NAME=x\n", "MAIL_FROM_NAME=old\nAPP_NAME=x\n"] as $original) {
+                $content = WgwApiEnvFile::setLine($original, 'MAIL_FROM_NAME', $value);
 
-            $this->assertSame($value, WgwApiEnvFile::readValue($content, 'MAIL_FROM_NAME'));
-            $this->assertTrue(WgwApiEnvFile::containsPairs($content, ['MAIL_FROM_NAME' => $value]));
+                $this->assertSame($value, WgwApiEnvFile::readValue($content, 'MAIL_FROM_NAME'));
+                $this->assertTrue(WgwApiEnvFile::containsPairs($content, ['MAIL_FROM_NAME' => $value]));
+            }
         }
         $this->assertSame('a b', WgwApiEnvFile::readValue("WGW_X='a b'\n", 'WGW_X'));
     }
@@ -83,6 +87,32 @@ ENV;
 
         $appended = WgwApiEnvFile::setLine($updated, 'WGW_DB_DATABASE', 'wgw');
         $this->assertStringContainsString("WGW_DB_DATABASE=wgw\n", $appended);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function linesDotenvAccepts(): array
+    {
+        return [
+            'export' => ["APP_NAME=x\nexport APP_URL=https://old.example.test\n"],
+            'indent' => ["APP_NAME=x\n  APP_URL=https://old.example.test\n"],
+            'spaces around =' => ["APP_NAME=x\nAPP_URL = https://old.example.test\n"],
+            'plain line, then export' => ["APP_URL=https://a.example.test\nexport APP_URL=https://old.example.test\n"],
+        ];
+    }
+
+    #[DataProvider('linesDotenvAccepts')]
+    public function test_set_line_rewrites_every_line_read_value_reads(string $content): void
+    {
+        $this->assertTrue(WgwApiEnvFile::hasKey($content, 'APP_URL'));
+        $this->assertFalse(WgwApiEnvFile::hasKey($content, 'URL'));
+
+        $updated = WgwApiEnvFile::setLine($content, 'APP_URL', 'https://new.example.test', quote: false);
+
+        $this->assertSame('https://new.example.test', WgwApiEnvFile::readValue($updated, 'APP_URL'));
+        $this->assertStringNotContainsString('old.example.test', $updated);
+        $this->assertStringNotContainsString('export', $updated);
     }
 
     public function test_has_real_database_config_compares_against_example(): void

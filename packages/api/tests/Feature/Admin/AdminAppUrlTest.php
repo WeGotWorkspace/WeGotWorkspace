@@ -65,6 +65,22 @@ final class AdminAppUrlTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_admin_overwrites_an_export_app_url_line(): void
+    {
+        // dotenv loads the export line, so that is the one to replace.
+        file_put_contents($this->envDir.'/.env', "APP_URL=http://localhost\nexport APP_URL=https://old.example\n");
+
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/settings/app-url', ['url' => 'https://wgw.example'])
+            ->assertOk()
+            ->assertJsonPath('url', 'https://wgw.example');
+
+        $this->assertSame(
+            "APP_URL=https://wgw.example\nAPP_URL=https://wgw.example\n",
+            (string) file_get_contents($this->envDir.'/.env'),
+        );
+    }
+
     public function test_admin_rejects_unsafe_app_urls(): void
     {
         $before = (string) file_get_contents($this->envDir.'/.env');
