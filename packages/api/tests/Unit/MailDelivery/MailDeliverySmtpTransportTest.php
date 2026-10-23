@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Mail;
+namespace Tests\Unit\MailDelivery;
 
-use App\Services\Mail\MailSmtpTransportConfig;
+use App\Services\MailDelivery\MailDeliverySmtpTransport;
 use PHPUnit\Framework\TestCase;
 
-final class MailSmtpTransportConfigTest extends TestCase
+final class MailDeliverySmtpTransportTest extends TestCase
 {
     public function test_normalizes_submission_port_security_mismatch(): void
     {
-        $transport = MailSmtpTransportConfig::normalize([
+        $transport = MailDeliverySmtpTransport::normalize([
             'host' => 'mail.example.test',
             'port' => 587,
             'security' => 'ssl',
@@ -23,7 +23,7 @@ final class MailSmtpTransportConfigTest extends TestCase
 
     public function test_normalizes_implicit_tls_port(): void
     {
-        $transport = MailSmtpTransportConfig::normalize([
+        $transport = MailDeliverySmtpTransport::normalize([
             'host' => 'mail.example.test',
             'port' => 465,
             'security' => 'starttls',

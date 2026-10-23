@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
+use App\Services\MailDelivery\MailDeliverySmtpTransport;
 use App\Support\WgwSettings;
 
 final class MailOperationService
@@ -158,7 +159,7 @@ final class MailOperationService
         $ext = ImapExtension::loaded();
         $serversConfigured = MailServerSettings::serversConfigured($cfg);
         $accountConfigured = MailCredentialService::isAccountConfigured($account);
-        $smtp = MailSmtpTransportConfig::normalize(MailServerSettings::endpoints($cfg)['smtp']);
+        $smtp = MailDeliverySmtpTransport::normalize(MailServerSettings::endpoints($cfg)['smtp']);
 
         return [
             'extImap' => $ext,
@@ -170,7 +171,7 @@ final class MailOperationService
                 'host' => $smtp['host'],
                 'port' => $smtp['port'],
                 'security' => $smtp['security'],
-                'tcpReachable' => MailSmtpTransportConfig::canReachTcp($smtp['host'], $smtp['port']),
+                'tcpReachable' => MailDeliverySmtpTransport::canReachTcp($smtp['host'], $smtp['port']),
             ],
         ];
     }

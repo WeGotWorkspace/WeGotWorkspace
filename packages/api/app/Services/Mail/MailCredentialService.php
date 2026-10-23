@@ -6,10 +6,11 @@ namespace App\Services\Mail;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\MailUserCredential;
+use App\Services\MailDelivery\MailDeliverySecretFile;
 
 final class MailCredentialService
 {
-    public function __construct(private MailSecretService $secrets) {}
+    public function __construct(private MailDeliverySecretFile $secrets) {}
 
     /**
      * @param  array{imapUsername: string, imapPassword: string}|null  $account

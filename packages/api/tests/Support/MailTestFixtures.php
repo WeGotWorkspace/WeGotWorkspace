@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Mail\MailCredentialService;
 use App\Services\Mail\MailOperationService;
-use App\Services\Mail\MailSecretService;
+use App\Services\MailDelivery\MailDeliverySecretFile;
 use App\Support\WgwInstallConfig;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\File;
@@ -82,7 +82,7 @@ trait MailTestFixtures
 
     protected function seedMailCredentials(string $username, string $imapUsername, string $imapPassword): void
     {
-        $service = new MailCredentialService(new MailSecretService(
+        $service = new MailCredentialService(new MailDeliverySecretFile(
             $this->app->make(WgwInstallConfig::class)
         ));
         $service->save($username, $imapUsername, $imapPassword);

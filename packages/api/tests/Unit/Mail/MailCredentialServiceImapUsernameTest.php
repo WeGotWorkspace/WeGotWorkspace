@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Mail;
 
 use App\Services\Mail\MailCredentialService;
-use App\Services\Mail\MailSecretService;
+use App\Services\MailDelivery\MailDeliverySecretFile;
 use App\Support\WgwInstallConfig;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
@@ -26,7 +26,7 @@ final class MailCredentialServiceImapUsernameTest extends WgwDatabaseTestCase
 
     public function test_save_stores_submitted_imap_username_independent_of_profile_email(): void
     {
-        $service = new MailCredentialService(new MailSecretService(
+        $service = new MailCredentialService(new MailDeliverySecretFile(
             $this->app->make(WgwInstallConfig::class)
         ));
         $service->save('alice', 'mailbox@provider.test', 'mail-secret');
@@ -40,7 +40,7 @@ final class MailCredentialServiceImapUsernameTest extends WgwDatabaseTestCase
 
     public function test_effective_imap_username_falls_back_to_profile_email_when_unset(): void
     {
-        $service = new MailCredentialService(new MailSecretService(
+        $service = new MailCredentialService(new MailDeliverySecretFile(
             $this->app->make(WgwInstallConfig::class)
         ));
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Mail;
 
+use App\Services\MailDelivery\MailDeliverySmtpTransport;
 use PHPMailer\PHPMailer\PHPMailer;
 
 final class MailComposeOperations
@@ -89,7 +90,7 @@ final class MailComposeOperations
      */
     private function configureMailerSmtp(PHPMailer $mail, array $cred, int $smtpTimeout = 30): string
     {
-        $transport = MailSmtpTransportConfig::normalize($cred['smtp']);
+        $transport = MailDeliverySmtpTransport::normalize($cred['smtp']);
         $mail->CharSet = PHPMailer::CHARSET_UTF8;
         $mail->isSMTP();
         // Defaults are 300s each — wrong host/firewall makes POST hang until the browser gives up.
@@ -144,13 +145,13 @@ final class MailComposeOperations
             throw new MailResponseException(400, ['error' => 'to_required']);
         }
         $smtpTimeout = 30;
-        $transport = MailSmtpTransportConfig::normalize($cred['smtp']);
+        $transport = MailDeliverySmtpTransport::normalize($cred['smtp']);
         $appendErr = null;
         $attachReport = null;
         try {
-            if (! MailSmtpTransportConfig::canReachTcp($transport['host'], $transport['port'], 5.0)) {
+            if (! MailDeliverySmtpTransport::canReachTcp($transport['host'], $transport['port'], 5.0)) {
                 throw new \RuntimeException(
-                    'Cannot reach SMTP server at '.MailSmtpTransportConfig::describe($transport)
+                    'Cannot reach SMTP server at '.MailDeliverySmtpTransport::describe($transport)
                     .'. Check Admin mail settings (host, port, security) and that PHP can reach the host.'
                 );
             }
@@ -290,7 +291,7 @@ final class MailComposeOperations
             ]);
         }
 
-        $endpoint = $transport !== null ? MailSmtpTransportConfig::describe($transport) : '';
+        $endpoint = $transport !== null ? MailDeliverySmtpTransport::describe($transport) : '';
         $connectFailed = stripos($message, 'Could not connect') !== false
             || stripos($message, 'Failed to connect') !== false
             || stripos($message, 'Cannot reach SMTP') !== false;

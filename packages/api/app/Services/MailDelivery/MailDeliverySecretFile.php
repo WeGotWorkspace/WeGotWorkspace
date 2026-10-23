@@ -2,12 +2,18 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Mail;
+namespace App\Services\MailDelivery;
 
 use App\Support\WgwInstallConfig;
 use Illuminate\Support\Facades\File;
 
-final class MailSecretService
+/**
+ * The data-dir secret the SMTP password key derives from.
+ *
+ * Paths and legacy fallback stay as they were when this lived in the mail
+ * client: stored delivery passwords on existing installs must still decrypt.
+ */
+final class MailDeliverySecretFile
 {
     public function __construct(private WgwInstallConfig $install) {}
 

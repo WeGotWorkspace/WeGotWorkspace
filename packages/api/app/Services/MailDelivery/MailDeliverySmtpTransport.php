@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Mail;
+namespace App\Services\MailDelivery;
 
 /**
- * Normalizes site SMTP settings and applies them to PHPMailer.
+ * Normalizes the platform SMTP endpoint: port, security and whether to authenticate.
  */
-final class MailSmtpTransportConfig
+final class MailDeliverySmtpTransport
 {
     /**
      * @param  array{host?: string, port?: int|string, security?: string}  $smtp
