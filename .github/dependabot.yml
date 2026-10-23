@@ -85,9 +85,6 @@ updates:
       - dependency-name: "@vitest/*"
         versions:
           - ">=5.0.0"
-      - dependency-name: recharts
-        versions:
-          - ">=3.0.0"
       - dependency-name: react-day-picker
         versions:
           - ">=10.0.0"

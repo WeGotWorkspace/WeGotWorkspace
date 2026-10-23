@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import { FieldLabelRow as FormField } from "@/ui/field-label-row";
 import { parseUrlList } from "@/lib/rtc/config";
 import { DEFAULT_PUBLIC_STUN_URLS, DEFAULT_PUBLIC_STUN_URLS_CSV } from "@/lib/rtc/default-stun";

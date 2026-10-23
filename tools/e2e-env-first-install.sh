@@ -170,12 +170,23 @@ PHP'
   docker run --rm -v "${vol}:/vol" alpine:3.20 sh -c \
     "sed -i '/^WGW_DB_/d;/^WGW_DATA_DIR=/d' /vol/api.env"
 
+  # Hash only; never print the key itself.
+  local key_hash_cmd='grep -Eq "^APP_KEY=.+" /vol/api.env && grep "^APP_KEY=" /vol/api.env | sha256sum | cut -d" " -f1'
+  local key_hash_before key_hash_after
+  key_hash_before="$(docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c "$key_hash_cmd")" \
+    || fail "Docker: APP_KEY missing or empty on config volume"
+
   docker compose -f "${ROOT}/docker/install/docker-compose.yml" \
     --env-file "$DOCKER_ENV" \
     -p "$DOCKER_PROJECT" \
     restart web
   sleep 3
   wait_health "$base" || fail "Docker: health failed after legacy inject + restart"
+
+  key_hash_after="$(docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c "$key_hash_cmd")" \
+    || fail "Docker: APP_KEY missing or empty after restart"
+  [ "$key_hash_before" = "$key_hash_after" ] || fail "Docker: APP_KEY changed on restart"
+  pass "Docker restart kept APP_KEY"
 
   docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c \
     '! test -f /vol/wgw-config.php && grep -q WGW_DB_CONNECTION /vol/api.env' \

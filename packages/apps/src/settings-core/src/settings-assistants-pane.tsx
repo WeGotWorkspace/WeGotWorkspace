@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/ui/alert-dialog";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import { cn } from "@/lib/utils";
 import { displayOriginHost } from "@/settings-core/src/display-origin-host";
 import { McpConsentPermissionsCard } from "@/settings-core/src/mcp-consent-permissions-card";

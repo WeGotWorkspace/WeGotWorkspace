@@ -53,7 +53,6 @@
 .drive-detail-panel__preview > img,
 .drive-detail-panel__preview > video,
 .drive-detail-panel__preview .file-preview__fallback,
-.drive-detail-panel__preview .drive-media-preview__fallback,
 .drive-detail-panel__preview .file-preview-text-pane,
 .drive-detail-panel__preview .docs-file-preview {
   @apply absolute inset-0 h-full w-full;
@@ -64,13 +63,11 @@
   border-radius: var(--control-radius);
 }
 
-.drive-detail-panel__preview .file-preview__fallback,
-.drive-detail-panel__preview .drive-media-preview__fallback {
+.drive-detail-panel__preview .file-preview__fallback {
   @apply flex items-center justify-center opacity-80;
 }
 
-.drive-detail-panel__preview .file-preview__fallback svg,
-.drive-detail-panel__preview .drive-media-preview__fallback svg {
+.drive-detail-panel__preview .file-preview__fallback svg {
   width: 4rem;
   height: 4rem;
 }

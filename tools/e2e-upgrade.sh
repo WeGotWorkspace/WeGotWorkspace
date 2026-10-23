@@ -184,6 +184,28 @@ stop_web() {
   docker rm -f "$WEB_NAME" >/dev/null 2>&1 || true
 }
 
+# Hash of the APP_KEY line on the config volume. Prints only the hash, never
+# the key. Fails when the key is missing or empty.
+app_key_hash() {
+  docker run --rm -v "${VOL_CONFIG}:/vol:ro" "$ALPINE_IMAGE" sh -c \
+    'grep -Eq "^APP_KEY=.+" /vol/api.env && grep "^APP_KEY=" /vol/api.env | sha256sum | cut -d" " -f1'
+}
+
+expect_app_key_hash() {
+  local label="$1"
+  local expected="$2"
+  local actual
+  actual="$(app_key_hash)" || {
+    echo "APP_KEY missing or empty ${label}" >&2
+    exit 1
+  }
+  if [[ "$actual" != "$expected" ]]; then
+    echo "APP_KEY changed ${label} (sha256 ${expected} -> ${actual})" >&2
+    exit 1
+  fi
+  echo "APP_KEY unchanged ${label} (sha256 ${actual})"
+}
+
 command -v node >/dev/null
 command -v docker >/dev/null
 PORT="$(pick_port)"
@@ -219,6 +241,10 @@ export WGW_E2E_ADMIN_USER="$ADMIN_USER"
 export WGW_E2E_ADMIN_PASS="$ADMIN_PASS"
 export WGW_E2E_ADMIN_EMAIL="$ADMIN_EMAIL"
 node "$ROOT/tools/upgrade-e2e/integrity.mjs" seed
+APP_KEY_HASH="$(app_key_hash)" || {
+  echo "APP_KEY missing or empty after baseline install" >&2
+  exit 1
+}
 
 stop_web
 run_migrator "$TO_IMAGE"
@@ -227,5 +253,16 @@ if ! wait_until "upgraded health" curl -fsS "${BASE}/api/v1/health"; then
   docker logs "$WEB_NAME" >&2 || true
   exit 1
 fi
+expect_app_key_hash "after upgrade" "$APP_KEY_HASH"
+
+# A restart must keep APP_KEY. A new key would orphan everything sealed
+# under the old one (refresh tokens, share links, collab ticket key).
+stop_web
+start_web "$TO_IMAGE"
+if ! wait_until "restarted health" curl -fsS "${BASE}/api/v1/health"; then
+  docker logs "$WEB_NAME" >&2 || true
+  exit 1
+fi
+expect_app_key_hash "after restart" "$APP_KEY_HASH"
 node "$ROOT/tools/upgrade-e2e/integrity.mjs" verify
 echo "Baseline → current upgrade kept users, calendars, notes, tasks, drive files, and contacts"
