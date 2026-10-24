@@ -28,12 +28,6 @@ export const Default: Story = {
         fg: "var(--color-we-got-soft)",
       },
       {
-        id: "mail",
-        label: "Mail",
-        appId: "mail",
-        accent: WORKSPACE_APP_ACCENT.mail,
-      },
-      {
         id: "meet",
         label: "Meet",
         appId: "meet",

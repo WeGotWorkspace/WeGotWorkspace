@@ -27,7 +27,7 @@ export type CreateBrandingStoryMetaOptions<TComponent = ComponentType> = {
    */
   appId: BrandingPlaygroundAppId;
   /**
-   * Root BEM class the decorator retargets (e.g. `mail-workspace`).
+   * Root BEM class the decorator retargets (e.g. `notes-workspace`).
    * Use `""` for Home; `login-screen` for Login / Installer.
    */
   workspaceClass: string;
@@ -90,16 +90,16 @@ function baseCssprops(
  * @example
  * ```tsx
  * const brandingMeta = createBrandingStoryMeta({
- *   appId: "mail",
- *   workspaceClass: "mail-workspace",
+ *   appId: "notes",
+ *   workspaceClass: "notes-workspace",
  *   accentToken: "workspace-accent",
- *   component: MailWorkspace,
+ *   component: NotesWorkspace,
  * });
  * const meta = {
  *   ...brandingMeta,
- *   title: "Themes/Mail",
+ *   title: "Themes/Notes",
  *   tags: ["vitest-ci"],
- * } satisfies Meta<typeof MailWorkspace>;
+ * } satisfies Meta<typeof NotesWorkspace>;
  * export default meta;
  * ```
  */

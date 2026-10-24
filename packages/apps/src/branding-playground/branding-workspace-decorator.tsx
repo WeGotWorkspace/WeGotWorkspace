@@ -11,7 +11,7 @@ export type BrandingPlaygroundParameters = {
   /** Suite app, home grid, or cream auth shell (`login` / `install`). */
   appId: BrandingPlaygroundAppId;
   /**
-   * Root BEM class the decorator retargets (e.g. `mail-workspace`).
+   * Root BEM class the decorator retargets (e.g. `notes-workspace`).
    * Empty for Home grid; use `login-screen` for Login / Installer.
    */
   workspaceClass: string;
@@ -397,7 +397,7 @@ export const BrandingWorkspaceDecorator: Decorator = (Story, context) => {
   const branding = context.parameters.brandingPlayground as
     BrandingPlaygroundParameters | undefined;
   const workspaceClass = branding?.workspaceClass ?? "";
-  const appId = branding?.appId ?? "mail";
+  const appId = branding?.appId ?? "notes";
   const args = context.args as BrandingStoryArgs;
   const overrideMarkup = resolveBrandingIconMarkup(args, appId);
   const entries = csspropEntriesFromParameters(context.parameters as Record<string, unknown>);

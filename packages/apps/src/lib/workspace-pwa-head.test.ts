@@ -5,7 +5,6 @@ import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 describe("createWorkspacePwaHead", () => {
   it("links manifest and cache-busted apple-touch PNG for each workspace app", () => {
     for (const appId of WORKSPACE_APP_IDS) {
-      if (appId === "mail") continue;
       const head = createWorkspacePwaHead(appId);
       expect(head.links).toEqual(
         expect.arrayContaining([
@@ -29,7 +28,7 @@ describe("createWorkspacePwaHead", () => {
   });
 
   it("leaves the theme-color meta to the document theme sync", () => {
-    for (const appId of [...WORKSPACE_APP_IDS.filter((id) => id !== "mail"), "home" as const]) {
+    for (const appId of [...WORKSPACE_APP_IDS, "home" as const]) {
       const head = createWorkspacePwaHead(appId);
       expect(head.meta).not.toEqual(
         expect.arrayContaining([expect.objectContaining({ name: "theme-color" })]),

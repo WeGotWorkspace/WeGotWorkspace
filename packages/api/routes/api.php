@@ -42,7 +42,6 @@ use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
 use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
-use App\Http\Controllers\Api\V1\Mail\MailController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
 use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
@@ -52,7 +51,6 @@ use App\Http\Controllers\Api\V1\Rooms\RoomSessionController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchController;
 use App\Http\Controllers\Api\V1\Search\UnifiedSearchDownloadController;
 use App\Http\Controllers\Api\V1\Security\CspReportController;
-use App\Http\Controllers\Api\V1\Settings\MailController as SettingsMailController;
 use App\Http\Controllers\Api\V1\Settings\McpGrantsController as SettingsMcpGrantsController;
 use App\Http\Controllers\Api\V1\Settings\ProfileController as SettingsProfileController;
 use App\Http\Controllers\Api\V1\Settings\StateController as SettingsStateController;
@@ -205,34 +203,9 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
 
     Route::get('settings/state', SettingsStateController::class);
     Route::put('settings/profile', SettingsProfileController::class);
-    Route::put('settings/mail', SettingsMailController::class);
     Route::get('settings/mcp-grants', [SettingsMcpGrantsController::class, 'index']);
     Route::delete('settings/mcp-grants/{clientId}', [SettingsMcpGrantsController::class, 'destroy'])
         ->where('clientId', '[A-Za-z0-9-]+');
-
-    // Unsupported in v0.9 (test-only). OpenAPI omits these paths while the flag is off.
-    if (config('wgw.mail.client_enabled')) {
-        Route::get('mail/status', [MailController::class, 'status']);
-        Route::get('mail/folders', [MailController::class, 'foldersIndex']);
-        Route::post('mail/folders', [MailController::class, 'foldersStore']);
-        Route::patch('mail/folders', [MailController::class, 'foldersUpdate']);
-        Route::delete('mail/folders', [MailController::class, 'foldersDestroy']);
-        Route::get('mail/messages', [MailController::class, 'messagesIndex']);
-        Route::post('mail/messages', [MailController::class, 'messagesStore']);
-        Route::post('mail/drafts', [MailController::class, 'draftsStore']);
-        Route::post('mail/move', [MailController::class, 'move']);
-        Route::get('mail/messages/{messageId}/attachments/{attachmentId}', [MailController::class, 'messageAttachmentById'])
-            ->where('messageId', '[^/]+')
-            ->where('attachmentId', '[0-9.]+');
-        Route::get('mail/messages/{messageId}/attachments', [MailController::class, 'messageAttachmentsById'])
-            ->where('messageId', '[^/]+');
-        Route::get('mail/messages/{messageId}', [MailController::class, 'messageShowById'])
-            ->where('messageId', '[^/]+');
-        Route::patch('mail/messages/{messageId}', [MailController::class, 'messageUpdateById'])
-            ->where('messageId', '[^/]+');
-        Route::delete('mail/messages/{messageId}', [MailController::class, 'messageDestroyById'])
-            ->where('messageId', '[^/]+');
-    }
 
     Route::middleware('wgw.calendars')->group(function (): void {
         Route::post('calendars/events/import', CalendarEventImportController::class);

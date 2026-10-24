@@ -16,7 +16,6 @@
  * and drops keys that disappeared. A drop is never written into the baseline.
  * `update --reseed` writes the current report as-is. It is the one-time
  * escape hatch when the baseline was seeded above what CI measures.
- * mail-core and Services/Mail are unshipped for v0.9 and are excluded.
  * `check --json` prints the machine-readable report on stdout and the human
  * report on stderr. Exit codes stay the same.
  */
@@ -52,13 +51,6 @@ const apiCoveragePath = path.join(
 
 export function roundPct(value) {
   return Math.round(Number(value) * 100) / 100;
-}
-
-/** mail-core and Services/Mail are unshipped for v0.9. */
-export function isExcludedKey(key) {
-  if (key === "packages/apps/src/mail-core") return true;
-  if (key === "packages/api/app/Services/Mail") return true;
-  return false;
 }
 
 export function scopeOf(key) {
@@ -124,7 +116,7 @@ function percentagesFromBuckets(buckets) {
 }
 
 function addCounts(buckets, key, covered, total) {
-  if (!key || isExcludedKey(key)) return;
+  if (!key) return;
   const bucket = buckets.get(key) ?? { covered: 0, total: 0 };
   bucket.covered += covered;
   bucket.total += total;

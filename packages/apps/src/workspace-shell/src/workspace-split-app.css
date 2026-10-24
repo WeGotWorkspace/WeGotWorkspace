@@ -16,7 +16,7 @@
  * `:where` so a later import of this file cannot reset product `--primary`
  * back to a hard fill. The app loads every product CSS file; Storybook loads one.
  */
-:where(.admin-workspace, .settings-workspace, .notes-workspace, .mail-workspace) {
+:where(.admin-workspace, .settings-workspace, .notes-workspace) {
   --workspace-root-bg: var(--workspace-surface);
   --app-sidebar-border-color: var(--border);
   --workspace-user-footer-text-color: color-mix(

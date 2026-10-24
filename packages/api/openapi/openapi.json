@@ -5832,32 +5832,6 @@
         "x-wgw-access": "user"
       }
     },
-    "/settings/mail": {
-      "put": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Update personal mail credentials for current user",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated settings state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SettingsStateResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
     "/settings/profile": {
       "put": {
         "tags": [

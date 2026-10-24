@@ -6,13 +6,11 @@ import type {
   SettingsPanelGroup,
   SettingsPanelId,
 } from "@/settings-core/src/settings-types";
-import type { SettingsMailFormController } from "@/settings-core/src/use-settings-mail-form";
 import type { SettingsMcpGrantsState } from "@/settings-core/src/use-settings-mcp-grants";
 import type { SettingsProfileFormController } from "@/settings-core/src/use-settings-profile-form";
 
 export type SettingsSliceRenderProps = {
   profile: SettingsProfileFormController;
-  mail: SettingsMailFormController;
   assistants: SettingsMcpGrantsState;
   memberships: SettingsGroup[];
 };

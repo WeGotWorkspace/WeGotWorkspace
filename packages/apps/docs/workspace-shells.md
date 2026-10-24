@@ -71,7 +71,6 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `drive-core`               | Split                    | `drive-core/src/drive-workspace.tsx`                                                                                         |
 | `installer-core`           | Custom                   | `installer-core/src/installer-workspace.tsx` — live `/install`                                                               |
 | `settings-core`            | Split                    | `settings-core/src/settings-workspace.tsx`                                                                                   |
-| `mail-core`                | Collection               | `mail-core/src/mail-workspace.tsx`                                                                                           |
 | `notes-core`               | Collection               | `notes-core/src/notes-workspace.tsx`                                                                                         |
 | `meet-core`                | Split                    | `meet-core/src/meet-workspace.tsx` — channels + chat + optional `MeetCallStage`                                              |
 | `meet-core` (live `/meet`) | Split                    | `meet-core/src/meet-chat-app.tsx` — `MeetChatApp`: hybrid chat client + real RTC call stage in `MeetWorkspace`               |
@@ -80,7 +79,7 @@ Verified against current `*-workspace.tsx` (or equivalent) sources:
 | `login-core`               | Custom (header only)     | `login-core/src/login-screen.tsx` — not a product workspace                                                                  |
 | `text-editor-core`         | Split (collab submodule) | `text-editor-core/docs-collab/docs-collab-workspace.tsx` — editor primitive + docs collab demo, not a routed app             |
 
-Settings contributions live in a compile-time registry (`registerBuiltinSettings()` from the SPA shell). The Settings app lists Account sections plus Apps rows that have a reachable slice (Calendar, Tasks, Contacts, Notes). Mail stays off the nav; `/settings/mail` still renders the callout pane. Product workspaces that pass `appId` show a Settings row above the avatar; that row opens the same panel in a dialog. Empty apps (Drive, Docs, Meet) and Mail hide the row. Skip Settings, Admin, Install, and Meet guest.
+Settings contributions live in a compile-time registry (`registerBuiltinSettings()` from the SPA shell). The Settings app lists Account sections plus Apps rows that have a reachable slice (Calendar, Tasks, Contacts, Notes). Product workspaces that pass `appId` show a Settings row above the avatar; that row opens the same panel in a dialog. Empty apps (Drive, Docs, Meet) hide the row. Skip Settings, Admin, Install, and Meet guest.
 
 ## Required imports and CSS
 
@@ -133,11 +132,11 @@ import "@/<product>-core/src/<product>-workspace.css";
 }
 ```
 
-Optionally import `react-swipeable-list/dist/styles.css` when using swipe lists (mail, notes).
+Optionally import `react-swipeable-list/dist/styles.css` when using swipe lists (notes).
 
-**Storybook** — product `*-story-scope.tsx` with variants for list column, detail pane, dialogs (see `mail-story-scope.tsx`, `notes-story-scope.tsx`). List-pane stories may mount `CollectionListWorkspace` directly with fixtures; workspace stories render full `*Workspace` fullscreen.
+**Storybook** — product `*-story-scope.tsx` with variants for list column, detail pane, dialogs (see `notes-story-scope.tsx`). List-pane stories may mount `CollectionListWorkspace` directly with fixtures; workspace stories render full `*Workspace` fullscreen.
 
-**Reference:** `packages/apps/src/mail-core/src/mail-workspace.tsx`
+**Reference:** `packages/apps/src/notes-core/src/notes-workspace.tsx`
 
 ### Custom (`WorkspaceShellHeader` + bespoke layout)
 
@@ -178,7 +177,7 @@ import "@/<product>-core/src/<product>-workspace.css";
 | Pattern    | Canonical file                                               |
 | ---------- | ------------------------------------------------------------ |
 | Split      | `packages/apps/src/settings-core/src/settings-workspace.tsx` |
-| Collection | `packages/apps/src/mail-core/src/mail-workspace.tsx`         |
+| Collection | `packages/apps/src/notes-core/src/notes-workspace.tsx`       |
 | Custom     | `packages/apps/src/login-core/src/login-screen.tsx`          |
 
 Additional split references: `admin-workspace.tsx`, `drive-workspace.tsx`, `docs-workspace.tsx`, `meet-workspace.tsx`.

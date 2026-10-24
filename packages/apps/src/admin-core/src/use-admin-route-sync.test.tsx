@@ -60,12 +60,12 @@ describe("useAdminRouteSync", () => {
     const { result } = renderHook(() => useAdminRouteSync());
 
     act(() => {
-      result.current.onSectionChange("mail");
+      result.current.onSectionChange("email-delivery");
     });
 
     expect(navigate).toHaveBeenCalledWith({
       to: "/admin/$section",
-      params: { section: "mail" },
+      params: { section: "email-delivery" },
     });
   });
 });
