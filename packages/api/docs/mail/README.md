@@ -16,7 +16,7 @@ Inbound iMIP (reading replies) is not implemented.
 - Stored data stays. The `mail_user_credentials` table and the `mail_imap_*` / `mail_smtp_*` settings are not dropped. Nothing reads the credentials. The Admin Email delivery form prefills from `mail_smtp_*` when no delivery host is set. A cleanup migration is a separate decision.
 - The installer still accepts the `mail_enabled` / `mail_imap_*` / `mail_smtp_*` payload fields. They do not turn anything on.
 
-`php-imap` is not part of this release and is not an installer check.
+The client's PHP dependencies went with it: `phpmailer/phpmailer`, `zbateson/mail-mime-parser`, and the `ext-imap` extension in the Docker images and CI. The installer never checks for `imap`. Restoring the client from history means adding them back.
 
 ## Product target
 

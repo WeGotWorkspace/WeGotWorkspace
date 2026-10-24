@@ -4,7 +4,6 @@ import { expect, userEvent, within } from "storybook/test";
 import { TextEditor } from "@/text-editor-core/src/text-editor";
 import { TEXT_EDITOR_CONTENT_FORMATS } from "@/text-editor-core/src/text-editor-content";
 import { textEditorDemoContent } from "@/text-editor-core/src/text-editor-fixtures";
-import { TEXT_EDITOR_FORMAT_BAR_MAIL } from "@/text-editor-core/src/text-editor-format-bar-config";
 import { TextEditorWithSourceToggle } from "@/text-editor-core/stories/text-editor-source-stories.harness";
 
 import "@/text-editor-core/src/text-editor.css";
@@ -104,16 +103,6 @@ export const TaskList: Story = {
   },
 };
 
-export const MailHtml: Story = {
-  name: "Mail HTML toolbar",
-  args: {
-    format: "html",
-    content: "<p>Hello — use the mail toolbar preset.</p>",
-    editable: true,
-    formatBar: { groups: TEXT_EDITOR_FORMAT_BAR_MAIL, showPrint: false },
-  },
-};
-
 const sourceToggleRender = (args: ComponentProps<typeof TextEditor>) => (
   <TextEditorWithSourceToggle {...args} />
 );
@@ -138,18 +127,6 @@ export const MarkdownWithSourceToggle: Story = {
     content: textEditorDemoContent("markdown"),
     editable: true,
     showPrint: true,
-    viewSource: false,
-  },
-};
-
-export const MailHtmlWithSourceToggle: Story = {
-  name: "Mail HTML source (external toggle)",
-  render: sourceToggleRender,
-  args: {
-    format: "html",
-    content: "<p>Hello — use the mail toolbar preset.</p>",
-    editable: true,
-    formatBar: { groups: TEXT_EDITOR_FORMAT_BAR_MAIL, showPrint: false },
     viewSource: false,
   },
 };
