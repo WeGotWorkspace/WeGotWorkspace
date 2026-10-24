@@ -139,9 +139,6 @@ export function mapWgwAdminStateToUI(
       displayName: group.displayName,
     })),
     mail: {
-      imapHost: state.mail.imapHost,
-      imapPort: state.mail.imapPort,
-      imapSecurity: state.mail.imapSecurity,
       smtpHost: state.mail.smtpHost,
       smtpPort: state.mail.smtpPort,
       smtpSecurity: state.mail.smtpSecurity,

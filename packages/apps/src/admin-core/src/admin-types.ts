@@ -2,7 +2,6 @@ import type { WgwAdminSecurityWarning } from "@/lib/api/wgw";
 
 export type AdminSection =
   | "users"
-  | "mail"
   | "email-delivery"
   | "collaboration"
   | "webdav"
@@ -73,10 +72,8 @@ export type AdminGroup = {
   displayName: string;
 };
 
+/** The pre-delivery SMTP endpoint. Email delivery prefills from it when its own host is empty. */
 export type AdminMailSettings = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
   smtpHost: string;
   smtpPort: number;
   smtpSecurity: string;

@@ -4,7 +4,6 @@ import {
   formatGrantDate,
   groupMcpScopeIds,
   MCP_CONSENT_GROUP_APP_ID,
-  MCP_MAIL_GRANT_GROUP_LABEL,
   MCP_SCOPE_CATALOG,
   mcpConsentCatalogScopeIds,
   mcpConsentGroupsFor,
@@ -26,15 +25,12 @@ describe("groupMcpScopeIds", () => {
     ]);
   });
 
-  it("keeps mail scopes on grant cards and out of the consent catalog", () => {
+  it("lists retired mail scopes from an old grant under Other, off the consent catalog", () => {
     const groups = groupMcpScopeIds(["mail.read", "mail.send", "drive.read"]);
-    expect(groups.map((group) => group.label)).toEqual(["Drive", MCP_MAIL_GRANT_GROUP_LABEL]);
+    expect(groups.map((group) => group.label)).toEqual(["Drive", "Other"]);
     expect(groups[1]?.scopes.map((scope) => scope.id)).toEqual(["mail.read", "mail.send"]);
     expect(mcpConsentCatalogScopeIds()).not.toContain("mail.read");
     expect(mcpConsentCatalogScopeIds()).not.toContain("mail.send");
-    expect(
-      mcpConsentGroupsFor(mcpConsentCatalogScopeIds()).map((group) => group.label),
-    ).not.toContain(MCP_MAIL_GRANT_GROUP_LABEL);
   });
 
   it("groups drive.share with Drive and labels it Share", () => {
@@ -82,8 +78,8 @@ describe("filterMcpConsentGroupsToGranted", () => {
 });
 
 describe("mcpScopeActionLabel", () => {
-  it("uses Send for mail.send", () => {
-    expect(mcpScopeActionLabel("mail.send")).toBe("Send");
+  it("uses Share for drive.share", () => {
+    expect(mcpScopeActionLabel("drive.share")).toBe("Share");
   });
 
   it("keeps a fallback label for offline_access", () => {

@@ -19,7 +19,6 @@ describe("useSettingsMcpGrants", () => {
     const { result } = renderHook(() =>
       useSettingsMcpGrants({
         saveProfile: vi.fn(),
-        saveMail: vi.fn(),
         listMcpGrants,
         revokeMcpGrant: vi.fn(),
       }),
@@ -48,7 +47,6 @@ describe("useSettingsMcpGrants", () => {
     const { result } = renderHook(() =>
       useSettingsMcpGrants({
         saveProfile: vi.fn(),
-        saveMail: vi.fn(),
         listMcpGrants,
         revokeMcpGrant,
       }),
@@ -72,7 +70,6 @@ describe("useSettingsMcpGrants", () => {
       useSettingsMcpGrants(
         {
           saveProfile: vi.fn(),
-          saveMail: vi.fn(),
           listMcpGrants,
           revokeMcpGrant: vi.fn(),
         },
