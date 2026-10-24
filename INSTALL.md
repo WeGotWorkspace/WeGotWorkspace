@@ -74,7 +74,7 @@ Then follow first-run setup:
 - Database (MySQL / MariaDB by default, or SQLite). Skipped when `WGW_INSTALL_*` already has a database
 - First account (username and password)
 
-Required server failures interrupt setup. `php-imap` is not required for this release and is not an installer check. The Mail client is not in the v0.9 suite — see [packages/api/docs/mail/README.md](packages/api/docs/mail/README.md).
+Required server failures interrupt setup. The Mail client is not in the v0.9 suite — see [packages/api/docs/mail/README.md](packages/api/docs/mail/README.md).
 
 ## 4) Done
 
