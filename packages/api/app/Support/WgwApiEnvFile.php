@@ -28,8 +28,11 @@ final class WgwApiEnvFile
      * own, so a torn line elsewhere does not matter. Quotes, escapes, inline
      * comments, CRLF, `export` and spaces around `=` behave as at boot. Empty
      * string for an empty or unparsable value; null when no line sets $key.
-     * Values never continue onto the next line, so multi-line quoted values
-     * read as empty.
+     * `${VAR}` references come back as written; Laravel expands them.
+     *
+     * Not supported (we never write them): multi-line quoted values read as
+     * empty, and a `KEY=` line inside another key's multi-line value is read
+     * (and rewritten by setLine()) although dotenv treats it as that value.
      */
     public static function readValue(string $content, string $key): ?string
     {
@@ -52,6 +55,11 @@ final class WgwApiEnvFile
         return preg_match(self::lineRegex($key), $content) === 1;
     }
 
+    /**
+     * Replace every line that sets $key with `KEY=value`, or append one.
+     * With $quote false the value is written raw: only pass values already
+     * validated to hold no whitespace, newlines, quotes, `#` or `$`.
+     */
     public static function setLine(string $content, string $key, string $value, bool $quote = true): string
     {
         $line = $quote
@@ -74,10 +82,14 @@ final class WgwApiEnvFile
         return '/^[ \t]*(?:export[ \t]+)?'.preg_quote($key, '/').'[ \t]*=[^\r\n]*/m';
     }
 
+    /**
+     * The value as dotenv will load it back, quoted when needed. `$` is
+     * escaped so Laravel does not expand `${...}` in a written value.
+     */
     public static function quoteValue(string $value): string
     {
-        if ($value === '' || preg_match('/[\s#="\']/', $value) === 1) {
-            return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
+        if ($value === '' || preg_match('/[\s#="\'$]/', $value) === 1) {
+            return '"'.str_replace(['\\', '"', '$'], ['\\\\', '\\"', '\\$'], $value).'"';
         }
 
         return $value;
