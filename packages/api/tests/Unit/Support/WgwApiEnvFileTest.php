@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Support;
 
 use App\Support\WgwApiEnvFile;
+use Dotenv\Dotenv;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -65,11 +66,13 @@ ENV;
 
     public function test_read_value_round_trips_quoted_values(): void
     {
-        foreach (['Team Mail', 'say "hi"', 'back\\slash', "it's", '', 'pa$1ss', 'a\\0b'] as $value) {
+        foreach (['Team Mail', 'say "hi"', 'back\\slash', "it's", '', 'pa$1ss', 'a\\0b', 'a${APP_NAME}c', '$x', 'pa$$'] as $value) {
             // Append a missing key, then replace an existing one.
             foreach (["APP_NAME=x\n", "MAIL_FROM_NAME=old\nAPP_NAME=x\n"] as $original) {
                 $content = WgwApiEnvFile::setLine($original, 'MAIL_FROM_NAME', $value);
 
+                // What Laravel loads at boot: parsed and with ${...} resolved.
+                $this->assertSame($value, Dotenv::parse($content)['MAIL_FROM_NAME']);
                 $this->assertSame($value, WgwApiEnvFile::readValue($content, 'MAIL_FROM_NAME'));
                 $this->assertTrue(WgwApiEnvFile::containsPairs($content, ['MAIL_FROM_NAME' => $value]));
             }
