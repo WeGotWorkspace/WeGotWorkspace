@@ -11,7 +11,6 @@ use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Support\AppVersion;
 use App\Support\ReleaseVersion;
-use App\Support\UpdateFeedDefaults;
 use App\Support\WgwInstallConfig;
 
 final class UpdateRunner
@@ -32,6 +31,7 @@ final class UpdateRunner
         private UpdateRunnerPackageIo $packages,
         private UpdateRunnerFilesystem $files,
         private UpdateRunnerBackupArchive $backups,
+        private UpdateChannelSettingService $channels,
     ) {
         $this->packages->bindRunner($this);
     }
@@ -70,7 +70,7 @@ final class UpdateRunner
 
         $response = [
             'installChannel' => $installChannel,
-            'updateChannel' => UpdateFeedDefaults::normalizeChannel(config('wgw.update_channel')),
+            'updateChannel' => $this->channels->current(),
             'installedVersion' => $installedVersion,
             'schemaVersion' => $this->schemaMigrator->currentVersion(),
             'latest' => $latest,
