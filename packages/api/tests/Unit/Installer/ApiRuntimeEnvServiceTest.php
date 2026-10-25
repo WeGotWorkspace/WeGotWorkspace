@@ -9,6 +9,7 @@ use App\Services\Installer\InstallerEnvWriter;
 use App\Support\AppPaths;
 use App\Support\WgwDatabaseProbe;
 use App\Support\WgwInstallConfig;
+use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 
 final class ApiRuntimeEnvServiceTest extends TestCase
@@ -118,6 +119,17 @@ final class ApiRuntimeEnvServiceTest extends TestCase
             "APP_KEY=base64:YWJj\nAPP_URL=https://cloud.example.test\nSESSION_DRIVER=file\n",
             file_get_contents($this->apiRoot.'/.env'),
         );
+    }
+
+    public function test_ensure_writes_an_app_url_dotenv_loads_unchanged(): void
+    {
+        // The installer's app_url field is caller input; ${...} must stay literal.
+        file_put_contents($this->apiRoot.'/.env', "APP_KEY=base64:YWJj\nAPP_URL=\n");
+        $url = 'https://a${APP_KEY}.example';
+
+        $this->assertTrue((new ApiRuntimeEnvService)->ensureAtApiRoot($this->apiRoot, $url)['patchedUrl']);
+
+        $this->assertSame($url, Dotenv::parse((string) file_get_contents($this->apiRoot.'/.env'))['APP_URL']);
     }
 
     public function test_ensure_rewrites_symlink_target_without_dropping_keys(): void

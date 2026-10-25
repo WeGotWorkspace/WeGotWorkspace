@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use Dotenv\Dotenv;
 use Tests\Support\AdminTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -79,6 +80,19 @@ final class AdminAppUrlTest extends WgwDatabaseTestCase
             "APP_URL=https://wgw.example\nAPP_URL=https://wgw.example\n",
             (string) file_get_contents($this->envDir.'/.env'),
         );
+    }
+
+    public function test_admin_app_url_is_not_expanded_by_dotenv(): void
+    {
+        // Laravel expands ${...} at boot; a saved URL must load exactly as saved.
+        $url = 'https://a${APP_KEY}.example';
+
+        $this->withBearer($this->adminBearerToken())
+            ->putJson('/api/v1/admin/settings/app-url', ['url' => $url])
+            ->assertOk();
+
+        $loaded = Dotenv::parse("APP_KEY=secret\n".(string) file_get_contents($this->envDir.'/.env'));
+        $this->assertSame($url, $loaded['APP_URL']);
     }
 
     public function test_admin_rejects_unsafe_app_urls(): void
