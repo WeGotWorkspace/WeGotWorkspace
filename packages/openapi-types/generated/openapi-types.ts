@@ -12123,7 +12123,7 @@ export interface components {
              * @description Stable identifier. Clients act on this, not on the message. app_url_local and app_url_unset both mean APP_URL does not name the public site.
              * @enum {string}
              */
-            code: "production_settings_applied" | "app_debug_on" | "app_env_not_production" | "app_url_local" | "app_url_unset" | "data_dir_published";
+            code: "app_debug_on" | "app_env_not_production" | "app_url_local" | "app_url_unset" | "data_dir_published";
             /** @description English text for display. */
             message: string;
         };
