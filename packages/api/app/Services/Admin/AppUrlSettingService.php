@@ -41,7 +41,7 @@ final class AppUrlSettingService
                 return null;
             }
 
-            return WgwApiEnvFile::setLine($content, 'APP_URL', $normalized, quote: false);
+            return WgwApiEnvFile::setLine($content, 'APP_URL', $normalized);
         });
 
         if (! $wrote && WgwApiEnvFile::readPath($envPath, 'APP_URL') !== $normalized) {

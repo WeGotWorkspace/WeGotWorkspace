@@ -137,7 +137,7 @@ final class ApiRuntimeEnvService
                 return null;
             }
 
-            return WgwApiEnvFile::setLine($content, 'APP_URL', $appUrl, quote: false);
+            return WgwApiEnvFile::setLine($content, 'APP_URL', $appUrl);
         });
     }
 
