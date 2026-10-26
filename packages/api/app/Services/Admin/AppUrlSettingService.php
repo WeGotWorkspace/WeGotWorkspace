@@ -42,8 +42,10 @@ final class AppUrlSettingService
         if (! is_file($envPath)) {
             throw new ApiHttpException(409, 'packages/api/.env does not exist. Create it from packages/api/.env.example and add this line: '.$line);
         }
+        // The writer could still replace a read-only file through its folder,
+        // but that would override the operator and hand the file to the web user.
         if (! is_writable($envPath)) {
-            throw new ApiHttpException(409, 'The web server cannot write packages/api/.env. Add this line there by hand, or make the file writable for the web server: '.$line);
+            throw new ApiHttpException(409, 'packages/api/.env is read-only, so it is left alone. Add this line there by hand: '.$line);
         }
 
         $wrote = $this->envFiles->update($envPath, static function (string $content) use ($normalized): ?string {
