@@ -12,10 +12,7 @@ import {
   CommentDraftAnchor,
 } from "@/text-editor-core/src/text-editor-comment-draft-anchor";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
-import {
-  getDocsTrackChangeGroups,
-  trackChangesAuthorIdFromName,
-} from "@/text-editor-core/src/text-editor-track-changes";
+import { getDocsTrackChangeGroups } from "@/text-editor-core/src/text-editor-track-changes";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
 import { getDocsCommentsMap } from "./use-docs-comments";
 import { useTestDocsComments as useDocsComments } from "./docs-threads-test-client";
@@ -31,7 +28,6 @@ function createEditor(content = "<p>Hello world</p>") {
 function createCollabEditor(ydoc: Y.Doc, awareness: Awareness) {
   applyContentSeedToYDoc(ydoc, "Hello world", "markdown");
   const user = {
-    id: trackChangesAuthorIdFromName("Alex"),
     name: "Alex",
     color: "#2563eb",
   };

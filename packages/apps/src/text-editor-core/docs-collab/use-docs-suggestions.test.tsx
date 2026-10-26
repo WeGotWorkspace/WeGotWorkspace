@@ -20,10 +20,7 @@ import { DocsCollabReviewPanel } from "./docs-collab-review/docs-collab-review-p
 import { DocsSuggestionCard } from "./docs-suggestions/docs-suggestion-card";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import * as trackChanges from "@/text-editor-core/src/text-editor-track-changes";
-import {
-  getDocsTrackChangeGroups,
-  trackChangesAuthorIdFromName,
-} from "@/text-editor-core/src/text-editor-track-changes";
+import { getDocsTrackChangeGroups } from "@/text-editor-core/src/text-editor-track-changes";
 import { useTestDocsSuggestions as useDocsSuggestions } from "./docs-threads-test-client";
 import { createDocsThreadsMemory } from "./docs-threads-memory";
 import { DOCS_THREADS_TEST_PATH } from "./docs-threads-test-client";
@@ -69,13 +66,21 @@ function suggestReplaceText(editor: Editor, from: number, to: number, text: stri
   }
 }
 
+async function expectSuggestionAuthor(
+  read: () => { changeId: string; authorName: string; authorColor?: string }[],
+  changeId: string,
+  name: string,
+) {
+  await waitFor(() => {
+    const suggestion = read().find((item) => item.changeId === changeId);
+    expect(suggestion?.authorName).toBe(name);
+    expect(suggestion?.authorColor).toBeTruthy();
+  });
+}
+
 function createCollabEditor(ydoc: Y.Doc, awareness: Awareness) {
   applyContentSeedToYDoc(ydoc, "Hello world", "markdown");
-  const user = {
-    id: trackChangesAuthorIdFromName("Alex"),
-    name: "Alex",
-    color: "#2563eb",
-  };
+  const user = { name: "Alex", color: "#2563eb" };
   const element = document.createElement("div");
   document.body.appendChild(element);
   const editor = new Editor({
@@ -94,11 +99,7 @@ function createCollabEditor(ydoc: Y.Doc, awareness: Awareness) {
 
 function createReplaceEditor(ydoc: Y.Doc, awareness: Awareness) {
   applyContentSeedToYDoc(ydoc, "Hello world", "markdown");
-  const user = {
-    id: trackChangesAuthorIdFromName("Alex"),
-    name: "Alex",
-    color: "#2563eb",
-  };
+  const user = { name: "Alex", color: "#2563eb" };
   const element = document.createElement("div");
   document.body.appendChild(element);
   const editor = new Editor({
@@ -185,7 +186,7 @@ describe("useDocsSuggestions", () => {
     editor.destroy();
   });
 
-  it("keeps replace diff after selecting a replace suggestion", () => {
+  it("keeps replace diff after selecting a replace suggestion", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const editor = createReplaceEditor(ydoc, awareness);
@@ -207,12 +208,12 @@ describe("useDocsSuggestions", () => {
     expect(suggestion?.parts.some((part) => part.type === "deletion")).toBe(true);
     expect(suggestion?.parts.some((part) => part.type === "insertion")).toBe(true);
     expect(suggestion?.summary).toContain("Replace");
-    expect(suggestion?.authorName).toBe("Alex");
+    await expectSuggestionAuthor(() => result.current.suggestions, changeId!, "Alex");
 
     editor.destroy();
   });
 
-  it("keeps replace diff after activating from a document mark click", () => {
+  it("keeps replace diff after activating from a document mark click", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const editor = createReplaceEditor(ydoc, awareness);
@@ -235,7 +236,7 @@ describe("useDocsSuggestions", () => {
     expect(suggestion?.parts.some((part) => part.type === "deletion")).toBe(true);
     expect(suggestion?.parts.some((part) => part.type === "insertion")).toBe(true);
     expect(suggestion?.summary).toContain("Replace");
-    expect(suggestion?.authorName).toBe("Alex");
+    await expectSuggestionAuthor(() => result.current.suggestions, changeId!, "Alex");
     expect(result.current.activeChangeId).toBe(changeId);
 
     const insAfter = editor.view.dom.querySelector("ins[data-change-id]");
@@ -249,7 +250,6 @@ describe("useDocsSuggestions", () => {
     const awareness = new Awareness(ydoc);
     applyContentSeedToYDoc(ydoc, "Hello", "markdown");
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -290,7 +290,6 @@ describe("useDocsSuggestions", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -383,7 +382,7 @@ describe("useDocsSuggestions", () => {
     editor.destroy();
   });
 
-  it("selectSuggestion only updates sidebar active state without touching the editor", () => {
+  it("selectSuggestion only updates sidebar active state without touching the editor", async () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const editor = createReplaceEditor(ydoc, awareness);
@@ -421,7 +420,8 @@ describe("useDocsSuggestions", () => {
     expect(suggestion?.parts.some((part) => part.type === "deletion")).toBe(true);
     expect(suggestion?.parts.some((part) => part.type === "insertion")).toBe(true);
     expect(suggestion?.summary).toContain("Replace");
-    expect(suggestion?.authorName).toBe("Alex");
+    // The session that made the suggestion records its root as the hook's current user.
+    await expectSuggestionAuthor(() => result.current.suggestions, changeId!, "Admin");
     expect(editor.view.dom.querySelector(`ins[data-change-id="${changeId}"]`)).toBeTruthy();
     expect(editor.view.dom.querySelector(`del[data-change-id="${changeId}"]`)).toBeTruthy();
 
@@ -503,7 +503,7 @@ describe("useDocsSuggestions", () => {
     editor.destroy();
   });
 
-  it("creates and archives a journal on accept so Resolved lists it without a live mark", async () => {
+  it("archives the journal made at suggestion time on accept so Resolved lists it without a live mark", async () => {
     vi.stubGlobal("CSS", { escape: (value: string) => value });
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
@@ -522,7 +522,12 @@ describe("useDocsSuggestions", () => {
       }),
     );
 
-    expect(threadsClient.snapshot().some((thread) => thread.changeId === changeId)).toBe(false);
+    // The session that made the suggestion creates its thread root at once.
+    await waitFor(() => {
+      expect(
+        threadsClient.snapshot().some((thread) => thread.changeId === changeId && !thread.archived),
+      ).toBe(true);
+    });
     expect(result.current.suggestions.some((item) => item.changeId === changeId)).toBe(true);
 
     await act(async () => {

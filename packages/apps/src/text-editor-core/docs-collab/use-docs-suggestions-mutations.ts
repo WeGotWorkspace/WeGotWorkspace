@@ -3,7 +3,7 @@ import { createCommentMessage } from "./docs-suggestions/docs-suggestions-map-wr
 import type { DocsCommentAuthor } from "./docs-comments-types";
 import type { DocsFileThread, DocsFileThreadCreate, DocsThreadsClient } from "./docs-threads-types";
 import type { DocsThreadsSource } from "./use-docs-threads-source";
-import { createDocsCommentId } from "./docs-comments-map";
+import { suggestionThreadIdForChange } from "./docs-suggestions/docs-suggestion-thread-id";
 
 type UseDocsSuggestionsMutationsOptions = {
   client: DocsThreadsClient | null;
@@ -34,17 +34,19 @@ function suggestionRoot(
   return match && !match.archived ? match : undefined;
 }
 
-function archiveCreateInput(
+function rootCreateInput(
+  path: string,
   changeId: string,
   snapshot: DocsSuggestionArchiveSnapshot | undefined,
 ): DocsFileThreadCreate {
   const input: DocsFileThreadCreate = {
-    id: createDocsCommentId(),
+    id: suggestionThreadIdForChange(path, changeId),
     kind: "suggestion",
     changeId,
     body: "",
-    anchorText: snapshot?.summary || snapshot?.anchorText || "",
   };
+  const anchorText = snapshot?.summary || snapshot?.anchorText;
+  if (anchorText) input.anchorText = anchorText;
   if (typeof snapshot?.from === "number") input.anchorFrom = snapshot.from;
   if (typeof snapshot?.to === "number") input.anchorTo = snapshot.to;
   return input;
@@ -70,6 +72,34 @@ export function useDocsSuggestionsMutations({
   currentUser,
 }: UseDocsSuggestionsMutationsOptions) {
   const inflight = useRef(new Set<string>());
+  const rootsInflight = useRef(new Map<string, Promise<DocsFileThread>>());
+
+  /**
+   * The suggestion thread root for `changeId`, created when missing. One call
+   * per change id at a time, and the root id is derived from the change id, so
+   * a retry, a second tab or a race returns the same thread.
+   */
+  const ensureSuggestionRoot = useCallback(
+    (changeId: string, snapshot?: DocsSuggestionArchiveSnapshot): Promise<DocsFileThread> => {
+      if (!client || !path) return Promise.reject(new Error("no threads client"));
+      const existing = suggestionJournal(source.fileThreads, changeId);
+      if (existing) return Promise.resolve(existing);
+      const pending = rootsInflight.current.get(changeId);
+      if (pending) return pending;
+      const created = client
+        .create(path, rootCreateInput(path, changeId, snapshot))
+        .then((thread) => {
+          source.upsert(thread);
+          return thread;
+        })
+        .finally(() => {
+          rootsInflight.current.delete(changeId);
+        });
+      rootsInflight.current.set(changeId, created);
+      return created;
+    },
+    [client, path, source],
+  );
 
   const addReply = useCallback(
     (changeId: string, body: string) => {
@@ -79,43 +109,24 @@ export function useDocsSuggestionsMutations({
       if (!message) return Promise.resolve();
 
       return (async () => {
-        const existing = suggestionRoot(source.fileThreads, changeId);
-        if (existing) {
-          source.upsert(
-            await client.reply(path, existing.id, { id: message.id, body: message.body }),
-          );
-          return;
-        }
-        source.upsert(
-          await client.create(path, {
-            id: createDocsCommentId(),
-            kind: "suggestion",
-            changeId,
-            body: message.body,
-          }),
-        );
+        const root =
+          suggestionRoot(source.fileThreads, changeId) ?? (await ensureSuggestionRoot(changeId));
+        source.upsert(await client.reply(path, root.id, { id: message.id, body: message.body }));
       })();
     },
-    [client, currentUser, path, source],
+    [client, currentUser, ensureSuggestionRoot, path, source],
   );
 
   const toggleReaction = useCallback(
     (changeId: string, emoji: string) => {
       if (!client || !path) return Promise.resolve();
       return (async () => {
-        let existing = suggestionRoot(source.fileThreads, changeId);
-        if (!existing) {
-          existing = await client.create(path, {
-            id: createDocsCommentId(),
-            kind: "suggestion",
-            changeId,
-            body: "",
-          });
-        }
-        source.upsert(await client.react(path, existing.id, emoji));
+        const root =
+          suggestionRoot(source.fileThreads, changeId) ?? (await ensureSuggestionRoot(changeId));
+        source.upsert(await client.react(path, root.id, emoji));
       })();
     },
-    [client, path, source],
+    [client, ensureSuggestionRoot, path, source],
   );
 
   const archiveSuggestion = useCallback(
@@ -127,8 +138,7 @@ export function useDocsSuggestionsMutations({
       inflight.current.add(changeId);
 
       return (async () => {
-        const journal =
-          existing ?? (await client.create(path, archiveCreateInput(changeId, snapshot)));
+        const journal = existing ?? (await ensureSuggestionRoot(changeId, snapshot));
         const thread = await client.patch(path, journal.id, {
           archived: true,
           changeId,
@@ -149,8 +159,8 @@ export function useDocsSuggestionsMutations({
           inflight.current.delete(changeId);
         });
     },
-    [client, path, source],
+    [client, ensureSuggestionRoot, path, source],
   );
 
-  return { addReply, toggleReaction, archiveSuggestion };
+  return { addReply, toggleReaction, archiveSuggestion, ensureSuggestionRoot };
 }
