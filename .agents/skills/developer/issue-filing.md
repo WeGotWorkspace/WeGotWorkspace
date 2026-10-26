@@ -1,6 +1,6 @@
 # Issue filing checklist (Goal / Epic / Task / Chore / Bug)
 
-Use when creating or classifying GitHub issues. Product intent: [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md). Delivery → specs: [plan-feature](../plan-feature/SKILL.md), [specs/README.md](../../specs/README.md). **Language:** English only, even if the user prompt is Dutch — [english-only.md](english-only.md).
+Use when creating or classifying GitHub issues. Product intent: [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md). Delivery → specs: [plan-feature](../plan-feature/SKILL.md), [specs/README.md](../../specs/README.md). **Language:** English only, even if the user prompt is Dutch — [english-only.md](english-only.md). **Level:** plain English for Goals and for the `Summary` that opens every delivery issue — [plain-language.md](plain-language.md).
 
 ## Three surfaces
 
@@ -30,6 +30,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 ## Checklist
 
 1. **English:** title and body in English (Goals, Epics, Tasks, Chores, Bugs, and every comment). Prompt language does not matter.
+   **Plain language:** a Goal is plain English (B1) throughout, with no technical content. Every Epic, Task, Chore, and Bug starts with a `Summary` block (What / Who notices / If we wait) for the product lead. Technical content removed from a Goal moves to its Epic, never into the void. Rules and examples: [plain-language.md](plain-language.md).
 2. **Classify:** Goal | Epic | Task | Chore | Bug
 3. **Goal** → file in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (`gh issue create -R WeGotWorkspace/Product --template goal.yml`); **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); GitHub issue type **Feature** and label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (draft; **no milestone**). **Adopted** + optional milestone only when committing to a release (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`. When product marks **Fulfilled**, close the issue (`completed`) and leave Status Fulfilled on the board.
 4. **Epic** → GitHub issue type **Task** and label `type:epic`; **required** parent Goal (add the Epic as a sub-issue of the Goal in WeGotWorkspace/Product); **not** on Product Project (even when parented under a Goal); milestone OK for release packing
