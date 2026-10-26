@@ -17,11 +17,11 @@ Do not skip (2) or (3) after (1). Do not declare an issue done based on green CI
 
 ## Goal vs Task / Epic modes
 
-Product governance splits GitHub issues into layers. Detect mode from labels (`type:goal` | `type:epic` | `type:task`) or body sections.
+Product governance splits GitHub issues into layers. Detect mode from the repository and labels: any issue in WeGotWorkspace/Product is a Goal; in this repository use `type:epic` | `type:task` or the body sections.
 
 | Mode | Labels | What to verify | Spec `Source:`? |
 |------|--------|----------------|-----------------|
-| **Goal** | `type:goal` | Outcome / **Success looks like** + child delivery issues | **Never** — Goals are never `Source:` |
+| **Goal** | any issue in WeGotWorkspace/Product | Outcome / **Success looks like** + child delivery issues | **Never** — Goals are never `Source:` |
 | **Epic / Task** | `type:epic`, `type:task`, or default eng issue | Implementer AC (`- [ ]`, Done when) + body-hash | **Yes** — `Source: #<task-or-epic>` |
 | **Bug / chore** | GitHub type **Bug**, `type:chore` | Bug expected behavior / chore checklist | Usually no `feat/` spec |
 
@@ -103,7 +103,7 @@ Read title + body + relevant comments. Note **state** (`OPEN`/`CLOSED`) but veri
 
 ### 2. Extract acceptance criteria
 
-**If Goal mode** (`type:goal`): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately. Verdict for Fulfilled / Goal satisfaction is product judgment on those success signals — closing every child is neither necessary nor sufficient by itself.
+**If Goal mode** (an issue in WeGotWorkspace/Product): extract **Success looks like** bullets and list linked children under Delivery / sub-issues. Do not treat Outcome/Who/Non-goals as eng AC. Report child status separately. Verdict for Fulfilled / Goal satisfaction is product judgment on those success signals — closing every child is neither necessary nor sufficient by itself.
 
 **If Task / Epic / Bug mode:** pull every **testable** requirement into a numbered list. Sources, in order:
 

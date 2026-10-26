@@ -8,7 +8,7 @@ How product intent and contributions are decided for WeGotWorkspace.
 
 | Surface | Owns |
 |---------|------|
-| **Product** | Goals (`type:goal`) in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), tracked on the Product roadmap Project — user outcomes and Status |
+| **Product** | Goals: every issue in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), tracked on the Product roadmap Project — user outcomes and Status |
 | **Delivery** | Epics, Tasks, Bugs in this repository — implementable work under Goals |
 | **Release targets & eng packing** | GitHub milestones (`v0.9`, `v1.0`, …) on Goals (soft release target) and on Epics/Tasks/Bugs (eng packing) |
 
@@ -16,7 +16,7 @@ How product intent and contributions are decided for WeGotWorkspace.
 
 ## Who accepts Goals
 
-Only **maintainers** may create, accept, defer, or close product Goals (`type:goal`).
+Only **maintainers** may create, accept, defer, or close product Goals.
 
 Lifecycle (Product Project Status):
 
