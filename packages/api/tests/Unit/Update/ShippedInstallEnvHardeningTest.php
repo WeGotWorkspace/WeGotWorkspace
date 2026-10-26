@@ -63,6 +63,20 @@ final class ShippedInstallEnvHardeningTest extends TestCase
         $this->assertSame('false', WgwApiEnvFile::readValue($written, 'APP_DEBUG'));
     }
 
+    public function test_hardening_rewrites_the_line_dotenv_loads(): void
+    {
+        // dotenv loads the last line, including `export` and `KEY = value` shapes.
+        $this->writeEnv("APP_ENV=production\nexport APP_ENV=local\nAPP_DEBUG = true\n");
+        config([
+            'wgw.install_root' => $this->root,
+            'wgw.install_channel' => 'docker',
+        ]);
+
+        $this->assertTrue($this->fresh()->apply());
+        $this->assertSame("APP_ENV=production\nAPP_ENV=production\nAPP_DEBUG=false\n", $this->readEnv());
+        $this->assertFalse($this->fresh()->apply());
+    }
+
     public function test_empty_channel_rewrites_release_layout_without_pnpm_workspace(): void
     {
         $this->assertFileDoesNotExist($this->root.'/pnpm-workspace.yaml');
