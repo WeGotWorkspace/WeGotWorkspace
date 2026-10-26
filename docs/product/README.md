@@ -33,7 +33,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 **Milestones may attach to Goals** as the soft release target for when we aim to fulfill the outcome. They are still OK on Epics/Tasks/Bugs (and optional eng chores) for eng packing.
 
-- Goal Status remains **Identified → Adopted → Fulfilled** (product judgment on the board). **A milestone is not Fulfilled** — closing or hitting a milestone does not move Status.
+- Goal Status remains **Identified → Adopted → Fulfilled** (product judgment on the board). Status lives only on the board, never in the Goal text, so the two cannot drift apart. **A milestone is not Fulfilled** — closing or hitting a milestone does not move Status.
 - Soft release target → optional milestone on the Goal (e.g. `v0.9` / `v1.0`) **only when Adopted** for that release. Identified Goals stay off milestones.
 - Eng packing → milestone on delivery issues; filter e.g. [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) (delivery work; Goals targeting that release carry the same-named milestone in the Product repository).
 - Product “what’s in flight” → Goals on the board at **Adopted** (eng progress on child Epics/Tasks), not a mega checklist issue.
