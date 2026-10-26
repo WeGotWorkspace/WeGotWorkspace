@@ -364,59 +364,6 @@ final class DocsThreadRepository
         ];
     }
 
-    public function retargetPath(string $from, string $to): void
-    {
-        $from = $this->paths->normalizeVirtualPath($from);
-        $to = $this->paths->normalizeVirtualPath($to);
-        $rows = DocsThreadIndex::query()
-            ->where('doc_path', $from)
-            ->orWhere('doc_path', 'like', $from.'/%')
-            ->get();
-        foreach ($rows as $row) {
-            $newPath = (string) $row->doc_path === $from
-                ? $to
-                : $to.substr((string) $row->doc_path, strlen($from));
-            $instance = CalendarInstance::query()
-                ->where('calendarid', (int) $row->calendarid)
-                ->where('uri', DocsThreadCollectionUris::POOL_URI)
-                ->first();
-            $object = $this->findObjectByUid((int) $row->calendarid, (string) $row->uid);
-            if ($instance !== null && $object !== null) {
-                $ics = $this->converter->applyDocPath($this->rawIcs($object), $newPath);
-                $this->calBackend()->updateCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                    $ics,
-                );
-            }
-            $row->doc_path = $newPath;
-            $row->save();
-        }
-    }
-
-    public function dropPath(string $path): void
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $rows = DocsThreadIndex::query()
-            ->where('doc_path', $path)
-            ->orWhere('doc_path', 'like', $path.'/%')
-            ->get();
-        foreach ($rows as $row) {
-            $instance = CalendarInstance::query()
-                ->where('calendarid', (int) $row->calendarid)
-                ->where('uri', DocsThreadCollectionUris::POOL_URI)
-                ->first();
-            $object = $this->findObjectByUid((int) $row->calendarid, (string) $row->uid);
-            if ($instance !== null && $object !== null) {
-                $this->calBackend()->deleteCalendarObject(
-                    [(int) $instance->calendarid, (int) $instance->id],
-                    (string) $object->uri,
-                );
-            }
-            $row->delete();
-        }
-    }
-
     /**
      * @param  array{username: string, role: string}  $principal
      */
