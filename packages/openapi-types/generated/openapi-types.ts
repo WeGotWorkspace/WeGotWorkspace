@@ -7246,7 +7246,7 @@ export interface paths {
                         "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
                     };
                 };
-                /** @description Environment file is not writable */
+                /** @description packages/api/.env was not written: it is missing or read-only, its folder is read-only, or the config is cached. The error names the cause and the APP_URL line to add by hand. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -7359,7 +7359,7 @@ export interface paths {
                         "application/json": components["schemas"]["AdminUpdateChannelSaveResponse"];
                     };
                 };
-                /** @description Docker install, an update is running, or the environment file is not writable */
+                /** @description Docker install, or an update is running */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -11222,7 +11222,7 @@ export interface components {
              * @description Stable identifier. Clients act on this, not on the message. app_url_local and app_url_unset both mean APP_URL does not name the public site.
              * @enum {string}
              */
-            code: "production_settings_applied" | "app_debug_on" | "app_env_not_production" | "app_url_local" | "app_url_unset" | "data_dir_published";
+            code: "app_debug_on" | "app_env_not_production" | "app_url_local" | "app_url_unset" | "data_dir_published";
             /** @description English text for display. */
             message: string;
         };

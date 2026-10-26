@@ -37,7 +37,8 @@ final class EnvFileWriter
     {
         $target = $this->writeTarget($envPath);
         $lockPath = $target.'.lock';
-        $lock = fopen($lockPath, 'c');
+        // A read-only folder is a normal outcome here: report it, do not warn.
+        $lock = @fopen($lockPath, 'c');
         if ($lock === false) {
             throw new \RuntimeException('Could not lock '.$envPath);
         }
@@ -63,7 +64,7 @@ final class EnvFileWriter
                 throw new \RuntimeException('Could not write '.$envPath, 0, $e);
             }
             $this->keepExistingOwner($tmp, $target);
-            if (! rename($tmp, $target)) {
+            if (! @rename($tmp, $target)) {
                 @unlink($tmp);
                 throw new \RuntimeException('Could not write '.$envPath);
             }
@@ -81,7 +82,7 @@ final class EnvFileWriter
      */
     private function writeOwnerOnly(string $tmp, string $contents): void
     {
-        $out = fopen($tmp, 'x');
+        $out = @fopen($tmp, 'x');
         if ($out === false) {
             throw new \RuntimeException('Could not create temporary env file');
         }
