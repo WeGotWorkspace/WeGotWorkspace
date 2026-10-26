@@ -44,6 +44,8 @@ Cell jobs need `packages: read` and `docker login ghcr.io` with `GITHUB_TOKEN`. 
 
 Candidate tags older than 7 days are deleted. Published releases keep their own blobs.
 
+Edge builds (`X.Y.Z-edge.N` on `ghcr.io/wegotworkspace/wegotworkspace`) older than 14 days are deleted by the edge workflow's cleanup job (`tools/ghcr-prune-edge-images.mjs`). A version that also carries `edge`, `latest`, a release tag or any other tag is kept. The per-platform and attestation manifests of a deleted edge index go with it, unless a kept image references them. Untagged versions that no deleted edge index references are left alone. This needs the **Admin** role for Actions on `wegotworkspace` too. Run `node tools/ghcr-prune-edge-images.mjs --dry-run` with a `read:packages` token to preview.
+
 ## Re-running an old tag
 
 Use **Re-run all jobs**. **Re-run failed jobs** skips the build job. The failed cell then looks for a ZIP artifact that expires after 1 day and a candidate digest that cleanup may have removed after 7 days.
