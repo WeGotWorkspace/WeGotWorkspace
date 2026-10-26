@@ -42,7 +42,7 @@ Client side: `createRtcSignalingClient()` advertises `since-ack` for the `meet` 
 
 ## Channel-linked rooms (chat ACL join policy)
 
-A call in a chat channel uses the deterministic room id = the channel collection id (`chat-{ulid}` / `dm-…`); a meeting channel's stored call room uses its `chat_channel_meta.room_code`. Both resolve to the channel via `MeetChannelJoinPolicy`, and `MeetSignalingService` enforces the policy on join, poll, send, and chat (Epic #701 chunk H, Goal #859):
+A call in a chat channel uses the deterministic room id = the channel collection id (`chat-{ulid}` / `dm-…`); a meeting channel's stored call room uses its `chat_channel_meta.room_code`. Both resolve to the channel via `MeetChannelJoinPolicy`, and `MeetSignalingService` enforces the policy on join, poll, send, and chat (Epic #701 chunk H, Goal Product#115):
 
 - **Channel member** (owner / sharee / group member — any ACL read access via `ChatChannelRepository`): joins directly, never knocks, and is a host (any member may admit).
 - **Internal non-member**: forced onto the knock path. A non-knock join is rejected with `knock_required` (403) unless the peer was previously admitted. Knock on a **meeting invite** (`chat-{slug}` / reserved leftover) may wait in an empty room; other channel rooms and unknown leftovers still return `room_not_active` 404 when nobody is joinable.
