@@ -26,4 +26,6 @@ Do not file a Dutch Goal, Task, or comment and “translate later.” Write Engl
 2. Before `gh issue create` / `gh pr create`: reread the title and body; no Dutch function words.
 3. Before handoff: `pnpm run check:agent-docs` (link check + English prose scan).
 
+How simple that English should be, per reader, is in [plain-language.md](plain-language.md).
+
 Enforced in CI via `check:agent-docs` (runs inside `ci:quality:apps`). Policy row: [POLICY.md](../../POLICY.md). Cursor always-apply: [`.cursor/rules/github-english.mdc`](../../../.cursor/rules/github-english.mdc).

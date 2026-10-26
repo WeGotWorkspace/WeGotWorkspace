@@ -22,7 +22,7 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | Client API calls / transport errors | [client-transport](../client-transport/SKILL.md) | — |
 | Workspace shell / *App / *Workspace | [workspace](../workspace/SKILL.md) | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md), [feature-blueprint.md](../workspace/feature-blueprint.md), [collab-hooks.md](../workspace/collab-hooks.md), [apps-done-gate.md](../testing/apps-done-gate.md) |
 | Collab / text-editor hooks (`docs-collab/`) | [workspace](../workspace/SKILL.md) | [collab-hooks.md](../workspace/collab-hooks.md), [clean-code/smells.md](../clean-code/smells.md) (React hooks) |
-| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
+| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [plain-language.md](plain-language.md), [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
 | Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md), [review-findings.md](../../review-findings.md) |
 | Pre-auth path, caller-input parser or upload, limiter or cache key | [security](../security/SKILL.md) | [review-findings.md](../../review-findings.md) |
 | Issue acceptance criteria / "is #N done?" | [verify-issue](../verify-issue/SKILL.md) | Goal vs Task modes in that skill |

@@ -10,6 +10,8 @@
 
 **English-only:** Specs, plans, docs, GitHub issues (including Goals), and issue/PR comments are **English** even when the user writes Dutch. [english-only.md](.agents/skills/developer/english-only.md).
 
+**Plain-language issues:** Goals are plain English for customers and the product lead, with no technical content. Every Epic, Task, Chore, and Bug opens with a three-line `Summary` (What / Who notices / If we wait) in plain English; the technical part below it is written for a medior developer. [plain-language.md](.agents/skills/developer/plain-language.md).
+
 **File size:** A new counted source file over 800 lines is a merge block unless its baseline entry carries an approved reason. A baselined file is a merge block when its line count grows, or when it shrinks and the stored integer was not lowered.
 
 ## Start here

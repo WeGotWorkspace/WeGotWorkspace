@@ -18,6 +18,21 @@ body:
         Do not put tasks on the Product roadmap Project.
 
   - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: >
+        For the product lead, in plain English (B1), no code or file names.
+        Three short lines: what changes, who notices, and what happens if we wait.
+        See .agents/skills/developer/plain-language.md.
+      value: |
+        **What:**
+        **Who notices:**
+        **If we wait:**
+    validations:
+      required: true
+
+  - type: textarea
     id: parent
     attributes:
       label: Parent Epic or Goal
