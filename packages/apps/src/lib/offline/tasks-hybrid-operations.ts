@@ -16,6 +16,7 @@ import {
   deleteTaskList,
   fetchTasksLiveBootstrap,
   getTask,
+  listTaskListChanges,
   patchTask,
   patchTaskList,
   putTask,
@@ -38,6 +39,7 @@ import {
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
+  writeTasksChangesState,
 } from "@/lib/offline/tasks-offline-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks-outbox-flush";
@@ -46,7 +48,9 @@ import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
+  withOutboxLock,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import { isCrossTabLockTimeout } from "@/lib/offline/core/cross-tab-lock";
 
 function concurrencyEtag(task: Task, opts?: TasksMutationOpts): string | undefined {
   return opts?.ifMatch ?? taskEtag(task);
@@ -408,9 +412,42 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
   };
 }
 
+const BOOTSTRAP_WRITE_LOCK_WAIT_MS = 10_000;
+
+/**
+ * Write the snapshot and the changes state it reflects as one step under the
+ * outbox lock, so an inbound pull cannot interleave and leave a newer state
+ * next to an older snapshot. If the lock stays busy, the state is dropped and
+ * the next pull takes a full snapshot instead.
+ */
+async function writeTasksSnapshotWithState(
+  username: string,
+  bootstrap: Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>,
+  changesState: string | null,
+): Promise<void> {
+  const write = async () => {
+    await writeTasksBootstrapToCache(username, bootstrap);
+    await writeTasksChangesState(username, changesState);
+  };
+  try {
+    await withOutboxLock(TASKS_DOMAIN, username, write, {
+      maxWaitMs: BOOTSTRAP_WRITE_LOCK_WAIT_MS,
+    });
+  } catch (error) {
+    if (!isCrossTabLockTimeout(error)) throw error;
+    await writeTasksBootstrapToCache(username, bootstrap);
+    await writeTasksChangesState(username, null);
+  }
+}
+
 export async function fetchTasksHybridBootstrap(): Promise<
   Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>
 > {
+  // Taken before the snapshot: a change in between shows up again next pull.
+  const changesState = await listTaskListChanges(null).then(
+    (delta) => delta.newState,
+    () => null,
+  );
   const bootstrap = await fetchTasksLiveBootstrap();
   const username = bootstrap.session.user.username;
   if (!username) {
@@ -419,7 +456,7 @@ export async function fetchTasksHybridBootstrap(): Promise<
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
-  await writeTasksBootstrapToCache(username, bootstrap);
+  await writeTasksSnapshotWithState(username, bootstrap, changesState);
   return bootstrap;
 }
 
