@@ -7905,7 +7905,7 @@ export interface paths {
                         "application/json": components["schemas"]["AdminAppUrlSaveRequest"];
                     };
                 };
-                /** @description Environment file is not writable */
+                /** @description packages/api/.env was not written: it is missing or read-only, its folder is read-only, or the config is cached. The error names the cause and the APP_URL line to add by hand. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -8018,7 +8018,7 @@ export interface paths {
                         "application/json": components["schemas"]["AdminUpdateChannelSaveResponse"];
                     };
                 };
-                /** @description Docker install, an update is running, or the environment file is not writable */
+                /** @description Docker install, or an update is running */
                 409: {
                     headers: {
                         [name: string]: unknown;
