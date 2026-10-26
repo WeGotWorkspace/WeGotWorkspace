@@ -2,7 +2,7 @@
 
 Canonical reference for engineers (human and AI) working on the WeGotWorkspace Notes product surface, REST API, and CalDAV VJOURNAL store.
 
-**Tracker:** [Goal #661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661) · **Epic:** [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
+**Tracker:** [Goal Product#88](https://github.com/WeGotWorkspace/Product/issues/88) · **Epic:** [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
 
 **Delivery Tasks:** isolation [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663) · REST [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664) · ACL [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665) · collection-sidebar [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666) · apps/collab [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) · migration [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) · teardown [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669) · JMAP + Dexie inbound [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671)
 

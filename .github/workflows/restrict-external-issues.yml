@@ -11,7 +11,7 @@ jobs:
   enforce-maintainer-only-templates:
     runs-on: ubuntu-latest
     steps:
-      - name: Close Goal/Epic/Task/Chore from non-maintainers
+      - name: Close Epic/Task/Chore from non-maintainers
         uses: actions/github-script@v9
         with:
           script: |
@@ -35,7 +35,8 @@ jobs:
               return;
             }
 
-            const restricted = ['type:goal', 'type:epic', 'type:task', 'type:chore'];
+            // Goals live in WeGotWorkspace/Product, which has its own copy of this check.
+            const restricted = ['type:epic', 'type:task', 'type:chore'];
             const hit = restricted.filter((name) => labels.includes(name));
             if (hit.length === 0) {
               core.info('No restricted labels; leaving issue alone');
@@ -45,7 +46,7 @@ jobs:
             const body = [
               'Thanks for your interest in WeGotWorkspace.',
               '',
-              '**Goals, Epics, Tasks, and Chores are maintainer-filed only.**',
+              '**Epics, Tasks, and Chores are maintainer-filed only.**',
               '',
               'Please use:',
               '- [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) for ideas and exploration (maintainers may promote promising threads to Goals)',

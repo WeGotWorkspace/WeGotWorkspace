@@ -1,10 +1,10 @@
 # Roadmap
 
-**Source of truth:** GitHub Goal issues (`type:goal`) on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. Status: Identified → Adopted → Fulfilled. Start at the Project — not the default Issues tab.
+**Source of truth:** Goal issues (`type:goal`) in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. Status: Identified → Adopted → Fulfilled. Start at the Project — not the default Issues tab.
 
 - **[0.9 Roadmap](https://github.com/orgs/WeGotWorkspace/projects/1/views/4)** — beta todo (`Adopted` + milestone `v0.9`)
 - [All Goals](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) — full map (`label:type:goal`)
-- [Open unfinished Goals](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal)
+- [Open unfinished Goals](https://github.com/WeGotWorkspace/Product/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Agoal)
 
 Fulfilled Goals are **closed**. Board Status stays Fulfilled. Identified is a draft backlog — do not Adopt (or attach a milestone) until committing that outcome to a release.
 

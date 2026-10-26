@@ -6,7 +6,7 @@ Committed specs under `.agents/specs/` are the **technical implementation layer*
 
 | Layer | Where | Role | Spec `Source:`? |
 |-------|-------|------|-----------------|
-| **Goal** (`type:goal`) | GitHub + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
+| **Goal** (`type:goal`) | [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
 | **Issue (AC)** — Epic / Task | GitHub | Implementable **what** — AC checklist, labels, PR linking | **Yes** — `Source: #<task-or-epic>` |
 | **Specs** (`spec.md` → `plan.md` → `tasks.md`) | Repo | Technical **translation** + chunk split / eng rows — derived from the Task/Epic when implementation starts | Derived from Source |
 
@@ -48,7 +48,7 @@ Copy skeletons from [`_template/`](./_template/).
 
 | File | Contents | Do not |
 |------|----------|--------|
-| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: #M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
+| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: WeGotWorkspace/Product#M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
 | `plan.md` | Chunks, invariants, open decisions, what exists, budget, considered alternatives | Cite a premise without a source; leave a chunk choice open |
 | `tasks.md` | Per-chunk engineering tasks: chunk-id, owner, key paths, verify command | Copy the GitHub `- [ ]` AC checklist; record completion status |
 

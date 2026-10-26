@@ -136,7 +136,7 @@ Write from `links`: ICS `URL`, RFC 7986 `CONFERENCE`, `X-GOOGLE-CONFERENCE`. **N
 
 ## Out of scope
 
-- Goal #579 named reusable rooms / stable studio links
+- Goal [Product#76](https://github.com/WeGotWorkspace/Product/issues/76) named reusable rooms / stable studio links
 - Auto-Meet on every event
 - Zoom / Teams APIs
 - Changing calendar iMIP `ORGANIZER` to the group

@@ -18,7 +18,7 @@ Load **[developer](.agents/skills/developer/)** for dev layout, skill routing, m
 
 ## Spec-first (feat/ branches)
 
-**Goal** = user outcome (`type:goal`, never `Source:`). **Task/Epic** = implementable AC. **Specs = how** (repo): `.agents/specs/<N>-<slug>/` with `spec.md` → `plan.md` → `tasks.md`.
+**Goal** = user outcome, filed in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (`type:goal`, never `Source:`). **Task/Epic** = implementable AC. **Specs = how** (repo): `.agents/specs/<N>-<slug>/` with `spec.md` → `plan.md` → `tasks.md`.
 
 | Branch | Spec required? |
 |--------|----------------|

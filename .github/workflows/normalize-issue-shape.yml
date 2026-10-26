@@ -17,18 +17,17 @@ jobs:
           script: |
             const issue = context.payload.issue;
             const labels = (issue.labels || []).map((label) => label.name);
+            // Goals live in WeGotWorkspace/Product, which sets Feature on type:goal itself.
             const fromLabel =
               labels.includes("type:task") ||
               labels.includes("type:epic") ||
               labels.includes("type:chore")
                 ? "Task"
-                : labels.includes("type:goal")
-                  ? "Feature"
-                  : null;
+                : null;
             const current = issue.type?.name ?? null;
-            // Bug reports keep Bug. A delivery or goal label must not replace it.
+            // Bug reports keep Bug. A delivery label must not replace it.
             const wanted = current === "Bug" ? null : fromLabel;
-            const nextTitle = issue.title.replace(/^\[(Task|Goal|Epic|Chore)\]\s+/, "");
+            const nextTitle = issue.title.replace(/^\[(Task|Epic|Chore)\]\s+/, "");
             const titleNeedsUpdate = nextTitle !== issue.title && nextTitle.length > 0;
             const typeNeedsUpdate = Boolean(wanted) && current !== wanted;
 
