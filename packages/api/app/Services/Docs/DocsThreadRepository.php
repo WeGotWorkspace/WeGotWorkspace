@@ -13,6 +13,7 @@ use App\Services\Docs\Conversion\DocsThreadJournalConverter;
 use App\Services\Drive\CollabDocFormats;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notify\DocsThreadActivityNotify;
+use App\Services\VObject\VJournalUidGuard;
 use App\Storage\StoragePaths;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -38,6 +39,7 @@ final class DocsThreadRepository
         private readonly DriveShareAuthorizer $authorizer,
         private readonly StoragePaths $paths,
         private readonly CollabDocFormats $collabDocs,
+        private readonly VJournalUidGuard $uidGuard,
     ) {}
 
     /**
@@ -82,15 +84,6 @@ final class DocsThreadRepository
         $this->converter->assertBodySize($body);
 
         $instance = $this->pools->ensureForOwner(DocsThreadCollectionUris::ownerPrincipalUri($path));
-
-        $existing = $this->findObjectByUid((int) $instance->calendarid, $uid);
-        if ($existing !== null) {
-            return ['thread' => $this->presentThread($instance, $path, $uid), 'created' => false];
-        }
-        if (CalendarObject::query()->where('uid', $uid)->where('componenttype', 'VJOURNAL')->exists()) {
-            throw new ApiHttpException(409, 'A thread with this id already exists.', 'alreadyExists');
-        }
-
         $ics = $this->converter->toIcs([
             'id' => $uid,
             'body' => $body,
@@ -104,16 +97,13 @@ final class DocsThreadRepository
             'anchorOccurrence' => is_int($payload['anchorOccurrence'] ?? null) ? $payload['anchorOccurrence'] : null,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
-        $created = $this->writeObject($instance, $uid, $ics);
+        $created = $this->insertOnce($instance, $uid, $ics, 'A thread with this id already exists.', [
+            'doc_path' => $path,
+            'kind' => $kind,
+            'parent_uid' => null,
+            'change_id' => $changeId,
+        ]);
         if ($created) {
-            DocsThreadIndex::query()->create([
-                'calendarid' => (int) $instance->calendarid,
-                'uid' => $uid,
-                'doc_path' => $path,
-                'kind' => $kind,
-                'parent_uid' => null,
-                'change_id' => $changeId,
-            ]);
             if (trim($body) !== '') {
                 $mentions = DocsThreadActivityNotify::mentionUsernamesFromBody($body);
                 $this->events->posted(
@@ -152,14 +142,6 @@ final class DocsThreadRepository
         }
         $this->converter->assertBodySize($body);
 
-        $existing = $this->findObjectByUid((int) $instance->calendarid, $uid);
-        if ($existing !== null) {
-            return $this->presentThread($instance, $path, $rootUid);
-        }
-        if (CalendarObject::query()->where('uid', $uid)->where('componenttype', 'VJOURNAL')->exists()) {
-            throw new ApiHttpException(409, 'A message with this id already exists.', 'alreadyExists');
-        }
-
         $ics = $this->converter->toIcs([
             'id' => $uid,
             'body' => $body,
@@ -168,15 +150,13 @@ final class DocsThreadRepository
             'parentId' => $rootUid,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
-        if ($this->writeObject($instance, $uid, $ics)) {
-            DocsThreadIndex::query()->create([
-                'calendarid' => (int) $instance->calendarid,
-                'uid' => $uid,
-                'doc_path' => $path,
-                'kind' => DocsThreadIndex::KIND_REPLY,
-                'parent_uid' => $rootUid,
-                'change_id' => null,
-            ]);
+        $created = $this->insertOnce($instance, $uid, $ics, 'A message with this id already exists.', [
+            'doc_path' => $path,
+            'kind' => DocsThreadIndex::KIND_REPLY,
+            'parent_uid' => $rootUid,
+            'change_id' => null,
+        ]);
+        if ($created) {
             $kind = (string) ($root['kind'] ?? DocsThreadJournalConverter::KIND_COMMENT);
             $participants = $this->threadParticipantUsernames($instance, $path, $rootUid);
             $mentions = array_values(array_unique([
@@ -689,21 +669,31 @@ final class DocsThreadRepository
         return $result;
     }
 
-    private function writeObject(CalendarInstance $instance, string $uid, string $ics): bool
+    /**
+     * All or nothing: the UID checks, the VJOURNAL and its index row commit
+     * together. False when this pool already has the UID (a replayed create).
+     * Callers fire events only after this returns, so after the commit.
+     *
+     * @param  array{doc_path: string, kind: string, parent_uid: string|null, change_id: string|null}  $index
+     */
+    private function insertOnce(CalendarInstance $instance, string $uid, string $ics, string $conflict, array $index): bool
     {
+        $calendarId = (int) $instance->calendarid;
         try {
-            $this->calBackend()->createCalendarObject(
-                [(int) $instance->calendarid, (int) $instance->id],
-                $uid.'.ics',
-                $ics,
-            );
+            return DB::connection('wgw')->transaction(function () use ($instance, $calendarId, $uid, $ics, $conflict, $index): bool {
+                // Locking read first, so a same-pool replay waits here and then sees the row.
+                $this->uidGuard->assertAvailable($uid, $conflict, $calendarId);
+                if ($this->findObjectByUid($calendarId, $uid) !== null) {
+                    return false;
+                }
+                $this->calBackend()->createCalendarObject([$calendarId, (int) $instance->id], $uid.'.ics', $ics);
+                DocsThreadIndex::query()->create(['calendarid' => $calendarId, 'uid' => $uid, ...$index]);
 
-            return true;
-        } catch (QueryException|PDOException) {
-            if ($this->findObjectByUid((int) $instance->calendarid, $uid) !== null) {
-                return false;
-            }
-            throw new ApiHttpException(500, 'Could not persist thread.', 'server_error');
+                return true;
+            });
+        } catch (QueryException|PDOException $exception) {
+            VJournalUidGuard::throwIfUniqueViolation($exception, $conflict);
+            throw $exception;
         }
     }
 
