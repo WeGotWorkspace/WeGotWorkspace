@@ -14,7 +14,9 @@ reviewer approves. A human then reviews. Nothing is merged automatically.
 The loop stops with the `needs-human` label after `REVIEW_LOOP_MAX_ROUNDS`
 change requests (default 3), when a fix round changes nothing, or when it
 fails. A human push drops `ready-for-human` without starting a review. To
-start a new cycle, mark the PR draft and then ready again.
+start a new cycle, mark the PR draft and then ready again. That is the only
+reset, also for a PR that was never a draft: until then, every change request
+from the bot counts.
 
 ## Vendor-neutral by design
 
@@ -49,7 +51,9 @@ fast tests, and neither may commit, push, or reach GitHub.
    `claude setup-token`.
 4. Optional: set `REVIEW_LOOP_MAX_ROUNDS`.
 
-Prompts, schemas, and both local actions are read from `main`, so a PR cannot
-change the reviewer that judges it. Changes to them take effect once merged.
+Prompts, schemas, both local actions, and the reviewer's standards (the
+security checklist and the clean-code smells list) are read from `main`, so a
+PR cannot change the reviewer that judges it. Changes to them take effect once
+merged.
 The fixer may not commit to `.github/`, `.agents/`, `.claude/`, `AGENTS.md`,
 or `CLAUDE.md`.

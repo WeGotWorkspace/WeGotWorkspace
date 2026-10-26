@@ -135,8 +135,10 @@ jobs:
             exit 0
           }
 
+          # -z throughout: without it git quotes unusual paths, which would
+          # slip past the protected-path check and reach the API quoted.
           git add --all
-          changed=$(git diff --cached --name-only --no-renames)
+          changed=$(git diff --cached --name-only --no-renames -z | tr '\0' '\n')
           if [ -z "$changed" ]; then
             stop "The fixer made no changes:" "" "$(jq -r .summary "$RESULT")"
           fi
@@ -150,8 +152,8 @@ jobs:
                 base64 -w0 "$path" > "$RUNNER_TEMP/blob"
                 jq -n --arg path "$path" --rawfile contents "$RUNNER_TEMP/blob" '{$path, $contents}'
               done | jq -s . > "$RUNNER_TEMP/additions.json"
-          git diff --cached --name-only --no-renames --diff-filter=D \
-            | jq -R '{path: .}' | jq -s . > "$RUNNER_TEMP/deletions.json"
+          git diff --cached --name-only --no-renames --diff-filter=D -z \
+            | jq -Rs 'split("\u0000") | map(select(. != "") | {path: .})' > "$RUNNER_TEMP/deletions.json"
 
           # shellcheck disable=SC2016 # $input is a GraphQL variable
           jq -n \

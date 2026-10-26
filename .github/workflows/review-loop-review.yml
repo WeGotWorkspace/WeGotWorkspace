@@ -24,7 +24,7 @@ env:
   GH_REPO: ${{ github.repository }}
   PR: ${{ github.event.pull_request.number }}
   HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-  BASE_REF: ${{ github.event.pull_request.base.ref }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
 jobs:
   review:
@@ -43,7 +43,8 @@ jobs:
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
       # New commits void an earlier approval. A human push only does this:
-      # re-review is opt-in (draft, then ready) to save agent usage.
+      # re-review is opt-in (draft, then ready) to save agent usage. The first
+      # such push leaves one comment so the missing review is not a mystery.
       - name: Reset labels
         id: gate
         env:
@@ -55,6 +56,12 @@ jobs:
           gh pr edit "$PR" --remove-label ready-for-human 2>/dev/null || true
           if [ "$ACTION" = synchronize ] && [ "$SENDER" != "$BOT" ]; then
             echo "Push by $SENDER: approval dropped, no automatic re-review."
+            marker="<!-- review-loop:human-push -->"
+            if ! gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
+                | jq -e --arg m "$marker" 'add | any(.body | contains($m))' > /dev/null; then
+              gh pr comment "$PR" --body "$marker
+          Pushes by people do not start an automated review, and any loop approval is dropped. Mark the PR draft and then ready to review again."
+            fi
             echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -68,7 +75,11 @@ jobs:
         with:
           ref: main
           path: loop
-          sparse-checkout: .github/review-loop
+          # The reviewer's standards come from main too; see Build prompt.
+          sparse-checkout: |
+            .github/review-loop
+            .agents/skills/security
+            .agents/skills/clean-code
           persist-credentials: false
 
       - uses: ./loop/.github/review-loop/prepare
@@ -89,7 +100,9 @@ jobs:
             | tee "$RUNNER_TEMP/fast-suite.log"
 
       # Everything the reviewer gets besides the code. The PR body is left out
-      # on purpose; only the issues it links are passed on.
+      # on purpose; only the issues it links are passed on. The diff base is
+      # computed here so the agent does not have to find it, and a missing
+      # base fails this step loudly instead of costing agent turns.
       - name: Build prompt
         if: steps.gate.outputs.run == 'true'
         env:
@@ -111,6 +124,7 @@ jobs:
           if [ -z "$issues" ] && [[ "$HEAD_REF" =~ ^[a-z]+/([0-9]+)- ]]; then
             issues="https://github.com/$GH_REPO/issues/${BASH_REMATCH[1]}"
           fi
+          merge_base=$(git -C pr merge-base "$BASE_SHA" HEAD)
 
           {
             cat loop/.github/review-loop/review-prompt.md
@@ -118,7 +132,9 @@ jobs:
             echo "## Context"
             echo
             echo "- Repository: $GH_REPO"
-            echo "- PR: $PR (head $HEAD_SHA, base origin/$BASE_REF)"
+            echo "- PR: $PR, head $HEAD_SHA, merge base $merge_base"
+            echo "- The change: \`git diff $merge_base HEAD\`"
+            echo "- Its commits: \`git log --oneline $merge_base..HEAD\`"
             echo
             echo "### Linked issues"
             echo
@@ -146,6 +162,14 @@ jobs:
               | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]
                   | if length == 0 then "None. This is the first round."
                     else map("#### \(.state) on \(.commit_id[0:7])\n\n\(.body)") | join("\n\n") end'
+            echo
+            echo "### Standards from main"
+            for f in security/SKILL.md clean-code/smells.md; do
+              echo
+              echo "#### .agents/skills/$f"
+              echo
+              cat "loop/.agents/skills/$f"
+            done
           } > "$RUNNER_TEMP/prompt.md"
 
       - name: Review
@@ -188,3 +212,16 @@ jobs:
               --description "Review loop approved; ready for human review" 2>/dev/null || true
             gh pr edit "$PR" --add-label ready-for-human
           fi
+
+      # A failed review would otherwise leave the PR with no verdict and no
+      # label, since the gate already removed ready-for-human.
+      - name: Hand over to a human
+        if: failure() && steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create needs-human --color d93f0b \
+            --description "Review loop stopped; needs a human call" 2>/dev/null || true
+          gh pr edit "$PR" --add-label needs-human
+          gh pr comment "$PR" --body "The automated review failed: $RUN_URL"
