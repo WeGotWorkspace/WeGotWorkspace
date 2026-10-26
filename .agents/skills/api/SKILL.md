@@ -23,7 +23,6 @@ When the user says **greenfield**, **new API**, or work under `packages/api/`:
 | File storage / drive | [storage-flysystem.md](storage-flysystem.md) |
 | Notes (VJOURNAL + vendor JMAP) | [docs/architecture/notes.md](../../../docs/architecture/notes.md), [671-notes-jmap-dexie](../../specs/671-notes-jmap-dexie/spec.md) |
 | WebDAV | [sabredav.md](sabredav.md) |
-| Plugins / activation | [plugins](../plugins/SKILL.md) |
 | Meet / room signaling | `packages/api/docs/meet-signaling.md` — or [meet](../meet/SKILL.md) for UI + RTC |
 | Tests / done gate | [testing.md](testing.md) |
 | Legacy reference | [legacy-reference.md](legacy-reference.md) |

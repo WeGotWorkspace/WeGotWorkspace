@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\MailDelivery;
 
-use App\Services\Mail\MailSmtpTransportConfig;
-
 final class MailDeliveryTransportResolver
 {
     /** @var (callable(): bool)|null */
@@ -25,7 +23,7 @@ final class MailDeliveryTransportResolver
      */
     public function normalizeSmtp(MailDeliveryConfig $config): array
     {
-        return MailSmtpTransportConfig::normalize([
+        return MailDeliverySmtpTransport::normalize([
             'host' => $config->smtpHost,
             'port' => $config->smtpPort,
             'security' => $config->smtpSecurity,

@@ -1071,16 +1071,6 @@
   }
 }
 
-/**
- * Light workspace surfaces (mail compose, docs): ink foreground so outline
- * IconButtons stay readable on cream/oklch backgrounds.
- */
-:is(.mail-compose-dialog-surface .mail-compose-view__message-editor.text-editor) {
-  --foreground: var(--workspace-foreground);
-  --accent: color-mix(in oklab, var(--workspace-foreground) 10%, transparent);
-  --accent-foreground: var(--workspace-foreground);
-}
-
 /* Compact body for format-bar-only Storybook previews */
 .text-editor--format-bar-story {
   display: flex;

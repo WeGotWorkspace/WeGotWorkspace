@@ -6,7 +6,6 @@ import {
   USER_AVATAR_COLORS,
   avatarColorForUserId,
 } from "../src/user-avatar";
-import "@/mail-core/src/mail-workspace.css";
 import "@/meet-core/src/meet-workspace.css";
 import "@/workspace-shell/src/workspace-app-layout.css";
 import "@/docs-core/src/docs-workspace.css";
@@ -110,17 +109,6 @@ export const SizeMatrix: Story = {
           <span className="text-xs opacity-80">{size}</span>
         </div>
       ))}
-    </div>
-  ),
-};
-
-/** Mail detail sender row: larger chip, emerald fill, two-line label. */
-export const MailSenderRow: Story = {
-  render: () => (
-    <div className="mail-workspace">
-      <div className="mail-detail-view__sender-row max-w-[680px]">
-        <UserAvatar displayName="Ops Bot" subtitle="ops@example.com · to you" size="lg" />
-      </div>
     </div>
   ),
 };

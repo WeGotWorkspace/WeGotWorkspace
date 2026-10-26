@@ -6,7 +6,6 @@ namespace Tests\Feature\Settings;
 
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
-use App\Support\WgwSettings;
 use Illuminate\Support\Facades\File;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -39,14 +38,15 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
         $this->getJson('/api/v1/settings/state')->assertUnauthorized();
     }
 
-    public function test_settings_state_profile_and_mail(): void
+    public function test_settings_state_and_profile(): void
     {
         $token = $this->issueBearerToken();
 
         $state = $this->withBearer($token)->getJson('/api/v1/settings/state');
         $state->assertOk();
         $state->assertJsonPath('user.username', 'alice');
-        $state->assertJsonPath('mail.imapHasPassword', false);
+        $state->assertJsonMissingPath('mail');
+        $state->assertJsonMissingPath('mailServer');
         $state->assertJsonPath('mcpEnabled', false);
 
         $profile = $this->withBearer($token)->putJson('/api/v1/settings/profile', [
@@ -57,48 +57,6 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
         $profile->assertOk();
         $profile->assertJsonPath('user.displayName', 'Alice Updated');
         $profile->assertJsonPath('user.email', 'alice.updated@example.test');
-
-        $mail = $this->withBearer($token)->putJson('/api/v1/settings/mail', [
-            'imapUsername' => 'ignored@imap.example.test',
-            'imapPassword' => 'mail-secret',
-        ]);
-        $mail->assertOk();
-        $mail->assertJsonPath('mail.imapUsername', 'ignored@imap.example.test');
-        $mail->assertJsonPath('mail.imapHasPassword', true);
-        $mail->assertJsonPath('mailServer.imapPort', 993);
-    }
-
-    public function test_settings_mail_accepts_post_with_method_override(): void
-    {
-        $token = $this->issueBearerToken();
-
-        $this->withBearer($token)
-            ->withHeader('X-HTTP-Method-Override', 'PUT')
-            ->postJson('/api/v1/settings/mail', [
-                'imapUsername' => 'tunnel@imap.example.test',
-                'imapPassword' => 'mail-secret',
-            ])
-            ->assertOk()
-            ->assertJsonPath('mail.imapUsername', 'tunnel@imap.example.test')
-            ->assertJsonPath('mail.imapHasPassword', true);
-    }
-
-    public function test_settings_mail_save_persists_password_without_changing_profile_email(): void
-    {
-        $token = $this->issueBearerToken();
-
-        $this->withBearer($token)->putJson('/api/v1/settings/mail', [
-            'imapUsername' => 'alice@imap.example.test',
-            'imapPassword' => 'mail-secret',
-        ])
-            ->assertOk()
-            ->assertJsonPath('user.email', 'old@example.test')
-            ->assertJsonPath('mail.imapUsername', 'alice@imap.example.test')
-            ->assertJsonPath('mail.imapHasPassword', true);
-
-        $this->withBearer($token)->getJson('/api/v1/settings/state')
-            ->assertOk()
-            ->assertJsonPath('mail.imapHasPassword', true);
     }
 
     public function test_settings_state_includes_group_membership(): void
@@ -120,8 +78,6 @@ final class SettingsEndpointsTest extends WgwDatabaseTestCase
     {
         $this->setAppSettings([
             'auth_realm' => 'SabreDAV',
-            WgwSettings::MAIL_IMAP_HOST => 'imap.example.test',
-            WgwSettings::MAIL_IMAP_PORT => 993,
         ]);
         $this->seedWgwUser('alice', email: 'old@example.test', displayName: 'Old Name');
     }

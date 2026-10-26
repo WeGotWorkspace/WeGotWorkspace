@@ -45,7 +45,6 @@ const appReleaseEntries = [
   "packages/apps/admin/dist",
   "packages/apps/drive/dist",
   "packages/apps/install/dist",
-  "packages/apps/mail/dist",
   "packages/apps/notes/dist",
   "packages/apps/shell/dist",
   "packages/apps/settings/dist",

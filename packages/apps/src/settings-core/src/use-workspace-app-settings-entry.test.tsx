@@ -27,8 +27,8 @@ describe("useWorkspaceAppSettingsEntry", () => {
     resetSettingsRegistryForTests();
   });
 
-  it("shows Mail from shell reachability without settings bootstrap", () => {
-    const { result } = renderHook(() => useWorkspaceAppSettingsEntry("mail"), {
+  it("shows Calendar from shell reachability without settings bootstrap", () => {
+    const { result } = renderHook(() => useWorkspaceAppSettingsEntry("calendar"), {
       wrapper: ShellCtx,
     });
     expect(result.current.visible).toBe(true);

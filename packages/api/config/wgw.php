@@ -81,28 +81,6 @@ return [
         'private_key' => env('WGW_VAPID_PRIVATE_KEY'),
     ],
 
-    'mail' => [
-        /** Set {@code WGW_MAIL_SMTP_VERIFY_TLS=false} for local/dev SMTP with self-signed certs. */
-        'smtp_verify_tls' => filter_var(env('WGW_MAIL_SMTP_VERIFY_TLS', true), FILTER_VALIDATE_BOOL),
-        /**
-         * Unsupported in v0.9. Test-only switch for mailbox REST and MCP mail tools.
-         * Default off: those routes are absent from OpenAPI and the UI does not mount them.
-         * A cached config or route file ignores this env (see WithMailClientEnabled).
-         */
-        'client_enabled' => filter_var(env('WGW_MAIL_CLIENT_ENABLED', false), FILTER_VALIDATE_BOOL),
-    ],
-
-    'plugins' => [
-        /**
-         * Unsupported in v0.9 (beta). Installable UI plugins: registry, ZIP install,
-         * activation, and plugin HTML/asset serving under the manifest appTile.route.
-         * Default off: those routes are absent from OpenAPI, the front controller does not
-         * match plugin paths, and the UI does not mount a Plugins pane.
-         * A cached config or route file ignores this env (see WithPluginsEnabled).
-         */
-        'enabled' => filter_var(env('WGW_PLUGINS_ENABLED', false), FILTER_VALIDATE_BOOL),
-    ],
-
     /**
      * Public SPA origin for {@see ApiUrlBuilder::appPath()} (reset mail, /logout).
      * Leave unset in production (SPA and API share a host). Local `pnpm dev` uses the Vite

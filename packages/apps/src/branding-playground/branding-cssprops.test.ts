@@ -52,15 +52,15 @@ describe("iconBrandingCssprops", () => {
 
 describe("createAppBrandingCssprops", () => {
   it("omits sidebar and app-sidebar-color unless callers opt in", () => {
-    const map = createAppBrandingCssprops("mail", { icon: BRANDING_APP_ICON_DEFAULTS.mail });
+    const map = createAppBrandingCssprops("tasks", { icon: BRANDING_APP_ICON_DEFAULTS.tasks });
     expect(map["app-sidebar-bg"]).toBeUndefined();
     expect(map["app-sidebar-color"]).toBeUndefined();
   });
 
   it("emits chrome overrides when provided", () => {
-    const map = createAppBrandingCssprops("mail", {
+    const map = createAppBrandingCssprops("tasks", {
       sidebarValue: BRANDING_APP_SIDEBAR_DEFAULT,
-      appSidebarColor: brandingAppSidebarColorDefault("mail"),
+      appSidebarColor: brandingAppSidebarColorDefault("tasks"),
     });
     expect(map["app-sidebar-bg"]?.value).toBe(BRANDING_APP_SIDEBAR_DEFAULT);
     expect(map["app-sidebar-color"]?.value).toBe("#003311");
@@ -104,7 +104,7 @@ describe("defaultAppBrandingCssprops", () => {
 
   it("documents one production sidebar formula for every app", () => {
     expect(brandingAppSidebarColorDefault("docs")).toBe("#003311");
-    expect(brandingAppSidebarColorDefault("mail")).toBe("#003311");
+    expect(brandingAppSidebarColorDefault("tasks")).toBe("#003311");
     expect(BRANDING_APP_SIDEBAR_DEFAULT).toBe("var(--workspace-sidebar-surface)");
   });
 });
@@ -131,8 +131,8 @@ describe("createBrandingStoryMeta defaults", () => {
   it("defaults iconPreset to current", () => {
     expect(brandingIconArgs.iconPreset).toBe("current");
     const meta = createBrandingStoryMeta({
-      appId: "mail",
-      workspaceClass: "mail-workspace",
+      appId: "tasks",
+      workspaceClass: "tasks-workspace",
     });
     expect(meta.args.iconPreset).toBe("current");
   });
@@ -172,11 +172,11 @@ describe("createBrandingStoryMeta defaults", () => {
 
   it("allows parameters.routerPath override", () => {
     const meta = createBrandingStoryMeta({
-      appId: "mail",
-      workspaceClass: "mail-workspace",
-      parameters: { routerPath: "/mail/inbox" },
+      appId: "tasks",
+      workspaceClass: "tasks-workspace",
+      parameters: { routerPath: "/tasks/lists/inbox" },
     });
-    expect(meta.parameters?.routerPath).toBe("/mail/inbox");
+    expect(meta.parameters?.routerPath).toBe("/tasks/lists/inbox");
   });
 
   it("defaults Docs fullAccentSidebar off and omits fighting chrome cssprops", () => {

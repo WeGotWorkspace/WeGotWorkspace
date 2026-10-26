@@ -6,7 +6,6 @@ Guides for `packages/apps` — app library structure, rollout, and per-domain re
 
 | Package      | Shell                        | README                                |
 | ------------ | ---------------------------- | ------------------------------------- |
-| `mail-core`  | Collection (`WorkspaceApp`)  | [README](../src/mail-core/README.md)  |
 | `drive-core` | Split (`WorkspaceAppLayout`) | [README](../src/drive-core/README.md) |
 | `notes-core` | Collection (`WorkspaceApp`)  | [README](../src/notes-core/README.md) |
 | `admin-core` | Split (`WorkspaceAppLayout`) | [README](../src/admin-core/README.md) |

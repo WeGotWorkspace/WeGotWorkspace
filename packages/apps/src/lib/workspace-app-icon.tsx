@@ -64,7 +64,6 @@ const WORKSPACE_APP_SWITCH_TRIGGER_HTML: Record<WorkspaceAppId, { __html: string
   contacts: { __html: WORKSPACE_APP_ICON_INLINE.contacts },
   docs: { __html: WORKSPACE_APP_ICON_INLINE.docs },
   drive: { __html: WORKSPACE_APP_ICON_INLINE.drive },
-  mail: { __html: WORKSPACE_APP_ICON_INLINE.mail },
   meet: { __html: WORKSPACE_APP_ICON_INLINE.meet },
   notes: { __html: WORKSPACE_APP_ICON_INLINE.notes },
   settings: { __html: WORKSPACE_APP_ICON_INLINE.settings },

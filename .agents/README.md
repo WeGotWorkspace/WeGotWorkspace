@@ -13,7 +13,6 @@ Skill directories use **unprefixed names** (e.g. `api`, `developer`, `storybook`
 | [developer](skills/developer/) | Monorepo entry point — dev layout, skill routing, multitask |
 | [dev-environment](skills/dev-environment/) | Docker, ports, Storybook proxy, troubleshooting |
 | [api](skills/api/) | Greenfield Laravel API — OpenAPI, layers, auth, storage, SabreDAV |
-| [plugins](skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |
 | [meet](skills/meet/) | Meet UI, RTC, room signaling |
 | [apps-ui](skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [workspace](skills/workspace/) | Workspace shell, *App/*Workspace blueprint |
