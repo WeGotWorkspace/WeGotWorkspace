@@ -1,0 +1,146 @@
+name: Claude fix
+
+# Fixer half of the automated review loop. The reviewer is claude-review.yml,
+# which explains the loop and why there is no github_token input.
+#
+# Runs on every change request from claude[bot]. Commits go through the GitHub
+# API (use_commit_signing) so they are signed, which main requires, and skip
+# Husky. That push is a `synchronize` by claude[bot], which re-runs the review.
+#
+# Brake: after MAX_ROUNDS change requests in one cycle the fixer labels the PR
+# needs-human and stops. A cycle starts at the PR's last "ready for review".
+# Override the cap with the repository variable CLAUDE_REVIEW_MAX_ROUNDS.
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: claude-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  BOT: claude[bot]
+  GH_REPO: ${{ github.repository }}
+  PR: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  MAX_ROUNDS: ${{ vars.CLAUDE_REVIEW_MAX_ROUNDS || 3 }}
+
+jobs:
+  fix:
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.review.user.login == 'claude[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # create the loop labels
+      id-token: write # Claude App token exchange
+    steps:
+      - name: Count rounds
+        id: rounds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
+            | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+          round=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+            | jq --arg bot "$BOT" --arg since "$since" \
+              '[add[] | select(.user.login == $bot and .state == "CHANGES_REQUESTED" and .submitted_at > $since)] | length')
+          echo "Change request $round of $MAX_ROUNDS this cycle."
+          if [ "$round" -gt "$MAX_ROUNDS" ]; then
+            gh label create needs-human --color d93f0b \
+              --description "Claude review loop stopped; needs a human call" 2>/dev/null || true
+            gh pr edit "$PR" --add-label needs-human
+            gh pr comment "$PR" --body "Review loop stopped after $MAX_ROUNDS fix rounds. The open items above need a human call. Mark the PR draft and then ready to start a new cycle."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.rounds.outputs.run == 'true'
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6.1.0
+        if: steps.rounds.outputs.run == 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.rounds.outputs.run == 'true'
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install JS workspace
+        if: steps.rounds.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build prompt
+        id: prompt
+        if: steps.rounds.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_ID: ${{ github.event.review.id }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          out="$RUNNER_TEMP/prompt.md"
+          git show "origin/main:.github/review-loop/fix-prompt.md" > "$out"
+          {
+            echo
+            echo "## Context"
+            echo
+            echo "- Repository: $GH_REPO"
+            echo "- PR: $PR (branch $(git branch --show-current), reviewed at $HEAD_SHA)"
+            echo
+            echo "### Review"
+            echo
+            echo "$REVIEW_BODY"
+            echo
+            echo "### Inline comments from the reviewer on this commit"
+            echo
+            gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --slurp \
+              | jq -r --arg bot "$BOT" --arg sha "$HEAD_SHA" \
+                '[add[] | select(.user.login == $bot and .commit_id == $sha)]
+                 | if length == 0 then "None."
+                   else map("- `\(.path):\(.line // .original_line)` \(.body)") | join("\n") end'
+          } >> "$out"
+
+          delim="EOF_$(openssl rand -hex 8)"
+          { echo "text<<$delim"; cat "$out"; echo "$delim"; } >> "$GITHUB_OUTPUT"
+
+      - name: Fix
+        if: steps.rounds.outputs.run == 'true'
+        uses: anthropics/claude-code-action@v1.0.262
+        env:
+          # The PR branch for commit_files. Not inferred on review events.
+          CLAUDE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The change request comes from claude[bot]; without this the action
+          # refuses the event and the fixer never runs.
+          allowed_bots: claude
+          use_commit_signing: true
+          prompt: ${{ steps.prompt.outputs.text }}
+          claude_args: >-
+            --max-turns 60
+            --allowedTools "Read,Glob,Grep,Edit,MultiEdit,Write,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh pr comment:*),Bash(pnpm exec turbo run typecheck test:unit:*),Bash(pnpm --dir packages/apps exec vitest run:*),Bash(pnpm --dir packages/apps exec prettier:*),Bash(pnpm --dir packages/apps exec eslint:*),mcp__github_file_ops__commit_files,mcp__github_file_ops__delete_files"
+            --disallowedTools "Bash(gh pr review:*),Bash(gh pr merge:*),Bash(git push:*),Bash(git commit:*)"
+
+      # No push means no new review, so the loop would stall without a signal.
+      - name: Flag a fix round without commits
+        if: steps.rounds.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+          if [ "$head" = "$HEAD_SHA" ]; then
+            gh label create needs-human --color d93f0b \
+              --description "Claude review loop stopped; needs a human call" 2>/dev/null || true
+            gh pr edit "$PR" --add-label needs-human
+            echo "::warning::Fixer made no commit; labelled needs-human."
+          fi
