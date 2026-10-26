@@ -24,7 +24,7 @@
   border-radius: 4px 4px 4px 0;
   background-color: var(--note-title-caret-color, currentColor);
   /* Black or white per author color, so every name tag reaches 4.5:1. */
-  color: var(--note-title-caret-label-color, var(--workspace-accent-foreground, #fff));
+  color: var(--note-title-caret-label-color, var(--workspace-accent-foreground));
   line-height: normal;
   letter-spacing: normal;
 }
