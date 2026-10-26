@@ -26,7 +26,9 @@ Every Epic, Task, Chore, and Bug body starts with this block. Bug reports from o
 **If we wait:** <what happens if this is not done now: data loss, a blocked Goal, a workaround, or nothing visible>
 ```
 
-The product lead should be able to rank the issue from these three lines alone. Do not put code, file names, or issue numbers in them; links to the parent Goal or Epic go in the parent field below.
+The product lead should be able to rank the issue from these three lines alone.
+
+A workflow ([`require-issue-summary.yml`](../../../.github/workflows/require-issue-summary.yml)) adds the `needs-summary` label to an open Epic, Task, Chore or Bug while any of the three lines is missing or has fewer than two words, and removes the label once all three are filled in. It runs when an issue is opened, edited, labelled or typed; it never changes the body. Filter on `label:needs-summary` to find issues that still need one. Do not put code, file names, or issue numbers in them; links to the parent Goal or Epic go in the parent field below.
 
 Good:
 
