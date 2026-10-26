@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Contacts;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\Card;
+use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
+use Tests\Support\WgwInstallFixture;
+use Tests\Support\WgwTestDisks;
 
 /**
  * CardDAV ↔ JMAP round-trip interoperability for the contacts domain.
@@ -315,6 +320,111 @@ final class ContactsCardDavInteropTest extends WgwDatabaseTestCase
         $this->assertSame('CardDAV After REST Updated', $card['name']['full'] ?? null);
         $this->assertSame('preserve@example.com', $card['emails'][$emailKey]['address'] ?? null);
         $this->assertSame([$emailKey], array_keys($card['emails'] ?? []));
+    }
+
+    /** RFC 6352 §6.3.2.1: PUT of a taken UID under a new URI (#1609). */
+    public function test_carddav_put_of_a_taken_uid_returns_no_uid_conflict_with_existing_href(): void
+    {
+        $this->bootDavInstall();
+        $uid = 'urn:uuid:'.Str::uuid()->toString();
+        $this->seedCardViaPdo('bob', 'original.vcf', $this->sampleVcard('Original', $uid));
+
+        $response = $this->davAsBob('PUT', '/addressbooks/bob/default/copy.vcf', $this->sampleVcard('Copy', $uid));
+
+        $this->assertNoUidConflict($response, '/addressbooks/bob/default/original.vcf');
+        $this->assertNull($this->findBobCard('copy'), 'The duplicate is not stored.');
+    }
+
+    public function test_carddav_put_that_takes_another_cards_uid_returns_no_uid_conflict(): void
+    {
+        $this->bootDavInstall();
+        $this->seedCardViaPdo('bob', 'first.vcf', $this->sampleVcard('First', 'urn:uuid:aaaaaaaa-1111-4111-8111-111111111111'));
+        $this->seedCardViaPdo('bob', 'second.vcf', $this->sampleVcard('Second', 'urn:uuid:bbbbbbbb-2222-4222-8222-222222222222'));
+
+        $response = $this->davAsBob('PUT', '/addressbooks/bob/default/second.vcf', $this->sampleVcard('Second', 'URN:UUID:AAAAAAAA-1111-4111-8111-111111111111'));
+
+        $this->assertNoUidConflict($response, '/addressbooks/bob/default/first.vcf');
+    }
+
+    public function test_carddav_copy_within_one_book_returns_no_uid_conflict(): void
+    {
+        $this->bootDavInstall();
+        $this->seedCardViaPdo('bob', 'source.vcf', $this->sampleVcard('Source'));
+
+        $response = $this->davAsBob('COPY', '/addressbooks/bob/default/source.vcf', '', [
+            'HTTP_DESTINATION' => 'http://localhost/addressbooks/bob/default/target.vcf',
+        ]);
+
+        $this->assertNoUidConflict($response, '/addressbooks/bob/default/source.vcf');
+    }
+
+    public function test_carddav_move_into_a_book_holding_the_uid_returns_no_uid_conflict(): void
+    {
+        $this->bootDavInstall();
+        WgwCardBackend::fromConnection()->createAddressBook('principals/bob', 'work', ['{DAV:}displayname' => 'Work']);
+        $uid = 'urn:uuid:'.Str::uuid()->toString();
+        $this->seedCardViaPdo('bob', 'in-work.vcf', $this->sampleVcard('Work Copy', $uid), 'work');
+        $this->seedCardViaPdo('bob', 'in-home.vcf', $this->sampleVcard('Home Copy', $uid));
+
+        $response = $this->davAsBob('MOVE', '/addressbooks/bob/default/in-home.vcf', '', [
+            'HTTP_DESTINATION' => 'http://localhost/addressbooks/bob/work/moved.vcf',
+        ]);
+
+        $this->assertNoUidConflict($response, '/addressbooks/bob/work/in-work.vcf');
+        $this->assertNotNull($this->findBobCard('in-home'), 'The source card stays.');
+    }
+
+    public function test_carddav_put_of_a_new_uid_still_creates_the_card(): void
+    {
+        $this->bootDavInstall();
+
+        $this->davAsBob('PUT', '/addressbooks/bob/default/fresh.vcf', $this->sampleVcard('Fresh'))->assertStatus(201);
+
+        $this->assertNotNull($this->findBobCard('fresh'));
+    }
+
+    private function assertNoUidConflict(TestResponse $response, string $existingHref): void
+    {
+        $response->assertStatus(403);
+        $xml = new \DOMDocument;
+        $this->assertTrue($xml->loadXML((string) $response->getContent()));
+        $xpath = new \DOMXPath($xml);
+        $xpath->registerNamespace('d', 'DAV:');
+        $xpath->registerNamespace('card', 'urn:ietf:params:xml:ns:carddav');
+        $hrefs = $xpath->query('/d:error/card:no-uid-conflict/d:href');
+        $this->assertNotFalse($hrefs);
+        $this->assertSame(1, $hrefs->length, (string) $response->getContent());
+        $this->assertSame($existingHref, $hrefs->item(0)?->textContent);
+    }
+
+    /**
+     * @param  array<string, string>  $server
+     */
+    private function davAsBob(string $method, string $path, string $body, array $server = []): TestResponse
+    {
+        return $this->call($method, $path, [], [], [], $server + [
+            'HTTP_AUTHORIZATION' => 'Basic '.base64_encode('bob:secret'),
+            'CONTENT_TYPE' => 'text/vcard; charset=utf-8',
+        ], $body);
+    }
+
+    private function bootDavInstall(): void
+    {
+        $installRoot = sys_get_temp_dir().'/wgw-carddav-interop-'.uniqid('', true);
+        mkdir($installRoot, 0775, true);
+        file_put_contents($installRoot.'/index.php', "<?php\n");
+        $dataDir = $installRoot.'/wgw-content';
+        mkdir($dataDir.'/files/users/bob', 0775, true);
+        mkdir($dataDir.'/files/groups', 0775, true);
+        WgwInstallFixture::bindInstallRoot($installRoot, $dataDir);
+        WgwInstallFixture::markInstalled($installRoot, $dataDir);
+        config(['wgw.install_root' => $installRoot, 'wgw.data_dir' => $dataDir]);
+        WgwInstallFixture::forgetInstallBindings();
+        WgwInstallFixture::purgeDatabaseConnection();
+        $this->setAppSetting(WgwSettings::BROWSER_PLUGIN, false);
+        WgwTestDisks::refresh($dataDir);
+        // The fixture resets the connection; seed the contacts users after it.
+        $this->setUpContactsFixtures();
     }
 
     private function findBobCard(string $cardId): ?Card
