@@ -16,7 +16,7 @@ B1 means: sentences under about 20 words, one point per sentence, common words, 
 
 ## The Summary block
 
-Every Epic, Task, Chore, and Bug body starts with this block. Bug reports from outside contributors are the exception: a maintainer adds the block during triage.
+Every Epic, Task, Chore, and Bug body starts with this block. The Epic, Task, Chore and Bug report templates all ask for it first. When an outside reporter's Summary is thin, a maintainer sharpens it during triage.
 
 ```markdown
 ## Summary
