@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Tracker: #1533 (to be re-scoped under a new Epic). Status: **proposal, not built**; revised after external review 1 (see [notifications.md](notifications.md#changes-after-review-1)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **proposal, not built**; revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 

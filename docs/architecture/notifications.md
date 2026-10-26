@@ -1,6 +1,6 @@
 # Notifications and live updates
 
-One architecture for everything that is news to a user: data that changed under an open app, and events that deserve their attention. Status: **proposal, not built**. Tracker: #1533 (to be re-scoped under a new Epic).
+One architecture for everything that is news to a user: data that changed under an open app, and events that deserve their attention. Status: **proposal, not built**. Epic: #1659 (Goals WeGotWorkspace/Product#149 and WeGotWorkspace/Product#150). Spec, plan and chunks: [.agents/specs/1659-live-updates/](../../.agents/specs/1659-live-updates/).
 
 It builds on the Web Push decisions of Epic #1600: a window acks a notification only while it is visible or in a Meet call (#1605), and hidden windows show nothing themselves, so Web Push is the only OS notification path.
 
@@ -169,51 +169,6 @@ Later: per-event preferences, Docs threads, holding connections open on a separa
 1. **Event-source retry and fallback poll values:** measure with k6 first.
 2. **Service worker per browser:** which browsers let it skip the OS notification when a visible client exists (spike before the urgent-push task).
 
-## Changes after review 1
+## Review history
 
-External review 1 (2026-10-26) kept the core and changed these details. The sections above already reflect them.
-
-| Review point | Decision |
-|--------------|----------|
-| Hold mode is long-poll, against the rule that signaling never long-polls on a small PHP-FPM pool | Dropped. Short-burst only; no setting holds a connection open. |
-| The Drive check scans change rows on every poll | Replaced by a change marker per visible root, bumped at write. The read is O(number of roots). |
-| The rate-limit bucket is too small for the check-now storm case | Own bucket per browser (user + browser id), about 60/min, plus a per-account ceiling. |
-| The hub records a state before the app's sync succeeded | The hub records a type's state only after the app's sync succeeds; a failed sync is retried. |
-| Web Push at 20–80 s is too slow for "meeting started" | Urgent actions skip the grace and are sent right after the response. The service worker skips the OS notification when a visible client exists, where the browser allows it. |
-| Yjs saves make every collaborator refetch a doc they already have | While a note or doc has an active collab room, the app does not refetch its content; metadata still syncs. |
-| Leader election | Web Locks, independent of the presence mesh, so a mesh failure cannot stop the safety net. |
-| The toast rule needs each tab's route | Tabs report their route to the hub. |
-| "Drive single-person shares" gap | Not a gap: share roots are already visible roots (`FileNodeAccountSupport::rootsFor`). Removed. |
-| Event-id hash length | 128-bit hashes. A collision would be a silent, permanent miss. |
-| A wide check-now reveals that a user just wrote | Sent only to peers who share at least one collection with the writer; when unknown, not sent. |
-| An exhausted bucket ends in silence | While push is rate-limited or down, the app polls return to their normal interval. |
-| Short-burst is a poll with SSE framing | Stated as such. We keep the RFC event source: it is already advertised, serves external JMAP clients, and leaves room to hold connections later on a separate pool. |
-
-## Changes after review 2
-
-External review 2 (2026-10-26) confirmed the first round and found four more points; one of them makes the client smaller.
-
-| Review point | Decision |
-|--------------|----------|
-| Pending states, retries and their handover need storage outside the leader tab | Gone. The hub keeps, per type, the hash it last confirmed, and builds `Last-Event-ID` from those. On reconnect the server re-sends every type that was not confirmed. A new leader sends the confirmed id and is up to date. |
-| An after-response Web Push holds a PHP-FPM worker for every TLS handshake | Parallel send with a hard 1.5 s total timeout and at most 20 subscriptions per event after the response; anything slower or beyond falls back to the cron sweep. |
-| Drive markers miss moves and deletes out of a share, and batches cost N × depth upserts | Move and delete bump the root set of the old and the new path. Batch operations compute the root set once and bump once. A root without a marker row counts as 0. |
-| Collab saves send check-now, so every collaborator reconnects while someone types | Writes that come from an active collab room send no check-now. |
-| Out of scope still names Drive single-person shares | Removed. |
-| Urgent push depends on the toast task | The service worker only suppresses the OS notification; the hub shows the toast. The urgent-push task depends on the inbox and toast tasks. |
-| Which news is urgent | Only `meet.started`. |
-| The load test only measures reads | The k6 scenario also covers marker upserts and after-response sends. |
-| A grantee notices a share when its state changes | Intended, and written down under Security in [jmap-push.md](jmap-push.md#security). |
-
-## Changes after review 3
-
-External review 3 (2026-10-26) found three errors and three small points; the reviewer considers the design ready to build after these.
-
-| Review point | Decision |
-|--------------|----------|
-| A composite that only aggregates marker values cannot see a share of an empty folder (a 0 added or removed changes nothing) | The `FileNode` hash covers the sorted list of `root → marker` pairs: root identity and value. Adding or revoking any root changes it, also at 0. |
-| Delivery status per notification makes the cron sweep resend to devices that already got the after-response push | Delivery status per subscription; the sweep only picks up the open ones. The 20-subscription cutoff is measured, not assumed. |
-| A service worker that only suppresses leaves a gap when push is down | The service worker posts the item to the visible client; that client's hub shows the toast, and the `Notification` state confirms it afterwards (de-duplicated by inbox id). This replaces the review-2 decision. |
-| Two syncs of one type at once can roll back a confirmed hash | One sync in flight per type; a newer push replaces the waiting hash. |
-| "An app subscribed to that type" | Every subscribed app must confirm before the hash counts as confirmed. |
-| The client task carries three blocking parts | Built first: Web Locks leader, confirmed-hash id, SSE reader. |
+The design went through three external reviews on 2026-10-26. The rejected alternatives and the decision per review point are in [.agents/specs/1659-live-updates/plan.md](../../.agents/specs/1659-live-updates/plan.md#considered).
