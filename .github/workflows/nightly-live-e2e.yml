@@ -125,13 +125,13 @@ jobs:
   notes-sync-matrix:
     # One runner needs about 90 minutes for the 110 cases, so they run in shards.
     # Each shard boots its own PHP, Vite, and SQLite, so the shards share nothing.
-    name: Notes sync matrix (${{ matrix.shard }}/3)
+    name: Notes sync matrix (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
@@ -197,7 +197,7 @@ jobs:
 
       - name: Run the Notes sync matrix
         working-directory: packages/apps
-        run: pnpm exec playwright test --config playwright.matrix.config.mjs --shard=${{ matrix.shard }}/3
+        run: pnpm exec playwright test --config playwright.matrix.config.mjs --shard=${{ matrix.shard }}/4
 
       # Also on a timeout (a cancel), so a slow run still leaves its traces.
       - name: Upload Playwright artifacts

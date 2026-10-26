@@ -23,6 +23,7 @@ import {
   TEAM_NOTEBOOK,
   TEAM_NOTEBOOK_NAME,
   TEAMMATE,
+  warmUpApp,
   type ServerNote,
   type Tab,
 } from "./helpers/notes-matrix";
@@ -269,8 +270,9 @@ async function runCase(browser: Browser, c: Case): Promise<void> {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test.beforeAll(async () => {
+test.beforeAll(async ({ browser }) => {
   await ensureTeamNotebook();
+  await warmUpApp(browser);
 });
 
 for (const action of Object.keys(ACTIONS) as Action[]) {
