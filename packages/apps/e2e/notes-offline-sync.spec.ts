@@ -23,6 +23,9 @@ import {
 } from "./helpers/notes-live";
 
 test.describe("Notes offline sync (live app)", () => {
+  // Each case signs in, wipes the offline store and reloads first; the CI runner needs more than 90s.
+  test.describe.configure({ timeout: 180_000 });
+
   test("network offline: edit, reconnect, pending dot clears and sync toast shows", async ({
     page,
   }) => {
