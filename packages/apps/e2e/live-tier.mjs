@@ -9,7 +9,8 @@ export const liveTierSpecPattern =
 
 /**
  * Notes sync matrix: every action × tab setup × connectivity case (about 110
- * cases, 30–45 minutes). Its own nightly job, so the live tier stays short.
+ * cases, about 90 minutes on one CI runner against Vite dev). Its own nightly
+ * job in three shards, so the live tier stays short.
  */
 export const notesSyncMatrixSpecPattern = /notes-sync-matrix\.spec\.ts/;
 

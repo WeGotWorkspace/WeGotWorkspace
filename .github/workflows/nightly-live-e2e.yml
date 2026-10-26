@@ -123,9 +123,15 @@ jobs:
           if-no-files-found: ignore
 
   notes-sync-matrix:
-    name: Notes sync matrix
+    # One runner needs about 90 minutes for the 110 cases, so they run in shards.
+    # Each shard boots its own PHP, Vite, and SQLite, so the shards share nothing.
+    name: Notes sync matrix (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
@@ -191,13 +197,14 @@ jobs:
 
       - name: Run the Notes sync matrix
         working-directory: packages/apps
-        run: pnpm exec playwright test --config playwright.matrix.config.mjs
+        run: pnpm exec playwright test --config playwright.matrix.config.mjs --shard=${{ matrix.shard }}/3
 
+      # Also on a timeout (a cancel), so a slow run still leaves its traces.
       - name: Upload Playwright artifacts
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
-          name: notes-sync-matrix-artifacts
+          name: notes-sync-matrix-artifacts-${{ matrix.shard }}
           path: |
             packages/apps/playwright-report/
             packages/apps/test-results/
@@ -226,7 +233,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Download the `live-e2e-artifacts` or `notes-sync-matrix-artifacts` artifact from that run for the HTML report and traces.",
+              "Download the `live-e2e-artifacts` or `notes-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
             ].join("\n");
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
