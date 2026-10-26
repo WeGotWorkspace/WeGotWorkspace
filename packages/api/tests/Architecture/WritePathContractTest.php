@@ -121,6 +121,53 @@ final class WritePathContractTest extends TestCase
         $this->assertStringContainsString('afterWriteMethod', $davSrc);
     }
 
+    /**
+     * Move and delete bookkeeping for Drive paths has one home (#1612): every
+     * write surface calls DrivePathBookkeeping, and nothing else re-points
+     * or drops docs threads, index sidecars, stars or share paths itself.
+     */
+    public function test_drive_move_and_delete_bookkeeping_has_one_entry_point(): void
+    {
+        $bookkeeping = $this->appPath('Services/Drive/DrivePathBookkeeping.php');
+        $this->assertFileExists($bookkeeping);
+
+        foreach ([
+            'Services/Drive/DriveService.php',
+            'Services/Jmap/FileNodes/FileNodeRelocator.php',
+            'Dav/Server/FileNodeIndexPlugin.php',
+        ] as $caller) {
+            $this->assertStringContainsString(
+                'DrivePathBookkeeping',
+                (string) file_get_contents($this->appPath($caller)),
+                $caller.' must hand its move and delete bookkeeping to DrivePathBookkeeping',
+            );
+        }
+
+        $patterns = [
+            '->retargetPath(',
+            '->dropPath(',
+            '->recordMoveWithSidecar(',
+            '->recordDeleteWithSidecar(',
+            '->deletePathPrefix(',
+            '->destroyDocsBestEffort(',
+            '->relocateAfterMoveBestEffort(',
+        ];
+        $violations = [];
+        foreach ($this->phpFiles([dirname(__DIR__, 2).'/app']) as $file) {
+            if ($file === $bookkeeping) {
+                continue;
+            }
+            $src = (string) file_get_contents($file);
+            foreach ($patterns as $pattern) {
+                if (str_contains($src, $pattern)) {
+                    $violations[] = $this->rel($file).': '.$pattern;
+                }
+            }
+        }
+
+        $this->assertSame([], $violations, "Call DrivePathBookkeeping instead:\n".implode("\n", $violations));
+    }
+
     private function appPath(string $relative): string
     {
         return dirname(__DIR__, 2).'/app/'.$relative;
