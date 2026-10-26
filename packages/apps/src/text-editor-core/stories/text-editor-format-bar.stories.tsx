@@ -6,7 +6,6 @@ import { docsLabels } from "@/docs-core/src/docs-labels";
 import {
   TextEditorFormatBar,
   TEXT_EDITOR_FORMAT_BAR_GROUPS,
-  TEXT_EDITOR_FORMAT_BAR_MAIL,
   type TextEditorFormatBarGroup,
 } from "@/text-editor-core/src/text-editor-format-bar";
 import {
@@ -90,16 +89,6 @@ export const Html: Story = {
     const bold = canvas.getByRole("button", { name: "Bold" });
     await userEvent.click(bold);
     await expect(bold).toHaveAttribute("aria-pressed", "true");
-  },
-};
-
-export const MailToolbar: Story = {
-  name: "Mail toolbar",
-  args: {
-    format: "html",
-    groups: TEXT_EDITOR_FORMAT_BAR_MAIL,
-    showPrint: false,
-    editable: true,
   },
 };
 

@@ -21,7 +21,6 @@ use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Auth\RefreshCookie;
 use App\Services\Collab\CollabResponseException;
-use App\Services\Mail\MailResponseException;
 use App\Services\Mcp\McpPublicOrigin;
 use App\Services\Meet\MeetResponseException;
 use App\Services\Principal\PrincipalResponseException;
@@ -107,9 +106,6 @@ $app = Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (MailResponseException $e) {
-            return response()->json($e->payload, $e->status);
-        });
         $exceptions->render(function (MeetResponseException $e) {
             return response()->json($e->payload, $e->status);
         });

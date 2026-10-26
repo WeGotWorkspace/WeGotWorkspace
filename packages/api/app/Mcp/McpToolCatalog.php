@@ -25,8 +25,6 @@ use App\Mcp\Tools\DriveReadTool;
 use App\Mcp\Tools\DriveSearchTool;
 use App\Mcp\Tools\DriveShareTool;
 use App\Mcp\Tools\DriveWriteTool;
-use App\Mcp\Tools\MailSendTool;
-use App\Mcp\Tools\MailStatusTool;
 use App\Mcp\Tools\MeetChannelListTool;
 use App\Mcp\Tools\MeetChannelWriteTool;
 use App\Mcp\Tools\MeetCreateScheduledTool;
@@ -94,11 +92,6 @@ final class McpToolCatalog
             $tools[] = NotebookShareTool::class;
             $tools[] = NotesQueryTool::class;
             $tools[] = NoteWriteTool::class;
-        }
-        // mail_enabled stays in the installer payload and does not put tools on the wire.
-        if (config('wgw.mail.client_enabled')) {
-            $tools[] = MailStatusTool::class;
-            $tools[] = MailSendTool::class;
         }
 
         $tools[] = MeetChannelListTool::class;

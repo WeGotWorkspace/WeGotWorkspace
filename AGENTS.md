@@ -37,7 +37,6 @@ Agent skills live in [`.agents/skills/`](.agents/skills/) (tool-agnostic [Agent 
 | [developer](.agents/skills/developer/) | Starting work, onboarding, skill routing, multitask — [issue-filing.md](.agents/skills/developer/issue-filing.md) for Goals/Epics/Tasks/Chores; [english-only.md](.agents/skills/developer/english-only.md) for specs, docs, and GitHub language |
 | [dev-environment](.agents/skills/dev-environment/) | Docker, ports, Storybook proxy, troubleshooting |
 | [api](.agents/skills/api/) | `packages/api` — REST, auth, storage, WebDAV, tests |
-| [plugins](.agents/skills/plugins/) | Plugin registry, activation, install, Flysystem boundaries |
 | [meet](.agents/skills/meet/) | Meet UI, RTC, room signaling |
 | [apps-ui](.agents/skills/apps-ui/) | UI primitives, CSS variables, components, TypeScript |
 | [client-transport](.agents/skills/client-transport/) | Client API calls in `lib/api/wgw` — typed errors with an HTTP status for the offline outbox |

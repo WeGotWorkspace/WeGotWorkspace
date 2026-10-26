@@ -1,7 +1,6 @@
 # Current-branch image for the v0.1.99 upgrade e2e.
 # The fresh-install matrix builds a full release ZIP. This image only needs the
-# API tree, Apache, and the extensions schema-migrate and DAV use. ext-imap is
-# omitted: Mail is out of the v0.9 upgrade check, and pecl imap dominates the build.
+# API tree, Apache, and the extensions schema-migrate and DAV use.
 # Volume mounts match docker/install/Dockerfile.runtime.
 
 FROM php:8.5-apache-bookworm@sha256:411df529915598ee7d08adf8616b328fb1272cbb272e82ffa572d6fcf3f204cd

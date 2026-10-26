@@ -17,7 +17,6 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | Handoff / verify before PR | `developer` | [mcp-verification.md](mcp-verification.md), [done-checklist.md](done-checklist.md), [english-only.md](english-only.md) |
 | Dev env / Docker / ports | [dev-environment](../dev-environment/SKILL.md) | `docs/dev-layout.md` |
 | API / Laravel / REST / WebDAV | [api](../api/SKILL.md) | [layers.md](../api/layers.md), [testing.md](../api/testing.md) |
-| Plugins / wgw-plugins | [plugins](../plugins/SKILL.md) | [storage-flysystem.md](../api/storage-flysystem.md) |
 | Meet / RTC / room signaling | [meet](../meet/SKILL.md) | `packages/api/docs/meet-signaling.md` |
 | UI primitives / CSS / styling | [apps-ui](../apps-ui/SKILL.md) | [components.md](../apps-ui/components.md), [typescript.md](../apps-ui/typescript.md) |
 | Client API calls / transport errors | [client-transport](../client-transport/SKILL.md) | — |

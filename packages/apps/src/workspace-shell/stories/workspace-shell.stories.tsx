@@ -35,7 +35,7 @@ type Story = StoryObj;
 
 export const Default: Story = {
   parameters: {
-    routerPath: "/mail",
+    routerPath: "/notes",
   },
   render: () => (
     <WorkspaceAppLayout
