@@ -330,7 +330,7 @@ Old tree stays **read-only one release**; no dual-write. Drain FileNode Dexie ou
 
 | Topic                                    | Issue                                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------- |
-| Product Goal                             | [#661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661)       |
+| Product Goal                             | [Product#88](https://github.com/WeGotWorkspace/Product/issues/88)       |
 | Delivery Epic                            | [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662)       |
 | Isolation + provisioner                  | [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663)       |
 | REST + UID + stars + move                | [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664)       |
