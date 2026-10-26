@@ -44,7 +44,9 @@ test("signed-in teammate joins the host ad-hoc room", async ({ browser }) => {
     const memberRequest = await memberJoin;
     expect(roomIdFromParticipantsUrl(memberRequest.url())).toBe(room);
 
-    await expect(host.page.getByRole("button", { name: "1 waiting to join" })).toBeVisible();
+    await expect(
+      host.page.getByRole("heading", { name: "1 person waiting in the lobby" }),
+    ).toBeVisible();
   } finally {
     await host.context.close();
     await member.context.close();
