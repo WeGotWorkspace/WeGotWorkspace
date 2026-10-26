@@ -20,7 +20,7 @@ test.describe("Docs home browse (live app)", () => {
 
     // Seed a fresh Markdown file in My Drive; the upload indexes synchronously,
     // so browse mode should surface it on the next home fetch.
-    await seedDocAtPath(page, apiPath, `# ${fileName}\n\nE2E docs home browse seed.\n`);
+    await seedDocAtPath(apiPath, `# ${fileName}\n\nE2E docs home browse seed.\n`);
 
     // Re-fetch the home list now that the file is indexed.
     await gotoDocsHome(page);
@@ -28,11 +28,11 @@ test.describe("Docs home browse (live app)", () => {
     const row = docsHomeRow(page, fileName);
     await expect(row).toBeVisible({ timeout: 30_000 });
 
-    // Location column reflects the top-level drive for a My Drive file.
-    await expect(row.locator(".drive-list-col-location")).toHaveText("My Drive");
+    // Location column shows the personal drive's display name.
+    await expect(row.locator(".drive-list-col-location")).toHaveText("Personal");
 
-    // Opening the row navigates to the editor for that file.
-    await row.click();
+    // Double-clicking the row opens the file in the editor (a single click selects it).
+    await row.dblclick();
 
     await expect(page).toHaveURL(/[?&]file=/, { timeout: 30_000 });
     await expect(page).toHaveURL(new RegExp(encodeURIComponent(searchPath)));
