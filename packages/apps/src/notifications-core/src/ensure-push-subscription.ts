@@ -1,4 +1,4 @@
-import { fetchVapidPublicKey, subscribePush } from "@/lib/api/wgw/notifications";
+import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
@@ -32,18 +32,46 @@ async function currentPermission(): Promise<NotificationPermission> {
   return permissionPrompt;
 }
 
+/**
+ * True only when the subscription was made with a different VAPID key.
+ * A missing key on either side is unknown, so the subscription stays.
+ */
+function isSignedForOtherKey(subscription: PushSubscription, currentKey: Uint8Array): boolean {
+  const stored = subscription.options?.applicationServerKey;
+  if (!stored || currentKey.length === 0) return false;
+  const storedBytes = new Uint8Array(stored);
+  if (storedBytes.length !== currentKey.length) return true;
+  return storedBytes.some((byte, i) => byte !== currentKey[i]);
+}
+
+/**
+ * Remove the server row first: the DELETE always answers 204, so a failure
+ * here is transient and the next app load retries with the old subscription
+ * still in place.
+ */
+async function dropStaleSubscription(subscription: PushSubscription): Promise<void> {
+  await unsubscribePush(subscription.endpoint);
+  await subscription.unsubscribe();
+}
+
 async function subscribePushManager(): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
-  const key = await fetchVapidPublicKey();
+  const key = urlBase64ToUint8Array(await fetchVapidPublicKey());
   const registration = await navigator.serviceWorker.ready;
   // Safari often already has a PushSubscription after permission; subscribe()
   // then throws and used to be swallowed, so VAPID never got an endpoint row.
-  const existing = await registration.pushManager.getSubscription();
+  // Reuse it unless it was made with another VAPID key: the push service then
+  // rejects every send (403), so swap it for one on the current key.
+  let existing = await registration.pushManager.getSubscription();
+  if (existing && isSignedForOtherKey(existing, key)) {
+    await dropStaleSubscription(existing);
+    existing = null;
+  }
   const subscription =
     existing ??
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
+      applicationServerKey: key as BufferSource,
     }));
   await subscribePush(subscription.toJSON());
   return true;
