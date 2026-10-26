@@ -2,7 +2,9 @@
 
 **Live project:** [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) (org `WeGotWorkspace`, project number **1**). Visibility: **public**.
 
-Setup is **done**: Status options configured; open `type:goal` issues (#378–#392, #395, …) on the board with Status set.
+Setup is **done**: Status options configured; every Goal in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) is on the board with Status set.
+
+Goals moved from the code repository to the Product repository on 2026-10-26 (`transferIssue`). Project items, Status, labels, the `v0.9` milestone, and sub-issue links carried over, and old issue URLs redirect. Transferring a Goal makes **Auto-add sub-issues** re-add its delivery issues to the board; remove those items afterwards.
 
 ## Status options
 
@@ -39,7 +41,7 @@ GitHub Projects V2 exposes some workflows via GraphQL (`projectV2.workflows`, `d
 3. Under **Default workflows**, open **Auto-add to project** (or a duplicate you created for Goals).
 4. Click **Edit**.
 5. Under **Filters**:
-   - Repository: `WeGotWorkspace/wegotworkspace`
+   - Repository: `WeGotWorkspace/Product`
    - Filter: `is:issue label:type:goal`
 6. Click **Save and turn on workflow**.
 
@@ -67,7 +69,7 @@ mutation($project:ID!, $content:ID!) {
 }' -f project=PVT_kwDOETzKWc4BfVtL -f content=ISSUE_NODE_ID
 ```
 
-List Goals: `gh issue list --repo WeGotWorkspace/wegotworkspace --label type:goal --state all`.
+List Goals: `gh issue list --repo WeGotWorkspace/Product --label type:goal --state all`.
 
 ## Re-auth (if scopes lapse)
 

@@ -31,10 +31,10 @@ Only submit work you have the right to submit. Do not copy in code under a licen
 
 ## Product vs engineering
 
-- **Goals** (`type:goal`) describe user outcomes — maintainers only. Board Status is **Identified → Adopted → Fulfilled**. Identified is a draft backlog (no milestone until Adopted). Fulfilled Goals are closed; Status stays on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). Start at the [0.9 Roadmap](https://github.com/orgs/WeGotWorkspace/projects/1/views/4). See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
-- **Epics / tasks / chores** (`type:epic` / `type:task` / `type:chore`) track delivery under Goals or pure eng work — maintainers only.
+- **Goals** (`type:goal`) describe user outcomes — maintainers only, filed in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product). Board Status is **Identified → Adopted → Fulfilled**. Identified is a draft backlog (no milestone until Adopted). Fulfilled Goals are closed; Status stays on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). Start at the [0.9 Roadmap](https://github.com/orgs/WeGotWorkspace/projects/1/views/4). See [docs/product/](docs/product/) and [GOVERNANCE.md](GOVERNANCE.md).
+- **Epics / tasks / chores** (`type:epic` / `type:task` / `type:chore`) track delivery under Goals or pure eng work — maintainers only, filed here. Epics and Tasks attach to their Goal as sub-issues.
 - GitHub issue type: a Goal is **Feature**; an epic, task, or chore is **Task**; a bug is **Bug**. The kind label stays `type:epic` or `type:chore`. Titles do not repeat the kind with a `[Goal]`, `[Task]`, `[Epic]`, or `[Chore]` prefix.
-- Templates: `goal.yml`, `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml`, `dast-finding.yml` under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
+- Templates: `epic.yml`, `task.yml`, `chore.yml`, `bug-report.yml`, `dast-finding.yml` under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/). The Goal template lives in the [Product repository](https://github.com/WeGotWorkspace/Product/blob/main/.github/ISSUE_TEMPLATE/goal.yml).
 
 ## Maintainers
 

@@ -45,7 +45,7 @@ Persistence reuses the existing Sabre CalDAV PDO backend (`calendars`, `calendar
 
 **Why:** Verified on macOS 26.6.2 against the local stack (2026-10-18): `remindd` reads and writes VTODOs in a WGW task list, including `DUE`, `DTSTART` and a `VALARM`. Features from Apple's upgraded iCloud reminders are not available for CalDAV lists: indent (subtasks), tags and sections are disabled. The earlier claim that Reminders does not sync via CalDAV at all was wrong. Captures: `packages/api/tests/fixtures/Interop/RealClients/apple-reminders-macos26-todo.*`.
 
-**Implication:** Reminders is a target client for round-trip safety (Goal #1389). Subtask interop (RT-T1) is tested with other clients.
+**Implication:** Reminders is a target client for round-trip safety (Goal [Product#138](https://github.com/WeGotWorkspace/Product/issues/138)). Subtask interop (RT-T1) is tested with other clients.
 
 ---
 

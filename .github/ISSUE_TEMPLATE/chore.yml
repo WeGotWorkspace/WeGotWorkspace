@@ -1,5 +1,5 @@
 name: "[Maintainers only] Chore"
-description: Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report.
+description: "Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report."
 type: Task
 labels:
   - type:chore

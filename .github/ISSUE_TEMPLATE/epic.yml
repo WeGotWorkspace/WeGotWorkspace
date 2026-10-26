@@ -1,5 +1,5 @@
 name: "[Maintainers only] Epic"
-description: Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report.
+description: "Maintainers only — engineering epic under a parent Goal. Externals: use Discussions or Bug report."
 type: Task
 labels:
   - type:epic
@@ -19,8 +19,8 @@ body:
     id: parent_goal
     attributes:
       label: Parent goal
-      description: Link to the `type:goal` issue this epic delivers.
-      placeholder: "#123 — Share Docs and Drive files with guests via a link"
+      description: Link to the Goal in WeGotWorkspace/Product this epic delivers. Also add this epic to that Goal as a sub-issue.
+      placeholder: "WeGotWorkspace/Product#123 — Share Docs and Drive files with guests via a link"
     validations:
       required: true
 

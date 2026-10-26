@@ -4,6 +4,9 @@ contact_links:
   - name: Discussions — ideas and exploration
     url: https://github.com/WeGotWorkspace/wegotworkspace/discussions
     about: Share ideas and explore outcomes. Maintainers may promote promising threads to Goals later. Do not file Goal/Epic/Task/Chore issues for this.
+  - name: Goal (maintainers only)
+    url: https://github.com/WeGotWorkspace/Product/issues/new?template=goal.yml
+    about: Product Goals (user outcomes) are filed in the Product repository.
   - name: Bug report
     url: https://github.com/WeGotWorkspace/wegotworkspace/issues/new?template=bug-report.yml
     about: Something broken or incorrect? Use the Bug report template.

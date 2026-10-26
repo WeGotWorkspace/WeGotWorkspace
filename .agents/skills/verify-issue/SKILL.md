@@ -27,6 +27,7 @@ Product governance splits GitHub issues into layers. Detect mode from labels (`t
 
 **Goal mode rules:**
 
+- Goals live in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product): fetch with `gh issue view <N> -R WeGotWorkspace/Product`. A bare `#N` is an issue in this repository.
 - Do **not** invent eng AC from Outcome prose.
 - Check **Success looks like** as observable product outcomes; map children (sub-issues / Delivery links) and verify those with Task/Epic mode (or note them as open).
 - **Fulfilled** (Product Project Status) is a **product judgment** against success signals — **not** “all children closed,” not green CI on an unrelated PR, and not automatic from delivery issue state.
@@ -84,7 +85,7 @@ Details: [specs/README.md](../../specs/README.md).
 
 ### 1. Fetch the issue
 
-From repo root (`gh` uses the current repository):
+From repo root (`gh` uses the current repository; add `-R WeGotWorkspace/Product` for a Goal):
 
 ```bash
 gh issue view <N> --json number,title,body,state,labels,url,closedAt
