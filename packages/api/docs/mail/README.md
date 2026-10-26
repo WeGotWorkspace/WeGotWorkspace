@@ -20,4 +20,4 @@ The client's PHP dependencies went with it: `phpmailer/phpmailer`, `zbateson/mai
 
 ## Product target
 
-The client is Goal [#400](https://github.com/WeGotWorkspace/wegotworkspace/issues/400) on milestone v1.0. This release works alongside existing mail. It is not a mail replacement.
+The client is Goal [Product#18](https://github.com/WeGotWorkspace/Product/issues/18) on milestone v1.0. This release works alongside existing mail. It is not a mail replacement.

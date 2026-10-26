@@ -1,6 +1,6 @@
 # Suite notify pipeline
 
-Canonical reference for the in-process mutation envelope, LAMP-safe notify delivery, and the first producers (VALARM due alerts, Doc share, chat message-posted). Tracker: Epic [#741](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/741). Product Goals: in-app alerts [#390](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/390), Doc share/comment [#548](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/548), closed-tab Calendar push [#493](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/493). VAPID primitives: chore [#495](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/495).
+Canonical reference for the in-process mutation envelope, LAMP-safe notify delivery, and the first producers (VALARM due alerts, Doc share, chat message-posted). Tracker: Epic [#741](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/741). Product Goals: in-app alerts [Product#13](https://github.com/WeGotWorkspace/Product/issues/13), Doc share/comment [Product#46](https://github.com/WeGotWorkspace/Product/issues/46), closed-tab Calendar push [Product#32](https://github.com/WeGotWorkspace/Product/issues/32). VAPID primitives: chore [#495](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/495).
 
 ---
 
@@ -68,7 +68,7 @@ Chat-push (VAPID + `chat.message_posted`) is the beta closed-tab promise. Calend
 - **VALARM** — `AlertDueScheduler` scans `calendarobjects` with DISPLAY/AUDIO alarms in a ~now−90s…now+30s window. Actor is `system` so owners are not skipped. Dedupe `(principal, uid, occurrence, alarm_id)`.
 - **Doc share** — `DriveShareService::{createShare,updateShare}` notifies **new** member sharees under a single `docs.shared` action (navigate `/docs` vs `/drive` by path). Guest/public-link without a principal skipped.
 - **Docs thread activity** — `DocsThreadEventEmitter` / `DocsThreadRepository` fires `docs.thread_activity` to path ACL owners ∪ thread participants (authors + @mention auto-subscribe from body tokens). Navigate `/docs?file=…`. Reactions / resolve / archive do not notify.
-- **Docs @mention rows (`docs.mentioned`)** — **not shipped**; depends on Goal [#549](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/549) persistence. Cheap `@token` scan only feeds thread_activity auto-subscribe today (Task #801).
+- **Docs @mention rows (`docs.mentioned`)** — **not shipped**; depends on Goal [Product#47](https://github.com/WeGotWorkspace/Product/issues/47) persistence. Cheap `@token` scan only feeds thread_activity auto-subscribe today (Task #801).
 - **Chat** — `ChatMessageRepository::create` notifies roster via `chat.message_posted`. Mentioned users ∩ roster (− author) get `chat.mentioned` only (no dual row). Mentions persist as `X-WGW-MENTIONS`. In-call ephemeral mesh chat is not on this path.
 - **Calendar invite** — `CalendarSchedulingService::deliverLocal` fans out `calendar.invite` when a local iTIP REQUEST lands in the invitee's schedule-inbox (does not replace that inbox). Invitee only; organizer skipped. Dedupe `calendar.invite:{uid}` with `supersede` on reschedule. CANCEL clears the tray row via the same action + `clear`.
 - **Calendar RSVP** — same `deliverLocal` on `METHOD=REPLY` fans `calendar.rsvp` to the organizer. Skips when organizer is the writer (guest iMIP self-loop). Supersede per `uid`+attendee.
