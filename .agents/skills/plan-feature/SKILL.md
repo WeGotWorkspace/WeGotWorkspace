@@ -15,7 +15,7 @@ Goal (product, optional) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 | Step | File | Action |
 |------|------|--------|
-| 0 | Goal | If work delivers a user outcome, ensure a parent `type:goal` exists in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) ([docs/product/](../../../docs/product/)). Goals are **context only** — never `Source:`. |
+| 0 | Goal | If work delivers a user outcome, ensure a parent Goal exists in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) ([docs/product/](../../../docs/product/)). Goals are **context only** — never `Source:`. |
 | 1 | `spec.md` | `gh issue view <N>` on the **Task or Epic** → technical translation; header `Source: #<N> (body-hash: xxxxxxxx)`; optional `Goal: WeGotWorkspace/Product#M` (not hashed) |
 | 2 | `plan.md` | Chunk split using template below |
 | 3 | `tasks.md` | Engineering rows per chunk (id, owner, paths, verify) — **not** issue `- [ ]` checklist |
@@ -39,7 +39,7 @@ Skeletons: [specs/_template/](../../specs/_template/). On scope change: update t
 If the delivery issue does not exist yet, file it before writing `spec.md`. Short checklist: [developer/issue-filing.md](../developer/issue-filing.md). **English** title and body — [english-only.md](../developer/english-only.md).
 
 1. Classify: Goal | Epic | Task | Chore | Bug
-2. Goal → filed in WeGotWorkspace/Product; product language; GitHub issue type **Feature** and `type:goal`; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
+2. Goal → filed in WeGotWorkspace/Product; product language; `area:*` labels, no kind label and no GitHub issue type; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
 3. Epic → GitHub issue type **Task** and `type:epic`; required parent Goal; not on Product Project; milestone OK for release packing
 4. Task → GitHub issue type **Task** and `type:task`; parent Epic or Goal; implementable `- [ ]` AC; not on Product Project; milestone OK
 5. Chore → GitHub issue type **Task** and `type:chore`; no Goal required. Bug → `bug-report.yml` (GitHub issue type **Bug**); not on Product Project. Do not replace an existing Bug type.

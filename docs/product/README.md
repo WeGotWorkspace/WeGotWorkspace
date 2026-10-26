@@ -1,12 +1,12 @@
 # Product
 
-Product intent for WeGotWorkspace is **Goal issues** (`type:goal`) in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), tracked on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. This folder is process only — not a second capability map.
+Product intent for WeGotWorkspace is **Goal issues** in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (every issue there is a Goal), tracked on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project. This folder is process only — not a second capability map.
 
 Goals, delivery issues, and comments are **English** even when maintainers discuss them in another language. See [english-only.md](../../.agents/skills/developer/english-only.md).
 
 | Audience | Where |
 |----------|--------|
-| Anyone | Goals (`type:goal`) in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) + [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project; explore in [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |
+| Anyone | Goals in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) + [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project; explore in [Discussions](https://github.com/WeGotWorkspace/wegotworkspace/discussions) |
 | Maintainers / eng | Epics, tasks, bugs in this repository; milestones `v0.9` / `v1.0`; [docs/architecture/](../architecture/) |
 
 ## Vision
@@ -17,7 +17,7 @@ The Mail client is not in the current release (v0.9). The beta works alongside e
 
 ## One outcome per Goal
 
-Each Goal is **one fulfillable user outcome**. Split multi-outcome tickets into sibling Goals. Do **not** parent Goal→Goal — group with `area:*` and an optional shared milestone. Design language / suite consistency is a **Non-goal constraint** on Goals that need it, not its own Goal. Labels for Goals: `type:goal` + `area:*` (+ optional milestone). Details: [issue-filing.md](../../.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
+Each Goal is **one fulfillable user outcome**. Split multi-outcome tickets into sibling Goals. Do **not** parent Goal→Goal — group with `area:*` and an optional shared milestone. Design language / suite consistency is a **Non-goal constraint** on Goals that need it, not its own Goal. Labels for Goals: `area:*` (+ optional milestone); no kind label and no issue type. Details: [issue-filing.md](../../.agents/skills/developer/issue-filing.md#one-outcome-per-goal).
 
 ## Three surfaces (systems model)
 
@@ -25,7 +25,7 @@ Keep **three** surfaces — do not invent a fourth roadmap tracker:
 
 | Surface | What | Browse |
 |---------|------|--------|
-| **1. Product** | Goals (`type:goal`) in the [Product repository](https://github.com/WeGotWorkspace/Product), on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
+| **1. Product** | Goals in the [Product repository](https://github.com/WeGotWorkspace/Product), on the [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1) Project | Status columns Identified → Adopted → Fulfilled |
 | **2. Delivery** | Epics / Tasks / Chores / Bugs (`type:epic`, `type:task`, and `type:chore` use GitHub type **Task**; bugs use GitHub type **Bug**) — implementable work in this repository, attached to Goals as sub-issues | Issue filters below; **not** on the Product Project |
 | **3. Release targets & eng packing** | GitHub **milestones** (`v0.9`, `v1.0`, …) | Soft release target on Goals; pack Epics/Tasks/Bugs for a release train |
 
@@ -54,9 +54,9 @@ Start at the **Project**, not the default Issues tab (that list mixes unfinished
 | View | Link | Filter |
 |------|------|--------|
 | **0.9 Roadmap (beta todo)** | [projects/1/views/4](https://github.com/orgs/WeGotWorkspace/projects/1/views/4) | `status:Adopted milestone:v0.9` |
-| All Goals | [projects/1/views/1](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) | `label:type:goal` |
-| User Goals by App | [projects/1/views/2](https://github.com/orgs/WeGotWorkspace/projects/1/views/2) | `label:type:goal` |
-| User Goals by Version | [projects/1/views/3](https://github.com/orgs/WeGotWorkspace/projects/1/views/3) | `label:type:goal` |
+| All Goals | [projects/1/views/1](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) | `repo:WeGotWorkspace/Product` |
+| User Goals by App | [projects/1/views/2](https://github.com/orgs/WeGotWorkspace/projects/1/views/2) | `repo:WeGotWorkspace/Product` |
+| User Goals by Version | [projects/1/views/3](https://github.com/orgs/WeGotWorkspace/projects/1/views/3) | `repo:WeGotWorkspace/Product` |
 | 0.9 by area | [Calendar](https://github.com/orgs/WeGotWorkspace/projects/1/views/5) · [Docs](https://github.com/orgs/WeGotWorkspace/projects/1/views/6) · [Drive](https://github.com/orgs/WeGotWorkspace/projects/1/views/7) · [Tasks](https://github.com/orgs/WeGotWorkspace/projects/1/views/8) · [Contacts](https://github.com/orgs/WeGotWorkspace/projects/1/views/9) · [Admin](https://github.com/orgs/WeGotWorkspace/projects/1/views/10) · [Platform](https://github.com/orgs/WeGotWorkspace/projects/1/views/11) · [Notes](https://github.com/orgs/WeGotWorkspace/projects/1/views/12) · [Mail](https://github.com/orgs/WeGotWorkspace/projects/1/views/13) · [Meet](https://github.com/orgs/WeGotWorkspace/projects/1/views/14) | view 4 + `label:area:*` |
 | Identified (draft backlog) | [All Goals](https://github.com/orgs/WeGotWorkspace/projects/1/views/1) filtered `status:Identified` | recognized, not committed |
 | Fulfilled (closed issues) | Board filter `status:Fulfilled` | Status stays on the board after close |
@@ -69,7 +69,7 @@ Project setup (board workflows): [project-setup.md](./project-setup.md).
 
 | View | Link |
 |------|------|
-| Open delivery (epic or task, not Goals) | [label:type:task OR label:type:epic, open](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+-label%3Atype%3Agoal+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
+| Open delivery (epic or task, not Goals) | [label:type:task OR label:type:epic, open](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+%28label%3Atype%3Atask+OR+label%3Atype%3Aepic%29) |
 | Bugs | [type:Bug](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+type%3ABug) |
 | Chores / eng trackers | [label:type:chore](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+is%3Aopen+label%3Atype%3Achore) |
 | Milestone v0.9 (eng packing) | [milestone:v0.9](https://github.com/WeGotWorkspace/wegotworkspace/issues?q=is%3Aissue+milestone%3Av0.9) |
@@ -93,19 +93,19 @@ Engineering release packing remains the **milestone filter** on delivery issues 
 
 | Kind | Label | On Product Project? | Milestone? |
 |------|--------|---------------------|------------|
-| Goal | `type:goal` + `area:*` | Yes | Yes (soft release target) |
+| Goal | `area:*` only (every issue in the Product repository) | Yes | Yes (soft release target) |
 | Epic | `type:epic` | No | Yes (release packing) |
 | Task | `type:task` | No | Yes (release packing) |
 | Chore | `type:chore` | No | Optional |
 | Bug | GitHub type **Bug** (+ `needs-triage`) | No | Yes (release packing) |
 | Area | `area:*` (mail, drive, docs, …) | On Goals (and optionally delivery) | Groups siblings; not a Goal parent |
 
-Goal labels (`type:goal`, `area:*`) and the `v0.9` milestone exist in both repositories with the same names, so board filters such as `label:area:docs` and `milestone:v0.9` match Goals and delivery alike. Create a new `area:*` label or release milestone in both.
+The `area:*` labels and the `v0.9` milestone exist in both repositories with the same names, so board filters such as `label:area:docs` and `milestone:v0.9` match Goals and delivery alike. Create a new `area:*` label or release milestone in both.
 
-GitHub issue type is **Feature** for a Goal, **Task** for an Epic, Task, or Chore, and **Bug** for a bug report. The kind label stays `type:epic` or `type:chore`.
+A Goal has no GitHub issue type: every issue in the Product repository is a Goal. In this repository the issue type is **Task** for an Epic, Task, or Chore, and **Bug** for a bug report. The kind label stays `type:epic` or `type:chore`.
 
 Templates: [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — `epic.yml`, `task.yml`, `chore.yml` (maintainers only), `bug-report.yml` (plus specialized `dast-finding.yml`). The Goal template (`goal.yml`, maintainers only) lives in the [Product repository](https://github.com/WeGotWorkspace/Product/blob/main/.github/ISSUE_TEMPLATE/goal.yml). Blank issues are disabled. Externals use Discussions + bugs; maintainers promote Discussion → Goal **Identified** (then **Adopted** when committing).
 
-The legacy `roadmap` label has been **removed**. Use `type:goal` + the Product roadmap Project for product outcomes.
+The legacy `roadmap` label has been **removed**. Use a Goal in the Product repository + the Product roadmap Project for product outcomes.
 
 The `offline` label has been **removed**. Do not recreate it. Group offline / hybrid-sync work with **Goals** (e.g. [Product#4](https://github.com/WeGotWorkspace/Product/issues/4) Docs/Notes offline, [Product#18](https://github.com/WeGotWorkspace/Product/issues/18) Mail offline) plus `area:*` on Goals and delivery issues — not a cross-cutting eng label.

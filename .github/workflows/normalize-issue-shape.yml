@@ -17,7 +17,7 @@ jobs:
           script: |
             const issue = context.payload.issue;
             const labels = (issue.labels || []).map((label) => label.name);
-            // Goals live in WeGotWorkspace/Product, which sets Feature on type:goal itself.
+            // Goals live in WeGotWorkspace/Product and have no issue type.
             const fromLabel =
               labels.includes("type:task") ||
               labels.includes("type:epic") ||

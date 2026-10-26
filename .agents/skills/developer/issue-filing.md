@@ -6,7 +6,7 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 | Surface | Issues | Notes |
 |---------|--------|-------|
-| Product | `type:goal` in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Identified → Adopted → Fulfilled |
+| Product | Every issue in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product), on [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) | Status = Identified → Adopted → Fulfilled |
 | Delivery | `type:epic` / `type:task` / `type:chore` (GitHub type **Task**) / GitHub type **Bug** | Implementable work in this repository; **not** on Product Project |
 | Release targets & eng packing | GitHub milestones | Soft target on Goals; `v0.9` / `v1.0` also pack Epics/Tasks/Bugs |
 
@@ -25,14 +25,14 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 - Do **not** bundle multiple fulfillable outcomes into one Goal (e.g. “calendars + events + sharing”). Split into sibling Goals.
 - Do **not** parent a Goal under another Goal. Group related Goals with `area:*` labels and an optional shared milestone — not Goal→Goal hierarchy.
 - **Design language / suite consistency** is a **Non-goal constraint** (or success signal) on each Goal that needs it — not its own Goal.
-- Goal labels: `type:goal` + one or more `area:*` (+ optional milestone). Do not invent extra product labels for grouping.
+- Goal labels: one or more `area:*` (+ optional milestone). Every issue in the Product repository is a Goal, so there is no kind label and no issue type. Do not invent extra product labels for grouping.
 
 ## Checklist
 
 1. **English:** title and body in English (Goals, Epics, Tasks, Chores, Bugs, and every comment). Prompt language does not matter.
    **Plain language:** a Goal is plain English (B1) throughout, with no technical content. Every Epic, Task, Chore, and Bug starts with a `Summary` block (What / Who notices / If we wait) for the product lead. Technical content removed from a Goal moves to its Epic, never into the void. Rules and examples: [plain-language.md](plain-language.md).
 2. **Classify:** Goal | Epic | Task | Chore | Bug
-3. **Goal** → file in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (`gh issue create -R WeGotWorkspace/Product --template goal.yml`); **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); GitHub issue type **Feature** and label `type:goal` + `area:*`; add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (draft; **no milestone**). **Adopted** + optional milestone only when committing to a release (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`. When product marks **Fulfilled**, close the issue (`completed`) and leave Status Fulfilled on the board.
+3. **Goal** → file in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (`gh issue create -R WeGotWorkspace/Product --template goal.yml`); **one** fulfillable user outcome; product language (Outcome / Who / Success looks like / Non-goals); labels `area:*` only, no kind label and **no** GitHub issue type (every issue in the Product repository is a Goal); add to [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1) at Status **Identified** (draft; **no milestone**). **Adopted** + optional milestone only when committing to a release (≠ Fulfilled); **no** Goal parent; never sole `fixes #` / never `Source:` for `spec.md`. When product marks **Fulfilled**, close the issue (`completed`) and leave Status Fulfilled on the board.
 4. **Epic** → GitHub issue type **Task** and label `type:epic`; **required** parent Goal (add the Epic as a sub-issue of the Goal in WeGotWorkspace/Product); **not** on Product Project (even when parented under a Goal); milestone OK for release packing
 5. **Task** → GitHub issue type **Task** and label `type:task`; parent Epic or Goal; implementable `- [ ]` AC; **not** on Product Project; milestone OK for release packing
 6. **Chore** → GitHub issue type **Task** and label `type:chore`. **Bug** → `bug-report.yml` (GitHub issue type **Bug**); no Goal required; **not** on Product Project. Security/DAST: `dast-finding.yml`. Bugs may take a milestone; chores usually do not compete as roadmap. Do not replace an existing Bug type.
@@ -43,13 +43,13 @@ Use when creating or classifying GitHub issues. Product intent: [docs/product/](
 
 | Kind | Label | GitHub issue type | Parent | Product Project? | Milestone? | Spec `Source:`? |
 |------|-------|------------------|--------|------------------|------------|-----------------|
-| Goal | `type:goal` (+ `area:*`) | **Feature** | — (never another Goal) | Yes | Yes (soft target) | Never |
+| Goal | `area:*` only | none | — (never another Goal) | Yes | Yes (soft target) | Never |
 | Epic | `type:epic` | **Task** | Goal required | No | Yes (packing) | Yes (delivery) |
 | Task | `type:task` | **Task** | Epic or Goal | No | Yes (packing) | Yes (delivery) |
 | Chore | `type:chore` | **Task** | Optional | No | Optional | Usually no `feat/` |
 | Bug | `needs-triage` | **Bug** | Optional | No | Yes (packing) | Usually no `feat/` |
 
-Titles do **not** repeat the kind. Do not prefix a title with `[Goal]`, `[Task]`, `[Epic]`, or `[Chore]`. Templates omit that prefix. [`.github/workflows/normalize-issue-shape.yml`](../../../.github/workflows/normalize-issue-shape.yml) sets Task on `type:task`, `type:epic`, and `type:chore` when the type is missing, leaves an existing Bug type in place, and strips those prefixes. The Product repository has its own copy that sets Feature on `type:goal` and strips `[Goal]`.
+Titles do **not** repeat the kind. Do not prefix a title with `[Goal]`, `[Task]`, `[Epic]`, or `[Chore]`. Templates omit that prefix. [`.github/workflows/normalize-issue-shape.yml`](../../../.github/workflows/normalize-issue-shape.yml) sets Task on `type:task`, `type:epic`, and `type:chore` when the type is missing, leaves an existing Bug type in place, and strips those prefixes. The Product repository has its own copy that only strips `[Goal]`; Goals get no issue type.
 
 ## Offline / hybrid sync
 
@@ -57,7 +57,7 @@ There is **no** `offline` GitHub label (do not recreate it). Group offline work 
 
 ## Product Project hygiene
 
-Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). New Tasks / Epics / Chores / Bugs must **not** be added. If automation or sub-issue linkage re-adds them, remove the Project item and keep the board filter `label:type:goal`. Browse kit: [docs/product/README.md](../../../docs/product/README.md#how-to-browse).
+Only **Goals** belong on [Product roadmap](https://github.com/orgs/WeGotWorkspace/projects/1). New Tasks / Epics / Chores / Bugs must **not** be added. If automation or sub-issue linkage re-adds them, remove the Project item and keep the board filter `repo:WeGotWorkspace/Product`. Browse kit: [docs/product/README.md](../../../docs/product/README.md#how-to-browse).
 
 ## Parked / far-horizon work
 
