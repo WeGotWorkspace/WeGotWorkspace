@@ -70,17 +70,23 @@ test.describe("Calendar offline week event (live app)", () => {
     await page.keyboard.press("Escape");
     await expect(details).toBeHidden();
 
-    await scrollTimedGridToHour(page, 10);
     const boxBefore = await card.boundingBox();
     expect(boxBefore).toBeTruthy();
     const startX = boxBefore!.x + boxBefore!.width / 2;
-    const startY = boxBefore!.y + Math.min(10, boxBefore!.height / 2);
+    // Press mid-card: the top 12px of a hovered card is the start resize handle.
+    const startY = boxBefore!.y + boxBefore!.height / 2;
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(startX, startY + 90, { steps: 10 });
+    // Drag up: scrollIntoViewIfNeeded can leave the card near the bottom of the viewport.
+    await page.mouse.move(startX, startY - 90, { steps: 10 });
+    // While dragging, the in-cell card stays put (hidden) and a floating copy follows the pointer.
+    const dragOverlay = page
+      .locator("time-line.timeline-timed .event--drag-overlay event-card")
+      .filter({ hasText: title });
+    await expect(dragOverlay).toBeVisible();
     await expect
       .poll(async () => {
-        const live = await card.boundingBox();
+        const live = await dragOverlay.boundingBox();
         return live ? Math.abs(live.y - boxBefore!.y) : 0;
       })
       .toBeGreaterThan(20);
