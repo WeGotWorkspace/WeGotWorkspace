@@ -1,0 +1,190 @@
+name: Review loop - review
+
+# Reviewer half of the automated review loop; the fixer is review-loop-fix.yml.
+# Setup, vendor swap, and design notes: .github/review-loop/README.md.
+#
+#   ready for review ─▶ review ─▶ approve ──────────▶ label ready-for-human
+#                         ▲   └─▶ request changes ─▶ fix ─▶ signed commit ─┐
+#                         └──────────────── push by the loop bot ◀────────┘
+#
+# The agent only reads code and returns JSON. This workflow posts the review as
+# the loop's own GitHub App, whose events start workflows (GITHUB_TOKEN events
+# do not, which would break the loop). Prompts, schemas, and the agent adapter
+# are read from main so a PR cannot rewrite the reviewer that judges it.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+
+concurrency:
+  group: review-loop-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  GH_REPO: ${{ github.repository }}
+  PR: ${{ github.event.pull_request.number }}
+  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  BASE_REF: ${{ github.event.pull_request.base.ref }}
+
+jobs:
+  review:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: bot
+        with:
+          client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
+
+      # New commits void an earlier approval. A human push only does this:
+      # re-review is opt-in (draft, then ready) to save agent usage.
+      - name: Reset labels
+        id: gate
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          BOT: ${{ steps.bot.outputs.app-slug }}[bot]
+          ACTION: ${{ github.event.action }}
+          SENDER: ${{ github.event.sender.login }}
+        run: |
+          gh pr edit "$PR" --remove-label ready-for-human 2>/dev/null || true
+          if [ "$ACTION" = synchronize ] && [ "$SENDER" != "$BOT" ]; then
+            echo "Push by $SENDER: approval dropped, no automatic re-review."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$ACTION" != synchronize ]; then
+            gh pr edit "$PR" --remove-label needs-human 2>/dev/null || true
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.run == 'true'
+        with:
+          ref: main
+          path: loop
+          sparse-checkout: .github/review-loop
+          persist-credentials: false
+
+      - uses: ./loop/.github/review-loop/prepare
+        if: steps.gate.outputs.run == 'true'
+        with:
+          ref: ${{ env.HEAD_SHA }}
+
+      # Fast side only (typecheck + Vitest unit, ~25s locally). The PHP suite,
+      # jsdom, Storybook, and e2e stay in CI, which runs alongside this review.
+      - name: Fast JS suite
+        id: tests
+        if: steps.gate.outputs.run == 'true'
+        continue-on-error: true
+        working-directory: pr
+        run: |
+          set -o pipefail
+          pnpm exec turbo run typecheck test:unit --filter=@wgw/apps 2>&1 \
+            | tee "$RUNNER_TEMP/fast-suite.log"
+
+      # Everything the reviewer gets besides the code. The PR body is left out
+      # on purpose; only the issues it links are passed on.
+      - name: Build prompt
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          BOT: ${{ steps.bot.outputs.app-slug }}[bot]
+          TESTS: ${{ steps.tests.outcome }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # shellcheck disable=SC2016 # $owner etc. are GraphQL variables
+          issues=$(gh api graphql -F owner="${GH_REPO%/*}" -F name="${GH_REPO#*/}" -F pr="$PR" -f query='
+            query($owner: String!, $name: String!, $pr: Int!) {
+              repository(owner: $owner, name: $name) {
+                pullRequest(number: $pr) {
+                  closingIssuesReferences(first: 10) { nodes { url } }
+                }
+              }
+            }' --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].url')
+          # Fallback: issue number in the branch name (feat/1533-slug).
+          if [ -z "$issues" ] && [[ "$HEAD_REF" =~ ^[a-z]+/([0-9]+)- ]]; then
+            issues="https://github.com/$GH_REPO/issues/${BASH_REMATCH[1]}"
+          fi
+
+          {
+            cat loop/.github/review-loop/review-prompt.md
+            echo
+            echo "## Context"
+            echo
+            echo "- Repository: $GH_REPO"
+            echo "- PR: $PR (head $HEAD_SHA, base origin/$BASE_REF)"
+            echo
+            echo "### Linked issues"
+            echo
+            if [ -z "$issues" ]; then
+              echo "None linked. Review for the blocking categories only."
+            fi
+            for url in $issues; do
+              echo "#### $url"
+              echo
+              gh issue view "$url" --json title,body --jq '"**" + .title + "**\n\n" + .body' \
+                || echo "(not readable from this workflow)"
+              echo
+            done
+            echo "### Fast JS suite: $TESTS"
+            echo
+            if [ "$TESTS" != success ]; then
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' "$RUNNER_TEMP/fast-suite.log" | tail -n 150
+              echo '```'
+            fi
+            echo
+            echo "### Your earlier reviews on this PR"
+            echo
+            gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+              | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]
+                  | if length == 0 then "None. This is the first round."
+                    else map("#### \(.state) on \(.commit_id[0:7])\n\n\(.body)") | join("\n\n") end'
+          } > "$RUNNER_TEMP/prompt.md"
+
+      - name: Review
+        id: agent
+        if: steps.gate.outputs.run == 'true'
+        uses: ./loop/.github/review-loop/agent
+        with:
+          mode: review
+          prompt-file: ${{ runner.temp }}/prompt.md
+          schema-file: loop/.github/review-loop/review.schema.json
+          working-directory: pr
+          token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
+          max-turns: "40"
+
+      - name: Post review
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          RESULT: ${{ steps.agent.outputs.result-file }}
+        run: |
+          payload="$RUNNER_TEMP/review.json"
+          jq --arg sha "$HEAD_SHA" '{
+              commit_id: $sha,
+              event: (if .verdict == "approve" then "APPROVE" else "REQUEST_CHANGES" end),
+              body: .body,
+              comments: [.comments[] | {path, line, side: "RIGHT", body}]
+            }' "$RESULT" > "$payload"
+
+          # GitHub rejects the whole review when one comment points outside
+          # the diff. Fall back to listing the comments in the body.
+          if ! gh api -X POST "repos/$GH_REPO/pulls/$PR/reviews" --input "$payload" > /dev/null; then
+            echo "::warning::Inline comments rejected; posting them in the review body."
+            jq '.body += "\n\n" + ([.comments[] | "- `\(.path):\(.line)` \(.body)"] | join("\n"))
+                | del(.comments)' "$payload" \
+              | gh api -X POST "repos/$GH_REPO/pulls/$PR/reviews" --input - > /dev/null
+          fi
+
+          if [ "$(jq -r .verdict "$RESULT")" = approve ]; then
+            gh label create ready-for-human --color 0e8a16 \
+              --description "Review loop approved; ready for human review" 2>/dev/null || true
+            gh pr edit "$PR" --add-label ready-for-human
+          fi
