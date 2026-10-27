@@ -211,6 +211,7 @@ final class NoteRepository
                 is_numeric($object->lastmodified) ? (int) $object->lastmodified : null,
                 $requirePrecondition,
             );
+            NoteArchiveGuard::assertPatchAllowed($this->converter, $object, $patch);
 
             $instance = $located['instance'];
             if (array_key_exists('categories', $patch) && is_array($patch['categories'])) {
