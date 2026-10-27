@@ -14,8 +14,6 @@ use App\Mcp\Tools\DriveReadTool;
 use App\Mcp\Tools\DriveSearchTool;
 use App\Mcp\Tools\DriveShareTool;
 use App\Mcp\Tools\DriveWriteTool;
-use App\Mcp\Tools\MailSendTool;
-use App\Mcp\Tools\MailStatusTool;
 use App\Mcp\Tools\NotesSearchTool;
 use App\Mcp\Tools\WgwMcpTool;
 use App\Mcp\Tools\WhoamiTool;
@@ -124,13 +122,6 @@ final class McpToolsTest extends WgwDatabaseTestCase
         $this->assertNotContains(DriveShareTool::class, $tools);
         $this->assertNotContains(DocsSearchTool::class, $tools);
         $this->assertNotContains(DocsWriteTool::class, $tools);
-    }
-
-    public function test_catalog_hides_mail_tools_unless_client_flag_is_on(): void
-    {
-        $tools = app(McpToolCatalog::class)->enabledTools();
-        $this->assertNotContains(MailStatusTool::class, $tools);
-        $this->assertNotContains(MailSendTool::class, $tools);
     }
 
     public function test_hard_refusal_blocks_admin_named_tools(): void
@@ -263,8 +254,6 @@ final class McpToolsTest extends WgwDatabaseTestCase
 
     public function test_catalog_tools_match_token_scopes(): void
     {
-        config(['wgw.mail.client_enabled' => true]);
-
         $expected = $this->expectedCatalogScopes();
         $scopeless = array_keys(array_filter(
             $expected,
@@ -387,8 +376,6 @@ final class McpToolsTest extends WgwDatabaseTestCase
             'drive_search' => McpScopes::DRIVE_READ,
             'drive_share' => McpScopes::DRIVE_SHARE,
             'drive_write' => McpScopes::DRIVE_WRITE,
-            'mail_send' => McpScopes::MAIL_SEND,
-            'mail_status' => McpScopes::MAIL_READ,
             'meet_channel_list' => McpScopes::MEET_READ,
             'meet_channel_write' => McpScopes::MEET_WRITE,
             'meet_create_scheduled' => McpScopes::MEET_WRITE,

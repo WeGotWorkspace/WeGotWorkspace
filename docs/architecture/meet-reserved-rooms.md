@@ -1,6 +1,6 @@
 # Reserved Meet rooms + calendar ICS-write hook
 
-Architecture lock for Goal [#525](https://github.com/WeGotWorkspace/wegotworkspace/issues/525) Chunk **M** (reservation persistence) and the shared ICS-write hook in Chunk **A**. Review this note **before** implementing M. Do not implement named reusable rooms ([#579](https://github.com/WeGotWorkspace/wegotworkspace/issues/579)).
+Architecture lock for Goal [Product#36](https://github.com/WeGotWorkspace/Product/issues/36) Chunk **M** (reservation persistence) and the shared ICS-write hook in Chunk **A**. Review this note **before** implementing M. Do not implement named reusable rooms ([Product#76](https://github.com/WeGotWorkspace/Product/issues/76)).
 
 Related: [`packages/api/docs/meet-signaling.md`](../../packages/api/docs/meet-signaling.md) (today’s in-call signaling). Conversion matrix write-set vs Microsoft read-only lands in Chunk A.
 
@@ -8,7 +8,7 @@ Related: [`packages/api/docs/meet-signaling.md`](../../packages/api/docs/meet-si
 
 Meet rooms today exist only while someone is joinable in-call. Guest knock on an empty room is `404 room_not_active` / “This meeting is not active…”. Calendar cannot attach a stable join URL until a reservation row exists with a principal owner.
 
-Chunk M is the missing **stable room identity** that deferred #525 on 2026-08-24. Calendar glue (conference fields, form, Join) is Chunks A and B.
+Chunk M is the missing **stable room identity** that deferred Product#36 on 2026-08-24. Calendar glue (conference fields, form, Join) is Chunks A and B.
 
 ## Reservation row
 
@@ -52,7 +52,7 @@ Sweeper deletes **never-activated** rows only when `expiresAt` is **non-null and
 | 4 | Recurrence-scope change **after** a successful reserve | Same PATCH as Remove (`now + 30 days`), then clear the staged code. |
 | 5 | Ad-hoc / draft finite clock elapses | Same sweeper as (1): start+30d or draft+30d rows that were never activated. |
 
-Active / recently-active rooms keep today’s **peer-prune** (peers, not the reservation row). No public delete-room API. Named reusable rooms (#579) stay out.
+Active / recently-active rooms keep today’s **peer-prune** (peers, not the reservation row). No public delete-room API. Named reusable rooms (Product#76) stay out.
 
 PATCH `expiresAt` is callable by `createdBy` **or** an `ownerPrincipal` member. Calendar write service may call POST/PATCH **internally** (not only the browser).
 
@@ -136,7 +136,7 @@ Write from `links`: ICS `URL`, RFC 7986 `CONFERENCE`, `X-GOOGLE-CONFERENCE`. **N
 
 ## Out of scope
 
-- Goal #579 named reusable rooms / stable studio links
+- Goal [Product#76](https://github.com/WeGotWorkspace/Product/issues/76) named reusable rooms / stable studio links
 - Auto-Meet on every event
 - Zoom / Teams APIs
 - Changing calendar iMIP `ORGANIZER` to the group

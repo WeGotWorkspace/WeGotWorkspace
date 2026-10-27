@@ -32,12 +32,6 @@ export function normalizeImipHourlyLimit(raw: string, dailyRaw: string): number 
 }
 
 export type AdminSettingsFormState = {
-  imapHost: string;
-  imapPort: number;
-  imapSecurity: string;
-  smtpHost: string;
-  smtpPort: number;
-  smtpSecurity: string;
   stunUrls: string;
   turnUrls: string;
   turnSecret: string;
@@ -96,12 +90,6 @@ export function buildAdminSettingsFormState(
     return "none";
   };
   return {
-    imapHost: data.mail.imapHost,
-    imapPort: data.mail.imapPort,
-    imapSecurity: normalizeSecurity(data.mail.imapSecurity),
-    smtpHost: data.mail.smtpHost,
-    smtpPort: data.mail.smtpPort,
-    smtpSecurity: normalizeSecurity(data.mail.smtpSecurity),
     stunUrls: data.rtc.stunUrls,
     turnUrls: data.rtc.turnUrls,
     turnSecret: "",
@@ -141,12 +129,6 @@ export function adminSettingsFormToMap(
   state: AdminSettingsFormState,
 ): Record<string, string | number | boolean> {
   const values: Record<string, string | number | boolean> = {
-    mail_imap_host: state.imapHost,
-    mail_imap_port: state.imapPort,
-    mail_imap_security: state.imapSecurity,
-    mail_smtp_host: state.smtpHost,
-    mail_smtp_port: state.smtpPort,
-    mail_smtp_security: state.smtpSecurity,
     rtc_stun_url: state.stunUrls,
     rtc_turn_url: state.turnUrls,
     meet_max_video_profile: state.maxVideoProfile,

@@ -20,7 +20,6 @@ final class McpScopesTest extends TestCase
             'docs.read', 'docs.write',
             'drive.read', 'drive.write',
             'meet.read', 'meet.write',
-            'mail.read', 'mail.send',
             'settings', 'offline_access',
         ] as $scope) {
             $this->assertContains($scope, $ids);
@@ -28,6 +27,8 @@ final class McpScopesTest extends TestCase
         $this->assertContains('drive.share', $ids);
         $this->assertNotContains('calendar', $ids);
         $this->assertNotContains('docs', $ids);
+        $this->assertNotContains('mail.read', $ids);
+        $this->assertNotContains('mail.send', $ids);
     }
 
     public function test_drive_share_is_advertised_unchecked_and_not_implied_by_write(): void
@@ -138,10 +139,11 @@ final class McpScopesTest extends TestCase
         $this->assertSame('Read', McpScopes::consentActionLabel(McpScopes::NOTES_READ));
         $this->assertSame('Write', McpScopes::consentActionLabel(McpScopes::DRIVE_WRITE));
         $facing = McpScopes::userFacingIds(McpScopes::ids());
-        $this->assertContains(McpScopes::MAIL_READ, $facing);
-        $this->assertContains(McpScopes::MAIL_SEND, $facing);
         $this->assertNotContains(McpScopes::OFFLINE_ACCESS, $facing);
-        $this->assertContains(McpScopes::MAIL_READ, McpScopes::ids());
+        $this->assertSame(
+            [McpScopes::MAIL_READ, McpScopes::MAIL_SEND],
+            McpScopes::userFacingIds([McpScopes::MAIL_READ, McpScopes::MAIL_SEND]),
+        );
         $this->assertArrayHasKey(McpScopes::MAIL_SEND, McpScopes::descriptions());
         $groups = McpScopes::groupConsentScopes(array_map(
             static fn (string $id): object => (object) ['id' => $id, 'description' => $id],

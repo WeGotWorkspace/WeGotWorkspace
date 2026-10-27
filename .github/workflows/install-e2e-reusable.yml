@@ -33,7 +33,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
+          extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
           coverage: none
 
       - uses: pnpm/action-setup@v6.1.0

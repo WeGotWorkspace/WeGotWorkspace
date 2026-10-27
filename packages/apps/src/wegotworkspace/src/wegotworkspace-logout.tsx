@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/wgw/http";
 import { probeBrowserReachable } from "@/lib/offline/core/browser-online";
 import { countDiscardedUnsyncedChanges } from "@/lib/offline/core/offline-wipe";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import {
   AlertDialog,
   AlertDialogAction,

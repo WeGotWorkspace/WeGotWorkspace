@@ -137,13 +137,13 @@ You are a **multitask verifier** for WeGotWorkspace. Read-only — do not edit f
 
 ## Example: three parallel UI chunks
 
-**Feature:** Settings profile editor, drive search bar, and mail list filter — independent panes, no OpenAPI change, parallel safe per [multitask.md](multitask.md).
+**Feature:** Settings profile editor, drive search bar, and notes list filter — independent panes, no OpenAPI change, parallel safe per [multitask.md](multitask.md).
 
 | Chunk | Skill | Key paths |
 |-------|-------|-----------|
 | `ui-settings-profile` | `workspace`, `apps-ui` | `packages/apps/src/settings-core/` |
 | `ui-drive-search` | `workspace`, `apps-ui` | `packages/apps/src/drive-core/` |
-| `ui-mail-list-filter` | `workspace`, `apps-ui` | `packages/apps/src/mail-core/` |
+| `ui-notes-list-filter` | `workspace`, `apps-ui` | `packages/apps/src/notes-core/` |
 
 **Parent after merge:** reconcile todos → spawn one verifier (disjoint paths, but same package and shared workspace patterns).
 
@@ -153,14 +153,14 @@ You are a **multitask verifier** for WeGotWorkspace. Read-only — do not edit f
 You are a **multitask verifier** for WeGotWorkspace. Read-only — do not edit files or commit.
 
 ## Context
-- **Feature:** Independent pane UX improvements (settings profile, drive search, mail list filter)
+- **Feature:** Independent pane UX improvements (settings profile, drive search, notes list filter)
 - **Merged chunks:**
 
 | ID | Summary | Key paths |
 |----|---------|-----------|
 | ui-settings-profile | Profile form validation + save affordance | `packages/apps/src/settings-core/` |
 | ui-drive-search | Search utils + main pane query state | `packages/apps/src/drive-core/` |
-| ui-mail-list-filter | List pane filter chips | `packages/apps/src/mail-core/` |
+| ui-notes-list-filter | List pane filter chips | `packages/apps/src/notes-core/` |
 
 - **Sequential dependencies:** none (no OpenAPI)
 - **Shared files risk:** low — verify no edits to `workspace-split-app.css` or shared `packages/apps/src/lib/` without coordination

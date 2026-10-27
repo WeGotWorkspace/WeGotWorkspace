@@ -2,7 +2,7 @@
 
 Canonical reference for engineers (human and AI) working on the WeGotWorkspace Notes product surface, REST API, and CalDAV VJOURNAL store.
 
-**Tracker:** [Goal #661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661) · **Epic:** [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
+**Tracker:** [Goal Product#88](https://github.com/WeGotWorkspace/Product/issues/88) · **Epic:** [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662) · **Product Goals:** [Product Project](https://github.com/orgs/WeGotWorkspace/projects/1)
 
 **Delivery Tasks:** isolation [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663) · REST [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664) · ACL [#665](https://github.com/WeGotWorkspace/wegotworkspace/issues/665) · collection-sidebar [#666](https://github.com/WeGotWorkspace/wegotworkspace/issues/666) · apps/collab [#667](https://github.com/WeGotWorkspace/wegotworkspace/issues/667) · migration [#668](https://github.com/WeGotWorkspace/wegotworkspace/issues/668) · teardown [#669](https://github.com/WeGotWorkspace/wegotworkspace/issues/669) · JMAP + Dexie inbound [#671](https://github.com/WeGotWorkspace/wegotworkspace/issues/671)
 
@@ -109,6 +109,8 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 **Decision:** Live collab stays TipTap + Yjs mesh while WGW clients are in the room. Room key = `UID` = REST `noteId`. Persist = `PATCH /notes/items/{uid}` + `If-Match`. No server Yjs sidecar. No path-keyed rooms.
 
 **Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file.
+
+**Who picks the UID:** The app does, when the note is made (a UUID). The note keeps that id from the first keystroke, so an offline create needs no temporary id and no remap. `POST /notes/items` uses a `uid` only when it is a UUID; anything else is ignored and the server mints one. A UID another note already has is a 409. A repeated create with the same `uid` by the same caller returns the existing note (200), so a retry or a second tab never makes a second note.
 
 **Title UX:** Editable `SUMMARY` field. Auto-fill once from first heading or first non-empty line; user edit sticks. Title/tags/move = REST PATCH + `If-Match` **without** opening a room. PATCH must not clobber `DESCRIPTION` (read-modify-write ICS or field-level replace).
 
@@ -268,15 +270,28 @@ Unknown / `X-*` properties are not a v1 product (no `icsProps` requirement for n
 
 ## Offline and collaboration
 
-|                  | v1 Notes                                                                                                        |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive)             |
-| Offline path     | Dexie working set + UID-keyed y-indexeddb crash buffer; two devices merge; an outside write is the only prompt  |
-| Transport        | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same |
-| Stars            | Notes stars table (not Drive `/files/star`)                                                                     |
-| Collab           | Yjs + RTC mesh; room = `UID`; no server sidecar                                                                 |
+|                  | v1 Notes                                                                                                                                                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primary artifact | Long-form **markdown body** (`DESCRIPTION`) + metadata (`SUMMARY`, `CATEGORIES`, notebook, archive)                                                                                                                                                                  |
+| Offline path     | Dexie working set + UID-keyed y-indexeddb crash buffer; two devices merge; an outside write is the only prompt. A note made here is `createPending`: its create waits in the outbox (one Web Lock across tabs) and its room stays local-only until the server has it |
+| Transport        | Live inbound: `POST /jmap` `Note/changes`; body persist: `PATCH /notes/items/{uid}` + `If-Match`; metadata same                                                                                                                                                      |
+| Stars            | Notes stars table (not Drive `/files/star`)                                                                                                                                                                                                                          |
+| Collab           | Yjs + RTC mesh; room = `UID`; no server sidecar                                                                                                                                                                                                                      |
 
 See Decision 6 (outside write) and Decision 8 (mid-session ACL).
+
+### When two tabs or people change the same note
+
+One tab can be offline while another, or another person, keeps working. The rules:
+
+| What changed                    | Rule                                                                                                                 |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Body, title typed in the editor | Yjs merges both. Nothing is lost.                                                                                    |
+| Tags added or removed           | Sent as a per-tag delta, so both changes stay.                                                                       |
+| Notebook, archive               | The last write to reach the server wins. Only a move sends the notebook, so an older save never moves a note back.   |
+| Delete, access removed          | Delete and lost access win over an offline edit, and the person is told: "… was deleted elsewhere" or "Access lost". |
+
+Every open tab shows the server state once it is back online, without a reload. A tab without a sync token lists each notebook once and drops cached notes the list no longer has. A queued write that failed for a passing reason (429, 5xx) is sent again by itself after 5 s, 15 s, 1 min and 5 min.
 
 ---
 
@@ -315,7 +330,7 @@ Old tree stays **read-only one release**; no dual-write. Drain FileNode Dexie ou
 
 | Topic                                    | Issue                                                                     |
 | ---------------------------------------- | ------------------------------------------------------------------------- |
-| Product Goal                             | [#661](https://github.com/WeGotWorkspace/wegotworkspace/issues/661)       |
+| Product Goal                             | [Product#88](https://github.com/WeGotWorkspace/Product/issues/88)       |
 | Delivery Epic                            | [#662](https://github.com/WeGotWorkspace/wegotworkspace/issues/662)       |
 | Isolation + provisioner                  | [#663](https://github.com/WeGotWorkspace/wegotworkspace/issues/663)       |
 | REST + UID + stars + move                | [#664](https://github.com/WeGotWorkspace/wegotworkspace/issues/664)       |

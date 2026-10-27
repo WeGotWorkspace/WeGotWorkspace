@@ -9,9 +9,3 @@ export const settingsProfileRequestOpenapiSchema = z.object({
   password: z.string().optional(),
   currentPassword: z.string().optional(),
 });
-
-/** OpenAPI `components.schemas.SettingsMailRequest` */
-export const settingsMailRequestOpenapiSchema = z.object({
-  imapUsername: z.string().optional(),
-  imapPassword: z.string().optional(),
-});

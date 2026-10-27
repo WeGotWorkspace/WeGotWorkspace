@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   chaosTierSpecPattern,
   liveTierSpecPattern,
+  notesSyncMatrixSpecPattern,
   relayTierSpecPattern,
 } from "./e2e/live-tier.mjs";
 
@@ -49,7 +50,12 @@ function webServer() {
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: [liveTierSpecPattern, chaosTierSpecPattern, relayTierSpecPattern],
+  testIgnore: [
+    liveTierSpecPattern,
+    chaosTierSpecPattern,
+    relayTierSpecPattern,
+    notesSyncMatrixSpecPattern,
+  ],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

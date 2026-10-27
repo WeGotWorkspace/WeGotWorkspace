@@ -6,7 +6,7 @@ Committed specs under `.agents/specs/` are the **technical implementation layer*
 
 | Layer | Where | Role | Spec `Source:`? |
 |-------|-------|------|-----------------|
-| **Goal** (`type:goal`) | GitHub + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
+| **Goal** (`type:goal`) | [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) + [docs/product/](../../docs/product/) | User **outcome**, success signals, non-goals — Product roadmap | **Never** |
 | **Issue (AC)** — Epic / Task | GitHub | Implementable **what** — AC checklist, labels, PR linking | **Yes** — `Source: #<task-or-epic>` |
 | **Specs** (`spec.md` → `plan.md` → `tasks.md`) | Repo | Technical **translation** + chunk split / eng rows — derived from the Task/Epic when implementation starts | Derived from Source |
 
@@ -16,7 +16,7 @@ Goal (outcome) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 Optional header line (not hashed): `Goal: #M` for product context only.
 
-Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required only on `feat/` branches (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md). Filing: [developer/issue-filing.md](../skills/developer/issue-filing.md).
+Humans can keep working from GitHub issues alone. Specs are optional infrastructure for agent-driven implementation — required on `feat/` branches and for feature design on any branch (see below). Product Goals: [GOVERNANCE.md](../../GOVERNANCE.md). Filing: [developer/issue-filing.md](../skills/developer/issue-filing.md).
 
 **Language:** `spec.md`, `plan.md`, and `tasks.md` are **English** even when the user prompt is Dutch. Same for the Source issue. [english-only.md](../skills/developer/english-only.md).
 
@@ -38,17 +38,22 @@ Copy skeletons from [`_template/`](./_template/).
 
 ## When a spec is required
 
-| Branch prefix | Spec required? |
-|---------------|----------------|
-| `feat/` (new user-facing feature) | **Yes** — with issue: derive from issue; without issue: `Source: ad-hoc` |
-| `fix/`, `chore/`, `refactor/`, `docs/`, `test/` | **No** — optional |
+| Work | Spec required? |
+|------|----------------|
+| `feat/` branch (new user-facing feature) | **Yes** — with issue: derive from issue; without issue: `Source: ad-hoc` |
+| Feature design on **any** branch, `docs/` included: designing a feature, a design note, or a new `docs/architecture/*.md` for an Epic | **Yes** — load [plan-feature](../skills/plan-feature/SKILL.md); add `<epic>-<slug>/` (spec, plan, tasks) in the same PR |
+| Other `fix/`, `chore/`, `refactor/`, `docs/`, `test/` work | **No** — optional |
 | Single-file fix (any prefix) | **No** — avoid bureaucracy on trivia |
+
+Design review history and rejected alternatives go in `plan.md` under **Considered**. The architecture doc states the design as decided and links its spec folder.
+
+**CI guard:** `pnpm run check:agent-docs` runs [`tools/check-architecture-spec.mjs`](../../tools/check-architecture-spec.mjs). When the diff adds a `docs/architecture/*.md` that names an Epic (`Epic: #N`, `Epic #N`, or a linked `Epic [#N]`), `.agents/specs/N-<slug>/spec.md` must exist and start with `Source: #N (body-hash: …)`. The first Epic the doc names is its Epic. Only docs the diff adds are checked; docs already on `main` are not.
 
 ## File roles
 
 | File | Contents | Do not |
 |------|----------|--------|
-| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: #M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
+| `spec.md` | `Source: #134 (body-hash: a1b2c3d4)` header (Task/Epic only), optional `Goal: WeGotWorkspace/Product#M`, goal, non-goals, packages, constraints, edge cases | Use a Goal as `Source:`; re-invent AC or duplicate the full issue body |
 | `plan.md` | Chunks, invariants, open decisions, what exists, budget, considered alternatives | Cite a premise without a source; leave a chunk choice open |
 | `tasks.md` | Per-chunk engineering tasks: chunk-id, owner, key paths, verify command | Copy the GitHub `- [ ]` AC checklist; record completion status |
 

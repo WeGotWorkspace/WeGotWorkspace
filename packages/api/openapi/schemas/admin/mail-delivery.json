@@ -212,7 +212,6 @@
       "code": {
         "type": "string",
         "enum": [
-          "production_settings_applied",
           "app_debug_on",
           "app_env_not_production",
           "app_url_local",

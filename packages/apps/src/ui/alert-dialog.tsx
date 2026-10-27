@@ -6,7 +6,7 @@ import { markUiModalSlot, wrapModalSurfaceChildren } from "@/ui/modal-surface-ch
 import "@/ui/modal-surface.css";
 import "@/ui/modal-title.css";
 import "@/ui/overlay-paper.css";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import { useInertOutsideLayerRef } from "@/ui/inert-outside-layer";
 
 const AlertDialog = AlertDialogPrimitive.Root;

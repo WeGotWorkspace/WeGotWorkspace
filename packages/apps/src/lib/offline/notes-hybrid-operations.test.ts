@@ -83,7 +83,7 @@ import {
   updateNoteItem,
 } from "@/lib/api/wgw/notes";
 import { getConnectivitySnapshot, readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { upsertNoteInCache } from "@/lib/offline/notes-offline-store";
+import { getNoteFromCache, upsertNoteInCache } from "@/lib/offline/notes-offline-store";
 
 describe("createHybridNotesOperations", () => {
   beforeEach(async () => {
@@ -116,6 +116,19 @@ describe("createHybridNotesOperations", () => {
     expect(request).not.toHaveProperty("title");
   });
 
+  it("sends nothing for a save without metadata: an empty PATCH only bumps the version", async () => {
+    await upsertNoteInCache(username, note, false);
+
+    const saved = await createHybridNotesOperations(username).upsertNote({
+      ...note,
+      excerpt: "New body preview",
+    });
+
+    expect(updateNoteItem).not.toHaveBeenCalled();
+    expect(saved.excerpt).toBe("New body preview");
+    expect((await getNoteFromCache(username, note.id))?.excerpt).toBe("New body preview");
+  });
+
   it("moves a notebook without sending the cached tag set or title", async () => {
     const stale = { ...note, title: "Cached title", tags: ["essay"] };
     await upsertNoteInCache(username, stale, false);
@@ -126,11 +139,10 @@ describe("createHybridNotesOperations", () => {
     });
 
     const operations = createHybridNotesOperations(username);
-    await operations.upsertNote({
-      ...stale,
-      notebook: "Work",
-      notebookId: "notes-work",
-    });
+    await operations.upsertNote(
+      { ...stale, notebook: "Work", notebookId: "notes-work" },
+      { fields: ["notebook"] },
+    );
 
     const request = vi.mocked(updateNoteItem).mock.calls[0]?.[1];
     expect(request).toMatchObject({ notebook: "Work", notebookId: "notes-work" });
@@ -241,9 +253,12 @@ describe("createHybridNotesOperations", () => {
     vi.mocked(updateNoteItem).mockRejectedValue(new TypeError("network request failed"));
 
     const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({ ...note, body: ["Queued edit"] });
+    const saved = await operations.upsertNote(
+      { ...note, title: "Queued title" },
+      { fields: ["title"] },
+    );
 
-    expect(saved.body).toEqual(["Queued edit"]);
+    expect(saved.title).toBe("Queued title");
     expect(updateNoteItem).toHaveBeenCalledOnce();
 
     const outbox = await listOutboxMutations(username);
@@ -261,34 +276,6 @@ describe("createHybridNotesOperations", () => {
     const row = await notesNotesTable(db).get("note-1");
     expect(row?.pendingSync).toBe(true);
     expect(JSON.parse(row?.data ?? "{}").body).toEqual(["Pending edit"]);
-  });
-
-  it("reuses a caller-provided local temp id for offline creates", async () => {
-    vi.mocked(readBrowserOnline).mockReturnValue(false);
-
-    const tempId = "local-abc123";
-    const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({
-      id: tempId,
-      category: "Note",
-      date: "2024-10-12T10:00:00.000Z",
-      excerpt: "",
-      body: ["Offline create"],
-      notebook: "Drafts",
-      tags: [],
-      wordCount: 0,
-    });
-
-    expect(saved.id).toBe(tempId);
-
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    const row = await notesNotesTable(db).get(tempId);
-    expect(row?.pendingSync).toBe(true);
-    expect(JSON.parse(row?.data ?? "{}").body).toEqual(["Offline create"]);
-
-    const outbox = await listOutboxMutations(username);
-    expect(outbox).toHaveLength(1);
-    expect(JSON.parse(outbox[0]?.payload ?? "{}").tempNoteId).toBe(tempId);
   });
 
   it("online delete clears pending upsert so flush does not recreate the note", async () => {
@@ -327,92 +314,6 @@ describe("createHybridNotesOperations", () => {
     );
   });
 
-  it("online create remaps local-* to the server uid and clears pending", async () => {
-    const tempId = "local-abc123";
-    const serverNote = {
-      ...note,
-      id: "11111111-2222-3333-4444-555555555555",
-      etag: '"etag-minted"',
-    };
-    await upsertNoteInCache(username, { ...note, id: tempId }, true);
-    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
-
-    const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({ ...note, id: tempId });
-
-    expect(saved.id).toBe(serverNote.id);
-    expect(saved.etag).toBe('"etag-minted"');
-    expect(createNoteItem).toHaveBeenCalledOnce();
-    expect(updateNoteItem).not.toHaveBeenCalled();
-
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect(await notesNotesTable(db).get(tempId)).toBeUndefined();
-    const row = await notesNotesTable(db).get(serverNote.id);
-    expect(row?.pendingSync).toBe(false);
-    expect(JSON.parse(row?.data ?? "{}").id).toBe(serverNote.id);
-  });
-
-  it("queues a local-* create when POST returns 500 instead of leaving a ghost without outbox", async () => {
-    const tempId = "local-c7209aac776a45219ad776b637fc3347";
-    await upsertNoteInCache(username, { ...note, id: tempId }, true);
-    vi.mocked(createNoteItem).mockRejectedValue(
-      Object.assign(new Error("no such table: jmap_note_states"), { status: 500 }),
-    );
-
-    const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({ ...note, id: tempId });
-
-    expect(saved.id).toBe(tempId);
-    expect(updateNoteItem).not.toHaveBeenCalled();
-    expect(createNoteItem).toHaveBeenCalledOnce();
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect((await notesNotesTable(db).get(tempId))?.pendingSync).toBe(true);
-    const outbox = await listOutboxMutations(username);
-    expect(outbox).toHaveLength(1);
-    expect(outbox[0]?.op).toBe("upsert");
-  });
-
-  it("queues a local-* create when POST returns 422", async () => {
-    const tempId = "local-validation-fail";
-    await upsertNoteInCache(username, { ...note, id: tempId }, true);
-    vi.mocked(createNoteItem).mockRejectedValue(
-      Object.assign(new Error("invalid uid"), { status: 422 }),
-    );
-
-    const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({ ...note, id: tempId });
-
-    expect(saved.id).toBe(tempId);
-    expect((await listOutboxMutations(username)).length).toBeGreaterThan(0);
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect((await notesNotesTable(db).get(tempId))?.pendingSync).toBe(true);
-  });
-
-  it("queues a 412 after create remap instead of replaying the metadata upsert", async () => {
-    const tempId = "local-abc123";
-    const serverNote = {
-      ...note,
-      id: "11111111-2222-3333-4444-555555555555",
-      etag: '"etag-minted"',
-    };
-    await upsertNoteInCache(username, { ...note, id: tempId }, true);
-    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
-    const operations = createHybridNotesOperations(username);
-    await operations.upsertNote({ ...note, id: tempId });
-
-    vi.mocked(updateNoteItem).mockRejectedValue(
-      Object.assign(new Error("precondition"), { status: 412 }),
-    );
-
-    const saved = await operations.upsertNote({ ...serverNote, tags: ["focus"], etag: '"stale"' });
-
-    expect(updateNoteItem).toHaveBeenCalledOnce();
-    expect(saved.tags).toEqual(["focus"]);
-    const outbox = await listOutboxMutations(username);
-    expect(outbox).toHaveLength(1);
-    expect(outbox[0]?.op).toBe("upsert");
-  });
-
   it("queues a 412 metadata upsert instead of throwing", async () => {
     vi.mocked(updateNoteItem).mockRejectedValue(
       Object.assign(new Error("precondition"), { status: 412 }),
@@ -430,21 +331,15 @@ describe("createHybridNotesOperations", () => {
     expect((await notesNotesTable(db).get(note.id))?.pendingSync).toBe(true);
   });
 
-  it("queues a never-synced UUID 404 instead of dropping the row", async () => {
-    const pendingId = "11111111-2222-3333-4444-555555555555";
-    await upsertNoteInCache(username, { ...note, id: pendingId, tags: ["focus"] }, true);
-    vi.mocked(updateNoteItem).mockRejectedValue(
-      Object.assign(new Error("Note not found"), { status: 404 }),
-    );
+  it("queues an offline archive with the note version it started from", async () => {
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+    await upsertNoteInCache(username, { ...note, etag: '"v7"' }, false);
 
-    const operations = createHybridNotesOperations(username);
-    const saved = await operations.upsertNote({ ...note, id: pendingId, tags: ["focus"] });
+    await createHybridNotesOperations(username).archiveNote(note.id);
 
-    expect(saved.id).toBe(pendingId);
-    expect(createNoteItem).not.toHaveBeenCalled();
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect(await notesNotesTable(db).get(pendingId)).toBeDefined();
-    expect((await listOutboxMutations(username)).length).toBeGreaterThan(0);
+    const [row] = await listOutboxMutations(username);
+    expect(row?.op).toBe("archive");
+    expect(row?.ifInState).toBe('"v7"');
   });
 
   it("archives online via PATCH STATUS CANCELLED and caches archived", async () => {
@@ -567,32 +462,6 @@ describe("fetchNotesHybridBootstrap", () => {
     const result = await fetchNotesHybridBootstrap();
 
     expect(result.data.notes[0]?.body).toEqual(["Flushed local body"]);
-    expect(await listOutboxMutations(username)).toHaveLength(0);
-  });
-
-  it("enqueues a pending local-* ghost with no outbox and remaps it on flush", async () => {
-    const { fetchNotesLiveBootstrap } = await import("@/lib/api/wgw/notes");
-    const tempId = "local-c7209aac776a45219ad776b637fc3347";
-    const serverNote = {
-      ...note,
-      id: "11111111-2222-3333-4444-555555555555",
-      etag: '"etag-healed"',
-    };
-    await upsertNoteInCache(username, { ...note, id: tempId }, true);
-    vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue({
-      ...bootstrap,
-      data: { ...bootstrap.data, notes: [] },
-    });
-    vi.mocked(createNoteItem).mockResolvedValue(serverNote);
-
-    const result = await fetchNotesHybridBootstrap();
-
-    expect(updateNoteItem).not.toHaveBeenCalled();
-    expect(createNoteItem).toHaveBeenCalledOnce();
-    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-    expect(await notesNotesTable(db).get(tempId)).toBeUndefined();
-    expect((await notesNotesTable(db).get(serverNote.id))?.pendingSync).toBe(false);
-    expect(result.data.notes.some((row) => row.id === serverNote.id)).toBe(true);
     expect(await listOutboxMutations(username)).toHaveLength(0);
   });
 

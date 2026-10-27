@@ -7,7 +7,7 @@ const meta: Meta<typeof SidebarLogo> = {
   component: SidebarLogo,
   parameters: {
     layout: "fullscreen",
-    routerPath: "/mail",
+    routerPath: "/notes",
   },
 };
 

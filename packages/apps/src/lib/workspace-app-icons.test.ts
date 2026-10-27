@@ -14,7 +14,7 @@ import {
 
 describe("workspaceAppIconUiSrc", () => {
   it("points at canonical vector artwork under /app-icons/", () => {
-    expect(workspaceAppIconUiSrc("mail")).toBe("/app-icons/mail.svg");
+    expect(workspaceAppIconUiSrc("tasks")).toBe("/app-icons/tasks.svg");
   });
 });
 
@@ -93,7 +93,7 @@ describe("workspaceAppIconUiSrc mapping", () => {
 
 describe("workspaceAppIconAppleTouchSrc", () => {
   it("points at 180px PNG for iOS apple-touch-icon only", () => {
-    expect(workspaceAppIconAppleTouchSrc("mail")).toBe("/pwa-icons/mail-180.png");
+    expect(workspaceAppIconAppleTouchSrc("tasks")).toBe("/pwa-icons/tasks-180.png");
   });
 });
 

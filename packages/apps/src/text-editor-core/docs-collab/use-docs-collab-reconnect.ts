@@ -1,5 +1,5 @@
 import { isExternalWriteRefusal } from "./docs-collab-utils";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import { useOnReconnect } from "@/hooks/use-connectivity";
 import {
@@ -120,6 +120,8 @@ export function useDocsCollabReconnect({
     const ydoc = refs.ydocRef.current;
     const persistence = refs.persistenceRef.current;
     if (!ydoc || !persistence || !joined) return;
+    // A local draft room (no server id yet) has no mesh or server state to rejoin.
+    if (urls.roomNotPersistent) return;
     refs.reconnectInFlightRef.current = true;
     // A 404 stays terminal. A 403 lifts here so a restored ACL can save.
     if (refs.saveTerminalKindRef.current === "forbidden") {
@@ -156,10 +158,15 @@ export function useDocsCollabReconnect({
           setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
           return;
         }
-        if (pendingSave || refs.pendingServerSaveRef.current) {
+        // Unsaved edits are saved, flag or not: one made offline that ended
+        // on the last known text left no flag behind.
+        if (
+          pendingSave ||
+          refs.pendingServerSaveRef.current ||
+          refs.localDirtySinceLastSaveRef.current
+        ) {
           await persistToServer();
         } else {
-          refs.localDirtySinceLastSaveRef.current = false;
           setDocStatus((prev) => (prev === "Reconnecting…" ? "" : prev));
         }
         flushPendingSaveIfReady();
@@ -188,11 +195,23 @@ export function useDocsCollabReconnect({
     restartMeshAfterReconnect,
     room,
     setDocStatus,
+    urls.roomNotPersistent,
   ]);
 
   useOnReconnect(() => {
     if (refs.sessionRef.current) void handleReconnect();
   });
+
+  // A local-only room became a server room (its note's create landed): join
+  // the server like a reconnect does, and save what was typed meanwhile.
+  const wasLocalOnlyRef = useRef(urls.roomNotPersistent === true);
+  useEffect(() => {
+    const wasLocalOnly = wasLocalOnlyRef.current;
+    wasLocalOnlyRef.current = urls.roomNotPersistent === true;
+    if (wasLocalOnly && !urls.roomNotPersistent && refs.sessionRef.current) {
+      void handleReconnect();
+    }
+  }, [handleReconnect, refs, urls.roomNotPersistent]);
 
   return { handleReconnect };
 }

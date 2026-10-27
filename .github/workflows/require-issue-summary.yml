@@ -1,0 +1,54 @@
+name: Require issue summary
+
+# Every Epic, Task, Chore and Bug opens with a three-line Summary in plain
+# English (What / Who notices / If we wait), for the product lead.
+# Rules: .agents/skills/developer/plain-language.md.
+# This adds the needs-summary label while the Summary is missing or empty,
+# and removes it once the Summary is filled in. It never edits the body.
+
+on:
+  issues:
+    types: [opened, edited, labeled, unlabeled, typed, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: require-issue-summary-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/github
+          sparse-checkout-cone-mode: false
+
+      - name: Add or remove the needs-summary label
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { NEEDS_SUMMARY_LABEL, summaryLabelAction } = await import(
+              `${process.env.GITHUB_WORKSPACE}/tools/github/issue-summary.mjs`
+            );
+            const issue = context.payload.issue;
+            const action = summaryLabelAction({
+              state: issue.state,
+              labels: (issue.labels || []).map((label) => label.name),
+              typeName: issue.type?.name ?? null,
+              body: issue.body ?? "",
+            });
+            const target = { owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number };
+
+            if (action === "add") {
+              await github.rest.issues.addLabels({ ...target, labels: [NEEDS_SUMMARY_LABEL] });
+              core.info(`#${issue.number}: Summary missing, added ${NEEDS_SUMMARY_LABEL}`);
+            } else if (action === "remove") {
+              await github.rest.issues.removeLabel({ ...target, name: NEEDS_SUMMARY_LABEL });
+              core.info(`#${issue.number}: Summary filled in, removed ${NEEDS_SUMMARY_LABEL}`);
+            } else {
+              core.info(`#${issue.number}: nothing to change`);
+            }

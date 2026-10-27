@@ -107,6 +107,7 @@ export type NotesUILabels = {
   editedLabel: string;
   accessLostTitle: string;
   accessLostMessage: string;
+  noteDeletedElsewhere: (title: string) => string;
   shareNotebookTitle: string;
   shareNotebookHint: string;
   shareNotebookPlaceholder: string;
@@ -234,6 +235,8 @@ export const defaultNotesLabels: NotesUILabels = {
   editedLabel: "Last edited",
   accessLostTitle: "Access lost",
   accessLostMessage: "You no longer have access to this note. Unsaved edits were not stored.",
+  noteDeletedElsewhere: (title: string) =>
+    `“${title}” was deleted elsewhere. Your offline changes to it were not kept.`,
   shareNotebookTitle: "Share notebook",
   shareNotebookHint: "People you add can open this notebook in Notes.",
   shareNotebookPlaceholder: "Add people or groups",

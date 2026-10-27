@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Services\MailDelivery;
 
 use App\Exceptions\ApiHttpException;
-use App\Services\Mail\MailSecretService;
 
 final class MailDeliverySecretService
 {
-    public function __construct(private MailSecretService $secrets) {}
+    public function __construct(private MailDeliverySecretFile $secrets) {}
 
     public function encrypt(string $plain): string
     {

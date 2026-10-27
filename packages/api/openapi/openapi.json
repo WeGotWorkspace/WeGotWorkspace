@@ -2308,7 +2308,8 @@
             ]
           },
           "uid": {
-            "type": "string"
+            "type": "string",
+            "description": "Client-chosen note UID (also the collab room key). Used only when it is a UUID; anything else is ignored and the server mints one. Unique across all notes. Makes the create idempotent: a repeat by the same caller returns the existing note with 200."
           }
         }
       },
@@ -2835,7 +2836,7 @@
             }
           },
           "409": {
-            "description": "Environment file is not writable"
+            "description": "packages/api/.env was not written: it is missing or read-only, its folder is read-only, or the config is cached. The error names the cause and the APP_URL line to add by hand."
           },
           "422": {
             "description": "Address is not http or https, or includes user info, a query, or a path other than the install base"
@@ -2976,7 +2977,7 @@
             }
           },
           "409": {
-            "description": "Docker install, an update is running, or the environment file is not writable"
+            "description": "Docker install, or an update is running"
           },
           "422": {
             "description": "Channel is not stable, beta, or edge"
@@ -5831,32 +5832,6 @@
         "x-wgw-access": "user"
       }
     },
-    "/settings/mail": {
-      "put": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Update personal mail credentials for current user",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Updated settings state",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SettingsStateResponse"
-                }
-              }
-            }
-          }
-        },
-        "x-wgw-access": "user"
-      }
-    },
     "/settings/profile": {
       "put": {
         "tags": [
@@ -6983,6 +6958,7 @@
           "Notes"
         ],
         "summary": "Create a note",
+        "description": "Send `uid` (a UUID the client picked) to make the create idempotent; a `uid` that is not a UUID is ignored. If that note already exists in a notebook the caller can write, it is returned with 200 instead of a second note. A UID held by any other note is a 409. Without `uid` the server mints one.",
         "security": [
           {
             "bearerAuth": []
@@ -7000,6 +6976,16 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "The note a repeated create with the same `uid` already made",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Note"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created note",
             "content": {

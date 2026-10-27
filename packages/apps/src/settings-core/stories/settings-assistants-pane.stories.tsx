@@ -26,7 +26,6 @@ const sampleGrants: SettingsMcpGrant[] = [
       "drive.read",
       "drive.write",
       "docs.read",
-      "mail.read",
       "settings",
       "offline_access",
     ],

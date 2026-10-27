@@ -17,14 +17,14 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | Handoff / verify before PR | `developer` | [mcp-verification.md](mcp-verification.md), [done-checklist.md](done-checklist.md), [english-only.md](english-only.md) |
 | Dev env / Docker / ports | [dev-environment](../dev-environment/SKILL.md) | `docs/dev-layout.md` |
 | API / Laravel / REST / WebDAV | [api](../api/SKILL.md) | [layers.md](../api/layers.md), [testing.md](../api/testing.md) |
-| Plugins / wgw-plugins | [plugins](../plugins/SKILL.md) | [storage-flysystem.md](../api/storage-flysystem.md) |
 | Meet / RTC / room signaling | [meet](../meet/SKILL.md) | `packages/api/docs/meet-signaling.md` |
 | UI primitives / CSS / styling | [apps-ui](../apps-ui/SKILL.md) | [components.md](../apps-ui/components.md), [typescript.md](../apps-ui/typescript.md) |
 | Client API calls / transport errors | [client-transport](../client-transport/SKILL.md) | — |
 | Workspace shell / *App / *Workspace | [workspace](../workspace/SKILL.md) | [workspace-shells.md](../../../packages/apps/docs/workspace-shells.md), [feature-blueprint.md](../workspace/feature-blueprint.md), [collab-hooks.md](../workspace/collab-hooks.md), [apps-done-gate.md](../testing/apps-done-gate.md) |
 | Collab / text-editor hooks (`docs-collab/`) | [workspace](../workspace/SKILL.md) | [collab-hooks.md](../workspace/collab-hooks.md), [clean-code/smells.md](../clean-code/smells.md) (React hooks) |
-| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
+| Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [plain-language.md](plain-language.md), [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
 | Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md), [review-findings.md](../../review-findings.md) |
+| Designing a feature, a design note, or a new `docs/architecture/*.md` for an Epic (any branch, `docs/` included) | [plan-feature](../plan-feature/SKILL.md) | Add `.agents/specs/<epic>-<slug>/` (spec, plan, tasks) in the same PR — [specs/README.md](../../specs/README.md). Review history and rejected alternatives go in `plan.md` under Considered, not in the architecture doc |
 | Pre-auth path, caller-input parser or upload, limiter or cache key | [security](../security/SKILL.md) | [review-findings.md](../../review-findings.md) |
 | Issue acceptance criteria / "is #N done?" | [verify-issue](../verify-issue/SKILL.md) | Goal vs Task modes in that skill |
 | Writing or running tests | [testing](../testing/SKILL.md) | [test-first.md](../testing/test-first.md), [ui-architecture.md](../testing/ui-architecture.md) |

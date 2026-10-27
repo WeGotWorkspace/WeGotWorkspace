@@ -60,7 +60,7 @@ function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (!isFetchNetworkError(error)) throw error;
 }
 
-const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>();
+const syncRunnerRegistry = new ConnectivitySyncRunnerRegistry<OutboxFlushResult>(DOCS_DOMAIN);
 
 async function flushDocsOutboxTask(username: string): Promise<OutboxFlushResult> {
   const result = await flushDocsOutbox(username);

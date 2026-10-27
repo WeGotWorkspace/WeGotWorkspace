@@ -13,6 +13,10 @@ use App\Support\WgwApiEnvFile;
 
 /**
  * Writes an admin-confirmed APP_URL. The request Host is not a source.
+ *
+ * APP_URL stays in packages/api/.env: the trusted-host check reads it on
+ * every request. When the file cannot be written, the 409 names the reason
+ * and the exact line the admin should set by hand (#1583).
  */
 final class AppUrlSettingService
 {
@@ -30,9 +34,18 @@ final class AppUrlSettingService
             );
         }
 
+        $line = 'APP_URL='.WgwApiEnvFile::quoteValue($normalized);
+        if (app()->configurationIsCached()) {
+            throw new ApiHttpException(409, 'The configuration is cached, so packages/api/.env is not read. Add this line there, then run php artisan config:clear: '.$line);
+        }
         $envPath = app()->environmentFilePath();
-        if (! is_file($envPath) || ! is_writable($envPath)) {
-            throw new ApiHttpException(409, 'The environment file is not writable.');
+        if (! is_file($envPath)) {
+            throw new ApiHttpException(409, 'packages/api/.env does not exist. Create it from packages/api/.env.example and add this line: '.$line);
+        }
+        // The writer could still replace a read-only file through its folder,
+        // but that would override the operator and hand the file to the web user.
+        if (! is_writable($envPath)) {
+            throw new ApiHttpException(409, 'packages/api/.env is read-only, so it is left alone. Add this line there by hand: '.$line);
         }
 
         $wrote = $this->envFiles->update($envPath, static function (string $content) use ($normalized): ?string {
@@ -40,15 +53,12 @@ final class AppUrlSettingService
             if ($current === $normalized) {
                 return null;
             }
-            if (! WgwApiEnvFile::hasKey($content, 'APP_URL')) {
-                return rtrim($content)."\nAPP_URL={$normalized}\n";
-            }
 
-            return WgwApiEnvFile::setLine($content, 'APP_URL', $normalized, quote: false);
+            return WgwApiEnvFile::setLine($content, 'APP_URL', $normalized);
         });
 
         if (! $wrote && WgwApiEnvFile::readPath($envPath, 'APP_URL') !== $normalized) {
-            throw new ApiHttpException(409, 'The environment file is not writable.');
+            throw new ApiHttpException(409, 'The web server cannot replace packages/api/.env: it needs write access to the folder that holds it. Add this line there by hand: '.$line);
         }
 
         return $normalized;

@@ -1,15 +1,17 @@
 # JMAP Mail over IMAP — state model and build/defer decision (#440)
 
-> **Status (2026-09-24):** the build decision below still stands. Delivery of the Mail client is after v0.9 (Goal #400 on milestone v1.0). The client is not in the current suite — see [README.md](README.md).
+> **Status (2026-09-24):** the build decision below still stands. Delivery of the Mail client is after v0.9 (Goal Product#18 on milestone v1.0). The client is not in the current suite — see [README.md](README.md).
+>
+> **Status (2026-10-23):** the IMAP client this document describes (`MailImapClient`, `MailImapProcess`, the mail REST layer) was removed in #1573. The substrate facts below describe that code as it was; the repository history keeps it.
 
 > **Issue:** [#440](https://github.com/WeGotWorkspace/wegotworkspace/issues/440) · **Epic:** [#435](https://github.com/WeGotWorkspace/wegotworkspace/issues/435) · **Spec folder:** `.agents/specs/452-jmap-envelope-mail/`
-> **External spec:** RFC 8621 (final) · **Related goals:** #382 (send/receive, fulfilled), #398 (threads, adopted), #400 (offline mail, adopted), #407 (multi-account) · **Eng tracker:** #401
+> **External spec:** RFC 8621 (final) · **Related goals:** Product#5 (send/receive, fulfilled), Product#17 (threads, adopted), Product#18 (offline mail, adopted), Product#22 (multi-account) · **Eng tracker:** #401
 >
 > Decision gate: mail envelope Tasks M1 (read-only) / M2 (writes + submission) are filed **only if** this document's recommendation is "build".
 
 ## Recommendation
 
-**Build M1 — with one extra prerequisite and four explicit scope cuts.** The substrate can support an honest RFC 8621 read-only subset, and the sync-cache this design introduces is the same infrastructure the adopted offline-mail Goal (#400) needs anyway — building it behind the envelope does the work once. The prerequisite: **a real IMAP fixture in CI** (see §Testing), because today no mail test exercises a live mailbox and every other envelope domain was verified with lifecycle contract tests. Without that fixture, M1 should not start.
+**Build M1 — with one extra prerequisite and four explicit scope cuts.** The substrate can support an honest RFC 8621 read-only subset, and the sync-cache this design introduces is the same infrastructure the adopted offline-mail Goal (Product#18) needs anyway — building it behind the envelope does the work once. The prerequisite: **a real IMAP fixture in CI** (see §Testing), because today no mail test exercises a live mailbox and every other envelope domain was verified with lifecycle contract tests. Without that fixture, M1 should not start.
 
 ## Substrate facts (verified 2026-08-13)
 
@@ -18,7 +20,7 @@
 - **Connection pattern:** connect → operate → close **per REST operation**; under `apache2handler` (or `WGW_IMAP_ISOLATE=1`) each operation additionally forks a CLI subprocess (`MailImapProcess`, 120s timeout).
 - **Ids:** `{base64url(mailbox)}:{uid}` — folder + IMAP UID; no account-stable message identity across moves.
 - **Threading:** none anywhere (no `threadId`, no References/In-Reply-To grouping).
-- **Credentials:** one instance-wide IMAP/SMTP host pair + one credential row per user (`mail_user_credentials`, AES-256-GCM). No OAuth. Multi-account (#407) is out of current schema.
+- **Credentials:** one instance-wide IMAP/SMTP host pair + one credential row per user (`mail_user_credentials`, AES-256-GCM). No OAuth. Multi-account (Product#22) is out of current schema.
 - **Tests:** validation/gate tests only; happy paths assert `503 imap_connect` because nothing listens. Mailhog in `compose.dev.yml` is SMTP-only.
 
 ## Decision 1 — state model: local sync-cache table, not CONDSTORE/QRESYNC
@@ -36,7 +38,7 @@ New table **`jmap_mail_sync`** (per user × mailbox): `username`, `mailbox`, `ui
 
 ## Decision 2 — threading: cached derivation, not IMAP THREAD
 
-RFC 8621 requires `threadId` on every Email and `Thread/get`. `imap_thread()` exists but is per-mailbox and per-connection (threads must span mailboxes) — unusable as-is. Instead: at cache-fill time, derive **`thread_key` = hash of the normalized root of the References/In-Reply-To chain** (falling back to normalized subject + participants when headers are absent), stored on `jmap_mail_messages`. `Thread/get` answers **from the cache only**. **Scope cut #2:** threads are only as complete as the cache window; cross-mailbox thread membership converges as mailboxes are synced. This directly serves Goal #398.
+RFC 8621 requires `threadId` on every Email and `Thread/get`. `imap_thread()` exists but is per-mailbox and per-connection (threads must span mailboxes) — unusable as-is. Instead: at cache-fill time, derive **`thread_key` = hash of the normalized root of the References/In-Reply-To chain** (falling back to normalized subject + participants when headers are absent), stored on `jmap_mail_messages`. `Thread/get` answers **from the cache only**. **Scope cut #2:** threads are only as complete as the cache window; cross-mailbox thread membership converges as mailboxes are synced. This directly serves Goal Product#17.
 
 ## Decision 3 — connection budget: one IMAP session per batch, isolation per batch
 
@@ -53,7 +55,7 @@ A JMAP batch (`Email/query` + `Email/get` + `Mailbox/get` in one POST) must not 
 |-------|---------|----------------|
 | **M1** (read-only) | `Mailbox/get|changes`, `Email/get|query|changes`, `Thread/get`, blob download | flag-diff window (cut #1); cache-bounded threads (cut #2); no pooling (cut #3); **cut #4:** `Email/query` maps only what `imap_search`/`imap_sort` support (text, unseen, flagged, date sort) — everything else `unsupportedFilter`/`unsupportedSort`, the contacts precedent |
 | **M2** (writes) | `Email/set` (flags, move, destroy, drafts via upload), `Identity/get`, `EmailSubmission/set` | no `onSuccess*` submission conveniences beyond the RFC minimum |
-| Later / never | `SearchSnippet`, `VacationResponse`, MDN, S/MIME, Sieve, push, multi-account (#407 first needs its own schema work) | — |
+| Later / never | `SearchSnippet`, `VacationResponse`, MDN, S/MIME, Sieve, push, multi-account (Product#22 first needs its own schema work) | — |
 
 ## Testing prerequisite (the gate inside the gate)
 
@@ -61,7 +63,7 @@ M1 cannot be contract-verified against `503 imap_connect`. Prerequisite task bef
 
 ## Why not defer or reject
 
-- **Defer** would be justified if the sync-cache were throwaway — it is not: #400 (offline mail, adopted) needs exactly this mirror table, and #398 (threads, adopted) needs exactly this derivation. The envelope is the cheapest place to build both once.
+- **Defer** would be justified if the sync-cache were throwaway — it is not: Product#18 (offline mail, adopted) needs exactly this mirror table, and Product#17 (threads, adopted) needs exactly this derivation. The envelope is the cheapest place to build both once.
 - **Reject** would be justified if `ext-imap` could not support honest `/changes` semantics — it can (UIDVALIDITY/UIDNEXT + windowed flag diff), as long as the window limitation is documented and pinned.
 - The real risks are operational (fixture maintenance, big-mailbox performance of the first cache fill) and both are contained: cache fill is per-mailbox lazy, and the fixture doubles as REST coverage.
 
