@@ -10,7 +10,7 @@ import { persistCollabSave } from "./docs-collab-save-attempt";
 import { fetchYjsSnapshot } from "./docs-collab-server-io";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
 import type { DocsCollabUrls } from "./docs-collab-types";
-import { SERVER_ORIGIN } from "./docs-collab-utils";
+import { isArchivedRefusal, SERVER_ORIGIN } from "./docs-collab-utils";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 /** The lock an open editor holds for its room, and a background save tries. */
@@ -76,8 +76,13 @@ async function uploadPendingCollabRoom({
         authToken,
         remergeAttempted: { current: false },
         markdownAfterMerge: read,
+      }).catch(async (error: unknown) => {
+        if (!isArchivedRefusal(error)) throw error;
+        // Archive wins (#1535): the edit is not retried. The app is told.
+        urls.onPersistArchived?.();
+        return { status: "archived" as const };
       });
-      if (saved.status !== "saved") return;
+      if (saved.status === "skipped") return;
       await persistence.del(PENDING_SERVER_SAVE_KEY);
       setDocsCollabSyncState(room, { pendingServerSave: false, failedSync: false });
     } finally {

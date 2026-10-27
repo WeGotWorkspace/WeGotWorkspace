@@ -124,7 +124,9 @@ final class NotesCollabExternalWriteTest extends WgwDatabaseTestCase
     public function test_a_metadata_only_change_does_not_refuse_the_save(): void
     {
         $id = $this->noteSavedThroughTheApp('Inside', 'Body');
-        $this->rewriteViaCalDav($id, ['categories' => ['tagged-outside'], 'status' => 'CANCELLED']);
+        // An outside archive is not an outside text edit either, but an archived
+        // note refuses every save (#1535, NotesArchivedReadOnlyTest).
+        $this->rewriteViaCalDav($id, ['categories' => ['tagged-outside']]);
 
         $this->save($id, 'Body, edited', 'Inside', ['If-Match' => $this->stateEtag()])->assertOk();
     }

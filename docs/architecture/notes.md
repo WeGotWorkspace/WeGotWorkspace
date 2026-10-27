@@ -190,6 +190,8 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 **Implication:** Chunk 5 **bulk-reindexes** imported notes (do not wait for per-row write hooks only).
 
+**Read-only ([#1535](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1535)):** An archived note does not change until it is restored. REST `PATCH` (title, body, tags, notebook, Yjs), the collab `PUT`, JMAP `Note/set` and MCP `note_write` refuse with `409 note_archived`. Restore (a `status`-only patch), delete and the personal star stay open. A collab peer on an archived note joins read-only. The app opens an archived note read-only, without a room, and an old link moves to the Archived view ([#1531](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1531)). Raw CalDAV is unchanged (Decision 17).
+
 ---
 
 ## Decision 14 — ICS size (capacity risk)
@@ -290,6 +292,7 @@ One tab can be offline while another, or another person, keeps working. The rule
 | Tags added or removed           | Sent as a per-tag delta, so both changes stay.                                                                       |
 | Notebook, archive               | The last write to reach the server wins. Only a move sends the notebook, so an older save never moves a note back.   |
 | Delete, access removed          | Delete and lost access win over an offline edit, and the person is told: "… was deleted elsewhere" or "Access lost". |
+| Edit to an archived note        | Archive wins. The server refuses the edit (`409 note_archived`), and the person is told: "… was archived elsewhere". |
 
 Every open tab shows the server state once it is back online, without a reload. A tab without a sync token lists each notebook once and drops cached notes the list no longer has. A queued write that failed for a passing reason (429, 5xx) is sent again by itself after 5 s, 15 s, 1 min and 5 min.
 
