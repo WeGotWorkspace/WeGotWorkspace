@@ -50,6 +50,7 @@ jobs:
               *) decide false "Label $LABEL does not start CI." ;;
             esac
           fi
+          [ "$DRAFT" != true ] || decide false "TEST ONLY: a draft waits, to test the waiting check names."
           [ -n "$LOOP_BOT" ] || decide true "The review loop is not set up: CI runs."
           [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ] || decide true "Fork PR, which the review loop skips: CI runs."
           [ "$DRAFT" != true ] || decide true "Draft PR, which the review loop skips: CI runs."
