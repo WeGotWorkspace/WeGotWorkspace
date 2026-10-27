@@ -43,7 +43,7 @@ final class AppAddressBookHome extends AddressBookHome
     private function nodeFor(array $book): DAV\INode
     {
         if ($this->carddavBackend instanceof SharingSupport) {
-            return new \Sabre\CardDAV\SharedAddressBook($this->carddavBackend, $book);
+            return new AppSharedAddressBook($this->carddavBackend, $book);
         }
 
         return new AppAddressBook($this->carddavBackend, $book);
