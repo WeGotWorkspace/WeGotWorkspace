@@ -119,6 +119,7 @@ jobs:
           token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
           max-turns: "60"
           model: ${{ vars.REVIEW_LOOP_FIX_MODEL }}
+          effort: ${{ vars.REVIEW_LOOP_FIX_EFFORT }}
 
       # createCommitOnBranch makes a commit GitHub signs, authored by the bot.
       # expectedHeadOid fails the commit if anyone pushed since the review.

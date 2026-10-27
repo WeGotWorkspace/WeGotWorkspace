@@ -53,8 +53,13 @@ fast tests, and neither may commit, push, or reach GitHub.
    - `REVIEW_LOOP_MAX_ROUNDS`: change requests per cycle (default 3).
    - `REVIEW_LOOP_REVIEW_MODEL` and `REVIEW_LOOP_FIX_MODEL`: the model for
      each role, in the vendor's own terms (for Claude Code, `opus` or
-     `sonnet`). Empty uses the account's default. They are variables, not
-     code, so a vendor switch changes them without a PR.
+     `sonnet`). Empty uses the account's default.
+   - `REVIEW_LOOP_REVIEW_EFFORT` and `REVIEW_LOOP_FIX_EFFORT`: reasoning
+     effort for each role, in the vendor's own terms (for Claude Code `low`,
+     `medium`, `high`, `xhigh`, or `max`). Empty uses the default.
+
+   These are variables, not code, so a change applies to the next run, and
+   a vendor switch changes them without a PR.
 
 Prompts, schemas, both local actions, and the reviewer's standards (the
 security checklist and the clean-code smells list) are read from `main`, so a
