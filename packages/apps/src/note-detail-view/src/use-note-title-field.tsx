@@ -2,10 +2,12 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import type * as Y from "yjs";
 import {
   noteTitleIsInDoc,
@@ -16,26 +18,47 @@ import {
 const NoteCollabYDocContext = createContext<Y.Doc | null>(null);
 const NoteCollabTitleSaveContext = createContext<(() => void) | null>(null);
 
+/** Awareness and local display name for title carets. */
+export type NoteCollabPresence = { awareness: Awareness; localUserName: string };
+const NoteCollabPresenceContext = createContext<NoteCollabPresence | null>(null);
+
 /** Y.Doc for the open note. Null outside a collab session. */
 export function NoteCollabYDocProvider({
   ydoc,
+  awareness,
+  localUserName,
   onLocalTitleEdit,
   children,
 }: {
   ydoc: Y.Doc | null;
+  /** Awareness of the same session. Omit to show and publish no title carets. */
+  awareness?: Awareness | null;
+  /** Display name in awareness `user`. Hides this account's other tabs. */
+  localUserName?: string;
   /** Debounced collab save. Title edits do not change the markdown getter. */
   onLocalTitleEdit?: () => void;
   children: ReactNode;
 }) {
+  const presence = useMemo(
+    () => (awareness && localUserName != null ? { awareness, localUserName } : null),
+    [awareness, localUserName],
+  );
   return (
     <NoteCollabTitleSaveContext.Provider value={onLocalTitleEdit ?? null}>
-      <NoteCollabYDocContext.Provider value={ydoc}>{children}</NoteCollabYDocContext.Provider>
+      <NoteCollabPresenceContext.Provider value={presence}>
+        <NoteCollabYDocContext.Provider value={ydoc}>{children}</NoteCollabYDocContext.Provider>
+      </NoteCollabPresenceContext.Provider>
     </NoteCollabTitleSaveContext.Provider>
   );
 }
 
 export function useNoteCollabYDoc(): Y.Doc | null {
   return useContext(NoteCollabYDocContext);
+}
+
+/** Awareness for title carets. Null outside a collab session. */
+export function useNoteCollabPresence(): NoteCollabPresence | null {
+  return useContext(NoteCollabPresenceContext);
 }
 
 type UseNoteTitleFieldOptions = {
