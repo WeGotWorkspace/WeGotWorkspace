@@ -2,13 +2,16 @@
 import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
 import { Awareness } from "y-protocols/awareness";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { docsLabels } from "@/docs-core/src/docs-labels";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { setTextEditorContent } from "@/text-editor-core/src/text-editor-content";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
-import { getDocsTrackChangeGroups } from "@/text-editor-core/src/text-editor-track-changes";
+import {
+  getDocsTrackChangeGroups,
+  getSessionTrackChangeIds,
+} from "@/text-editor-core/src/text-editor-track-changes";
 import { TooltipProvider } from "@/ui/tooltip";
 import { avatarColorForUserId } from "@/user-avatar/src/user-avatar-color";
 import { applyContentSeedToYDoc } from "./docs-collab-editor-surface";
@@ -19,7 +22,11 @@ import {
   DOCS_THREADS_TEST_PATH,
   useTestDocsSuggestions as useDocsSuggestions,
 } from "./docs-threads-test-client";
-import { SUGGESTION_ROOT_SETTLE_MS } from "./use-docs-suggestions-thread-roots";
+import {
+  SUGGESTION_ROOT_RETRY_MS,
+  SUGGESTION_ROOT_SETTLE_MS,
+  useDocsSuggestionThreadRoots,
+} from "./use-docs-suggestions-thread-roots";
 
 const ALEX = { id: "alex", name: "Alex Example" };
 const SETTLED = { timeout: SUGGESTION_ROOT_SETTLE_MS + 1_500 };
@@ -35,7 +42,11 @@ afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
 });
 
-function createEditor(ydoc: Y.Doc, seed: string | null = "Hello old world") {
+function createEditor(
+  ydoc: Y.Doc,
+  seed: string | null = "Hello old world",
+  trackChangesUserKey: string = crypto.randomUUID(),
+) {
   if (seed != null) applyContentSeedToYDoc(ydoc, seed, "markdown");
   const element = document.createElement("div");
   document.body.appendChild(element);
@@ -44,6 +55,7 @@ function createEditor(ydoc: Y.Doc, seed: string | null = "Hello old world") {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness: new Awareness(ydoc),
+      trackChangesUserKey,
       user: { name: "Browser tab", color: "#db2777" },
       format: "markdown",
     }),
@@ -236,5 +248,73 @@ describe("suggestion thread roots", () => {
     });
     expect(editor.getText()).toBe("Hello new world");
     await waitFor(() => expect(suggestionRoots(client, "ch_1_1_old")[0]?.archived).toBe(true));
+  });
+
+  it("keeps one author id per track-changes user key, and none for another key", () => {
+    const ydoc = new Y.Doc();
+    const first = createEditor(ydoc, "Hello old world", "alex:room");
+    suggestReplace(first, 7, 10, "new");
+    const changeId = getDocsTrackChangeGroups(first)[0]!.changeId;
+
+    const again = createEditor(ydoc, null, "alex:room");
+    const other = createEditor(ydoc, null, "sam:room");
+    expect(getSessionTrackChangeIds(again)).toEqual([changeId]);
+    expect(getSessionTrackChangeIds(other)).toEqual([]);
+  });
+
+  it("creates the missing root for a mark an earlier editor of the same user made", async () => {
+    const ydoc = new Y.Doc();
+    const first = createEditor(ydoc, "Hello old world", "alex:room");
+    suggestReplace(first, 7, 10, "new");
+    const changeId = getDocsTrackChangeGroups(first)[0]!.changeId;
+    const remounted = createEditor(ydoc, null, "alex:room");
+    const client = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, ALEX);
+    renderHook(() =>
+      useDocsSuggestions(remounted, { ydoc: null, currentUser: ALEX, threadsClient: client }),
+    );
+
+    await waitFor(() => expect(suggestionRoots(client, changeId)).toHaveLength(1), SETTLED);
+  });
+
+  describe("retry", () => {
+    afterEach(() => vi.useRealTimers());
+
+    it("retries both of two staggered failures on an idle document", async () => {
+      const editor = createEditor(new Y.Doc());
+      suggestReplace(editor, 7, 10, "new");
+      suggestReplace(editor, 1, 3, "Ye");
+      const ids = getSessionTrackChangeIds(editor);
+      expect(ids).toHaveLength(2);
+      const [a, b] = ids as [string, string];
+
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      const rejectors = new Map<string, (error: Error) => void>();
+      const attempts = new Map<string, number>();
+      const ensure = vi.fn((changeId: string) => {
+        attempts.set(changeId, (attempts.get(changeId) ?? 0) + 1);
+        if (attempts.get(changeId)! > 1) return Promise.resolve({} as never);
+        return new Promise<never>((_resolve, reject) => rejectors.set(changeId, reject));
+      });
+      renderHook(() =>
+        useDocsSuggestionThreadRoots({
+          editor,
+          fileThreads: [],
+          ensureSuggestionRoot: ensure,
+          enabled: true,
+        }),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      // A fails at t=0, B eight seconds later. No editor transaction follows.
+      rejectors.get(a)!(new Error("offline"));
+      await vi.advanceTimersByTimeAsync(8_000);
+      rejectors.get(b)!(new Error("offline"));
+      await vi.advanceTimersByTimeAsync(SUGGESTION_ROOT_RETRY_MS - 8_000);
+      expect(attempts.get(a)).toBe(2);
+      expect(attempts.get(b)).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect(attempts.get(b)).toBe(2);
+    });
   });
 });

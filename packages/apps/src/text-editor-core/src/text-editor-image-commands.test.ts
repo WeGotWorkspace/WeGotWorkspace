@@ -63,6 +63,7 @@ describe("docs image parse/serialize", () => {
       extensions: createCollaborativeTextEditorExtensions({
         document: ydoc,
         awareness,
+        trackChangesUserKey: crypto.randomUUID(),
         user: { name: "Alex", color: "#2563eb" },
         format: "markdown",
         fetchImageContent,

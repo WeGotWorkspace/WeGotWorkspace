@@ -205,9 +205,9 @@ export function getDocsTrackChangeGroups(editor: Editor | null): DocsTrackChange
 }
 
 /**
- * Change ids this editor session made: the marks carry the session author id
- * (random per editor, see `createTrackChangesSessionAuthor`). Remote peers'
- * suggestions and suggestions from an earlier session are not included.
+ * Change ids this user made on this document: the marks carry the author id
+ * kept per user and document (see `createTrackChangesSessionAuthor`), so an
+ * earlier visit's marks are included. Everyone else's marks stay excluded.
  */
 export function getSessionTrackChangeIds(editor: Editor | null): string[] {
   if (!editorHasTrackChanges(editor)) return [];

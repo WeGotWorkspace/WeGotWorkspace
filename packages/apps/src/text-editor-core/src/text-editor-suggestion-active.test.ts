@@ -49,6 +49,7 @@ function createReplaceEditor(seed = "Hello world") {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),

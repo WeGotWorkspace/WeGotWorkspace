@@ -39,6 +39,8 @@ export function useDocsSuggestionThreadRoots({
   });
 
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryDueAt = useRef(0);
+  const unmounted = useRef(false);
   const createMissingRootsRef = useRef<() => void>(() => {});
 
   /** This session's change ids that have no thread root yet. Reads the editor. */
@@ -52,27 +54,45 @@ export function useDocsSuggestionThreadRoots({
     return getSessionTrackChangeIds(editor).filter((changeId) => !withThread.has(changeId));
   }, [editor, enabled]);
 
-  const createRoots = useCallback((changeIds: string[]) => {
-    const { ensureSuggestionRoot: ensure } = latest.current;
-    const now = Date.now();
-    for (const changeId of changeIds) {
-      const failed = failedAt.current.get(changeId);
-      if (failed !== undefined && now - failed < SUGGESTION_ROOT_RETRY_MS) continue;
-      ensure(changeId).then(
-        () => failedAt.current.delete(changeId),
-        () => {
-          failedAt.current.set(changeId, Date.now());
-          // The cooldown is not a timer: schedule the next attempt, which stops
-          // once the root exists or the change is gone.
-          if (retryTimer.current) return;
-          retryTimer.current = setTimeout(() => {
-            retryTimer.current = null;
-            createMissingRootsRef.current();
-          }, SUGGESTION_ROOT_RETRY_MS);
-        },
-      );
-    }
+  /** Make sure a retry runs no later than `dueAt`; an earlier timer is kept. */
+  const armRetry = useCallback((dueAt: number) => {
+    if (unmounted.current) return;
+    if (retryTimer.current && retryDueAt.current <= dueAt) return;
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    retryDueAt.current = dueAt;
+    retryTimer.current = setTimeout(
+      () => {
+        retryTimer.current = null;
+        createMissingRootsRef.current();
+      },
+      Math.max(0, dueAt - Date.now()),
+    );
   }, []);
+
+  const createRoots = useCallback(
+    (changeIds: string[]) => {
+      const { ensureSuggestionRoot: ensure } = latest.current;
+      const now = Date.now();
+      for (const changeId of changeIds) {
+        const failed = failedAt.current.get(changeId);
+        if (failed !== undefined && now - failed < SUGGESTION_ROOT_RETRY_MS) {
+          armRetry(failed + SUGGESTION_ROOT_RETRY_MS);
+          continue;
+        }
+        ensure(changeId).then(
+          () => failedAt.current.delete(changeId),
+          () => {
+            const failedNow = Date.now();
+            failedAt.current.set(changeId, failedNow);
+            // The cooldown is not a timer: schedule the next attempt, which stops
+            // once the root exists or the change is gone.
+            armRetry(failedNow + SUGGESTION_ROOT_RETRY_MS);
+          },
+        );
+      }
+    },
+    [armRetry],
+  );
 
   const createMissingRoots = useCallback(
     () => createRoots(missingChangeIds()),
@@ -82,13 +102,14 @@ export function useDocsSuggestionThreadRoots({
     createMissingRootsRef.current = createMissingRoots;
   }, [createMissingRoots]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
       if (retryTimer.current) clearTimeout(retryTimer.current);
       retryTimer.current = null;
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     if (!editor) return;

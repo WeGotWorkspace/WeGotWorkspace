@@ -71,6 +71,7 @@ function createCollabEditor(
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),

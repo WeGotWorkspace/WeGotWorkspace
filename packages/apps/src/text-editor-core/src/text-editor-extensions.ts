@@ -145,7 +145,13 @@ export type CreateCollaborativeTextEditorExtensionsOptions = CreateTextEditorExt
   document: Y.Doc;
   awareness: Awareness;
   /** Remote caret label and colour. Never written into the document. */
-  user: { name: string; color: string; id?: string };
+  user: { name: string; color: string };
+  /**
+   * Stable key for this user on this document (principal plus room). The
+   * track-changes author id is kept per key, so a remount still claims its
+   * earlier marks. Not shown to peers.
+   */
+  trackChangesUserKey: string;
 };
 
 /**
@@ -157,14 +163,14 @@ export type CreateCollaborativeTextEditorExtensionsOptions = CreateTextEditorExt
 export function createCollaborativeTextEditorExtensions(
   options: CreateCollaborativeTextEditorExtensionsOptions,
 ): Extensions {
-  const { document, awareness, user, ...editorOptions } = options;
+  const { document, awareness, user, trackChangesUserKey, ...editorOptions } = options;
   const base = createTextEditorExtensions(editorOptions).filter((ext) => ext.name !== "starterKit");
 
   return [
     StarterKit.configure({ undoRedo: false, link: false, underline: false }),
     ...base,
     DocsTrackChangesExtension.configure({
-      author: createTrackChangesSessionAuthor(user.id),
+      author: createTrackChangesSessionAuthor(trackChangesUserKey),
       mode: "edit",
     }),
     TrackChangeActiveExtension,

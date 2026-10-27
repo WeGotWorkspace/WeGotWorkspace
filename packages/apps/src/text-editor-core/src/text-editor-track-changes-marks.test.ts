@@ -52,6 +52,7 @@ function createDocsEditor(ydoc: Y.Doc, seed: string | null = "Hello old world") 
       extensions: createCollaborativeTextEditorExtensions({
         document: ydoc,
         awareness: new Awareness(ydoc),
+        trackChangesUserKey: crypto.randomUUID(),
         user: { name: PERSON, color: SESSION_COLOUR },
         format: "markdown",
       }),

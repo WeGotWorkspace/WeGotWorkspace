@@ -18,6 +18,7 @@ export type DocsCollabEditorSurfaceProps = {
   ydoc: Y.Doc;
   awareness: Awareness;
   user: { name: string; color: string };
+  trackChangesUserKey: string;
   onMarkdownChange: (getMarkdown: () => string) => void;
 };
 

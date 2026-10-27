@@ -66,6 +66,7 @@ export type NoteTextEditorBodyProps = {
 
 type NoteCollabContextValue = ReturnType<typeof useDocsCollab> & {
   localDisplayName: string;
+  trackChangesUserKey: string;
 };
 
 const NoteCollabContext = createContext<NoteCollabContextValue | null>(null);
@@ -196,8 +197,14 @@ export function NoteCollabSession({
   });
 
   const value = useMemo(
-    () => ({ ...collab, localDisplayName, onMarkdownChange, registerMarkdownGetter }),
-    [collab, localDisplayName, onMarkdownChange, registerMarkdownGetter],
+    () => ({
+      ...collab,
+      localDisplayName,
+      trackChangesUserKey: `${userName}:${urls.room ?? ""}`,
+      onMarkdownChange,
+      registerMarkdownGetter,
+    }),
+    [collab, localDisplayName, userName, urls.room, onMarkdownChange, registerMarkdownGetter],
   );
 
   return (
@@ -260,7 +267,8 @@ export function NoteCollabEditorSurface({
   /** Override TipTap mount focus. Omit to focus end without scrolling the caret into view. */
   autofocus?: UseEditorOptions["autofocus"];
 }) {
-  const { session, onMarkdownChange, registerMarkdownGetter } = useNoteCollabContext();
+  const { session, trackChangesUserKey, onMarkdownChange, registerMarkdownGetter } =
+    useNoteCollabContext();
 
   const handleEditorReady = useCallback(
     (editor: Editor | null) => {
@@ -278,6 +286,7 @@ export function NoteCollabEditorSurface({
       ydoc={session.ydoc}
       awareness={session.awareness}
       user={session.user}
+      trackChangesUserKey={trackChangesUserKey}
       format="markdown"
       formatBar={false}
       editable={editable}

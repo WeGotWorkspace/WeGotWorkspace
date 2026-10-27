@@ -88,6 +88,7 @@ function createCollabEditor(ydoc: Y.Doc, awareness: Awareness) {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),
@@ -107,6 +108,7 @@ function createReplaceEditor(ydoc: Y.Doc, awareness: Awareness) {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),
@@ -260,6 +262,7 @@ describe("useDocsSuggestions", () => {
       extensions: createCollaborativeTextEditorExtensions({
         document: ydoc,
         awareness,
+        trackChangesUserKey: crypto.randomUUID(),
         user,
         format: "markdown",
       }),
@@ -300,6 +303,7 @@ describe("useDocsSuggestions", () => {
       extensions: createCollaborativeTextEditorExtensions({
         document: ydoc,
         awareness,
+        trackChangesUserKey: crypto.randomUUID(),
         user,
         format: "markdown",
       }),
