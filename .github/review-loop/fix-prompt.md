@@ -17,6 +17,8 @@ word on whether a fix is good enough: the reviewer does.
 - No drive-by refactors, no unrelated cleanup, no new features.
 - Do not change `.github/`, `.agents/`, `.claude/`, `AGENTS.md`, or
   `CLAUDE.md`. The workflow refuses to commit them.
+- Items under "For a human", and comments marked **For a human:**, are not
+  yours: leave them, also when the fix looks obvious.
 
 ## Check before you fix
 
