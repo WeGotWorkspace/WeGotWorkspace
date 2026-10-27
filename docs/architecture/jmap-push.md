@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **proposal, not built**; revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server built** (#1660; client still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 
@@ -44,7 +44,7 @@ RFC 8620 §7 defines:
 - **StateChange:** `{"@type": "StateChange", "changed": {"<accountId>": {"Note": "<state>", "FileNode": "<state>"}}}`. Each value is what `Foo/get` would return as `state` now. The client compares it with its own state and calls `Foo/changes` when it differs.
 - **Event source:** `GET {eventSourceUrl}` with `types` (`*` or a list), `closeafter` (`state` | `no`) and `ping` (seconds). The server sends `state` events with a StateChange, and an event `id` that encodes the whole state visible to the user. On reconnect the client sends `Last-Event-ID`. The server uses it to send missed changes at once.
 
-Our JMAP session already advertises `eventSourceUrl` (`JmapSessionController`, template `/api/v1/jmap/events/{types}/{closeafter}/{ping}`). The route answers 501 from `JmapStubController::eventSource`. This design replaces that stub.
+Our JMAP session already advertises `eventSourceUrl` (`JmapSessionController`, template `/api/v1/jmap/events/{types}/{closeafter}/{ping}`). Before #1660 the route answered 501 from a stub; it now serves the endpoint below.
 
 ## Server: the event-source endpoint
 
