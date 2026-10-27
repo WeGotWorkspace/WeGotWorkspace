@@ -17,6 +17,7 @@ use App\Http\Middleware\ReplayMcpConsentDecision;
 use App\Http\Middleware\RequireWgwRole;
 use App\Http\Middleware\ResolveCimdClient;
 use App\Http\Middleware\WgwSecurityHeaders;
+use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Auth\RefreshCookie;
@@ -193,6 +194,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })
     ->booted(function (): void {
         WgwApiRateLimiters::register();
+        JmapPushRateLimiters::register();
     })
     ->create();
 
