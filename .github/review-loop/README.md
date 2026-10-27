@@ -67,7 +67,7 @@ wait until the loop hands the PR to a human. Their first job,
 |-------|----|
 | PR opened or reopened (not draft), fix commit by the loop | waits |
 | Loop adds `ready-for-human` or `needs-human` | runs on the head commit |
-| Draft, fork, push by a person or another bot | runs, as before |
+| Draft, fork, Dependabot, push by a person or another bot | runs, as before |
 | Any other label | does nothing |
 | `main`, merge queue, schedule | runs, as before |
 

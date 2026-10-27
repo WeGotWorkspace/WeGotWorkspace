@@ -33,6 +33,7 @@ jobs:
           DRAFT: ${{ github.event.pull_request.draft }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           SENDER: ${{ github.event.sender.login }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           LOOP_BOT: ${{ vars.REVIEW_LOOP_APP_SLUG && format('{0}[bot]', vars.REVIEW_LOOP_APP_SLUG) || '' }}
         run: |
           decide() {
@@ -53,6 +54,9 @@ jobs:
           [ -n "$LOOP_BOT" ] || decide true "The review loop is not set up: CI runs."
           [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ] || decide true "Fork PR, which the review loop skips: CI runs."
           [ "$DRAFT" != true ] || decide true "Draft PR, which the review loop skips: CI runs."
+          # Runs Dependabot starts get no Actions secrets, so the loop cannot
+          # get its app token and would never add a hand-over label.
+          [ "$PR_AUTHOR" != 'dependabot[bot]' ] || decide true "Dependabot PR, which the review loop cannot review without its secrets: CI runs."
           # Mirrors when review-loop-review-job.yml reviews a commit.
           case "$ACTION" in
             opened|reopened)
