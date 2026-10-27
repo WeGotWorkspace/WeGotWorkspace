@@ -10,6 +10,8 @@ name: Review loop - fix
 #
 # Brake: after MAX_ROUNDS change requests in one cycle the loop labels the PR
 # needs-human and stops. A cycle starts at the PR's last "ready for review".
+# A polish round (an approval that lists polish) runs once per cycle and does
+# not count toward MAX_ROUNDS.
 #
 # This file only decides when to run. GitHub reads it from the PR's test merge,
 # which can lag behind main, so the logic lives in review-loop-fix-job.yml,
@@ -25,8 +27,9 @@ concurrency:
 
 jobs:
   fix:
+    # Kept broad on purpose: the job decides whether this review starts a fix
+    # round, a polish round, or nothing, so that logic lives on main.
     if: >-
-      github.event.review.state == 'changes_requested' &&
       github.event.review.user.type == 'Bot' &&
       github.event.pull_request.head.repo.full_name == github.repository
     permissions:

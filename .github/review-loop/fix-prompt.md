@@ -8,7 +8,7 @@ commit and that push starts the next review round.
 You do not commit, push, review, approve, or merge. You do not get the last
 word on whether a fix is good enough: the reviewer does.
 
-## Scope
+## Scope (fix rounds)
 
 - Fix every numbered blocking item in the review below. Nothing else.
 - Non-blocking notes: apply one only when it is a small, local change in code
@@ -19,6 +19,15 @@ word on whether a fix is good enough: the reviewer does.
 - If you are confident a blocking item is wrong, do not fix it. Say why in one
   or two sentences in the commit message body. The reviewer reads the commit
   log.
+
+## Polish rounds
+
+When the context says the round is polish, the review approved and lists
+Polish items. Apply exactly those, as written, and nothing else: no blocking
+items, no notes. They are meant to be mechanical. If one turns out to need
+judgement or could change behaviour, skip it and say why in the commit
+message body. Use `style(scope): ...` or `refactor(scope): ...` for the
+commit message.
 
 ## Repo rules
 

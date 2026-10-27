@@ -28,16 +28,34 @@ jobs:
           client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
+      # Decides the round: a change request from the loop bot is a fix round,
+      # its approval with the polish marker is a polish round (the post job
+      # sends that at most once per cycle), anything else is not for the loop.
       - name: Count rounds
         id: rounds
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
           BOT: ${{ steps.bot.outputs.app-slug }}[bot]
           REVIEWER: ${{ github.event.review.user.login }}
+          STATE: ${{ github.event.review.state }}
+          REVIEW_BODY: ${{ github.event.review.body }}
         run: |
-          if [ "$REVIEWER" != "$BOT" ]; then
-            echo "Change request by $REVIEWER, not the loop bot; nothing to do."
+          kind=none
+          if [ "$REVIEWER" = "$BOT" ]; then
+            case "$STATE" in
+              changes_requested) kind=fix ;;
+              approved) [[ "$REVIEW_BODY" == *"<!-- review-loop:polish -->"* ]] && kind=polish ;;
+            esac
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          if [ "$kind" = none ]; then
+            echo "A $STATE review by $REVIEWER; nothing for the loop to do."
             echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$kind" = polish ]; then
+            echo "Polish round; it does not count toward the round cap."
+            echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
@@ -72,6 +90,7 @@ jobs:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
           REVIEW_ID: ${{ github.event.review.id }}
           REVIEW_BODY: ${{ github.event.review.body }}
+          KIND: ${{ steps.rounds.outputs.kind }}
         run: |
           {
             cat loop/.github/review-loop/fix-prompt.md
@@ -80,6 +99,11 @@ jobs:
             echo
             echo "- Repository: $GH_REPO"
             echo "- PR: $PR (branch $HEAD_REF, reviewed at $HEAD_SHA)"
+            if [ "$KIND" = polish ]; then
+              echo "- Round: polish. The review approved; apply its Polish items only."
+            else
+              echo "- Round: fix. Resolve the review's blocking items."
+            fi
             echo
             echo "### Review"
             echo
@@ -167,14 +191,35 @@ jobs:
           echo "Committed $url"
 
       # Any stop, and any failure, hands the PR to a human. Without this the
-      # loop would stall silently: no push means no new review.
+      # loop would stall silently: no push means no new review. A polish
+      # round that ends without a commit leaves the approval standing, so it
+      # hands over as ready-for-human instead.
       - name: Hand over to a human
         if: always() && (steps.rounds.outputs.stop || steps.commit.outputs.stop || failure())
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
+          KIND: ${{ steps.rounds.outputs.kind }}
           MESSAGE: ${{ steps.rounds.outputs.stop || steps.commit.outputs.stop }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          if [ "$KIND" = polish ]; then
+            # The approval only stands for the commit it reviewed. If the
+            # branch moved (a human push), the gate already dropped it.
+            head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+            if [ "$head" != "$HEAD_SHA" ]; then
+              gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
+
+          The branch moved after the approval, so it no longer applies. Mark the PR draft and then ready to review again."
+              exit 0
+            fi
+            gh label create ready-for-human --color 0e8a16 \
+              --description "Review loop approved; ready for human review" 2>/dev/null || true
+            gh pr edit "$PR" --add-label ready-for-human
+            gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
+
+          The approval stands; the polish items in it are left for a human."
+            exit 0
+          fi
           gh label create needs-human --color d93f0b \
             --description "Review loop stopped; needs a human call" 2>/dev/null || true
           gh pr edit "$PR" --add-label needs-human
