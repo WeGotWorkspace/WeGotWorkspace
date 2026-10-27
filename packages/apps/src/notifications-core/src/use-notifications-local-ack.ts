@@ -14,10 +14,6 @@ function inMeetCall(store: MeetCallStore | null): boolean {
   return store?.statusRef.current === "in-call";
 }
 
-async function sendLocalAck(id: string): Promise<void> {
-  await ackLocalNotification(id);
-}
-
 /**
  * Local-acks unread inbox rows, but only from a visible window or one in a Meet
  * call (see {@link canLocalAck}). A hidden window keeps what it saw and acks it
@@ -36,7 +32,7 @@ export function useNotificationsLocalAck(): (unread: readonly NotificationInboxI
     for (const item of unreadRef.current) {
       if (acked.has(item.id)) continue;
       acked.add(item.id);
-      void sendLocalAck(item.id).catch(() => {
+      void ackLocalNotification(item.id).catch(() => {
         // Try again on the next poll or visibility change.
         acked.delete(item.id);
       });
