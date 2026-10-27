@@ -335,19 +335,27 @@ jobs:
       # The first reviewer decides alone when there is no second one. With
       # two, a change request from either one is a change request, and every
       # finding says which reviewer raised it.
+      #
+      # Polish: an approval with polish items, in a cycle that has not had a
+      # polish round yet, goes out as an approval that carries the polish
+      # marker and no ready-for-human label. The fixer applies the items and
+      # its push starts one more review. Later polish in the cycle stays notes.
       - name: Merge and post review
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
+          BOT: ${{ steps.bot.outputs.app-slug }}[bot]
           SECOND_ENABLED: ${{ needs.second-review.outputs.enabled }}
           NAME_1: Reviewer 1 (${{ vars.REVIEW_LOOP_REVIEW_MODEL || 'default model' }})
           NAME_2: Reviewer 2 (${{ vars.REVIEW_LOOP_SECOND_REVIEW_MODEL || 'default model' }})
         run: |
-          valid='type == "object" and (keys == ["body", "comments", "verdict"])
-            and (.verdict | IN("approve", "request_changes")) and (.body | type == "string")
-            and (.comments | type == "array")
-            and all(.comments[]; type == "object" and (keys == ["body", "line", "path"])
+          valid='def item: type == "object" and (keys == ["body", "line", "path"])
               and (.path | type == "string") and (.body | type == "string")
-              and (.line | type == "number" and . == floor and . >= 1))'
+              and (.line | type == "number" and . == floor and . >= 1);
+            type == "object" and (keys == ["body", "comments", "polish", "verdict"])
+            and (.verdict | IN("approve", "request_changes")) and (.body | type == "string")
+            and (.comments | type == "array") and all(.comments[]; item)
+            and (.polish | type == "array") and all(.polish[]; item)'
+          marker="<!-- review-loop:polish -->"
 
           first="$RUNNER_TEMP/results/review-result-1/agent-result.json"
           second="$RUNNER_TEMP/results/review-result-2/second-agent-result.json"
@@ -376,8 +384,29 @@ jobs:
                   verdict: (if [$a.verdict, $b.verdict] | index("request_changes")
                             then "request_changes" else "approve" end),
                   body: "### \($n1)\n\n\($a.body)\n\n### \($n2)\n\n\($b.body)",
-                  comments: ($a.comments + [$b.comments[] | .body = "_\($n2):_ " + .body])
+                  comments: ($a.comments + [$b.comments[] | .body = "_\($n2):_ " + .body]),
+                  polish: ($a.polish + [$b.polish[] | .body = "_\($n2):_ " + .body])
                 } end' > "$result"
+
+          # One polish round per cycle; a cycle starts at the last "ready".
+          polish=none
+          if [ "$(jq '.verdict == "approve" and (.polish | length) > 0' "$result")" = true ]; then
+            since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
+              | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+            done=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+              | jq --arg bot "$BOT" --arg since "$since" --arg m "$marker" \
+                '[add[] | select(.user.login == $bot and .submitted_at > $since
+                  and (.body | contains($m)))] | length')
+            if [ "$done" -eq 0 ]; then polish=apply; else polish=notes; fi
+          fi
+          echo "Polish: $polish"
+          jq --arg polish "$polish" --arg m "$marker" '
+              def list: [.polish[] | "1. `\(.path):\(.line)` \(.body)"] | join("\n");
+              if $polish == "apply" then
+                .body += "\n\n### Polish\n\nSmall mechanical changes the loop applies once, then it reviews again:\n\n" + list + "\n\n" + $m
+              elif $polish == "notes" then
+                .body += "\n\n### Polish (not applied)\n\nThis cycle already had its polish round, so these stay notes:\n\n" + list
+              else . end' "$result" > "$result.tmp" && mv "$result.tmp" "$result"
 
           payload="$RUNNER_TEMP/review.json"
           jq --arg sha "$HEAD_SHA" '{
@@ -396,7 +425,7 @@ jobs:
               | gh api -X POST "repos/$GH_REPO/pulls/$PR/reviews" --input - > /dev/null
           fi
 
-          if [ "$(jq -r .verdict "$result")" = approve ]; then
+          if [ "$(jq -r .verdict "$result")" = approve ] && [ "$polish" != apply ]; then
             gh label create ready-for-human --color 0e8a16 \
               --description "Review loop approved; ready for human review" 2>/dev/null || true
             gh pr edit "$PR" --add-label ready-for-human
