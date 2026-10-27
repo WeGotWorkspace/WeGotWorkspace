@@ -49,7 +49,12 @@ fast tests, and neither may commit, push, or reach GitHub.
 3. Store the agent credential as the secret `REVIEW_LOOP_AGENT_TOKEN`. For
    the current adapter (Claude Code) that is the output of
    `claude setup-token`.
-4. Optional: set `REVIEW_LOOP_MAX_ROUNDS`.
+4. Optional repository variables:
+   - `REVIEW_LOOP_MAX_ROUNDS`: change requests per cycle (default 3).
+   - `REVIEW_LOOP_REVIEW_MODEL` and `REVIEW_LOOP_FIX_MODEL`: the model for
+     each role, in the vendor's own terms (for Claude Code, `opus` or
+     `sonnet`). Empty uses the account's default. They are variables, not
+     code, so a vendor switch changes them without a PR.
 
 Prompts, schemas, both local actions, and the reviewer's standards (the
 security checklist and the clean-code smells list) are read from `main`, so a

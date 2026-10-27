@@ -29,6 +29,11 @@ inputs:
     description: Upper bound on agent turns.
     required: false
     default: "40"
+  model:
+    description: >-
+      Model name in the vendor's own terms. Empty uses the vendor's default.
+    required: false
+    default: ""
 
 outputs:
   result-file:
@@ -54,6 +59,7 @@ runs:
         PROMPT_FILE: ${{ inputs.prompt-file }}
         SCHEMA_FILE: ${{ inputs.schema-file }}
         MAX_TURNS: ${{ inputs.max-turns }}
+        AGENT_MODEL: ${{ inputs.model }}
       run: |
         read_only="Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
         case "$MODE" in
@@ -67,9 +73,16 @@ runs:
         # and the agent would run without a schema.
         schema=$(jq -c . "$SCHEMA_FILE")
 
+        model_args=()
+        if [ -n "$AGENT_MODEL" ]; then
+          model_args=(--model "$AGENT_MODEL")
+        fi
+        echo "Model: ${AGENT_MODEL:-account default}"
+
         out="$RUNNER_TEMP/agent-output.json"
         result="$RUNNER_TEMP/agent-result.json"
         claude -p \
+          "${model_args[@]}" \
           --output-format json \
           --json-schema "$schema" \
           --allowedTools "$tools" \

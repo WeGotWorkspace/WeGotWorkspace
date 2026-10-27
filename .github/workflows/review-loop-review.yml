@@ -183,6 +183,7 @@ jobs:
           working-directory: pr
           token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
           max-turns: "40"
+          model: ${{ vars.REVIEW_LOOP_REVIEW_MODEL }}
 
       - name: Post review
         if: steps.gate.outputs.run == 'true'
