@@ -11,6 +11,12 @@ reviewer approves. A human then reviews. Nothing is merged automatically.
   agent to edit files, then commits them as one signed commit. That push
   starts the next review.
 
+Each of the two is a thin trigger that calls its logic,
+`review-loop-review-job.yml` or `review-loop-fix-job.yml`, at `@main`. GitHub
+reads a PR's workflow files from the PR's test merge, which can lag behind
+`main`; the logic must not, because it has to match the adapter and prompts
+it reads from `main`.
+
 The loop stops with the `needs-human` label after `REVIEW_LOOP_MAX_ROUNDS`
 change requests (default 3), when a fix round changes nothing, or when it
 fails. A human push drops `ready-for-human` without starting a review. To
@@ -30,11 +36,11 @@ loop's own GitHub App, so the bot identity does not change with the vendor.
 | `agent/action.yml` | Yes. The only one. |
 | `review-prompt.md`, `fix-prompt.md` | No |
 | `review.schema.json`, `fix.schema.json` | No |
-| `prepare/action.yml`, both workflows | No |
+| `prepare/action.yml`, all four workflows | No |
 
 To switch vendor, rewrite the steps in `agent/action.yml`. Keep its inputs
 (`mode`, `prompt-file`, `schema-file`, `working-directory`, `token`,
-`max-turns`) and its output (`result-file`, a JSON file that matches the
+`max-turns`, `model`, `effort`) and its output (`result-file`, a JSON file that matches the
 schema). Then replace the `REVIEW_LOOP_AGENT_TOKEN` secret. The adapter must
 keep the modes honest: `review` reads only, `fix` may edit files and run the
 fast tests, and neither may commit, push, or reach GitHub.
@@ -61,10 +67,11 @@ fast tests, and neither may commit, push, or reach GitHub.
    These are variables, not code, so a change applies to the next run, and
    a vendor switch changes them without a PR.
 
-Prompts, schemas, both local actions, and the reviewer's standards (the
-security checklist and the clean-code smells list) are read from `main`, so a
-PR cannot change the reviewer that judges it. Changes to them take effect once
-merged. The trade-off: the reviewer does not get the domain skill for the
+The workflow logic, prompts, schemas, both local actions, and the reviewer's
+standards (the security checklist and the clean-code smells list) are read
+from `main`, so a PR cannot change the reviewer that judges it. Changes to
+them take effect once merged. A PR could still edit its own trigger file to
+call something else, but that shows in the diff the reviewer and humans read. The trade-off: the reviewer does not get the domain skill for the
 package a PR touches, so it knows less about local conventions. The blocking
 categories do not depend on those conventions.
 The fixer may not commit to `.github/`, `.agents/`, `.claude/`, `AGENTS.md`,

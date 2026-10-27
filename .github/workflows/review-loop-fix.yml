@@ -4,12 +4,16 @@ name: Review loop - fix
 # Setup, vendor swap, and design notes: .github/review-loop/README.md.
 #
 # Runs on change requests from the loop's own bot. The agent edits files in
-# the working tree; this workflow commits them as one signed commit through the
+# the working tree; the job commits them as one signed commit through the
 # GitHub API (main requires signed commits). That push is a `synchronize` by
 # the bot, which re-runs the review.
 #
 # Brake: after MAX_ROUNDS change requests in one cycle the loop labels the PR
 # needs-human and stops. A cycle starts at the PR's last "ready for review".
+#
+# This file only decides when to run. GitHub reads it from the PR's test merge,
+# which can lag behind main, so the logic lives in review-loop-fix-job.yml,
+# called at @main.
 
 on:
   pull_request_review:
@@ -19,178 +23,13 @@ concurrency:
   group: review-loop-fix-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
-env:
-  GH_REPO: ${{ github.repository }}
-  PR: ${{ github.event.pull_request.number }}
-  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-  HEAD_REF: ${{ github.event.pull_request.head.ref }}
-  MAX_ROUNDS: ${{ vars.REVIEW_LOOP_MAX_ROUNDS || 3 }}
-
 jobs:
   fix:
     if: >-
       github.event.review.state == 'changes_requested' &&
       github.event.review.user.type == 'Bot' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
     permissions:
       contents: read
-    steps:
-      - uses: actions/create-github-app-token@v3
-        id: bot
-        with:
-          client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
-          private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
-
-      - name: Count rounds
-        id: rounds
-        env:
-          GH_TOKEN: ${{ steps.bot.outputs.token }}
-          BOT: ${{ steps.bot.outputs.app-slug }}[bot]
-          REVIEWER: ${{ github.event.review.user.login }}
-        run: |
-          if [ "$REVIEWER" != "$BOT" ]; then
-            echo "Change request by $REVIEWER, not the loop bot; nothing to do."
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
-            | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
-          round=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
-            | jq --arg bot "$BOT" --arg since "$since" \
-              '[add[] | select(.user.login == $bot and .state == "CHANGES_REQUESTED" and .submitted_at > $since)] | length')
-          echo "Change request $round of $MAX_ROUNDS this cycle."
-          if [ "$round" -gt "$MAX_ROUNDS" ]; then
-            echo "stop=Review loop stopped after $MAX_ROUNDS fix rounds. The open items above need a human call. Mark the PR draft and then ready to start a new cycle." >> "$GITHUB_OUTPUT"
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@v7
-        if: steps.rounds.outputs.run == 'true'
-        with:
-          ref: main
-          path: loop
-          sparse-checkout: .github/review-loop
-          persist-credentials: false
-
-      - uses: ./loop/.github/review-loop/prepare
-        if: steps.rounds.outputs.run == 'true'
-        with:
-          ref: ${{ env.HEAD_SHA }}
-
-      - name: Build prompt
-        if: steps.rounds.outputs.run == 'true'
-        env:
-          GH_TOKEN: ${{ steps.bot.outputs.token }}
-          REVIEW_ID: ${{ github.event.review.id }}
-          REVIEW_BODY: ${{ github.event.review.body }}
-        run: |
-          {
-            cat loop/.github/review-loop/fix-prompt.md
-            echo
-            echo "## Context"
-            echo
-            echo "- Repository: $GH_REPO"
-            echo "- PR: $PR (branch $HEAD_REF, reviewed at $HEAD_SHA)"
-            echo
-            echo "### Review"
-            echo
-            echo "$REVIEW_BODY"
-            echo
-            echo "### Inline comments"
-            echo
-            gh api "repos/$GH_REPO/pulls/$PR/reviews/$REVIEW_ID/comments" --paginate --slurp \
-              | jq -r 'add | if length == 0 then "None."
-                  else map("- `\(.path):\(.line // .original_line)` \(.body)") | join("\n") end'
-          } > "$RUNNER_TEMP/prompt.md"
-
-      - name: Fix
-        id: agent
-        if: steps.rounds.outputs.run == 'true'
-        uses: ./loop/.github/review-loop/agent
-        with:
-          mode: fix
-          prompt-file: ${{ runner.temp }}/prompt.md
-          schema-file: ${{ github.workspace }}/loop/.github/review-loop/fix.schema.json
-          working-directory: pr
-          token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
-          max-turns: "60"
-          model: ${{ vars.REVIEW_LOOP_FIX_MODEL }}
-          effort: ${{ vars.REVIEW_LOOP_FIX_EFFORT }}
-
-      # createCommitOnBranch makes a commit GitHub signs, authored by the bot.
-      # expectedHeadOid fails the commit if anyone pushed since the review.
-      - name: Commit
-        id: commit
-        if: steps.rounds.outputs.run == 'true'
-        working-directory: pr
-        env:
-          GH_TOKEN: ${{ steps.bot.outputs.token }}
-          RESULT: ${{ steps.agent.outputs.result-file }}
-        run: |
-          stop() {
-            delim="EOF_$(openssl rand -hex 8)"
-            { echo "stop<<$delim"; printf '%s\n' "$@"; echo "$delim"; } >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-
-          # -z throughout: without it git quotes unusual paths, which would
-          # slip past the protected-path check and reach the API quoted.
-          git add --all
-          changed=$(git diff --cached --name-only --no-renames -z | tr '\0' '\n')
-          if [ -z "$changed" ]; then
-            stop "The fixer made no changes:" "" "$(jq -r .summary "$RESULT")"
-          fi
-          protected=$(grep -E '^(\.github/|\.agents/|\.claude/|AGENTS\.md$|CLAUDE\.md$)' <<< "$changed" || true)
-          if [ -n "$protected" ]; then
-            stop "The fixer changed files the loop may not commit, so nothing was committed:" "" "$protected"
-          fi
-
-          git diff --cached --name-only --no-renames --diff-filter=d -z \
-            | while IFS= read -r -d '' path; do
-                base64 -w0 "$path" > "$RUNNER_TEMP/blob"
-                jq -n --arg path "$path" --rawfile contents "$RUNNER_TEMP/blob" '{$path, $contents}'
-              done | jq -s . > "$RUNNER_TEMP/additions.json"
-          git diff --cached --name-only --no-renames --diff-filter=D -z \
-            | jq -Rs 'split("\u0000") | map(select(. != "") | {path: .})' > "$RUNNER_TEMP/deletions.json"
-
-          # shellcheck disable=SC2016 # $input is a GraphQL variable
-          jq -n \
-            --arg query 'mutation($input: CreateCommitOnBranchInput!) {
-              createCommitOnBranch(input: $input) { commit { url } } }' \
-            --arg repo "$GH_REPO" --arg branch "$HEAD_REF" --arg oid "$HEAD_SHA" \
-            --slurpfile result "$RESULT" \
-            --slurpfile additions "$RUNNER_TEMP/additions.json" \
-            --slurpfile deletions "$RUNNER_TEMP/deletions.json" \
-            '{query: $query, variables: {input: {
-                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
-                expectedHeadOid: $oid,
-                message: ($result[0].commit_message | split("\n")
-                  | {headline: .[0], body: (.[1:] | join("\n") | ltrimstr("\n"))}),
-                fileChanges: {additions: $additions[0], deletions: $deletions[0]}
-              }}}' > "$RUNNER_TEMP/commit.json"
-
-          url=$(gh api graphql --input "$RUNNER_TEMP/commit.json" \
-            --jq '.data.createCommitOnBranch.commit.url // empty')
-          if [ -z "$url" ]; then
-            echo "::error::Commit failed."
-            exit 1
-          fi
-          echo "Committed $url"
-
-      # Any stop, and any failure, hands the PR to a human. Without this the
-      # loop would stall silently: no push means no new review.
-      - name: Hand over to a human
-        if: always() && (steps.rounds.outputs.stop || steps.commit.outputs.stop || failure())
-        env:
-          GH_TOKEN: ${{ steps.bot.outputs.token }}
-          MESSAGE: ${{ steps.rounds.outputs.stop || steps.commit.outputs.stop }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh label create needs-human --color d93f0b \
-            --description "Review loop stopped; needs a human call" 2>/dev/null || true
-          gh pr edit "$PR" --add-label needs-human
-          gh pr comment "$PR" --body "${MESSAGE:-The fix round failed: $RUN_URL}"
+    uses: WeGotWorkspace/WeGotWorkspace/.github/workflows/review-loop-fix-job.yml@main
+    secrets: inherit
