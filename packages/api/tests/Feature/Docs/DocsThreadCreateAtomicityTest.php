@@ -13,8 +13,8 @@ use App\Services\Docs\DocsThreadRepository;
 use App\Storage\WgwStorage;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Exceptions;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Testing\TestResponse;
+use PDOException;
 use Tests\Support\DocsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -123,9 +123,15 @@ final class DocsThreadCreateAtomicityTest extends WgwDatabaseTestCase
 
     public function test_other_database_errors_propagate_and_leave_no_thread(): void
     {
+        // The index insert fails after the VJOURNAL insert, with an error that is
+        // not a duplicate key. No DDL here: on MySQL a DROP TABLE commits the
+        // open transaction, and nothing would be left to roll back.
         Exceptions::fake();
-        $this->bobsPool();
-        Schema::connection('wgw')->dropIfExists('docs_thread_index');
+        DocsThreadIndex::creating(static function (): never {
+            throw new QueryException('wgw', 'insert into docs_thread_index', [], new PDOException(
+                "SQLSTATE[22001]: String data, right truncated: 1406 Data too long for column 'doc_path'",
+            ));
+        });
 
         $this->createThread(self::PATH, self::THREAD)->assertStatus(500);
 

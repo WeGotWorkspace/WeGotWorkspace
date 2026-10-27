@@ -12,9 +12,10 @@ use App\Services\Docs\DocsThreadCollectionUris;
 use App\Services\Docs\DocsThreadPoolProvisioner;
 use App\Services\Drive\DriveService;
 use App\Support\WgwSettings;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\WgwDatabaseTestCase;
@@ -193,7 +194,13 @@ final class DocsThreadsDavMoveTest extends WgwDatabaseTestCase
     public function test_thread_bookkeeping_failure_never_fails_the_move_or_delete(): void
     {
         $this->createThread(self::FROM);
-        Schema::connection('wgw')->dropIfExists('docs_thread_index');
+        // Every docs_thread_index query fails from here on. No DDL: on MySQL a
+        // DROP TABLE commits the test transaction and leaks into later tests.
+        DB::connection('wgw')->listen(static function (QueryExecuted $query): void {
+            if (str_contains($query->sql, 'docs_thread_index')) {
+                throw new \RuntimeException('docs_thread_index unavailable');
+            }
+        });
         /** @var list<MessageLogged> $logged */
         $logged = [];
         Log::listen(function (MessageLogged $event) use (&$logged): void {
