@@ -1,11 +1,19 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["verdict", "body", "comments"],
+  "required": [
+    "verdict",
+    "body",
+    "comments",
+    "polish"
+  ],
   "properties": {
     "verdict": {
       "type": "string",
-      "enum": ["approve", "request_changes"],
+      "enum": [
+        "approve",
+        "request_changes"
+      ],
       "description": "request_changes if and only if at least one blocking item remains."
     },
     "body": {
@@ -18,11 +26,51 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "line", "body"],
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
         "properties": {
-          "path": { "type": "string", "description": "Repository-relative file path." },
-          "line": { "type": "integer", "description": "Line number in the new version of the file; must be inside the diff." },
-          "body": { "type": "string", "description": "Starts with **Blocking:** or **Note:**." }
+          "path": {
+            "type": "string",
+            "description": "Repository-relative file path."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the new version of the file; must be inside the diff."
+          },
+          "body": {
+            "type": "string",
+            "description": "Starts with **Blocking:** or **Note:**."
+          }
+        }
+      }
+    },
+    "polish": {
+      "type": "array",
+      "description": "Only when approving: small mechanical changes that need no judgement and cannot change behaviour. The loop applies them once, then reviews again. Empty when requesting changes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "line",
+          "body"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Repository-relative file path."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the new version of the file."
+          },
+          "body": {
+            "type": "string",
+            "description": "The exact change, concrete enough to apply without guessing."
+          }
         }
       }
     }
