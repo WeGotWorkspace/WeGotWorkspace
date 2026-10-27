@@ -161,6 +161,37 @@ describe("suggestion thread roots", () => {
     );
   });
 
+  it("reopens an archived journal when a live suggestion gets a reply", async () => {
+    const ydoc = new Y.Doc();
+    const peer = createEditor(ydoc);
+    suggestReplace(peer, 7, 10, "new");
+    const changeId = getDocsTrackChangeGroups(peer)[0]!.changeId;
+    const client = createDocsThreadsMemory(DOCS_THREADS_TEST_PATH, ALEX);
+    const root = await client.create(DOCS_THREADS_TEST_PATH, {
+      id: suggestionThreadIdForChange(DOCS_THREADS_TEST_PATH, changeId),
+      kind: "suggestion",
+      changeId,
+      body: "",
+    });
+    await client.patch(DOCS_THREADS_TEST_PATH, root.id, { archived: true, changeId });
+
+    const mine = createEditor(ydoc, null);
+    const { result } = renderHook(() =>
+      useDocsSuggestions(mine, { ydoc: null, currentUser: ALEX, threadsClient: client }),
+    );
+    await waitFor(() => expect(result.current.suggestions).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.addReply(changeId, "Back again");
+    });
+
+    expect(suggestionRoots(client, changeId)).toHaveLength(1);
+    expect(suggestionRoots(client, changeId)[0]).toMatchObject({ archived: false });
+    await waitFor(() =>
+      expect(result.current.suggestions[0]!.messages.at(-1)?.body).toBe("Back again"),
+    );
+  });
+
   it("shows an older suggestion without a thread as Unknown author, and still accepts it", async () => {
     const editor = createEditor(new Y.Doc(), null);
     act(() => {

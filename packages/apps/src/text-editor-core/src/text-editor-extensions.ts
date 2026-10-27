@@ -145,7 +145,7 @@ export type CreateCollaborativeTextEditorExtensionsOptions = CreateTextEditorExt
   document: Y.Doc;
   awareness: Awareness;
   /** Remote caret label and colour. Never written into the document. */
-  user: { name: string; color: string };
+  user: { name: string; color: string; id?: string };
 };
 
 /**
@@ -164,7 +164,7 @@ export function createCollaborativeTextEditorExtensions(
     StarterKit.configure({ undoRedo: false, link: false, underline: false }),
     ...base,
     DocsTrackChangesExtension.configure({
-      author: createTrackChangesSessionAuthor(),
+      author: createTrackChangesSessionAuthor(user.id),
       mode: "edit",
     }),
     TrackChangeActiveExtension,

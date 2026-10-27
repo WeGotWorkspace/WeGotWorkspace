@@ -159,7 +159,22 @@ function randomSessionToken(): string {
  * nothing about the person; it only lets the library group one session's
  * typing into a single insertion. Name and colour stay empty: the suggestion
  * thread carries who made the change.
+ *
+ * With `userKey` the id is kept in this browser's localStorage for that user,
+ * so a remount still claims the marks it made earlier (a suggestion whose
+ * thread root never landed can then be created on the next visit). A peer
+ * has its own storage and so a different id.
  */
-export function createTrackChangesSessionAuthor(): ChangeAuthor {
-  return { id: `tc_${randomSessionToken()}`, name: "", color: "" };
+export function createTrackChangesSessionAuthor(userKey?: string): ChangeAuthor {
+  const fresh = `tc_${randomSessionToken()}`;
+  if (!userKey) return { id: fresh, name: "", color: "" };
+  const storageKey = `wgw:track-changes-author:${userKey}`;
+  try {
+    const stored = globalThis.localStorage?.getItem(storageKey);
+    if (stored && /^tc_[0-9a-f]{16}$/.test(stored)) return { id: stored, name: "", color: "" };
+    globalThis.localStorage?.setItem(storageKey, fresh);
+  } catch {
+    // Storage unavailable: fall back to a per-session id.
+  }
+  return { id: fresh, name: "", color: "" };
 }

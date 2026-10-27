@@ -32,37 +32,73 @@ export function useDocsSuggestionThreadRoots({
   enabled,
 }: UseDocsSuggestionThreadRootsOptions): void {
   const failedAt = useRef(new Map<string, number>());
+  // Read inside timers and the unmount flush, which must not see stale props.
   const latest = useRef({ fileThreads, ensureSuggestionRoot });
   useEffect(() => {
     latest.current = { fileThreads, ensureSuggestionRoot };
   });
 
-  const createMissingRoots = useCallback(() => {
-    if (!enabled || !editor || editor.isDestroyed || !editorHasTrackChanges(editor)) return;
-    const { fileThreads: threads, ensureSuggestionRoot: ensure } = latest.current;
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const createMissingRootsRef = useRef<() => void>(() => {});
+
+  /** This session's change ids that have no thread root yet. Reads the editor. */
+  const missingChangeIds = useCallback(() => {
+    if (!enabled || !editor || editor.isDestroyed || !editorHasTrackChanges(editor)) return [];
     const withThread = new Set(
-      threads.flatMap((thread) =>
+      latest.current.fileThreads.flatMap((thread) =>
         thread.kind === "suggestion" && thread.changeId ? [thread.changeId] : [],
       ),
     );
+    return getSessionTrackChangeIds(editor).filter((changeId) => !withThread.has(changeId));
+  }, [editor, enabled]);
+
+  const createRoots = useCallback((changeIds: string[]) => {
+    const { ensureSuggestionRoot: ensure } = latest.current;
     const now = Date.now();
-    for (const changeId of getSessionTrackChangeIds(editor)) {
-      if (withThread.has(changeId)) continue;
+    for (const changeId of changeIds) {
       const failed = failedAt.current.get(changeId);
       if (failed !== undefined && now - failed < SUGGESTION_ROOT_RETRY_MS) continue;
       ensure(changeId).then(
         () => failedAt.current.delete(changeId),
-        () => failedAt.current.set(changeId, Date.now()),
+        () => {
+          failedAt.current.set(changeId, Date.now());
+          // The cooldown is not a timer: schedule the next attempt, which stops
+          // once the root exists or the change is gone.
+          if (retryTimer.current) return;
+          retryTimer.current = setTimeout(() => {
+            retryTimer.current = null;
+            createMissingRootsRef.current();
+          }, SUGGESTION_ROOT_RETRY_MS);
+        },
       );
     }
-  }, [editor, enabled]);
+  }, []);
+
+  const createMissingRoots = useCallback(
+    () => createRoots(missingChangeIds()),
+    [createRoots, missingChangeIds],
+  );
+  useEffect(() => {
+    createMissingRootsRef.current = createMissingRoots;
+  }, [createMissingRoots]);
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!editor) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Taken while the editor is alive: it can be destroyed before this cleanup runs.
+    let snapshot: string[] = [];
     const onTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
       if (!transaction?.docChanged) return;
       if (timer) clearTimeout(timer);
+      snapshot = missingChangeIds();
       timer = setTimeout(() => {
         timer = null;
         createMissingRoots();
@@ -75,10 +111,10 @@ export function useDocsSuggestionThreadRoots({
       if (timer) {
         clearTimeout(timer);
         // Closing the document right after suggesting still records the author.
-        createMissingRoots();
+        createRoots(snapshot);
       }
     };
-  }, [createMissingRoots, editor]);
+  }, [createMissingRoots, createRoots, missingChangeIds, editor]);
 
   // On mount, and again whenever the thread list changes (a reload after a failed create).
   useEffect(() => {

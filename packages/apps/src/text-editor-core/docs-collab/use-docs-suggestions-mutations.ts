@@ -101,6 +101,24 @@ export function useDocsSuggestionsMutations({
     [client, path, source],
   );
 
+  /**
+   * An open root for a live suggestion. If its journal was archived (accept or
+   * reject, then undo brought the mark back) it is reopened, so replies and
+   * reactions show on the live card.
+   */
+  const ensureOpenSuggestionRoot = useCallback(
+    async (changeId: string): Promise<DocsFileThread> => {
+      const open = suggestionRoot(source.fileThreads, changeId);
+      if (open) return open;
+      const journal = await ensureSuggestionRoot(changeId);
+      if (!journal.archived || !client || !path) return journal;
+      const reopened = await client.patch(path, journal.id, { archived: false, changeId });
+      source.upsert(reopened);
+      return reopened;
+    },
+    [client, ensureSuggestionRoot, path, source],
+  );
+
   const addReply = useCallback(
     (changeId: string, body: string) => {
       if (!client || !path) return Promise.resolve();
@@ -109,24 +127,22 @@ export function useDocsSuggestionsMutations({
       if (!message) return Promise.resolve();
 
       return (async () => {
-        const root =
-          suggestionRoot(source.fileThreads, changeId) ?? (await ensureSuggestionRoot(changeId));
+        const root = await ensureOpenSuggestionRoot(changeId);
         source.upsert(await client.reply(path, root.id, { id: message.id, body: message.body }));
       })();
     },
-    [client, currentUser, ensureSuggestionRoot, path, source],
+    [client, currentUser, ensureOpenSuggestionRoot, path, source],
   );
 
   const toggleReaction = useCallback(
     (changeId: string, emoji: string) => {
       if (!client || !path) return Promise.resolve();
       return (async () => {
-        const root =
-          suggestionRoot(source.fileThreads, changeId) ?? (await ensureSuggestionRoot(changeId));
+        const root = await ensureOpenSuggestionRoot(changeId);
         source.upsert(await client.react(path, root.id, emoji));
       })();
     },
-    [client, ensureSuggestionRoot, path, source],
+    [client, ensureOpenSuggestionRoot, path, source],
   );
 
   const archiveSuggestion = useCallback(
