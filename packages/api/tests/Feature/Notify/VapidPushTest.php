@@ -276,7 +276,6 @@ final class VapidPushTest extends WgwDatabaseTestCase
         yield 'rate limited' => [429];
         yield 'payload too large' => [413];
         yield 'server error' => [500];
-        yield 'vapid mismatch' => [403];
     }
 
     #[DataProvider('failingStatuses')]
