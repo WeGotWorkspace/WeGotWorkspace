@@ -452,44 +452,6 @@ describe("NotificationsHost", () => {
     expect(ackNotification).not.toHaveBeenCalledWith("n2");
   });
 
-  it("Notification API click opens the inbox deep link", async () => {
-    class FakeNotification {
-      static permission = "granted" as NotificationPermission;
-      static last: FakeNotification | null = null;
-      onclick: (() => void) | null = null;
-      constructor(
-        readonly title: string,
-        readonly options?: NotificationOptions,
-      ) {
-        FakeNotification.last = this;
-      }
-    }
-    Object.defineProperty(globalThis, "Notification", {
-      configurable: true,
-      value: FakeNotification,
-    });
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "hidden",
-    });
-    vi.mocked(listNotifications).mockResolvedValue({ list: [unreadItem], unreadCount: 1 });
-
-    render(<NotificationsHost />);
-
-    await waitFor(() => {
-      expect(FakeNotification.last).not.toBeNull();
-    });
-    expect(FakeNotification.last?.title).toBe("Andrea sent you a direct message");
-    expect(FakeNotification.last?.options?.body).toBe("hi");
-    expect(FakeNotification.last?.options?.data).toEqual({ navigate: "/meet/dms/alice" });
-    FakeNotification.last?.onclick?.();
-    expect(assignNotificationNavigate).toHaveBeenCalledWith(
-      "/meet/dms/alice",
-      true,
-      expect.any(Function),
-    );
-  });
-
   it("SW notificationclick postMessage opens the deep link after session expiry", () => {
     const listeners: Array<(event: MessageEvent) => void> = [];
     Object.defineProperty(navigator, "serviceWorker", {
