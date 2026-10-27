@@ -136,12 +136,8 @@ jobs:
         id: agent
         if: steps.rounds.outputs.run == 'true'
         uses: ./loop/.github/review-loop/agent
-        # What the live Playwright config expects, as in the nightly live job.
-        env:
-          WGW_DISABLE_LOGIN_THROTTLE: "1"
-          WGW_PROXY_TARGET: http://127.0.0.1:9080
-          VITE_WGW_USE_LIVE_API: "1"
-          VITE_WGW_API_BASE_URL: /api/v1
+        # No live-tier env here: VITE_WGW_USE_LIVE_API would reach the fast
+        # suite too. playwright.live.config.mjs sets it on the servers only.
         with:
           mode: fix
           prompt-file: ${{ runner.temp }}/prompt.md

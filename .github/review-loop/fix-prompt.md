@@ -82,7 +82,8 @@ commit message.
   `pnpm exec turbo run typecheck test:unit --filter=@wgw/apps`. Target single
   files with `pnpm --dir packages/apps exec vitest run <path>`. Format touched
   files with `pnpm --dir packages/apps exec prettier --write <files>`.
-- You cannot run PHP here; `packages/api/vendor/` is there to read. If a fix
+- You cannot run the PHP suite here; `packages/api/vendor/` is there to read.
+  (A live e2e spec starts the API, but that is not the PHP suite.) If a fix
   touches `packages/api`, keep it minimal and say in the commit message body
   that the PHP suite did not run; CI runs it.
 

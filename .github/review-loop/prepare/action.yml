@@ -11,7 +11,7 @@ inputs:
   php-vendor:
     description: >-
       "true" installs packages/api/vendor, so the agent can read the PHP
-      libraries it works against. Nothing runs PHP afterwards.
+      libraries it works against. Without e2e, nothing runs PHP afterwards.
     default: "false"
   e2e:
     description: >-
@@ -64,13 +64,14 @@ runs:
         coverage: none
 
     # Exact key only: a vendor/ restored for another lock file would show the
-    # agent the wrong versions.
+    # agent the wrong versions. An e2e install runs Composer's plugins and
+    # scripts, a read-only one does not, so each gets its own key.
     - name: Cache Composer vendor
       if: inputs.php-vendor == 'true' || inputs.e2e == 'true'
       uses: actions/cache@v6
       with:
         path: pr/packages/api/vendor
-        key: ${{ runner.os }}-review-loop-composer-${{ hashFiles('pr/packages/api/composer.lock') }}
+        key: ${{ runner.os }}-review-loop-composer-${{ inputs.e2e == 'true' && 'e2e-' || '' }}${{ hashFiles('pr/packages/api/composer.lock') }}
 
     - name: Install API Composer dependencies
       if: inputs.php-vendor == 'true' || inputs.e2e == 'true'
