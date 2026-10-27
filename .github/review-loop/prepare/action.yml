@@ -1,0 +1,34 @@
+name: Review loop prepare
+description: >-
+  Checks out the pull request into pr/ with full history and installs the JS
+  workspace. Credentials are not persisted, so the agent cannot push.
+
+inputs:
+  ref:
+    description: Commit or branch of the pull request to check out.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ inputs.ref }}
+        path: pr
+        fetch-depth: 0
+        persist-credentials: false
+
+    - uses: pnpm/action-setup@v6.1.0
+      with:
+        package_json_file: pr/package.json
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version: "24"
+        cache: "pnpm"
+        cache-dependency-path: pr/pnpm-lock.yaml
+
+    - name: Install JS workspace
+      shell: bash
+      working-directory: pr
+      run: pnpm install --frozen-lockfile
