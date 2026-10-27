@@ -6989,7 +6989,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ack local Notification API delivery (skip VAPID fallback) */
+        /** Ack local delivery: a visible window or a Meet call showed the row (skip VAPID push) */
         post: {
             parameters: {
                 query?: never;
