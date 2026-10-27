@@ -57,6 +57,7 @@ export function DriveMainPane({
     dropUploadActive,
     setDropUploadActive,
     handleUpload,
+    uploadEnabled,
     breadcrumbs,
     selectView,
     visibleItems,
@@ -181,7 +182,7 @@ export function DriveMainPane({
     <section
       className="drive-main-pane"
       onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) return;
+        if (!uploadEnabled || !event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
         setDropUploadActive(true);
       }}
@@ -191,7 +192,7 @@ export function DriveMainPane({
         }
       }}
       onDrop={(event) => {
-        if (!event.dataTransfer.types.includes("Files")) return;
+        if (!uploadEnabled || !event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
         setDropUploadActive(false);
         handleUpload(event.dataTransfer.files);

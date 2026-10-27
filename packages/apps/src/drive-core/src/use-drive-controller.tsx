@@ -187,6 +187,7 @@ export function useDriveController({
     dropUploadActive: mutations.dropUploadActive,
     setDropUploadActive: mutations.setDropUploadActive,
     uploadProgress: mutations.uploadProgress,
+    uploadEnabled: mutations.uploadEnabled,
     fileInputRef: mutations.fileInputRef,
     searchInputRef: shell.searchInputRef,
     isTouch: list.isTouch,

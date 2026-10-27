@@ -15,7 +15,6 @@ use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
 use Illuminate\Contracts\Filesystem\Filesystem;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -470,64 +469,6 @@ final class DriveService
                 'Content-Disposition' => 'inline; filename="'.str_replace('"', '', $name).'"',
             ]
         );
-    }
-
-    /** @param array{username: string, role: string} $principal */
-    public function handleUpload(
-        array $principal,
-        UploadedFile $file,
-        string $filename,
-        string $identifier,
-        int $chunkNumber,
-        int $totalChunks,
-        ?string $cwd,
-    ): string {
-        $this->assertFilesEnabled();
-        $username = $principal['username'];
-        $groupSlugs = $this->groups->allowedGroupSlugs($username);
-        $filename = $this->validateItemName($filename);
-        $identifier = preg_replace('/[^0-9A-Za-z_]/', '_', $identifier) ?? '';
-        $chunkNumber = max(1, $chunkNumber);
-        $totalChunks = max(1, $totalChunks);
-
-        $parent = $this->resolveParentPath($cwd, $principal, $username, $groupSlugs);
-        $targetVirtual = $this->paths->normalizeVirtualPath($parent.'/'.$filename);
-        $disk = $this->disk();
-        $targetKey = $this->paths->virtualToStorageKey($targetVirtual);
-        if ($disk->fileExists($targetKey)) {
-            $this->authorizer->assertMayEditContent($targetVirtual, $principal);
-        } else {
-            $this->authorizer->assertMayManageStructure($targetVirtual, $principal);
-        }
-
-        if ($totalChunks <= 1) {
-            $contents = is_string($rawContents = $file->get()) ? $rawContents : throw new \RuntimeException('Failed to read upload.');
-            $disk->put($targetKey, $contents);
-            $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
-
-            return 'Stored';
-        }
-
-        $tempDisk = $this->storage->data();
-        $partKey = 'drive-upload-temp/'.hash('sha256', $identifier.'|'.$filename.'|'.$targetVirtual).'.part';
-        $chunk = is_string($rawChunk = $file->get()) ? $rawChunk : throw new \RuntimeException('Failed to read upload.');
-        if ($chunkNumber === 1) {
-            $tempDisk->put($partKey, $chunk);
-        } else {
-            $existing = is_string($existingRaw = ($tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '')) ? $existingRaw : throw new \RuntimeException('Failed to read upload.');
-            $tempDisk->put($partKey, $existing.$chunk);
-        }
-
-        if ($chunkNumber < $totalChunks) {
-            return 'Uploaded';
-        }
-
-        $assembled = $tempDisk->get($partKey);
-        $disk->put($targetKey, is_string($assembled) ? $assembled : throw new \RuntimeException('Failed to read upload.'));
-        $tempDisk->delete($partKey);
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
-
-        return 'Stored';
     }
 
     /**
