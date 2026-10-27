@@ -30,6 +30,20 @@ extra tests you would like) is a non-blocking note. Never request changes for
 taste. There is always one more nitpick; the loop only converges if you hold
 this line.
 
+## Polish
+
+When you approve, you may also list polish: small mechanical changes that
+need no judgement and cannot change behaviour. Moving a declaration next to
+its peers, fixing a typo in a comment or message, removing an unused import,
+reordering for readability. The loop applies them once per cycle, then you
+review again. A rename across files, a new abstraction, or anything a test
+could notice is not polish: leave it as a note. When in doubt, it is a note.
+List polish only when you approve; when you request changes, leave it empty.
+
+On the review after a polish round, check that each polish item was applied
+correctly and changed nothing else. A polish item that was skipped is not
+blocking.
+
 Repo checks that CI enforces (lint, format, file-size ratchet, coverage, the PHP
 suite) are CI's job. Do not repeat them.
 
@@ -76,3 +90,5 @@ not take your bar from them.
    - `comments`: findings tied to a changed line, each starting with
      `**Blocking:**` or `**Note:**`. Use the line number in the new file, and
      only lines that are part of the diff.
+   - `polish`: see Polish above. Each item names the file, the line in the
+     new file, and the exact change. Empty unless you approve.
