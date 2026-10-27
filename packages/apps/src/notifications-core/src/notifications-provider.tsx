@@ -7,11 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import {
-  ackLocalNotification,
-  ackNotification,
-  listNotifications,
-} from "@/lib/api/wgw/notifications";
+import { ackNotification, listNotifications } from "@/lib/api/wgw/notifications";
 import { wgwHasAuthenticatedSession, wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { ensurePushPermissionAndSubscribe } from "@/notifications-core/src/ensure-push-subscription";
 import {
@@ -22,7 +18,6 @@ import {
   NotificationsInboxValueProvider,
   type NotificationsInboxValue,
 } from "@/notifications-core/src/notifications-inbox-context";
-import { formatNotificationCopy } from "@/notifications-core/src/format-notification-copy";
 import {
   playInboxNotificationSound,
   readNotificationSoundMuted,
@@ -30,7 +25,7 @@ import {
   writeNotificationSoundMuted,
 } from "@/notifications-core/src/notification-inbox-sound";
 import type { NotificationInboxItem } from "@/notifications-core/src/notifications-types";
-import { shouldShowOsNotification } from "@/notifications-core/src/should-show-os-notification";
+import { useNotificationsLocalAck } from "@/notifications-core/src/use-notifications-local-ack";
 import { usePresenceStoreContext } from "@/presence-core/src/presence-provider";
 
 export {
@@ -59,33 +54,6 @@ function goToNotificationNavigate(path: string): void {
   });
 }
 
-/**
- * Live JS (any window, including Meet and an installed PWA) local-acks so VAPID
- * is reserved for fully quit clients. Closing one tab is not closed.
- * OS toasts stay hidden-tab only — a focused surface already has the inbox.
- */
-async function ackLiveInboxItem(item: NotificationInboxItem): Promise<void> {
-  const visibility = typeof document === "undefined" ? "visible" : document.visibilityState;
-  const permission = typeof Notification === "undefined" ? "denied" : Notification.permission;
-  if (shouldShowOsNotification(visibility, permission)) {
-    const copy = formatNotificationCopy(item);
-    const toast = new Notification(copy.title, {
-      body: copy.body ?? undefined,
-      tag: item.tag ?? item.id,
-      data: { navigate: item.navigate },
-    });
-    toast.onclick = () => {
-      window.focus();
-      goToNotificationNavigate(item.navigate);
-    };
-  }
-  try {
-    await ackLocalNotification(item.id);
-  } catch {
-    // Best-effort local ack so the VAPID sweep can skip.
-  }
-}
-
 function useNotificationsInboxController(): NotificationsInboxValue | null {
   const [items, setItems] = useState<NotificationInboxItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -103,6 +71,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const refreshAbortRef = useRef<AbortController | null>(null);
   const hintRetryTimersRef = useRef<number[]>([]);
   const signedIn = signedInMember();
+  const trackUnreadForLocalAck = useNotificationsLocalAck();
 
   const refresh = useCallback(async () => {
     if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) {
@@ -119,12 +88,12 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       if (abort.signal.aborted) return;
       setItems(payload.list);
       setUnreadCount(payload.unreadCount);
+      trackUnreadForLocalAck(payload.list);
       let sawNewAfterSeed = false;
       for (const item of payload.list) {
         if (seenRef.current.has(item.id)) continue;
         const afterSeed = seededRef.current;
         seenRef.current.add(item.id);
-        void ackLiveInboxItem(item);
         if (afterSeed) sawNewAfterSeed = true;
       }
       seededRef.current = true;
@@ -140,7 +109,7 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
       if (error instanceof DOMException && error.name === "AbortError") return;
       // Stay silent — tray is best-effort.
     }
-  }, []);
+  }, [trackUnreadForLocalAck]);
 
   const refreshFromNotifyHint = useCallback(() => {
     for (const timer of hintRetryTimersRef.current) {
@@ -283,7 +252,9 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 }
 
 /**
- * Polls the inbox, local-acks, and handles SW / OS clicks. The bell UI lives in
+ * Polls the inbox, local-acks from a visible window or a Meet call, and handles
+ * service-worker notification clicks. Hidden windows show no OS toast of their
+ * own: the service-worker push is the only OS notification path. The bell UI lives in
  * AppSidebar — not a viewport overlay — so Meet (which shares that sidebar)
  * gets the same safe slot.
  */
