@@ -27,8 +27,8 @@ reads a PR's workflow files from the PR's test merge, which can lag behind
 it reads from `main`.
 
 The loop stops with the `needs-human` label after `REVIEW_LOOP_MAX_ROUNDS`
-change requests (default 3), when a fix round changes nothing, or when it
-fails. A human push drops `ready-for-human` without starting a review,
+change requests (default 3), when a fix round changes nothing, when an
+approval leaves items for a human (see For a human), or when it fails. A human push drops `ready-for-human` without starting a review,
 unless the loop has not reviewed since the PR was last marked ready: then
 the review asked for is still due (a push right after "ready", such as
 "Update branch", cancels it), and the new head is reviewed. To
@@ -64,12 +64,34 @@ an unused import). Taste and anything a test could notice stay notes.
   round.
 - With two reviewers, polish only counts when both approve. If one requests
   changes, the other's polish is not posted; the next approval lists it
-  again.
+  again. An item from the second reviewer within two lines of one from the
+  first, in the same file, is dropped as the same change.
+- Polish in `.github/`, `.agents/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md`
+  is never applied, since the fixer may not commit there. It goes under For
+  a human instead.
 - A PR whose own fix trigger predates the polish round (its test merge lags
   `main`) gets its polish as notes, with a hint to update the branch.
 
 The fix trigger fires on any bot review and leaves the decision (fix round,
 polish round, or nothing) to the job on `main`.
+
+## For a human
+
+Some findings are not the fixer's to settle, and do not block either:
+
+- The code and a spec under `.agents/specs/` disagree, and either could be
+  the right one. Which wins is a design decision. A fixer that could edit the
+  spec could make the mismatch disappear by moving the goalposts, so the
+  spec stays out of its reach. (When the spec is clearly right, it is a
+  blocking item and the fixer changes the code.)
+- Polish in a file the fixer may not edit.
+
+Reviewers list these separately. The review lists them under "For a human"
+and posts each one inline, with a GitHub suggestion where it is a one-line
+replacement, so it can be applied in one click. An approval with any of them
+gets `needs-human` instead of `ready-for-human`, and its polish stays notes:
+a human decides first. A change request with them goes to the fixer as
+usual; the fixer leaves them alone.
 
 ## CI on loop PRs
 

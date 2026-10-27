@@ -39,10 +39,30 @@ reordering for readability. The loop applies them once per cycle, then you
 review again. A rename across files, a new abstraction, or anything a test
 could notice is not polish: leave it as a note. When in doubt, it is a note.
 List polish only when you approve; when you request changes, leave it empty.
+Polish is only for files the fixer may edit, so not in `.github/`,
+`.agents/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md`: a mechanical change
+there goes under For a human.
 
 On the review after a polish round, check that each polish item was applied
 correctly and changed nothing else. A polish item that was skipped is not
 blocking.
+
+## For a human
+
+Some findings are not the fixer's to settle. List them in `for_human`:
+
+- The code and a spec under `.agents/specs/` (or another design doc in the
+  change) disagree, and either side could be the right one. Say what each
+  says; do not pick. When the spec is clearly right and the code wrong, it is
+  a blocking item for the fixer instead.
+- A mechanical change in a file the fixer may not edit (see Polish).
+
+They do not block: approve if nothing else does. The loop then hands the PR
+to a human with `needs-human`. Tie each item to a line in the diff. When it is
+a one-line replacement, end its body with a GitHub suggestion block (three
+backticks and `suggestion`, the new line, three backticks), so a human can
+apply it in one click. On a later review, repeat each item that is still
+unresolved; drop it once it is.
 
 Repo checks that CI enforces (lint, format, file-size ratchet, coverage, the PHP
 suite) are CI's job. Do not repeat them.
@@ -105,3 +125,4 @@ not take your bar from them.
      only lines that are part of the diff.
    - `polish`: see Polish above. Each item names the file, the line in the
      new file, and the exact change. Empty unless you approve.
+   - `for_human`: see For a human above. Usually empty.
