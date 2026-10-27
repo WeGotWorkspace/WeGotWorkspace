@@ -23,7 +23,7 @@ jobs:
     uses: ./.github/workflows/review-loop-ci-gate.yml
 
   sast-codeql:
-    name: ${{ needs.gate.outputs.run == 'true' && 'SAST (CodeQL JS/TS)' || 'SAST (CodeQL JS/TS) (waits for the review loop)' }}
+    name: SAST (CodeQL JS/TS)${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&
@@ -144,7 +144,7 @@ jobs:
         run: bash "${{ github.workspace }}/.github/scripts/enforce-sarif-severity.sh" psalm-taint.sarif error-level
 
   sast-semgrep-php:
-    name: ${{ needs.gate.outputs.run == 'true' && 'SAST (Semgrep PHP)' || 'SAST (Semgrep PHP) (waits for the review loop)' }}
+    name: SAST (Semgrep PHP)${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&
@@ -193,7 +193,7 @@ jobs:
           exit 1
 
   secrets-gitleaks:
-    name: ${{ needs.gate.outputs.run == 'true' && 'Secrets (Gitleaks)' || 'Secrets (Gitleaks) (waits for the review loop)' }}
+    name: Secrets (Gitleaks)${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&
@@ -246,7 +246,7 @@ jobs:
           if-no-files-found: ignore
 
   sca-trivy:
-    name: ${{ needs.gate.outputs.run == 'true' && 'SCA (Trivy)' || 'SCA (Trivy) (waits for the review loop)' }}
+    name: SCA (Trivy)${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&

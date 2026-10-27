@@ -198,7 +198,7 @@ jobs:
   # a required check. Live-app specs stay on playwright.live.config.mjs
   # and run from nightly-live-e2e.yml (not this pull-request workflow).
   apps-e2e:
-    name: ${{ needs.gate.outputs.run == 'true' && 'apps-e2e' || 'apps-e2e (waits for the review loop)' }}
+    name: apps-e2e${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: gate
     if: >-
       needs.gate.outputs.run == 'true' &&
@@ -255,7 +255,7 @@ jobs:
           if-no-files-found: ignore
 
   build:
-    name: ${{ needs.gate.outputs.run == 'true' && 'build' || 'build (waits for the review loop)' }}
+    name: build${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
     needs: [gate, api-quality, apps-quality]
     if: >-
       needs.gate.outputs.run == 'true' &&
