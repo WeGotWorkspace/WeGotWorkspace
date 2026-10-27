@@ -759,15 +759,23 @@ final class ContactCardRepository
     }
 
     /**
+     * Sabre logs a change to the book itself (rename, description) with an
+     * empty uri. That row moves the book's state but is not a card, so it is
+     * dropped here, like the calendar and notes change feeds do.
+     *
      * @param  list<string>  $uris
      * @return list<string>
      */
     private function mapChangeUris(array $uris): array
     {
-        return array_map(
-            fn (string $uri): string => ContactCardMapper::cardIdFromUri($uri),
-            $uris,
-        );
+        $ids = [];
+        foreach ($uris as $uri) {
+            if ($uri !== '') {
+                $ids[] = ContactCardMapper::cardIdFromUri($uri);
+            }
+        }
+
+        return $ids;
     }
 
     /**
