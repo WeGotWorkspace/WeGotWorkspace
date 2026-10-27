@@ -31,12 +31,18 @@ return new class extends WgwMigration
 
         $mysql = $this->wgw()->getConnection()->getDriverName() !== 'sqlite';
         if (! $this->wgwHasColumn('cards', 'uid')) {
-            $this->wgw()->table('cards', function (Blueprint $table) use ($mysql): void {
-                // MySQL: binary so equality is exact (no case or accent folding).
-                $mysql
-                    ? $table->binary('uid', CardUid::MAX_LENGTH)->nullable()
-                    : $table->string('uid', CardUid::MAX_LENGTH)->nullable();
-            });
+            if ($mysql) {
+                // VARBINARY so equality is exact (no case or accent folding).
+                // Laravel's binary() ignores the length and makes a BLOB, which
+                // cannot be indexed without a key length.
+                $this->wgw()->getConnection()->statement(
+                    'ALTER TABLE cards ADD COLUMN uid VARBINARY('.CardUid::MAX_LENGTH.') NULL',
+                );
+            } else {
+                $this->wgw()->table('cards', function (Blueprint $table): void {
+                    $table->string('uid', CardUid::MAX_LENGTH)->nullable();
+                });
+            }
         }
 
         app(CardUidBackfill::class)->run();
