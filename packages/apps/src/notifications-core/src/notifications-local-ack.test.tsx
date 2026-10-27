@@ -24,6 +24,7 @@ import { ackLocalNotification, listNotifications } from "@/lib/api/wgw/notificat
 import { MeetCallProvider } from "@/meet-core/src/meet-call-provider";
 import { createMeetCallStore, type MeetCallStore } from "@/meet-core/src/meet-call-store";
 import {
+  NOTIFICATIONS_INBOX_POLL_MS,
   NotificationsProvider,
   useNotificationsInbox,
 } from "@/notifications-core/src/notifications-provider";
@@ -39,6 +40,8 @@ const unreadItem = {
   readAt: null,
   createdAt: "2026-10-27T12:00:00Z",
 };
+
+const laterItem = { ...unreadItem, id: "n2", tag: "chat.message:2" };
 
 class FakeNotification {
   static permission = "granted" as NotificationPermission;
@@ -105,6 +108,7 @@ describe("local-ack from a live window", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     setVisibility("visible");
   });
 
@@ -150,6 +154,38 @@ describe("local-ack from a live window", () => {
     expect(ackLocalNotification).toHaveBeenCalledTimes(1);
   });
 
+  it("re-fetches the inbox when the window becomes visible and acks rows that arrived meanwhile", async () => {
+    setVisibility("hidden");
+    renderInbox();
+    await waitForUnreadList();
+    const listedWhileHidden = vi.mocked(listNotifications).mock.calls.length;
+
+    // A row arrived after the last (throttled) hidden poll.
+    vi.mocked(listNotifications).mockResolvedValue({
+      list: [unreadItem, laterItem],
+      unreadCount: 2,
+    });
+    becomeVisible();
+
+    await waitFor(() => {
+      expect(ackLocalNotification).toHaveBeenCalledWith("n2");
+    });
+    expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+    expect(vi.mocked(listNotifications).mock.calls.length).toBeGreaterThan(listedWhileHidden);
+  });
+
+  it("does not re-fetch on visibility changes while the window stays hidden", async () => {
+    setVisibility("hidden");
+    renderInbox();
+    await waitForUnreadList();
+    const listedWhileHidden = vi.mocked(listNotifications).mock.calls.length;
+
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(listNotifications).toHaveBeenCalledTimes(listedWhileHidden);
+  });
+
   it("acks from a hidden window while the user is in a Meet call", async () => {
     const callStore = createMeetCallStore();
     callStore.setStatus("in-call");
@@ -175,6 +211,29 @@ describe("local-ack from a live window", () => {
     await waitFor(() => {
       expect(ackLocalNotification).toHaveBeenCalledWith("n1");
     });
+  });
+
+  it("stops acking new rows once the Meet call ends while the window is hidden", async () => {
+    vi.useFakeTimers();
+    const callStore = createMeetCallStore();
+    callStore.setStatus("in-call");
+    setVisibility("hidden");
+    renderInbox(callStore);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ackLocalNotification).toHaveBeenCalledWith("n1");
+
+    act(() => {
+      callStore.setStatus("idle");
+    });
+    vi.mocked(listNotifications).mockResolvedValue({
+      list: [unreadItem, laterItem],
+      unreadCount: 2,
+    });
+    await vi.advanceTimersByTimeAsync(NOTIFICATIONS_INBOX_POLL_MS);
+
+    expect(probe.inbox?.items).toHaveLength(2);
+    expect(ackLocalNotification).not.toHaveBeenCalledWith("n2");
+    expect(ackLocalNotification).toHaveBeenCalledTimes(1);
   });
 
   it("does not count the Meet lobby as being in a call", async () => {

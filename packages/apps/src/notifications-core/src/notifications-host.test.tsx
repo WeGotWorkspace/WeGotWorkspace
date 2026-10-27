@@ -262,7 +262,7 @@ describe("NotificationsHost", () => {
     expect(ensurePushPermissionAndSubscribe).toHaveBeenCalled();
   });
 
-  it("local-acks unread items on a visible Meet route so VAPID skips while JS is alive", async () => {
+  it("local-acks unread items on a visible Meet route so VAPID skips them", async () => {
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
