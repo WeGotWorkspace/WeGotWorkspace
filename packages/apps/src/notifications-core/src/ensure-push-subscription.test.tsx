@@ -14,6 +14,7 @@ import {
 } from "./ensure-push-subscription";
 
 const subscribe = vi.fn();
+const getSubscription = vi.fn();
 const CURRENT_KEY = [1, 2, 3]; // "AQID", the stubbed VAPID public key
 
 function storedSubscription(applicationServerKey: number[] | null) {
@@ -28,7 +29,6 @@ function storedSubscription(applicationServerKey: number[] | null) {
     toJSON: () => ({ endpoint: "https://push.example/old", keys: { p256dh: "x", auth: "y" } }),
   };
 }
-const getSubscription = vi.fn();
 
 function stubNotification(permission: NotificationPermission): ReturnType<typeof vi.fn> {
   const requestPermission = vi.fn(async () => permission);
