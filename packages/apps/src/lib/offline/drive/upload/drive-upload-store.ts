@@ -301,6 +301,16 @@ export async function markDriveUploadStarted(username: string, itemId: string): 
   return started;
 }
 
+/** Remember the node the server created, so a retry never creates a second one. */
+export async function recordDriveUploadCreated(
+  username: string,
+  itemId: string,
+  nodeId: string,
+): Promise<void> {
+  const { items } = tables(username);
+  await items.update(itemId, { createdNodeId: nodeId });
+}
+
 /** Back to `queued` after a hiccup; fails the item after too many in a row. */
 export async function requeueDriveUpload(
   username: string,

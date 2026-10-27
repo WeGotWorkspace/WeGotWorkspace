@@ -174,13 +174,19 @@ async function runInFallbackLock<T>(
   const storage = env.storage();
   const lost = new AbortController();
   if (!storage) {
-    // No shared record is possible. The in-tab queue still holds the task.
+    // No shared record is possible, so this is NOT guarded across tabs: only
+    // the in-tab queue holds the task.
     return task({ signal: lost.signal });
   }
   const record = new FallbackRecord(env, storage, name, options);
   await record.acquire(options.signal);
   const stopHeartbeat = record.startHeartbeat(() => lost.abort());
-  const removePageHide = env.addPageHideListener(() => record.release());
+  const removePageHide = env.addPageHideListener(() => {
+    // The page is going away: stop the task and the heartbeat before the record is freed.
+    stopHeartbeat();
+    lost.abort();
+    record.release();
+  });
   try {
     return await task({ signal: lost.signal });
   } finally {
@@ -224,7 +230,7 @@ class FallbackRecord {
   startHeartbeat(onLost: () => void): () => void {
     const timer = setInterval(() => {
       const current = this.read();
-      if (current && current.owner !== this.owner) {
+      if (current?.owner !== this.owner) {
         clearInterval(timer);
         onLost();
         return;

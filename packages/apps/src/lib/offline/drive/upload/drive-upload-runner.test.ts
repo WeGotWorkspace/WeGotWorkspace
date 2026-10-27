@@ -14,6 +14,7 @@ const server = vi.hoisted(() => ({
   /** Server clock ahead of the device, so `syncedAt` must not come from the local clock. */
   modified: "2099-01-01T00:00:00Z",
   createRaces: 0,
+  getFailures: 0,
   setCalls: [] as unknown[],
 }));
 
@@ -94,9 +95,13 @@ vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
         });
         return { created: { upload: { id } } };
       },
-      getFileNodes: async (_account: string, ids: string[]) => ({
-        list: server.nodes.filter((row) => ids.includes(row.id)).map(toNode),
-      }),
+      getFileNodes: async (_account: string, ids: string[]) => {
+        if (server.getFailures > 0) {
+          server.getFailures -= 1;
+          throw new TypeError("Failed to fetch");
+        }
+        return { list: server.nodes.filter((row) => ids.includes(row.id)).map(toNode) };
+      },
     },
   }),
 }));
@@ -169,7 +174,13 @@ describe("drive uploader", () => {
   beforeEach(async () => {
     online.value = true;
     Object.assign(settings, { contentSyncEnabled: true, maxFileSizeBytes: 1_000 });
-    Object.assign(server, { maxSizeUpload: 10_000, nodes: [], createRaces: 0, setCalls: [] });
+    Object.assign(server, {
+      maxSizeUpload: 10_000,
+      nodes: [],
+      createRaces: 0,
+      getFailures: 0,
+      setCalls: [],
+    });
     lockNames = [];
     activeUploads = 0;
     maxActiveUploads = 0;
@@ -273,6 +284,29 @@ describe("drive uploader", () => {
     await runUploader();
 
     expect(server.nodes.map((row) => row.name)).toEqual(["a.txt", "a (1).txt"]);
+  });
+
+  it("does not upload or create again when the read-back after a create fails", async () => {
+    server.getFailures = 1;
+    await queue([testFile("a.txt")]);
+
+    await runUploader();
+
+    expect(server.nodes).toHaveLength(1);
+    const { items } = await readDriveUploadQueueRows(user);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.createdNodeId).toBe("fn-1");
+    await driveUploadItemsTable(uploadTestDb()).update(items[0]!.id, { retryAt: 0 });
+
+    await runUploader();
+
+    expect(uploadCalls()).toHaveLength(1);
+    expect(server.setCalls).toHaveLength(1);
+    expect(server.nodes.map((row) => row.name)).toEqual(["a.txt"]);
+    expect((await readDriveUploadQueueRows(user)).items).toEqual([]);
+    expect((await readDirectoryEntriesFromCache(user, folder)).map((row) => row.name)).toEqual([
+      "a.txt",
+    ]);
   });
 
   it("hands a small file to the offline store as auto, with the server's modified", async () => {

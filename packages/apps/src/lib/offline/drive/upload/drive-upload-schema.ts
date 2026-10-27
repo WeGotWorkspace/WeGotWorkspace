@@ -72,6 +72,11 @@ export type OfflineDriveUploadItemRow = {
   transientFailures: number;
   /** After a hiccup, no tab starts this item again before this time (ms). */
   retryAt?: number;
+  /**
+   * Id of the node the server created for this item. Once set, a retry only
+   * reads that node back and finishes; it never uploads or creates again.
+   */
+  createdNodeId?: string;
   error?: DriveUploadItemError;
 };
 

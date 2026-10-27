@@ -19,6 +19,10 @@ export type DriveUploadTransferInput = {
   name: string;
   mimeType: string;
   blob: Blob;
+  /** The node an earlier attempt already created: read it back, do not upload or create. */
+  createdNodeId?: string;
+  /** Called with the new id before the read-back, so it can be stored. */
+  onCreated?: (nodeId: string) => Promise<void>;
 };
 
 export type DriveUploadTransferResult = {
@@ -54,11 +58,27 @@ export async function transferDriveUpload(
   input: DriveUploadTransferInput,
   signal?: AbortSignal,
 ): Promise<DriveUploadTransferResult> {
+  if (input.createdNodeId) {
+    const node = await readNode(session, input.createdNodeId, input.name, signal);
+    return { node, finalName: node.name || input.name };
+  }
   if (input.blob.size > session.maxSizeUpload) {
     throw new DriveUploadTooLargeError(input.name, session.maxSizeUpload);
   }
   const blobId = await uploadJmapBlob(session, input.blob, input.mimeType, signal);
   return createKeepingBoth(session, input, blobId, signal);
+}
+
+async function readNode(
+  session: DriveJmapSession,
+  id: string,
+  name: string,
+  signal?: AbortSignal,
+): Promise<JmapFileNode> {
+  const got = await session.fileNodes.getFileNodes(session.accountId, [id], { signal });
+  const node = got.list.find((candidate) => candidate.id === id);
+  if (!node) throw new Error(`The new file "${name}" could not be read back.`);
+  return node;
 }
 
 async function createKeepingBoth(
@@ -75,7 +95,7 @@ async function createKeepingBoth(
   }
   for (let attempt = 0; attempt < KEEP_BOTH_CREATE_ATTEMPTS; attempt += 1) {
     try {
-      const node = await createNode(session, input.folderId, name, blobId, signal);
+      const node = await createNode(session, input.folderId, name, blobId, input.onCreated, signal);
       return { node, finalName: node.name || name };
     } catch (error) {
       if (!(error instanceof JmapSetItemError) || error.setError.type !== "alreadyExists") {
@@ -121,6 +141,7 @@ async function createNode(
   folderId: string,
   name: string,
   blobId: string,
+  onCreated: ((nodeId: string) => Promise<void>) | undefined,
   signal?: AbortSignal,
 ): Promise<JmapFileNode> {
   const created = await session.fileNodes.setFileNodes(
@@ -129,8 +150,6 @@ async function createNode(
   );
   const id = created.created?.upload?.id;
   if (!id) throw new Error(`The server did not return the new file "${name}".`);
-  const got = await session.fileNodes.getFileNodes(session.accountId, [id], { signal });
-  const node = got.list.find((candidate) => candidate.id === id);
-  if (!node) throw new Error(`The new file "${name}" could not be read back.`);
-  return node;
+  await onCreated?.(id);
+  return readNode(session, id, name, signal);
 }

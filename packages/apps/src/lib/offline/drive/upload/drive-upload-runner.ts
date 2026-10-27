@@ -19,6 +19,7 @@ import {
   markDriveUploadStarted,
   readDriveUploadBatch,
   readDriveUploadBlob,
+  recordDriveUploadCreated,
   requeueDriveUpload,
 } from "@/lib/offline/drive/upload/drive-upload-store";
 import {
@@ -46,6 +47,7 @@ export class DriveUploader {
   private readonly lock: WithCrossTabLock;
   private readonly stopController = new AbortController();
   private active = false;
+  private running: Promise<void> = Promise.resolve();
   private dirty = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private idleWaiters: Array<() => void> = [];
@@ -71,7 +73,7 @@ export class DriveUploader {
       return;
     }
     this.active = true;
-    void this.cycle()
+    this.running = this.cycle()
       .catch((error: unknown) => console.warn("[drive-upload] uploader cycle failed", error))
       .finally(() => {
         this.active = false;
@@ -90,10 +92,12 @@ export class DriveUploader {
     return new Promise((resolve) => this.idleWaiters.push(resolve));
   }
 
-  stop(): void {
+  /** Settles once the cycle in flight has made its last IndexedDB write. */
+  async stop(): Promise<void> {
     this.stopController.abort();
     if (this.retryTimer) clearTimeout(this.retryTimer);
     for (const cleanup of this.cleanups.splice(0)) cleanup();
+    await this.running;
     this.resolveIdle();
   }
 
@@ -164,7 +168,14 @@ export class DriveUploader {
       const session = await driveJmapSession();
       const result = await transferDriveUpload(
         session,
-        { folderId: item.targetFolder.id, name: item.name, mimeType: item.mimeType, blob },
+        {
+          folderId: item.targetFolder.id,
+          name: item.name,
+          mimeType: item.mimeType,
+          blob,
+          ...(item.createdNodeId ? { createdNodeId: item.createdNodeId } : {}),
+          onCreated: (nodeId) => recordDriveUploadCreated(this.username, item.id, nodeId),
+        },
         signal,
       );
       const batch = await readDriveUploadBatch(this.username, item.batchId);
@@ -270,7 +281,8 @@ export function startDriveUploader(
   return uploader;
 }
 
-export function stopAllDriveUploaders(): void {
-  for (const uploader of uploaders.values()) uploader.stop();
+export async function stopAllDriveUploaders(): Promise<void> {
+  const stopping = [...uploaders.values()].map((uploader) => uploader.stop());
   uploaders.clear();
+  await Promise.all(stopping);
 }
