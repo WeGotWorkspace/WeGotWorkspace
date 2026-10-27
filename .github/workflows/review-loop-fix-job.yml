@@ -18,7 +18,8 @@ env:
 jobs:
   fix:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Room for live Playwright specs, each of which boots the API and the app.
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -48,6 +49,11 @@ jobs:
             esac
           fi
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          # The live e2e tier costs a few minutes to prepare, so only when the
+          # review asks for a Playwright spec (the review prompt names it so).
+          if [ "$kind" = fix ] && grep -qi 'playwright' <<< "$REVIEW_BODY"; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          fi
           if [ "$kind" = none ]; then
             echo "A $STATE review by $REVIEWER; nothing for the loop to do."
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -80,10 +86,12 @@ jobs:
           persist-credentials: false
 
       - uses: ./loop/.github/review-loop/prepare
+        id: prepare
         if: steps.rounds.outputs.run == 'true'
         with:
           ref: ${{ env.HEAD_SHA }}
           php-vendor: "true"
+          e2e: ${{ steps.rounds.outputs.e2e || 'false' }}
 
       - name: Build prompt
         if: steps.rounds.outputs.run == 'true'
@@ -92,6 +100,8 @@ jobs:
           REVIEW_ID: ${{ github.event.review.id }}
           REVIEW_BODY: ${{ github.event.review.body }}
           KIND: ${{ steps.rounds.outputs.kind }}
+          E2E: ${{ steps.rounds.outputs.e2e }}
+          E2E_READY: ${{ steps.prepare.outputs.e2e-ready }}
         run: |
           {
             cat loop/.github/review-loop/fix-prompt.md
@@ -104,6 +114,11 @@ jobs:
               echo "- Round: polish. The review approved; apply its Polish items only."
             else
               echo "- Round: fix. Resolve the review's blocking items."
+            fi
+            if [ "$E2E_READY" = true ]; then
+              echo "- Live e2e: ready. See Live e2e specs above for how to run a spec."
+            elif [ "$E2E" = true ]; then
+              echo "- Live e2e: preparing the tier failed on this runner; you cannot run live specs."
             fi
             echo
             echo "### Review"
@@ -121,6 +136,12 @@ jobs:
         id: agent
         if: steps.rounds.outputs.run == 'true'
         uses: ./loop/.github/review-loop/agent
+        # What the live Playwright config expects, as in the nightly live job.
+        env:
+          WGW_DISABLE_LOGIN_THROTTLE: "1"
+          WGW_PROXY_TARGET: http://127.0.0.1:9080
+          VITE_WGW_USE_LIVE_API: "1"
+          VITE_WGW_API_BASE_URL: /api/v1
         with:
           mode: fix
           prompt-file: ${{ runner.temp }}/prompt.md

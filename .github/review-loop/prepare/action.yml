@@ -1,8 +1,8 @@
 name: Review loop prepare
 description: >-
   Checks out the pull request into pr/ with full history and installs the JS
-  workspace, and optionally the API's Composer dependencies. Credentials are
-  not persisted, so the agent cannot push.
+  workspace, optionally the API's Composer dependencies, and optionally the
+  live e2e tier. Credentials are not persisted, so the agent cannot push.
 
 inputs:
   ref:
@@ -13,6 +13,18 @@ inputs:
       "true" installs packages/api/vendor, so the agent can read the PHP
       libraries it works against. Nothing runs PHP afterwards.
     default: "false"
+  e2e:
+    description: >-
+      "true" also readies the live e2e tier, as the nightly live job does:
+      the API's .env, a dev install on SQLite, and Playwright's Chromium. The
+      agent can then run live Playwright specs, which start the API and the
+      app themselves. Implies php-vendor.
+    default: "false"
+
+outputs:
+  e2e-ready:
+    description: "'true' when the live e2e tier is ready."
+    value: ${{ steps.e2e.outputs.ready }}
 
 runs:
   using: composite
@@ -41,32 +53,80 @@ runs:
 
     # Read-only reference for the agent: no scripts or plugins, and platform
     # checks off because no PHP code runs. A failure only costs the agent that
-    # reference, so none of these steps fails the job.
+    # reference, so none of these steps fails the job. With e2e, the API runs,
+    # so Composer runs its scripts and the live tier's extensions are there.
     - uses: shivammathur/setup-php@v2
-      if: inputs.php-vendor == 'true'
+      if: inputs.php-vendor == 'true' || inputs.e2e == 'true'
       continue-on-error: true
       with:
         php-version: "8.3"
+        extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
         coverage: none
 
     # Exact key only: a vendor/ restored for another lock file would show the
     # agent the wrong versions.
     - name: Cache Composer vendor
-      if: inputs.php-vendor == 'true'
+      if: inputs.php-vendor == 'true' || inputs.e2e == 'true'
       uses: actions/cache@v6
       with:
         path: pr/packages/api/vendor
         key: ${{ runner.os }}-review-loop-composer-${{ hashFiles('pr/packages/api/composer.lock') }}
 
     - name: Install API Composer dependencies
-      if: inputs.php-vendor == 'true'
+      if: inputs.php-vendor == 'true' || inputs.e2e == 'true'
       shell: bash
       working-directory: pr
+      env:
+        E2E: ${{ inputs.e2e }}
       run: |
-        if ! composer --working-dir packages/api install --no-interaction --prefer-dist \
-            --no-scripts --no-plugins --no-progress --ignore-platform-reqs; then
+        flags=(--no-interaction --prefer-dist --no-progress --ignore-platform-reqs)
+        if [ "$E2E" != true ]; then
+          flags+=(--no-scripts --no-plugins)
+        fi
+        if ! composer --working-dir packages/api install "${flags[@]}"; then
           # A half-installed tree would pass for the locked versions, and get
           # cached under this lock file's key.
           rm -rf packages/api/vendor
           echo "::warning::Composer install failed; the agent works without packages/api/vendor."
+        fi
+
+    - name: Cache Playwright browsers
+      if: inputs.e2e == 'true'
+      id: playwright-cache
+      continue-on-error: true
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pr/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-chromium-
+
+    # Same bootstrap as the nightly live job. A failure leaves e2e-ready
+    # false, and the agent is told it cannot run live specs.
+    - name: Prepare the live e2e tier
+      id: e2e
+      if: inputs.e2e == 'true'
+      shell: bash
+      working-directory: pr
+      env:
+        CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+      run: |
+        prepare() {
+          [ -f packages/api/vendor/autoload.php ] || return 1
+          # Inside "if prepare", set -e is off: each step returns on failure.
+          cp packages/api/.env.example packages/api/.env || return 1
+          sed -i 's/^APP_ENV=.*/APP_ENV=local/; s/^APP_DEBUG=.*/APP_DEBUG=true/' packages/api/.env || return 1
+          php packages/api/artisan key:generate --force --no-interaction || return 1
+          if [ "$CACHE_HIT" = true ]; then
+            pnpm --filter @wgw/apps exec playwright install chromium || return 1
+          else
+            pnpm --filter @wgw/apps exec playwright install chromium --with-deps || return 1
+          fi
+          php packages/api/artisan wgw:dev-install || return 1
+        }
+        if prepare; then
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::The live e2e tier could not be prepared; the agent cannot run live specs."
+          echo "ready=false" >> "$GITHUB_OUTPUT"
         fi
