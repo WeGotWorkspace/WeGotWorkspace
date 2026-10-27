@@ -5,10 +5,10 @@ import { TrackChangesExtension } from "tiptap-track-changes";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import {
-  getTextEditorContent,
   setTextEditorContent,
   type TextEditorContentFormat,
 } from "@/text-editor-core/src/text-editor-content";
+import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { seedClientId } from "./docs-collab-seed";
@@ -82,7 +82,8 @@ export function readContentFromYDoc(
   Y.applyUpdate(copy, Y.encodeStateAsUpdate(source));
   const editor = createCollabContentEditor(copy, format);
   try {
-    return getTextEditorContent(editor, format);
+    // Same as the live editor's save: pending suggestions stay out of the file.
+    return getAcceptedTextEditorContent(editor, format);
   } finally {
     editor.destroy();
     copy.destroy();

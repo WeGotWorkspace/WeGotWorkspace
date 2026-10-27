@@ -65,11 +65,41 @@ describe("readContentFromYDoc", () => {
     expect(firstParagraphText(doc)).toBe("Hello old new world");
   });
 
-  it("keeps the text of a paragraph that holds a suggestion", () => {
+  it("serializes the accepted text, without suggestion markup", () => {
     const markdown = readContentFromYDoc(docWithSuggestion(), "markdown");
 
-    expect(markdown).toContain("Hello");
-    expect(markdown).toContain("world");
-    expect(markdown).toContain("Second line");
+    expect(markdown).not.toContain("<ins");
+    expect(markdown).not.toContain("<del");
+    expect(markdown).toBe("Hello old  world\n\nSecond line");
+  });
+
+  it("leaves out a suggested insertion at the end of the last paragraph", () => {
+    const doc = new Y.Doc();
+    const editor = new Editor({
+      extensions: createCollaborativeTextEditorExtensions({
+        document: doc,
+        awareness: new Awareness(doc),
+        user: { name: "Ada", color: "#2563eb" },
+      }),
+    });
+    editors.push(editor);
+    editor.commands.insertContent("<p>Hello world. New sentence.</p>");
+    const end = editor.state.doc.firstChild!.content.size + 1;
+    const change = {
+      changeId: "ch_2",
+      authorId: "tc_1",
+      authorName: "Ada",
+      authorColor: "#2563eb",
+    };
+    editor
+      .chain()
+      .setTextSelection({ from: end - " New sentence.".length, to: end })
+      .setMark("insertion", change)
+      .run();
+
+    const markdown = readContentFromYDoc(doc, "markdown");
+
+    expect(markdown).toBe("Hello world.");
+    expect(markdown).not.toContain("New sentence");
   });
 });
