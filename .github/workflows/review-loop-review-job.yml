@@ -388,14 +388,14 @@ jobs:
           fi
 
           result="$RUNNER_TEMP/result.json"
-          # The marker is the loop's to set. Strip it from everything the
-          # reviewers wrote: one that quotes an earlier review would otherwise
-          # start a second polish round.
+          # The marker is the loop's to set. Strip it from every string the
+          # reviewers wrote, paths included, and repeat until none is left:
+          # one pass would rebuild a nested marker. A reviewer that quotes an
+          # earlier review would otherwise start a second polish round.
           jq -n --slurpfile one "$first" --slurpfile two "$RUNNER_TEMP/second.json" \
             --arg n1 "$NAME_1" --arg n2 "$NAME_2" --arg note "$note" --arg m "$marker" '
-              def clean: split($m) | join("");
-              def scrub: .body |= clean | .comments |= map(.body |= clean)
-                | .polish |= map(.body |= clean);
+              def clean: if contains($m) then split($m) | join("") | clean else . end;
+              def scrub: walk(if type == "string" then clean else . end);
               ($one[0] | scrub) as $a | ($two[0][0] | if . == null then null else scrub end) as $b
               | if $b == null then
                   $a | .body += (if $note == "" then "" else "\n\n" + $note end)
@@ -420,9 +420,14 @@ jobs:
             # The fixer only starts on an approval if this PR's own trigger
             # file (read from its test merge) is new enough. If it is not, a
             # polish approval would leave the PR with no fixer and no label.
-            trigger=$(gh api -H "Accept: application/vnd.github.raw" \
-              "repos/$GH_REPO/contents/.github/workflows/review-loop-fix.yml?ref=refs/pull/$PR/merge" \
-              2>/dev/null || true)
+            # The old trigger had this exact condition; the grep matches it
+            # literally. A failed fetch counts as old: gh prints the error
+            # body on stdout, so test the exit status, not the output.
+            if ! trigger=$(gh api -H "Accept: application/vnd.github.raw" \
+                "repos/$GH_REPO/contents/.github/workflows/review-loop-fix.yml?ref=refs/pull/$PR/merge" \
+                2>/dev/null); then
+              trigger=""
+            fi
             if [ "$done" -gt 0 ]; then
               polish=notes
             elif [ -z "$trigger" ] || grep -q "state == 'changes_requested'" <<< "$trigger"; then

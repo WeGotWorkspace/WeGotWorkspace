@@ -39,10 +39,12 @@ an unused import). Taste and anything a test could notice stay notes.
 - If the polish round changes nothing or fails, the approval stands: the PR
   gets `ready-for-human` and a comment saying so. If the branch moved in the
   meantime, the approval no longer applies and the PR gets no label.
-- Only the loop sets the polish marker; it is stripped from anything the
-  reviewers write, so quoting an earlier review cannot start another round.
+- Only the loop sets the polish marker; it is stripped from every string
+  the reviewers write, so quoting an earlier review cannot start another
+  round.
 - With two reviewers, polish only counts when both approve. If one requests
-  changes, the other's polish waits for a later approval.
+  changes, the other's polish is not posted; the next approval lists it
+  again.
 - A PR whose own fix trigger predates the polish round (its test merge lags
   `main`) gets its polish as notes, with a hint to update the branch.
 
