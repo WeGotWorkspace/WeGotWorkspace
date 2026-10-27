@@ -24,6 +24,7 @@ Context-loading skill for AI agents and developers working in the WeGotWorkspace
 | Collab / text-editor hooks (`docs-collab/`) | [workspace](../workspace/SKILL.md) | [collab-hooks.md](../workspace/collab-hooks.md), [clean-code/smells.md](../clean-code/smells.md) (React hooks) |
 | Filing Goals / Epics / Tasks / Chores | [issue-filing.md](issue-filing.md) | [plain-language.md](plain-language.md), [english-only.md](english-only.md), [docs/product/](../../../docs/product/), [GOVERNANCE.md](../../../GOVERNANCE.md) |
 | Planning a feature | [plan-feature](../plan-feature/SKILL.md) | [issue-filing.md](issue-filing.md), [review-findings.md](../../review-findings.md) |
+| Designing a feature, a design note, or a new `docs/architecture/*.md` for an Epic (any branch, `docs/` included) | [plan-feature](../plan-feature/SKILL.md) | Add `.agents/specs/<epic>-<slug>/` (spec, plan, tasks) in the same PR — [specs/README.md](../../specs/README.md). Review history and rejected alternatives go in `plan.md` under Considered, not in the architecture doc |
 | Pre-auth path, caller-input parser or upload, limiter or cache key | [security](../security/SKILL.md) | [review-findings.md](../../review-findings.md) |
 | Issue acceptance criteria / "is #N done?" | [verify-issue](../verify-issue/SKILL.md) | Goal vs Task modes in that skill |
 | Writing or running tests | [testing](../testing/SKILL.md) | [test-first.md](../testing/test-first.md), [ui-architecture.md](../testing/ui-architecture.md) |

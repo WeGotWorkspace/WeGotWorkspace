@@ -1,0 +1,35 @@
+name: Review loop - review
+
+# Reviewer half of the automated review loop; the fixer is review-loop-fix.yml.
+# Setup, vendor swap, and design notes: .github/review-loop/README.md.
+#
+#   ready for review ─▶ review ─▶ approve ──────────▶ label ready-for-human
+#                         ▲   └─▶ request changes ─▶ fix ─▶ signed commit ─┐
+#                         └──────────────── push by the loop bot ◀────────┘
+#
+# The agent only reads code and returns JSON. The job posts the review as the
+# loop's own GitHub App, whose events start workflows (GITHUB_TOKEN events do
+# not, which would break the loop).
+#
+# This file only decides when to run. GitHub reads it from the PR's test merge,
+# which can lag behind main, so the logic lives in review-loop-review-job.yml,
+# called at @main. That job reads the prompts, schemas, adapter, and standards
+# from main too, so a PR cannot rewrite the reviewer that judges it.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+
+concurrency:
+  group: review-loop-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+    uses: WeGotWorkspace/WeGotWorkspace/.github/workflows/review-loop-review-job.yml@main
+    secrets: inherit
