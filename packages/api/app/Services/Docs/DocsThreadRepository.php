@@ -681,7 +681,8 @@ final class DocsThreadRepository
         $calendarId = (int) $instance->calendarid;
         try {
             return DB::connection('wgw')->transaction(function () use ($instance, $calendarId, $uid, $ics, $conflict, $index): bool {
-                // Locking read first, so a same-pool replay waits here and then sees the row.
+                // Concurrent creates of a new UID can deadlock on MySQL; the retry
+                // (attempts: 3) then sees the winner's row and replays as false.
                 $this->uidGuard->assertAvailable($uid, $conflict, $calendarId);
                 if ($this->findObjectByUid($calendarId, $uid) !== null) {
                     return false;
@@ -690,8 +691,12 @@ final class DocsThreadRepository
                 DocsThreadIndex::query()->create(['calendarid' => $calendarId, 'uid' => $uid, ...$index]);
 
                 return true;
-            });
+            }, 3);
         } catch (QueryException|PDOException $exception) {
+            // A duplicate in this pool means a concurrent create already stored the thread: replay.
+            if ($this->findObjectByUid($calendarId, $uid) !== null) {
+                return false;
+            }
             VJournalUidGuard::throwIfUniqueViolation($exception, $conflict);
             throw $exception;
         }
