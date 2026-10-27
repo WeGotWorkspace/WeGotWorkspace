@@ -7,7 +7,14 @@ import {
 
 const SERVER_KEY = "AQID"; // bytes 1, 2, 3
 
-type Call = { url: string; method: string; headers: Headers; body: unknown; credentials?: string };
+type Call = {
+  url: string;
+  method: string;
+  headers: Headers;
+  body: unknown;
+  credentials?: string;
+  signal?: AbortSignal | null;
+};
 
 function fakeSubscription(endpoint: string, keyBytes: number[] | null) {
   return {
@@ -28,9 +35,9 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-type Routes = Partial<Record<string, () => Response | Promise<Response>>>;
+type Routes = Partial<Record<string, (init: RequestInit) => Response | Promise<Response>>>;
 
-function setup(routes: Routes = {}, opts: { locks?: boolean } = {}) {
+function setup(routes: Routes = {}, opts: { locks?: boolean; timeoutMs?: number } = {}) {
   const calls: Call[] = [];
   const defaults: Routes = {
     "POST /api/v1/auth/refresh": () => json(200, { access_token: "fresh-jwt", expires_in: 900 }),
@@ -48,10 +55,11 @@ function setup(routes: Routes = {}, opts: { locks?: boolean } = {}) {
       headers,
       body: typeof init.body === "string" ? JSON.parse(init.body) : undefined,
       credentials: init.credentials,
+      signal: init.signal,
     });
     const route = { ...defaults, ...routes }[`${method} ${url}`];
     if (!route) throw new Error(`unexpected ${method} ${url}`);
-    return route();
+    return route(init);
   });
   const created = fakeSubscription("https://push.example/created", [1, 2, 3]);
   const pushManager = {
@@ -59,10 +67,16 @@ function setup(routes: Routes = {}, opts: { locks?: boolean } = {}) {
     subscribe: vi.fn(async (_options?: PushSubscriptionOptionsInit) => created as PushSubscription),
   };
   const lockNames: string[] = [];
+  const lockState = { held: false };
   const locks = {
     request: vi.fn(async (name: string, _options: LockOptions, cb: () => Promise<unknown>) => {
       lockNames.push(name);
-      return cb();
+      lockState.held = true;
+      try {
+        return await cb();
+      } finally {
+        lockState.held = false;
+      }
     }),
   } as unknown as Pick<LockManager, "request">;
   const deps: PushSubscriptionChangeDeps = {
@@ -70,8 +84,9 @@ function setup(routes: Routes = {}, opts: { locks?: boolean } = {}) {
     fetch: fetchImpl as unknown as typeof fetch,
     pushManager,
     locks: opts.locks === false ? null : locks,
+    timeoutMs: opts.timeoutMs,
   };
-  return { deps, calls, pushManager, created, lockNames };
+  return { deps, calls, pushManager, created, lockNames, lockState };
 }
 
 const callKeys = (calls: Call[]) => calls.map((c) => `${c.method} ${c.url}`);
@@ -229,6 +244,37 @@ describe("handlePushSubscriptionChange", () => {
       handlePushSubscriptionChange({ oldSubscription: null, newSubscription: null }, deps),
     ).resolves.toBe("resubscribed");
     expect(calls[0]?.url).toBe("/api/v1/auth/refresh");
+  });
+
+  it("bounds every worker request with an abort signal", async () => {
+    const { deps, calls } = setup();
+    const oldSub = fakeSubscription("https://push.example/old", [1, 2, 3]);
+
+    await handlePushSubscriptionChange({ oldSubscription: oldSub, newSubscription: null }, deps);
+
+    expect(calls).toHaveLength(4);
+    for (const call of calls) {
+      expect(call.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+
+  it("gives up on a hung refresh and releases the shared lock", async () => {
+    const hungRefresh = (init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+      });
+    const { deps, calls, pushManager, lockState } = setup(
+      { "POST /api/v1/auth/refresh": hungRefresh },
+      { timeoutMs: 20 },
+    );
+
+    await expect(
+      handlePushSubscriptionChange({ oldSubscription: null, newSubscription: null }, deps),
+    ).resolves.toBe("failed");
+
+    expect(lockState.held).toBe(false);
+    expect(callKeys(calls)).toEqual(["POST /api/v1/auth/refresh"]);
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
   });
 
   it("fails when the server has no VAPID key", async () => {
