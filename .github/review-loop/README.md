@@ -54,6 +54,8 @@ fast tests, and neither may commit, push, or reach GitHub.
 Prompts, schemas, both local actions, and the reviewer's standards (the
 security checklist and the clean-code smells list) are read from `main`, so a
 PR cannot change the reviewer that judges it. Changes to them take effect once
-merged.
+merged. The trade-off: the reviewer does not get the domain skill for the
+package a PR touches, so it knows less about local conventions. The blocking
+categories do not depend on those conventions.
 The fixer may not commit to `.github/`, `.agents/`, `.claude/`, `AGENTS.md`,
 or `CLAUDE.md`.
