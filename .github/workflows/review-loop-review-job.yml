@@ -38,9 +38,12 @@ jobs:
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
       # New commits void an earlier approval. A human push only does this:
-      # re-review is opt-in (draft, then ready) to save agent usage. On a PR
-      # the loop has reviewed, the first such push leaves one comment so the
-      # missing review is not a mystery. Other PRs get no comment.
+      # re-review is opt-in (draft, then ready) to save agent usage. One
+      # exception: if the loop has not reviewed since the last "ready", the
+      # review asked for is still due (a push right after "ready", such as
+      # "Update branch", cancels it), so the new head is reviewed. On a PR
+      # the loop has reviewed, the first push that starts no review leaves
+      # one comment so the missing review is not a mystery.
       - name: Reset labels
         id: gate
         env:
@@ -51,10 +54,23 @@ jobs:
         run: |
           gh pr edit "$PR" --remove-label ready-for-human 2>/dev/null || true
           if [ "$ACTION" = synchronize ] && [ "$SENDER" != "$BOT" ]; then
+            since=$(gh api "repos/$GH_REPO/issues/$PR/timeline" --paginate --slurp \
+              | jq -r '[add[] | select(.event == "ready_for_review") | .created_at] | max // ""')
+            gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+              | jq --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]' \
+              > "$RUNNER_TEMP/loop-reviews.json"
+            # A PR that was never marked ready has no cycle: it was opened as
+            # ready, and its pushes follow the rule.
+            if [ -n "$since" ] && [ "$(jq --arg since "$since" \
+                '[.[] | select(.submitted_at > $since)] | length' "$RUNNER_TEMP/loop-reviews.json")" -eq 0 ]; then
+              echo "Push by $SENDER, but the review asked for at $since is still due: reviewing the new head."
+              gh pr edit "$PR" --remove-label needs-human 2>/dev/null || true
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "Push by $SENDER: approval dropped, no automatic re-review."
             marker="<!-- review-loop:human-push -->"
-            reviewed=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
-              | jq --arg bot "$BOT" '[add[] | select(.user.login == $bot)] | length')
+            reviewed=$(jq length "$RUNNER_TEMP/loop-reviews.json")
             if [ "$reviewed" -gt 0 ] && ! gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
                 | jq -e --arg m "$marker" 'add | any(.body | contains($m))' > /dev/null; then
               gh pr comment "$PR" --body "$marker
