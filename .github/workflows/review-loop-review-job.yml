@@ -326,11 +326,22 @@ jobs:
           client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
+      # One download per result, each into its own folder. With a pattern,
+      # download-artifact drops the per-artifact folder when only one
+      # artifact matches, which hid the first result whenever the second
+      # reviewer had failed.
       - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
-          pattern: review-result-*
-          path: ${{ runner.temp }}/results
+          name: review-result-1
+          path: ${{ runner.temp }}/results/review-result-1
+
+      - uses: actions/download-artifact@v8
+        if: needs.second-review.outputs.enabled == 'true'
+        continue-on-error: true
+        with:
+          name: review-result-2
+          path: ${{ runner.temp }}/results/review-result-2
 
       # The first reviewer decides alone when there is no second one. With
       # two, a change request from either one is a change request, and every
