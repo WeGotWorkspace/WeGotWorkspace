@@ -27,6 +27,33 @@ start a new cycle, mark the PR draft and then ready again. That is the only
 reset, also for a PR that was never a draft: until then, every change request
 from the bot counts.
 
+## Polish round
+
+Non-blocking notes on an approved PR tend to stay unread. So when a reviewer
+approves, it may also list polish: small mechanical changes that need no
+judgement and cannot change behaviour (move a declaration, fix a typo, drop
+an unused import). Taste and anything a test could notice stay notes.
+
+- An approval with polish goes out without `ready-for-human`, with the items
+  listed and a marker. The fixer applies exactly those items, and its push
+  starts one more review, which checks them.
+- Once per cycle, outside the round cap. Polish from a later approval in the
+  same cycle is listed as notes, and the PR goes to a human.
+- If the polish round changes nothing or fails, the approval stands: the PR
+  gets `ready-for-human` and a comment saying so. If the branch moved in the
+  meantime, the approval no longer applies and the PR gets no label.
+- Only the loop sets the polish marker; it is stripped from every string
+  the reviewers write, so quoting an earlier review cannot start another
+  round.
+- With two reviewers, polish only counts when both approve. If one requests
+  changes, the other's polish is not posted; the next approval lists it
+  again.
+- A PR whose own fix trigger predates the polish round (its test merge lags
+  `main`) gets its polish as notes, with a hint to update the branch.
+
+The fix trigger fires on any bot review and leaves the decision (fix round,
+polish round, or nothing) to the job on `main`.
+
 ## Second reviewer
 
 With `REVIEW_LOOP_SECOND_AGENT_TOKEN` set, a second reviewer from another
