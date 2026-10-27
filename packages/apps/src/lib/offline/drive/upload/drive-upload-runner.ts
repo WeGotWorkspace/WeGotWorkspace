@@ -63,6 +63,10 @@ export class DriveUploader {
       const onOnline = () => this.wake();
       window.addEventListener("online", onOnline);
       this.cleanups.push(() => window.removeEventListener("online", onOnline));
+      // A page restored from the back-forward cache does not remount, and its
+      // fallback lock was released on `pagehide`, so it must wake itself.
+      window.addEventListener("pageshow", onOnline);
+      this.cleanups.push(() => window.removeEventListener("pageshow", onOnline));
     }
   }
 
@@ -205,7 +209,7 @@ export class DriveUploader {
       return "next";
     }
     if (signal.aborted || !readBrowserOnline()) {
-      // Lost the lock, stopped, or went offline: the `online` event resumes.
+      // Lost the lock, stopped, or went offline: the `online` or `pageshow` event resumes.
       await requeueDriveUpload(this.username, item.id, { countFailure: false });
       return "stop";
     }

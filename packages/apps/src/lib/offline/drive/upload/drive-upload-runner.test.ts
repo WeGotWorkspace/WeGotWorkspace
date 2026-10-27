@@ -537,6 +537,22 @@ describe("drive uploader", () => {
     );
   });
 
+  it("wakes on pageshow, as when a page returns from the back-forward cache", async () => {
+    const fakeWindow = new EventTarget();
+    vi.stubGlobal("window", fakeWindow);
+    online.value = false;
+    await queue([testFile("a.bin")]);
+    uploader = new DriveUploader(user, { lock: recordingLock() });
+    uploader.wake();
+    await uploader.whenIdle();
+    expect(uploadCalls()).toHaveLength(0);
+
+    online.value = true;
+    fakeWindow.dispatchEvent(new Event("pageshow"));
+    await vi.waitFor(async () => expect((await readDriveUploadQueueRows(user)).items).toEqual([]));
+    expect(uploadCalls()).toHaveLength(1);
+  });
+
   it("resumes on app start, including an item left uploading by a closed tab", async () => {
     const { itemIds } = await queue([testFile("a.txt"), testFile("b.txt")]);
     const items = driveUploadItemsTable(uploadTestDb());
