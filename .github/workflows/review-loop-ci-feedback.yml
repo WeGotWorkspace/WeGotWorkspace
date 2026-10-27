@@ -26,7 +26,8 @@ jobs:
   feedback:
     if: >-
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'failure' &&
+      (github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out') &&
       github.event.workflow_run.head_repository.full_name == github.repository &&
       vars.REVIEW_LOOP_APP_CLIENT_ID != ''
     runs-on: ubuntu-latest
@@ -42,6 +43,9 @@ jobs:
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
       - name: Send the failure to the fixer
+        # shell: bash adds pipefail, so a failed API call fails the step
+        # instead of reading as "nothing to do".
+        shell: bash
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
           LOG_TOKEN: ${{ github.token }}
@@ -57,32 +61,45 @@ jobs:
             echo "No open PR has $HEAD_SHA as its head; nothing to do."
             exit 0
           fi
+
           # Only a hand-over the loop approved, on the commit it approved.
           # needs-human means the loop already stopped; a human push removes
-          # ready-for-human, and a newer head makes this run stale.
-          if ! gh api "repos/$GH_REPO/pulls/$pr" | jq -e --arg sha "$HEAD_SHA" '
+          # ready-for-human, and a newer head makes this run stale. Checked
+          # again right before posting, since reading the logs takes time.
+          # A failed read stops the step; only the answer may say "no".
+          handed_over() {
+            local pull
+            pull=$(gh api "repos/$GH_REPO/pulls/$pr") || exit 1
+            jq -e --arg sha "$HEAD_SHA" '
               .head.sha == $sha and (.draft | not)
-              and any(.labels[]; .name == "ready-for-human")' > /dev/null; then
+              and any(.labels[]; .name == "ready-for-human")' <<< "$pull" > /dev/null
+          }
+          if ! handed_over; then
             echo "PR #$pr is not an approved loop hand-over at $HEAD_SHA; nothing to do."
             exit 0
           fi
 
+          # A job past its timeout-minutes ends as timed_out. The name is PR
+          # output too: one line, no backtick, no loop marker.
           jobs=$(GH_TOKEN=$LOG_TOKEN gh api "repos/$GH_REPO/actions/runs/$RUN_ID/jobs" --paginate \
-            | jq -rs '[.[].jobs[] | select(.conclusion == "failure")][0:5][]
-                | "\(.id)\t\(.html_url)\t\(.name)"')
+            | jq -rs '[.[].jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")][0:5][]
+                | "\(.id)\t\(.html_url)\t\(.name | gsub("[\\t\\r\\n`]"; " ") | gsub("<!-- review-loop:"; "<!-- review loop:"))"')
           if [ -z "$jobs" ]; then
-            echo "The run failed, but no job did; nothing for the fixer."
+            echo "::warning::CI run $RUN_ID failed, but no job failed or timed out; nothing for the fixer."
             exit 0
           fi
 
           # The excerpt is PR output: keep it inside the code block (no
-          # backtick fences) and never let it carry the loop's markers.
+          # backtick fences) and never let it carry the loop's markers. 40
+          # lines of 200 characters per job keep five jobs well under the
+          # review body limit.
           body="$RUNNER_TEMP/body.md"
+          n=0
           {
             echo "CI failed on the approved head (\`${HEAD_SHA:0:9}\`, [run]($RUN_URL)). The loop sends it back for a fix round."
             echo
-            n=0
             while IFS=$'\t' read -r id url name; do
+              [[ "$id" =~ ^[0-9]+$ ]] || continue
               n=$((n + 1))
               echo "$n. **\`$name\` failed** ([log]($url)). Find the cause in this change and fix it."
               echo
@@ -90,7 +107,7 @@ jobs:
                 | cut -f3- \
                 | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z ?//; s/\x1b\[[0-9;]*m//g' \
                 | grep -vE '^##\[(group|endgroup)\]' \
-                | tail -n 60 | cut -c1-300 \
+                | tail -n 40 | cut -c1-200 \
                 | sed -e 's/```/'"'''"'/g' -e 's/<!-- review-loop:/<!-- review loop:/g' -e 's/^/   /' \
                 || true)
               if [ -n "$excerpt" ]; then
@@ -104,9 +121,21 @@ jobs:
             done <<< "$jobs"
             echo "A failure that is clearly the environment or unrelated to this change: change nothing and say why."
           } > "$body"
+          if [ "$n" -eq 0 ]; then
+            echo "::warning::No failed job had a usable id; nothing for the fixer."
+            exit 0
+          fi
 
-          gh pr edit "$pr" --remove-label ready-for-human
+          if ! handed_over; then
+            echo "PR #$pr changed while the logs were read; nothing to do."
+            exit 0
+          fi
+          # Post first: if this fails, the label stays and a re-run can send
+          # the failure again. The review gate drops ready-for-human on every
+          # review run anyway, so a failed removal only leaves it until then.
           jq -n --arg sha "$HEAD_SHA" --rawfile body "$body" \
-            '{commit_id: $sha, event: "REQUEST_CHANGES", body: ($body | .[0:60000])}' \
+            '{commit_id: $sha, event: "REQUEST_CHANGES", body: $body}' \
             | gh api -X POST "repos/$GH_REPO/pulls/$pr/reviews" --input - > /dev/null
+          gh pr edit "$pr" --remove-label ready-for-human \
+            || echo "::warning::Could not remove ready-for-human from #$pr; the next review run does."
           echo "Sent $n failed job(s) on #$pr to the fixer."
