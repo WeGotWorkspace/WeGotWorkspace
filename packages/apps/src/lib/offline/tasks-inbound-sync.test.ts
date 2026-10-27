@@ -108,6 +108,20 @@ const bootstrapSession: TasksAppBootstrap["session"] = {
   user: { ...session.user, username },
 };
 
+// When set, bounded waits for the outbox lock give up, as if another tab held it.
+let lockBusy = false;
+vi.mock("@/lib/offline/core/connectivity-sync-runner", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/offline/core/connectivity-sync-runner")>();
+  const { CrossTabLockTimeoutError } = await import("@/lib/offline/core/cross-tab-lock");
+  return {
+    ...real,
+    withOutboxLock: ((domain, user, task, options) =>
+      lockBusy && options?.maxWaitMs !== undefined
+        ? Promise.reject(new CrossTabLockTimeoutError("outbox"))
+        : real.withOutboxLock(domain, user, task, options)) as typeof real.withOutboxLock,
+  };
+});
+
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
   isFetchNetworkError: vi.fn((error: unknown) => error instanceof TypeError),
@@ -141,7 +155,12 @@ vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
   };
 });
 
-import { listTasks, TasksRequestError } from "@/lib/api/wgw/tasks";
+import {
+  fetchTasksLiveBootstrap,
+  listTaskListChanges,
+  listTasks,
+  TasksRequestError,
+} from "@/lib/api/wgw/tasks";
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 
 function list(id: string, name: string): TaskList {
@@ -304,6 +323,59 @@ describe("syncTasksInbound (tab A follows server changes without a reload)", () 
     expect(titles["t-rename"]).toBe("Buy oat milk");
     const queued = await listOutboxMutations(username);
     expect(queued.map((row) => row.op)).toEqual(["delete"]);
+  });
+
+  it("a bootstrap snapshot taken under another stored state is not written", async () => {
+    server.renameTask("t-rename", "Buy oat milk");
+    await syncTasksInbound(username);
+    const stored = await readTasksChangesState(username);
+    // The live bootstrap read its token and snapshot before the pull above landed.
+    vi.mocked(listTaskListChanges).mockResolvedValueOnce({
+      newState: "older-token",
+    } as Awaited<ReturnType<typeof listTaskListChanges>>);
+    vi.mocked(fetchTasksLiveBootstrap).mockResolvedValueOnce({
+      session: bootstrapSession,
+      data: {
+        taskLists: [...server.lists.values()],
+        tasks: [task("t-rename", "Buy milk")],
+        groups: [],
+      },
+    });
+
+    const bootstrap = await fetchTasksHybridBootstrap();
+
+    expect(await readTasksChangesState(username)).toBe(stored);
+    expect((await cachedTitles())["t-rename"]).toBe("Buy oat milk");
+    expect(bootstrap.data.tasks.find((entry) => entry.id === "t-rename")?.title).toBe(
+      "Buy oat milk",
+    );
+  });
+
+  it("a lock timeout writes neither the snapshot nor the state", async () => {
+    server.renameTask("t-rename", "Buy oat milk");
+    await syncTasksInbound(username);
+    const stored = await readTasksChangesState(username);
+    vi.mocked(fetchTasksLiveBootstrap).mockResolvedValueOnce({
+      session: bootstrapSession,
+      data: {
+        taskLists: [...server.lists.values()],
+        tasks: [task("t-rename", "Buy milk")],
+        groups: [],
+      },
+    });
+    lockBusy = true;
+    let bootstrap: Awaited<ReturnType<typeof fetchTasksHybridBootstrap>>;
+    try {
+      bootstrap = await fetchTasksHybridBootstrap();
+    } finally {
+      lockBusy = false;
+    }
+    expect(bootstrap.data.tasks.find((entry) => entry.id === "t-rename")?.title).toBe(
+      "Buy oat milk",
+    );
+
+    expect(await readTasksChangesState(username)).toBe(stored);
+    expect((await cachedTitles())["t-rename"]).toBe("Buy oat milk");
   });
 
   it("a failed pull leaves the cache and the state as they are", async () => {

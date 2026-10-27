@@ -34,6 +34,7 @@ import {
   enqueueCoalescedTaskUpdate,
   enqueueOutboxMutation,
   readTasksBootstrapFromCache,
+  readTasksChangesState,
   removeTaskFromCache,
   removeTaskListFromCache,
   upsertTaskInCache,
@@ -417,26 +418,29 @@ const BOOTSTRAP_WRITE_LOCK_WAIT_MS = 10_000;
 /**
  * Write the snapshot and the changes state it reflects as one step under the
  * outbox lock, so an inbound pull cannot interleave and leave a newer state
- * next to an older snapshot. If the lock stays busy, the state is dropped and
- * the next pull takes a full snapshot instead.
+ * next to an older snapshot. Nothing is written when the lock stays busy, or
+ * when a pull already stored a different token: that cache is newer than this
+ * snapshot. Returns whether the snapshot was written.
  */
 async function writeTasksSnapshotWithState(
   username: string,
   bootstrap: Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>,
   changesState: string | null,
-): Promise<void> {
+): Promise<boolean> {
   const write = async () => {
+    const stored = await readTasksChangesState(username);
+    if (stored !== null && stored !== changesState) return false;
     await writeTasksBootstrapToCache(username, bootstrap);
     await writeTasksChangesState(username, changesState);
+    return true;
   };
   try {
-    await withOutboxLock(TASKS_DOMAIN, username, write, {
+    return await withOutboxLock(TASKS_DOMAIN, username, write, {
       maxWaitMs: BOOTSTRAP_WRITE_LOCK_WAIT_MS,
     });
   } catch (error) {
     if (!isCrossTabLockTimeout(error)) throw error;
-    await writeTasksBootstrapToCache(username, bootstrap);
-    await writeTasksChangesState(username, null);
+    return false;
   }
 }
 
@@ -456,7 +460,11 @@ export async function fetchTasksHybridBootstrap(): Promise<
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
-  await writeTasksSnapshotWithState(username, bootstrap, changesState);
+  const written = await writeTasksSnapshotWithState(username, bootstrap, changesState);
+  if (!written) {
+    const cached = await readTasksBootstrapFromCache(username);
+    if (cached) return cached;
+  }
   return bootstrap;
 }
 
