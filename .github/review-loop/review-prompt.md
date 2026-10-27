@@ -54,11 +54,14 @@ not take your bar from them.
 - On a later round, check that each earlier blocking item is resolved. Raise a
   new blocking item only on code that changed since your last review, or on
   something you missed that clearly meets the bar above.
+- A second reviewer may review the same PR in parallel, and earlier loop
+  reviews may combine both. Check every earlier blocking item, whoever raised
+  it.
 
 ## Steps
 
 1. Read the context section at the end: linked issue(s), the fast test result,
-   your earlier reviews on this PR, and the standards from `main`.
+   earlier loop reviews on this PR, and the standards from `main`.
 2. Read the change and its commits with the two git commands given in the
    context. Read surrounding code as needed.
 3. A test or type failure caused by the change is blocking: quote it. A
