@@ -37,7 +37,14 @@ an unused import). Taste and anything a test could notice stay notes.
 - Once per cycle, outside the round cap. Polish from a later approval in the
   same cycle is listed as notes, and the PR goes to a human.
 - If the polish round changes nothing or fails, the approval stands: the PR
-  gets `ready-for-human` and a comment saying so.
+  gets `ready-for-human` and a comment saying so. If the branch moved in the
+  meantime, the approval no longer applies and the PR gets no label.
+- Only the loop sets the polish marker; it is stripped from anything the
+  reviewers write, so quoting an earlier review cannot start another round.
+- With two reviewers, polish only counts when both approve. If one requests
+  changes, the other's polish waits for a later approval.
+- A PR whose own fix trigger predates the polish round (its test merge lags
+  `main`) gets its polish as notes, with a hint to update the branch.
 
 The fix trigger fires on any bot review and leaves the decision (fix round,
 polish round, or nothing) to the job on `main`.

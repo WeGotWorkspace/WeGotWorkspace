@@ -203,6 +203,15 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ "$KIND" = polish ]; then
+            # The approval only stands for the commit it reviewed. If the
+            # branch moved (a human push), the gate already dropped it.
+            head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+            if [ "$head" != "$HEAD_SHA" ]; then
+              gh pr comment "$PR" --body "${MESSAGE:-The polish round failed: $RUN_URL}
+
+          The branch moved after the approval, so it no longer applies. Mark the PR draft and then ready to review again."
+              exit 0
+            fi
             gh label create ready-for-human --color 0e8a16 \
               --description "Review loop approved; ready for human review" 2>/dev/null || true
             gh pr edit "$PR" --add-label ready-for-human
