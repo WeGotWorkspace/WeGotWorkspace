@@ -230,7 +230,7 @@ After a write lands, the writing tab sends `{ "v": 1, "kind": "check-now" }` ove
 
 ## Known gaps
 
-1. **Collection metadata:** renaming or recolouring a notebook, calendar or task list does not change the synctoken, so neither `/changes` nor push sees it. This is an existing gap, fixed once in the state source.
+1. **Collection metadata:** not a gap in the state. Every rename or recolour, from the app or from a DAV `PROPPATCH`, goes through Sabre's `updateCalendar` / `updateAddressBook`, which move the shared synctoken, so `/changes` and push see it for everyone with access (#1671). What stays per user: when a calendar, notebook or task list is shared with a person, each sharee has their own name and colour for the collection, so the owner's rename wakes the sharee's app but does not change the name the sharee sees. Group collections have one name for every member.
 2. **Docs threads:** they use the Drive ACL; a later slice.
 3. **Tasks:** there is no JMAP type yet. Push uses the REST list state.
 
