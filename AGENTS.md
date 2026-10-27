@@ -18,15 +18,18 @@
 
 Load **[developer](.agents/skills/developer/)** for dev layout, skill routing, multitask handoffs, and links to package-specific depth. **Policy vs CI:** [.agents/POLICY.md](.agents/POLICY.md). **Done verification:** [developer/done-checklist.md](.agents/skills/developer/done-checklist.md); MCP tools: [developer/mcp-verification.md](.agents/skills/developer/mcp-verification.md); issue AC: [verify-issue](.agents/skills/verify-issue/).
 
-## Spec-first (feat/ branches)
+## Spec-first (feat/ branches and feature design)
 
 **Goal** = user outcome, filed in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) (every issue there is a Goal; never `Source:`). **Task/Epic** = implementable AC. **Specs = how** (repo): `.agents/specs/<N>-<slug>/` with `spec.md` → `plan.md` → `tasks.md`.
 
-| Branch | Spec required? |
-|--------|----------------|
-| `feat/` | **Yes** — derive `spec.md` from **Task/Epic** (`Source: #N (body-hash: …)`); without issue: `Source: ad-hoc` |
-| `fix/`, `chore/`, `docs/`, `refactor/`, `test/` | Optional |
+| Work | Spec required? |
+|------|----------------|
+| `feat/` branch | **Yes** — derive `spec.md` from **Task/Epic** (`Source: #N (body-hash: …)`); without issue: `Source: ad-hoc` |
+| Feature design on **any** branch, `docs/` included: designing a feature, a design note, or a new `docs/architecture/*.md` for an Epic | **Yes** — load [plan-feature](.agents/skills/plan-feature/) and add `.agents/specs/<epic>-<slug>/` (spec, plan, tasks) in the same PR. CI: `pnpm run check:agent-docs` |
+| Other `fix/`, `chore/`, `docs/`, `refactor/`, `test/` work | Optional |
 | Single-file fix | No |
+
+Design review history and rejected alternatives go in `plan.md` under **Considered**, not in the architecture doc. The architecture doc states the design as decided and links its spec folder.
 
 See [.agents/specs/README.md](.agents/specs/README.md). File issues with [developer/issue-filing.md](.agents/skills/developer/issue-filing.md). Plan with [plan-feature](.agents/skills/plan-feature/); verify drift + AC with [verify-issue](.agents/skills/verify-issue/).
 
