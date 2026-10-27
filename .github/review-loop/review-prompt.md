@@ -68,6 +68,9 @@ not take your bar from them.
 - On a later round, check that each earlier blocking item is resolved. Raise a
   new blocking item only on code that changed since your last review, or on
   something you missed that clearly meets the bar above.
+- An earlier loop review may be a CI failure ("CI failed on the approved
+  head") with a log excerpt. Check that the change since then addresses
+  that failure. You cannot run CI; it runs again after you approve.
 - A second reviewer may review the same PR in parallel, and earlier loop
   reviews may combine both. Check every earlier blocking item, whoever raised
   it.

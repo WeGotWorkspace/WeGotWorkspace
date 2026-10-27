@@ -15,6 +15,11 @@ word on whether a fix is good enough: the reviewer does.
 - Non-blocking notes: apply one only when it is a small, local change in code
   you are already touching. Otherwise leave it.
 - No drive-by refactors, no unrelated cleanup, no new features.
+- A review that starts with "CI failed on the approved head" lists failed CI
+  jobs with a log excerpt. Find the cause in this change and fix it. If the
+  failure is clearly the environment or unrelated to the change (a registry
+  outage, a flaky test the change does not touch), change nothing and say
+  why in `summary`.
 - Do not change `.github/`, `.agents/`, `.claude/`, `AGENTS.md`, or
   `CLAUDE.md`. The workflow refuses to commit them.
 
