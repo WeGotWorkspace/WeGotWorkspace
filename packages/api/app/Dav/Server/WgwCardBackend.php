@@ -103,6 +103,25 @@ final class WgwCardBackend extends CardPDO
     }
 
     /**
+     * Rename a card within its book (CardDAV MOVE to a new URI in the same
+     * book). The UID does not change, so no UID check applies. The sync log
+     * records the old URI as deleted and the new one as added.
+     */
+    public function renameCard(int $addressBookId, string $cardUri, string $newCardUri): bool
+    {
+        $stmt = $this->connection->prepare('UPDATE '.$this->cardsTableName
+            .' SET uri = ? WHERE addressbookid = ? AND uri = ?');
+        $stmt->execute([$newCardUri, $addressBookId, $cardUri]);
+        if ($stmt->rowCount() === 0) {
+            return false;
+        }
+        $this->addChange($addressBookId, $cardUri, 3);
+        $this->addChange($addressBookId, $newCardUri, 1);
+
+        return true;
+    }
+
+    /**
      * URI of the card in this book that holds the normalized UID.
      */
     public function findCardUriByUid(int $addressBookId, string $normalizedUid, ?string $exceptCardUri = null): ?string

@@ -7,6 +7,7 @@ namespace Tests\Feature\Contacts;
 use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\Card;
+use App\Services\Contacts\CardUid;
 use App\Support\WgwSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -372,6 +373,26 @@ final class ContactsCardDavInteropTest extends WgwDatabaseTestCase
 
         $this->assertNoUidConflict($response, '/addressbooks/bob/work/in-work.vcf');
         $this->assertNotNull($this->findBobCard('in-home'), 'The source card stays.');
+    }
+
+    public function test_carddav_move_within_one_book_renames_the_card(): void
+    {
+        $this->bootDavInstall();
+        $uid = 'urn:uuid:'.Str::uuid()->toString();
+        $this->seedCardViaPdo('bob', 'before.vcf', $this->sampleVcard('Rename Me', $uid));
+
+        $response = $this->davAsBob('MOVE', '/addressbooks/bob/default/before.vcf', '', [
+            'HTTP_DESTINATION' => 'http://localhost/addressbooks/bob/default/after.vcf',
+        ]);
+
+        $this->assertContains($response->getStatusCode(), [201, 204], (string) $response->getContent());
+        $this->assertNull($this->findBobCard('before'), 'The old URI is gone.');
+        $this->assertNotNull($this->findBobCard('after'));
+        $this->assertSame(1, DB::connection('wgw')->table('cards')->where('uid', CardUid::normalize($uid))->count());
+        $changes = DB::connection('wgw')->table('addressbookchanges')
+            ->whereIn('uri', ['before.vcf', 'after.vcf'])->pluck('operation', 'uri')->all();
+        $this->assertSame(3, (int) $changes['before.vcf']);
+        $this->assertSame(1, (int) $changes['after.vcf']);
     }
 
     public function test_carddav_put_of_a_new_uid_still_creates_the_card(): void

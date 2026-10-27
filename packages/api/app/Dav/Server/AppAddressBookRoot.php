@@ -24,6 +24,11 @@ final class AppAddressBookRoot extends AddressBookRoot
         parent::__construct($principalBackend, $carddavBackend, $principalPrefix);
     }
 
+    public function getChildForPrincipal(array $principal): AppAddressBookHome
+    {
+        return new AppAddressBookHome($this->carddavBackend, $principal['uri']);
+    }
+
     /**
      * @return list<DAV\INode>
      */
