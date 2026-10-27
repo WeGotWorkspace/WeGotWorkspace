@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\AddressBookShareDismissal;
 use App\Models\GroupMember;
@@ -18,7 +19,6 @@ use App\Services\Settings\GroupDirectoryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 final class AdminGroupManagementService
 {
@@ -153,7 +153,7 @@ final class AdminGroupManagementService
         }
 
         if (Schema::connection('wgw')->hasTable('addressbooks')) {
-            $carddav = new CardPDO($pdo);
+            $carddav = new WgwCardBackend($pdo);
             foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
                 if (isset($book['id'])) {
                     $carddav->deleteAddressBook((int) $book['id']);
