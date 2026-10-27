@@ -29,6 +29,9 @@ final class VapidPushService
      */
     private const PERMANENT_REJECTIONS = [400, 403, 404, 410];
 
+    /** @var array<string, true> endpoint hashes that failed transiently during the current sweep */
+    private array $failedEndpoints = [];
+
     public function __construct(
         private readonly InstallerVapidKeyGenerator $keys,
         private readonly WebPushSender $sender,
@@ -89,9 +92,6 @@ final class VapidPushService
             ->where('endpoint_hash', hash('sha256', $endpoint))
             ->delete();
     }
-
-    /** @var array<string, true> endpoint hashes that failed transiently during the current sweep */
-    private array $failedEndpoints = [];
 
     public function pruneEndpoint(string $endpoint): void
     {
