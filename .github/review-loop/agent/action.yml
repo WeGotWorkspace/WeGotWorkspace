@@ -12,10 +12,12 @@ inputs:
       The agent never commits, pushes, or calls the GitHub API in either mode.
     required: true
   prompt-file:
-    description: Path to the full prompt (instructions plus context).
+    description: Absolute path to the full prompt (instructions plus context).
     required: true
   schema-file:
-    description: JSON Schema the final answer must match.
+    description: >-
+      Absolute path to the JSON Schema the final answer must match. Relative
+      paths would resolve against working-directory, not the workspace.
     required: true
   working-directory:
     description: Checkout of the pull request the agent works in.
@@ -60,11 +62,16 @@ runs:
           *) echo "::error::Unknown mode '$MODE'."; exit 1 ;;
         esac
 
+        # A plain assignment, so a missing or invalid schema stops the step
+        # here. Inside the claude arguments the failure would go unnoticed
+        # and the agent would run without a schema.
+        schema=$(jq -c . "$SCHEMA_FILE")
+
         out="$RUNNER_TEMP/agent-output.json"
         result="$RUNNER_TEMP/agent-result.json"
         claude -p \
           --output-format json \
-          --json-schema "$(cat "$SCHEMA_FILE")" \
+          --json-schema "$schema" \
           --allowedTools "$tools" \
           --max-turns "$MAX_TURNS" \
           < "$PROMPT_FILE" > "$out"

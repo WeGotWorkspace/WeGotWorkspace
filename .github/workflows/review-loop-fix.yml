@@ -114,7 +114,7 @@ jobs:
         with:
           mode: fix
           prompt-file: ${{ runner.temp }}/prompt.md
-          schema-file: loop/.github/review-loop/fix.schema.json
+          schema-file: ${{ github.workspace }}/loop/.github/review-loop/fix.schema.json
           working-directory: pr
           token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
           max-turns: "60"
