@@ -1,0 +1,77 @@
+name: Review loop agent
+description: >-
+  Runs the coding agent for the review loop. This is the only vendor-specific
+  file in the loop: to switch AI vendor, rewrite the steps below and keep the
+  inputs and outputs. The agent never talks to GitHub; the workflows do that.
+
+inputs:
+  mode:
+    description: >-
+      review: read files and run read-only git commands.
+      fix: also edit files in the working tree and run the fast test commands.
+      The agent never commits, pushes, or calls the GitHub API in either mode.
+    required: true
+  prompt-file:
+    description: Path to the full prompt (instructions plus context).
+    required: true
+  schema-file:
+    description: JSON Schema the final answer must match.
+    required: true
+  working-directory:
+    description: Checkout of the pull request the agent works in.
+    required: true
+  token:
+    description: Credential for the agent vendor (secret REVIEW_LOOP_AGENT_TOKEN).
+    required: true
+  max-turns:
+    description: Upper bound on agent turns.
+    required: false
+    default: "40"
+
+outputs:
+  result-file:
+    description: Path to a JSON file that matches schema-file.
+    value: ${{ steps.run.outputs.result-file }}
+
+runs:
+  using: composite
+  steps:
+    # Vendor: Claude Code (headless). Token from `claude setup-token`, so runs
+    # use the subscription. For API billing, export ANTHROPIC_API_KEY instead.
+    - name: Install Claude Code
+      shell: bash
+      run: npm install --global @anthropic-ai/claude-code@2.1.296
+
+    - name: Run Claude Code
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.token }}
+        MODE: ${{ inputs.mode }}
+        PROMPT_FILE: ${{ inputs.prompt-file }}
+        SCHEMA_FILE: ${{ inputs.schema-file }}
+        MAX_TURNS: ${{ inputs.max-turns }}
+      run: |
+        read_only="Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
+        case "$MODE" in
+          review) tools="$read_only" ;;
+          fix) tools="$read_only,Edit,MultiEdit,Write,Bash(pnpm exec turbo run typecheck test:unit:*),Bash(pnpm --dir packages/apps exec vitest run:*),Bash(pnpm --dir packages/apps exec prettier:*),Bash(pnpm --dir packages/apps exec eslint:*)" ;;
+          *) echo "::error::Unknown mode '$MODE'."; exit 1 ;;
+        esac
+
+        out="$RUNNER_TEMP/agent-output.json"
+        result="$RUNNER_TEMP/agent-result.json"
+        claude -p \
+          --output-format json \
+          --json-schema "$(cat "$SCHEMA_FILE")" \
+          --allowedTools "$tools" \
+          --max-turns "$MAX_TURNS" \
+          < "$PROMPT_FILE" > "$out"
+
+        if ! jq -e '.structured_output' "$out" > "$result"; then
+          echo "::error::Agent ended without a structured answer ($(jq -r '.subtype // "unknown"' "$out"))."
+          jq -r '.result // empty' "$out" | tail -n 40
+          exit 1
+        fi
+        echo "result-file=$result" >> "$GITHUB_OUTPUT"
