@@ -99,12 +99,14 @@ the fast tests, and neither may commit, push, or reach GitHub.
    - `REVIEW_LOOP_REVIEW_MODEL`, `REVIEW_LOOP_FIX_MODEL`, and
      `REVIEW_LOOP_SECOND_REVIEW_MODEL`: the model for each role, in the
      vendor's own terms (Claude Code: `opus` or `sonnet`; Cursor: a name
-     from the list its run log prints). Empty uses the account's default.
+     from the list its run log prints, such as `grok-4.7-high`). Empty uses
+     the account's default.
    - `REVIEW_LOOP_REVIEW_EFFORT`, `REVIEW_LOOP_FIX_EFFORT`, and
      `REVIEW_LOOP_SECOND_REVIEW_EFFORT`: reasoning effort for each role, in
      the vendor's own terms (Claude Code: `low`, `medium`, `high`, `xhigh`,
-     or `max`; Cursor: set with a model, passed as `model[effort=...]`).
-     Empty uses the default.
+     or `max`). Empty uses the default. Cursor mostly puts effort in the
+     model name (`grok-4.7-high`), so leave its effort empty; a set value is
+     passed as `model[effort=...]`, which only parameterized models accept.
 
    These are variables, not code, so a change applies to the next run, and
    a vendor switch changes them without a PR.
