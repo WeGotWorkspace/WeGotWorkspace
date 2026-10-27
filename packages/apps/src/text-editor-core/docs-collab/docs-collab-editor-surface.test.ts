@@ -44,7 +44,8 @@ function firstParagraphText(doc: Y.Doc): string {
   const paragraph = doc.getXmlFragment("default").get(0) as Y.XmlElement;
   return paragraph
     .toArray()
-    .map((child) => (child instanceof Y.XmlText ? child.toString().replace(/<[^>]+>/g, "") : ""))
+    .flatMap((child) => (child instanceof Y.XmlText ? child.toDelta() : []))
+    .map((op: { insert?: unknown }) => (typeof op.insert === "string" ? op.insert : ""))
     .join("");
 }
 
