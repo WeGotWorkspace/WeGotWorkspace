@@ -195,6 +195,36 @@ export async function openNotesTab(
   return page;
 }
 
+/**
+ * Load Notes and open a note's editor once before the first case. A cold Vite
+ * dev server compiles each module on its first request and may re-bundle deps
+ * and reload the page, so without this the first case pays for that mid-action.
+ */
+export async function warmUpApp(browser: Browser): Promise<void> {
+  const uid = crypto.randomUUID();
+  const title = `M warm-up ${uid.slice(0, 8)}`;
+  await api(OWNER, "POST", "/notes/items", {
+    uid,
+    notebookId: PRIVATE_NOTEBOOK,
+    title,
+    body: "warm-up",
+  });
+  const context = await openUser(browser, OWNER);
+  try {
+    const tab = await openNotesTab(context, OWNER, "warm-up", []);
+    await tab
+      .getByRole("button", { name: "All Items" })
+      .click()
+      .catch(() => undefined);
+    await tab.locator(".list-item__button", { hasText: title }).first().click({ timeout: 30_000 });
+    await tab.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
+    await tab.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
+  } finally {
+    await context.close().catch(() => undefined);
+    await api(OWNER, "DELETE", `/notes/items/${uid}`);
+  }
+}
+
 /** DevTools "Offline" for this tab only. */
 export async function setTabOffline(tab: Tab, offline: boolean): Promise<void> {
   if (!tab.cdp) {
