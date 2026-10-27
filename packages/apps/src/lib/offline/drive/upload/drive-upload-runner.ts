@@ -60,13 +60,13 @@ export class DriveUploader {
     this.lock = options.lock ?? withCrossTabLock;
     this.cleanups.push(onDriveUploadQueueChanged(username, () => this.wake()));
     if (typeof window !== "undefined") {
-      const onOnline = () => this.wake();
-      window.addEventListener("online", onOnline);
-      this.cleanups.push(() => window.removeEventListener("online", onOnline));
+      const onWakeEvent = () => this.wake();
+      window.addEventListener("online", onWakeEvent);
+      this.cleanups.push(() => window.removeEventListener("online", onWakeEvent));
       // A page restored from the back-forward cache does not remount, and its
       // fallback lock was released on `pagehide`, so it must wake itself.
-      window.addEventListener("pageshow", onOnline);
-      this.cleanups.push(() => window.removeEventListener("pageshow", onOnline));
+      window.addEventListener("pageshow", onWakeEvent);
+      this.cleanups.push(() => window.removeEventListener("pageshow", onWakeEvent));
     }
   }
 
