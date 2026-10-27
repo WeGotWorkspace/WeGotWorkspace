@@ -287,6 +287,7 @@ final class FileNodeSetService
                 $blobContents = $blob['contents'];
             }
             $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
+            $this->index->recordBeforeContentWrite($key);
             $disk->put($key, $contents);
             $node = $this->index->recordContentWrite($key, hash('sha256', $contents));
         }
@@ -418,6 +419,7 @@ final class FileNodeSetService
                 $note,
                 $blobContents,
             );
+            $this->index->recordBeforeContentWrite((string) $node->storage_key);
             $this->storage->files()->put((string) $node->storage_key, $contents);
             $node = $this->index->recordContentWrite((string) $node->storage_key, hash('sha256', $contents)) ?? $node;
             $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.(string) $node->storage_key);

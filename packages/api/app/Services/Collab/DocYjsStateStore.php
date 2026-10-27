@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Collab;
 
 use App\Models\DocYjsState;
+use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,7 @@ final class DocYjsStateStore
 {
     public function __construct(
         private readonly WgwStorage $storage,
+        private readonly StoragePaths $paths,
     ) {}
 
     public static function contentEtag(string $markdown): string
@@ -52,12 +54,19 @@ final class DocYjsStateStore
     }
 
     /**
-     * Before a write outside the collab path replaces a document that has a
-     * sidecar and no row yet. The markdown on disk now is what the sidecar
-     * was saved with: until #1349 that write path was blocked.
+     * Before a write outside the collab path (WebDAV, JMAP FileNode/set)
+     * replaces a document that has a sidecar and no row yet. The markdown on
+     * disk now is what the sidecar was saved with: until #1349 that write
+     * path was blocked. A sidecar key itself is never a document.
      */
-    public function recordBeforeExternalWrite(string $documentKey, string $sidecarKey): void
+    public function recordBeforeExternalWrite(string $documentKey): void
     {
+        if (CollabSidecarPaths::isSidecarName(basename($documentKey))) {
+            return;
+        }
+        $sidecarKey = $this->paths->virtualToStorageKey(
+            CollabSidecarPaths::sidecarVirtualPath($this->paths, '/'.$documentKey),
+        );
         $disk = $this->storage->files();
         if (! $disk->fileExists($sidecarKey) || $this->find($documentKey) !== null) {
             return;

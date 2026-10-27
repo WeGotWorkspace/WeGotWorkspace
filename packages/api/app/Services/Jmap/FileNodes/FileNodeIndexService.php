@@ -364,6 +364,15 @@ final class FileNodeIndexService
     }
 
     /**
+     * #1517: before a FileNode/set content write. Like a WebDAV PUT, it is an
+     * outside write to a Docs document, detected on the next yjs read.
+     */
+    public function recordBeforeContentWrite(string $key): void
+    {
+        $this->sidecarLinks->recordBeforeExternalWrite($key);
+    }
+
+    /**
      * Document delete on a write route. {@see recordDelete} stays sidecar-free
      * so a reindex of an already-missing file leaves an orphan sidecar in place.
      */
