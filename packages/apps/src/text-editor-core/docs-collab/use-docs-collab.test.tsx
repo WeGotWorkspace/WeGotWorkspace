@@ -393,7 +393,9 @@ describe("useDocsCollab offline lifecycle", () => {
     await waitForCollabSession(result);
     expect(result.current.joined).toBe(true);
     await waitFor(() => expect(mockJoin).toHaveBeenCalledTimes(1));
-    expect(result.current.status).toBe(docsLabels.statusConnecting);
+    // The status is set just before the join call; the render that shows it
+    // can land after this check on a busy machine, so wait for it too.
+    await waitFor(() => expect(result.current.status).toBe(docsLabels.statusConnecting));
 
     await act(async () => {
       resolveJoin?.({ peers: [] });
