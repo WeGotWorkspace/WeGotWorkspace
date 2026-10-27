@@ -38,8 +38,9 @@ jobs:
           private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
 
       # New commits void an earlier approval. A human push only does this:
-      # re-review is opt-in (draft, then ready) to save agent usage. The first
-      # such push leaves one comment so the missing review is not a mystery.
+      # re-review is opt-in (draft, then ready) to save agent usage. On a PR
+      # the loop has reviewed, the first such push leaves one comment so the
+      # missing review is not a mystery. Other PRs get no comment.
       - name: Reset labels
         id: gate
         env:
@@ -52,7 +53,9 @@ jobs:
           if [ "$ACTION" = synchronize ] && [ "$SENDER" != "$BOT" ]; then
             echo "Push by $SENDER: approval dropped, no automatic re-review."
             marker="<!-- review-loop:human-push -->"
-            if ! gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
+            reviewed=$(gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
+              | jq --arg bot "$BOT" '[add[] | select(.user.login == $bot)] | length')
+            if [ "$reviewed" -gt 0 ] && ! gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
                 | jq -e --arg m "$marker" 'add | any(.body | contains($m))' > /dev/null; then
               gh pr comment "$PR" --body "$marker
           Pushes by people do not start an automated review, and any loop approval is dropped. Mark the PR draft and then ready to review again."
