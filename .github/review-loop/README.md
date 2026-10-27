@@ -19,7 +19,10 @@ it reads from `main`.
 
 The loop stops with the `needs-human` label after `REVIEW_LOOP_MAX_ROUNDS`
 change requests (default 3), when a fix round changes nothing, or when it
-fails. A human push drops `ready-for-human` without starting a review. To
+fails. A human push drops `ready-for-human` without starting a review,
+unless the loop has not reviewed since the PR was last marked ready: then
+the review asked for is still due (a push right after "ready", such as
+"Update branch", cancels it), and the new head is reviewed. To
 start a new cycle, mark the PR draft and then ready again. That is the only
 reset, also for a PR that was never a draft: until then, every change request
 from the bot counts.
