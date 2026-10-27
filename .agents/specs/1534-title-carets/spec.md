@@ -6,17 +6,16 @@ The note title is a plain textarea bound to the `note-title` `Y.Text`. It has no
 
 ## Goal
 
-Each participant publishes the caret of the title textarea in Yjs awareness, as Yjs relative positions in the title `Y.Text`. Every other participant maps those positions back to indexes in the current title text and draws a colored caret with the author's name over the textarea.
+Each participant publishes the caret of the title textarea in Yjs awareness, as Yjs relative positions in the title `Y.Text`. Every other participant maps those positions back to indexes in the current title text and draws a colored caret with the author's name over the textarea. When the participant has text selected, the selected text is tinted in the author's color, as in the body.
 
 The work splits into three parts:
 
 1. A pure mapping module (`text-editor-core/docs-collab/docs-collab-title-selection.ts`). It encodes a local selection to awareness JSON, parses remote JSON at the awareness boundary, decodes it back to absolute indexes, and lists the remote carets to draw.
 2. A small awareness hook (`note-detail-view/src/use-note-title-carets.ts`). It publishes the local selection while the title has focus, clears it on blur and unmount, and returns the remote carets.
-3. A presentational overlay (`note-detail-view/src/note-title-carets.tsx`), plus a thin layer that measures caret pixel positions with a mirror element.
+3. A presentational overlay (`note-detail-view/src/note-title-carets.tsx`), plus a thin layer that measures caret and selection pixel positions with a mirror element.
 
 ## Non-goals
 
-- No remote selection highlight in the title. The body draws one; the issue asks for a caret and a name.
 - No change to the body caret plugin. The body's own-tab behavior is not changed by this work.
 - No caret before the title `Y.Text` exists. Creating the type to anchor a caret would make the next save send an empty title (see `writeNoteTitle`).
 - No caret for view-only participants. A read-only title does not publish a selection.
@@ -28,12 +27,13 @@ The work splits into three parts:
 ## Technical constraints
 
 - Awareness field `noteTitleSelection`, separate from the y-prosemirror `cursor` field so the two never collide.
-- Identity comes from the awareness `user` field the body already sets (`name`, `color`). A caret without a usable name or color is not drawn.
+- Identity comes from the awareness `user` field the body already sets (`name`, `color`). A caret without a usable name is not drawn; a missing or non-hex color falls back to `colorForName`.
 - Your own account's other tabs are hidden with the rule the presence chrome uses (`mergeCollabPresencePeers`): a remote state whose trimmed, case-insensitive `user.name` equals the local display name is not drawn.
 - Remote awareness JSON is untrusted input: parse it, and drop a caret whose position does not resolve into the title `Y.Text`.
 - Reading or decoding must not call `doc.getText(NOTE_TITLE_YTEXT_KEY)` while the type is absent.
 - The overlay is decorative: `aria-hidden`, no focus, no pointer events. Motion only under `prefers-reduced-motion: no-preference`.
 - The caret position follows the textarea's computed font, padding, width, wrapping, and scroll offset (mirror element).
+- A remote selection (anchor ≠ head) is drawn as one box per line it covers, in the author's color at the body's 0.25 opacity (`.collaboration-carets__selection`). Each box has the top and height of a caret on that line. A selection made backwards covers the same text; the caret stays at the head.
 
 ## Edge cases
 
@@ -42,3 +42,4 @@ The work splits into three parts:
 - A peer that blurs the title, leaves the note, or disconnects clears its field or its awareness state; the caret disappears.
 - Two accounts with the same display name hide each other's title carets, as the presence chrome already does.
 - The title wraps to more lines or scrolls once it reaches `maxRows`; the layer re-measures on resize, scroll, and text changes.
+- A selection across a wrapped line is tinted on every line it covers.
