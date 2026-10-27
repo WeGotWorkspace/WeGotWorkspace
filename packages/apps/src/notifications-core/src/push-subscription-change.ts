@@ -34,7 +34,15 @@ export type PushSubscriptionChangeDeps = {
   pushManager: Pick<PushManager, "getSubscription" | "subscribe">;
   /** `navigator.locks` in the worker; null when the browser has no Web Locks. */
   locks: Pick<LockManager, "request"> | null;
+  /** Per-request limit; defaults to {@link WORKER_FETCH_TIMEOUT_MS}. */
+  timeoutMs?: number;
 };
+
+/**
+ * The refresh runs while holding the tabs' shared Web Lock. A hung request must
+ * not stall every open tab's token refresh, so each worker fetch is bounded.
+ */
+export const WORKER_FETCH_TIMEOUT_MS = 10_000;
 
 /** Same rule as `wgwApiBaseUrl()` without the Storybook runtime override. */
 export function serviceWorkerApiBaseUrl(raw: string | undefined): string {
@@ -72,6 +80,7 @@ async function refreshAccessToken(deps: PushSubscriptionChangeDeps): Promise<str
       headers: { "Content-Type": "application/json" },
       body: "{}",
       credentials: "same-origin",
+      signal: timeoutSignal(deps),
     });
     if (res.status === 400 || res.status === 401 || res.status === 403) return null;
     if (!res.ok) throw new Error(`POST /auth/refresh failed (${res.status})`);
@@ -153,8 +162,14 @@ function authedJson(
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
+    signal: timeoutSignal(deps),
   });
   return deps.fetch(`${deps.apiBaseUrl}${path}`, init);
+}
+
+/** Aborts the request and its body read; the abort error ends the handler as `failed`. */
+function timeoutSignal(deps: PushSubscriptionChangeDeps): AbortSignal {
+  return AbortSignal.timeout(deps.timeoutMs ?? WORKER_FETCH_TIMEOUT_MS);
 }
 
 /** A subscription without a readable key is trusted; the browser made it for this worker. */
