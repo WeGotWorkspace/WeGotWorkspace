@@ -6,10 +6,12 @@ import { defaultTasksLabels } from "@/tasks-core/src/tasks-labels";
 import { useTasksAPI } from "./use-tasks-api";
 import type { TasksApiSource } from "./tasks-api-source";
 
-const bootstrap = createTasksAppBootstrap();
-bootstrap.session = {
-  ...mockWorkspaceSession,
-  user: { ...mockWorkspaceSession.user, username: "demo@example.com" },
+const bootstrap = {
+  ...createTasksAppBootstrap(),
+  session: {
+    ...mockWorkspaceSession,
+    user: { ...mockWorkspaceSession.user, username: "demo@example.com" },
+  },
 };
 const mockPatchBootstrap = vi.fn();
 const mockLoadBootstrap = vi.fn();
