@@ -34,6 +34,7 @@ The work splits into three parts:
 - The overlay is decorative: `aria-hidden`, no focus, no pointer events. Motion only under `prefers-reduced-motion: no-preference`.
 - The caret position follows the textarea's computed font, padding, width, wrapping, and scroll offset (mirror element).
 - A remote selection (anchor ≠ head) is drawn as one box per line it covers, in the author's color at the body's 0.25 opacity (`.collaboration-carets__selection`). Each box has the top and height of a caret on that line. A selection made backwards covers the same text; the caret stays at the head.
+- The published head is where the user's caret is. macOS browsers report `selectionDirection` as `none` for a mouse selection in either direction, so the publisher remembers where the selection started and treats that end as the anchor.
 
 ## Edge cases
 

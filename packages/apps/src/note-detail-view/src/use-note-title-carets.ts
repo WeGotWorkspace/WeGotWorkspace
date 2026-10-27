@@ -6,6 +6,7 @@ import {
   encodeTitleSelection,
   listRemoteTitleCarets,
   type RemoteTitleCaret,
+  type TitleSelection,
 } from "@/text-editor-core/docs-collab/docs-collab-title-selection";
 import {
   useNoteCollabPresence,
@@ -39,6 +40,8 @@ function usePublishTitleSelection(
     const element = textareaRef.current;
     if (!element || !ydoc || !awareness) return;
     let last: string | undefined;
+    // Where the current selection started, for browsers that report no direction.
+    let anchor: number | null = null;
     const set = (state: ReturnType<typeof encodeTitleSelection>) => {
       const serialized = JSON.stringify(state);
       if (serialized === last) return;
@@ -47,13 +50,19 @@ function usePublishTitleSelection(
     };
     const publishSelection = () => {
       if (element.ownerDocument.activeElement !== element) return;
-      const forward = element.selectionDirection !== "backward";
-      const [anchor, head] = forward
-        ? [element.selectionStart, element.selectionEnd]
-        : [element.selectionEnd, element.selectionStart];
-      set(encodeTitleSelection(ydoc, { anchor, head }));
+      const selection = textareaSelectionEnds(
+        element.selectionStart,
+        element.selectionEnd,
+        element.selectionDirection,
+        anchor,
+      );
+      anchor = selection.anchor;
+      set(encodeTitleSelection(ydoc, selection));
     };
-    const clear = () => set(null);
+    const clear = () => {
+      anchor = null;
+      set(null);
+    };
     // The first typed letter creates the title type after the input event.
     // A remote update is skipped: the textarea value has not caught up yet.
     const onDocUpdate = (_update: Uint8Array, _origin: unknown, _doc: Y.Doc, tr: Y.Transaction) => {
@@ -74,6 +83,24 @@ function usePublishTitleSelection(
       if (last !== undefined) clear();
     };
   }, [textareaRef, ydoc, awareness]);
+}
+
+/**
+ * Anchor and head of a textarea selection. macOS browsers report the
+ * direction of a mouse selection as `none` either way, so then the end that
+ * matches where the selection started (`previousAnchor`) is the anchor, and
+ * the caret is at the other end. Without that, a selection reads forward.
+ */
+export function textareaSelectionEnds(
+  start: number,
+  end: number,
+  direction: "forward" | "backward" | "none" | null,
+  previousAnchor: number | null,
+): TitleSelection {
+  if (start === end) return { anchor: start, head: start };
+  if (direction === "backward") return { anchor: end, head: start };
+  if (direction === "none" && previousAnchor === end) return { anchor: end, head: start };
+  return { anchor: start, head: end };
 }
 
 function useRemoteTitleCarets(
