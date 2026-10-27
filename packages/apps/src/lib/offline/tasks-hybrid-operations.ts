@@ -471,7 +471,8 @@ export async function fetchTasksHybridBootstrap(): Promise<
     username,
     bootstrap,
     changesState,
-    expectedStored,
+    // Only meaningful when the remembered account is the one signing in.
+    knownUsername === username ? expectedStored : undefined,
   );
   if (!written) {
     const cached = await readTasksBootstrapFromCache(username);

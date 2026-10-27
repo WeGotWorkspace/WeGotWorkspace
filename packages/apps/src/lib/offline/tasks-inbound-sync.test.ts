@@ -108,6 +108,8 @@ const bootstrapSession: TasksAppBootstrap["session"] = {
   user: { ...session.user, username },
 };
 
+let rememberedUsername = username;
+
 // When set, bounded waits for the outbox lock give up, as if another tab held it.
 let lockBusy = false;
 vi.mock("@/lib/offline/core/connectivity-sync-runner", async (importOriginal) => {
@@ -125,7 +127,7 @@ vi.mock("@/lib/offline/core/connectivity-sync-runner", async (importOriginal) =>
 // The test environment has no window, so the remembered account is stubbed.
 vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
-  readOfflineTasksUsername: () => username,
+  readOfflineTasksUsername: () => rememberedUsername,
 }));
 
 vi.mock("@/lib/offline/core/browser-online", () => ({
@@ -224,6 +226,7 @@ describe("syncTasksInbound (tab A follows server changes without a reload)", () 
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    rememberedUsername = username;
     vi.mocked(readBrowserOnline).mockReturnValue(true);
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
@@ -380,6 +383,17 @@ describe("syncTasksInbound (tab A follows server changes without a reload)", () 
     expect(bootstrap.data.tasks.find((entry) => entry.id === "t-rename")?.title).toBe(
       "Buy oat milk",
     );
+  });
+
+  it("a different account signing in is not blocked by the remembered account's token", async () => {
+    await writeTasksChangesState("previous-user", "previous-token");
+    rememberedUsername = "previous-user";
+    server.renameTask("t-rename", "Buy oat milk");
+
+    await fetchTasksHybridBootstrap();
+
+    expect(await readTasksChangesState(username)).toBe(server.state());
+    expect((await cachedTitles())["t-rename"]).toBe("Buy oat milk");
   });
 
   it("a lock timeout writes neither the snapshot nor the state", async () => {
