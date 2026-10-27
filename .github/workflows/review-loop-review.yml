@@ -179,7 +179,7 @@ jobs:
         with:
           mode: review
           prompt-file: ${{ runner.temp }}/prompt.md
-          schema-file: loop/.github/review-loop/review.schema.json
+          schema-file: ${{ github.workspace }}/loop/.github/review-loop/review.schema.json
           working-directory: pr
           token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
           max-turns: "40"
