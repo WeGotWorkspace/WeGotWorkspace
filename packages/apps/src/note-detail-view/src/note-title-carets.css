@@ -3,13 +3,24 @@
 /**
  * Remote carets over the note title textarea. Same look as the body carets
  * (`.collaboration-carets__*` in text-editor.css): a 2px bar in the author's
- * color and a name tag above it. Unlike the body, the tag text is black or
- * white per color. Position and color come from inline custom
- * properties; the overlay never takes pointer events.
+ * color and a name tag above it, and selected text tinted in that color at
+ * the body's 0.25 opacity. Unlike the body, the tag text is black or white
+ * per color. Position and color come from inline custom properties; the
+ * overlay never takes pointer events.
  */
 .note-title-carets {
   @apply pointer-events-none absolute inset-0 select-none;
   overflow: visible;
+}
+
+/* Same tint as `.collaboration-carets__selection` in the body. */
+.note-title-carets__selection {
+  @apply absolute top-0 left-0;
+  width: var(--note-title-selection-width, 0);
+  height: var(--note-title-caret-height, 1.3em);
+  transform: translate(var(--note-title-caret-x, 0), var(--note-title-caret-y, 0));
+  background-color: var(--note-title-caret-color, currentColor);
+  opacity: 0.25;
 }
 
 .note-title-carets__caret {

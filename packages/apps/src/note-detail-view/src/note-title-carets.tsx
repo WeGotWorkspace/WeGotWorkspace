@@ -9,7 +9,11 @@ import {
 import { cn } from "@/lib/utils";
 import type { RemoteTitleCaret } from "@/text-editor-core/docs-collab/docs-collab-title-selection";
 import { readableTextColorOn } from "@/text-editor-core/docs-collab/docs-collab-utils";
-import { measureTextareaCarets } from "@/note-detail-view/src/note-title-caret-geometry";
+import {
+  measureTextareaCarets,
+  measureTextareaSelections,
+  type TextareaSelectionBox,
+} from "@/note-detail-view/src/note-title-caret-geometry";
 import "@/note-detail-view/src/note-title-carets.css";
 
 /** A caret to draw, in px relative to the title textarea's border box. */
@@ -20,6 +24,8 @@ export type NoteTitleCaretMark = {
   left: number;
   top: number;
   height: number;
+  /** The participant's selected text, one box per line. Empty for a plain caret. */
+  selections?: readonly TextareaSelectionBox[];
 };
 
 export type NoteTitleCaretsProps = {
@@ -28,13 +34,24 @@ export type NoteTitleCaretsProps = {
 };
 
 /**
- * Other participants' carets over the note title, with their names.
- * Decorative: hidden from assistive tech, takes no focus or pointer events.
+ * Other participants' carets over the note title, with their names and
+ * selected text. Decorative: hidden from assistive tech, takes no focus or
+ * pointer events.
  */
 export function NoteTitleCarets({ carets, className }: NoteTitleCaretsProps) {
   if (carets.length === 0) return null;
   return (
     <div className={cn("note-title-carets", className)} aria-hidden="true">
+      {carets.flatMap((caret) =>
+        (caret.selections ?? []).map((box, index) => (
+          <div
+            key={`${caret.id}-selection-${index}`}
+            className="note-title-carets__selection"
+            data-name={caret.name}
+            style={selectionStyle(caret.color, box)}
+          />
+        )),
+      )}
       {carets.map((caret) => (
         <div key={caret.id} className="note-title-carets__caret" style={caretStyle(caret)}>
           <span className="note-title-carets__label">{caret.name}</span>
@@ -85,6 +102,10 @@ export function NoteTitleCaretsLayer({ textareaRef, carets, value }: NoteTitleCa
       element,
       carets.map((caret) => caret.head),
     );
+    const selections = measureTextareaSelections(
+      element,
+      carets.map((caret) => ({ start: caret.anchor, end: caret.head })),
+    );
     setMarks(
       carets.map((caret, index) => ({
         id: caret.clientId,
@@ -93,11 +114,22 @@ export function NoteTitleCaretsLayer({ textareaRef, carets, value }: NoteTitleCa
         left: boxes[index]?.left ?? 0,
         top: boxes[index]?.top ?? 0,
         height: boxes[index]?.height ?? 0,
+        selections: selections[index] ?? [],
       })),
     );
   }, [textareaRef, carets, value, layoutVersion]);
 
   return <NoteTitleCarets carets={marks} />;
+}
+
+function selectionStyle(color: string, box: TextareaSelectionBox): CSSProperties {
+  return {
+    "--note-title-caret-color": color,
+    "--note-title-caret-x": `${box.left}px`,
+    "--note-title-caret-y": `${box.top}px`,
+    "--note-title-selection-width": `${box.width}px`,
+    "--note-title-caret-height": `${box.height}px`,
+  } as CSSProperties;
 }
 
 function caretStyle(caret: NoteTitleCaretMark): CSSProperties {
