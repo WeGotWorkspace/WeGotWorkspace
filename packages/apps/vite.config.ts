@@ -73,6 +73,13 @@ export default defineConfig(({ mode }) => {
         manifest: false,
       }),
     ],
+    optimizeDeps: {
+      // The dep scan misses these: `virtual:pwa-register` (a dynamic import in
+      // main.tsx) pulls in workbox-window, and the dev service worker (src/sw.ts)
+      // is not a scan entry. Found on first load, they make Vite reload the page
+      // twice, which drops whatever the user (or an e2e test) was typing.
+      include: ["workbox-window", "workbox-core", "workbox-precaching", "workbox-routing"],
+    },
     server: {
       // Bind all interfaces so both http://127.0.0.1 and http://localhost work (Node may otherwise listen on ::1 only).
       host: true,
