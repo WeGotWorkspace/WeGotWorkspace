@@ -71,6 +71,11 @@ export type DocsCollabUrls = {
    */
   onDocumentGone?: () => void;
   /**
+   * The server answered 409 `note_archived` (#1535). Retrying stops and the
+   * save is no longer pending: archive wins over the unsaved edit.
+   */
+  onPersistArchived?: () => void;
+  /**
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */
@@ -110,7 +115,7 @@ export type UseDocsCollabOptions = {
 };
 
 /** Why a save stopped for good. `forbidden` lifts on reconnect; the others stay. */
-export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large";
+export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large" | "archived";
 
 export type DocsCollabSessionRefs = {
   meshRef: MutableRefObject<DocsRtcSession | null>;

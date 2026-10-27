@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Services\Jmap\JmapAccountStateCodec;
 use App\Services\Jmap\JmapCapabilities;
 use App\Support\WgwSettings;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
-use Sabre\CardDAV\Backend\PDO;
 use Tests\Support\ContactsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -368,7 +367,7 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
     {
         // Extra books are API-forbidden; seed via CardDAV to exercise the
         // changes codec when Sabre removes cards with the collection.
-        $carddav = new PDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         $carddav->createAddressBook('principals/bob', 'doomed', [
             '{DAV:}displayname' => 'Doomed',
         ]);

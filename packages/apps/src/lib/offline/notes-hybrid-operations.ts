@@ -58,6 +58,10 @@ import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import {
+  isNoteArchivedRefusal,
+  settleNoteArchivedElsewhere,
+} from "@/lib/offline/notes/notes-archived-elsewhere";
 
 function rethrowUnlessOfflineQueue(error: unknown, signal?: AbortSignal): void {
   if (signal?.aborted) throw error;
@@ -332,6 +336,11 @@ async function upsertNoteOnline(
     // 412 is retried inside updateNoteItem with a merged payload. A second
     // replay here would send the stale snapshot again. A 412 that still
     // fails belongs in the outbox (shouldQueueNotesUpsert).
+    if (isNoteArchivedRefusal(error)) {
+      // Archived elsewhere (#1535): archive wins, and the person is told.
+      const archived = await settleNoteArchivedElsewhere(username, note.id);
+      if (archived) return archived;
+    }
     if (status !== 404) throw error;
     await dropLocalNoteAfterServerGone(username, note.id);
     throw error;

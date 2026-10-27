@@ -6,8 +6,6 @@ namespace App\Dav\Server;
 
 use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
-use Illuminate\Support\Facades\DB;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
@@ -23,7 +21,7 @@ final class PropIdEnsuringPlugin extends ServerPlugin
     public function __construct(
         private readonly PropIdEnsurer $propIdEnsurer,
         private readonly MemberUriSanitizer $memberUriSanitizer,
-        private readonly CardPDO $cardBackend,
+        private readonly WgwCardBackend $cardBackend,
     ) {}
 
     public function initialize(Server $server): void
@@ -164,8 +162,8 @@ final class PropIdEnsuringPlugin extends ServerPlugin
         return null;
     }
 
-    public static function cardBackendFromConnection(): CardPDO
+    public static function cardBackendFromConnection(): WgwCardBackend
     {
-        return new CardPDO(DB::connection('wgw')->getPdo());
+        return WgwCardBackend::fromConnection();
     }
 }
