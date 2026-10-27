@@ -85,6 +85,59 @@ describe("useNoteTitleCarets", () => {
     expect(publishedSelection(local)).toEqual({ anchor: 2, head: 5 });
   });
 
+  it("puts the caret at the start of a selection made backwards", () => {
+    const local = peer("Ada", "Hello world");
+    const { textarea } = renderCarets(local);
+
+    act(() => {
+      textarea.focus();
+      textarea.setSelectionRange(2, 5, "backward");
+      fireEvent.select(textarea);
+    });
+
+    expect(publishedSelection(local)).toEqual({ anchor: 5, head: 2 });
+  });
+
+  // Chrome and Safari on macOS report `none` for a mouse selection in either
+  // direction. The end the selection grew from is the anchor.
+  it("puts the caret at the start of a right-to-left drag the browser reports without a direction", () => {
+    const local = peer("Ada", "Hello world");
+    const { textarea } = renderCarets(local);
+
+    act(() => {
+      textarea.focus();
+      textarea.setSelectionRange(8, 8);
+      fireEvent.select(textarea);
+    });
+    act(() => {
+      textarea.setSelectionRange(5, 8, "none");
+      fireEvent.select(textarea);
+    });
+    act(() => {
+      textarea.setSelectionRange(3, 8, "none");
+      fireEvent.select(textarea);
+    });
+
+    expect(publishedSelection(local)).toEqual({ anchor: 8, head: 3 });
+  });
+
+  it("puts the caret at the end of a left-to-right drag the browser reports without a direction", () => {
+    const local = peer("Ada", "Hello world");
+    const { textarea } = renderCarets(local);
+
+    act(() => {
+      textarea.focus();
+      textarea.setSelectionRange(3, 3);
+      fireEvent.select(textarea);
+    });
+    act(() => {
+      textarea.setSelectionRange(3, 8, "none");
+      fireEvent.select(textarea);
+    });
+
+    expect(publishedSelection(local)).toEqual({ anchor: 3, head: 8 });
+  });
+
   it("publishes the caret once the first letter creates the document title", () => {
     const local = peer("Ada");
     const { textarea } = renderCarets(local, { title: "" });
