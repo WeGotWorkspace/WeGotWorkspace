@@ -28,7 +28,7 @@ Goal (product, optional) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 **Folder name:** `<issue-number>-<slug>` where `<issue-number>` is the **Task/Epic** (e.g. `.agents/specs/134-drive-share/`). Without issue: `.agents/specs/000-ad-hoc-slug/` with `Source: ad-hoc`.
 
-**When required:** `feat/` branches — see [specs/README.md](../../specs/README.md). `fix/` / `chore/` / `docs/` — optional.
+**When required:** `feat/` branches, and feature design on any branch (`docs/` included): a design note or a new `docs/architecture/*.md` for an Epic ships with its spec folder in the same PR — see [specs/README.md](../../specs/README.md). Other `fix/` / `chore/` / `docs/` work — optional.
 
 **Language:** `spec.md`, `plan.md`, `tasks.md`, and the delivery issue are **English** even if the user prompt is Dutch — [english-only.md](../developer/english-only.md).
 
