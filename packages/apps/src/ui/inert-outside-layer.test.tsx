@@ -132,3 +132,42 @@ describe("a popover opened inside a dialog", () => {
     expect(onPick).toHaveBeenCalledWith("Member");
   });
 });
+
+/** The page behind a dialog, plus the dialog with a search field that re-renders it. */
+function PageWithDialog({ open }: { open: boolean }) {
+  const [query, setQuery] = useState("");
+  return (
+    <>
+      <button type="button">Behind</button>
+      <Dialog open={open}>
+        <DialogContent>
+          <DialogTitle>Share</DialogTitle>
+          <DialogDescription>Invite teammates.</DialogDescription>
+          <input aria-label="Add people" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+describe("a modal dialog", () => {
+  it("keeps the page inert while open and frees it once closed", async () => {
+    const { rerender } = render(<PageWithDialog open />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Add people" }), {
+      target: { value: "me" },
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const behind = screen.getByText("Behind", { selector: "button" });
+    expect(behind.closest("[inert]")).not.toBeNull();
+
+    rerender(<PageWithDialog open={false} />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(behind.closest("[inert]")).toBeNull();
+    expect(document.querySelectorAll("[inert]")).toHaveLength(0);
+  });
+});
