@@ -419,17 +419,22 @@ const BOOTSTRAP_WRITE_LOCK_WAIT_MS = 10_000;
  * Write the snapshot and the changes state it reflects as one step under the
  * outbox lock, so an inbound pull cannot interleave and leave a newer state
  * next to an older snapshot. Nothing is written when the lock stays busy, or
- * when a pull already stored a different token: that cache is newer than this
- * snapshot. Returns whether the snapshot was written.
+ * when the stored token is no longer the one this bootstrap started from: a
+ * pull landed in between and that cache is newer than this snapshot.
+ * `expectedStored` undefined skips that check. Returns whether the snapshot
+ * was written.
  */
 async function writeTasksSnapshotWithState(
   username: string,
   bootstrap: Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>,
   changesState: string | null,
+  expectedStored: string | null | undefined,
 ): Promise<boolean> {
   const write = async () => {
-    const stored = await readTasksChangesState(username);
-    if (stored !== null && stored !== changesState) return false;
+    if (expectedStored !== undefined) {
+      const stored = await readTasksChangesState(username);
+      if (stored !== expectedStored) return false;
+    }
     await writeTasksBootstrapToCache(username, bootstrap);
     await writeTasksChangesState(username, changesState);
     return true;
@@ -447,6 +452,8 @@ async function writeTasksSnapshotWithState(
 export async function fetchTasksHybridBootstrap(): Promise<
   Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>
 > {
+  const knownUsername = readOfflineTasksUsername();
+  const expectedStored = knownUsername ? await readTasksChangesState(knownUsername) : undefined;
   // Taken before the snapshot: a change in between shows up again next pull.
   const changesState = await listTaskListChanges(null).then(
     (delta) => delta.newState,
@@ -460,7 +467,12 @@ export async function fetchTasksHybridBootstrap(): Promise<
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
-  const written = await writeTasksSnapshotWithState(username, bootstrap, changesState);
+  const written = await writeTasksSnapshotWithState(
+    username,
+    bootstrap,
+    changesState,
+    expectedStored,
+  );
   if (!written) {
     const cached = await readTasksBootstrapFromCache(username);
     if (cached) return cached;

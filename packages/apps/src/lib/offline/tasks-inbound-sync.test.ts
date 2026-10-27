@@ -122,6 +122,12 @@ vi.mock("@/lib/offline/core/connectivity-sync-runner", async (importOriginal) =>
   };
 });
 
+// The test environment has no window, so the remembered account is stubbed.
+vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+  readOfflineTasksUsername: () => username,
+}));
+
 vi.mock("@/lib/offline/core/browser-online", () => ({
   readBrowserOnline: vi.fn(() => true),
   isFetchNetworkError: vi.fn((error: unknown) => error instanceof TypeError),
@@ -325,27 +331,52 @@ describe("syncTasksInbound (tab A follows server changes without a reload)", () 
     expect(queued.map((row) => row.op)).toEqual(["delete"]);
   });
 
-  it("a bootstrap snapshot taken under another stored state is not written", async () => {
+  it("a bootstrap snapshot overtaken by a pull is not written", async () => {
     server.renameTask("t-rename", "Buy oat milk");
-    await syncTasksInbound(username);
-    const stored = await readTasksChangesState(username);
-    // The live bootstrap read its token and snapshot before the pull above landed.
-    vi.mocked(listTaskListChanges).mockResolvedValueOnce({
-      newState: "older-token",
-    } as Awaited<ReturnType<typeof listTaskListChanges>>);
-    vi.mocked(fetchTasksLiveBootstrap).mockResolvedValueOnce({
+    const staleSnapshot = {
       session: bootstrapSession,
       data: {
         taskLists: [...server.lists.values()],
         tasks: [task("t-rename", "Buy milk")],
         groups: [],
       },
+    };
+    // The pull lands after the bootstrap read the stored token, before it writes.
+    vi.mocked(fetchTasksLiveBootstrap).mockImplementationOnce(async () => {
+      await syncTasksInbound(username);
+      return staleSnapshot;
+    });
+    vi.mocked(listTaskListChanges).mockResolvedValueOnce({
+      newState: "older-token",
+    } as Awaited<ReturnType<typeof listTaskListChanges>>);
+
+    const bootstrap = await fetchTasksHybridBootstrap();
+
+    expect(await readTasksChangesState(username)).toBe(server.state());
+    expect((await cachedTitles())["t-rename"]).toBe("Buy oat milk");
+    expect(bootstrap.data.tasks.find((entry) => entry.id === "t-rename")?.title).toBe(
+      "Buy oat milk",
+    );
+  });
+
+  it("a snapshot newer than the stored token is written when no pull ran", async () => {
+    server.renameTask("t-rename", "Buy oat milk");
+    server.deleteTask("t-delete");
+    vi.mocked(fetchTasksLiveBootstrap).mockResolvedValueOnce({
+      session: bootstrapSession,
+      data: {
+        taskLists: [...server.lists.values()],
+        tasks: [...server.tasks.values()],
+        groups: [],
+      },
     });
 
     const bootstrap = await fetchTasksHybridBootstrap();
 
-    expect(await readTasksChangesState(username)).toBe(stored);
-    expect((await cachedTitles())["t-rename"]).toBe("Buy oat milk");
+    expect(await readTasksChangesState(username)).toBe(server.state());
+    const titles = await cachedTitles();
+    expect(titles["t-rename"]).toBe("Buy oat milk");
+    expect(titles["t-delete"]).toBeUndefined();
     expect(bootstrap.data.tasks.find((entry) => entry.id === "t-rename")?.title).toBe(
       "Buy oat milk",
     );
