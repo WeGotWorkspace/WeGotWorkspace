@@ -73,6 +73,7 @@ final class FileNodeSetService
         private readonly DriveStarService $stars,
         private readonly DriveShareAuthorizer $authorizer,
         private readonly FileNodeRelocator $relocator,
+        private readonly FileNodeRootMarkers $markers,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -94,41 +95,45 @@ final class FileNodeSetService
         $this->created = $this->updated = $this->notCreated = $this->notUpdated = $this->notDestroyed = [];
         $this->destroyed = [];
 
-        $principal = $this->accounts->principalFor($username);
-        $roots = $this->accounts->rootsFor($username);
-        $this->accounts->ensureAccountIndexed($username);
+        // One marker batch for the whole call: a batch move or upload bumps
+        // each Drive root once ({@see FileNodeRootMarkers}).
+        $this->markers->batch(function () use ($username, $create, $update, $destroy, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively): void {
+            $principal = $this->accounts->principalFor($username);
+            $roots = $this->accounts->rootsFor($username);
+            $this->accounts->ensureAccountIndexed($username);
 
-        // Destroys first, deepest-first, so replace/create can reuse names
-        // and "all children destroyed in the same operation" holds (§3.2.3).
-        $this->applyDestroys($destroy, $principal, $roots, $onDestroyRemoveChildren);
+            // Destroys first, deepest-first, so replace/create can reuse names
+            // and "all children destroyed in the same operation" holds (§3.2.3).
+            $this->applyDestroys($destroy, $principal, $roots, $onDestroyRemoveChildren);
 
-        foreach ($create as $creationId => $payload) {
-            $creationId = (string) $creationId;
-            if (! is_array($payload)) {
-                $this->notCreated[$creationId] = $this->invalidProperties('FileNode create entry must be an object.');
+            foreach ($create as $creationId => $payload) {
+                $creationId = (string) $creationId;
+                if (! is_array($payload)) {
+                    $this->notCreated[$creationId] = $this->invalidProperties('FileNode create entry must be an object.');
 
-                continue;
+                    continue;
+                }
+                try {
+                    $this->created[$creationId] = $this->applyCreate($username, $payload, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
+                } catch (FileNodeSetError $e) {
+                    $this->notCreated[$creationId] = $e->shape;
+                }
             }
-            try {
-                $this->created[$creationId] = $this->applyCreate($username, $payload, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
-            } catch (FileNodeSetError $e) {
-                $this->notCreated[$creationId] = $e->shape;
-            }
-        }
 
-        foreach ($update as $nodeId => $patch) {
-            $nodeId = (string) $nodeId;
-            if (! is_array($patch)) {
-                $this->notUpdated[$nodeId] = $this->invalidProperties('FileNode update entry must be an object.');
+            foreach ($update as $nodeId => $patch) {
+                $nodeId = (string) $nodeId;
+                if (! is_array($patch)) {
+                    $this->notUpdated[$nodeId] = $this->invalidProperties('FileNode update entry must be an object.');
 
-                continue;
+                    continue;
+                }
+                try {
+                    $this->updated[$nodeId] = $this->applyUpdate($username, $nodeId, $patch, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
+                } catch (FileNodeSetError $e) {
+                    $this->notUpdated[$nodeId] = $e->shape;
+                }
             }
-            try {
-                $this->updated[$nodeId] = $this->applyUpdate($username, $nodeId, $patch, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
-            } catch (FileNodeSetError $e) {
-                $this->notUpdated[$nodeId] = $e->shape;
-            }
-        }
+        });
 
         return [
             'created' => $this->created,
