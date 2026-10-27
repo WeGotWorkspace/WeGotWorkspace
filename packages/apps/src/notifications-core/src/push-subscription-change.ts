@@ -36,7 +36,12 @@ export type PushSubscriptionChangeDeps = {
   locks: Pick<LockManager, "request"> | null;
   /** Per-request limit; defaults to {@link WORKER_FETCH_TIMEOUT_MS}. */
   timeoutMs?: number;
+  /** How long a refresh with no response is retried; defaults to {@link REFRESH_GRACE_MS}. */
+  refreshGraceMs?: number;
 };
+
+/** Matches `RefreshTokenRepository::ROTATION_GRACE_SECONDS` on the server. */
+export const REFRESH_GRACE_MS = 60_000;
 
 /**
  * The refresh runs while holding the tabs' shared Web Lock. A hung request must
@@ -73,27 +78,67 @@ export async function handlePushSubscriptionChange(
   }
 }
 
+/**
+ * `POST /auth/refresh` rotates the cookie before the response is sent. If the
+ * response never arrives, the browser keeps the old cookie and a later refresh
+ * outside the server's grace window revokes the session. So an attempt that
+ * throws (abort, network) or gets a 5xx is retried until a response arrives or
+ * the grace budget is spent.
+ */
 async function refreshAccessToken(deps: PushSubscriptionChangeDeps): Promise<string | null> {
-  const run = async (): Promise<string | null> => {
-    const res = await deps.fetch(`${deps.apiBaseUrl}/auth/refresh`, {
+  const timeoutMs = deps.timeoutMs ?? WORKER_FETCH_TIMEOUT_MS;
+  const graceMs = deps.refreshGraceMs ?? REFRESH_GRACE_MS;
+  const started = Date.now();
+  for (;;) {
+    const attemptStarted = Date.now();
+    const result = deps.locks
+      ? await deps.locks.request(AUTH_REFRESH_WEB_LOCK_NAME, { mode: "exclusive" }, () =>
+          refreshAttempt(deps),
+        )
+      : await refreshAttempt(deps);
+    if (result !== RETRY) return result;
+
+    const now = Date.now();
+    const graceLeft = graceMs - (now - started);
+    if (graceLeft <= 0)
+      throw new Error("POST /auth/refresh got no response within the grace window");
+    // Outside the lock: a hang frees it for tabs, and a fast failure cannot spin.
+    await delay(Math.min(Math.max(timeoutMs - (now - attemptStarted), 0), graceLeft));
+    if (Date.now() - started >= graceMs) {
+      throw new Error("POST /auth/refresh got no response within the grace window");
+    }
+  }
+}
+
+const RETRY = Symbol("retry");
+
+async function refreshAttempt(
+  deps: PushSubscriptionChangeDeps,
+): Promise<string | null | typeof RETRY> {
+  let res: Response;
+  try {
+    res = await deps.fetch(`${deps.apiBaseUrl}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{}",
       credentials: "same-origin",
       signal: timeoutSignal(deps),
     });
-    if (res.status === 400 || res.status === 401 || res.status === 403) return null;
-    if (!res.ok) throw new Error(`POST /auth/refresh failed (${res.status})`);
-    const json = (await res.json()) as { access_token?: unknown };
-    if (typeof json.access_token !== "string" || json.access_token === "") {
-      throw new Error("Refresh response missing access_token");
-    }
-    return json.access_token;
-  };
-  if (!deps.locks) return run();
-  return deps.locks
-    .request(AUTH_REFRESH_WEB_LOCK_NAME, { mode: "exclusive" }, () => run())
-    .then((value) => value);
+  } catch {
+    return RETRY;
+  }
+  if (res.status === 400 || res.status === 401 || res.status === 403) return null;
+  if (res.status >= 500) return RETRY;
+  if (!res.ok) throw new Error(`POST /auth/refresh failed (${res.status})`);
+  const json = (await res.json()) as { access_token?: unknown };
+  if (typeof json.access_token !== "string" || json.access_token === "") {
+    throw new Error("Refresh response missing access_token");
+  }
+  return json.access_token;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function fetchVapidPublicKey(

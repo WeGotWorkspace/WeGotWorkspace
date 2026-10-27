@@ -37,7 +37,10 @@ function json(status: number, body: unknown): Response {
 
 type Routes = Partial<Record<string, (init: RequestInit) => Response | Promise<Response>>>;
 
-function setup(routes: Routes = {}, opts: { locks?: boolean; timeoutMs?: number } = {}) {
+function setup(
+  routes: Routes = {},
+  opts: { locks?: boolean; timeoutMs?: number; refreshGraceMs?: number } = {},
+) {
   const calls: Call[] = [];
   const defaults: Routes = {
     "POST /api/v1/auth/refresh": () => json(200, { access_token: "fresh-jwt", expires_in: 900 }),
@@ -85,6 +88,7 @@ function setup(routes: Routes = {}, opts: { locks?: boolean; timeoutMs?: number 
     pushManager,
     locks: opts.locks === false ? null : locks,
     timeoutMs: opts.timeoutMs,
+    refreshGraceMs: opts.refreshGraceMs,
   };
   return { deps, calls, pushManager, created, lockNames, lockState };
 }
@@ -189,15 +193,45 @@ describe("handlePushSubscriptionChange", () => {
   });
 
   it("reports failure when the worker is offline", async () => {
-    const { deps } = setup({
-      "POST /api/v1/auth/refresh": () => {
-        throw new TypeError("Failed to fetch");
+    const { deps } = setup(
+      {
+        "POST /api/v1/auth/refresh": () => {
+          throw new TypeError("Failed to fetch");
+        },
       },
-    });
+      { timeoutMs: 10, refreshGraceMs: 30 },
+    );
 
     await expect(
       handlePushSubscriptionChange({ oldSubscription: null, newSubscription: null }, deps),
     ).resolves.toBe("failed");
+  });
+
+  it("retries a refresh that never answered and still posts the new endpoint", async () => {
+    let attempts = 0;
+    const { deps, calls, lockState } = setup(
+      {
+        "POST /api/v1/auth/refresh": (init) => {
+          attempts += 1;
+          if (attempts > 1) return json(200, { access_token: "fresh-jwt", expires_in: 900 });
+          return new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+          }) as unknown as Response;
+        },
+      },
+      { timeoutMs: 20, refreshGraceMs: 500 },
+    );
+    const oldSub = fakeSubscription("https://push.example/old", [1, 2, 3]);
+    const newSub = fakeSubscription("https://push.example/new", [1, 2, 3]);
+
+    await expect(
+      handlePushSubscriptionChange({ oldSubscription: oldSub, newSubscription: newSub }, deps),
+    ).resolves.toBe("resubscribed");
+
+    expect(attempts).toBe(2);
+    expect(lockState.held).toBe(false);
+    expect(callKeys(calls)).toContain("POST /api/v1/notifications/push/subscriptions");
+    expect(calls.at(-1)?.body).toEqual({ endpoint: "https://push.example/old" });
   });
 
   it("keeps the old row when posting the new endpoint fails", async () => {
@@ -265,7 +299,7 @@ describe("handlePushSubscriptionChange", () => {
       });
     const { deps, calls, pushManager, lockState } = setup(
       { "POST /api/v1/auth/refresh": hungRefresh },
-      { timeoutMs: 20 },
+      { timeoutMs: 20, refreshGraceMs: 30 },
     );
 
     await expect(
@@ -273,7 +307,7 @@ describe("handlePushSubscriptionChange", () => {
     ).resolves.toBe("failed");
 
     expect(lockState.held).toBe(false);
-    expect(callKeys(calls)).toEqual(["POST /api/v1/auth/refresh"]);
+    expect(new Set(callKeys(calls))).toEqual(new Set(["POST /api/v1/auth/refresh"]));
     expect(pushManager.subscribe).not.toHaveBeenCalled();
   });
 
