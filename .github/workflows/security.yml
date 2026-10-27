@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # labeled: the review loop's hand-over label starts the waiting checks.
+    types: [opened, synchronize, reopened, labeled]
   merge_group:
   schedule:
     - cron: "0 3 * * *"
@@ -16,11 +18,17 @@ permissions:
   contents: read
 
 jobs:
+  # Waits while the review loop works on a PR; see review-loop-ci-gate.yml.
+  gate:
+    uses: ./.github/workflows/review-loop-ci-gate.yml
+
   sast-codeql:
-    name: SAST (CodeQL JS/TS)
+    name: ${{ needs.gate.outputs.run == 'true' && 'SAST (CodeQL JS/TS)' || 'SAST (CodeQL JS/TS) (waits for the review loop)' }}
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -75,9 +83,11 @@ jobs:
 
   sast-psalm-php:
     name: SAST (Psalm PHP)
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -134,10 +144,12 @@ jobs:
         run: bash "${{ github.workspace }}/.github/scripts/enforce-sarif-severity.sh" psalm-taint.sarif error-level
 
   sast-semgrep-php:
-    name: SAST (Semgrep PHP)
+    name: ${{ needs.gate.outputs.run == 'true' && 'SAST (Semgrep PHP)' || 'SAST (Semgrep PHP) (waits for the review loop)' }}
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -181,10 +193,12 @@ jobs:
           exit 1
 
   secrets-gitleaks:
-    name: Secrets (Gitleaks)
+    name: ${{ needs.gate.outputs.run == 'true' && 'Secrets (Gitleaks)' || 'Secrets (Gitleaks) (waits for the review loop)' }}
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -232,10 +246,12 @@ jobs:
           if-no-files-found: ignore
 
   sca-trivy:
-    name: SCA (Trivy)
+    name: ${{ needs.gate.outputs.run == 'true' && 'SCA (Trivy)' || 'SCA (Trivy) (waits for the review loop)' }}
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

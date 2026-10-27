@@ -7,17 +7,32 @@ on:
   push:
     branches: [main]
   pull_request:
+    # labeled: the review loop's hand-over label starts the waiting CI.
+    types: [opened, synchronize, reopened, labeled]
   merge_group:
 
+# Any other label starts a run that does nothing. Its own group keeps it from
+# cancelling the PR's CI. The label names match review-loop-ci-gate.yml.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    ci-${{ github.workflow }}-${{
+      github.event.action == 'labeled' &&
+      !contains(fromJSON('["ready-for-human","needs-human"]'), github.event.label.name) &&
+      github.run_id ||
+      github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Waits while the review loop works on a PR; see review-loop-ci-gate.yml.
+  gate:
+    uses: ./.github/workflows/review-loop-ci-gate.yml
+
   mcp-server:
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -39,9 +54,11 @@ jobs:
         run: node tools/file-size-ratchet.mjs check tools/mcp-server/src
 
   api-quality:
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -106,9 +123,11 @@ jobs:
         run: pnpm run ci:quality:api
 
   apps-quality:
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -179,9 +198,12 @@ jobs:
   # a required check. Live-app specs stay on playwright.live.config.mjs
   # and run from nightly-live-e2e.yml (not this pull-request workflow).
   apps-e2e:
+    name: ${{ needs.gate.outputs.run == 'true' && 'apps-e2e' || 'apps-e2e (waits for the review loop)' }}
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -233,10 +255,12 @@ jobs:
           if-no-files-found: ignore
 
   build:
-    needs: [api-quality, apps-quality]
+    name: ${{ needs.gate.outputs.run == 'true' && 'build' || 'build (waits for the review loop)' }}
+    needs: [gate, api-quality, apps-quality]
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -288,7 +312,8 @@ jobs:
   # Pull requests and the merge queue only. Pushes to main use the install
   # workflow's upgrade job, which targets the candidate release image.
   upgrade-e2e:
-    if: github.event_name != 'push'
+    needs: gate
+    if: needs.gate.outputs.run == 'true' && github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -329,7 +354,9 @@ jobs:
         run: bash tools/e2e-upgrade.sh
 
   chromatic:
+    needs: gate
     if: >-
+      needs.gate.outputs.run == 'true' &&
       vars.CHROMATIC_ENABLED == 'true' &&
       github.event_name != 'merge_group' &&
       (github.event_name != 'push' ||
@@ -392,9 +419,11 @@ jobs:
           autoAcceptChanges: "main"
 
   api-mysql:
+    needs: gate
     if: >-
-      github.event_name != 'push' ||
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      needs.gate.outputs.run == 'true' &&
+      (github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -513,13 +542,14 @@ jobs:
           if-no-files-found: error
 
   apps-coverage:
-    # A pull request runs this job only while it carries run-apps-coverage.
-    # Triggers stay unchanged: a labeled event would share the CI concurrency
-    # group and cancel the pull request's required checks.
+    # A pull request runs this job only while it carries run-apps-coverage,
+    # on its next CI run. Adding the label does not start one.
+    needs: gate
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' &&
-       contains(github.event.pull_request.labels.*.name, 'run-apps-coverage'))
+      needs.gate.outputs.run == 'true' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'pull_request' &&
+        contains(github.event.pull_request.labels.*.name, 'run-apps-coverage')))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     concurrency:

@@ -1,0 +1,63 @@
+name: Review loop - CI gate
+
+# Decides whether CI and Security run on this event. While the review loop
+# works on a PR, almost every commit gets a change request and a fix commit,
+# so a full run on it is wasted. CI waits until the loop hands the PR to a
+# human: adding ready-for-human or needs-human starts it on the head commit.
+#
+# Callers skip their jobs when run is false, and give their required jobs
+# another name then. GitHub counts a skipped job as passed; a required check
+# that never reported keeps the PR unmergeable until the real run.
+# Design notes: .github/review-loop/README.md.
+
+on:
+  workflow_call:
+    outputs:
+      run:
+        description: "'true' when the caller's jobs should run"
+        value: ${{ jobs.decide.outputs.run }}
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          SENDER: ${{ github.event.sender.login }}
+          LOOP_BOT: ${{ vars.REVIEW_LOOP_APP_SLUG && format('{0}[bot]', vars.REVIEW_LOOP_APP_SLUG) || '' }}
+        run: |
+          decide() {
+            echo "run=$1" >> "$GITHUB_OUTPUT"
+            echo "$2" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          }
+
+          [ "$EVENT" = pull_request ] || decide true "Not a pull request event: CI runs."
+          # The labels the loop hands over with. Keep in sync with the
+          # concurrency group in ci.yml.
+          if [ "$ACTION" = labeled ]; then
+            case "$LABEL" in
+              ready-for-human|needs-human) decide true "The review loop handed the PR over ($LABEL): CI runs." ;;
+              *) decide false "Label $LABEL does not start CI." ;;
+            esac
+          fi
+          [ -n "$LOOP_BOT" ] || decide true "The review loop is not set up: CI runs."
+          [ "$HEAD_REPO" = "$GITHUB_REPOSITORY" ] || decide true "Fork PR, which the review loop skips: CI runs."
+          [ "$DRAFT" != true ] || decide true "Draft PR, which the review loop skips: CI runs."
+          # Mirrors when review-loop-review-job.yml reviews a commit.
+          case "$ACTION" in
+            opened|reopened)
+              decide false "The review loop reviews this commit. CI runs when it adds ready-for-human or needs-human." ;;
+            synchronize)
+              [ "$SENDER" != "$LOOP_BOT" ] || decide false "A fix commit by the review loop, which reviews it next. CI runs when it adds ready-for-human or needs-human." ;;
+          esac
+          decide true "A push by $SENDER, which the review loop does not review: CI runs."

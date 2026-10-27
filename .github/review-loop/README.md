@@ -24,6 +24,31 @@ start a new cycle, mark the PR draft and then ready again. That is the only
 reset, also for a PR that was never a draft: until then, every change request
 from the bot counts.
 
+## CI on loop PRs
+
+While the loop works on a PR, almost every commit gets a change request and
+a fix commit, so a full CI run on it is wasted. CI and Security therefore
+wait until the loop hands the PR to a human. Their first job,
+`review-loop-ci-gate.yml`, decides per event:
+
+| Event | CI |
+|-------|----|
+| PR opened or reopened (not draft), fix commit by the loop | waits |
+| Loop adds `ready-for-human` or `needs-human` | runs on the head commit |
+| Draft, fork, push by a person or another bot | runs, as before |
+| Any other label | does nothing |
+| `main`, merge queue, schedule | runs, as before |
+
+- A waiting run skips its jobs and renames the required ones, such as
+  "apps-e2e (waits for the review loop)". GitHub counts a skipped job as
+  passed, so a skipped job under the required name would make the PR look
+  mergeable without CI. Under another name, the required check stays
+  "Expected" until the real run reports.
+- A polish approval adds no label, so CI keeps waiting for the polish commit
+  and the review after it.
+- CI on a waiting PR can be started by hand: add `needs-human`, or push.
+- Without `REVIEW_LOOP_APP_SLUG`, nothing waits.
+
 ## Second reviewer
 
 With `REVIEW_LOOP_SECOND_AGENT_TOKEN` set, a second reviewer from another
@@ -53,7 +78,7 @@ loop's own GitHub App, so the bot identity does not change with the vendor.
 | `second-agent/action.yml` | Yes: the second reviewer (now Cursor CLI) |
 | `review-prompt.md`, `fix-prompt.md` | No |
 | `review.schema.json`, `fix.schema.json` | No |
-| `prepare/action.yml`, all four workflows | No |
+| `prepare/action.yml`, all five workflows | No |
 
 To switch vendor, rewrite the steps of one adapter and replace its secret.
 `agent/action.yml` keeps its inputs (`mode`, `prompt-file`, `schema-file`,
@@ -76,7 +101,10 @@ the fast tests, and neither may commit, push, or reach GitHub.
 4. Optional: store a second reviewer's credential as the secret
    `REVIEW_LOOP_SECOND_AGENT_TOKEN`. For the current adapter (Cursor CLI)
    that is a user API key from the Cursor dashboard.
-5. Optional repository variables:
+5. Store the app's slug (the name in its URL, `wgw-review-loop`) as the
+   repository variable `REVIEW_LOOP_APP_SLUG`. CI uses it to recognise the
+   loop's fix commits; without it CI does not wait for the loop.
+6. Optional repository variables:
    - `REVIEW_LOOP_MAX_ROUNDS`: change requests per cycle (default 3).
    - `REVIEW_LOOP_REVIEW_MODEL`, `REVIEW_LOOP_FIX_MODEL`, and
      `REVIEW_LOOP_SECOND_REVIEW_MODEL`: the model for each role, in the
