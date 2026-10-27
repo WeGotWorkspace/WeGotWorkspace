@@ -83,6 +83,7 @@ jobs:
         if: steps.rounds.outputs.run == 'true'
         with:
           ref: ${{ env.HEAD_SHA }}
+          php-vendor: "true"
 
       - name: Build prompt
         if: steps.rounds.outputs.run == 'true'

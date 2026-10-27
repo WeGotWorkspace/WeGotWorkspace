@@ -143,7 +143,7 @@ jobs:
             echo "- Repository: $GH_REPO"
             echo "- PR: $PR, head $HEAD_SHA, merge base $merge_base"
             echo "- The change: \`git diff $merge_base HEAD\`"
-            echo "- Its commits: \`git log --oneline $merge_base..HEAD\`"
+            echo "- Its commits, with the fixer's notes in the bodies: \`git log $merge_base..HEAD\`"
             echo
             echo "### Linked issues"
             echo
@@ -171,6 +171,15 @@ jobs:
               | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]
                   | if length == 0 then "None. This is the first round."
                     else map("#### \(.state) on \(.commit_id[0:7])\n\n\(.body)") | join("\n\n") end'
+            echo
+            # The loop's notes, such as a fix round that changed nothing and why.
+            echo "### Earlier loop notes on this PR"
+            echo
+            gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
+              | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot
+                    and (.body | contains("<!-- review-loop:human-push -->") | not))]
+                  | if length == 0 then "None."
+                    else map("#### \(.created_at)\n\n\(.body)") | join("\n\n") end'
             echo
             echo "### Standards from main"
             for f in security/SKILL.md clean-code/smells.md; do

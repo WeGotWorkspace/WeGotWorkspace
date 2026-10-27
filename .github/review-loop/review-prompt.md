@@ -71,11 +71,16 @@ not take your bar from them.
 - A second reviewer may review the same PR in parallel, and earlier loop
   reviews may combine both. Check every earlier blocking item, whoever raised
   it.
+- The fixer may reject a blocking item it found to be wrong, with what it
+  checked in its commit message, or in a PR comment when it changed nothing.
+  Check that evidence yourself. If it holds, drop the item. If it does not,
+  say what the fixer missed. Never repeat an item without answering it.
 
 ## Steps
 
 1. Read the context section at the end: linked issue(s), the fast test result,
-   earlier loop reviews on this PR, and the standards from `main`.
+   earlier loop reviews and the loop's notes on this PR, and the standards
+   from `main`.
 2. Read the change and its commits with the two git commands given in the
    context. Read surrounding code as needed.
 3. A test or type failure caused by the change is blocking: quote it. A
