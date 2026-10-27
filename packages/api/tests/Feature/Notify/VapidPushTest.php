@@ -295,10 +295,12 @@ final class VapidPushTest extends WgwDatabaseTestCase
 
         $push = app(VapidPushService::class);
         $push->sweepDue();
+        $this->assertCount(1, $this->sentTo($alice));
         Carbon::setTestNow(Carbon::now()->addMinute());
         $push->sweepDue();
 
         $this->assertCount(1, $this->sentTo($bob));
+        $this->assertCount(2, $this->sentTo($alice));
         Carbon::setTestNow();
     }
 

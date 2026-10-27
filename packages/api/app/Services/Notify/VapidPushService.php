@@ -90,6 +90,9 @@ final class VapidPushService
             ->delete();
     }
 
+    /** @var array<string, true> endpoint hashes that failed transiently during the current sweep */
+    private array $failedEndpoints = [];
+
     public function pruneEndpoint(string $endpoint): void
     {
         PushSubscription::query()
@@ -120,22 +123,27 @@ final class VapidPushService
             ->get();
 
         $sent = 0;
-        foreach ($due as $delivery) {
-            $notification = Notification::query()->find($delivery->notification_id);
-            if ($notification === null) {
-                $delivery->delete();
+        $this->failedEndpoints = [];
+        try {
+            foreach ($due as $delivery) {
+                $notification = Notification::query()->find($delivery->notification_id);
+                if ($notification === null) {
+                    $delivery->delete();
 
-                continue;
-            }
-            $completed = $this->sendNotification($notification);
-            if ($completed === 0 && $this->principalHasSubscription((string) $notification->principal)) {
-                $this->scheduleRetry($delivery, $now);
+                    continue;
+                }
+                $completed = $this->sendNotification($notification);
+                if ($completed === 0 && $this->principalHasSubscription((string) $notification->principal)) {
+                    $this->scheduleRetry($delivery, $now);
 
-                continue;
+                    continue;
+                }
+                $delivery->sent_at = $now;
+                $delivery->save();
+                $sent += $completed;
             }
-            $delivery->sent_at = $now;
-            $delivery->save();
-            $sent += $completed;
+        } finally {
+            $this->failedEndpoints = [];
         }
 
         NotificationDelivery::query()
@@ -163,6 +171,10 @@ final class VapidPushService
 
                 continue;
             }
+            $hash = (string) $sub->endpoint_hash;
+            if (isset($this->failedEndpoints[$hash])) {
+                continue;
+            }
             $status = $this->sender->send(
                 (string) $sub->endpoint,
                 (string) $sub->p256dh,
@@ -175,6 +187,8 @@ final class VapidPushService
                 $completed++;
             } elseif ($status >= 200 && $status < 300) {
                 $completed++;
+            } else {
+                $this->failedEndpoints[$hash] = true;
             }
         }
 
