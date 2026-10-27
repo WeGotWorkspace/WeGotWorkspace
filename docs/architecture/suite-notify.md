@@ -2,6 +2,8 @@
 
 Canonical reference for the in-process mutation envelope, LAMP-safe notify delivery, and the first producers (VALARM due alerts, Doc share, chat message-posted). Tracker: Epic [#741](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/741). Product Goals: in-app alerts [Product#13](https://github.com/WeGotWorkspace/Product/issues/13), Doc share/comment [Product#46](https://github.com/WeGotWorkspace/Product/issues/46), closed-tab Calendar push [Product#32](https://github.com/WeGotWorkspace/Product/issues/32). VAPID primitives: chore [#495](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/495).
 
+> **Proposed:** [notifications.md](notifications.md) sets one architecture for silent and active news. This pipeline stays the server side of active news. The in-app delivery below (15 s inbox poll, `notify-hint`) moves to JMAP Push with a `Notification` type, a mesh `check-now`, and in-app toasts ([jmap-push.md](jmap-push.md)).
+
 ---
 
 ## Envelope
