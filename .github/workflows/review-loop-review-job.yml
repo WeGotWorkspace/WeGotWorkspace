@@ -1,9 +1,16 @@
 name: Review loop - review (job)
 
 # The reviewer's logic, called by review-loop-review.yml. Callers pin this file
-# at @main, so the workflow, the adapter, the prompts, and the standards always
+# at @main, so the workflow, the adapters, the prompts, and the standards always
 # come from the same commit on main, whatever the PR's test merge contains.
 # Diagram and design notes: review-loop-review.yml and .github/review-loop/README.md.
+#
+#   gate ─▶ context ─┬─▶ review (agent/) ──────────┬─▶ post: one merged review
+#                    └─▶ second-review (optional) ─┘
+#
+# The two reviewers run in parallel on separate runners. Neither holds a
+# GitHub credential; only the post job does, and it trusts nothing from them
+# but JSON it checks itself.
 
 on:
   workflow_call:
@@ -14,12 +21,15 @@ env:
   HEAD_SHA: ${{ github.event.pull_request.head.sha }}
   BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
+permissions:
+  contents: read
+
 jobs:
-  review:
+  gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
     steps:
       - uses: actions/create-github-app-token@v3
         id: bot
@@ -55,12 +65,26 @@ jobs:
           fi
           echo "run=true" >> "$GITHUB_OUTPUT"
 
+  # Everything the reviewers get besides the code, built once for both.
+  context:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      merge-base: ${{ steps.prompt.outputs.merge-base }}
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: bot
+        with:
+          client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v7
-        if: steps.gate.outputs.run == 'true'
         with:
           ref: main
           path: loop
-          # The reviewer's standards come from main too; see Build prompt.
+          # The reviewers' standards come from main too; see Build prompt.
           sparse-checkout: |
             .github/review-loop
             .agents/skills/security
@@ -68,7 +92,6 @@ jobs:
           persist-credentials: false
 
       - uses: ./loop/.github/review-loop/prepare
-        if: steps.gate.outputs.run == 'true'
         with:
           ref: ${{ env.HEAD_SHA }}
 
@@ -76,7 +99,6 @@ jobs:
       # jsdom, Storybook, and e2e stay in CI, which runs alongside this review.
       - name: Fast JS suite
         id: tests
-        if: steps.gate.outputs.run == 'true'
         continue-on-error: true
         working-directory: pr
         run: |
@@ -84,12 +106,12 @@ jobs:
           pnpm exec turbo run typecheck test:unit --filter=@wgw/apps 2>&1 \
             | tee "$RUNNER_TEMP/fast-suite.log"
 
-      # Everything the reviewer gets besides the code. The PR body is left out
-      # on purpose; only the issues it links are passed on. The diff base is
-      # computed here so the agent does not have to find it, and a missing
-      # base fails this step loudly instead of costing agent turns.
+      # The PR body is left out on purpose; only the issues it links are
+      # passed on. The diff base is computed here so the agents do not have to
+      # find it, and a missing base fails this step loudly instead of costing
+      # agent turns.
       - name: Build prompt
-        if: steps.gate.outputs.run == 'true'
+        id: prompt
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
           BOT: ${{ steps.bot.outputs.app-slug }}[bot]
@@ -110,7 +132,9 @@ jobs:
             issues="https://github.com/$GH_REPO/issues/${BASH_REMATCH[1]}"
           fi
           merge_base=$(git -C pr merge-base "$BASE_SHA" HEAD)
+          echo "merge-base=$merge_base" >> "$GITHUB_OUTPUT"
 
+          mkdir -p "$RUNNER_TEMP/context"
           {
             cat loop/.github/review-loop/review-prompt.md
             echo
@@ -141,7 +165,7 @@ jobs:
               echo '```'
             fi
             echo
-            echo "### Your earlier reviews on this PR"
+            echo "### Earlier loop reviews on this PR"
             echo
             gh api "repos/$GH_REPO/pulls/$PR/reviews" --paginate --slurp \
               | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot and .state != "COMMENTED")]
@@ -155,15 +179,48 @@ jobs:
               echo
               cat "loop/.agents/skills/$f"
             done
-          } > "$RUNNER_TEMP/prompt.md"
+          } > "$RUNNER_TEMP/context/prompt.md"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-prompt
+          path: ${{ runner.temp }}/context/prompt.md
+          retention-days: 7
+
+  review:
+    needs: context
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          path: loop
+          sparse-checkout: .github/review-loop
+          persist-credentials: false
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: review-prompt
+          path: ${{ runner.temp }}/context
 
       - name: Review
         id: agent
-        if: steps.gate.outputs.run == 'true'
         uses: ./loop/.github/review-loop/agent
         with:
           mode: review
-          prompt-file: ${{ runner.temp }}/prompt.md
+          prompt-file: ${{ runner.temp }}/context/prompt.md
           schema-file: ${{ github.workspace }}/loop/.github/review-loop/review.schema.json
           working-directory: pr
           token: ${{ secrets.REVIEW_LOOP_AGENT_TOKEN }}
@@ -171,19 +228,164 @@ jobs:
           model: ${{ vars.REVIEW_LOOP_REVIEW_MODEL }}
           effort: ${{ vars.REVIEW_LOOP_REVIEW_EFFORT }}
 
-      - name: Post review
-        if: steps.gate.outputs.run == 'true'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: review-result-1
+          path: ${{ steps.agent.outputs.result-file }}
+          retention-days: 7
+
+  # Optional: runs only when REVIEW_LOOP_SECOND_AGENT_TOKEN is set. Its
+  # failure never fails the review; the post job then goes on without it.
+  second-review:
+    needs: context
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    outputs:
+      enabled: ${{ steps.enabled.outputs.enabled }}
+    steps:
+      - name: Check for a second reviewer
+        id: enabled
+        env:
+          TOKEN: ${{ secrets.REVIEW_LOOP_SECOND_AGENT_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No second reviewer configured."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.enabled.outputs.enabled == 'true'
+        with:
+          ref: main
+          path: loop
+          sparse-checkout: .github/review-loop
+          persist-credentials: false
+
+      - uses: actions/checkout@v7
+        if: steps.enabled.outputs.enabled == 'true'
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        if: steps.enabled.outputs.enabled == 'true'
+        with:
+          name: review-prompt
+          path: ${{ runner.temp }}/context
+
+      # Not every agent can run git. Save the change as files next to the
+      # code and say so in the prompt.
+      - name: Save the change as files
+        if: steps.enabled.outputs.enabled == 'true'
+        working-directory: pr
+        env:
+          MERGE_BASE: ${{ needs.context.outputs.merge-base }}
+        run: |
+          mkdir -p .review-loop
+          git diff "$MERGE_BASE" HEAD > .review-loop/change.diff
+          git log --oneline "$MERGE_BASE..HEAD" > .review-loop/commits.txt
+          {
+            echo
+            echo "The change is also saved as \`.review-loop/change.diff\` and its commits as"
+            echo "\`.review-loop/commits.txt\` in the working directory, in case you cannot run git."
+          } >> "$RUNNER_TEMP/context/prompt.md"
+
+      - name: Review
+        id: agent
+        if: steps.enabled.outputs.enabled == 'true'
+        uses: ./loop/.github/review-loop/second-agent
+        with:
+          prompt-file: ${{ runner.temp }}/context/prompt.md
+          schema-file: ${{ github.workspace }}/loop/.github/review-loop/review.schema.json
+          working-directory: pr
+          token: ${{ secrets.REVIEW_LOOP_SECOND_AGENT_TOKEN }}
+          model: ${{ vars.REVIEW_LOOP_SECOND_REVIEW_MODEL }}
+          effort: ${{ vars.REVIEW_LOOP_SECOND_REVIEW_EFFORT }}
+
+      - uses: actions/upload-artifact@v7
+        if: steps.enabled.outputs.enabled == 'true'
+        with:
+          name: review-result-2
+          path: ${{ steps.agent.outputs.result-file }}
+          retention-days: 7
+
+  post:
+    needs: [gate, context, review, second-review]
+    if: ${{ !cancelled() && needs.gate.outputs.run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: bot
+        with:
+          client-id: ${{ vars.REVIEW_LOOP_APP_CLIENT_ID }}
+          private-key: ${{ secrets.REVIEW_LOOP_APP_PRIVATE_KEY }}
+
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: review-result-*
+          path: ${{ runner.temp }}/results
+
+      # The first reviewer decides alone when there is no second one. With
+      # two, a change request from either one is a change request, and every
+      # finding says which reviewer raised it.
+      - name: Merge and post review
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
-          RESULT: ${{ steps.agent.outputs.result-file }}
+          SECOND_ENABLED: ${{ needs.second-review.outputs.enabled }}
+          NAME_1: Reviewer 1 (${{ vars.REVIEW_LOOP_REVIEW_MODEL || 'default model' }})
+          NAME_2: Reviewer 2 (${{ vars.REVIEW_LOOP_SECOND_REVIEW_MODEL || 'default model' }})
         run: |
+          valid='type == "object" and (keys == ["body", "comments", "verdict"])
+            and (.verdict | IN("approve", "request_changes")) and (.body | type == "string")
+            and (.comments | type == "array")
+            and all(.comments[]; type == "object" and (keys == ["body", "line", "path"])
+              and (.path | type == "string") and (.body | type == "string")
+              and (.line | type == "number" and . == floor and . >= 1))'
+
+          first="$RUNNER_TEMP/results/review-result-1/agent-result.json"
+          second="$RUNNER_TEMP/results/review-result-2/second-agent-result.json"
+          if ! jq -e "$valid" "$first" > /dev/null 2>&1; then
+            echo "::error::No valid answer from the first reviewer."
+            exit 1
+          fi
+          note=""
+          if [ "$SECOND_ENABLED" != true ]; then
+            echo '[]' > "$RUNNER_TEMP/second.json"
+          elif jq -e "$valid" "$second" > /dev/null 2>&1; then
+            jq -s . "$second" > "$RUNNER_TEMP/second.json"
+          else
+            echo "::warning::No valid answer from the second reviewer; posting the first alone."
+            echo '[]' > "$RUNNER_TEMP/second.json"
+            note="_$NAME_2 gave no valid answer this round; this review is $NAME_1's alone._"
+          fi
+
+          result="$RUNNER_TEMP/result.json"
+          jq -n --slurpfile one "$first" --slurpfile two "$RUNNER_TEMP/second.json" \
+            --arg n1 "$NAME_1" --arg n2 "$NAME_2" --arg note "$note" '
+              $one[0] as $a | $two[0][0] as $b
+              | if $b == null then
+                  $a | .body += (if $note == "" then "" else "\n\n" + $note end)
+                else {
+                  verdict: (if [$a.verdict, $b.verdict] | index("request_changes")
+                            then "request_changes" else "approve" end),
+                  body: "### \($n1)\n\n\($a.body)\n\n### \($n2)\n\n\($b.body)",
+                  comments: ($a.comments + [$b.comments[] | .body = "_\($n2):_ " + .body])
+                } end' > "$result"
+
           payload="$RUNNER_TEMP/review.json"
           jq --arg sha "$HEAD_SHA" '{
               commit_id: $sha,
               event: (if .verdict == "approve" then "APPROVE" else "REQUEST_CHANGES" end),
               body: .body,
               comments: [.comments[] | {path, line, side: "RIGHT", body}]
-            }' "$RESULT" > "$payload"
+            }' "$result" > "$payload"
 
           # GitHub rejects the whole review when one comment points outside
           # the diff. Fall back to listing the comments in the body.
@@ -194,7 +396,7 @@ jobs:
               | gh api -X POST "repos/$GH_REPO/pulls/$PR/reviews" --input - > /dev/null
           fi
 
-          if [ "$(jq -r .verdict "$RESULT")" = approve ]; then
+          if [ "$(jq -r .verdict "$result")" = approve ]; then
             gh label create ready-for-human --color 0e8a16 \
               --description "Review loop approved; ready for human review" 2>/dev/null || true
             gh pr edit "$PR" --add-label ready-for-human
@@ -203,7 +405,7 @@ jobs:
       # A failed review would otherwise leave the PR with no verdict and no
       # label, since the gate already removed ready-for-human.
       - name: Hand over to a human
-        if: failure() && steps.gate.outputs.run == 'true'
+        if: failure()
         env:
           GH_TOKEN: ${{ steps.bot.outputs.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
