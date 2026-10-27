@@ -29,6 +29,12 @@ misread code. Acting on such a claim adds a bug and costs a round.
   signature, or how it behaves), find it in the installed source:
   `packages/api/vendor/` for PHP, `node_modules/` for JS. Check the version
   the lock file pins, not what you remember.
+- Search tools skip gitignored trees when they walk from the repo root, so
+  an empty search there proves nothing. For PHP, search with the path set to
+  the package, such as `packages/api/vendor/<vendor>/<package>`. For JS,
+  find the file with Glob, then Read it: Grep skips the nested
+  `node_modules` that pnpm uses. An empty result is never evidence that a
+  symbol is missing; only reading the file is.
 - If the claim holds, fix it. If it does not, leave it and say in the commit
   message body which item, what you checked, and what you found (file and
   line). The reviewer reads the commit log. If you reject every item and

@@ -202,7 +202,7 @@ jobs:
   review:
     needs: context
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -211,16 +211,12 @@ jobs:
           sparse-checkout: .github/review-loop
           persist-credentials: false
 
-      - uses: actions/checkout@v7
+      # With the installed dependencies, so the reviewer can check what the
+      # fixer cites from them.
+      - uses: ./loop/.github/review-loop/prepare
         with:
           ref: ${{ env.HEAD_SHA }}
-          path: pr
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+          php-vendor: "true"
 
       - uses: actions/download-artifact@v8
         with:
@@ -251,7 +247,7 @@ jobs:
   second-review:
     needs: context
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     continue-on-error: true
     outputs:
       enabled: ${{ steps.enabled.outputs.enabled }}
@@ -276,13 +272,11 @@ jobs:
           sparse-checkout: .github/review-loop
           persist-credentials: false
 
-      - uses: actions/checkout@v7
+      - uses: ./loop/.github/review-loop/prepare
         if: steps.enabled.outputs.enabled == 'true'
         with:
           ref: ${{ env.HEAD_SHA }}
-          path: pr
-          fetch-depth: 0
-          persist-credentials: false
+          php-vendor: "true"
 
       - uses: actions/download-artifact@v8
         if: steps.enabled.outputs.enabled == 'true'
@@ -300,11 +294,12 @@ jobs:
         run: |
           mkdir -p .review-loop
           git diff "$MERGE_BASE" HEAD > .review-loop/change.diff
-          git log --oneline "$MERGE_BASE..HEAD" > .review-loop/commits.txt
+          git log "$MERGE_BASE..HEAD" > .review-loop/commits.txt
           {
             echo
-            echo "The change is also saved as \`.review-loop/change.diff\` and its commits as"
-            echo "\`.review-loop/commits.txt\` in the working directory, in case you cannot run git."
+            echo "The change is also saved as \`.review-loop/change.diff\` and its commits, with"
+            echo "their full messages, as \`.review-loop/commits.txt\` in the working directory,"
+            echo "in case you cannot run git."
           } >> "$RUNNER_TEMP/context/prompt.md"
 
       - name: Review

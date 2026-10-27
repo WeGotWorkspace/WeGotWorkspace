@@ -106,12 +106,16 @@ runs:
         # A tool outside the allowed list is refused, and the agent carries
         # on. Log the refusals, so a claim like "I ran the tests" can be
         # checked against what it could actually do.
+        # Best effort: output that is not JSON is reported below. Each line
+        # gets a prefix, so a refused command cannot pass as a workflow
+        # command.
         denied=$(jq -r '[.permission_denials[]?
-            | .tool_name + (.tool_input.command // "" | if . == "" then "" else ": " + . end)]
-            | unique | .[]' "$out")
+            | (.tool_name | tostring)
+              + (.tool_input.command // "" | tostring | if . == "" then "" else ": " + . end)]
+            | unique | .[]' "$out" 2>/dev/null) || denied=""
         if [ -n "$denied" ]; then
           echo "::notice::The agent tried tools it may not use; they were refused."
-          printf '%s\n' "$denied"
+          printf '%s\n' "$denied" | sed 's/^/denied: /'
         fi
 
         if ! jq -e '.structured_output' "$out" > "$result"; then

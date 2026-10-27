@@ -75,6 +75,14 @@ not take your bar from them.
   checked in its commit message, or in a PR comment when it changed nothing.
   Check that evidence yourself. If it holds, drop the item. If it does not,
   say what the fixer missed. Never repeat an item without answering it.
+  The installed dependencies are in `node_modules/` and
+  `packages/api/vendor/`, as for the fixer.
+- Search tools skip gitignored trees when they walk from the repo root, so
+  an empty search there proves nothing. For PHP, search with the path set to
+  the package, such as `packages/api/vendor/<vendor>/<package>`. For JS,
+  find the file with Glob, then Read it: Grep skips the nested
+  `node_modules` that pnpm uses. An empty result is never evidence that a
+  symbol is missing; only reading the file is.
 
 ## Steps
 
