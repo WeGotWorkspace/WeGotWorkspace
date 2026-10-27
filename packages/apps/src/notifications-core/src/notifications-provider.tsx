@@ -129,8 +129,15 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     const timer = window.setInterval(() => {
       void refresh();
     }, NOTIFICATIONS_INBOX_POLL_MS);
+    // Hidden tabs poll late (timer throttling). On becoming visible, re-fetch so
+    // rows that arrived meanwhile are acked within the local-ack grace.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       refreshAbortRef.current?.abort();
       for (const retry of hintRetryTimersRef.current) {
         window.clearTimeout(retry);
