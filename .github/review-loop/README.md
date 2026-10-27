@@ -41,6 +41,9 @@ GitHub keeps a change request in force until it is dismissed. To merge over
 the bot, for example when a reviewer's blocking item is wrong, dismiss that
 review with the reason.
 
+When a PR is merged or closed, `review-loop-cleanup.yml` removes
+`ready-for-human` and `needs-human`, so the labels list only open work.
+
 ## Polish round
 
 Non-blocking notes on an approved PR tend to stay unread. So when a reviewer
@@ -123,7 +126,7 @@ loop's own GitHub App, so the bot identity does not change with the vendor.
 | `second-agent/action.yml` | Yes: the second reviewer (now Cursor CLI) |
 | `review-prompt.md`, `fix-prompt.md` | No |
 | `review.schema.json`, `fix.schema.json` | No |
-| `prepare/action.yml`, all five workflows | No |
+| `prepare/action.yml`, the workflows | No |
 
 To switch vendor, rewrite the steps of one adapter and replace its secret.
 `agent/action.yml` keeps its inputs (`mode`, `prompt-file`, `schema-file`,
