@@ -1,12 +1,18 @@
 name: Review loop prepare
 description: >-
   Checks out the pull request into pr/ with full history and installs the JS
-  workspace. Credentials are not persisted, so the agent cannot push.
+  workspace, and optionally the API's Composer dependencies. Credentials are
+  not persisted, so the agent cannot push.
 
 inputs:
   ref:
     description: Commit or branch of the pull request to check out.
     required: true
+  php-vendor:
+    description: >-
+      "true" installs packages/api/vendor, so the agent can read the PHP
+      libraries it works against. Nothing runs PHP afterwards.
+    default: "false"
 
 runs:
   using: composite
@@ -32,3 +38,35 @@ runs:
       shell: bash
       working-directory: pr
       run: pnpm install --frozen-lockfile
+
+    # Read-only reference for the agent: no scripts or plugins, and platform
+    # checks off because no PHP code runs. A failure only costs the agent that
+    # reference, so none of these steps fails the job.
+    - uses: shivammathur/setup-php@v2
+      if: inputs.php-vendor == 'true'
+      continue-on-error: true
+      with:
+        php-version: "8.3"
+        coverage: none
+
+    # Exact key only: a vendor/ restored for another lock file would show the
+    # agent the wrong versions.
+    - name: Cache Composer vendor
+      if: inputs.php-vendor == 'true'
+      uses: actions/cache@v6
+      with:
+        path: pr/packages/api/vendor
+        key: ${{ runner.os }}-review-loop-composer-${{ hashFiles('pr/packages/api/composer.lock') }}
+
+    - name: Install API Composer dependencies
+      if: inputs.php-vendor == 'true'
+      shell: bash
+      working-directory: pr
+      run: |
+        if ! composer --working-dir packages/api install --no-interaction --prefer-dist \
+            --no-scripts --no-plugins --no-progress --ignore-platform-reqs; then
+          # A half-installed tree would pass for the locked versions, and get
+          # cached under this lock file's key.
+          rm -rf packages/api/vendor
+          echo "::warning::Composer install failed; the agent works without packages/api/vendor."
+        fi

@@ -162,7 +162,7 @@ jobs:
             echo "- Repository: $GH_REPO"
             echo "- PR: $PR, head $HEAD_SHA, merge base $merge_base"
             echo "- The change: \`git diff $merge_base HEAD\`"
-            echo "- Its commits: \`git log --oneline $merge_base..HEAD\`"
+            echo "- Its commits, with the fixer's notes in the bodies: \`git log $merge_base..HEAD\`"
             echo
             echo "### Linked issues"
             echo
@@ -191,6 +191,15 @@ jobs:
                   | if length == 0 then "None. This is the first round."
                     else map("#### \(.state) on \(.commit_id[0:7])\n\n\(.body)") | join("\n\n") end'
             echo
+            # The loop's notes, such as a fix round that changed nothing and why.
+            echo "### Earlier loop notes on this PR"
+            echo
+            gh api "repos/$GH_REPO/issues/$PR/comments" --paginate --slurp \
+              | jq -r --arg bot "$BOT" '[add[] | select(.user.login == $bot
+                    and (.body | contains("<!-- review-loop:human-push -->") | not))]
+                  | if length == 0 then "None."
+                    else map("#### \(.created_at)\n\n\(.body)") | join("\n\n") end'
+            echo
             echo "### Standards from main"
             for f in security/SKILL.md clean-code/smells.md; do
               echo
@@ -209,7 +218,7 @@ jobs:
   review:
     needs: context
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -218,16 +227,12 @@ jobs:
           sparse-checkout: .github/review-loop
           persist-credentials: false
 
-      - uses: actions/checkout@v7
+      # With the installed dependencies, so the reviewer can check what the
+      # fixer cites from them.
+      - uses: ./loop/.github/review-loop/prepare
         with:
           ref: ${{ env.HEAD_SHA }}
-          path: pr
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+          php-vendor: "true"
 
       - uses: actions/download-artifact@v8
         with:
@@ -258,7 +263,7 @@ jobs:
   second-review:
     needs: context
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     continue-on-error: true
     outputs:
       enabled: ${{ steps.enabled.outputs.enabled }}
@@ -283,13 +288,11 @@ jobs:
           sparse-checkout: .github/review-loop
           persist-credentials: false
 
-      - uses: actions/checkout@v7
+      - uses: ./loop/.github/review-loop/prepare
         if: steps.enabled.outputs.enabled == 'true'
         with:
           ref: ${{ env.HEAD_SHA }}
-          path: pr
-          fetch-depth: 0
-          persist-credentials: false
+          php-vendor: "true"
 
       - uses: actions/download-artifact@v8
         if: steps.enabled.outputs.enabled == 'true'
@@ -307,11 +310,12 @@ jobs:
         run: |
           mkdir -p .review-loop
           git diff "$MERGE_BASE" HEAD > .review-loop/change.diff
-          git log --oneline "$MERGE_BASE..HEAD" > .review-loop/commits.txt
+          git log "$MERGE_BASE..HEAD" > .review-loop/commits.txt
           {
             echo
-            echo "The change is also saved as \`.review-loop/change.diff\` and its commits as"
-            echo "\`.review-loop/commits.txt\` in the working directory, in case you cannot run git."
+            echo "The change is also saved as \`.review-loop/change.diff\` and its commits, with"
+            echo "their full messages, as \`.review-loop/commits.txt\` in the working directory,"
+            echo "in case you cannot run git."
           } >> "$RUNNER_TEMP/context/prompt.md"
 
       - name: Review

@@ -11,6 +11,15 @@ reviewers approve. A human then reviews. Nothing is merged automatically.
   agent to edit files, then commits them as one signed commit. That push
   starts the next review.
 
+Reviewers are sometimes wrong, for example about a library API that does not
+exist. So the fixer treats each blocking item as a claim: it checks it
+against the code and the installed dependencies (`node_modules/`, and
+`packages/api/vendor/`, which its job installs for reading) before acting. A
+wrong item is rejected with what was checked, in the commit message or, when
+nothing changed, the hand-over comment. The next review sees both, on a
+runner with the same dependencies installed, and must answer that evidence
+rather than repeat the item.
+
 Each of the two is a thin trigger that calls its logic,
 `review-loop-review-job.yml` or `review-loop-fix-job.yml`, at `@main`. GitHub
 reads a PR's workflow files from the PR's test merge, which can lag behind
