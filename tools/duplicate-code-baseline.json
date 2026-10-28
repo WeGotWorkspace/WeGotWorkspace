@@ -1,0 +1,15 @@
+{
+  "jscpd": "5.4.1",
+  "minTokens": 70,
+  "minLines": 10,
+  "scopes": {
+    "packages/api/app": {
+      "clones": 330,
+      "duplicatedLines": 5390
+    },
+    "packages/apps/src": {
+      "clones": 101,
+      "duplicatedLines": 1755
+    }
+  }
+}
