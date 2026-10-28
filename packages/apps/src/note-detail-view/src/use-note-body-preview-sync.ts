@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type * as Y from "yjs";
+import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
 
 export type NoteBodyPreviewSource = "local-edit" | "hydrate";
 export type NoteBodyPreviewListener = (markdown: string, source?: NoteBodyPreviewSource) => void;
@@ -27,6 +28,8 @@ export function useNoteBodyPreviewSync(
 ) {
   const listenerRef = useRef(onBodyMarkdownChange);
   listenerRef.current = onBodyMarkdownChange;
+  const ydocRef = useRef(ydoc);
+  if (ydoc) ydocRef.current = ydoc;
   const getMarkdownRef = useRef<(() => string) | null>(null);
   const lastNotifiedRef = useRef<string | null>(null);
   const localTimerRef = useRef<number | undefined>(undefined);
@@ -40,8 +43,14 @@ export function useNoteBodyPreviewSync(
     try {
       markdown = getMarkdown();
     } catch {
-      // The editor can be gone during unmount; the Y.Doc still holds the text.
-      return;
+      // The editor is gone during unmount; the Y.Doc still holds the text.
+      const doc = ydocRef.current;
+      if (!doc) return;
+      try {
+        markdown = readContentFromYDoc(doc, "markdown");
+      } catch {
+        return;
+      }
     }
     // TipTap/Yjs can emit many updates for the same document; skip duplicates so
     // list setState does not loop (Maximum update depth exceeded).

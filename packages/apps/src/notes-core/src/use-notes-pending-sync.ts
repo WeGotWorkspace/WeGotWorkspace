@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
-import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
+import {
+  hasNoteCollabPendingServerSave,
+  noteCollabRoomKey,
+} from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
+import {
+  isCollabRoomPendingServerSave,
+  setCollabRoomPendingServerSave,
+} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
 const POLL_INTERVAL_MS = 4000;
@@ -15,6 +22,8 @@ export function useNotesPendingSync(
 ): ReadonlySet<string> {
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
   const { online } = useConnectivity();
+  // Databases are scanned once per session; later polls read the shared record.
+  const seededRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!username) {
@@ -24,10 +33,19 @@ export function useNotesPendingSync(
     try {
       const ids = new Set(await listPendingNoteIds(username));
       const cached = await readNotesBootstrapFromCache(username);
-      const existingDatabaseNames = await listExistingIndexedDatabaseNames();
-      for (const note of cached?.data.notes ?? []) {
+      const notes = cached?.data.notes ?? [];
+      if (!seededRef.current) {
+        // Seeds the record from databases that predate it (one scan, not per poll).
+        const existingDatabaseNames = await listExistingIndexedDatabaseNames();
+        for (const note of notes) {
+          const pending = await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames);
+          setCollabRoomPendingServerSave(noteCollabRoomKey(note.id), pending);
+        }
+        seededRef.current = true;
+      }
+      for (const note of notes) {
         if (ids.has(note.id)) continue;
-        if (await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames)) ids.add(note.id);
+        if (isCollabRoomPendingServerSave(noteCollabRoomKey(note.id))) ids.add(note.id);
       }
       // Same ids → keep the old set, so the list does not re-render every poll.
       setPendingIds((prev) => (sameIdSet(prev, ids) ? prev : ids));

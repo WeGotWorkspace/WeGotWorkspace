@@ -7,6 +7,10 @@ import {
   useNoteBodyPreviewSync,
 } from "@/note-detail-view/src/use-note-body-preview-sync";
 
+vi.mock("@/text-editor-core/docs-collab/docs-collab-editor-surface", () => ({
+  readContentFromYDoc: vi.fn(() => "body from the doc"),
+}));
+
 function setup() {
   const ydoc = new Y.Doc();
   const listener = vi.fn();
@@ -65,6 +69,18 @@ describe("useNoteBodyPreviewSync (#1714)", () => {
     hook.unmount();
 
     expect(listener).toHaveBeenCalledWith("last words", "local-edit");
+  });
+
+  it("reads the body from the Y.Doc when the editor is gone on unmount", () => {
+    const { listener, hook, type, getMarkdown } = setup();
+    type("last words");
+    getMarkdown.mockImplementation(() => {
+      throw new Error("view destroyed");
+    });
+
+    hook.unmount();
+
+    expect(listener).toHaveBeenCalledWith("body from the doc", "local-edit");
   });
 
   it("reports the last edit when the page hides mid-pause", () => {
