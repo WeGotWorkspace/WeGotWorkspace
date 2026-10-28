@@ -17,12 +17,18 @@ import {
 import {
   DOC_STATUS_ACCESS_LOST,
   DOC_STATUS_DOCUMENT_GONE,
+  DOC_STATUS_NOTE_ARCHIVED,
   DOC_STATUS_NOTE_TOO_LARGE,
 } from "./docs-collab-status";
-import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
+import type {
+  DocsCollabSaveTerminalKind,
+  DocsCollabSessionRefs,
+  DocsCollabUrls,
+} from "./docs-collab-types";
 import {
   collabErrorStatus,
   docSignature,
+  isArchivedRefusal,
   isCollabDocumentGoneError,
   isCollabPayloadTooLarge,
   isExternalWriteRefusal,
@@ -167,8 +173,12 @@ export function useDocsCollabSave({
         refs.saveTerminalKindRef.current = terminal;
         refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
         refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
-        await updatePendingState(true, true);
-        if (terminal === "gone") {
+        // Archive wins (#1535): nothing stays pending for a later retry.
+        await updatePendingState(terminal !== "archived", terminal !== "archived");
+        if (terminal === "archived") {
+          urls.onPersistArchived?.();
+          setDocStatus(DOC_STATUS_NOTE_ARCHIVED);
+        } else if (terminal === "gone") {
           urls.onDocumentGone?.();
           setDocStatus(DOC_STATUS_DOCUMENT_GONE);
         } else if (terminal === "forbidden") {
@@ -264,7 +274,8 @@ export function useDocsCollabSave({
 
 export { SAVE_DELAY_MS };
 
-function terminalSaveFailure(error: unknown): "gone" | "forbidden" | "too-large" | null {
+function terminalSaveFailure(error: unknown): DocsCollabSaveTerminalKind | null {
+  if (isArchivedRefusal(error)) return "archived";
   if (isCollabDocumentGoneError(error)) return "gone";
   if (collabErrorStatus(error) === 403) return "forbidden";
   if (isCollabPayloadTooLarge(error)) return "too-large";

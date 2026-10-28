@@ -365,17 +365,19 @@ export function DriveWorkspace({
         shareOperations={shareOperations}
         shareDialog={shareDialog}
       />
-      <input
-        ref={controller.fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        aria-label={labels.uploadFiles}
-        onChange={(e) => {
-          controller.handleUpload(e.target.files);
-          e.target.value = "";
-        }}
-      />
+      {controller.uploadEnabled ? (
+        <input
+          ref={controller.fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          aria-label={labels.uploadFiles}
+          onChange={(e) => {
+            controller.handleUpload(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }
@@ -397,8 +399,15 @@ function DriveSidebar({
   primarySidebarItems: ReturnType<typeof useDriveSidebarModel>["primarySidebarItems"];
   groupSidebarItems: ReturnType<typeof useDriveSidebarModel>["groupSidebarItems"];
 }) {
-  const { labels, sidebarOpen, setSidebarOpen, createFolder, createMarkdown, fileInputRef } =
-    controller;
+  const {
+    labels,
+    sidebarOpen,
+    setSidebarOpen,
+    createFolder,
+    createMarkdown,
+    fileInputRef,
+    uploadEnabled,
+  } = controller;
 
   return (
     <AppSidebar
@@ -417,8 +426,8 @@ function DriveSidebar({
         <DriveNewMenu
           labels={labels}
           onCreateFolder={createFolder}
-          onUploadFiles={() => fileInputRef.current?.click()}
-          onCreateMarkdown={onOpenDocsFile ? createMarkdown : undefined}
+          onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
+          onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
         />
       }
     >

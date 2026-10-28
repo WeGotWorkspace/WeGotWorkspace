@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Installer;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\Card;
 use App\Models\JmapContactState;
@@ -15,14 +16,13 @@ use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 /**
  * Writes deterministic vCard 4.0 cards into a local-dev user's personal address book.
  *
  * Uses CardDAV PDO (not ContactCardRepository) so ~1000 creates stay fast.
  * Search indexing and mutation events are skipped on create. JMAP state rows
- * appear on first read. --force deletes through CardPDO::deleteCard and clears
+ * appear on first read. --force deletes through WgwCardBackend::deleteCard and clears
  * leftover state rows so a recreated card does not keep a stale state token.
  */
 class DevContactSeeder
@@ -89,7 +89,7 @@ class DevContactSeeder
     }
 
     /**
-     * Deletes dev-seed cards and the derived rows CardPDO::deleteCard leaves behind.
+     * Deletes dev-seed cards and the derived rows WgwCardBackend::deleteCard leaves behind.
      * Tests call this on its own. seed() keeps it inside the same transaction as recreate.
      */
     protected function deleteSeededCards(string $username): int
@@ -154,8 +154,8 @@ class DevContactSeeder
         return $book;
     }
 
-    private function carddav(): CardPDO
+    private function carddav(): WgwCardBackend
     {
-        return new CardPDO(DB::connection('wgw')->getPdo());
+        return WgwCardBackend::fromConnection();
     }
 }

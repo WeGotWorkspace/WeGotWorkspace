@@ -339,7 +339,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
   );
 
   const moveToNotebook = useCallback(
-    (ids: string[], notebook: string) => {
+    (requestedIds: string[], notebook: string) => {
+      // An archived note does not move until it is restored (#1535).
+      const ids = requestedIds.filter((id) => !archived[id]);
+      if (ids.length === 0) return;
       const dest = notebookCollections.find((item) => item.id === notebook) ??
         notebookCollections.find((item) => item.name === notebook) ?? {
           id: notebook,
@@ -438,7 +441,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       if (!isValidNewTag(tag)) return;
       const assignableIds = ids.filter((id) => {
         const note = notes.find((row) => row.id === id);
-        return note ? noteAllowsTagAssignment(note, true) : false;
+        return note && !note.archived ? noteAllowsTagAssignment(note, true) : false;
       });
       if (assignableIds.length === 0) return;
       const before = notes.filter((note) => assignableIds.includes(note.id));
@@ -683,6 +686,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
     starableSelected.length > 0 && starableSelected.every((note) => !!starred[note.id]);
   const allSelectedArchived =
     selectedRows.length > 0 && selectedRows.every((note) => !!archived[note.id]);
+  const someSelectedArchived = selectedRows.some((note) => !!archived[note.id]);
   const allSelectedAllowStructure =
     selectedRows.length > 0 && selectedRows.every((note) => noteAllowsStructureManage(note));
   const showSelectionArchive = allSelectedAllowStructure;
@@ -715,11 +719,15 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
             },
           ]
         : []),
-      {
-        label: L.selectionMoveToNotebook,
-        icon: <Notebook className="size-4" />,
-        onClick: () => setMoveDialog({ ids: selectedIds }),
-      },
+      ...(someSelectedArchived
+        ? []
+        : [
+            {
+              label: L.selectionMoveToNotebook,
+              icon: <Notebook className="size-4" />,
+              onClick: () => setMoveDialog({ ids: selectedIds }),
+            },
+          ]),
       ...(showSelectionDelete
         ? [
             {
@@ -739,6 +747,7 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
       requestDeleteSelected,
       selectedIds,
       showSelectionArchive,
+      someSelectedArchived,
       showSelectionDelete,
       starableSelected.length,
       L.swipeUnstar,

@@ -48,7 +48,7 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `calendars` | `App\Models\Calendar` | CalDAV calendar collection root (`components` includes `VTODO` for task lists and `VJOURNAL` for note notebooks) |
 | `note_stars` | `App\Models\NoteStar` | Per-user note stars: `id`; `username` (string 255); `calendar_object_id` (unsigned int, FK → `calendarobjects.id` ON DELETE CASCADE); `note_uid` (string 200). Unique `(username, calendar_object_id)`; index on `note_uid`. |
 | `calendarinstances` | `App\Models\CalendarInstance` | Per-principal calendar instances (Calendars REST reads; Tasks REST `TaskList.id` = instance `uri`) |
-| `cards` | `App\Models\Card` | CardDAV vCards (search indexer joins) |
+| `cards` | `App\Models\Card` | CardDAV vCards (search indexer joins). `uid` is the normalized vCard UID (`CardUid`: no `urn:uuid:`, lower-case; hashed past 255 bytes), written by `App\Dav\Server\WgwCardBackend` on every card write. Unique `(addressbookid, uid)` (RFC 6352 §5.1, #1609) and `(addressbookid, uri)` on both engines. |
 | `addressbooks` | `App\Models\Addressbook` | CardDAV address books (Contacts REST reads) |
 | `addressbook_shares` | `App\Models\AddressBookShare` | RFC 9670 AddressBook shareWith grants (`addressbookid` + `principaluri` + Sabre access 2/3). No calendarinstances analog. |
 | `addressbook_share_dismissals` | `App\Models\AddressBookShareDismissal` | Per-user hide of an inbound address-book share (`username` + `addressbookid`). Owner shareWith is unchanged; restore deletes the row. |

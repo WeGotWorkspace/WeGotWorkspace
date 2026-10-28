@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Notes;
 
-use App\Exceptions\ApiHttpException;
 use App\Models\Calendar;
 use App\Models\CalendarChange;
 use App\Models\CalendarObject;
+use App\Services\VObject\VJournalUidGuard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,24 +20,17 @@ final class NoteMoveHelper
 
     public const OP_DELETE = 3;
 
+    public const UID_CONFLICT = 'A note with this UID already exists.';
+
+    public function __construct(private readonly VJournalUidGuard $uidGuard) {}
+
     /**
      * UID is the collab room key. Uniqueness is global across VJOURNAL objects.
      * When $exceptCalendarId is set (a move), the source calendar is ignored.
      */
     public function assertUidAvailable(string $uid, ?int $exceptCalendarId = null): void
     {
-        // Inside a create transaction this also holds the UID until the insert
-        // (MySQL row/gap lock; SQLite already holds the write lock).
-        $query = CalendarObject::query()
-            ->where('uid', $uid)
-            ->where('componenttype', 'VJOURNAL')
-            ->lockForUpdate();
-        if ($exceptCalendarId !== null) {
-            $query->where('calendarid', '!=', $exceptCalendarId);
-        }
-        if ($query->exists()) {
-            throw new ApiHttpException(409, 'A note with this UID already exists.', 'alreadyExists');
-        }
+        $this->uidGuard->assertAvailable($uid, self::UID_CONFLICT, $exceptCalendarId);
     }
 
     public function move(CalendarObject $object, int $destinationCalendarId): void

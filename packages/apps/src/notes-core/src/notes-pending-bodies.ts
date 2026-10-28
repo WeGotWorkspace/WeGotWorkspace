@@ -1,5 +1,6 @@
 import { noteFromRow } from "@/lib/offline/notes-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
+import { settleNoteArchivedElsewhere } from "@/lib/offline/notes/notes-archived-elsewhere";
 import { noteCollabRoomKey } from "@/lib/offline/notes/notes-collab-rooms";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { type PendingCollabRoom, uploadPendingCollabRooms } from "@/text-editor-core/docs-collab";
@@ -31,7 +32,10 @@ export async function uploadPendingNoteBodies(username: string): Promise<void> {
     rooms.push({
       room,
       databaseName,
-      urls: () => buildNoteCollabUrls(note.id),
+      urls: () =>
+        buildNoteCollabUrls(note.id, {
+          onPersistArchived: () => void settleNoteArchivedElsewhere(username, note.id),
+        }),
       format: "markdown",
     });
   }

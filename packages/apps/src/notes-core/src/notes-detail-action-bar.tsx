@@ -60,8 +60,9 @@ export function NotesDetailActionBar({
 
   const sharedInbox = !!active.sharedInbox;
   // Writable group notebooks are My notebooks — same move as personal.
-  // Lock only inbound Shared-with-me leftovers and view-only shares.
-  const notebookLocked = sharedInbox || readOnly;
+  // Lock inbound Shared-with-me leftovers, view-only shares, and archived
+  // notes, which do not move until they are restored (#1535).
+  const notebookLocked = sharedInbox || readOnly || !!archived[active.id];
   const showStar = noteShowsStarControls(active);
   const archiveLocked = !canArchive;
   // Personal shares: keep grantor username on the list row only — detail switcher
