@@ -241,6 +241,7 @@ final class DriveShareAtPathQuery
 
         /** @var array<string, list<array{candidate: array{shareId: string, rootPath: string, access: string, kind: string, ownerUsername: string, grantKind: string, grantId: string, granteeGroup: string|null, granteeEmail: string|null}, grant: DriveShareGrant}>> $buckets */
         $buckets = [];
+        $ownerGroupSlugs = [];
         foreach ($grants as $grant) {
             $principalKey = $this->principalKeyForGrant($grant);
             if ($principalKey === null) {
@@ -257,7 +258,7 @@ final class DriveShareAtPathQuery
                 continue;
             }
 
-            $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, $grantKind);
+            $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, $grantKind, $ownerGroupSlugs);
             if ($candidate === null) {
                 continue;
             }
@@ -377,6 +378,7 @@ final class DriveShareAtPathQuery
             ->all();
 
         $entries = [];
+        $ownerGroupSlugs = [];
         foreach ($usernameList as $username) {
             $userGroupSlugs = [];
             foreach (array_keys($groupsByUsername[$username] ?? []) as $groupKey) {
@@ -388,7 +390,7 @@ final class DriveShareAtPathQuery
                 if ($grant->grantee_type === 'user'
                     && $grant->status === 'active'
                     && strcasecmp((string) $grant->grantee_user, $username) === 0) {
-                    $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, 'user');
+                    $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, 'user', $ownerGroupSlugs);
                     if ($candidate !== null) {
                         $candidates[] = $candidate;
                     }
@@ -396,7 +398,7 @@ final class DriveShareAtPathQuery
                     && $grant->status === 'active'
                     && $grant->grantee_group !== null
                     && in_array((string) $grant->grantee_group, $userGroupSlugs, true)) {
-                    $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, 'group');
+                    $candidate = $this->grantResolver->candidateFromGrant($grant, $requestedPath, $now, 'group', $ownerGroupSlugs);
                     if ($candidate !== null) {
                         $candidates[] = $candidate;
                     }

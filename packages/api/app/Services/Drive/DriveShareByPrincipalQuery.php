@@ -21,6 +21,7 @@ final class DriveShareByPrincipalQuery
         private DriveSharePresenter $presenter,
         private DriveShareScopedGrants $scopedGrants,
         private GroupDirectoryService $groupDirectory,
+        private DriveShareOwnerReach $ownerReach,
     ) {}
 
     /**
@@ -47,6 +48,10 @@ final class DriveShareByPrincipalQuery
             ->where('owner_username', $owner)
             ->whereNull('revoked_at')
             ->get();
+        $ownerGroupSlugs = [];
+        $shares = $shares->filter(function (DriveShare $share) use (&$ownerGroupSlugs): bool {
+            return $this->ownerReach->ownerReachesShare($share, $ownerGroupSlugs);
+        });
 
         if ($scopePath !== null) {
             $shares = $shares->filter(function (DriveShare $share) use ($scopePath): bool {
