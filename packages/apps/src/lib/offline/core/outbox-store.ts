@@ -98,6 +98,7 @@ function isPermanentOutboxFailure(row: OfflineOutboxRow): boolean {
   if (typeof row.lastStatus === "number") {
     return row.lastStatus === 403 || row.lastStatus === 404;
   }
+  // eslint-disable-next-line no-restricted-syntax -- allowlisted (#1642): pre-`lastStatus` rows only
   return /failed \((?:403|404)\)/.test(row.lastError ?? "");
 }
 
