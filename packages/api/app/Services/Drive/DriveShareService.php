@@ -54,10 +54,7 @@ final class DriveShareService
 
         /** @var Collection<int, DriveShare> $shares */
         $shares = $query->get();
-        $ownerGroupSlugs = [];
-        $shares = $shares->filter(function (DriveShare $share) use (&$ownerGroupSlugs): bool {
-            return $this->ownerReach->ownerReachesShare($share, $ownerGroupSlugs);
-        });
+        $shares = $shares->filter(fn (DriveShare $share): bool => $this->ownerReach->ownerReachesShare($share));
 
         return array_values($shares->map(fn (DriveShare $share): array => $this->presenter->serializeShareForOwner($share))->all());
     }
@@ -381,11 +378,10 @@ final class DriveShareService
         $user = strtolower(trim($username));
         $groupSlugs = $this->groups->allowedGroupSlugs($user);
         $now = Carbon::now();
-        $ownerGroupSlugs = [];
-        $inForce = function (DriveShare $share) use ($now, &$ownerGroupSlugs): bool {
+        $inForce = function (DriveShare $share) use ($now): bool {
             return $this->presenter->isShareLive($share, $now)
                 && ! $this->scope->isInProductTrash((string) $share->path)
-                && $this->ownerReach->ownerReachesShare($share, $ownerGroupSlugs);
+                && $this->ownerReach->ownerReachesShare($share);
         };
 
         /** @var Collection<int, DriveShareGrant> $userGrants */

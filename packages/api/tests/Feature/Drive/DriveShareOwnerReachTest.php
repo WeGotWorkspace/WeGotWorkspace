@@ -7,6 +7,7 @@ namespace Tests\Feature\Drive;
 use App\Models\DriveShareGrant;
 use App\Models\GroupMember;
 use App\Models\Principal;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\DriveTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -140,6 +141,9 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
         $share = $this->createBoxShare(['carol' => ['access' => 'view']]);
         $shareId = (string) $share['id'];
         $this->removeBobFromTeam();
+        $this->assertAccessDenied(
+            $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
+        );
 
         $this->addBobToTeam();
 
@@ -148,6 +152,35 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.id', $shareId);
         $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
             ->assertOk();
+    }
+
+    public function test_owner_group_memberships_load_once_per_request(): void
+    {
+        foreach (['box', 'box2', 'box3'] as $folder) {
+            $this->seedGroupFile($folder.'/doc.md', 'team body');
+            $this->withBearer($this->userBearerToken())->postJson('/api/v1/files/shares', [
+                'path' => '/groups/team/'.$folder,
+                'kind' => 'member',
+                'defaultAccess' => 'view',
+                'shareWith' => ['carol' => ['access' => 'view']],
+            ])->assertOk();
+        }
+        $carol = $this->carolBearerToken();
+        $connection = DB::connection('wgw');
+        $connection->flushQueryLog();
+        $connection->enableQueryLog();
+
+        $this->withBearer($carol)->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonCount(3, 'data');
+
+        $ownerMembershipQueries = array_filter(
+            $connection->getQueryLog(),
+            static fn (array $query): bool => str_contains((string) $query['query'], 'groupmembers')
+                && in_array('principals/bob', $query['bindings'], true),
+        );
+        $connection->disableQueryLog();
+        $this->assertCount(1, $ownerMembershipQueries);
     }
 
     public function test_personal_shares_are_unaffected_by_group_removal(): void

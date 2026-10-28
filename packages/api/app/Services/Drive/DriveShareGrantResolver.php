@@ -94,7 +94,6 @@ final class DriveShareGrantResolver
     public function candidatesFromScopedGrants(Collection $grants, string $requestedPath, Carbon $now): array
     {
         $candidates = [];
-        $ownerGroupSlugs = [];
         foreach ($grants as $grant) {
             $grantKind = match ($grant->grantee_type) {
                 'user' => 'user',
@@ -106,7 +105,7 @@ final class DriveShareGrantResolver
                 continue;
             }
 
-            $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, $grantKind, $ownerGroupSlugs);
+            $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, $grantKind);
             if ($candidate !== null) {
                 $candidates[] = $candidate;
             }
@@ -145,9 +144,8 @@ final class DriveShareGrantResolver
             ->get();
 
         $candidates = [];
-        $ownerGroupSlugs = [];
         foreach ($userGrants as $grant) {
-            $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, 'user', $ownerGroupSlugs);
+            $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, 'user');
             if ($candidate !== null) {
                 $candidates[] = $candidate;
             }
@@ -163,7 +161,7 @@ final class DriveShareGrantResolver
                 ->get();
 
             foreach ($groupGrants as $grant) {
-                $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, 'group', $ownerGroupSlugs);
+                $candidate = $this->candidateFromGrant($grant, $requestedPath, $now, 'group');
                 if ($candidate !== null) {
                     $candidates[] = $candidate;
                 }
@@ -196,7 +194,6 @@ final class DriveShareGrantResolver
             ->get();
 
         $paths = [];
-        $ownerGroupSlugs = [];
         foreach ($grants as $grant) {
             $share = $grant->share;
             if ($share === null || $share->revoked_at !== null) {
@@ -209,7 +206,7 @@ final class DriveShareGrantResolver
             if ($this->scope->isInProductTrash($path)) {
                 continue;
             }
-            if (! $this->ownerReach->ownerReachesShare($share, $ownerGroupSlugs)) {
+            if (! $this->ownerReach->ownerReachesShare($share)) {
                 continue;
             }
             $paths[$path] = true;
@@ -222,7 +219,6 @@ final class DriveShareGrantResolver
      * Null when the grant's share is revoked, expired, trashed, dormant (owner no longer
      * reaches the share path) or does not cover $requestedPath.
      *
-     * @param  array<string, list<string>>  $ownerGroupSlugs  memo for one resolution pass
      * @return array{
      *   shareId: string,
      *   rootPath: string,
@@ -240,7 +236,6 @@ final class DriveShareGrantResolver
         string $requestedPath,
         Carbon $now,
         string $grantKind,
-        array &$ownerGroupSlugs = [],
     ): ?array {
         $share = $grant->share;
         if ($share === null || $share->revoked_at !== null) {
@@ -256,7 +251,7 @@ final class DriveShareGrantResolver
         if (! $this->scope->isWithin($sharePath, $requestedPath)) {
             return null;
         }
-        if (! $this->ownerReach->ownerReachesShare($share, $ownerGroupSlugs)) {
+        if (! $this->ownerReach->ownerReachesShare($share)) {
             return null;
         }
 

@@ -13,50 +13,59 @@ use App\Models\DriveShare;
  * from the group) is dormant: share management treats it as not found and its grants, invites
  * and public links resolve to nothing. Nothing is deleted, so the share works again as soon as
  * the owner regains access.
+ *
+ * Reach is decided per group (the group named in the path), not per folder inside it.
+ *
+ * Bound as a scoped singleton (WgwServiceProvider): group memberships are loaded at most once per
+ * principal per request, however many shares a request resolves. The provider clears the cache at
+ * the start of every request, so a membership change applies on the next request.
  */
 final class DriveShareOwnerReach
 {
+    /** @var array<string, list<string>> */
+    private array $groupSlugsByPrincipal = [];
+
     public function __construct(
         private DriveSharePathScope $scope,
         private DriveGroupResolver $groups,
     ) {}
 
-    /**
-     * @param  list<string>|null  $groupSlugs  current group slugs of $username; loaded when null and needed
-     */
-    public function principalReachesPath(string $username, string $path, ?array $groupSlugs = null): bool
+    public function principalReachesPath(string $username, string $path): bool
     {
+        $principal = trim($username);
         $segments = explode('/', ltrim($path, '/'));
         $name = (string) ($segments[1] ?? '');
-        if ($segments[0] === 'users') {
-            return $name !== '' && strcasecmp($name, $username) === 0;
+        if ($principal === '' || $name === '') {
+            return false;
         }
-        if ($segments[0] === 'groups' && $name !== '') {
-            return in_array($name, $groupSlugs ?? $this->groups->allowedGroupSlugs($username), true);
+        if ($segments[0] === 'users') {
+            return strcasecmp($name, $principal) === 0;
+        }
+        if ($segments[0] === 'groups') {
+            return in_array($name, $this->groupSlugsOf($principal), true);
         }
 
         return false;
     }
 
-    /**
-     * Group memberships are loaded once per owner into $groupSlugsByOwner, so one resolution pass
-     * over many shares costs at most one membership query per distinct owner of a group-path share.
-     * Callers start a fresh memo per pass, so a membership change applies on the next request.
-     *
-     * @param  array<string, list<string>>  $groupSlugsByOwner
-     */
-    public function ownerReachesShare(DriveShare $share, array &$groupSlugsByOwner = []): bool
+    public function ownerReachesShare(DriveShare $share): bool
     {
-        $owner = strtolower(trim((string) $share->owner_username));
-        $path = $this->scope->normalize((string) $share->path);
-        if ($owner === '') {
-            return false;
-        }
-        if (! str_starts_with($path, '/groups/')) {
-            return $this->principalReachesPath($owner, $path, []);
-        }
-        $groupSlugsByOwner[$owner] ??= $this->groups->allowedGroupSlugs($owner);
+        return $this->principalReachesPath(
+            strtolower((string) $share->owner_username),
+            $this->scope->normalize((string) $share->path),
+        );
+    }
 
-        return $this->principalReachesPath($owner, $path, $groupSlugsByOwner[$owner]);
+    public function forgetGroupMemberships(): void
+    {
+        $this->groupSlugsByPrincipal = [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function groupSlugsOf(string $principal): array
+    {
+        return $this->groupSlugsByPrincipal[$principal] ??= $this->groups->allowedGroupSlugs($principal);
     }
 }

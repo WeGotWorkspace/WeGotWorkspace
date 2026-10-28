@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
 use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
 use App\Services\Installer\InstallerIpv4Resolver;
 use App\Services\Installer\WgwConfigMigrator;
@@ -30,6 +31,16 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+
+        // Group memberships of share owners, cached for one request. Laravel only flushes scoped
+        // instances in Octane and queue workers, and route-cached controllers keep the instance
+        // they were built with, so the cache is also cleared in place whenever a request starts.
+        $this->app->scoped(DriveShareOwnerReach::class);
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(DriveShareOwnerReach::class)) {
+                $app->make(DriveShareOwnerReach::class)->forgetGroupMemberships();
+            }
+        });
 
         // JMAP envelope: the method-handler and capability-provider lists are
         // class constants (autowiring cannot construct lists); resolving them
