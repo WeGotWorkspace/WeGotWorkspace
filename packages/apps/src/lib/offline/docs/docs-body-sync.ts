@@ -11,6 +11,7 @@ import {
   sortDocsHomeResults,
   type DocsHomeFetcher,
 } from "@/docs-core/src/use-docs-home-list";
+import { backgroundSyncPacer } from "@/lib/offline/core/background-sync-pacer";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
   isEligibleForAutoContentSync,
@@ -25,7 +26,8 @@ import {
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
 
 const DOCS_BODY_SYNC_META_KEY = "docs:auto-sync:body-progress";
-const DOCS_BODY_SYNC_CONCURRENCY = 4;
+/** Low on purpose: the pacer sets the rate; this keeps browser connections free for the user. */
+const DOCS_BODY_SYNC_CONCURRENCY = 2;
 
 export type DocsBodySyncProgress = ProgressiveSyncProgress;
 
@@ -86,18 +88,25 @@ export async function syncDocsBodiesFromListingResults(
       isEligibleForAutoContentSync(row.size, settings),
   );
 
+  const pacer = backgroundSyncPacer();
   return runProgressiveSync({
     username,
     metaKey: DOCS_BODY_SYNC_META_KEY,
     items: queue,
     concurrency: DOCS_BODY_SYNC_CONCURRENCY,
     signal,
+    pacer,
     syncOne: async (row) => {
       const apiPath = `/${normalizeSourceKey(row.sourceKey)}`;
       await makeDocsOfflineAvailable(
         username,
         apiPath,
         fileLocationFromSourceKey(row.sourceKey, username),
+        {
+          beforeRequest: () => pacer.acquire(signal),
+          // Drive sync usually got here first; an unchanged document costs no request.
+          modifiedAtMs: (row.modifiedAt ?? 0) * 1000,
+        },
       );
     },
   });

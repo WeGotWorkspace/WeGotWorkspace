@@ -22,6 +22,8 @@ export const driveLabels = {
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
   folderListingLoading: "Loading folder…",
+  folderListingFailed: "This folder could not be loaded.",
+  folderListingRetry: "Try again",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",
   /** Chevron menu on the sidebar segmented New control. */

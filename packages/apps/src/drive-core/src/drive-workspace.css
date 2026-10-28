@@ -150,6 +150,10 @@
   @apply flex-1 min-h-0 min-w-0 w-full overflow-x-hidden overflow-y-auto;
 }
 
+.drive-workspace .drive-main-pane__listing-error {
+  @apply flex flex-col items-center gap-3;
+}
+
 .drive-workspace .workspace-app-layout__main {
   @apply isolate min-w-0;
 }

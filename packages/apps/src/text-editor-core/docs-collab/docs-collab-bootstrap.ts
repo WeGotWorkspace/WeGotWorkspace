@@ -83,6 +83,19 @@ async function loadSnapshotWithRetry(
   return { kind: "failed", error: lastError };
 }
 
+/** The snapshot alone, with the same retries and C7 outcome as the bootstrap. */
+export function loadSnapshotOutcome(
+  fetchSnapshot: () => Promise<YjsSnapshot>,
+  {
+    sleep = defaultSleep,
+    retryDelaysMs = SNAPSHOT_RETRY_DELAYS_MS,
+    isCurrent = () => true,
+    onAttemptFailed = () => undefined,
+  }: Omit<BootstrapLoadOptions, "loadMarkdown" | "fetchSnapshot"> = {},
+): Promise<SnapshotOutcome> {
+  return loadSnapshotWithRetry(fetchSnapshot, { sleep, retryDelaysMs, isCurrent, onAttemptFailed });
+}
+
 /**
  * Loads the markdown and the Yjs snapshot together. They used to run one after
  * the other, which added the markdown round trip to every open.

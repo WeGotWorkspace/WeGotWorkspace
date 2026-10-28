@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Cloud, Download } from "lucide-react";
+import { Cloud, CloudAlert, Download } from "lucide-react";
+import { Button } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { DriveViewIcon } from "@/drive-core/src/drive-view-icons";
 import { useAppToast } from "@/hooks/use-app-toast";
@@ -85,11 +86,19 @@ export function DriveMainPane({
     searchQuery,
     uploadProgress,
     folderListingPending,
+    folderListingError,
+    retryFolderListing,
     listLoading,
   } = controller;
 
   const showFolderListingBusy =
     view.type === "folder" && !searchQuery.trim() && (folderListingPending || listLoading);
+  // A failed listing is not an empty folder.
+  const showFolderListingError =
+    view.type === "folder" &&
+    !searchQuery.trim() &&
+    folderListingError?.path === view.path &&
+    visibleItems.length === 0;
 
   const { show, showError } = useAppToast();
   const { online } = useConnectivity();
@@ -224,6 +233,18 @@ export function DriveMainPane({
         <div className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
             <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
+          ) : showFolderListingError ? (
+            <CollectionState icon={<CloudAlert className="size-12" />}>
+              <div className="drive-main-pane__listing-error" role="alert">
+                <p>{labels.folderListingFailed}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={labels.folderListingRetry}
+                  onClick={retryFolderListing}
+                />
+              </div>
+            </CollectionState>
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
               {labels.emptyFolder}

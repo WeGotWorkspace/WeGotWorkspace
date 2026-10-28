@@ -64,11 +64,14 @@ function relativeLuminance(hex: string): number {
  */
 export class CollabHttpError extends Error {
   readonly status: number;
+  /** From `Retry-After` on a 429, so background sync can wait that long. */
+  readonly retryAfterMs: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfterMs: number | null = null) {
     super(message);
     this.name = "CollabHttpError";
     this.status = status;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
