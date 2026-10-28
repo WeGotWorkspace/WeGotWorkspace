@@ -36,6 +36,7 @@ describe("text editor extensions", () => {
     const extensions = createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user: { name: "Alex", color: "#2563eb" },
       format: "markdown",
     });
@@ -97,6 +98,7 @@ describe("text editor extensions", () => {
         extensions: createCollaborativeTextEditorExtensions({
           document: ydoc,
           awareness,
+          trackChangesUserKey: "alex:room",
           user: { name: "Alex", color: "#2563eb" },
           format: "markdown",
         }),

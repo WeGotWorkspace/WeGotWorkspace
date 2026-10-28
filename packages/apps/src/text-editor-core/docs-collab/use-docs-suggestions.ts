@@ -10,10 +10,12 @@ import {
 import type * as Y from "yjs";
 import type { DocsCommentAuthor } from "./docs-comments-types";
 import { createDocsThreadsMemory, type DocsThreadsMemoryClient } from "./docs-threads-memory";
-import type { DocsThreadsClient } from "./docs-threads-types";
-import type { DocsSuggestionWithThread } from "./docs-suggestions-types";
+import type { DocsFileThread, DocsThreadsClient } from "./docs-threads-types";
+import type { DocsSuggestionThread, DocsSuggestionWithThread } from "./docs-suggestions-types";
+import { suggestionAuthorFromThread } from "./docs-suggestions/docs-suggestion-author";
 import { useDocsSuggestionsActive } from "./use-docs-suggestions-active";
 import { useDocsSuggestionsMutations } from "./use-docs-suggestions-mutations";
+import { useDocsSuggestionThreadRoots } from "./use-docs-suggestions-thread-roots";
 import { useDocsThreadsSource, type DocsThreadsSource } from "./use-docs-threads-source";
 
 export type UseDocsSuggestionsOptions = {
@@ -38,19 +40,20 @@ export type UseDocsSuggestionsResult = {
   toggleReaction: (changeId: string, emoji: string) => void;
 };
 
+/**
+ * `journal` is the suggestion's thread root, archived or not: the author stays
+ * known even when an orphan prune archived the journal of a change that came
+ * back. Replies and reactions come from the open `thread` only.
+ */
 function mergeSuggestionWithThread(
   suggestion: DocsTrackChangeGroup,
-  threadMap: Map<
-    string,
-    {
-      messages: DocsSuggestionWithThread["messages"];
-      reactions?: DocsSuggestionWithThread["reactions"];
-    }
-  >,
+  thread: DocsSuggestionThread | undefined,
+  journal: DocsFileThread | undefined,
 ): DocsSuggestionWithThread {
-  const thread = threadMap.get(suggestion.changeId);
   return {
     ...suggestion,
+    ...suggestionAuthorFromThread(journal?.createdBy),
+    timestamp: journal?.createdAt || suggestion.timestamp,
     messages: thread?.messages ?? [],
     reactions: thread?.reactions,
   };
@@ -63,8 +66,6 @@ function mergeArchivedWithSnapshot(
   if (!snapshot) return archived;
   return {
     ...archived,
-    authorName: archived.authorName || snapshot.authorName,
-    authorColor: archived.authorColor || snapshot.authorColor,
     timestamp: archived.timestamp || snapshot.timestamp,
     from: archived.from === Number.MAX_SAFE_INTEGER ? snapshot.from : archived.from,
     to: archived.to === Number.MAX_SAFE_INTEGER ? snapshot.to : archived.to,
@@ -113,26 +114,30 @@ export function useDocsSuggestions(
     useDocsSuggestionsActive(editor);
   const threads = source.suggestions;
 
-  const threadMap = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        messages: DocsSuggestionWithThread["messages"];
-        reactions?: DocsSuggestionWithThread["reactions"];
-      }
-    >();
-    for (const thread of threads) {
-      map.set(thread.changeId, {
-        messages: thread.messages,
-        reactions: thread.reactions,
-      });
-    }
-    return map;
-  }, [threads]);
+  const threadMap = useMemo(
+    () => new Map(threads.map((thread) => [thread.changeId, thread])),
+    [threads],
+  );
+  const journalMap = useMemo(
+    () =>
+      new Map(
+        source.fileThreads.flatMap((thread) =>
+          thread.kind === "suggestion" && thread.changeId ? [[thread.changeId, thread]] : [],
+        ),
+      ),
+    [source.fileThreads],
+  );
 
   const suggestions = useMemo(
-    () => editorSuggestions.map((suggestion) => mergeSuggestionWithThread(suggestion, threadMap)),
-    [editorSuggestions, threadMap],
+    () =>
+      editorSuggestions.map((suggestion) =>
+        mergeSuggestionWithThread(
+          suggestion,
+          threadMap.get(suggestion.changeId),
+          journalMap.get(suggestion.changeId),
+        ),
+      ),
+    [editorSuggestions, journalMap, threadMap],
   );
 
   const archivedSuggestions = useMemo(() => {
@@ -168,22 +173,38 @@ export function useDocsSuggestions(
     };
   }, [editor, setActiveChangeId]);
 
-  const { addReply, toggleReaction, archiveSuggestion } = useDocsSuggestionsMutations({
-    client: resolvedClient,
-    path: docPath ?? FALLBACK_DOC_PATH,
-    source,
-    currentUser,
+  const { addReply, toggleReaction, archiveSuggestion, ensureSuggestionRoot } =
+    useDocsSuggestionsMutations({
+      client: resolvedClient,
+      path: docPath ?? FALLBACK_DOC_PATH,
+      source,
+      currentUser,
+    });
+
+  useDocsSuggestionThreadRoots({
+    editor,
+    fileThreads: source.fileThreads,
+    ensureSuggestionRoot,
+    // Before the file's list has loaded every suggestion looks rootless.
+    enabled: Boolean(resolvedClient) && source.loaded,
   });
 
   useEffect(() => {
-    if (!editor || !editorHasTrackChanges(editor) || !resolvedClient) return;
+    if (!editor || !editorHasTrackChanges(editor) || !resolvedClient || !source.loaded) return;
     const activeChangeIds = new Set(getDocsTrackChangeGroups(editor).map((item) => item.changeId));
     for (const thread of source.fileThreads) {
       if (thread.kind !== "suggestion" || thread.archived) continue;
       if (!thread.changeId || activeChangeIds.has(thread.changeId)) continue;
       archiveSuggestion(thread.changeId);
     }
-  }, [archiveSuggestion, editor, editorSuggestions, resolvedClient, source.fileThreads]);
+  }, [
+    archiveSuggestion,
+    editor,
+    editorSuggestions,
+    resolvedClient,
+    source.fileThreads,
+    source.loaded,
+  ]);
 
   const selectSuggestion = useCallback(
     (changeId: string) => {
