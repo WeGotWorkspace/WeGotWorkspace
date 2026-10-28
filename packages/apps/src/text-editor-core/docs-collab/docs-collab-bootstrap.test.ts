@@ -313,6 +313,123 @@ describe("adoptServerSnapshot", () => {
     expect(text).not.toContain("local seed");
   });
 
+  /** Another tab typed into the shared local copy; its save has not reached the server yet. */
+  function localCopyAheadOfServer(server: Y.Doc, edit: (other: Y.Doc) => void): Y.Doc {
+    const other = new Y.Doc();
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(server));
+    edit(other);
+    const local = new Y.Doc();
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(other));
+    other.destroy();
+    return local;
+  }
+
+  it("keeps another tab's unsaved text that is in the local copy but not yet on the server (#1722)", () => {
+    const server = docWithText("Saved line");
+    const local = localCopyAheadOfServer(server, (other) => {
+      const paragraph = other.getXmlFragment("default").get(0) as Y.XmlElement;
+      (paragraph.get(0) as Y.XmlText).insert(10, " typed just now");
+      appendParagraph(other, "a new paragraph");
+    });
+
+    const dropped = adoptServerSnapshot(
+      local,
+      Y.encodeStateAsUpdate(server),
+      "server",
+      stateVector(local),
+    );
+
+    const text = fragmentText(local);
+    expect(text).toContain("Saved line typed just now");
+    expect(text).toContain("a new paragraph");
+    expect(dropped).toBe(false);
+  });
+
+  it("keeps unsaved text typed at the start of the document and inside a new paragraph", () => {
+    const server = docWithText("Saved line");
+    const local = localCopyAheadOfServer(server, (other) => {
+      const fragment = other.getXmlFragment("default");
+      const node = new Y.XmlElement("paragraph");
+      const typed = new Y.XmlText("first");
+      node.insert(0, [typed]);
+      fragment.insert(0, [node]);
+      typed.insert(5, " and more");
+    });
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+
+    const text = fragmentText(local);
+    expect(text).toContain("first and more");
+    expect(text).toContain("Saved line");
+  });
+
+  it("keeps unsaved text built on another unsaved edit", () => {
+    const server = docWithText("Saved line");
+    const first = localCopyAheadOfServer(server, (other) => appendParagraph(other, "tab one"));
+    const local = localCopyAheadOfServer(first, (other) => {
+      const fragment = other.getXmlFragment("default");
+      const paragraph = fragment.get(1) as Y.XmlElement;
+      (paragraph.get(0) as Y.XmlText).insert(7, ", then tab two");
+    });
+    first.destroy();
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+
+    expect(fragmentText(local)).toContain("tab one, then tab two");
+  });
+
+  it("keeps a new comment or a first title that is not on the server yet", () => {
+    const server = docWithText("Saved line");
+    const local = localCopyAheadOfServer(server, (other) => {
+      other.getMap("comments").set("thread-1", "unsaved comment");
+      other.getText("title").insert(0, "First title");
+    });
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+
+    expect(local.getMap("comments").get("thread-1")).toBe("unsaved comment");
+    expect(local.getText("title").toString()).toBe("First title");
+  });
+
+  it("drops a stale local seed that a later merge put next to the server state", () => {
+    // An offline pin seeded the text before the sidecar existed, and a later
+    // refresh merged the server state into the same local copy.
+    const local = docWithText("local seed");
+    const server = docWithText("server copy");
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(server));
+    const loaded = stateVector(local);
+
+    const dropped = adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", loaded);
+
+    const text = fragmentText(local);
+    expect(text).toContain("server copy");
+    expect(text).not.toContain("local seed");
+    expect(dropped).toBe(true);
+  });
+
+  it("drops a stale seeded title when the server has its own title", () => {
+    const local = docWithText("local seed");
+    local.getText("title").insert(0, "Old title");
+    const server = docWithText("server copy");
+    server.getText("title").insert(0, "Server title");
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+
+    expect(local.getText("title").toString()).toBe("Server title");
+  });
+
+  it("replaces everything the server lacks when no loaded state is given (outside rewrite)", () => {
+    const server = docWithText("Saved line");
+    const local = localCopyAheadOfServer(server, (other) => appendParagraph(other, "unsaved"));
+    const rebuilt = docWithText("uploaded text");
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(rebuilt), "server");
+
+    const text = fragmentText(local);
+    expect(text).toContain("uploaded text");
+    expect(text).not.toContain("unsaved");
+  });
+
   it("reports whether it dropped local state", () => {
     const serverDoc = docWithText("shared paragraph");
     const serverUpdate = Y.encodeStateAsUpdate(serverDoc);
