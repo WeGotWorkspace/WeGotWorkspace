@@ -111,6 +111,8 @@ export const docsLabels = {
     "No comments or suggestions yet. Select text to comment, or switch to Suggest mode to track edits.",
   reviewEmptyResolved: "No resolved comments or suggestions yet.",
   suggestionsArchivedEmpty: "Resolved suggestion",
+  /** Suggestion card author when the suggestion has no thread (older documents). */
+  suggestionsUnknownAuthor: "Unknown author",
   reviewCountOne: "1 item",
   reviewCountMany: (count: number) => `${count} items`,
   reviewToggleShow: "Show review",

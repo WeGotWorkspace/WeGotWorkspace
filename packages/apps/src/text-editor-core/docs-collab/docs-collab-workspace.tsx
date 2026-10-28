@@ -679,6 +679,7 @@ function DocsCollabWorkspaceInner({
                   ydoc={collabSession.ydoc}
                   awareness={collabSession.awareness}
                   user={collabSession.user}
+                  trackChangesUserKey={`${driveUsername?.trim() || session.user.username || ""}:${urls?.room ?? ""}`}
                   format={editorFormat}
                   sheetFill
                   viewSource={viewSource}

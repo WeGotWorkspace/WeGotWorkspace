@@ -1,7 +1,6 @@
 import { Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import StarterKit from "@tiptap/starter-kit";
-import { TrackChangesExtension } from "tiptap-track-changes";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@/text-editor-core/src/text-editor-content";
 import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
+import { DocsTrackChangesExtension } from "@/text-editor-core/src/text-editor-track-changes-marks";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { seedClientId } from "./docs-collab-seed";
 
@@ -19,6 +19,7 @@ export type DocsCollabEditorSurfaceProps = {
   ydoc: Y.Doc;
   awareness: Awareness;
   user: { name: string; color: string };
+  trackChangesUserKey: string;
   onMarkdownChange: (getMarkdown: () => string) => void;
 };
 
@@ -32,11 +33,12 @@ export function applyContentSeedToYDoc(
   target: Y.Doc,
   content: string,
   format: TextEditorContentFormat = "markdown",
+  seedBase?: string,
 ): void {
   const temp = new Y.Doc();
   // Identical content must yield identical items, or two clients that both
   // bootstrap an unsidecarred document keep each other's copy (#1089).
-  temp.clientID = seedClientId(format, content);
+  temp.clientID = seedClientId(format, content, seedBase);
   const tempEditor = new Editor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: false, underline: false }),
@@ -55,6 +57,8 @@ export function applyContentSeedToYDoc(
 /**
  * A helper editor with the live editor's schema, suggestion marks included:
  * text y-prosemirror cannot rebuild in the schema is deleted from the bound doc.
+ * Same suggestion marks as the live editor ({@link DocsTrackChangesExtension}),
+ * so a save never writes author names or session colours (#1610).
  */
 function createCollabContentEditor(ydoc: Y.Doc, format: TextEditorContentFormat): Editor {
   return new Editor({
@@ -62,7 +66,7 @@ function createCollabContentEditor(ydoc: Y.Doc, format: TextEditorContentFormat)
       StarterKit.configure({ undoRedo: false, link: false, underline: false }),
       Collaboration.configure({ document: ydoc }),
       ...createTextEditorExtensions({ format }).filter((ext) => ext.name !== "starterKit"),
-      TrackChangesExtension,
+      DocsTrackChangesExtension,
     ],
     editorProps: {
       attributes: { class: "text-editor-prose focus:outline-none" },

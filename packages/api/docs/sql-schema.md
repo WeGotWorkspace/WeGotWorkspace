@@ -56,6 +56,8 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `docs_thread_index` | `App\Models\DocsThreadIndex` | Path index for Docs comment/suggestion VJOURNAL threads (`uid` + `doc_path` + kind). Indexes: unique `uid`; `(calendarid, doc_path)` hot path; standalone `doc_path` for rename/delete; `(calendarid, change_id)`. `doc_path` is varchar(512) for MySQL utf8mb4 index limits. |
 | `notifications` | `App\Models\Notification` | Suite notify inbox (one row per principal + event) |
 | `notification_deliveries` | `App\Models\NotificationDelivery` | Short-lived local/VAPID delivery attempts |
+| `notification_markers` | `App\Models\NotificationMarker` | Per-principal inbox change counter (`principal` unique). Create, supersede, read and clear of a `notifications` row bump it; it is the `Notification` JMAP push state (#1660). A missing row is 0. |
+| `jmap_file_node_root_markers` | `App\Models\JmapFileNodeRootMarker` | Change counter per Drive root (account root or share root; `root_hash` = SHA-256 of `root_key`, unique). Every Drive index write bumps the roots its key falls under; the `FileNode` push hash covers the user's `root → marker` pairs (#1660). A missing row is 0. |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 | `rtc_relay_events` | `App\Models\RtcRelayEvent` | One row per relay request (`channel`, `actor`, `reason`, `outcome`). No room name, no addresses; 30-day retention |
 

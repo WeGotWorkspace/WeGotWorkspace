@@ -58,6 +58,7 @@ export function DriveMainPane({
     setDropUploadActive,
     handleUpload,
     uploadEnabled,
+    structureEnabled,
     breadcrumbs,
     selectView,
     visibleItems,
@@ -119,6 +120,7 @@ export function DriveMainPane({
   };
 
   const fileCanManageStructure = (file: DriveFile) =>
+    structureEnabled &&
     resolveDriveFileCanManageStructure(file.mayManageStructure, {
       isActive: file.id === active?.id,
       activeMayManageStructure,

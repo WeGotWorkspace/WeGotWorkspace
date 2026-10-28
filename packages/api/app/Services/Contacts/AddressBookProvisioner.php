@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Contacts;
 
 use App\Dav\Server\WgwCardBackend;
-use App\Models\Addressbook;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Admin\AdminConstants;
 use Illuminate\Support\Facades\Schema;
+use Sabre\DAV\PropPatch;
 
 /**
  * Eager + lazy one-book-per-principal provision. Backfill helpers are for
@@ -77,7 +77,7 @@ final class AddressBookProvisioner
                 continue;
             }
             if ($isUserPrincipal) {
-                $this->rewriteUserDisplayName($principalUri);
+                $this->rewriteUserDisplayName($carddav, $book);
             }
 
             return ['created' => 0];
@@ -90,21 +90,22 @@ final class AddressBookProvisioner
         return ['created' => 1];
     }
 
-    private function rewriteUserDisplayName(string $principalUri): void
+    /**
+     * Put the personal book's name back to "Personal" after a DAV client
+     * renamed it. The rename goes through Sabre's updateAddressBook, like any
+     * other, so the book's sync token moves and sharees and DAV clients see it.
+     *
+     * @param  array<string, mixed>  $book  one row of getAddressBooksForUser()
+     */
+    private function rewriteUserDisplayName(WgwCardBackend $carddav, array $book): void
     {
-        $book = Addressbook::query()
-            ->where('principaluri', $principalUri)
-            ->where('uri', AddressBookCollectionUris::CALDAV_URI)
-            ->first();
-        if ($book === null) {
-            return;
-        }
-        if ((string) $book->displayname === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME) {
+        if ((string) ($book['{DAV:}displayname'] ?? '') === AddressBookCollectionUris::PERSONAL_DISPLAY_NAME) {
             return;
         }
 
-        $book->displayname = AddressBookCollectionUris::PERSONAL_DISPLAY_NAME;
-        $book->save();
+        $propPatch = new PropPatch(['{DAV:}displayname' => AddressBookCollectionUris::PERSONAL_DISPLAY_NAME]);
+        $carddav->updateAddressBook($book['id'], $propPatch);
+        $propPatch->commit();
     }
 
     /**
