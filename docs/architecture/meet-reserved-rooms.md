@@ -80,7 +80,7 @@ If inbound `CONFERENCE` / `URL` / `X-GOOGLE-CONFERENCE` is a guest/join URL whos
 - **On insert:** `createdBy` = the authenticated DAV/JMAP actor who performed the write (same identity as iMIP `ORGANIZER` / DAV ACL — not left null, even when `ownerPrincipal` is a group).
 - **If a row already exists:** keep `createdBy` / `ownerPrincipal` (do not steal).
 - **Always** apply the event/scope clock to `expiresAt` — on insert **and** as an **upgrade** of an existing row. A blur-draft `now+30d` that then persists on Save **must** become DTEND+7, occurrence-end+7, or series/this-and-future `null`. Leaving the draft clock after the event exists is the same premature-sweep bug as a stale reschedule clock.
-- The clock is set as given only when the writer holds the row: same `ownerPrincipal`, its `createdBy`, or an owner-principal member. For anyone else (a pasted link to someone else's room) the clock may only move later or to `null`, never earlier, so a foreign event can keep a room alive but never get it swept.
+- The clock is set as given only when the writer holds the row: same `ownerPrincipal`, its `createdBy`, or an owner-principal member. For anyone else (a pasted link to someone else's room) the clock may only move to a later finite time: never earlier, so a foreign event cannot get the room swept, and never to `null`, so only a holder can make it never expire.
 
 Incomplete or non-WGW hrefs never reserve. Read-only GET / conversion without persist does **not** POST.
 

@@ -57,6 +57,29 @@ final class MeetReservationServiceTest extends WgwDatabaseTestCase
         );
     }
 
+    public function test_reserve_by_someone_else_extends_only_to_a_later_finite_clock(): void
+    {
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', Carbon::parse('2030-11-01T00:00:00Z'));
+
+        $this->reservations->reserve(self::ROOM, 'u:carol', 'u:carol', null);
+        $this->assertTrue(
+            MeetReservation::query()->find(self::ROOM)?->expires_at?->equalTo(Carbon::parse('2030-11-01T00:00:00Z')),
+        );
+
+        $this->reservations->reserve(self::ROOM, 'u:carol', 'u:carol', Carbon::parse('2030-12-01T00:00:00Z'));
+        $this->assertTrue(
+            MeetReservation::query()->find(self::ROOM)?->expires_at?->equalTo(Carbon::parse('2030-12-01T00:00:00Z')),
+        );
+    }
+
+    public function test_reserve_by_the_holder_may_clear_the_clock(): void
+    {
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', Carbon::parse('2030-11-01T00:00:00Z'));
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', null);
+
+        $this->assertNull(MeetReservation::query()->find(self::ROOM)?->expires_at);
+    }
+
     public function test_reserve_by_the_holder_may_shorten_the_clock(): void
     {
         $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', null);

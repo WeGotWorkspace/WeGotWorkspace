@@ -26,8 +26,8 @@ use Sabre\VObject\Reader;
  * Idempotent on room id: existing ownerPrincipal / createdBy are kept. A writer
  * who holds the reservation ({@see self::mayUpdate()}) sets its expiresAt
  * clock. Anyone else (a calendar event that carries a pasted link) can only
- * keep the row alive longer, never shorten its clock, so it cannot be swept
- * early.
+ * move it to a later finite clock: never earlier, so it cannot be swept early,
+ * and never to null, so it cannot be made to never expire.
  */
 final class MeetReservationService
 {
@@ -127,13 +127,18 @@ final class MeetReservationService
         return $this->canManage($this->usernameFromActorPrincipal($createdBy), $row);
     }
 
+    /**
+     * Whether a reserve by someone who does not hold the row may still move its
+     * clock: only to a later finite time. Never earlier, and never to null, so
+     * only a holder can make a reservation never expire.
+     */
     private function extendsClock(MeetReservation $row, ?DateTimeInterface $expiresAt): bool
     {
-        if ($row->expires_at === null) {
+        if ($row->expires_at === null || $expiresAt === null) {
             return false;
         }
 
-        return $expiresAt === null || $row->expires_at->lessThan($expiresAt);
+        return $row->expires_at->lessThan($expiresAt);
     }
 
     public function canClaimOwnerPrincipal(string $username, string $ownerPrincipal): bool
