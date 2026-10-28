@@ -203,6 +203,8 @@ export function NoteCollabSession({
   return (
     <NoteCollabYDocProvider
       ydoc={collab.session?.ydoc ?? null}
+      awareness={collab.session?.awareness ?? null}
+      localUserName={collab.session?.user.name}
       onLocalTitleEdit={collab.scheduleSave}
     >
       <NoteCollabContext.Provider value={value}>

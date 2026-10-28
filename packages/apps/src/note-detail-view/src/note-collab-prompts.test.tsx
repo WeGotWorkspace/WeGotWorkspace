@@ -8,7 +8,7 @@ const harness = vi.hoisted(() => ({
   prompt: false,
   outsideMarkdown: "from outside",
   answerFails: false,
-  session: null as { ydoc: unknown } | null,
+  session: null as { ydoc: unknown; user: { name: string } } | null,
 }));
 
 vi.mock("@/text-editor-core/docs-collab", async () => {
@@ -74,7 +74,7 @@ describe("NoteCollabSession prompts", () => {
     harness.prompt = true;
     harness.outsideMarkdown = "# Outside heading";
     const ydoc = new Y.Doc();
-    harness.session = { ydoc };
+    harness.session = { ydoc, user: { name: "Alex" } };
     renderSession({ ...urls, room: "n1@host.json" });
 
     fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
@@ -101,7 +101,7 @@ describe("NoteCollabSession prompts", () => {
   it("disables Keep my edits once the outside version replaced the note, even if its save failed", async () => {
     harness.prompt = true;
     harness.answerFails = true;
-    harness.session = { ydoc: new Y.Doc() };
+    harness.session = { ydoc: new Y.Doc(), user: { name: "Alex" } };
     renderSession();
 
     fireEvent.click(await screen.findByRole("button", { name: "Use the outside version" }));
