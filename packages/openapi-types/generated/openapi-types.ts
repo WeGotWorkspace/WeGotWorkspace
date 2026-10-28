@@ -11290,7 +11290,7 @@ export interface components {
          */
         InstallerErrorCode: "data_dir_not_absolute" | "data_dir_parent_missing" | "data_dir_published" | "data_dir_not_writable" | "data_dir_owned";
         /**
-         * @description Web manifest id of a WeGotWorkspace app. Notifications map to an app by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet.
+         * @description Web manifest id of a WeGotWorkspace app. A notification maps to the app whose scope holds its navigate path; one that opens / maps by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet.
          * @enum {string}
          */
         PushScope: "/" | "/admin" | "/calendar" | "/contacts" | "/docs" | "/drive" | "/meet" | "/notes" | "/settings" | "/tasks";

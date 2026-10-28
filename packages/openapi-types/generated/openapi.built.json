@@ -11635,7 +11635,7 @@
                     "/settings",
                     "/tasks"
                 ],
-                "description": "Web manifest id of a WeGotWorkspace app. Notifications map to an app by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet."
+                "description": "Web manifest id of a WeGotWorkspace app. A notification maps to the app whose scope holds its navigate path; one that opens / maps by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet."
             }
         },
         "responses": {

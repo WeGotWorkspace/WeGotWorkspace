@@ -8,10 +8,11 @@
  * The server sends a subscription only the notifications that open inside its
  * scopes; `/` receives everything.
  *
- * The app is read from the path the document loaded at. An iOS app that was
- * hard-navigated to `/logout` or `/login` has lost that path, so the scope is
- * then unknown (`null`) and the request leaves it out, unless `/login?return=`
- * points into an app.
+ * The app is read from the path the window was launched at, kept in
+ * sessionStorage so later documents in that window (inbox clicks, reloads,
+ * logout) keep it. A window whose first document was `/logout` or `/login`
+ * names no app, so the scope is then unknown (`null`) and the request leaves
+ * it out, unless `/login?return=` points into an app.
  *
  * The worker cannot tell which app it serves, so pages remember the scopes they
  * posted in IndexedDB; `pushsubscriptionchange` posts the new endpoint with
@@ -122,17 +123,55 @@ export function hasOwnPushSubscription(win: DisplayWindow): boolean {
 
 let launchPath: string | null = null;
 
-/**
- * Record the path and query the page loaded at. An installed app opens inside
- * its own scope (its start URL, or a notification link for it); a later
- * sign-in redirect or in-app link to another app must not change which app
- * this is. The first call wins.
- */
-export function rememberLaunchPath(pathAndSearch: string): void {
-  launchPath ??= pathAndSearch;
+/** sessionStorage key: one value per window (Home Screen app), across its documents. */
+const LAUNCH_PATH_KEY = "wgw-push-launch-path";
+
+type LaunchPathStorage = Pick<Storage, "getItem" | "setItem">;
+
+function windowSessionStorage(): LaunchPathStorage | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
-/** Test-only. */
+function isSameOriginPath(value: string | null): value is string {
+  return value !== null && value.startsWith("/") && !value.startsWith("//");
+}
+
+/**
+ * Record the path and query the window was launched at. An installed app
+ * opens inside its own scope (its start URL, or a notification link for it).
+ * Later documents in the same window (an inbox click, a sign-in redirect, a
+ * service worker reload, logout) reuse it from sessionStorage, so they do not
+ * change which app this is. The first call per document wins. Without
+ * sessionStorage, each document uses its own path.
+ */
+export function rememberLaunchPath(
+  pathAndSearch: string,
+  storage: LaunchPathStorage | null = windowSessionStorage(),
+): void {
+  if (launchPath !== null) return;
+  let stored: string | null = null;
+  try {
+    stored = storage?.getItem(LAUNCH_PATH_KEY) ?? null;
+  } catch {
+    stored = null;
+  }
+  if (isSameOriginPath(stored)) {
+    launchPath = stored;
+    return;
+  }
+  launchPath = pathAndSearch;
+  try {
+    storage?.setItem(LAUNCH_PATH_KEY, pathAndSearch);
+  } catch {
+    // Private mode or blocked storage: this document still knows its path.
+  }
+}
+
+/** Test-only: forget this document's launch path, as a new document would. */
 export function resetPushScopeLaunchForTests(): void {
   launchPath = null;
 }
