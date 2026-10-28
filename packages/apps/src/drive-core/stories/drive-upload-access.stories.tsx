@@ -83,7 +83,8 @@ export const GuestHasNoUpload: Story = {
     expect(body.queryByRole("menuitem", { name: L.newMarkdown })).toBeNull();
     expect(canvas.queryByLabelText(L.uploadFiles)).toBeNull();
 
-    expect(dragFileOver(canvasElement)).toBe(true);
+    // The pane cancels the dragover (so the browser keeps the page) but shows no overlay.
+    expect(dragFileOver(canvasElement)).toBe(false);
     expect(canvas.queryByText(L.dropUploadHint, { exact: false })).toBeNull();
   },
 };

@@ -17,7 +17,16 @@ import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filename-rename";
+
+/**
+ * The guest session flag counts too: the workspace mounts with placeholder or
+ * cached member data (`role: "user"`) before guest data replaces it.
+ */
+export function isDriveUploadEnabled(role: string, guestSession: boolean): boolean {
+  return !guestSession && role !== "guest";
+}
 
 export type UseDriveMutationsArgs = {
   shell: DriveShellState;
@@ -82,7 +91,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   // Guests get the upload queue later (Epic #1499); until then they see no
   // upload, no drop target and no new Markdown file (Docs saves guest files
   // through upload).
-  const uploadEnabled = (data.user.role as string) !== "guest";
+  const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetRenameDialog = useCallback(() => {

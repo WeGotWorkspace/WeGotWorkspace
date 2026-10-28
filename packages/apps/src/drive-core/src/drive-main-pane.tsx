@@ -182,8 +182,13 @@ export function DriveMainPane({
     <section
       className="drive-main-pane"
       onDragOver={(event) => {
-        if (!uploadEnabled || !event.dataTransfer.types.includes("Files")) return;
+        if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) {
+          // Swallow the drop so the browser does not navigate away to the file.
+          event.dataTransfer.dropEffect = "none";
+          return;
+        }
         setDropUploadActive(true);
       }}
       onDragLeave={(event) => {
@@ -192,8 +197,9 @@ export function DriveMainPane({
         }
       }}
       onDrop={(event) => {
-        if (!uploadEnabled || !event.dataTransfer.types.includes("Files")) return;
+        if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) return;
         setDropUploadActive(false);
         handleUpload(event.dataTransfer.files);
       }}
