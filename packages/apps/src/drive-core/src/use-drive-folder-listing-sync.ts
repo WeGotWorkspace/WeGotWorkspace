@@ -1,6 +1,8 @@
 import {
+  useCallback,
   useEffect,
   useRef,
+  useState,
   type Dispatch,
   type MutableRefObject,
   type SetStateAction,
@@ -25,14 +27,25 @@ export type UseDriveFolderListingSyncArgs = {
   syncedFolderPathRef: MutableRefObject<string | null>;
   pendingFolderRefetchRef: MutableRefObject<boolean>;
   setFiles: Dispatch<SetStateAction<DriveFile[]>>;
-  setHydratedFolderPath: (path: string) => void;
+  setHydratedFolderPath: (path: string | null) => void;
   commitView: (view: ViewKey) => void;
   showError: (message: string) => void;
+};
+
+/** A live folder load that failed, keyed by the folder UI path it belongs to. */
+export type DriveFolderListingError = { path: string; message: string };
+
+export type DriveFolderListingSync = {
+  folderListingError: DriveFolderListingError | null;
+  /** Clears the error and loads the current folder again (pending state shows meanwhile). */
+  retryFolderListing: () => void;
 };
 
 /**
  * Load the folder view's listing cache-first: cached rows paint at once
  * (clearing the pending state), then `changeDir` replaces them in place.
+ * A failed live load is kept as {@link DriveFolderListingError} so the pane
+ * can tell "could not load" apart from "empty".
  */
 export function useDriveFolderListingSync({
   operations,
@@ -46,12 +59,16 @@ export function useDriveFolderListingSync({
   setHydratedFolderPath,
   commitView,
   showError,
-}: UseDriveFolderListingSyncArgs): void {
+}: UseDriveFolderListingSyncArgs): DriveFolderListingSync {
   // Latest callbacks: an unstable identity must not restart (and re-paint) the load.
   const commitViewRef = useRef(commitView);
   commitViewRef.current = commitView;
   const showErrorRef = useRef(showError);
   showErrorRef.current = showError;
+  const [folderListingError, setFolderListingError] = useState<DriveFolderListingError | null>(
+    null,
+  );
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     if (!operations || folderViewPath === null || listLoading || !currentUsername.trim()) {
@@ -83,6 +100,7 @@ export function useDriveFolderListingSync({
         liveSettled = true;
         const resolvedPath = uiPathFromApiPath(nextData.cwd, currentUsername);
         pendingFolderRefetchRef.current = false;
+        setFolderListingError(null);
         syncedFolderPathRef.current = resolvedPath;
         // Cached rows the server no longer lists must not survive as staged rows.
         setFiles((previous) =>
@@ -103,6 +121,7 @@ export function useDriveFolderListingSync({
         pendingFolderRefetchRef.current = false;
         setHydratedFolderPath(folderViewPath);
         const message = error instanceof Error ? error.message : String(error);
+        setFolderListingError({ path: folderViewPath, message });
         showErrorRef.current(message);
       });
 
@@ -114,8 +133,19 @@ export function useDriveFolderListingSync({
     listLoading,
     operations,
     pendingFolderRefetchRef,
+    reloadToken,
     setFiles,
     setHydratedFolderPath,
     syncedFolderPathRef,
   ]);
+
+  const retryFolderListing = useCallback(() => {
+    setFolderListingError(null);
+    pendingFolderRefetchRef.current = true;
+    syncedFolderPathRef.current = null;
+    setHydratedFolderPath(null);
+    setReloadToken((token) => token + 1);
+  }, [pendingFolderRefetchRef, setHydratedFolderPath, syncedFolderPathRef]);
+
+  return { folderListingError, retryFolderListing };
 }
