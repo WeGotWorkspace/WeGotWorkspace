@@ -116,6 +116,23 @@ final class DocsSuggestionRootAfterMoveTest extends WgwDatabaseTestCase
         $this->assertTrue($replayed['archived']);
     }
 
+    public function test_a_comment_with_the_same_change_id_is_not_the_suggestion_root(): void
+    {
+        $this->as('bob')
+            ->postJson('/api/v1/files/threads?path='.urlencode(self::FROM), [
+                'id' => self::SECOND_ROOT,
+                'kind' => 'comment',
+                'changeId' => self::CHANGE,
+                'body' => 'about this change',
+            ])
+            ->assertCreated();
+
+        $root = $this->createSuggestionRoot('bob', self::FROM, self::ROOT_AT_FROM, self::CHANGE);
+
+        $this->assertSame(self::ROOT_AT_FROM, $root['id']);
+        $this->assertSame('suggestion', $root['kind']);
+    }
+
     private function seedTeamWithBobAndAlice(): void
     {
         Principal::query()->firstOrCreate(

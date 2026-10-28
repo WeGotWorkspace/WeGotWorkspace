@@ -417,13 +417,12 @@ final class DocsThreadRepository
         return $message;
     }
 
-    /** The suggestion root for $changeId on $path, archived or not. Locks the index rows it reads. */
+    /** The suggestion root (never a comment) for $changeId on $path, archived or not. Locks the rows it reads. */
     private function suggestionRootUid(CalendarInstance $instance, string $path, string $changeId): ?string
     {
         $uid = DocsThreadIndex::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('doc_path', $path)
-            ->where('change_id', $changeId)
+            ->where(['calendarid' => (int) $instance->calendarid, 'doc_path' => $path, 'change_id' => $changeId])
+            ->where('kind', DocsThreadJournalConverter::KIND_SUGGESTION)
             ->whereNull('parent_uid')
             ->orderBy('id')
             ->lockForUpdate()

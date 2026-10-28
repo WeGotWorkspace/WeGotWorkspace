@@ -2,7 +2,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/react";
 import { Awareness } from "y-protocols/awareness";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import "@/text-editor-core/src/text-editor-track-changes-augmentation";
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
@@ -15,9 +15,9 @@ import type {
   DocsFileThreadCreate,
   DocsThreadsClient,
 } from "./docs-threads-types";
-import { DOCS_THREADS_POLL_MS } from "./use-docs-threads-source";
 import { useDocsSuggestions } from "./use-docs-suggestions";
 import { SUGGESTION_ROOT_SETTLE_MS } from "./use-docs-suggestions-thread-roots";
+import { DOCS_THREADS_POLL_MS } from "./use-docs-threads-source";
 
 const PERSONAL = "/users/admin/docs/plan.md";
 const GROUP = "/groups/team/plan.md";
@@ -47,6 +47,8 @@ function createThreadsServer() {
   let threads: DocsFileThread[] = [];
   const creates: { path: string; input: DocsFileThreadCreate }[] = [];
   let listGate: Promise<void> = Promise.resolve();
+  let failingLists = 0;
+  let lists = 0;
 
   const copy = (thread: DocsFileThread): DocsFileThread => structuredClone(thread);
   const find = (path: string, id: string) => {
@@ -58,7 +60,12 @@ function createThreadsServer() {
   function clientFor(actor: DocsFileThreadAuthor): DocsThreadsClient {
     return {
       async list(path) {
+        lists += 1;
         await listGate;
+        if (failingLists > 0) {
+          failingLists -= 1;
+          throw new Error("threads list failed");
+        }
         return threads.filter((thread) => thread.path === path).map(copy);
       },
       async create(path, input) {
@@ -115,6 +122,12 @@ function createThreadsServer() {
   return {
     clientFor,
     creates,
+    get lists() {
+      return lists;
+    },
+    failNextList() {
+      failingLists += 1;
+    },
     move(from: string, to: string) {
       threads = threads.map((thread) => (thread.path === from ? { ...thread, path: to } : thread));
     },
@@ -269,33 +282,53 @@ describe("suggestion thread roots after the document moves", () => {
     expect(root).toMatchObject({ id: movedRootId, createdBy: ADMIN });
     expect(root!.messages.map((message) => message.body)).toContain("Looks good");
   });
+});
 
-  it("retries a failed first thread list from the poll and then records the root", async () => {
-    const server = createThreadsServer();
-    const ydoc = new Y.Doc();
-    applyContentSeedToYDoc(ydoc, "Hello old world", "markdown");
-    const editor = createEditor(ydoc, crypto.randomUUID());
-    const client = server.clientFor(ADMIN);
-    const list = client.list.bind(client);
-    let failures = 1;
-    client.list = async (path) => {
-      if (failures-- > 0) throw new Error("offline");
-      return list(path);
-    };
-    renderHook(() =>
-      useDocsSuggestions(editor, {
+describe("suggestion thread roots when the first thread list fails", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("retries the list on the next poll and then creates the root once", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const server = createThreadsServer();
+      server.failNextList();
+      const ydoc = new Y.Doc();
+      applyContentSeedToYDoc(ydoc, "Hello old world", "markdown");
+      const editor = createEditor(ydoc, crypto.randomUUID());
+      const options = {
         ydoc: null,
         currentUser: ADMIN,
-        threadsClient: client,
-        docPath: PERSONAL,
+        threadsClient: server.clientFor(ADMIN),
+        docPath: GROUP,
+        // The document has no threads, so the changes feed stays empty.
         pollThreads: true,
-      }),
-    );
-    suggestReplace(editor, 7, 10, "new");
-    const change = getDocsTrackChangeGroups(editor)[0]!.changeId;
-    await waitFor(() => expect(server.roots(change)).toHaveLength(1), {
-      timeout: DOCS_THREADS_POLL_MS + SUGGESTION_ROOT_SETTLE_MS + 3_000,
-    });
-    expect(server.creates.filter(({ input }) => input.changeId === change)).toHaveLength(1);
-  }, 20_000);
+      };
+      const { result } = renderHook(() => useDocsSuggestions(editor, options));
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(server.lists).toBe(1);
+
+      suggestReplace(editor, 7, 10, "new");
+      const changeId = getDocsTrackChangeGroups(editor)[0]!.changeId;
+      await act(() => vi.advanceTimersByTimeAsync(SUGGESTION_ROOT_SETTLE_MS + 100));
+      expect(server.creates).toEqual([]);
+
+      await act(() =>
+        vi.advanceTimersByTimeAsync(DOCS_THREADS_POLL_MS + SUGGESTION_ROOT_SETTLE_MS + 100),
+      );
+      expect(server.lists).toBeGreaterThanOrEqual(2);
+      expect(server.creates.filter(({ input }) => input.changeId === changeId)).toHaveLength(1);
+      expect(server.roots(changeId)).toMatchObject([{ createdBy: ADMIN }]);
+      expect(result.current.suggestions).toMatchObject([{ changeId, authorName: ADMIN.name }]);
+
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
 });
