@@ -16,6 +16,7 @@ import {
   deleteTaskList,
   fetchTasksLiveBootstrap,
   getTask,
+  listTaskListChanges,
   patchTask,
   patchTaskList,
   putTask,
@@ -33,11 +34,13 @@ import {
   enqueueCoalescedTaskUpdate,
   enqueueOutboxMutation,
   readTasksBootstrapFromCache,
+  readTasksChangesState,
   removeTaskFromCache,
   removeTaskListFromCache,
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
+  writeTasksChangesState,
 } from "@/lib/offline/tasks-offline-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import { flushTasksOutbox, type OutboxFlushResult } from "@/lib/offline/tasks-outbox-flush";
@@ -46,7 +49,9 @@ import { readOfflineTasksUsername } from "@/lib/offline/offline-session";
 import {
   ConnectivitySyncRunner,
   ConnectivitySyncRunnerRegistry,
+  withOutboxLock,
 } from "@/lib/offline/core/connectivity-sync-runner";
+import { isCrossTabLockTimeout } from "@/lib/offline/core/cross-tab-lock";
 
 function concurrencyEtag(task: Task, opts?: TasksMutationOpts): string | undefined {
   return opts?.ifMatch ?? taskEtag(task);
@@ -408,9 +413,52 @@ export function createHybridTasksOperations(username: string): TasksAPIOperation
   };
 }
 
+const BOOTSTRAP_WRITE_LOCK_WAIT_MS = 10_000;
+
+/**
+ * Write the snapshot and the changes state it reflects as one step under the
+ * outbox lock, so an inbound pull cannot interleave and leave a newer state
+ * next to an older snapshot. Nothing is written when the lock stays busy, or
+ * when the stored token is no longer the one this bootstrap started from: a
+ * pull landed in between and that cache is newer than this snapshot.
+ * `expectedStored` undefined skips that check. Returns whether the snapshot
+ * was written.
+ */
+async function writeTasksSnapshotWithState(
+  username: string,
+  bootstrap: Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>,
+  changesState: string | null,
+  expectedStored: string | null | undefined,
+): Promise<boolean> {
+  const write = async () => {
+    if (expectedStored !== undefined) {
+      const stored = await readTasksChangesState(username);
+      if (stored !== expectedStored) return false;
+    }
+    await writeTasksBootstrapToCache(username, bootstrap);
+    await writeTasksChangesState(username, changesState);
+    return true;
+  };
+  try {
+    return await withOutboxLock(TASKS_DOMAIN, username, write, {
+      maxWaitMs: BOOTSTRAP_WRITE_LOCK_WAIT_MS,
+    });
+  } catch (error) {
+    if (!isCrossTabLockTimeout(error)) throw error;
+    return false;
+  }
+}
+
 export async function fetchTasksHybridBootstrap(): Promise<
   Awaited<ReturnType<typeof fetchTasksLiveBootstrap>>
 > {
+  const knownUsername = readOfflineTasksUsername();
+  const expectedStored = knownUsername ? await readTasksChangesState(knownUsername) : undefined;
+  // Taken before the snapshot: a change in between shows up again next pull.
+  const changesState = await listTaskListChanges(null).then(
+    (delta) => delta.newState,
+    () => null,
+  );
   const bootstrap = await fetchTasksLiveBootstrap();
   const username = bootstrap.session.user.username;
   if (!username) {
@@ -419,7 +467,17 @@ export async function fetchTasksHybridBootstrap(): Promise<
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
-  await writeTasksBootstrapToCache(username, bootstrap);
+  const written = await writeTasksSnapshotWithState(
+    username,
+    bootstrap,
+    changesState,
+    // Only meaningful when the remembered account is the one signing in.
+    knownUsername === username ? expectedStored : undefined,
+  );
+  if (!written) {
+    const cached = await readTasksBootstrapFromCache(username);
+    if (cached) return cached;
+  }
   return bootstrap;
 }
 

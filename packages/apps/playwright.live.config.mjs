@@ -41,7 +41,7 @@ export default defineConfig({
         {
           // Non-login shell so CI keeps setup-node and setup-php on PATH.
           // `dev:app` is an @wgw/apps script; the repo root package has none.
-          command: `bash -c "cd ${repoRoot} && php packages/api/artisan wgw:dev-install && pnpm --filter @wgw/apps run dev:app"`,
+          command: `bash -c "cd ${repoRoot} && php packages/api/artisan wgw:dev-install && env VITE_WGW_USE_LIVE_API=1 VITE_WGW_API_BASE_URL=/api/v1 WGW_PROXY_TARGET=http://127.0.0.1:9080 pnpm --filter @wgw/apps run dev:app"`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,

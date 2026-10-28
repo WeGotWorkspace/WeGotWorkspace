@@ -51,6 +51,14 @@ describe("DriveNewMenu", () => {
     expect(onCreateMarkdown).toHaveBeenCalledOnce();
   });
 
+  it("offers only New folder when the session cannot upload", () => {
+    render(<DriveNewMenu labels={L} onCreateFolder={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: L.newFolder })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: L.newButtonMenu })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: L.uploadFiles })).toBeNull();
+  });
+
   it("keeps the chevron when only upload is available", () => {
     render(<DriveNewMenu labels={L} onCreateFolder={vi.fn()} onUploadFiles={vi.fn()} />);
 

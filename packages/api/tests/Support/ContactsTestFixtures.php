@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Principal;
 use App\Models\User;
 use App\Services\Auth\AdminRoleResolver;
@@ -11,10 +12,8 @@ use App\Services\Contacts\MemberUriSanitizer;
 use App\Services\Contacts\PropIdEnsurer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Support\WgwSettings;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 /**
  * Shared CardDAV PDO fixtures for Contacts REST feature tests.
@@ -61,7 +60,7 @@ trait ContactsTestFixtures
 
     protected function seedDefaultAddressBookFor(string $username): void
     {
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         $principalUri = 'principals/'.$username;
 
         foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
@@ -81,7 +80,7 @@ trait ContactsTestFixtures
         string $vcard,
         string $bookUri = 'default',
     ): string {
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         $bookId = $this->resolveAddressBookId($username, $bookUri);
         $carddav->createCard($bookId, $cardUri, $vcard);
 
@@ -96,7 +95,7 @@ trait ContactsTestFixtures
         string $vcard,
         string $bookUri = 'default',
     ): void {
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         $bookId = $this->resolveAddressBookId($username, $bookUri);
         $cardUri = str_ends_with($cardUri, '.vcf') ? $cardUri : $cardUri.'.vcf';
         $carddav->updateCard($bookId, $cardUri, $vcard);
@@ -107,7 +106,7 @@ trait ContactsTestFixtures
         string $cardUri,
         string $bookUri = 'default',
     ): void {
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         $bookId = $this->resolveAddressBookId($username, $bookUri);
         $cardUri = str_ends_with($cardUri, '.vcf') ? $cardUri : $cardUri.'.vcf';
         $card = $carddav->getCard($bookId, $cardUri);
@@ -202,7 +201,7 @@ trait ContactsTestFixtures
 
     private function resolveAddressBookId(string $username, string $bookUri): int
     {
-        $carddav = new CardPDO(DB::connection('wgw')->getPdo());
+        $carddav = WgwCardBackend::fromConnection();
         foreach ($carddav->getAddressBooksForUser('principals/'.$username) as $book) {
             if (($book['uri'] ?? '') === $bookUri) {
                 return (int) $book['id'];

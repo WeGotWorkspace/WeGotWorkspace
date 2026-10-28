@@ -1,5 +1,9 @@
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
-import { isCrossTabLockTimeout, withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import {
+  isCrossTabLockTimeout,
+  withCrossTabLock,
+  withCrossTabLockIfFree,
+} from "@/lib/offline/core/cross-tab-lock";
 import {
   isRetryableOutboxRow,
   listOutboxMutationsForDomain,
@@ -23,8 +27,18 @@ export function withOutboxLock<T>(
   domain: string,
   username: string,
   task: () => Promise<T>,
+  options?: { maxWaitMs?: number },
 ): Promise<T> {
-  return withCrossTabLock(outboxLockName(domain, username), task);
+  return withCrossTabLock(outboxLockName(domain, username), task, options);
+}
+
+/** Like `withOutboxLock`, but returns undefined at once when another holder has it. */
+export function withOutboxLockIfFree<T>(
+  domain: string,
+  username: string,
+  task: () => Promise<T>,
+): Promise<T | undefined> {
+  return withCrossTabLockIfFree(outboxLockName(domain, username), task);
 }
 
 function outboxLockName(domain: string, username: string): string {

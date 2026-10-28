@@ -7,6 +7,8 @@ export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";
 export const DOC_STATUS_DOCUMENT_GONE =
   "This document no longer exists. Your local copy is still here.";
 export const DOC_STATUS_ACCESS_LOST = "You no longer have access to save this document.";
+export const DOC_STATUS_NOTE_ARCHIVED =
+  "This note was archived elsewhere. Your change was not saved.";
 /** The snapshot state is unknown, so the document is deliberately left unseeded. */
 export const DOC_STATUS_SNAPSHOT_UNAVAILABLE = "Could not load the shared copy. Retrying…";
 

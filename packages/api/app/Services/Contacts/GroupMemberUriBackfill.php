@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Card;
-use Illuminate\Support\Facades\DB;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 /**
  * One-time repair for macOS CardDAV corrupt group member URIs already stored in cards.carddata.
@@ -22,7 +21,7 @@ final class GroupMemberUriBackfill
      */
     public function run(): array
     {
-        $cardBackend = new CardPDO(DB::connection('wgw')->getPdo());
+        $cardBackend = WgwCardBackend::fromConnection();
         $scanned = 0;
         $updated = 0;
 

@@ -27,8 +27,8 @@ reads a PR's workflow files from the PR's test merge, which can lag behind
 it reads from `main`.
 
 The loop stops with the `needs-human` label after `REVIEW_LOOP_MAX_ROUNDS`
-change requests (default 3), when a fix round changes nothing, or when it
-fails. A human push drops `ready-for-human` without starting a review,
+change requests (default 3), when a fix round changes nothing, when an
+approval leaves items for a human (see For a human), or when it fails. A human push drops `ready-for-human` without starting a review,
 unless the loop has not reviewed since the PR was last marked ready: then
 the review asked for is still due (a push right after "ready", such as
 "Update branch", cancels it), and the new head is reviewed. To
@@ -40,6 +40,9 @@ A `needs-human` PR whose last bot review requests changes stays blocked:
 GitHub keeps a change request in force until it is dismissed. To merge over
 the bot, for example when a reviewer's blocking item is wrong, dismiss that
 review with the reason.
+
+When a PR is merged or closed, `review-loop-cleanup.yml` removes
+`ready-for-human` and `needs-human`, so the labels list only open work.
 
 ## Polish round
 
@@ -61,12 +64,34 @@ an unused import). Taste and anything a test could notice stay notes.
   round.
 - With two reviewers, polish only counts when both approve. If one requests
   changes, the other's polish is not posted; the next approval lists it
-  again.
+  again. An item from the second reviewer within two lines of one from the
+  first, in the same file, is dropped as the same change.
+- Polish in `.github/`, `.agents/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md`
+  is never applied, since the fixer may not commit there. It goes under For
+  a human instead.
 - A PR whose own fix trigger predates the polish round (its test merge lags
   `main`) gets its polish as notes, with a hint to update the branch.
 
 The fix trigger fires on any bot review and leaves the decision (fix round,
 polish round, or nothing) to the job on `main`.
+
+## For a human
+
+Some findings are not the fixer's to settle, and do not block either:
+
+- The code and a spec under `.agents/specs/` disagree, and either could be
+  the right one. Which wins is a design decision. A fixer that could edit the
+  spec could make the mismatch disappear by moving the goalposts, so the
+  spec stays out of its reach. (When the spec is clearly right, it is a
+  blocking item and the fixer changes the code.)
+- Polish in a file the fixer may not edit.
+
+Reviewers list these separately. The review lists them under "For a human"
+and posts each one inline, with a GitHub suggestion where it is a one-line
+replacement, so it can be applied in one click. An approval with any of them
+gets `needs-human` instead of `ready-for-human`, and its polish stays notes:
+a human decides first. A change request with them goes to the fixer as
+usual; the fixer leaves them alone.
 
 ## CI on loop PRs
 
@@ -110,6 +135,32 @@ different things. It only reviews; the fixer stays the first agent.
   verdict alone and says so. It never fails a review on its own.
 - Two reviewers find more, so expect `needs-human` a little more often.
 
+## Live e2e in fix rounds
+
+Reading code and running unit tests does not show what a user sees with two
+tabs open, or after a reload in the middle of an action. So for changes to
+how the apps sync, work offline, collaborate in real time, or upload, a
+missing live Playwright spec of the user's scenario is a blocking item. The
+reviewer writes the scenario step by step.
+
+- When a change request mentions Playwright, the fix job prepares the live
+  tier the nightly live job uses: the API on SQLite, the Vite app, and
+  Chromium. That adds a few minutes, so other fix rounds skip it.
+- The fixer writes the spec under `packages/apps/e2e/`, adds it to
+  `liveTierSpecPattern`, and runs it with the live config, which starts the
+  API and the app. The command and its result go in the commit body, since
+  the reviewer cannot run it.
+- If the tier cannot be prepared, the fixer is told so, writes the spec
+  anyway, and says it did not run.
+- The new spec joins the nightly live run. Pull-request CI does not run the
+  live tier.
+
+The spec runs PR code with the agent's credential in its environment, as
+the fast tests already do. Fork PRs never reach the loop.
+
+A human still uses the app before merging; this only makes sure the
+scenario has a test.
+
 ## Vendor-neutral by design
 
 An agent is a function: it gets the checked-out code and a prompt, and
@@ -123,7 +174,7 @@ loop's own GitHub App, so the bot identity does not change with the vendor.
 | `second-agent/action.yml` | Yes: the second reviewer (now Cursor CLI) |
 | `review-prompt.md`, `fix-prompt.md` | No |
 | `review.schema.json`, `fix.schema.json` | No |
-| `prepare/action.yml`, all five workflows | No |
+| `prepare/action.yml`, the workflows | No |
 
 To switch vendor, rewrite the steps of one adapter and replace its secret.
 `agent/action.yml` keeps its inputs (`mode`, `prompt-file`, `schema-file`,
@@ -131,7 +182,8 @@ To switch vendor, rewrite the steps of one adapter and replace its secret.
 `second-agent/action.yml` keeps the same minus `mode` and `max-turns`. Both
 output `result-file`, a JSON file that matches the schema. The first adapter
 must keep the modes honest: `review` reads only, `fix` may edit files and run
-the fast tests, and neither may commit, push, or reach GitHub.
+the fast tests and live Playwright specs, and neither may commit, push, or
+reach GitHub.
 
 ## Setup
 

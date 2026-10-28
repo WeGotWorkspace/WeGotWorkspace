@@ -6,7 +6,8 @@ import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 export type DriveNewMenuProps = {
   labels: Pick<DriveUILabels, "newFolder" | "newButtonMenu" | "uploadFiles" | "newMarkdown">;
   onCreateFolder: () => void;
-  onUploadFiles: () => void;
+  /** Omitted when the session cannot upload (guests). */
+  onUploadFiles?: () => void;
   onCreateMarkdown?: () => void;
 };
 
@@ -16,14 +17,15 @@ export function DriveNewMenu({
   onUploadFiles,
   onCreateMarkdown,
 }: DriveNewMenuProps) {
-  const items: DropdownMenuItemProps[] = [
-    {
+  const items: DropdownMenuItemProps[] = [];
+  if (onUploadFiles) {
+    items.push({
       id: "upload-files",
       label: labels.uploadFiles,
       icon: <Upload aria-hidden />,
       onClick: onUploadFiles,
-    },
-  ];
+    });
+  }
   if (onCreateMarkdown) {
     items.push({
       id: "create-markdown",

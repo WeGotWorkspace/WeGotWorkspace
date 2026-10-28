@@ -17,6 +17,8 @@ word on whether a fix is good enough: the reviewer does.
 - No drive-by refactors, no unrelated cleanup, no new features.
 - Do not change `.github/`, `.agents/`, `.claude/`, `AGENTS.md`, or
   `CLAUDE.md`. The workflow refuses to commit them.
+- Items under "For a human", and comments marked **For a human:**, are not
+  yours: leave them, also when the fix looks obvious.
 
 ## Check before you fix
 
@@ -44,6 +46,27 @@ misread code. Acting on such a claim adds a bug and costs a round.
 - If `packages/api/vendor/` is missing, say so, and do not act on a claim
   about a PHP library that you cannot check.
 
+## Live e2e specs
+
+When a blocking item asks for a live Playwright spec:
+
+- Write it as `packages/apps/e2e/<name>.spec.ts`. Reuse the helpers in
+  `packages/apps/e2e/helpers/` (`notes-live.ts`, `docs-live.ts`,
+  `calendar-live.ts`) and follow the existing live specs, such as
+  `notes-offline-sync.spec.ts`. A second tab is `page.context().newPage()`;
+  a reload is `page.reload()`; offline is `page.context().setOffline(true)`.
+- Add the file's name to `liveTierSpecPattern` in
+  `packages/apps/e2e/live-tier.mjs`. Without that, the live config skips it.
+- Run it, when the context says live e2e is ready:
+  `pnpm --dir packages/apps exec playwright test --config playwright.live.config.mjs --retries=0 e2e/<name>.spec.ts`.
+  It starts the API and the app itself. Run only your spec: a failing
+  live test waits out its 90-second timeout.
+- It must pass for the right reason. If it fails because of the change, fix
+  the code, not the spec. Put the command and its result in the commit
+  message body; the reviewer cannot run it.
+- If live e2e is not ready, still write the spec, and say in the commit
+  body that it did not run and why.
+
 ## Polish rounds
 
 When the context says the round is polish, the review approved and lists
@@ -61,7 +84,8 @@ commit message.
   `pnpm exec turbo run typecheck test:unit --filter=@wgw/apps`. Target single
   files with `pnpm --dir packages/apps exec vitest run <path>`. Format touched
   files with `pnpm --dir packages/apps exec prettier --write <files>`.
-- You cannot run PHP here; `packages/api/vendor/` is there to read. If a fix
+- You cannot run the PHP suite here; `packages/api/vendor/` is there to read.
+  (A live e2e spec starts the API, but that is not the PHP suite.) If a fix
   touches `packages/api`, keep it minimal and say in the commit message body
   that the PHP suite did not run; CI runs it.
 
