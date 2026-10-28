@@ -35,6 +35,7 @@ final class DriveShareService
         private DriveShareNotifier $notifier,
         private FileNodeIndexService $fileNodes,
         private DriveShareOwnerReach $ownerReach,
+        private DriveShareRevoker $revoker,
     ) {}
 
     /**
@@ -237,7 +238,7 @@ final class DriveShareService
     {
         DB::connection('wgw')->transaction(function () use ($username, $shareId): void {
             $share = $this->ownerShareOrFail($username, $shareId, lockForUpdate: true);
-            $this->revokeShareRecord($share);
+            $this->revoker->revoke($share);
         });
     }
 
@@ -266,7 +267,7 @@ final class DriveShareService
                     continue;
                 }
 
-                $this->revokeShareRecord($share);
+                $this->revoker->revoke($share);
                 $revokedIds[] = (string) $share->id;
             }
 
@@ -757,17 +758,5 @@ final class DriveShareService
         }
 
         return $share;
-    }
-
-    private function revokeShareRecord(DriveShare $share): void
-    {
-        $now = Carbon::now();
-        $share->revoked_at = $now;
-        $share->save();
-
-        DriveShareSession::query()
-            ->where('share_id', $share->id)
-            ->whereNull('revoked_at')
-            ->update(['revoked_at' => $now]);
     }
 }

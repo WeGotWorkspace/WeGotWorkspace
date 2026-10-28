@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Drive;
 
+use App\Models\DriveShare;
 use App\Models\DriveShareGrant;
 use App\Models\GroupMember;
 use App\Models\Principal;
+use App\Storage\WgwStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\DriveTestFixtures;
@@ -16,8 +18,8 @@ use Tests\Support\WgwDatabaseTestCase;
  * A share stays in force only while its owner still reaches the shared path. Once bob leaves
  * the team group, his shares on the team folder are dormant: hidden from his share management
  * and ignored for every grantee, invite and public link. Re-adding bob brings them back.
- * Deleting the group leaves them dormant, and a new group under the same slug does not revive
- * them on its own.
+ * Deleting the group revokes them for good: a new group under the same slug starts without them,
+ * even once bob joins it.
  */
 final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
 {
@@ -156,39 +158,75 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
             ->assertOk();
     }
 
-    public function test_deleting_the_group_leaves_its_shares_dormant_also_after_the_slug_is_reused(): void
+    public function test_deleting_the_group_revokes_its_shares_for_good(): void
     {
         $bob = $this->userBearerToken();
         $admin = $this->adminBearerToken();
-        $shareId = (string) $this->createBoxShare(['carol' => ['access' => 'view']])['id'];
+        $shareId = (string) $this->createBoxShare([
+            'carol' => ['access' => 'view'],
+            'guest@example.com' => ['access' => 'view'],
+        ])['id'];
+        $inviteGrant = DriveShareGrant::query()
+            ->where('share_id', $shareId)
+            ->where('grantee_type', 'email')
+            ->first();
+        $this->assertNotNull($inviteGrant);
+        $inviteToken = (string) $inviteGrant->displayedInviteToken();
         $publicToken = (string) $this->withBearer($bob)->postJson('/api/v1/files/shares', [
             'path' => self::BOX,
             'kind' => 'public',
             'defaultAccess' => 'view',
         ])->assertOk()->json('data.publicToken');
+        $guestJwt = (string) $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])
+            ->assertOk()
+            ->json('access_token');
+
+        $this->withBearer($admin)->postJson('/api/v1/admin/groups', ['name' => 'team-two'])->assertOk();
+        $this->withBearer($admin)->putJson('/api/v1/admin/groups/team-two/members/bob')->assertOk();
+        app(WgwStorage::class)->files()->put('groups/team-two/box/doc.md', 'other body');
+        $siblingShareId = (string) $this->withBearer($bob)->postJson('/api/v1/files/shares', [
+            'path' => '/groups/team-two/box',
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk()->json('data.id');
 
         $this->withBearer($admin)->deleteJson('/api/v1/admin/groups/team')->assertOk();
 
-        $this->assertShareNotFound($this->withBearer($bob)->getJson('/api/v1/files/shares/'.$shareId));
-        $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shared-with-me')
-            ->assertOk()
-            ->assertJsonCount(0, 'data');
-        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])->assertStatus(410);
+        $this->assertSame(
+            [$siblingShareId],
+            DriveShare::query()->whereNull('revoked_at')->pluck('id')->map(fn ($id): string => (string) $id)->all(),
+            'Only shares on the deleted group\'s folder are revoked.',
+        );
 
         $this->withBearer($admin)->postJson('/api/v1/admin/groups', [
             'name' => 'team',
             'displayName' => 'Team',
         ])->assertOk();
+        $this->withBearer($admin)->putJson('/api/v1/admin/groups/team/members/bob')->assertOk();
         $this->seedGroupFile('box/doc.md', 'new team body');
 
         $this->assertShareNotFound($this->withBearer($bob)->getJson('/api/v1/files/shares/'.$shareId));
         $this->assertAccessDenied(
             $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
         );
-        $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shared-with-me')
-            ->assertOk()
-            ->assertJsonCount(0, 'data');
-        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])->assertStatus(410);
+        $this->assertSame(
+            [$siblingShareId],
+            $this->sharedWithCarolShareIds(),
+            'Shared-with-me holds only the other group\'s share.',
+        );
+        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])
+            ->assertStatus(410)
+            ->assertJsonPath('code', 'share_unavailable');
+        $this->assertAccessDenied($this->withBearer($guestJwt)->get('/api/v1/files/content?path='.urlencode(self::DOC)));
+        $this->withBearer($this->carolBearerToken())->postJson('/api/v1/files/share-sessions/accept', [
+            'inviteToken' => $inviteToken,
+        ])->assertNotFound();
+
+        $freshShareId = (string) $this->createBoxShare(['carol' => ['access' => 'view']])['id'];
+        $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
+            ->assertOk();
+        $this->assertEqualsCanonicalizing([$siblingShareId, $freshShareId], $this->sharedWithCarolShareIds());
     }
 
     public function test_owner_group_memberships_load_once_per_request(): void
@@ -253,6 +291,18 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
         ])->assertOk()->json('data');
 
         return $data;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sharedWithCarolShareIds(): array
+    {
+        $rows = (array) $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->json('data');
+
+        return array_values(array_map(static fn (mixed $row): string => (string) ($row['share']['id'] ?? ''), $rows));
     }
 
     private function assertShareNotFound(TestResponse $response): void
