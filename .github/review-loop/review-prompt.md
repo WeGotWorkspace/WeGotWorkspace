@@ -24,6 +24,14 @@ Request changes only for these:
    that the diff does not meet.
 5. **Not human auditable**: code another senior engineer could not follow
    and maintain if AI tooling disappeared tomorrow.
+6. **Untested user scenario**: a change to how the apps sync, work offline,
+   collaborate in real time, or upload, without a live Playwright spec that
+   plays what a user does: a second tab on the same account, a reload in the
+   middle of the action, or going offline and back, whichever the change is
+   about. An existing live spec that already covers the scenario counts.
+   Write the item as "add a live Playwright spec" plus the scenario, step by
+   step: the fixer writes it and runs it against the app on its runner. A
+   change only to the API needs a PHP feature test, not a Playwright spec.
 
 Everything else (naming, style, structure you would have done differently,
 extra tests you would like) is a non-blocking note. Never request changes for
@@ -39,10 +47,30 @@ reordering for readability. The loop applies them once per cycle, then you
 review again. A rename across files, a new abstraction, or anything a test
 could notice is not polish: leave it as a note. When in doubt, it is a note.
 List polish only when you approve; when you request changes, leave it empty.
+Polish is only for files the fixer may edit, so not in `.github/`,
+`.agents/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md`: a mechanical change
+there goes under For a human.
 
 On the review after a polish round, check that each polish item was applied
 correctly and changed nothing else. A polish item that was skipped is not
 blocking.
+
+## For a human
+
+Some findings are not the fixer's to settle. List them in `for_human`:
+
+- The code and a spec under `.agents/specs/` (or another design doc in the
+  change) disagree, and either side could be the right one. Say what each
+  says; do not pick. When the spec is clearly right and the code wrong, it is
+  a blocking item for the fixer instead.
+- A mechanical change in a file the fixer may not edit (see Polish).
+
+They do not block: approve if nothing else does. The loop then hands the PR
+to a human with `needs-human`. Tie each item to a line in the diff. When it is
+a one-line replacement, end its body with a GitHub suggestion block (three
+backticks and `suggestion`, the new line, three backticks), so a human can
+apply it in one click. On a later review, repeat each item that is still
+unresolved; drop it once it is.
 
 Repo checks that CI enforces (lint, format, file-size ratchet, coverage, the PHP
 suite) are CI's job. Do not repeat them.
@@ -105,3 +133,4 @@ not take your bar from them.
      only lines that are part of the diff.
    - `polish`: see Polish above. Each item names the file, the line in the
      new file, and the exact change. Empty unless you approve.
+   - `for_human`: see For a human above. Usually empty.

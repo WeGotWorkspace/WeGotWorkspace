@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  AUTH_REFRESH_LOCK_NAME,
+  AUTH_REFRESH_WEB_LOCK_NAME,
   resetAuthRefreshLockForTests,
   withAuthRefreshLock,
 } from "./auth-refresh-lock";
@@ -12,7 +12,7 @@ import {
 } from "@/lib/cross-tab/cross-tab-lock";
 import { driveUploaderLockName } from "@/lib/offline/drive/upload/drive-upload-lock-name";
 
-const REFRESH_LOCK_KEY = crossTabLockStorageKey(AUTH_REFRESH_LOCK_NAME);
+const REFRESH_LOCK_KEY = crossTabLockStorageKey(AUTH_REFRESH_WEB_LOCK_NAME);
 
 afterEach(() => {
   resetAuthRefreshLockForTests();
@@ -84,7 +84,7 @@ describe("withAuthRefreshLock", () => {
   });
 
   it("never shares its name with the Drive uploader", () => {
-    expect(driveUploaderLockName("alice")).not.toBe(AUTH_REFRESH_LOCK_NAME);
+    expect(driveUploaderLockName("alice")).not.toBe(AUTH_REFRESH_WEB_LOCK_NAME);
     expect(driveUploaderLockName("alice")).toContain("alice");
   });
 

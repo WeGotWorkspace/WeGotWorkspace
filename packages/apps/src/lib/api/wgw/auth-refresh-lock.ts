@@ -1,11 +1,12 @@
 import { resetCrossTabLockForTests, withCrossTabLock } from "@/lib/cross-tab/cross-tab-lock";
 
 /**
- * Lock name for token refresh. Never reuse it for another caller: the Drive
+ * Lock name for token refresh, shared by every tab and the service worker
+ * before `POST /auth/refresh`. Never reuse it for another caller: the Drive
  * uploader holds its own lock while it calls `wgwFetch`, and `wgwFetch` takes
  * this one to renew the token. A shared name would make each wait for the other.
  */
-export const AUTH_REFRESH_LOCK_NAME = "wgw-auth-refresh";
+export const AUTH_REFRESH_WEB_LOCK_NAME = "wgw-auth-refresh";
 
 /** A refresh is sub-second; a record this old belongs to a tab that died mid-refresh. */
 const AUTH_REFRESH_STALE_MS = 30_000;
@@ -22,7 +23,7 @@ export function withAuthRefreshLock(task: () => Promise<boolean>): Promise<boole
   if (inTabRefreshPromise) {
     return inTabRefreshPromise;
   }
-  const locked = withCrossTabLock(AUTH_REFRESH_LOCK_NAME, () => task(), {
+  const locked = withCrossTabLock(AUTH_REFRESH_WEB_LOCK_NAME, () => task(), {
     staleAfterMs: AUTH_REFRESH_STALE_MS,
   });
   inTabRefreshPromise = locked.finally(() => {

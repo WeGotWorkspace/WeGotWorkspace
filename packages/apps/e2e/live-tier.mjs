@@ -5,7 +5,7 @@
  * `playwright.relay.config.mjs` runs the local coturn relay tier.
  */
 export const liveTierSpecPattern =
-  /(?:notes-offline-sync|docs-offline-sync|docs-home-browse|docs-collab-solo-read|calendar-offline-week-event|meet-adhoc-two-users|meet-guest-chat)\.spec\.ts/;
+  /(?:notes-offline-sync|notes-create-lost-response|tasks-inbound-sync|docs-offline-sync|docs-home-browse|docs-collab-solo-read|docs-collab-suggest-save|calendar-offline-week-event|meet-adhoc-two-users|meet-guest-chat)\.spec\.ts/;
 
 /**
  * Notes sync matrix: every action × tab setup × connectivity case (about 110

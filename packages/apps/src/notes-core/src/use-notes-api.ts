@@ -318,8 +318,10 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     successVersion,
     bootstrapRevision,
     syncing: reconnectSyncing,
-    listLoading: phase === "loading" || reconnectSyncing,
-    listRefreshing,
+    // First paint only. A reconnect keeps the cached list on screen and shows
+    // the header refresh icon instead (#1532), same split as Contacts.
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

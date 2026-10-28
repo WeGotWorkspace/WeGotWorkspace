@@ -395,9 +395,6 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
 
     private function indexPlugin(): FileNodeIndexPlugin
     {
-        return new FileNodeIndexPlugin(
-            app(FileNodeIndexService::class),
-            app(DocAttachmentsService::class),
-        );
+        return app(FileNodeIndexPlugin::class);
     }
 }
