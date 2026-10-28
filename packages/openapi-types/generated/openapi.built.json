@@ -10984,7 +10984,7 @@
                     },
                     "scope": {
                         "$ref": "#/components/schemas/PushScope",
-                        "description": "Manifest id of the installed app that subscribes (display-mode standalone), or `/` in a browser tab or the suite PWA. The subscription then only receives push for that app; `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: the subscription receives everything until a request names a scope."
+                        "description": "Manifest id of the installed app that subscribes where each installed app has its own subscription (iOS Home Screen apps), otherwise `/`. The subscription then only receives push that opens inside that app (the longest manifest scope holding `navigate`; for `navigate` `/`, the app of the notification domain); `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: a new subscription receives everything until a request names a scope, and a known one keeps its scopes."
                     }
                 }
             },

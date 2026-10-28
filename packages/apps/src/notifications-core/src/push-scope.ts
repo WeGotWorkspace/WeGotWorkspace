@@ -1,18 +1,21 @@
 /**
  * Web Push scope per installed app (#1606).
  *
- * The subscribe request names the app that made it: the manifest `id` when the
- * page runs as an installed app (`display-mode: standalone`), `/` in a browser
- * tab or the suite PWA. The server only sends that subscription the
- * notifications of that app; `/` receives everything.
+ * The subscribe request names the app that made it. Only an iOS Home Screen
+ * app has a push subscription of its own, so only there does the request carry
+ * the app's manifest id; everywhere else (browser tabs, desktop and Android
+ * installed apps, which share one subscription per browser profile) it is `/`.
+ * The server sends a subscription only the notifications that open inside its
+ * scopes; `/` receives everything.
  *
- * On iOS each Home Screen app has its own storage and subscription, so this is
- * what keeps a Docs app from showing Calendar alerts. Desktop and Android share
- * one service worker and subscription, so a browser tab posting `/` widens it
- * back to everything there.
+ * The app is read from the path the document loaded at. An iOS app that was
+ * hard-navigated to `/logout` or `/login` has lost that path, so the scope is
+ * then unknown (`null`) and the request leaves it out, unless `/login?return=`
+ * points into an app.
  *
- * The worker cannot read display-mode, so pages remember the scopes they posted
- * in IndexedDB; `pushsubscriptionchange` posts the new endpoint with them.
+ * The worker cannot tell which app it serves, so pages remember the scopes they
+ * posted in IndexedDB; `pushsubscriptionchange` posts the new endpoint with
+ * them. Logout forgets them.
  */
 
 export const ROOT_PUSH_SCOPE = "/";
@@ -37,49 +40,96 @@ export function isPushScope(value: unknown): value is PushScope {
   return typeof value === "string" && (PWA_MANIFEST_IDS as readonly string[]).includes(value);
 }
 
+const PATH_BASE = "https://push-scope.invalid";
+
+/**
+ * `path` as the browser opens it: dot segments resolved (also `%2e%2e`), `\`
+ * read as `/`. A path that would leave the origin becomes `/`.
+ */
+export function normalizePushPath(path: string): string {
+  let url: URL;
+  try {
+    url = new URL(path, PATH_BASE);
+  } catch {
+    return ROOT_PUSH_SCOPE;
+  }
+  if (url.origin !== PATH_BASE || url.pathname.startsWith("//")) return ROOT_PUSH_SCOPE;
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 /** True when `path` (pathname with optional query or hash) opens inside `scope`. */
 export function isWithinPushScope(path: string, scope: string): boolean {
-  if (scope === ROOT_PUSH_SCOPE || path === scope) return true;
-  if (!path.startsWith(scope)) return false;
-  const next = path.charAt(scope.length);
+  if (scope === ROOT_PUSH_SCOPE) return true;
+  const normalized = normalizePushPath(path);
+  if (normalized === scope) return true;
+  if (!normalized.startsWith(scope)) return false;
+  const next = normalized.charAt(scope.length);
   return next === "/" || next === "?" || next === "#";
 }
 
-/** Manifest id of the app whose scope holds `pathname`; `/` when none does. */
-function manifestIdForPath(pathname: string): PushScope {
-  let best: PushScope = ROOT_PUSH_SCOPE;
+/** Manifest id of the app (not the suite) whose scope holds `path`. */
+function appScopeForPath(path: string): PushScope | null {
+  let best: PushScope | null = null;
   for (const id of PWA_MANIFEST_IDS) {
-    if (id.length > best.length && isWithinPushScope(pathname, id)) best = id;
+    if (id === ROOT_PUSH_SCOPE || (best && id.length <= best.length)) continue;
+    if (isWithinPushScope(path, id)) best = id;
   }
   return best;
 }
 
-export function pushScopeForLaunch(input: { standalone: boolean; launchPath: string }): PushScope {
-  return input.standalone ? manifestIdForPath(input.launchPath) : ROOT_PUSH_SCOPE;
+/** Nested `/login?return=/login?return=…` chains are unwrapped this deep. */
+const MAX_RETURN_DEPTH = 3;
+
+function scopeForLaunchPath(launchPath: string, depth: number): PushScope | null {
+  const normalized = normalizePushPath(launchPath);
+  const url = new URL(normalized, PATH_BASE);
+  if (url.pathname === ROOT_PUSH_SCOPE) return ROOT_PUSH_SCOPE;
+  const app = appScopeForPath(url.pathname);
+  if (app) return app;
+  if (url.pathname !== "/login" || depth >= MAX_RETURN_DEPTH) return null;
+  const back = url.searchParams.get("return");
+  if (!back?.startsWith("/") || back.startsWith("//")) return null;
+  // A return to the suite home says nothing about which app this is.
+  const scope = scopeForLaunchPath(back, depth + 1);
+  return scope === ROOT_PUSH_SCOPE ? null : scope;
+}
+
+/**
+ * The scope to post, or null when it is not known. `ownSubscription` is true
+ * only where each installed app has its own subscription (iOS Home Screen).
+ */
+export function pushScopeForLaunch(input: {
+  ownSubscription: boolean;
+  launchPath: string;
+}): PushScope | null {
+  if (!input.ownSubscription) return ROOT_PUSH_SCOPE;
+  return scopeForLaunchPath(input.launchPath, 0);
 }
 
 type DisplayWindow = {
-  matchMedia?: (query: string) => Pick<MediaQueryList, "matches">;
   /** `Navigator`; iOS adds a non-standard `standalone` flag. */
   navigator: object;
 };
 
-export function isStandaloneDisplay(win: DisplayWindow): boolean {
-  // iOS Safari before display-mode support only sets `navigator.standalone`.
-  if ((win.navigator as { standalone?: unknown }).standalone === true) return true;
-  return win.matchMedia?.("(display-mode: standalone)").matches === true;
+/**
+ * True in an iOS Home Screen app, the only place where each installed app gets
+ * its own storage and push subscription. Desktop and Android installed apps
+ * share the browser profile's subscription, so they must keep posting `/`.
+ */
+export function hasOwnPushSubscription(win: DisplayWindow): boolean {
+  return (win.navigator as { standalone?: unknown }).standalone === true;
 }
 
 let launchPath: string | null = null;
 
 /**
- * Record the path the page loaded at. An installed app always opens inside its
- * own scope (its start URL, or a notification link for it); a later sign-in
- * redirect or in-app link to another app must not change which app this is.
- * The first call wins.
+ * Record the path and query the page loaded at. An installed app opens inside
+ * its own scope (its start URL, or a notification link for it); a later
+ * sign-in redirect or in-app link to another app must not change which app
+ * this is. The first call wins.
  */
-export function rememberLaunchPath(pathname: string): void {
-  launchPath ??= pathname;
+export function rememberLaunchPath(pathAndSearch: string): void {
+  launchPath ??= pathAndSearch;
 }
 
 /** Test-only. */
@@ -88,19 +138,38 @@ export function resetPushScopeLaunchForTests(): void {
 }
 
 export function currentPushScope(
-  win: DisplayWindow & { location: { pathname: string } } = window,
-): PushScope {
+  win: DisplayWindow & { location: { pathname: string; search: string } } = window,
+): PushScope | null {
   return pushScopeForLaunch({
-    standalone: isStandaloneDisplay(win),
-    launchPath: launchPath ?? win.location.pathname,
+    ownSubscription: hasOwnPushSubscription(win),
+    launchPath: launchPath ?? `${win.location.pathname}${win.location.search}`,
   });
 }
 
 /** Same rule as the server: every app scope is kept, and `/` replaces them all. */
-export function mergePushScopes(stored: readonly string[], incoming: string): string[] {
-  const scopes = [...new Set([...stored, incoming])];
-  if (scopes.includes(ROOT_PUSH_SCOPE)) return [ROOT_PUSH_SCOPE];
-  return scopes.sort();
+function collapsePushScopes(scopes: readonly PushScope[]): PushScope[] {
+  const unique = [...new Set(scopes)];
+  if (unique.includes(ROOT_PUSH_SCOPE)) return [ROOT_PUSH_SCOPE];
+  return unique.sort();
+}
+
+export function mergePushScopes(stored: readonly string[], incoming: string): PushScope[] {
+  return collapsePushScopes([...stored, incoming].filter(isPushScope));
+}
+
+/**
+ * Scopes to post for a new endpoint: the remembered ones and the current one,
+ * so a replaced subscription keeps every app scope the old one had. `[null]`
+ * (one POST without scope) when none is known.
+ */
+export function pushScopesToPost(
+  remembered: readonly string[],
+  current: PushScope | null,
+): (PushScope | null)[] {
+  const scopes = collapsePushScopes(
+    [...remembered, ...(current === null ? [] : [current])].filter(isPushScope),
+  );
+  return scopes.length > 0 ? scopes : [null];
 }
 
 const DB_NAME = "wgw-push-scope";
@@ -142,6 +211,11 @@ function inStore<T>(
 export async function readPushScopes(idb: IDBFactory = indexedDB): Promise<PushScope[]> {
   const value = await inStore<unknown>(idb, "readonly", (store) => store.get(KEY));
   return Array.isArray(value) ? value.filter(isPushScope) : [];
+}
+
+/** Logout: the next account on this device starts without known scopes. */
+export async function forgetPushScopes(idb: IDBFactory = indexedDB): Promise<void> {
+  await inStore(idb, "readwrite", (store) => store.delete(KEY));
 }
 
 export async function rememberPushScope(scope: string, idb: IDBFactory = indexedDB): Promise<void> {

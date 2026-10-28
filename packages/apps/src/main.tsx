@@ -8,7 +8,7 @@ import "@/styles.css";
 
 syncDocumentTheme();
 // Before any route redirect: the launch path says which installed app this is.
-rememberLaunchPath(location.pathname);
+rememberLaunchPath(`${location.pathname}${location.search}`);
 
 const SW_REFRESHING_KEY = "wgw-sw-refreshing";
 

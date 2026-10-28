@@ -30,10 +30,13 @@ export async function fetchVapidPublicKey(): Promise<string> {
   return json.publicKey ?? "";
 }
 
-/** `scope` is the installed app's manifest id, or `/` (see `push-scope.ts`). */
+/**
+ * `scope` is the installed app's manifest id, or `/` (see `push-scope.ts`).
+ * Null leaves it out: the server then keeps the scopes it has.
+ */
 export async function subscribePush(
   subscription: PushSubscriptionJSON,
-  scope: string,
+  scope: string | null,
 ): Promise<void> {
   const res = await wgwFetch("/notifications/push/subscriptions", {
     method: "POST",
@@ -44,7 +47,7 @@ export async function subscribePush(
         p256dh: subscription.keys?.p256dh,
         auth: subscription.keys?.auth,
       },
-      scope,
+      ...(scope === null ? {} : { scope }),
     }),
   });
   if (!res.ok) throw new Error(`POST push subscription failed (${res.status})`);

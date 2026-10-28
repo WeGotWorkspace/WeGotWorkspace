@@ -40,7 +40,7 @@ export type PushSubscriptionChangeDeps = {
   refreshGraceMs?: number;
   /**
    * App scopes the pages posted (#1606, `readPushScopes`). The worker cannot
-   * read display-mode, so it posts the new endpoint once per remembered scope.
+   * tell which app it serves, so it posts the new endpoint once per remembered scope.
    */
   readScopes: () => Promise<readonly string[]>;
 };

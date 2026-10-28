@@ -1,5 +1,11 @@
 import { buildWgwLoginHref, isWgwPublicRoutePathname } from "@/lib/api/wgw/route-guard";
-import { isPushScope, isWithinPushScope, ROOT_PUSH_SCOPE, type PushScope } from "./push-scope";
+import {
+  isPushScope,
+  isWithinPushScope,
+  normalizePushPath,
+  ROOT_PUSH_SCOPE,
+  type PushScope,
+} from "./push-scope";
 
 export const WGW_NOTIFICATION_NAVIGATE_MESSAGE = "wgw-notification-navigate";
 
@@ -44,7 +50,8 @@ export function notificationClickTarget(
   origin: string,
 ): NotificationClickTarget {
   const appScope = isPushScope(scope) ? scope : ROOT_PUSH_SCOPE;
-  const deepLink = sanitizeNotificationNavigate(navigate);
+  // Normalised, so `/docs/../calendar` counts as the Calendar link it opens.
+  const deepLink = normalizePushPath(sanitizeNotificationNavigate(navigate));
   const path = isWithinPushScope(deepLink, appScope) ? deepLink : appScope;
   return { href: resolveNotificationNavigateHref(path, origin), path, scope: appScope };
 }

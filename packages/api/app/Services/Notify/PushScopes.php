@@ -8,10 +8,12 @@ namespace App\Services\Notify;
  * Web Push scope per installed app (#1606).
  *
  * A scope is the `id` of one of the app's web manifests (`/`, `/docs`, …). The
- * client sends it with each subscribe: the manifest id when it runs as an
- * installed app, `/` in a browser tab or the suite PWA. A subscription keeps
- * every scope it was posted from; `/` replaces them all and receives every
- * notification. A notification goes to `/` and to the app its domain maps to.
+ * client sends it with each subscribe: the manifest id in an iOS Home Screen
+ * app (the only place where each app has its own subscription), `/` everywhere
+ * else. A subscription keeps every scope it was posted from; `/` replaces them
+ * all and receives every notification. A notification goes to `/` and to the
+ * app whose scope holds the path it opens; for a notification that opens `/`,
+ * to the app its domain maps to.
  *
  * Stored as a space-separated list in `push_subscriptions.scopes`. Null means
  * "unknown" (a row from before scopes, or a client that sent none): it
@@ -35,7 +37,7 @@ final class PushScopes
         '/tasks',
     ];
 
-    /** Notification domain → the installed app that alerts about it. */
+    /** Notification domain → its app, for notifications that open the suite start. */
     private const DOMAIN_SCOPES = [
         'docs' => '/docs',
         'calendar' => '/calendar',
@@ -69,32 +71,93 @@ final class PushScopes
     }
 
     /**
-     * The scope a subscription receives this notification under, or null when it
-     * does not receive it.
+     * The app (not `/`) that opens `$navigate`: the longest manifest scope that
+     * holds it, or for `/` the app of `$domain`. Null when only the suite does.
+     */
+    public static function target(string $navigate, string $domain): ?string
+    {
+        $path = self::normalizePath($navigate);
+        if (substr($path, 0, strcspn($path, '?#')) === self::ROOT) {
+            return self::forDomain($domain);
+        }
+        $best = null;
+        foreach (self::KNOWN as $scope) {
+            if ($scope !== self::ROOT && strlen($scope) > strlen($best ?? '') && self::within($path, $scope)) {
+                $best = $scope;
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * The scope a subscription receives a notification for `$target` (see
+     * {@see target()}) under, or null when it does not receive it.
      *
      * @param  list<string>|null  $scopes
      */
-    public static function receiving(?array $scopes, string $domain): ?string
+    public static function receiving(?array $scopes, ?string $target): ?string
     {
         if ($scopes === null || in_array(self::ROOT, $scopes, true)) {
             return self::ROOT;
         }
-        $scope = self::forDomain($domain);
 
-        return $scope !== null && in_array($scope, $scopes, true) ? $scope : null;
+        return $target !== null && in_array($target, $scopes, true) ? $target : null;
     }
 
     /**
      * Keep `$path` when it opens inside the app; otherwise open the app's start.
+     * `$path` is normalised first (see {@see normalizePath()}).
      */
     public static function navigateWithin(string $path, string $scope): string
     {
-        if ($scope === self::ROOT || $path === $scope) {
-            return $path;
-        }
-        $next = substr($path, strlen($scope), 1);
+        $path = self::normalizePath($path);
 
-        return str_starts_with($path, $scope) && in_array($next, ['/', '?', '#'], true) ? $path : $scope;
+        return self::within($path, $scope) ? $path : $scope;
+    }
+
+    /**
+     * `$path` as a browser opens it: dot segments resolved (also `%2e`), `\`
+     * read as `/`. Anything that is not a same-origin path becomes `/`.
+     */
+    public static function normalizePath(string $path): string
+    {
+        if (! str_starts_with($path, '/') && ! str_starts_with($path, '\\')) {
+            return self::ROOT;
+        }
+        $cut = strcspn($path, '?#');
+        $rest = substr($path, $cut);
+        $segments = explode('/', str_replace('\\', '/', substr($path, 1, max(0, $cut - 1))));
+        $out = [];
+        $last = count($segments) - 1;
+        foreach ($segments as $i => $segment) {
+            $lower = strtolower($segment);
+            $dot = in_array($lower, ['.', '%2e'], true);
+            $dotDot = in_array($lower, ['..', '.%2e', '%2e.', '%2e%2e'], true);
+            if ($dotDot) {
+                array_pop($out);
+            }
+            if ($dot || $dotDot) {
+                if ($i === $last) {
+                    $out[] = '';
+                }
+
+                continue;
+            }
+            $out[] = $segment;
+        }
+        $normalized = '/'.implode('/', $out);
+
+        return str_starts_with($normalized, '//') ? self::ROOT : $normalized.$rest;
+    }
+
+    private static function within(string $path, string $scope): bool
+    {
+        if ($scope === self::ROOT || $path === $scope) {
+            return true;
+        }
+
+        return str_starts_with($path, $scope) && in_array(substr($path, strlen($scope), 1), ['/', '?', '#'], true);
     }
 
     /**

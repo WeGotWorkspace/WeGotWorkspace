@@ -164,8 +164,8 @@ final class VapidPushService
     }
 
     /**
-     * Send to the principal's subscriptions whose app scope covers this
-     * notification (#1606); each gets a payload that opens inside its app.
+     * Send to the principal's subscriptions whose app scope holds the path this
+     * notification opens (#1606); each gets a payload that opens inside its app.
      */
     public function sendNotification(Notification $notification): int
     {
@@ -224,11 +224,8 @@ final class VapidPushService
         $copy = NotificationCopyFormatter::forNotification($notification);
         $title = $copy['title'];
         $body = (string) ($copy['body'] ?? '');
-        $path = (string) $notification->navigate;
-        if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//')) {
-            $path = '/';
-        }
-        $path = PushScopes::navigateWithin($path, $scope);
+        // Normalised, so the link opens the app it was routed to.
+        $path = PushScopes::navigateWithin((string) $notification->navigate, $scope);
         $tag = (string) ($notification->tag ?? $notification->id);
         $absolute = $this->absoluteNavigate($path);
 
@@ -283,11 +280,12 @@ final class VapidPushService
     private function receivingSubscriptions(Notification $notification): array
     {
         $receiving = [];
+        $target = PushScopes::target((string) $notification->navigate, (string) $notification->domain);
         $subs = PushSubscription::query()
             ->where('principal', (string) $notification->principal)
             ->get();
         foreach ($subs as $sub) {
-            $scope = PushScopes::receiving($sub->scopeList(), (string) $notification->domain);
+            $scope = PushScopes::receiving($sub->scopeList(), $target);
             if ($scope !== null) {
                 $receiving[] = [$sub, $scope];
             }
