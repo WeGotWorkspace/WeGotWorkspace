@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   assignNotificationNavigate,
   isSafariDeclarativeWebPushUserAgent,
+  notificationClickTarget,
   notificationNavigateFromMessage,
+  pickNotificationClient,
   resolveNotificationNavigateHref,
   sanitizeNotificationNavigate,
   WEB_PUSH_DECLARATIVE_VERSION,
@@ -77,5 +79,60 @@ describe("isSafariDeclarativeWebPushUserAgent", () => {
       ),
     ).toBe(false);
     expect(WEB_PUSH_DECLARATIVE_VERSION).toBe(8030);
+  });
+});
+
+describe("notificationClickTarget", () => {
+  const origin = "https://wegot.example";
+
+  it("opens the deep link when it lies inside the receiving app's scope", () => {
+    expect(notificationClickTarget("/docs?file=a.md", "/docs", origin)).toEqual({
+      href: "https://wegot.example/docs?file=a.md",
+      path: "/docs?file=a.md",
+      scope: "/docs",
+    });
+    expect(notificationClickTarget("/drive", "/", origin)).toMatchObject({
+      path: "/drive",
+      scope: "/",
+    });
+  });
+
+  it("opens the app's own start when the link points outside its scope", () => {
+    expect(notificationClickTarget("/drive", "/docs", origin)).toEqual({
+      href: "https://wegot.example/docs",
+      path: "/docs",
+      scope: "/docs",
+    });
+  });
+
+  it("treats a missing or foreign scope as the suite scope", () => {
+    expect(notificationClickTarget("/drive", undefined, origin).scope).toBe("/");
+    expect(notificationClickTarget("/drive", "//evil.example", origin).scope).toBe("/");
+    expect(notificationClickTarget("/drive", "/evil", origin)).toMatchObject({
+      path: "/drive",
+      scope: "/",
+    });
+  });
+});
+
+describe("pickNotificationClient", () => {
+  const client = (url: string) => ({ url });
+
+  it("focuses a window that is already inside the receiving app", () => {
+    const calendar = client("https://wegot.example/calendar");
+    const docs = client("https://wegot.example/docs/report.md");
+    expect(pickNotificationClient([calendar, docs], "/docs")).toBe(docs);
+  });
+
+  it("opens a new window instead of taking over another app's window", () => {
+    expect(pickNotificationClient([client("https://wegot.example/calendar")], "/docs")).toBeNull();
+    expect(pickNotificationClient([], "/docs")).toBeNull();
+  });
+
+  it("keeps using the first window for the suite scope", () => {
+    const calendar = client("https://wegot.example/calendar");
+    expect(pickNotificationClient([calendar, client("https://wegot.example/docs")], "/")).toBe(
+      calendar,
+    );
   });
 });

@@ -5,7 +5,13 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   subscribePush: vi.fn(),
 }));
 
+vi.mock("./push-scope", () => ({
+  currentPushScope: vi.fn(() => "/"),
+  rememberPushScope: vi.fn(async () => undefined),
+}));
+
 import { fetchVapidPublicKey, subscribePush } from "@/lib/api/wgw/notifications";
+import { currentPushScope, rememberPushScope } from "./push-scope";
 import {
   ensurePushPermissionAndSubscribe,
   resetEnsurePushSubscriptionForTests,
@@ -37,6 +43,8 @@ describe("ensurePushPermissionAndSubscribe", () => {
     getSubscription.mockReset();
     vi.mocked(fetchVapidPublicKey).mockResolvedValue("AQID");
     vi.mocked(subscribePush).mockResolvedValue(undefined);
+    vi.mocked(currentPushScope).mockReset().mockReturnValue("/");
+    vi.mocked(rememberPushScope).mockReset().mockResolvedValue(undefined);
     subscribe.mockResolvedValue({
       toJSON: () => ({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
     });
@@ -76,10 +84,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
 
     expect(requestPermission).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/1",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
   });
 
   it("does not prompt again when the browser already denied", async () => {
@@ -113,10 +121,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
 
     expect(subscribe).not.toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://web.push.apple.com/safari",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://web.push.apple.com/safari", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
   });
 
   it("returns false when PushManager subscribe fails and nothing is stored", async () => {
@@ -126,5 +134,35 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
 
     expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("posts the installed app's scope and remembers it for the service worker", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/docs",
+    );
+    expect(rememberPushScope).toHaveBeenCalledWith("/docs");
+  });
+
+  it("does not remember a scope the server did not store", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(subscribePush).mockRejectedValue(new Error("POST push subscription failed (500)"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("still reports push as enabled when remembering the scope fails", async () => {
+    stubNotification("granted");
+    vi.mocked(rememberPushScope).mockRejectedValue(new Error("IndexedDB unavailable"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
   });
 });

@@ -88,6 +88,7 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'net'));
         $this->assertFalse(Schema::connection('wgw')->hasTable('rtc_session_metrics'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('cards', 'uid'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('push_subscriptions', 'scopes'));
     }
 
     /** #1609: one UID per address book, and one URI per address book on MySQL too. */
