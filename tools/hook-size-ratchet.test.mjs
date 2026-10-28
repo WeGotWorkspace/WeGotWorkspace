@@ -28,7 +28,10 @@ function measured(entries) {
 
 function byName(text, fileName) {
   return Object.fromEntries(
-    measureHooks(text, fileName).map((hook) => [hook.name, { lines: hook.lines, effects: hook.effects }]),
+    measureHooks(text, fileName).map((hook) => [
+      hook.name,
+      { lines: hook.lines, effects: hook.effects },
+    ]),
   );
 }
 
@@ -46,12 +49,7 @@ test("rule sentence names both limits and the shrink case", () => {
 });
 
 test("measures an exported function declaration: body lines include both braces", () => {
-  const text = [
-    "export function useDemo() {",
-    "  const a = 1;",
-    "  return a;",
-    "}",
-  ].join("\n");
+  const text = ["export function useDemo() {", "  const a = 1;", "  return a;", "}"].join("\n");
   assert.deepEqual(byName(text), { useDemo: { lines: 4, effects: 0 } });
 });
 
@@ -129,7 +127,7 @@ test("counts useEffect and useLayoutEffect, bare or on React, including nested c
 test("parses TSX hooks that return JSX", () => {
   const text = [
     "export function useBadge() {",
-    "  return <span className=\"badge\">{1}</span>;",
+    '  return <span className="badge">{1}</span>;',
     "}",
   ].join("\n");
   assert.deepEqual(byName(text, "packages/apps/src/demo/use-badge.tsx"), {
@@ -183,7 +181,10 @@ test("evaluate passes when every over-limit hook matches its row", () => {
 test("evaluate errors on a new hook over the line limit", () => {
   const { errors } = evaluate(measured([["useNew", 201, 0]]), [], { limits });
   assert.equal(errors.length, 1);
-  assert.match(errors[0], /use-demo\.ts#useNew: 201 lines, 0 effects is over the limits.*not on the baseline/);
+  assert.match(
+    errors[0],
+    /use-demo\.ts#useNew: 201 lines, 0 effects is over the limits.*not on the baseline/,
+  );
 });
 
 test("evaluate errors on a new hook over the effect limit", () => {
@@ -231,17 +232,25 @@ test("evaluate errors on unsorted, duplicate, reasonless, and out-of-tree rows",
   const unsorted = evaluate(counts, [row("useB", 300, 0), row("useA", 300, 0)], { limits });
   assert.ok(unsorted.errors.some((error) => /baseline is not sorted/.test(error)));
 
-  const duplicate = evaluate(counts, [row("useA", 300, 0), row("useA", 300, 0), row("useB", 300, 0)], {
-    limits,
-  });
+  const duplicate = evaluate(
+    counts,
+    [row("useA", 300, 0), row("useA", 300, 0), row("useB", 300, 0)],
+    {
+      limits,
+    },
+  );
   assert.ok(duplicate.errors.some((error) => /duplicate baseline row/.test(error)));
 
   const reasonless = evaluate(counts, [row("useA", 300, 0, " "), row("useB", 300, 0)], { limits });
   assert.ok(reasonless.errors.some((error) => /baseline reason is empty/.test(error)));
 
-  const outside = evaluate(new Map(), [{ key: "docs/x.ts#useX", lines: 300, effects: 0, reason: "r" }], {
-    limits,
-  });
+  const outside = evaluate(
+    new Map(),
+    [{ key: "docs/x.ts#useX", lines: 300, effects: 0, reason: "r" }],
+    {
+      limits,
+    },
+  );
   assert.ok(outside.errors.some((error) => /outside packages\/apps\/src/.test(error)));
 });
 
