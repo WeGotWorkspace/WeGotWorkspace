@@ -37,9 +37,10 @@ export function DocsWorkspace({
   labels,
   onLogout,
   onFileRenamed,
+  guestSession,
   className,
 }: DocsWorkspaceProps) {
-  const isGuestSession = wgwIsGuestSession();
+  const isGuestSession = guestSession ?? wgwIsGuestSession();
   const apiPath = filePath ?? data.document?.apiPath ?? "";
   const shareFetchEnabled = Boolean(shareOperations && apiPath.trim() && !isGuestSession);
   const {
@@ -95,6 +96,7 @@ export function DocsWorkspace({
         apiPath={apiPath}
         mayShare={mayShare}
         shareDialog={shareDialog}
+        guestView={isGuestSession}
         onLogout={onLogout}
       />
       <DocsWorkspaceModals
@@ -114,6 +116,7 @@ function DocsWorkspaceShell({
   apiPath,
   mayShare,
   shareDialog,
+  guestView,
   onLogout,
 }: {
   className?: string;
@@ -123,6 +126,8 @@ function DocsWorkspaceShell({
   apiPath: string;
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
+  /** Guests cannot save yet: show the notice and drop editing controls. */
+  guestView: boolean;
   onLogout?: () => void;
 }) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -165,6 +170,7 @@ function DocsWorkspaceShell({
             apiPath={apiPath}
             mayShare={mayShare}
             shareDialog={shareDialog}
+            guestView={guestView}
             onToggleViewSource={() => setViewSource((on) => !on)}
           />
         </>
@@ -174,6 +180,7 @@ function DocsWorkspaceShell({
           controller={controller}
           fileKey={fileKey}
           viewSource={viewSource}
+          readOnlyNotice={guestView ? controller.labels.guestReadOnlyNotice : undefined}
           onEditorReady={setEditor}
         />
       }
@@ -229,6 +236,7 @@ function DocsMainHeader({
   apiPath,
   mayShare,
   shareDialog,
+  guestView,
   onToggleViewSource,
 }: {
   controller: DocsController;
@@ -237,10 +245,14 @@ function DocsMainHeader({
   apiPath: string;
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
+  guestView: boolean;
   onToggleViewSource: () => void;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
   const showShare = Boolean(apiPath.trim() && mayShare === true);
+  const showSourceLabel = guestView
+    ? controller.labels.viewSourceReadOnly
+    : controller.labels.viewSource;
 
   return (
     <ViewHeader
@@ -269,16 +281,21 @@ function DocsMainHeader({
                     },
                   ]
                 : []),
-              {
-                id: "rename",
-                label: controller.labels.rename,
-                icon: <Pencil />,
-                disabled: !controller.canRename,
-                onClick: controller.openRenameDialog,
-              },
+              // Rename needs a write route guests do not have (#1713).
+              ...(guestView
+                ? []
+                : [
+                    {
+                      id: "rename",
+                      label: controller.labels.rename,
+                      icon: <Pencil />,
+                      disabled: !controller.canRename,
+                      onClick: controller.openRenameDialog,
+                    },
+                  ]),
               {
                 id: "view-source",
-                label: viewSource ? controller.labels.hideSource : controller.labels.viewSource,
+                label: viewSource ? controller.labels.hideSource : showSourceLabel,
                 icon: <Code2 />,
                 active: viewSource,
                 disabled: !editor,

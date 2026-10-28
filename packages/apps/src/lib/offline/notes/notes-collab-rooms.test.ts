@@ -96,9 +96,8 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(names.has(`/${room}`)).toBe(false);
   });
 
-  it("does not open or create the v2 database of a note never opened on this device", async () => {
-    // The pending-sync poll checks every cached note every few seconds (#1714).
-    const uid = "note-never-opened";
+  it("does not create a missing v2 database while checking the pending flag", async () => {
+    const uid = "note-missing-v2";
     const room = noteCollabRoomKey(uid);
 
     await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);

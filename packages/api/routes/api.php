@@ -40,8 +40,8 @@ use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionCon
 use App\Http\Controllers\Api\V1\Installer\BootstrapController as InstallerBootstrapController;
 use App\Http\Controllers\Api\V1\Jmap\JmapApiController;
 use App\Http\Controllers\Api\V1\Jmap\JmapBlobController;
+use App\Http\Controllers\Api\V1\Jmap\JmapEventSourceController;
 use App\Http\Controllers\Api\V1\Jmap\JmapSessionController;
-use App\Http\Controllers\Api\V1\Jmap\JmapStubController;
 use App\Http\Controllers\Api\V1\Meetings\MeetingsController;
 use App\Http\Controllers\Api\V1\Notes\NotebooksController;
 use App\Http\Controllers\Api\V1\Notes\NotesController;
@@ -60,6 +60,7 @@ use App\Http\Controllers\Api\V1\Tasks\CapabilitiesController as TasksCapabilitie
 use App\Http\Controllers\Api\V1\Tasks\TaskCalendarsController;
 use App\Http\Controllers\Api\V1\Tasks\TasksController;
 use App\Http\Middleware\CspReportBodyLimit;
+use App\Http\RateLimiting\JmapPushRateLimiters;
 use App\Http\RateLimiting\RtcRoomRateLimiters;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -323,7 +324,12 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
     Route::post('jmap', [JmapApiController::class, 'handle']);
     Route::get('jmap/download/{accountId}/{blobId}/{name}', [JmapBlobController::class, 'download']);
     Route::post('jmap/upload/{accountId}', [JmapBlobController::class, 'upload']);
-    Route::get('jmap/events/{types}/{closeafter}/{ping}', [JmapStubController::class, 'eventSource']);
+});
+
+// JMAP event source (RFC 8620 §7.3, #1660): short-burst, its own bucket per
+// browser with an account ceiling instead of the shared `wgw-api` budget.
+Route::middleware(['wgw.auth', 'throttle:'.JmapPushRateLimiters::PUSH, 'wgw.role:user'])->group(function (): void {
+    Route::get('jmap/events/{types}/{closeafter}/{ping}', JmapEventSourceController::class);
 });
 
 Route::middleware(['wgw.auth', 'throttle:wgw-api'])->group(function () use ($filesSession): void {

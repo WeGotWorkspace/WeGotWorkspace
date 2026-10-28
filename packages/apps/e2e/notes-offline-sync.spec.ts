@@ -1,18 +1,8 @@
-// Notes offline e2e (live, cross-service — NOT run in this chunk).
+// Notes offline e2e (live app and API).
 //
-// Contract after VJOURNAL + Dexie inbound (#671):
-// - Note BODY edits persist via PATCH /notes/items/{uid} + If-Match
-//   (collab room = VJOURNAL UID). y-indexeddb is a UID-keyed crash buffer.
-//   There is no PUT /files/collaboration for notes.
+// - A note body saves with PUT /notes/items/{uid} (collab room = VJOURNAL UID);
+//   y-indexeddb is a UID-keyed crash buffer. Fields (archive, tags) use PATCH + If-Match.
 // - List pending = metadata outbox OR unsaved/collab-pending body.
-//
-// Remaining live-validation TODOs flagged for the next e2e pass (need a running
-// stack to confirm the collab pending-dot/toast wiring and group fixtures):
-//   1. Confirm `expectPendingDotVisible` / `expectSyncCompleted` resolve against
-//      the collab pending-sync indicator for body-only edits (the helpers may
-//      need a collab-specific selector vs. the metadata dot).
-//   2. Add a shared-notebook scenario (group principal / CalendarShareInvites):
-//      two members edit the same shared note body over the mesh + reconnect.
 import { expect, test } from "@playwright/test";
 import {
   appendToActiveNoteBody,
@@ -34,6 +24,9 @@ import {
 } from "./helpers/notes-live";
 
 test.describe("Notes offline sync (live app)", () => {
+  // Each case signs in, wipes the offline store and reloads first; the CI runner needs more than 90s.
+  test.describe.configure({ timeout: 180_000 });
+
   test("network offline: edit, reconnect, pending dot clears and sync toast shows", async ({
     page,
   }) => {
@@ -129,17 +122,14 @@ test.describe("Notes offline sync (live app)", () => {
 
       await appendToActiveNoteBody(editor, token);
       await expectPendingDotVisible(editor);
-      await expect(observer.getByText(token)).toHaveCount(0);
+      // Tabs in one browser context share the edit locally right away, so the
+      // observer may already show it; the server checks below prove the sync.
 
-      // Dual-path contract: a note **body** edit now persists through the Docs
-      // collab document (`PUT /api/v1/files/collaboration`, room = note path),
-      // NOT through `/notes/items` (which is metadata-only). The body still
-      // surfaces on `/notes/items` reads because collab merges into the same
-      // `.md` file, but the write that must land is the collaboration PUT.
+      // A note body saves with PUT /api/v1/notes/items/{uid} (room = note UID).
       const serverSync = editor.waitForResponse(
         (response) =>
-          response.url().includes("/api/v1/files/collaboration") &&
-          response.request().method() !== "GET" &&
+          /\/api\/v1\/notes\/items\/[^/?]+$/.test(new URL(response.url()).pathname) &&
+          response.request().method() === "PUT" &&
           response.ok(),
         { timeout: 30_000 },
       );
@@ -147,21 +137,7 @@ test.describe("Notes offline sync (live app)", () => {
       await expectSyncCompleted(editor);
       await serverSync;
 
-      await expect
-        .poll(
-          async () =>
-            editor.evaluate(async (expected) => {
-              const accessToken = localStorage.getItem("wgw.api.access_token");
-              const response = await fetch("/api/v1/notes/items", {
-                headers: { Authorization: `Bearer ${accessToken}` },
-              });
-              if (!response.ok) return false;
-              const json = (await response.json()) as { items?: { body?: string }[] };
-              return json.items?.some((item) => item.body?.includes(expected)) ?? false;
-            }, token),
-          { timeout: 20_000 },
-        )
-        .toBe(true);
+      await expect.poll(() => noteTokenOnServer(editor, token), { timeout: 20_000 }).toBe(true);
 
       await expect
         .poll(

@@ -1,4 +1,5 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
+import { wgwIsGuestSession } from "@/lib/api/wgw/http";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
@@ -170,6 +171,9 @@ async function applyOnlineRenameSideEffects(
 
 export function createHybridDocsDriveOperations(username: string): DriveAPIOperations {
   const live = createWgwDriveOperations("/");
+  // A guest has no write path yet (#1713): writes go to the server and fail
+  // there, so nothing is queued that could never land.
+  if (wgwIsGuestSession()) return live;
 
   return {
     ...live,
