@@ -1,5 +1,4 @@
 import {
-  wgwErrorMessageFromBody,
   wgwFetch,
   wgwFetchPrincipal,
   wgwGuestSharePath,
@@ -16,7 +15,6 @@ import type {
 import type {
   DriveAPIOperations,
   DriveAppBootstrap,
-  DriveMutationOpts,
   DriveUIData,
 } from "@/drive-core/src/drive-types";
 
@@ -215,37 +213,6 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
   throw new Error(`POST ${path} failed (${res.status})`);
 }
 
-async function patchJson(path: string, body: object, opts?: DriveMutationOpts) {
-  const res = await wgwFetch(path, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`PATCH ${path} failed (${res.status}): ${detail}`);
-  }
-}
-
-async function deleteJson(path: string, body: object, opts?: { signal?: AbortSignal }) {
-  const res = await wgwFetch(path, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: opts?.signal,
-  });
-  if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status})`);
-}
-
-function emptyState(cwd: string): DriveUIData {
-  return {
-    user: { username: "", name: "", role: "user", roots: [] },
-    cwd,
-    directory: { location: cwd, files: [] },
-  };
-}
-
 function createSharedDriveOperations(): Pick<
   DriveAPIOperations,
   "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord"
@@ -283,6 +250,15 @@ function createSharedDriveOperations(): Pick<
 export const GUEST_UPLOAD_UNAVAILABLE = "Uploading is not available for guests yet.";
 
 /**
+ * Guests have no write path for folders and files yet: JMAP `FileNode/set`
+ * is for signed-in users only (#1712). Until then the Drive UI offers no new
+ * folder, new file, rename, move or delete to guests, and these operations
+ * refuse before any request is sent.
+ */
+export const GUEST_STRUCTURE_UNAVAILABLE =
+  "Changing folders and files is not available for guests yet.";
+
+/**
  * Guests list over REST `/files/children`, which has no FileNode id.
  * Offline sync never runs for a guest (`useDriveAPI` skips that session),
  * so this route leaves `nodeId` empty instead of growing a guest cache.
@@ -317,50 +293,17 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
     async listAllDirectoryEntries(at, opts) {
       return fetchAllDirectoryEntries(normalizePath(at), opts);
     },
-    async createFolder(input, opts) {
-      const parent = normalizePath(input.cwd);
-      const name = input.name.trim();
-      await postJson(`/files/directories?${pathQuery(parent)}`, { name }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async createFolder() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async createFile(input, opts) {
-      const parent = normalizePath(input.cwd);
-      const name = input.name.trim();
-      await postJson(`/files/directories?${pathQuery(parent)}`, { name, type: "file" }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async createFile() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async renameItem(input, opts) {
-      const fromPath = input.from.includes("/")
-        ? normalizePath(input.from)
-        : (() => {
-            const parent = normalizePath(input.destination);
-            return parent === "/" ? `/${input.from}` : `${parent}/${input.from}`;
-          })();
-      const destination = normalizePath(input.destination);
-      const body: { name: string; destination?: string } = { name: input.to };
-      if (destination !== parentAndName(fromPath).destination) {
-        body.destination = destination;
-      }
-      await patchJson(`/files?${pathQuery(fromPath)}`, body, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async renameItem() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async deleteItems(paths, opts) {
-      const normalized = paths.map((path) => normalizePath(path));
-      if (normalized.length === 1) {
-        await wgwFetch(`/files?${pathQuery(normalized[0]!)}`, {
-          method: "DELETE",
-          signal: opts?.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`DELETE /files?path= failed (${res.status})`);
-        });
-      } else {
-        await deleteJson("/files", { paths: normalized }, opts);
-      }
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async deleteItems() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
     async downloadFile(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
