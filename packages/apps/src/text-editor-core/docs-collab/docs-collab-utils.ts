@@ -37,6 +37,28 @@ export function colorForName(name: string): string {
 }
 
 /**
+ * Black or white, whichever contrasts more with a `#rgb` / `#rrggbb` color
+ * (alpha ignored). Name tags in a collaborator color use it for their text.
+ */
+export function readableTextColorOn(hex: string): "#000000" | "#ffffff" {
+  const background = relativeLuminance(hex);
+  const onBlack = (background + 0.05) / 0.05;
+  const onWhite = 1.05 / (background + 0.05);
+  return onBlack >= onWhite ? "#000000" : "#ffffff";
+}
+
+function relativeLuminance(hex: string): number {
+  const digits = hex.replace(/^#/, "");
+  const short = digits.length <= 4;
+  const channels = [0, 1, 2].map((index) => {
+    const pair = short ? digits[index]!.repeat(2) : digits.slice(index * 2, index * 2 + 2);
+    const value = (parseInt(pair, 16) || 0) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+}
+
+/**
  * Carries the HTTP status alongside the message. The server reports a refused
  * save as `precondition_failed`, which leaves no status in the parsed message.
  */
