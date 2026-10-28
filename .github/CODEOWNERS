@@ -1,4 +1,6 @@
-# Changes to the file-size baseline need review from a code owner.
-# CI check-growth only warns when a count rises or a row is added.
+# Changes to the file-size and hook-size baselines need review from a code owner.
+# File-size check-growth only warns when a count rises or a row is added.
+# The hook-size check fails when a hook outgrows its row; raising a row needs this review.
 /.github/CODEOWNERS @woutervroege
 tools/file-size-baseline.tsv @woutervroege
+tools/hook-size-baseline.tsv @woutervroege
