@@ -219,6 +219,57 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ->assertJsonPath('expiresAt', $expires->toISOString());
     }
 
+    public function test_group_room_clock_changes_need_group_membership_on_post_and_patch(): void
+    {
+        $this->seedDesignGroupWith('bob');
+        $this->shareGroupCalendar($this->provisionGroupCalendar('design', 'Design'), 'carol', write: true);
+        $expires = Carbon::now('UTC')->addDays(7)->startOfSecond();
+        $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design', extra: ['expiresAt' => $expires->toISOString()])
+            ->assertCreated();
+
+        // A write share on the group calendar is not membership of the group.
+        foreach ([Carbon::now('UTC')->addDays(30)->toISOString(), Carbon::now('UTC')->subDay()->toISOString()] as $clock) {
+            $this->withBearer($this->carolBearerToken())
+                ->postJson('/api/v1/meetings/rooms', [
+                    'room' => self::ROOM,
+                    'ownerPrincipal' => 'groups/design',
+                    'expiresAt' => $clock,
+                ])
+                ->assertForbidden()
+                ->assertJson(['error' => 'forbidden']);
+        }
+        $this->withBearer($this->carolBearerToken())
+            ->patchJson($this->meetStatusPath(self::ROOM), ['expiresAt' => null])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+
+        $row = MeetReservation::query()->find(self::ROOM);
+        $this->assertNotNull($row);
+        $this->assertSame('groups/design', $row->owner_principal);
+        $this->assertSame('u:bob', $row->created_by);
+        $this->assertTrue($row->expires_at?->equalTo($expires));
+
+        $group = Principal::query()->where('uri', 'principals/groups/design')->first();
+        $carol = Principal::forUsername('carol');
+        $this->assertNotNull($group);
+        $this->assertNotNull($carol);
+        $this->addPrincipalToGroup($group, $carol);
+        $later = Carbon::now('UTC')->addDays(30)->startOfSecond();
+
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'groups/design',
+                'expiresAt' => $later->toISOString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('expiresAt', $later->toISOString());
+        $this->withBearer($this->carolBearerToken())
+            ->patchJson($this->meetStatusPath(self::ROOM), ['expiresAt' => null])
+            ->assertOk()
+            ->assertJson(['expiresAt' => null]);
+    }
+
     public function test_post_rejects_an_expires_at_in_the_past(): void
     {
         $this->reserveMeetRoom(self::ROOM, extra: [

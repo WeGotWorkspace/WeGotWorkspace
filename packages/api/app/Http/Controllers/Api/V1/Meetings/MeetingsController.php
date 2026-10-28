@@ -46,7 +46,9 @@ final class MeetingsController
         $actor = $this->reservations->actorPrincipal($username);
         // Re-posting a code you hold stays idempotent. A code someone else
         // holds is theirs: refused, and their reservation is left as it is.
-        if ($existing instanceof MeetReservation && ! $this->reservations->mayUpdate($existing, $ownerPrincipal, $actor)) {
+        // Same gate as PATCH: a group room needs membership of that group, so
+        // a write share on its calendar is not enough to change its clock.
+        if ($existing instanceof MeetReservation && ! $this->reservations->canManage($username, $existing)) {
             throw new MeetResponseException(403, [
                 'error' => 'forbidden',
                 'message' => 'This room code is already reserved by someone else.',

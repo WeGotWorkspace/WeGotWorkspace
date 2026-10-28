@@ -110,6 +110,9 @@ final class MeetReservationService
      * Whether a reserve for this owner principal, written by this actor, may
      * change an existing reservation: the same owner principal (a write to
      * that owner's calendar), its creator, or someone who may manage it.
+     *
+     * The owner-principal branch is for the calendar ICS-write hook. The HTTP
+     * POST path checks {@see self::canManage()} first, like PATCH.
      */
     public function mayUpdate(MeetReservation $row, string $ownerPrincipal, string $createdBy): bool
     {
