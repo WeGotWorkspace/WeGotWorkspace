@@ -40,12 +40,18 @@ final class PushFailureTally
     }
 
     /**
-     * @return array{failed: int, by_status: array<int, int>, by_host: array<string, int>}
+     * Status 0 (no response) is keyed `no_response`: with only integer keys
+     * from 0, JSON would encode `by_status` as a list (`[1]`) instead of an object.
+     *
+     * @return array{failed: int, by_status: array<int|string, int>, by_host: array<string, int>}
      */
     public function summary(): array
     {
         $byStatus = $this->byStatus;
         ksort($byStatus);
+        if (isset($byStatus[0])) {
+            $byStatus = ['no_response' => $byStatus[0]] + array_diff_key($byStatus, [0 => true]);
+        }
         $byHost = $this->byHost;
         ksort($byHost);
 

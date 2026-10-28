@@ -103,7 +103,8 @@ final class MinishlinkWebPushSenderTest extends TestCase
         $this->assertSame(0, $lines[0]->context['status']);
         $this->assertSame('cURL error 28: Operation timed out for https://fcm.googleapis.com/…', $lines[0]->context['reason']);
         $this->assertStringNotContainsString(self::ENDPOINT_SECRET, $this->allLoggedText());
-        $this->assertSame([0 => 1], $tally->summary()['by_status']);
+        $this->assertSame(['no_response' => 1], $tally->summary()['by_status']);
+        $this->assertSame('{"no_response":1}', json_encode($tally->summary()['by_status']));
     }
 
     public function test_thrown_exception_logs_host_not_endpoint(): void
