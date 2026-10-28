@@ -5,19 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Docs;
 
 use App\Models\Principal;
-use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\DocsTestFixtures;
-use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class DocsAccessControlTest extends WgwDatabaseTestCase
 {
     use DocsTestFixtures;
-    use InteractsWithFileNodeJmap;
 
     protected function setUp(): void
     {
@@ -94,16 +90,19 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertStatus(400);
 
-        $this->expectException(\InvalidArgumentException::class);
-        app(DriveService::class)->handleUpload(
-            $this->drivePrincipal('alice'),
-            UploadedFile::fake()->createWithContent('hack.md', 'nope'),
-            'hack.md',
-            'admin-hack',
-            1,
-            1,
-            '/users/carol/docs',
-        );
+        $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
+        $carolDocsId = $this->fileNodeIdByName($carolNodes, 'docs');
+        $blobId = $this->uploadFileNodeBlob('nope', 'alice', $adminToken);
+
+        $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'alice', 'create' => [
+                'f0' => ['parentId' => $carolDocsId, 'name' => 'hack.md', 'blobId' => $blobId],
+            ]], 'c0'],
+        ], $adminToken)->assertOk()
+            ->assertJsonPath('methodResponses.0.1.created', [])
+            ->assertJsonPath('methodResponses.0.1.notCreated.f0.type', 'invalidProperties')
+            ->assertJsonPath('methodResponses.0.1.notCreated.f0.properties', ['parentId']);
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/carol/docs/hack.md'));
     }
 
     public function test_admin_does_not_bypass_group_collaboration_membership(): void
