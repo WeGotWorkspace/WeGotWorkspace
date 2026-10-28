@@ -230,3 +230,84 @@ describe("currentPushScope", () => {
     resetPushScopeLaunchForTests();
   });
 });
+
+describe("rememberLaunchPath across documents in one window", () => {
+  const iosAppAt = (pathname: string, search = "") => ({
+    navigator: { standalone: true },
+    location: { pathname, search },
+  });
+
+  /** A window's sessionStorage; it survives reloads and hard navigations. */
+  function windowStorage(): Pick<Storage, "getItem" | "setItem"> {
+    const values = new Map<string, string>();
+    return {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => void values.set(key, value),
+    };
+  }
+
+  /** Each call is a new document (hard navigation or reload) in that window. */
+  function loadDocument(storage: Pick<Storage, "getItem" | "setItem">, pathAndSearch: string) {
+    resetPushScopeLaunchForTests();
+    rememberLaunchPath(pathAndSearch, storage);
+  }
+
+  it("keeps the app when an inbox click hard-navigates to another app", () => {
+    const docsWindow = windowStorage();
+    loadDocument(docsWindow, "/docs");
+    // goToNotificationNavigate → window.location.assign("/calendar")
+    loadDocument(docsWindow, "/calendar");
+    expect(currentPushScope(iosAppAt("/calendar"))).toBe("/docs");
+    resetPushScopeLaunchForTests();
+  });
+
+  it("keeps the app when a service worker update reloads at /", () => {
+    const docsWindow = windowStorage();
+    loadDocument(docsWindow, "/docs?file=report.md");
+    loadDocument(docsWindow, "/");
+    expect(currentPushScope(iosAppAt("/"))).toBe("/docs");
+    resetPushScopeLaunchForTests();
+  });
+
+  it("keeps the app through logout and the next sign-in in the same window", () => {
+    // The window is still the Docs app; only the account changes.
+    const docsWindow = windowStorage();
+    loadDocument(docsWindow, "/docs");
+    loadDocument(docsWindow, "/logout");
+    loadDocument(docsWindow, "/login");
+    expect(currentPushScope(iosAppAt("/login"))).toBe("/docs");
+    resetPushScopeLaunchForTests();
+  });
+
+  it("records its own path in a fresh window", () => {
+    const docsWindow = windowStorage();
+    loadDocument(docsWindow, "/docs");
+    loadDocument(windowStorage(), "/tasks");
+    expect(currentPushScope(iosAppAt("/tasks"))).toBe("/tasks");
+    resetPushScopeLaunchForTests();
+  });
+
+  it("uses this document's path when sessionStorage cannot be used", () => {
+    const blocked = {
+      getItem: () => {
+        throw new DOMException("blocked", "SecurityError");
+      },
+      setItem: () => {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    };
+    loadDocument(blocked, "/notes");
+    expect(currentPushScope(iosAppAt("/notes"))).toBe("/notes");
+    loadDocument(blocked, "/calendar");
+    expect(currentPushScope(iosAppAt("/calendar"))).toBe("/calendar");
+    resetPushScopeLaunchForTests();
+  });
+
+  it("ignores an unusable stored value", () => {
+    const docsWindow = windowStorage();
+    docsWindow.setItem("wgw-push-launch-path", "https://evil.example/docs");
+    loadDocument(docsWindow, "/calendar");
+    expect(currentPushScope(iosAppAt("/calendar"))).toBe("/calendar");
+    resetPushScopeLaunchForTests();
+  });
+});
