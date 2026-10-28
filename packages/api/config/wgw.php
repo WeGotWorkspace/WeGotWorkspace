@@ -25,6 +25,16 @@ return [
         'max_size_upload' => (int) env('WGW_JMAP_MAX_SIZE_UPLOAD', 25_000_000),
         'blob_ttl_hours' => (int) env('WGW_JMAP_BLOB_TTL_HOURS', 24),
     ],
+    /**
+     * JMAP event source (RFC 8620 §7.3, #1660), short-burst only: every
+     * response ends at once. `retry_ms` is the reconnect interval sent to the
+     * client; raise it on a slow host. `server_timing` adds a `Server-Timing`
+     * header with the time per state source (for load tests, off by default).
+     */
+    'jmap_push' => [
+        'retry_ms' => (int) env('WGW_JMAP_PUSH_RETRY_MS', 3000),
+        'server_timing' => (bool) env('WGW_JMAP_PUSH_SERVER_TIMING', false),
+    ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
     /** Extra Host names, comma-separated, trusted in addition to the APP_URL host. */
