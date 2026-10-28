@@ -13,7 +13,7 @@ Signed-in Drive uploads stop going straight to the server. Picking or dropping f
 
 - Parts, resume within a file, conflict choices, version check (#1519)
 - Space pre-check against the server, error classes beyond `too_large`, `quota`, `no_local_copy`, `upload_failed`; `server_full` pause; outbox migration; `target_missing` and re-targeting (#1520)
-- Progress ring, Uploads view, disabling actions on placeholders, upload copy beyond the minimum (#1502)
+- Progress ring, Uploads view, retry from a placeholder, upload copy beyond the minimum (#1502). This slice already shows each placeholder's status and offers only *Cancel upload* (queued) or *Remove* (failed) on it.
 - The batch stepper dialog (#1521); this slice releases each batch right after queueing because no step applies yet
 - Sign-out and leave warnings themselves (#1522); this slice only exposes `hasItems`
 - Guest uploads, Docs uploads, and the outbox upload path (unchanged)
@@ -25,7 +25,7 @@ Signed-in Drive uploads stop going straight to the server. Picking or dropping f
 ## Decisions
 
 - **Cache vs queue keys.** `drive_entries` stays keyed by path. The queue is keyed by target folder FileNode id. A placeholder row lives under the folder's current cache path, so every existing path migration (online rename, offline rename, inbound `moveCachedNodeToPath`) moves it with its folder. The uploader finds a placeholder by its `uploadId` index, never by a computed path.
-- **Placeholder ids never collide with real names.** A placeholder row id is `<folder>/\u0000upload:<itemId>`. A NUL byte cannot appear in a server file name, so a real file of the same name (or two queued files with one name) never overwrites a placeholder. The row's `name` is the picked file name; the row carries `uploadId` and `upload: { id, batchId, status }` in its listing payload.
+- **Placeholder ids never collide with real names.** A placeholder row id is `<folder>/\u0000upload:<itemId>`. A NUL byte cannot appear in a server file name, so a real file of the same name (or two queued files with one name) never overwrites a placeholder. The row's `name` is the picked file name; the row carries `uploadId` and `upload: { id, batchId, status, reason? }` in its listing payload. `reason` is the item's error code while `status` is `failed`, so the row can say why (for example *Upload failed · Too large to upload*).
 - **Target folder reference.** `targetFolder: { kind: "server" | "temporary"; id }`. This Epic only writes `server`. The uploader skips `temporary` targets (folder upload #1040 resolves them). The id comes from the cached row's `nodeId`, then a remembered root id (home and group roots, written by the metadata crawl), then live resolution when online.
 - **Server-side cleanup cannot touch placeholders.** `FileNodeIndexService::reconcileDirectory()` deletes index rows whose files are gone on the server. Placeholders exist only in the client's `drive_entries` cache, so it never sees them. Only the client prune can drop them, and it now protects them.
 - **Batch release in this slice.** The upload action queues the batch as `awaiting_input` (placeholders visible, uploader skips it) and releases it immediately with `keepOffline: "remove"`, because no dialog step exists yet. #1521 inserts the dialog between queue and release.
@@ -60,3 +60,5 @@ Signed-in Drive uploads stop going straight to the server. Picking or dropping f
 - An upload that finished while its placeholder was gone (for example the folder was trashed locally) writes no row and no offline copy; the next listing shows the file.
 - A quota error during hand-off still completes the upload; the batch gets an `offline_copy_failed` notice and the `Blob` is dropped.
 - A stale `uploading` item (its tab closed mid-upload) is picked up again by the next lock holder.
+- Placeholders show after any reload, online or offline: the boot listing comes from the server or the cached bootstrap, neither of which holds placeholders, so the open folder's placeholders are merged in from `drive_entries` whenever that listing is painted.
+- A placeholder has no offline toggle and does not open; it has nothing on the server yet.
