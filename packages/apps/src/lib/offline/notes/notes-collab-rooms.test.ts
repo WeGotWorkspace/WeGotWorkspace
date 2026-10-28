@@ -91,6 +91,18 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(names.has(`/${room}`)).toBe(false);
   });
 
+  it("does not create a missing v2 database while checking the pending flag", async () => {
+    const uid = "note-missing-v2";
+    const room = noteCollabRoomKey(uid);
+
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
+
+    const names = new Set(
+      (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : [])),
+    );
+    expect(names.has(docsCollabIndexedDbKey(room))).toBe(false);
+  });
+
   it("reads a pending flag that already exists in the unsuffixed legacy database", async () => {
     const uid = "note-legacy-pending-exists";
     const room = noteCollabRoomKey(uid);
