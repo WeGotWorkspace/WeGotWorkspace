@@ -18,6 +18,8 @@ export async function buildNoteCollabUrls(
     /** Not on the server yet: keep the body in a local-only room until it is. */
     createPending?: boolean;
     onPersistForbidden?: () => void;
+    /** The note was archived elsewhere; archive wins over the unsaved body. */
+    onPersistArchived?: () => void;
     /** The shared save accepted this markdown. */
     onPersistSuccess?: (markdown: string) => void;
   },
@@ -37,6 +39,7 @@ export async function buildNoteCollabUrls(
     room: noteId,
     roomNotPersistent: hooks?.createPending === true,
     onPersistForbidden: hooks?.onPersistForbidden,
+    onPersistArchived: hooks?.onPersistArchived,
     onPersistSuccess: hooks?.onPersistSuccess,
   };
 }
