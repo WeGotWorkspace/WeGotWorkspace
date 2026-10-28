@@ -36,6 +36,25 @@ export function isDialogEditableAccess(access: DriveShareAccess): boolean {
 
 export const SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "comment", "edit", "full"];
 
+/**
+ * Levels a new guest email invite may grant. A guest cannot comment, edit or
+ * upload yet (threads and writes need a signed-in account), so only view is
+ * offered until guest uploads land (#1715).
+ */
+export const GUEST_INVITE_UI_PERMISSIONS: readonly ShareUIPermission[] = ["view"];
+
+/**
+ * Options for an existing guest grant: the invite levels plus every level at or
+ * below the grant's own. An older edit or full grant keeps showing its level
+ * and can be lowered, but nothing can be raised above the invite levels.
+ */
+export function guestGrantUIPermissions(current: ShareUIPermission): ShareUIPermission[] {
+  const currentRank = SHARE_UI_PERMISSIONS.indexOf(current);
+  return SHARE_UI_PERMISSIONS.filter(
+    (permission, rank) => rank <= currentRank || GUEST_INVITE_UI_PERMISSIONS.includes(permission),
+  );
+}
+
 /** Notes team ACL is view / edit only (no comment, no full). */
 export const NOTES_SHARE_UI_PERMISSIONS: ShareUIPermission[] = ["view", "edit"];
 

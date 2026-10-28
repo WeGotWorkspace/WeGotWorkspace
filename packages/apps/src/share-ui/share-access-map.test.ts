@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   accessToSelectableUIPermission,
   accessToUIPermission,
+  GUEST_INVITE_UI_PERMISSIONS,
+  guestGrantUIPermissions,
   isDialogEditableAccess,
   NOTES_SHARE_UI_PERMISSIONS,
   SHARE_UI_PERMISSIONS,
@@ -44,5 +46,16 @@ describe("share-access-map", () => {
 
   it("treats full access as dialog-editable", () => {
     expect(isDialogEditableAccess("full")).toBe(true);
+  });
+
+  it("offers guest invites view only", () => {
+    expect(GUEST_INVITE_UI_PERMISSIONS).toEqual(["view"]);
+  });
+
+  it("lets an existing guest grant keep its level and only lower it", () => {
+    expect(guestGrantUIPermissions("view")).toEqual(["view"]);
+    expect(guestGrantUIPermissions("comment")).toEqual(["view", "comment"]);
+    expect(guestGrantUIPermissions("edit")).toEqual(["view", "comment", "edit"]);
+    expect(guestGrantUIPermissions("full")).toEqual(SHARE_UI_PERMISSIONS);
   });
 });

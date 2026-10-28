@@ -7,7 +7,12 @@ import { IconButton } from "@/button/src/icon-button";
 import { ShareAccessRow } from "@/share-ui/share-access-row";
 import { ShareDialogInput } from "@/share-ui/share-dialog-input";
 import { UserAvatar, avatarColorForUserId } from "@/user-avatar/src/user-avatar";
-import { accessToUIPermission, type ShareUIPermission } from "@/share-ui/share-access-map";
+import {
+  accessToUIPermission,
+  GUEST_INVITE_UI_PERMISSIONS,
+  guestGrantUIPermissions,
+  type ShareUIPermission,
+} from "@/share-ui/share-access-map";
 import { SharePendingTag } from "@/share-ui/share-pending-tag";
 import { shareLabels } from "@/share-ui/share-labels";
 import { SharePermissionSelect } from "@/share-ui/share-permission-select";
@@ -68,6 +73,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
               trailing={
                 <SharePermissionSelect
                   value={permission}
+                  permissions={guestGrantUIPermissions(permission)}
                   disabled={disabled || pending || !grant.removal}
                   onChange={(next) => {
                     if (next === "none" || !grant.removal?.principal) return;
@@ -117,6 +123,7 @@ export function ShareGuestSection({ atPath, mutations, disabled = false }: Share
           />
           <SharePermissionSelect
             value={newPermission}
+            permissions={GUEST_INVITE_UI_PERMISSIONS}
             disabled={disabled}
             onChange={(next) => {
               if (next !== "none") setNewPermission(next);
