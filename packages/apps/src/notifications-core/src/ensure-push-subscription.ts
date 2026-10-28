@@ -1,4 +1,5 @@
 import { fetchVapidPublicKey, subscribePush } from "@/lib/api/wgw/notifications";
+import { currentPushScope, rememberPushScope } from "./push-scope";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
@@ -45,7 +46,10 @@ async function subscribePushManager(): Promise<boolean> {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
     }));
-  await subscribePush(subscription.toJSON());
+  const scope = currentPushScope();
+  await subscribePush(subscription.toJSON(), scope);
+  // For `pushsubscriptionchange`: the worker cannot read display-mode.
+  await rememberPushScope(scope).catch(() => undefined);
   return true;
 }
 

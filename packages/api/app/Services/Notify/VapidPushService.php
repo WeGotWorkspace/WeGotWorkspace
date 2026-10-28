@@ -26,7 +26,10 @@ final class VapidPushService
     }
 
     /**
-     * @param  array{endpoint: string, keys: array{p256dh: string, auth: string}}  $input
+     * One row per principal + endpoint. Posting it again from another app adds
+     * that app's scope; see {@see PushScopes::merge()}.
+     *
+     * @param  array{endpoint: string, keys: array{p256dh: string, auth: string}, scope?: string|null}  $input
      */
     public function subscribe(string $username, array $input, ?string $userAgent = null): PushSubscription
     {
@@ -35,6 +38,7 @@ final class VapidPushService
             throw new ApiHttpException(400, 'Push endpoint is not allowed.', 'bad_request');
         }
         $hash = hash('sha256', $endpoint);
+        $scope = $input['scope'] ?? null;
         $now = Carbon::now();
         $existing = PushSubscription::query()
             ->where('principal', strtolower($username))
@@ -44,6 +48,7 @@ final class VapidPushService
             $existing->p256dh = $input['keys']['p256dh'];
             $existing->auth = $input['keys']['auth'];
             $existing->user_agent = $userAgent;
+            $existing->scopes = PushScopes::encode(PushScopes::merge($existing->scopeList(), $scope));
             $existing->updated_at = $now;
             $existing->save();
 
@@ -58,6 +63,7 @@ final class VapidPushService
             'p256dh' => $input['keys']['p256dh'],
             'auth' => $input['keys']['auth'],
             'user_agent' => $userAgent,
+            'scopes' => PushScopes::encode(PushScopes::merge(null, $scope)),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -105,7 +111,7 @@ final class VapidPushService
                 continue;
             }
             $completed = $this->sendNotification($notification);
-            if ($completed === 0 && $this->principalHasSubscription((string) $notification->principal)) {
+            if ($completed === 0 && $this->receivingSubscriptions($notification) !== []) {
                 continue;
             }
             $delivery->sent_at = $now;
@@ -124,25 +130,26 @@ final class VapidPushService
         return $sent;
     }
 
+    /**
+     * Send to the principal's subscriptions whose app scope covers this
+     * notification (#1606); each gets a payload that opens inside its app.
+     */
     public function sendNotification(Notification $notification): int
     {
-        $payload = json_encode($this->pushPayload($notification), JSON_THROW_ON_ERROR);
-
-        $subs = PushSubscription::query()
-            ->where('principal', (string) $notification->principal)
-            ->get();
+        $payloads = [];
         $completed = 0;
-        foreach ($subs as $sub) {
+        foreach ($this->receivingSubscriptions($notification) as [$sub, $scope]) {
             if (! $this->endpoints->isAllowed((string) $sub->endpoint)) {
                 $this->pruneEndpoint((string) $sub->endpoint);
 
                 continue;
             }
+            $payloads[$scope] ??= json_encode($this->pushPayload($notification, $scope), JSON_THROW_ON_ERROR);
             $status = $this->sender->send(
                 (string) $sub->endpoint,
                 (string) $sub->p256dh,
                 (string) $sub->auth,
-                $payload,
+                $payloads[$scope],
                 $this->vapidAuth(),
             );
             if ($status === 404 || $status === 410) {
@@ -169,10 +176,11 @@ final class VapidPushService
      *     navigate: string,
      *     tag: string,
      *     renotify: bool,
-     *     app_badge: int
+     *     app_badge: int,
+     *     scope: string
      * }
      */
-    public function pushPayload(Notification $notification): array
+    public function pushPayload(Notification $notification, string $scope = PushScopes::ROOT): array
     {
         $copy = NotificationCopyFormatter::forNotification($notification);
         $title = $copy['title'];
@@ -181,6 +189,7 @@ final class VapidPushService
         if ($path === '' || ! str_starts_with($path, '/') || str_starts_with($path, '//')) {
             $path = '/';
         }
+        $path = PushScopes::navigateWithin($path, $scope);
         $tag = (string) ($notification->tag ?? $notification->id);
         $absolute = $this->absoluteNavigate($path);
 
@@ -201,6 +210,7 @@ final class VapidPushService
             'tag' => $tag,
             'renotify' => true,
             'app_badge' => 1,
+            'scope' => $scope,
         ];
     }
 
@@ -211,9 +221,23 @@ final class VapidPushService
         return $origin.$path;
     }
 
-    private function principalHasSubscription(string $principal): bool
+    /**
+     * @return list<array{0: PushSubscription, 1: string}> subscription and the scope it receives under
+     */
+    private function receivingSubscriptions(Notification $notification): array
     {
-        return PushSubscription::query()->where('principal', $principal)->exists();
+        $receiving = [];
+        $subs = PushSubscription::query()
+            ->where('principal', (string) $notification->principal)
+            ->get();
+        foreach ($subs as $sub) {
+            $scope = PushScopes::receiving($sub->scopeList(), (string) $notification->domain);
+            if ($scope !== null) {
+                $receiving[] = [$sub, $scope];
+            }
+        }
+
+        return $receiving;
     }
 
     /**

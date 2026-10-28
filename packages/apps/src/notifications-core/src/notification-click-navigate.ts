@@ -1,4 +1,5 @@
 import { buildWgwLoginHref, isWgwPublicRoutePathname } from "@/lib/api/wgw/route-guard";
+import { isPushScope, isWithinPushScope, ROOT_PUSH_SCOPE, type PushScope } from "./push-scope";
 
 export const WGW_NOTIFICATION_NAVIGATE_MESSAGE = "wgw-notification-navigate";
 
@@ -28,6 +29,44 @@ export function resolveNotificationNavigateHref(raw: unknown, origin: string): s
   } catch {
     return origin.endsWith("/") ? `${origin.slice(0, -1)}/` : `${origin}/`;
   }
+}
+
+export type NotificationClickTarget = { href: string; path: string; scope: PushScope };
+
+/**
+ * Where a notification click opens (#1606): the deep link when it lies inside
+ * the scope of the app that received the push, otherwise that app's start.
+ * A missing or unknown scope (older payloads) is the suite scope.
+ */
+export function notificationClickTarget(
+  navigate: unknown,
+  scope: unknown,
+  origin: string,
+): NotificationClickTarget {
+  const appScope = isPushScope(scope) ? scope : ROOT_PUSH_SCOPE;
+  const deepLink = sanitizeNotificationNavigate(navigate);
+  const path = isWithinPushScope(deepLink, appScope) ? deepLink : appScope;
+  return { href: resolveNotificationNavigateHref(path, origin), path, scope: appScope };
+}
+
+/**
+ * The open window to reuse: the first one already inside the app's scope.
+ * Null means open a new window, so one app never takes over another's window.
+ */
+export function pickNotificationClient<T extends { url: string }>(
+  clients: readonly T[],
+  scope: string,
+): T | null {
+  for (const client of clients) {
+    let path: string;
+    try {
+      path = new URL(client.url).pathname;
+    } catch {
+      continue;
+    }
+    if (isWithinPushScope(path, scope)) return client;
+  }
+  return null;
 }
 
 export function notificationNavigateFromMessage(data: unknown): string | null {

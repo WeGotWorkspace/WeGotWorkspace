@@ -6,7 +6,9 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Http\Requests\Api\V1\Concerns\NarrowsValidatedInput;
 use App\Services\Notify\PushEndpointPolicy;
+use App\Services\Notify\PushScopes;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class PushSubscriptionRequest extends FormRequest
 {
@@ -36,11 +38,13 @@ final class PushSubscriptionRequest extends FormRequest
             'keys' => ['required', 'array'],
             'keys.p256dh' => ['required', 'string', 'min:1', 'max:255'],
             'keys.auth' => ['required', 'string', 'min:1', 'max:255'],
+            // Manifest id of the installed app; absent means unknown (#1606).
+            'scope' => ['sometimes', 'string', Rule::in(PushScopes::KNOWN)],
         ];
     }
 
     /**
-     * @return array{endpoint: string, keys: array{p256dh: string, auth: string}}
+     * @return array{endpoint: string, keys: array{p256dh: string, auth: string}, scope: string|null}
      */
     public function payload(): array
     {
@@ -55,6 +59,7 @@ final class PushSubscriptionRequest extends FormRequest
                 'p256dh' => $this->requiredString($p256dh),
                 'auth' => $this->requiredString($auth),
             ],
+            'scope' => is_string($validated['scope'] ?? null) ? $validated['scope'] : null,
         ];
     }
 }

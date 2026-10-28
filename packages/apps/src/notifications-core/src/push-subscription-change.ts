@@ -38,6 +38,11 @@ export type PushSubscriptionChangeDeps = {
   timeoutMs?: number;
   /** How long a refresh with no response is retried; defaults to {@link REFRESH_GRACE_MS}. */
   refreshGraceMs?: number;
+  /**
+   * App scopes the pages posted (#1606, `readPushScopes`). The worker cannot
+   * read display-mode, so it posts the new endpoint once per remembered scope.
+   */
+  readScopes: () => Promise<readonly string[]>;
 };
 
 /** Matches `RefreshTokenRepository::ROTATION_GRACE_SECONDS` on the server. */
@@ -65,17 +70,38 @@ export async function handlePushSubscriptionChange(
 
     const key = await fetchVapidPublicKey(token, deps);
     const subscription = await currentKeySubscription(change, key, deps.pushManager);
-    const posted = await authedJson(token, deps, "/notifications/push/subscriptions", "POST", {
-      endpoint: subscription.endpoint,
-      keys: subscription.toJSON().keys ?? {},
-    });
-    if (!posted.ok) return "failed";
+    if (!(await postSubscription(token, deps, subscription))) return "failed";
 
     await removeOldEndpoint(token, deps, change.oldSubscription, subscription.endpoint);
     return "resubscribed";
   } catch {
     return "failed";
   }
+}
+
+/**
+ * One POST per remembered app scope. With none remembered (an endpoint made
+ * before scopes, or storage that failed) the POST carries no scope, which the
+ * server keeps as "unknown": it receives everything until a page posts one.
+ */
+async function postSubscription(
+  token: string,
+  deps: PushSubscriptionChangeDeps,
+  subscription: PushSubscription,
+): Promise<boolean> {
+  const scopes = await deps.readScopes().catch(() => [] as readonly string[]);
+  const body = { endpoint: subscription.endpoint, keys: subscription.toJSON().keys ?? {} };
+  for (const scope of scopes.length > 0 ? scopes : [null]) {
+    const posted = await authedJson(
+      token,
+      deps,
+      "/notifications/push/subscriptions",
+      "POST",
+      scope === null ? body : { ...body, scope },
+    );
+    if (!posted.ok) return false;
+  }
+  return true;
 }
 
 /**

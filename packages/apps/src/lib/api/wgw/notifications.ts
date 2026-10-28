@@ -30,7 +30,11 @@ export async function fetchVapidPublicKey(): Promise<string> {
   return json.publicKey ?? "";
 }
 
-export async function subscribePush(subscription: PushSubscriptionJSON): Promise<void> {
+/** `scope` is the installed app's manifest id, or `/` (see `push-scope.ts`). */
+export async function subscribePush(
+  subscription: PushSubscriptionJSON,
+  scope: string,
+): Promise<void> {
   const res = await wgwFetch("/notifications/push/subscriptions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -40,6 +44,7 @@ export async function subscribePush(subscription: PushSubscriptionJSON): Promise
         p256dh: subscription.keys?.p256dh,
         auth: subscription.keys?.auth,
       },
+      scope,
     }),
   });
   if (!res.ok) throw new Error(`POST push subscription failed (${res.status})`);

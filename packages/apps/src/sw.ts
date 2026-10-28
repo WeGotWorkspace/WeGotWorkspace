@@ -4,7 +4,8 @@ import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 import { PWA_NAVIGATE_FALLBACK_DENYLIST } from "./lib/offline/pwa-navigate-fallback-denylist";
 import {
-  resolveNotificationNavigateHref,
+  notificationClickTarget,
+  pickNotificationClient,
   WGW_NOTIFICATION_NAVIGATE_MESSAGE,
 } from "./notifications-core/src/notification-click-navigate";
 import { parseNotificationPushPayload } from "./notifications-core/src/parse-notification-push-payload";
@@ -12,6 +13,7 @@ import {
   handlePushSubscriptionChange,
   serviceWorkerApiBaseUrl,
 } from "./notifications-core/src/push-subscription-change";
+import { readPushScopes } from "./notifications-core/src/push-scope";
 
 declare let self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision: string | null }>;
@@ -51,7 +53,7 @@ self.addEventListener("push", (event) => {
       await self.registration.showNotification(parsed.title, {
         body: parsed.body,
         tag: parsed.tag,
-        data: { navigate: parsed.navigate },
+        data: { navigate: parsed.navigate, scope: parsed.scope },
         // Worker NotificationOptions include `renotify`; DOM lib in the app tsconfig does not.
         ...({ renotify: parsed.renotify } as NotificationOptions),
       });
@@ -76,6 +78,7 @@ self.addEventListener("pushsubscriptionchange", (event) => {
         fetch: (input, init) => self.fetch(input, init),
         pushManager: self.registration.pushManager,
         locks: self.navigator.locks ?? null,
+        readScopes: () => readPushScopes(self.indexedDB),
       },
     ),
   );
@@ -83,26 +86,24 @@ self.addEventListener("pushsubscriptionchange", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const href = resolveNotificationNavigateHref(
-    event.notification.data?.navigate,
-    self.location.origin,
-  );
-  const path = new URL(href).pathname + new URL(href).search + new URL(href).hash;
-  event.waitUntil(openOrFocusNotificationTarget(href, path));
+  const data = event.notification.data as { navigate?: unknown; scope?: unknown } | null;
+  // Open inside the app that received the push (#1606); `/` for older notifications.
+  const target = notificationClickTarget(data?.navigate, data?.scope, self.location.origin);
+  event.waitUntil(openOrFocusNotificationTarget(target));
 });
 
 async function openOrFocusNotificationTarget(
-  href: string,
-  path: string,
+  target: ReturnType<typeof notificationClickTarget>,
 ): Promise<WindowClient | null> {
   const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-  for (const client of clientList) {
-    if (!("focus" in client)) continue;
-    client.postMessage({ type: WGW_NOTIFICATION_NAVIGATE_MESSAGE, navigate: path });
+  const windows = clientList.filter((client): client is WindowClient => "focus" in client);
+  const client = pickNotificationClient(windows, target.scope);
+  if (client) {
+    client.postMessage({ type: WGW_NOTIFICATION_NAVIGATE_MESSAGE, navigate: target.path });
     return client.focus();
   }
   if (self.clients.openWindow) {
-    return self.clients.openWindow(href);
+    return self.clients.openWindow(target.href);
   }
   return null;
 }

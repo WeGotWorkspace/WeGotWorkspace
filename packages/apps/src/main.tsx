@@ -1,11 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { shouldRegisterServiceWorker } from "@/lib/offline/should-register-service-worker";
+import { rememberLaunchPath } from "@/notifications-core/src/push-scope";
 import { syncDocumentTheme } from "@/lib/theme-preference";
 import { WeGotWorkspaceApp } from "@/wegotworkspace/src/wegotworkspace-app";
 import "@/styles.css";
 
 syncDocumentTheme();
+// Before any route redirect: the launch path says which installed app this is.
+rememberLaunchPath(location.pathname);
 
 const SW_REFRESHING_KEY = "wgw-sw-refreshing";
 

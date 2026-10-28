@@ -11070,10 +11070,14 @@ export interface components {
                 p256dh: string;
                 auth: string;
             };
+            /** @description Manifest id of the installed app that subscribes (display-mode standalone), or `/` in a browser tab or the suite PWA. The subscription then only receives push for that app; `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: the subscription receives everything until a request names a scope. */
+            scope?: components["schemas"]["PushScope"];
         };
         PushSubscriptionResponse: {
             id: string;
             endpoint: string;
+            /** @description App scopes this subscription now receives push for; ["/"] while unknown. */
+            scopes: components["schemas"]["PushScope"][];
         };
         PushUnsubscribeRequest: {
             /** Format: uri */
@@ -11282,6 +11286,11 @@ export interface components {
          * @enum {string}
          */
         InstallerErrorCode: "data_dir_not_absolute" | "data_dir_parent_missing" | "data_dir_published" | "data_dir_not_writable" | "data_dir_owned";
+        /**
+         * @description Web manifest id of a WeGotWorkspace app. Notifications map to an app by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet.
+         * @enum {string}
+         */
+        PushScope: "/" | "/admin" | "/calendar" | "/contacts" | "/docs" | "/drive" | "/meet" | "/notes" | "/settings" | "/tasks";
     };
     responses: {
         /** @description Invalid request */

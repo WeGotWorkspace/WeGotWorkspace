@@ -66,16 +66,30 @@
           "p256dh": { "type": "string" },
           "auth": { "type": "string" }
         }
+      },
+      "scope": {
+        "$ref": "#/components/schemas/PushScope",
+        "description": "Manifest id of the installed app that subscribes (display-mode standalone), or `/` in a browser tab or the suite PWA. The subscription then only receives push for that app; `/` receives everything. Posting the same endpoint from several apps keeps every scope, and `/` replaces them all. Omitted means unknown: the subscription receives everything until a request names a scope."
       }
     }
   },
+  "PushScope": {
+    "type": "string",
+    "enum": ["/", "/admin", "/calendar", "/contacts", "/docs", "/drive", "/meet", "/notes", "/settings", "/tasks"],
+    "description": "Web manifest id of a WeGotWorkspace app. Notifications map to an app by domain: docs to /docs, calendar to /calendar, tasks to /tasks, notes to /notes, chat and meet to /meet."
+  },
   "PushSubscriptionResponse": {
     "type": "object",
-    "required": ["id", "endpoint"],
+    "required": ["id", "endpoint", "scopes"],
     "additionalProperties": false,
     "properties": {
       "id": { "type": "string" },
-      "endpoint": { "type": "string" }
+      "endpoint": { "type": "string" },
+      "scopes": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/PushScope" },
+        "description": "App scopes this subscription now receives push for; [\"/\"] while unknown."
+      }
     }
   },
   "PushUnsubscribeRequest": {
