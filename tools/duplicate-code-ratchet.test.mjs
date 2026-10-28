@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -12,7 +12,9 @@ import {
   jscpdArgs,
   largestBlocks,
   listScopeFiles,
+  MAX_SOURCE_LINES,
   measureScopes,
+  mirrorFiles,
   nextBaseline,
   parseBaseline,
   summarizeReport,
@@ -23,7 +25,7 @@ const api = "packages/api/app";
 
 function baseline(appsTotals, apiTotals, extra = {}) {
   return {
-    jscpd: "5.4.1",
+    jscpd: "4.3.0",
     minTokens: 70,
     minLines: 10,
     scopes: {
@@ -41,14 +43,14 @@ function measured(appsTotals, apiTotals) {
   };
 }
 
-const settings = { jscpdVersion: "5.4.1" };
+const settings = { jscpdVersion: "4.3.0" };
 
 test("scopes are the apps TypeScript tree and the API PHP tree", () => {
   assert.deepEqual(
-    DUPLICATE_SCOPES.map((scope) => [scope.root, [...scope.extensions].sort()]),
+    DUPLICATE_SCOPES.map((scope) => [scope.root, [...scope.extensions].sort(), scope.formats]),
     [
-      [apps, [".ts", ".tsx"]],
-      [api, [".php"]],
+      [apps, [".ts", ".tsx"], ["typescript", "tsx"]],
+      [api, [".php"], ["php"]],
     ],
   );
 });
@@ -130,7 +132,8 @@ test("listScopeFiles fails when the scope root is missing", () => {
 
 test("jscpd arguments pin every option that changes the totals", () => {
   const scope = DUPLICATE_SCOPES.find((entry) => entry.root === api);
-  const args = jscpdArgs(scope, ["packages/api/app/A.php"], {
+  const args = jscpdArgs(scope, {
+    scanRoot: "/tmp/mirror/packages/api/app",
     outDir: "/tmp/out",
     configPath: "/tmp/out/config.json",
     minTokens: 70,
@@ -141,52 +144,106 @@ test("jscpd arguments pin every option that changes the totals", () => {
   assert.equal(value("--min-lines"), "10");
   assert.equal(value("--format"), "php");
   assert.equal(value("--mode"), "mild");
-  assert.equal(value("--kind"), "exact");
-  assert.equal(value("--max-size"), "1mb");
-  assert.equal(value("--workers"), "1");
+  assert.equal(value("--max-lines"), String(MAX_SOURCE_LINES));
+  assert.equal(value("--max-size"), String(2 * 1024 * 1024));
   assert.equal(value("--reporters"), "json");
   assert.equal(value("--output"), "/tmp/out");
   assert.equal(value("--config"), "/tmp/out/config.json");
   assert.ok(args.includes("--no-gitignore"), "gitignore must not change the scanned set");
+  assert.ok(args.includes("--noSymlinks"));
   assert.ok(args.includes("--absolute"));
-  assert.equal(args.at(-1), "packages/api/app/A.php");
+  assert.equal(args[0], "/tmp/mirror/packages/api/app");
+  assert.ok(!args.includes("--ignore"), "the mirror holds exactly the listed files");
 });
 
-test("summarizeReport uses jscpd totals and repo-relative, ordered blocks", () => {
+test("summarizeReport counts only the scope's formats and orders blocks", () => {
   const base = "/repo";
   const report = {
-    statistics: { total: { clones: 2, duplicatedLines: 31, sources: 3 } },
+    statistics: {
+      formats: {
+        typescript: { total: { clones: 1, duplicatedLines: 12 } },
+        tsx: { total: { clones: 1, duplicatedLines: 19 } },
+        javascript: { total: { clones: 1, duplicatedLines: 281 } },
+      },
+      total: { clones: 3, duplicatedLines: 312 },
+    },
     duplicates: [
       {
-        lines: 12,
-        tokens: 80,
-        firstFile: { name: "/repo/packages/api/app/B.php", start: 40, end: 51 },
-        secondFile: { name: "/repo/packages/api/app/A.php", start: 3, end: 14 },
+        format: "javascript",
+        lines: 281,
+        tokens: 900,
+        firstFile: { name: "/repo/packages/apps/src/a.tsx", start: 126, end: 406 },
+        secondFile: { name: "/repo/packages/apps/src/b.tsx", start: 89, end: 225 },
       },
       {
+        format: "typescript",
+        lines: 12,
+        tokens: 80,
+        firstFile: { name: "/repo/packages/apps/src/B.ts", start: 40, end: 51 },
+        secondFile: { name: "/repo/packages/apps/src/A.ts", start: 3, end: 14 },
+      },
+      {
+        format: "tsx",
         lines: 19,
         tokens: 120,
-        firstFile: { name: "/repo/packages/api/app/C.php", start: 1, end: 19 },
-        secondFile: { name: "/repo/packages/api/app/D.php", start: 5, end: 23 },
+        firstFile: { name: "/repo/packages/apps/src/C.tsx", start: 1, end: 19 },
+        secondFile: { name: "/repo/packages/apps/src/D.tsx", start: 5, end: 23 },
       },
     ],
   };
-  const summary = summarizeReport(report, base);
-  assert.equal(summary.clones, 2);
+  const summary = summarizeReport(report, base, ["typescript", "tsx"]);
+  assert.equal(summary.clones, 2, "the embedded javascript stream of TSX does not count");
   assert.equal(summary.duplicatedLines, 31);
-  assert.equal(summary.sources, 3);
+  assert.equal(summary.blocks.length, 2);
   assert.deepEqual(summary.blocks[0], {
     lines: 19,
     tokens: 120,
-    first: { path: "packages/api/app/C.php", start: 1, end: 19 },
-    second: { path: "packages/api/app/D.php", start: 5, end: 23 },
+    first: { path: "packages/apps/src/C.tsx", start: 1, end: 19 },
+    second: { path: "packages/apps/src/D.tsx", start: 5, end: 23 },
   });
-  assert.deepEqual(summary.blocks[1].first, { path: "packages/api/app/A.php", start: 3, end: 14 });
+  assert.deepEqual(summary.blocks[1].first, { path: "packages/apps/src/A.ts", start: 3, end: 14 });
   assert.deepEqual(summary.blocks[1].second, {
-    path: "packages/api/app/B.php",
+    path: "packages/apps/src/B.ts",
     start: 40,
     end: 51,
   });
+});
+
+test("summarizeReport counts zero for a scope format with no sources", () => {
+  const summary = summarizeReport({ statistics: { formats: {} }, duplicates: [] }, "/repo", [
+    "php",
+  ]);
+  assert.deepEqual(summary, { clones: 0, duplicatedLines: 0, blocks: [] });
+});
+
+test("mirrorFiles copies the listed files under their repo paths", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "dup-ratchet-mirror-"));
+  try {
+    const repo = path.join(dir, "repo");
+    const mirror = path.join(dir, "mirror");
+    mkdirSync(path.join(repo, api, "Services"), { recursive: true });
+    writeFileSync(path.join(repo, api, "Services", "A.php"), "<?php\n");
+    writeFileSync(path.join(repo, api, "Skipped.php"), "<?php\n");
+    mirrorFiles([`${api}/Services/A.php`], repo, mirror);
+    assert.equal(readFileSync(path.join(mirror, api, "Services", "A.php"), "utf8"), "<?php\n");
+    assert.throws(() => readFileSync(path.join(mirror, api, "Skipped.php")), /ENOENT/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("mirrorFiles fails instead of letting jscpd skip an oversized source", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "dup-ratchet-limit-"));
+  try {
+    mkdirSync(path.join(dir, apps), { recursive: true });
+    writeFileSync(path.join(dir, apps, "huge.ts"), "x;\n".repeat(MAX_SOURCE_LINES + 1));
+    assert.throws(
+      () => mirrorFiles([`${apps}/huge.ts`], dir, path.join(dir, "mirror")),
+      /huge\.ts: 20001 lines .* over the duplicate scan limit/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("largestBlocks orders by lines, then by location, and keeps the top n", () => {
@@ -255,7 +312,7 @@ test("evaluate fails when the installed jscpd differs from the baseline", () => 
     },
   );
   assert.equal(errors.length, 1);
-  assert.match(errors[0], /jscpd 5\.5\.0 is installed but the baseline was measured with 5\.4\.1/);
+  assert.match(errors[0], /jscpd 5\.5\.0 is installed but the baseline was measured with 4\.3\.0/);
 });
 
 test("evaluate fails when a scope is missing from the baseline or the measurement", () => {
@@ -327,7 +384,7 @@ test("parseBaseline rejects a malformed file and formatBaseline round-trips", ()
   );
 });
 
-test("measureScopes runs jscpd and finds a block copied between two files", async () => {
+test("measureScopes finds a block copied between two files, ignoring .gitignore", async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "dup-ratchet-jscpd-"));
   try {
     const root = path.join(dir, apps, "demo");
@@ -343,8 +400,11 @@ test("measureScopes runs jscpd and finds a block copied between two files", asyn
     writeFileSync(path.join(root, "two.test.ts"), file("three"));
     mkdirSync(path.join(dir, api), { recursive: true });
     writeFileSync(path.join(dir, api, "Only.php"), "<?php\n\nfinal class Only {}\n");
+    writeFileSync(path.join(dir, ".gitignore"), "two.ts\n");
+    writeFileSync(path.join(dir, ".jscpd.json"), JSON.stringify({ minTokens: 5000 }));
 
     const result = await measureScopes({ baseDir: dir, minTokens: 70, minLines: 10 });
+    assert.equal(result[apps].files, 2, "two.test.ts is excluded");
     assert.equal(result[apps].clones, 1);
     assert.ok(result[apps].duplicatedLines >= 14, `got ${result[apps].duplicatedLines}`);
     assert.deepEqual(
