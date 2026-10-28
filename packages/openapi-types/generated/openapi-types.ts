@@ -9893,7 +9893,7 @@ export interface components {
         ContactCardImportError: {
             index: number;
             message: string;
-            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
+            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed). */
             code?: string;
         };
         /** @description REST response for POST /contacts/cards/import. Per-card payload or property-cap failures appear in errors[] with code; siblings may still be in list. */

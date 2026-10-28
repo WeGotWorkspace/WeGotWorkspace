@@ -11,6 +11,15 @@ reviewers approve. A human then reviews. Nothing is merged automatically.
   agent to edit files, then commits them as one signed commit. That push
   starts the next review.
 
+Reviewers are sometimes wrong, for example about a library API that does not
+exist. So the fixer treats each blocking item as a claim: it checks it
+against the code and the installed dependencies (`node_modules/`, and
+`packages/api/vendor/`, which its job installs for reading) before acting. A
+wrong item is rejected with what was checked, in the commit message or, when
+nothing changed, the hand-over comment. The next review sees both, on a
+runner with the same dependencies installed, and must answer that evidence
+rather than repeat the item.
+
 Each of the two is a thin trigger that calls its logic,
 `review-loop-review-job.yml` or `review-loop-fix-job.yml`, at `@main`. GitHub
 reads a PR's workflow files from the PR's test merge, which can lag behind
@@ -31,6 +40,9 @@ A `needs-human` PR whose last bot review requests changes stays blocked:
 GitHub keeps a change request in force until it is dismissed. To merge over
 the bot, for example when a reviewer's blocking item is wrong, dismiss that
 review with the reason.
+
+When a PR is merged or closed, `review-loop-cleanup.yml` removes
+`ready-for-human` and `needs-human`, so the labels list only open work.
 
 ## Polish round
 
@@ -114,7 +126,7 @@ loop's own GitHub App, so the bot identity does not change with the vendor.
 | `second-agent/action.yml` | Yes: the second reviewer (now Cursor CLI) |
 | `review-prompt.md`, `fix-prompt.md` | No |
 | `review.schema.json`, `fix.schema.json` | No |
-| `prepare/action.yml`, all five workflows | No |
+| `prepare/action.yml`, the workflows | No |
 
 To switch vendor, rewrite the steps of one adapter and replace its secret.
 `agent/action.yml` keeps its inputs (`mode`, `prompt-file`, `schema-file`,
