@@ -1,10 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import {
-  docsUrlForFile,
-  loginToDocs,
-  myDriveDocSearchPath,
-  seedDocAtPath,
-} from "./helpers/docs-live";
+import { docsUrlForFile, loginToDocs, myDriveDocSearchPath } from "./helpers/docs-live";
+import { uploadMarkdown } from "./helpers/rtc-chaos";
 
 async function selectWord(page: Page, word: string): Promise<void> {
   await page.locator(".ProseMirror").click();
@@ -45,7 +41,7 @@ test.describe("Docs collab suggest + save (live app)", () => {
     const apiPath = `/${myDriveDocSearchPath(fileName)}`;
 
     await loginToDocs(page);
-    await seedDocAtPath(page, apiPath, `# ${fileName}\n\nHello old world\n`);
+    await uploadMarkdown(apiPath, `# ${fileName}\n\nHello old world\n`);
 
     await page.goto(docsUrlForFile(apiPath));
     const editorA = page.locator(".ProseMirror");
@@ -64,11 +60,15 @@ test.describe("Docs collab suggest + save (live app)", () => {
       "true",
     );
     await selectWord(page, "old");
+    const saved = page.waitForResponse(
+      (r) => r.url().includes("/files/collaboration") && r.request().method() === "PUT" && r.ok(),
+      { timeout: 30_000 },
+    );
     await page.keyboard.type("new");
     await expect(page.locator(".docs-suggestion-card").first()).toBeVisible({ timeout: 15_000 });
 
-    // Let the debounced save (SAVE_DELAY_MS = 2000) run and settle.
-    await page.waitForTimeout(6_000);
+    // The debounced save must actually run, or the stored-file checks prove nothing.
+    await saved;
 
     for (const editor of [editorA, editorB]) {
       await expect(editor).toContainText("Hello");
