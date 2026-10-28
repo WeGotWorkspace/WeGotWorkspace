@@ -11,6 +11,7 @@ import {
   joinMeetRoom,
   knockAsGuest,
   meetDcOpenCount,
+  meetLobby,
   openGuest,
   openSignedInHost,
   trackRoomMessagePosts,
@@ -39,7 +40,7 @@ test("guest chat is under 300ms on an open channel and once over HTTP when block
     await joinMeetRoom(host.page, room);
     await waitForInCall(host.page);
     await knockAsGuest(guest.page, room, "Ada");
-    await expect(host.page.getByRole("button", { name: /waiting to join/ })).toBeVisible();
+    await expect(meetLobby(host.page)).toBeVisible();
     await admitFirstKnocker(host.page);
     await waitForInCall(guest.page);
     hostOffers.release();

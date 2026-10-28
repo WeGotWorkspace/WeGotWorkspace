@@ -14,7 +14,6 @@ import {
   getTrackChangesMode,
   getTrackChangesPendingCount,
   scrollTrackChangeIntoView,
-  trackChangesAuthorIdFromName,
 } from "./text-editor-track-changes";
 import { setSuggestionActiveId } from "./text-editor-suggestion-active";
 import { syncPersistedCommentMarks } from "./text-editor-comment-commands";
@@ -59,7 +58,7 @@ function suggestReplaceText(editor: Editor, from: number, to: number, text: stri
 function createCollabEditor(
   ydoc: Y.Doc,
   awareness: Awareness,
-  user: { id: string; name: string; color: string },
+  user: { name: string; color: string },
   seedText: string | null = "Hello world",
 ) {
   if (seedText != null) {
@@ -72,6 +71,7 @@ function createCollabEditor(
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
+      trackChangesUserKey: crypto.randomUUID(),
       user,
       format: "markdown",
     }),
@@ -83,7 +83,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -102,7 +101,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -121,7 +119,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -156,7 +153,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -180,7 +176,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -216,7 +211,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -244,7 +238,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -256,7 +249,8 @@ describe("text editor track changes", () => {
     const groups = getDocsTrackChangeGroups(editor);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.summary).toContain("world");
-    expect(groups[0]?.authorName).toBe("Alex");
+    // Who made it is not in the document; the review panel takes it from the thread.
+    expect(groups[0]).not.toHaveProperty("authorName");
 
     editor.destroy();
   });
@@ -265,7 +259,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
@@ -289,12 +282,10 @@ describe("text editor track changes", () => {
     const awareness1 = new Awareness(ydoc);
     const awareness2 = new Awareness(ydoc);
     const user1 = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };
     const user2 = {
-      id: trackChangesAuthorIdFromName("Bob"),
       name: "Bob",
       color: "#dc2626",
     };
@@ -316,7 +307,6 @@ describe("text editor track changes", () => {
     const ydoc = new Y.Doc();
     const awareness = new Awareness(ydoc);
     const user = {
-      id: trackChangesAuthorIdFromName("Alex"),
       name: "Alex",
       color: "#2563eb",
     };

@@ -7,7 +7,8 @@ import {
   PrincipalLinkRegistry,
   resetPrincipalLinkRegistryForTests,
 } from "@/lib/rtc/session/principal-link-registry";
-import { SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
+import { encodeYjsHttpPayload } from "./docs-collab-http-wire";
+import { handleSyncMessage, SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
 import { DocsRtcSession, parsePeerHintPeers, tagOf } from "./docs-rtc-session";
 
@@ -882,5 +883,52 @@ describe("DocsRtcSession data-channel debug tags", () => {
       "update-not-sent",
       expect.objectContaining({ reason: "reader" }),
     );
+  });
+});
+
+describe("DocsRtcSession HTTP mailbox delivery", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  /**
+   * Before the data channel opens, a peer's edits arrive in the HTTP mailbox.
+   * They must reach the session listeners like a data-channel message does, so
+   * the leader tab applies them through the guard and relays them to its
+   * follower tabs. Applying them out of sight leaves a follower without them.
+   */
+  it("hands a mailbox update to the listeners as a sync message", () => {
+    const doc = new Y.Doc();
+    const session = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "docs/mailbox-delivery.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    const seen: DocsCollabMeshMessage[] = [];
+    session.onMessage((msg) => seen.push(msg));
+
+    const remote = new Y.Doc();
+    remote.getText("note-title").insert(0, "Carets 179");
+    const update = Y.encodeStateAsUpdate(remote);
+    const onPollData = captured.meshOptions?.onPollData as unknown as (data: unknown) => void;
+    onPollData({
+      peers: [{ id: "peer-b", name: "Bea", user: "member", access: "write", caps: ["yjs-http"] }],
+      messages: [{ from: "peer-b", type: "yjs", payload: encodeYjsHttpPayload(update, 1) }],
+    });
+
+    const syncs = seen.filter((msg) => msg.type === "sync");
+    expect(syncs).toHaveLength(1);
+    expect(syncs[0]).toMatchObject({
+      type: "sync",
+      from: "peer-b",
+      trust: { user: "member", access: "write" },
+    });
+    const received = new Y.Doc();
+    handleSyncMessage((syncs[0] as { u: Uint8Array }).u, received);
+    expect(received.getText("note-title").toString()).toBe("Carets 179");
   });
 });

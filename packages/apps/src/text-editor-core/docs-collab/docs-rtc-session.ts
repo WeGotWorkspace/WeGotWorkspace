@@ -32,6 +32,7 @@ import {
 } from "@/text-editor-core/docs-collab/docs-collab-channel";
 import {
   encodeSyncStep1,
+  encodeUpdateBroadcast,
   isDocumentBearingSyncMessage,
 } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
 import { YJS_HTTP_POLL_MS } from "@/text-editor-core/docs-collab/docs-collab-http-wire";
@@ -360,6 +361,18 @@ export class DocsRtcSession {
           }),
           myAccess: () => this.myAccess(),
           meshHydrated: options.meshHydrated,
+          // Same shape and trust as a data-channel message, so the listener
+          // applies it through the guard and the leader relays it to its tabs.
+          deliverRemoteUpdate: (from, update) =>
+            this.emit({
+              type: "sync",
+              u: encodeUpdateBroadcast(update),
+              from,
+              trust: {
+                user: this.trust.userForPeerId(from),
+                access: this.trust.accessForPeerId(from),
+              },
+            }),
         })
       : null;
   }

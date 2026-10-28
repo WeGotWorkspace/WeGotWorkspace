@@ -12,6 +12,12 @@ export const DOCS_THREADS_POLL_MS = 4_000;
 
 export type DocsThreadsSource = {
   fileThreads: DocsFileThread[];
+  /**
+   * `fileThreads` is the server's list for the current path. False before the
+   * first load and right after the path changes (a move), when the list may
+   * still be another path's or empty.
+   */
+  loaded: boolean;
   comments: DocsCommentThread[];
   suggestions: DocsSuggestionThread[];
   archivedSuggestions: DocsSuggestionWithThread[];
@@ -59,23 +65,41 @@ export function useDocsThreadsSource({
   poll?: boolean;
 }): DocsThreadsSource {
   const [fileThreads, setFileThreads] = useState<DocsFileThread[]>(() => immediateSnapshot(client));
+  const [loadedFor, setLoadedFor] = useState<{
+    client: DocsThreadsClient | null;
+    path: string | null;
+  } | null>(() => (client && isDocsThreadsSnapshotClient(client) ? { client, path } : null));
   const sinceRef = useRef<string | null>(null);
+  const latestRequest = useRef(0);
 
   const reload = useCallback(async () => {
     if (!client || !path) {
       setFileThreads([]);
+      setLoadedFor(null);
       return;
     }
     if (isDocsThreadsSnapshotClient(client)) {
       setFileThreads(client.snapshot());
+      setLoadedFor({ client, path });
       return;
     }
+    const request = ++latestRequest.current;
     const list = await client.list(path);
+    // A slower list for the path before a move must not overwrite this one.
+    if (request !== latestRequest.current) return;
     setFileThreads(list);
+    setLoadedFor({ client, path });
   }, [client, path]);
 
+  const loaded = Boolean(client && path) && loadedFor?.client === client && loadedFor.path === path;
+  const loadedRef = useRef(loaded);
   useEffect(() => {
-    void reload();
+    loadedRef.current = loaded;
+  }, [loaded]);
+
+  useEffect(() => {
+    // A failed list leaves `loaded` false; the poll retries it.
+    reload().catch(() => undefined);
   }, [reload]);
 
   useEffect(() => {
@@ -83,6 +107,12 @@ export function useDocsThreadsSource({
     let cancelled = false;
     const tick = async () => {
       try {
+        // Until a list for this path has arrived, retry it: an empty changes
+        // feed (a document without threads) would never trigger a reload.
+        if (!loadedRef.current) {
+          await reload();
+          return;
+        }
         const changes = await client.changes(path, sinceRef.current);
         sinceRef.current = changes.newState;
         if (
@@ -118,6 +148,7 @@ export function useDocsThreadsSource({
   return useMemo(
     () => ({
       fileThreads,
+      loaded,
       comments: split.comments,
       suggestions: split.suggestions,
       archivedSuggestions: split.archivedSuggestions,
@@ -127,6 +158,7 @@ export function useDocsThreadsSource({
     }),
     [
       fileThreads,
+      loaded,
       reload,
       remove,
       split.archivedSuggestions,

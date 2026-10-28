@@ -26,7 +26,7 @@ test.describe("Docs collab solo read (live app)", () => {
     const markdown = `# ${fileName}\n\n${token}\n`;
 
     await loginToDocs(page);
-    await seedDocAtPath(page, apiPath, markdown);
+    await seedDocAtPath(apiPath, markdown);
     await saveCollabDocument(page, apiPath, markdown, emptyYjsSidecarBytes());
 
     await page.goto(docsUrlForFile(apiPath));

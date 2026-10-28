@@ -6,14 +6,38 @@ namespace App\Services\Notify;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Minishlink\WebPush\MessageSentReport;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
+use Psr\Http\Client\ClientInterface;
 
+/**
+ * Logs carry the push-service host only. The full endpoint URL is a
+ * capability token for the subscription, so it never reaches the log.
+ */
 final class MinishlinkWebPushSender implements WebPushSender
 {
+    private const LOG_TEXT_LIMIT = 300;
+
+    /**
+     * @param  ClientInterface|null  $httpClient  Tests inject a stub; production uses the default Guzzle client.
+     */
+    public function __construct(
+        private readonly PushFailureTally $failures,
+        private readonly ?ClientInterface $httpClient = null,
+    ) {}
+
     public static function isIgnorableCalculatorWarning(string $message): bool
     {
         return str_contains($message, 'GMP or BCMath');
+    }
+
+    public static function endpointHost(string $endpoint): string
+    {
+        $host = parse_url(trim($endpoint), PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' ? strtolower($host) : 'invalid-endpoint';
     }
 
     /**
@@ -45,11 +69,7 @@ final class MinishlinkWebPushSender implements WebPushSender
                     'publicKey' => $vapid['publicKey'],
                     'privateKey' => $vapid['privateKey'],
                 ],
-            ], [], new Client([
-                'allow_redirects' => false,
-                'timeout' => 10,
-                'connect_timeout' => 5,
-            ]));
+            ], [], $this->httpClient ?? self::defaultHttpClient());
             $subscription = Subscription::create([
                 'endpoint' => $endpoint,
                 'publicKey' => $p256dh,
@@ -60,18 +80,70 @@ final class MinishlinkWebPushSender implements WebPushSender
                 $payload,
                 ['contentType' => 'application/notification+json'],
             );
-
-            return $report->isSuccess() ? 201 : (int) ($report->getResponse()?->getStatusCode() ?: 0);
         } catch (\Throwable $e) {
+            $host = self::endpointHost($endpoint);
             Log::warning('vapid_send_failed', [
-                'endpoint' => $endpoint,
+                'host' => $host,
                 'exception' => $e::class,
-                'message' => $e->getMessage(),
+                'message' => self::forLog($e->getMessage(), $host),
             ]);
+            $this->failures->record($host, 0);
 
             return 0;
         } finally {
             restore_error_handler();
         }
+
+        if ($report->isSuccess()) {
+            return 201;
+        }
+
+        return $this->logRejection($endpoint, $report);
+    }
+
+    /**
+     * Expired subscriptions (404/410) are routine and pruned by the caller,
+     * so they log at info; every other refusal is a warning.
+     */
+    private function logRejection(string $endpoint, MessageSentReport $report): int
+    {
+        $response = $report->getResponse();
+        $status = (int) ($response?->getStatusCode() ?? 0);
+        $host = self::endpointHost($endpoint);
+
+        $context = [
+            'status' => $status,
+            'host' => $host,
+            'reason' => self::forLog($report->getReason(), $host),
+        ];
+        $body = self::forLog((string) $response?->getBody(), $host);
+        if ($body !== '') {
+            $context['body'] = $body;
+        }
+
+        Log::log($report->isSubscriptionExpired() ? 'info' : 'warning', 'vapid_send_rejected', $context);
+        $this->failures->record($host, $status);
+
+        return $status;
+    }
+
+    /**
+     * One line, truncated, with any URL on the push host cut back to the host.
+     */
+    private static function forLog(string $text, string $host): string
+    {
+        $text = (string) preg_replace('#https?://'.preg_quote($host, '#').'[^\s`\'"]*#i', 'https://'.$host.'/…', $text);
+        $text = trim((string) preg_replace('/\s+/', ' ', $text));
+
+        return Str::limit($text, self::LOG_TEXT_LIMIT);
+    }
+
+    private static function defaultHttpClient(): Client
+    {
+        return new Client([
+            'allow_redirects' => false,
+            'timeout' => 10,
+            'connect_timeout' => 5,
+        ]);
     }
 }
