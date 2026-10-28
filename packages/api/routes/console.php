@@ -23,6 +23,7 @@ use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
 use App\Services\Notify\AlertDueScheduler;
+use App\Services\Notify\PushFailureTally;
 use App\Services\Notify\VapidPushService;
 use App\Services\Rtc\RtcHousekeepingService;
 use App\Services\Tasks\DefaultMixedCalendarMigrator;
@@ -32,6 +33,7 @@ use Illuminate\Console\Command;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -466,9 +468,16 @@ Artisan::command('wgw:notify:due-alarms', function (AlertDueScheduler $scheduler
     return Command::SUCCESS;
 })->purpose('Scan VALARM display alarms that are due and fire WorkspaceEvents (idempotent)');
 
-Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push): int {
+Artisan::command('wgw:notify:vapid-sweep', function (VapidPushService $push, PushFailureTally $failures): int {
+    $failures->reset();
     $sent = $push->sweepDue();
     $this->info(sprintf('Swept VAPID fallback; sent %d payload(s).', $sent));
+
+    if ($failures->hasFailures()) {
+        $summary = $failures->summary();
+        Log::warning('vapid_sweep_failures', ['sent' => $sent] + $summary);
+        $this->warn(sprintf('%d push send(s) failed; see vapid_sweep_failures in the log.', $summary['failed']));
+    }
 
     return Command::SUCCESS;
 })->purpose('Send Web Push for local deliveries that were not acked in the 20s local-ack window');
