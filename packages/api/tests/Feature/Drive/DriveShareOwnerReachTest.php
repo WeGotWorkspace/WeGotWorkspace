@@ -16,6 +16,8 @@ use Tests\Support\WgwDatabaseTestCase;
  * A share stays in force only while its owner still reaches the shared path. Once bob leaves
  * the team group, his shares on the team folder are dormant: hidden from his share management
  * and ignored for every grantee, invite and public link. Re-adding bob brings them back.
+ * Deleting the group leaves them dormant, and a new group under the same slug does not revive
+ * them on its own.
  */
 final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
 {
@@ -152,6 +154,41 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
             ->assertJsonPath('data.id', $shareId);
         $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
             ->assertOk();
+    }
+
+    public function test_deleting_the_group_leaves_its_shares_dormant_also_after_the_slug_is_reused(): void
+    {
+        $bob = $this->userBearerToken();
+        $admin = $this->adminBearerToken();
+        $shareId = (string) $this->createBoxShare(['carol' => ['access' => 'view']])['id'];
+        $publicToken = (string) $this->withBearer($bob)->postJson('/api/v1/files/shares', [
+            'path' => self::BOX,
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.publicToken');
+
+        $this->withBearer($admin)->deleteJson('/api/v1/admin/groups/team')->assertOk();
+
+        $this->assertShareNotFound($this->withBearer($bob)->getJson('/api/v1/files/shares/'.$shareId));
+        $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])->assertStatus(410);
+
+        $this->withBearer($admin)->postJson('/api/v1/admin/groups', [
+            'name' => 'team',
+            'displayName' => 'Team',
+        ])->assertOk();
+        $this->seedGroupFile('box/doc.md', 'new team body');
+
+        $this->assertShareNotFound($this->withBearer($bob)->getJson('/api/v1/files/shares/'.$shareId));
+        $this->assertAccessDenied(
+            $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
+        );
+        $this->withBearer($this->carolBearerToken())->getJson('/api/v1/files/shared-with-me')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])->assertStatus(410);
     }
 
     public function test_owner_group_memberships_load_once_per_request(): void
