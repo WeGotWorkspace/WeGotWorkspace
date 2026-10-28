@@ -15,6 +15,7 @@ import type {
   DocsFileThreadCreate,
   DocsThreadsClient,
 } from "./docs-threads-types";
+import { DOCS_THREADS_POLL_MS } from "./use-docs-threads-source";
 import { useDocsSuggestions } from "./use-docs-suggestions";
 import { SUGGESTION_ROOT_SETTLE_MS } from "./use-docs-suggestions-thread-roots";
 
@@ -268,4 +269,33 @@ describe("suggestion thread roots after the document moves", () => {
     expect(root).toMatchObject({ id: movedRootId, createdBy: ADMIN });
     expect(root!.messages.map((message) => message.body)).toContain("Looks good");
   });
+
+  it("retries a failed first thread list from the poll and then records the root", async () => {
+    const server = createThreadsServer();
+    const ydoc = new Y.Doc();
+    applyContentSeedToYDoc(ydoc, "Hello old world", "markdown");
+    const editor = createEditor(ydoc, crypto.randomUUID());
+    const client = server.clientFor(ADMIN);
+    const list = client.list.bind(client);
+    let failures = 1;
+    client.list = async (path) => {
+      if (failures-- > 0) throw new Error("offline");
+      return list(path);
+    };
+    renderHook(() =>
+      useDocsSuggestions(editor, {
+        ydoc: null,
+        currentUser: ADMIN,
+        threadsClient: client,
+        docPath: PERSONAL,
+        pollThreads: true,
+      }),
+    );
+    suggestReplace(editor, 7, 10, "new");
+    const change = getDocsTrackChangeGroups(editor)[0]!.changeId;
+    await waitFor(() => expect(server.roots(change)).toHaveLength(1), {
+      timeout: DOCS_THREADS_POLL_MS + SUGGESTION_ROOT_SETTLE_MS + 3_000,
+    });
+    expect(server.creates.filter(({ input }) => input.changeId === change)).toHaveLength(1);
+  }, 20_000);
 });

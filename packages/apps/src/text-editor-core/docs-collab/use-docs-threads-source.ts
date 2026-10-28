@@ -71,6 +71,7 @@ export function useDocsThreadsSource({
   } | null>(() => (client && isDocsThreadsSnapshotClient(client) ? { client, path } : null));
   const sinceRef = useRef<string | null>(null);
   const latestRequest = useRef(0);
+  const loadedRef = useRef(false);
 
   const reload = useCallback(async () => {
     if (!client || !path) {
@@ -92,9 +93,11 @@ export function useDocsThreadsSource({
   }, [client, path]);
 
   const loaded = Boolean(client && path) && loadedFor?.client === client && loadedFor.path === path;
+  loadedRef.current = loaded;
 
   useEffect(() => {
-    void reload();
+    // A failed first list is retried by the poll until it loads.
+    reload().catch(() => {});
   }, [reload]);
 
   useEffect(() => {
@@ -102,6 +105,10 @@ export function useDocsThreadsSource({
     let cancelled = false;
     const tick = async () => {
       try {
+        if (!loadedRef.current) {
+          await reload();
+          return;
+        }
         const changes = await client.changes(path, sinceRef.current);
         sinceRef.current = changes.newState;
         if (
