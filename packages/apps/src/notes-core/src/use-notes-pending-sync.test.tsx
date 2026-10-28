@@ -112,4 +112,40 @@ describe("useNotesPendingSync", () => {
       vi.useRealTimers();
     }
   });
+
+  it("claims the seed before any read finishes, and keeps a record changed during the read", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(listPendingNoteIds).mockResolvedValue([]);
+      vi.mocked(readNotesBootstrapFromCache).mockResolvedValue({
+        data: { notes: [{ id: "a" }, { id: "b" }] },
+      } as never);
+      let release: (value: boolean) => void = () => undefined;
+      vi.mocked(hasNoteCollabPendingServerSave).mockImplementation(
+        (uid) =>
+          new Promise<boolean>((resolve) => (uid === "a" ? (release = resolve) : resolve(false))),
+      );
+
+      const { result } = renderHook(() => useNotesPendingSync("bob"));
+      await waitFor(() => expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(1));
+
+      // Two more polls while the read is open do not scan again.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(8200);
+      });
+      expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(1);
+      expect(listExistingIndexedDatabaseNames).toHaveBeenCalledTimes(1);
+
+      // A save marks the room pending during the read; the stale result must not undo it.
+      setCollabRoomPendingServerSave("a", true);
+      release(false);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4100);
+      });
+      await waitFor(() => expect(result.current.has("a")).toBe(true));
+      expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

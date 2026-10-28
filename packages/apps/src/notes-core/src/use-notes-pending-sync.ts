@@ -22,8 +22,9 @@ export function useNotesPendingSync(
 ): ReadonlySet<string> {
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
   const { online } = useConnectivity();
-  // Databases are scanned once per session; later polls read the shared record.
-  const seededRef = useRef(false);
+  // Databases are scanned once per account; later polls read the shared record.
+  // The ref holds the scan itself, so a poll during the scan joins it.
+  const seedRef = useRef<{ username: string; done: Promise<void> } | null>(null);
 
   const refresh = useCallback(async () => {
     if (!username) {
@@ -34,15 +35,16 @@ export function useNotesPendingSync(
       const ids = new Set(await listPendingNoteIds(username));
       const cached = await readNotesBootstrapFromCache(username);
       const notes = cached?.data.notes ?? [];
-      if (!seededRef.current) {
+      if (seedRef.current?.username !== username) {
         // Seeds the record from databases that predate it (one scan, not per poll).
-        const existingDatabaseNames = await listExistingIndexedDatabaseNames();
-        for (const note of notes) {
-          const pending = await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames);
-          setCollabRoomPendingServerSave(noteCollabRoomKey(note.id), pending);
-        }
-        seededRef.current = true;
+        const done = seedPendingRecord(notes.map((note) => note.id)).catch((error: unknown) => {
+          // Try again on the next poll.
+          if (seedRef.current?.done === done) seedRef.current = null;
+          throw error;
+        });
+        seedRef.current = { username, done };
       }
+      await seedRef.current.done;
       for (const note of notes) {
         if (ids.has(note.id)) continue;
         if (isCollabRoomPendingServerSave(noteCollabRoomKey(note.id))) ids.add(note.id);
@@ -68,4 +70,17 @@ function sameIdSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
   if (a.size !== b.size) return false;
   for (const id of a) if (!b.has(id)) return false;
   return true;
+}
+
+async function seedPendingRecord(noteIds: readonly string[]): Promise<void> {
+  const existingDatabaseNames = await listExistingIndexedDatabaseNames();
+  for (const id of noteIds) {
+    const room = noteCollabRoomKey(id);
+    const before = isCollabRoomPendingServerSave(room);
+    const pending = await hasNoteCollabPendingServerSave(id, existingDatabaseNames);
+    // An open editor or a finished save changed the record during the read: keep that.
+    if (isCollabRoomPendingServerSave(room) === before) {
+      setCollabRoomPendingServerSave(room, pending);
+    }
+  }
 }

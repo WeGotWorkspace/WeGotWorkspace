@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import {
+  discardNoteCollabBuffer,
   hasNoteCollabPendingServerSave,
   noteCollabRoomKey,
   readNoteCollabOfflineContent,
@@ -13,6 +14,10 @@ import {
   docsCollabIndexedDbKey,
   migrateDocsCollabPendingSaveFromLegacy,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
+import {
+  isCollabRoomPendingServerSave,
+  setCollabRoomPendingServerSave,
+} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 async function seedMarkdown(indexedDbName: string, markdown: string): Promise<void> {
@@ -144,5 +149,16 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     } finally {
       Object.defineProperty(indexedDB, "databases", { configurable: true, value: databases });
     }
+  });
+
+  it("drops the room from the pending record when the buffer is discarded", async () => {
+    const uid = "note-discarded";
+    const room = noteCollabRoomKey(uid);
+    await seedPendingFlag(docsCollabIndexedDbKey(room));
+    setCollabRoomPendingServerSave(room, true);
+
+    await discardNoteCollabBuffer(uid);
+
+    expect(isCollabRoomPendingServerSave(room)).toBe(false);
   });
 });

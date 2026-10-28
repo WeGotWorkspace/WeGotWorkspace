@@ -221,18 +221,25 @@ export async function deleteFilteredArchivedNotes(page: Page, searchToken: strin
 export async function noteTokenOnServer(page: Page, token: string): Promise<boolean> {
   return page.evaluate(async (expected) => {
     const accessToken = localStorage.getItem("wgw.api.access_token");
-    const response = await fetch("/api/v1/notes/items", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!response.ok) return false;
-    const json = (await response.json()) as {
-      items?: { body?: string; title?: string; excerpt?: string }[];
-    };
-    return (
-      json.items?.some((item) => {
-        const haystack = [item.body, item.title, item.excerpt].filter(Boolean).join(" ");
-        return haystack.includes(expected);
-      }) ?? false
-    );
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    // The list needs a notebook: look through each one the person can read.
+    const notebooks = await fetch("/api/v1/notes/notebooks", { headers });
+    if (!notebooks.ok) return false;
+    const notebookList = ((await notebooks.json()) as { list?: { id: string }[] }).list ?? [];
+    for (const notebook of notebookList) {
+      const response = await fetch(
+        `/api/v1/notes/items?notebookId=${encodeURIComponent(notebook.id)}`,
+        { headers },
+      );
+      if (!response.ok) continue;
+      const json = (await response.json()) as {
+        list?: { body?: string; title?: string; excerpt?: string }[];
+      };
+      const found = json.list?.some((item) =>
+        [item.body, item.title, item.excerpt].filter(Boolean).join(" ").includes(expected),
+      );
+      if (found) return true;
+    }
+    return false;
   }, token);
 }

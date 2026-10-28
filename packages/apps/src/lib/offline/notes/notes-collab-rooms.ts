@@ -1,6 +1,7 @@
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { readContentFromYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
+import { setCollabRoomPendingServerSave } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import {
   collabIndexedDbHasPendingServerSave,
   docsCollabIndexedDbKey,
@@ -135,7 +136,9 @@ export async function migrateNoteCollabRoom(oldUid: string, newUid: string): Pro
  */
 export async function discardNoteCollabBuffer(uid: string): Promise<void> {
   const room = noteCollabRoomKey(uid);
-  if (!room || typeof indexedDB === "undefined") return;
+  if (!room) return;
+  setCollabRoomPendingServerSave(room, false);
+  if (typeof indexedDB === "undefined") return;
   const known = await listExistingIndexedDatabaseNames();
   const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
   for (const name of names) {
