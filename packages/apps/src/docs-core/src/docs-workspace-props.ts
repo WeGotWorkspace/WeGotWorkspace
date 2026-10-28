@@ -14,5 +14,10 @@ export type DocsWorkspaceProps = {
   onLogout?: () => void;
   /** Called after a successful rename with the new drive API path. */
   onFileRenamed?: (apiPath: string) => void;
+  /**
+   * Share-link guest view: read-only with a notice, no rename. Defaults to the
+   * live session (`wgwIsGuestSession()`); stories set it directly.
+   */
+  guestSession?: boolean;
   className?: string;
 };
