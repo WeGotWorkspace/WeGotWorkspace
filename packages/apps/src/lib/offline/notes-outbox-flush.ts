@@ -14,7 +14,14 @@ import {
 import { getNote, listNotebooks, noteFromVjournal } from "@/lib/api/wgw/notes-vjournal";
 import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
+import {
+  type SentOutboxSettlement,
+  sendChangedRowAgain,
+  settleSentOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
+import { baseUpdatedAt } from "@/lib/offline/notes/notes-metadata-selection";
+import { NOTES_DOMAIN, notesNotesTable } from "@/lib/offline/notes/notes-schema";
 import { announceNoteCreated } from "@/lib/offline/notes/notes-created-events";
 import {
   isNoteArchivedRefusal,
@@ -23,6 +30,7 @@ import {
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 import {
   dropLocalNoteAfterServerGone,
+  getNoteFromCache,
   listOutboxMutations,
   markOutboxError,
   type NoteUpsertMetadata,
@@ -53,9 +61,16 @@ async function flushOutboxNoteUpsert(
 ): Promise<{ saved: Note } | { conflict: true } | { gone: true }> {
   if (create) {
     // The UID is the client's, so a retry (or another tab) gets the same note back.
-    return {
-      saved: await createNoteItem({ ...metadataRequest, notebook: metadata.notebook, body: "" }),
-    };
+    const created = await createNoteItem({
+      ...metadataRequest,
+      notebook: metadata.notebook,
+      body: "",
+    });
+    if (createAnswerHasMetadata(created, metadata)) return { saved: created };
+    // A resent create is answered with the note as first stored, which may
+    // predate a title or tags queued with it: send those as an update.
+    const { notebook: _notebook, notebookId: _notebookId, ...update } = metadataRequest;
+    return { saved: await updateNoteItem(noteId, { ...update, etag: created.etag }) };
   }
   try {
     return { saved: await updateNoteItem(noteId, metadataRequest) };
@@ -79,6 +94,48 @@ async function flushOutboxNoteUpsert(
     await dropLocalNoteAfterServerGone(username, noteId);
     return { gone: true };
   }
+}
+
+function sameTagSet(left: readonly string[], right: readonly string[]): boolean {
+  const set = new Set(left);
+  return set.size === new Set(right).size && right.every((tag) => set.has(tag));
+}
+
+/** True when the server's answer to a create holds the title and tags it was sent. */
+function createAnswerHasMetadata(created: Note, metadata: NoteUpsertMetadata): boolean {
+  if (metadata.title !== undefined && (created.title ?? "") !== metadata.title) return false;
+  if (metadata.tags !== undefined && !sameTagSet(created.tags ?? [], metadata.tags)) return false;
+  return true;
+}
+
+/** The queued row still owed after `saved` answered the send of an older version. */
+function rebaseNoteUpsertRow(row: OfflineOutboxRow, saved: Note): OfflineOutboxRow {
+  // The note is on the server now: what is left is an update from its answer.
+  const { create: _create, ...payload } = JSON.parse(row.payload) as NotesUpsertPayload;
+  return { ...row, payload: JSON.stringify(payload), ifInState: baseUpdatedAt(saved) };
+}
+
+/**
+ * Settle a sent upsert. An edit queued while the request was on its way stays
+ * in the outbox, and the cache keeps that newer copy, now marked as created
+ * so later edits are not queued as a create again (#1711).
+ */
+function settleSentNoteUpsert(
+  username: string,
+  row: OfflineOutboxRow,
+  saved: Note,
+): Promise<SentOutboxSettlement> {
+  return settleSentOutboxMutation(username, row, {
+    rebase: (current) => rebaseNoteUpsertRow(current, saved),
+    cacheTables: (db) => [notesNotesTable(db)],
+    onRemoved: () => upsertNoteInCache(username, saved, false),
+    onChanged: async () => {
+      const local = await getNoteFromCache(username, saved.id);
+      if (!local) return;
+      const { createPending: _created, ...rest } = local;
+      await upsertNoteInCache(username, { ...rest, etag: saved.etag }, true);
+    },
+  });
 }
 
 /** Metadata-only REST upsert — no `body`; starred is routed to `/notes/items/{id}/star`. */
@@ -134,6 +191,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
   const stateMismatches: string[] = [];
   // Notes whose rows this flush already dropped (deleted or archived elsewhere).
   const settled = new Set<string>();
+  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
+  const resends = new Map<string, number>();
 
   for (const row of rows) {
     if (row.domain !== NOTES_DOMAIN) continue;
@@ -167,8 +226,10 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           await removeOutboxMutation(username, row.id);
           continue;
         }
-        await upsertNoteInCache(username, result.saved, false);
+        const settlement = await settleSentNoteUpsert(username, row, result.saved);
         if (upsert.create) announceNoteCreated({ username, noteId: result.saved.id });
+        sendChangedRowAgain(rows, resends, settlement);
+        continue;
       } else if (row.op === "delete") {
         const noteId = String(payload.noteId ?? "");
         const groupSlug =

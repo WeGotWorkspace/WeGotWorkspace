@@ -4,8 +4,10 @@ import { createTasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import { TasksRequestError } from "@/lib/api/wgw/tasks";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import {
+  enqueueCoalescedTaskUpdate,
   enqueueOutboxMutation,
   listOutboxMutations,
+  upsertTaskInCache,
   writeTasksBootstrapToCache,
 } from "@/lib/offline/tasks-offline-store";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
@@ -71,5 +73,27 @@ describe("flushTasksOutbox", () => {
       { workflowStatus: "completed" },
       { ifMatch: undefined },
     );
+  });
+
+  it("sends a patch merged in while the first one was on its way (#1711)", async () => {
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "First" }, "etag-1");
+    let answerFirst!: (value: unknown) => void;
+    patchTask.mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)));
+    patchTask.mockResolvedValueOnce({ ...task, title: "Second", etag: "etag-3" });
+
+    const flushing = flushTasksOutbox(username);
+    await vi.waitFor(() => expect(patchTask).toHaveBeenCalledOnce());
+    await upsertTaskInCache(username, { ...task, title: "Second" }, true);
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "Second" }, "etag-1");
+    answerFirst({ ...task, title: "First", etag: "etag-2" });
+    await flushing;
+
+    expect(patchTask).toHaveBeenCalledTimes(2);
+    // Rebased on the first answer, so the second send is no stale-etag conflict.
+    expect(patchTask.mock.calls[1]).toEqual([task.id, { title: "Second" }, { ifMatch: "etag-2" }]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const cached = await tasksItemsTable(db).get(task.id);
+    expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Second" });
   });
 });

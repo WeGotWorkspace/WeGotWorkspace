@@ -333,4 +333,23 @@ describe("flushCalendarsOutbox", () => {
     expect(result.schedulingConflicts).toEqual(["invite-1.ics"]);
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
+
+  it("sends a patch merged in while the first one was on its way (#1711)", async () => {
+    await enqueueCoalescedCalendarEventUpdate(username, "ev-1", { title: "First" });
+    let answerFirst!: (value: unknown) => void;
+    patchCalendarEventLive.mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)));
+    patchCalendarEventLive.mockResolvedValueOnce(wireEvent("ev-1", "Second"));
+
+    const flushing = flushCalendarsOutbox(username);
+    await vi.waitFor(() => expect(patchCalendarEventLive).toHaveBeenCalledOnce());
+    await enqueueCoalescedCalendarEventUpdate(username, "ev-1", { title: "Second" });
+    answerFirst(wireEvent("ev-1", "First"));
+    await flushing;
+
+    expect(patchCalendarEventLive).toHaveBeenCalledTimes(2);
+    expect(patchCalendarEventLive.mock.calls[1]?.[1]).toMatchObject({ title: "Second" });
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+    const cached = await readCalendarBootstrapFromCache(username);
+    expect(cached?.data.events.find((event) => event.id === "ev-1")?.title).toBe("Second");
+  });
 });
