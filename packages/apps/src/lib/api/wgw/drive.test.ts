@@ -31,6 +31,7 @@ vi.mock("@/lib/api/wgw/search", () => ({
 
 import {
   createWgwDriveOperations,
+  GUEST_UPLOAD_UNAVAILABLE,
   fetchDriveLiveBootstrap,
   resetDriveJmapSessionForTests,
 } from "@/lib/api/wgw/drive";
@@ -363,6 +364,19 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path === "/jmap")).toBe(false);
     expect(paths.some((path) => path === "/files/context")).toBe(false);
     expect(paths.some((path) => path === "/files/starred")).toBe(false);
+  });
+
+  it("refuses guest uploads before sending any request", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    const ops = createWgwDriveOperations("/users/bob/Test");
+    const file = new File(["x"], "note.md", { type: "text/markdown" });
+
+    await expect(ops.checkUploadReady()).rejects.toThrow(GUEST_UPLOAD_UNAVAILABLE);
+    await expect(ops.uploadFiles({ cwd: "/users/bob/Test", files: [file] })).rejects.toThrow(
+      GUEST_UPLOAD_UNAVAILABLE,
+    );
+    expect(wgwFetch).not.toHaveBeenCalled();
   });
 
   it("bootstraps a folder share by listing the shared directory", async () => {

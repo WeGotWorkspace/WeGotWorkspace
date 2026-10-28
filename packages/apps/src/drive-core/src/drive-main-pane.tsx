@@ -57,6 +57,7 @@ export function DriveMainPane({
     dropUploadActive,
     setDropUploadActive,
     handleUpload,
+    uploadEnabled,
     breadcrumbs,
     selectView,
     visibleItems,
@@ -183,6 +184,11 @@ export function DriveMainPane({
       onDragOver={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) {
+          // Swallow the drop so the browser does not navigate away to the file.
+          event.dataTransfer.dropEffect = "none";
+          return;
+        }
         setDropUploadActive(true);
       }}
       onDragLeave={(event) => {
@@ -193,6 +199,7 @@ export function DriveMainPane({
       onDrop={(event) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
+        if (!uploadEnabled) return;
         setDropUploadActive(false);
         handleUpload(event.dataTransfer.files);
       }}

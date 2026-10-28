@@ -7,17 +7,25 @@ import type {
   TaskPatch,
   TaskTaskListListResponse,
 } from "@wgw/openapi-types/tasks-types";
+import type { components } from "@wgw/openapi-types/openapi-types";
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type { TaskProjectGroupOption } from "@/tasks-core/src/tasks-types";
 import { wgwFetch, wgwFetchPrincipal, wgwReadJson } from "@/lib/api/wgw/http";
 
 export class TasksRequestError extends Error {
   status: number;
+  /** API error code from the JSON body (`{ error, code }`), when there is one. */
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
+}
+
+export function isTasksCannotCalculateChanges(error: unknown): boolean {
+  return error instanceof TasksRequestError && error.code === "cannotCalculateChanges";
 }
 
 type TasksRequestOpts = {
@@ -46,7 +54,14 @@ async function requestTasksJson(
 
   const res = await wgwFetch(path, init);
   if (!res.ok) {
-    throw new TasksRequestError(`${method} ${path} failed (${res.status})`, res.status);
+    let code: string | undefined;
+    try {
+      const errorBody = (await res.json()) as { code?: unknown };
+      if (typeof errorBody.code === "string") code = errorBody.code;
+    } catch {
+      // Status alone is enough when the body is not JSON.
+    }
+    throw new TasksRequestError(`${method} ${path} failed (${res.status})`, res.status, code);
   }
   if (res.status === 204) return undefined;
   return wgwReadJson(res);
@@ -68,6 +83,37 @@ function parseTasks(json: unknown): Task[] {
 export async function listTaskLists(opts?: { signal?: AbortSignal }): Promise<TaskList[]> {
   const json = await requestTasksJson("/tasks/tasklists", "GET", undefined, opts);
   return parseTaskLists(json);
+}
+
+export type TaskListChangesDelta = components["schemas"]["JmapTaskListChangesResponse"];
+
+function parseIds(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
+}
+
+/**
+ * Task lists created, updated or destroyed since `since`. A list counts as
+ * updated when any task in it changed. No `since` returns every list as created.
+ * Throws `cannotCalculateChanges` (400) when the state is unknown or expired.
+ */
+export async function listTaskListChanges(
+  since?: string | null,
+  opts?: { signal?: AbortSignal },
+): Promise<TaskListChangesDelta> {
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  const json = (await requestTasksJson(
+    `/tasks/tasklists/changes${query}`,
+    "GET",
+    undefined,
+    opts,
+  )) as Partial<TaskListChangesDelta> | undefined;
+  return {
+    oldState: typeof json?.oldState === "string" ? json.oldState : "0",
+    newState: typeof json?.newState === "string" ? json.newState : "0",
+    created: parseIds(json?.created),
+    updated: parseIds(json?.updated),
+    destroyed: parseIds(json?.destroyed),
+  };
 }
 
 export async function listTasks(opts: {
