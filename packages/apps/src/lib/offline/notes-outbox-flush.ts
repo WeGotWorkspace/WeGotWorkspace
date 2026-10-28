@@ -68,9 +68,16 @@ async function flushOutboxNoteUpsert(
     });
     if (createAnswerHasMetadata(created, metadata)) return { saved: created };
     // A resent create is answered with the note as first stored, which may
-    // predate a title or tags queued with it: send those as an update.
+    // predate a title, tags, star or move queued with it: send those as an
+    // update. The notebook goes along only when the answer has another one.
     const { notebook: _notebook, notebookId: _notebookId, ...update } = metadataRequest;
-    return { saved: await updateNoteItem(noteId, { ...update, etag: created.etag }) };
+    const move = sameNotebook(created, metadata)
+      ? {}
+      : {
+          notebook: metadata.notebook,
+          ...(metadata.notebookId ? { notebookId: metadata.notebookId } : {}),
+        };
+    return { saved: await updateNoteItem(noteId, { ...update, ...move, etag: created.etag }) };
   }
   try {
     return { saved: await updateNoteItem(noteId, metadataRequest) };
@@ -101,11 +108,17 @@ function sameTagSet(left: readonly string[], right: readonly string[]): boolean 
   return set.size === new Set(right).size && right.every((tag) => set.has(tag));
 }
 
-/** True when the server's answer to a create holds the title and tags it was sent. */
+function sameNotebook(created: Note, metadata: NoteUpsertMetadata): boolean {
+  if (metadata.notebookId && created.notebookId) return created.notebookId === metadata.notebookId;
+  return created.notebook === metadata.notebook;
+}
+
+/** True when the server's answer to a create holds the metadata it was sent. */
 function createAnswerHasMetadata(created: Note, metadata: NoteUpsertMetadata): boolean {
   if (metadata.title !== undefined && (created.title ?? "") !== metadata.title) return false;
   if (metadata.tags !== undefined && !sameTagSet(created.tags ?? [], metadata.tags)) return false;
-  return true;
+  if (metadata.starred !== undefined && Boolean(created.starred) !== metadata.starred) return false;
+  return sameNotebook(created, metadata);
 }
 
 /** The queued row still owed after `saved` answered the send of an older version. */

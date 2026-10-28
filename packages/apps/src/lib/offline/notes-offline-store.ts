@@ -11,6 +11,7 @@ import {
 } from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
+  isRetryableOutboxRow,
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
   removeOutboxMutation,
@@ -606,6 +607,21 @@ export async function listPendingNoteBases(username: string): Promise<Map<string
     bases.set(noteId, [...(bases.get(noteId) ?? []), row.ifInState]);
   }
   return bases;
+}
+
+/**
+ * True when an upsert of this note is queued and will still be sent: not a
+ * conflict or a permanent failure waiting for a person. A new edit then merges
+ * into it instead of racing it.
+ */
+export async function hasQueuedNoteUpsert(username: string, noteId: string): Promise<boolean> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  return rows.some(
+    (row) =>
+      row.op === "upsert" &&
+      notesOutboxNoteId(row) === noteId &&
+      (!row.lastError || isRetryableOutboxRow(row)),
+  );
 }
 
 export async function listOutboxNoteIds(username: string): Promise<Set<string>> {

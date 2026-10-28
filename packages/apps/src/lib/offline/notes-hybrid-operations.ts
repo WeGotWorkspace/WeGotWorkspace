@@ -31,6 +31,7 @@ import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   getNoteFromCache,
+  hasQueuedNoteUpsert,
   listOutboxMutations,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
@@ -373,9 +374,15 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         createPending,
       );
       const queued = { tagDelta: tagDeltaFromOpts(opts), previous: existing, fields };
-      // Not on the server yet, or offline: the outbox keeps the order (create
-      // first), and online it is sent right away.
-      if (createPending || !readBrowserOnline()) {
+      // Not on the server yet, offline, or a queued save of this note not sent
+      // yet: the outbox keeps the order (create first) and merges this edit
+      // into that save, so the two never race (#1711). Online it is sent
+      // right away.
+      if (
+        createPending ||
+        !readBrowserOnline() ||
+        (await hasQueuedNoteUpsert(username, merged.id))
+      ) {
         const saved = await queueOfflineUpsert(username, merged, queued);
         if (readBrowserOnline()) void runner.flush();
         return saved;

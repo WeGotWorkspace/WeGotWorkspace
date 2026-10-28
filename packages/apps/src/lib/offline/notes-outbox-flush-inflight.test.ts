@@ -165,6 +165,37 @@ describe("flushNotesOutbox with an edit queued mid-send (#1711)", () => {
     expect(await listOutboxMutations(username)).toEqual([]);
   });
 
+  it("sends a queued move when a resent create is answered in the first notebook", async () => {
+    // Moved to Work while the first POST was on its way, then the tab closed.
+    const moved = { ...draft, createPending: true, notebook: "Work", notebookId: "notes-work" };
+    await queueEdit(moved, undefined);
+    createNoteItem.mockResolvedValue({ ...draft, notebookId: "notes-drafts", etag: '"e1"' });
+    updateNoteItem.mockResolvedValue({ ...moved, createPending: undefined, etag: '"e2"' });
+
+    await flushNotesOutbox(username);
+
+    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem.mock.calls[0]?.[1]).toMatchObject({
+      notebook: "Work",
+      notebookId: "notes-work",
+      etag: '"e1"',
+    });
+    expect((await getNoteFromCache(username, noteId))?.notebookId).toBe("notes-work");
+  });
+
+  it("sends a queued unstar when a resent create is answered starred", async () => {
+    await queueEdit({ ...draft, createPending: true, starred: false }, undefined);
+    createNoteItem.mockResolvedValue({ ...draft, starred: true, etag: '"e1"' });
+    updateNoteItem.mockResolvedValue({ ...draft, starred: false, etag: '"e2"' });
+
+    await flushNotesOutbox(username);
+
+    expect(updateNoteItem).toHaveBeenCalledOnce();
+    const request = updateNoteItem.mock.calls[0]?.[1];
+    expect(request).toMatchObject({ starred: false });
+    expect(request).not.toHaveProperty("notebook");
+  });
+
   it("sends no follow-up when the create answer already matches", async () => {
     await queueEdit({ ...draft, createPending: true, title: "Same" }, undefined);
     createNoteItem.mockResolvedValue({ ...draft, title: "Same", etag: '"e1"' });
