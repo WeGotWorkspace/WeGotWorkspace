@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createElement } from "react";
 import { Check } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { useConnectivity } from "@/hooks/use-connectivity";
+import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import { useHybridBootstrap } from "@/lib/live/use-hybrid-bootstrap";
 import {
@@ -9,6 +11,7 @@ import {
   getTasksSyncRunner,
 } from "@/lib/offline/tasks-hybrid-operations";
 import { readTasksBootstrapFromCache } from "@/lib/offline/tasks-offline-store";
+import { syncTasksInbound, TASKS_INBOUND_POLL_MS } from "@/lib/offline/tasks-inbound-sync";
 import {
   readOfflineTasksUsername,
   resolveTasksOfflineUsername,
@@ -28,6 +31,7 @@ export type UseTasksAPIOptions = {
 };
 
 export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOptions) {
+  const { online } = useConnectivity();
   const resolvedSource = useMemo(() => source ?? createDefaultTasksApiSource(), [source]);
   const placeholderData = useMemo<TasksUIData>(
     () => ({
@@ -71,18 +75,47 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     onConflicts: options?.onSyncConflict,
   });
 
+  const patchFromCache = useCallback(async () => {
+    if (!offlineUsername) return;
+    const cached = await readTasksBootstrapFromCache(offlineUsername);
+    if (cached) {
+      patchBootstrap(() => cached);
+      setBootstrapRevision((revision) => revision + 1);
+    }
+  }, [offlineUsername, patchBootstrap]);
+
   const reconnectSyncing = useOfflineReconnectFlush({
     enabled: Boolean(offlineUsername),
     flush: async () => {
       if (!offlineUsername) return;
       await getTasksSyncRunner(offlineUsername).flush();
-      const cached = await readTasksBootstrapFromCache(offlineUsername);
-      if (cached) {
-        patchBootstrap(() => cached);
-        setBootstrapRevision((revision) => revision + 1);
+      if (wgwLiveApiEnabled()) {
+        // Server changes made while offline land before the cache is re-read.
+        // A failed pull leaves the cache as it is; the poll tries again.
+        await syncTasksInbound(offlineUsername, { waitForLock: true }).catch(() => undefined);
       }
+      await patchFromCache();
     },
   });
+
+  useEffect(() => {
+    if (!offlineUsername || !online || phase !== "ready") return;
+    if (!wgwLiveApiEnabled()) return;
+    const username = offlineUsername;
+    let cancelled = false;
+    const tick = () => {
+      void syncTasksInbound(username)
+        .then((result) => {
+          if (!cancelled && result?.changed) return patchFromCache();
+        })
+        .catch(() => undefined);
+    };
+    const timer = setInterval(tick, TASKS_INBOUND_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [offlineUsername, online, patchFromCache, phase]);
 
   const refreshList = useCallback(() => {
     if (listRefreshing) return;
