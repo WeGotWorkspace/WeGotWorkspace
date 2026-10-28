@@ -224,4 +224,51 @@ describe("ensurePushPermissionAndSubscribe", () => {
     expect(subscribe).not.toHaveBeenCalled();
     expect(subscribePush).not.toHaveBeenCalled();
   });
+  it("runs one replacement when several subscribe runs start at once", async () => {
+    stubNotification("granted");
+    const stale = storedSubscription([9, 9, 9]);
+    const fresh = {
+      endpoint: "https://push.example/1",
+      options: { applicationServerKey: new Uint8Array(CURRENT_KEY).buffer },
+      unsubscribe: vi.fn(async () => true),
+      toJSON: () => ({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
+    };
+    let current: typeof stale | typeof fresh | null = stale;
+    getSubscription.mockImplementation(async () => current);
+    stale.unsubscribe.mockImplementation(async () => {
+      current = null;
+      return true;
+    });
+    subscribe.mockImplementation(async () => {
+      current = fresh;
+      return fresh;
+    });
+
+    const runs = await Promise.all([
+      ensurePushPermissionAndSubscribe(),
+      ensurePushPermissionAndSubscribe(),
+      ensurePushPermissionAndSubscribe(),
+    ]);
+
+    expect(runs).toEqual([true, true, true]);
+    expect(unsubscribePush).toHaveBeenCalledTimes(1);
+    expect(stale.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    expect(fresh.unsubscribe).not.toHaveBeenCalled();
+    expect(
+      vi
+        .mocked(subscribePush)
+        .mock.calls.every(([sub]) => sub.endpoint === "https://push.example/1"),
+    ).toBe(true);
+  });
+
+  it("still runs later subscribes after one fails", async () => {
+    stubNotification("granted");
+    subscribe.mockRejectedValueOnce(new Error("NotAllowedError"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledTimes(1);
+  });
 });

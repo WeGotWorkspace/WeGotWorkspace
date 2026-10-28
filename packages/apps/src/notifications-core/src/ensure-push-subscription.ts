@@ -1,6 +1,12 @@
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
+import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
+
+const PUSH_SUBSCRIBE_LOCK = "wgw-push-subscribe";
+/** A hung subscribe() (Safari outside a user gesture) must not block later retries forever. */
+const PUSH_SUBSCRIBE_MAX_WAIT_MS = 15_000;
+let inTabRun: Promise<unknown> = Promise.resolve();
 
 export function shouldRequestNotificationPermission(permission: string): boolean {
   return permission === "default";
@@ -9,6 +15,7 @@ export function shouldRequestNotificationPermission(permission: string): boolean
 /** Test-only: allow Vitest to re-prompt after stubbing Notification. */
 export function resetEnsurePushSubscriptionForTests(): void {
   permissionPrompt = null;
+  inTabRun = Promise.resolve();
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -54,6 +61,23 @@ async function dropStaleSubscription(subscription: PushSubscription): Promise<vo
   await subscription.unsubscribe();
 }
 
+/**
+ * One subscribe run at a time, in this tab and across tabs. The app starts
+ * several runs per load; two runs that both found a stale subscription each
+ * replaced it, and the later unsubscribe could drop the earlier run's new
+ * subscription, leaving the browser with none. A queued run re-reads the
+ * subscription the previous one made and only posts it again.
+ */
+function subscribePushManagerOnce(): Promise<boolean> {
+  const run = inTabRun.then(() =>
+    withCrossTabLock(PUSH_SUBSCRIBE_LOCK, subscribePushManager, {
+      maxWaitMs: PUSH_SUBSCRIBE_MAX_WAIT_MS,
+    }),
+  );
+  inTabRun = run.catch(() => undefined);
+  return run;
+}
+
 async function subscribePushManager(): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   const key = urlBase64ToUint8Array(await fetchVapidPublicKey());
@@ -86,7 +110,7 @@ export async function ensurePushPermissionAndSubscribe(): Promise<boolean> {
   const permission = await currentPermission();
   if (permission !== "granted") return false;
   try {
-    return await subscribePushManager();
+    return await subscribePushManagerOnce();
   } catch {
     return false;
   }
