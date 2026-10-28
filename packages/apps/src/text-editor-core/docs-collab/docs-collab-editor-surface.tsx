@@ -31,11 +31,12 @@ export function applyContentSeedToYDoc(
   target: Y.Doc,
   content: string,
   format: TextEditorContentFormat = "markdown",
+  seedBase?: string,
 ): void {
   const temp = new Y.Doc();
   // Identical content must yield identical items, or two clients that both
   // bootstrap an unsidecarred document keep each other's copy (#1089).
-  temp.clientID = seedClientId(format, content);
+  temp.clientID = seedClientId(format, content, seedBase);
   const tempEditor = new Editor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: false, underline: false }),

@@ -35,8 +35,10 @@ export function decideExternalWrite(
 
 /**
  * Drop the stale CRDT and seed a new one from the outside text. The same
- * markdown produces the same items, so a second client rebuilding it merges
- * instead of duplicating.
+ * markdown over the same state produces the same items, so a second client
+ * rebuilding it merges instead of duplicating. The state is part of the seed
+ * id: outside text equal to the first seed would otherwise map onto items the
+ * person has since deleted, and the rebuild would leave the document empty.
  */
 export function replaceDocumentWithExternalText(
   ydoc: Y.Doc,
@@ -45,7 +47,8 @@ export function replaceDocumentWithExternalText(
   format: TextEditorContentFormat,
 ): void {
   const seeded = new Yjs.Doc();
-  applyContentSeedToYDoc(seeded, markdown, format);
+  const base = Yjs.encodeStateVector(ydoc).join(",");
+  applyContentSeedToYDoc(seeded, markdown, format, base);
   if (title !== null) writeNoteTitle(seeded, title);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), SERVER_ORIGIN);
   seeded.destroy();
