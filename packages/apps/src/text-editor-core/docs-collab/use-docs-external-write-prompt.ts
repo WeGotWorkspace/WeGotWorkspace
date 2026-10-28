@@ -106,6 +106,7 @@ export function useDocsExternalWritePrompt({
         detail.markdown,
         detail.title,
         collabFormatForUrls(request.urls),
+        detail.serverStateVector,
       );
       setAppliedOutside(detail);
       onOutsideApplied?.();

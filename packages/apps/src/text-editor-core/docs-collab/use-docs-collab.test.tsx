@@ -1006,6 +1006,7 @@ describe("useDocsCollab offline lifecycle", () => {
       expect(onExternalWrite).toHaveBeenCalledWith({
         markdown: "from outside",
         title: "Outside",
+        serverStateVector: expect.any(Uint8Array),
       }),
     );
     await new Promise((resolve) => setTimeout(resolve, 400));

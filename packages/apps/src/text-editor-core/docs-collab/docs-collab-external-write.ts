@@ -12,6 +12,8 @@ export const EXTERNAL_WRITE_HEADER = "X-Wgw-External-Write";
 export type ExternalWriteDetail = {
   markdown: string;
   title: string | null;
+  /** State vector of the stale sidecar every client read; the rebuild seeds from it. */
+  serverStateVector: Uint8Array;
 };
 
 export type ExternalWriteAction = "adopt" | "rebuild" | "prompt";
@@ -39,15 +41,18 @@ export function decideExternalWrite(
  * rebuilding it merges instead of duplicating. The state is part of the seed
  * id: outside text equal to the first seed would otherwise map onto items the
  * person has since deleted, and the rebuild would leave the document empty.
+ * It is the server sidecar's state vector, never the local one: local edits
+ * and IndexedDB history differ per client and would seed different items.
  */
 export function replaceDocumentWithExternalText(
   ydoc: Y.Doc,
   markdown: string,
   title: string | null,
   format: TextEditorContentFormat,
+  serverStateVector: Uint8Array,
 ): void {
   const seeded = new Yjs.Doc();
-  const base = Yjs.encodeStateVector(ydoc).join(",");
+  const base = serverStateVector.join(",");
   applyContentSeedToYDoc(seeded, markdown, format, base);
   if (title !== null) writeNoteTitle(seeded, title);
   adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), SERVER_ORIGIN);

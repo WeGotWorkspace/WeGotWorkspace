@@ -252,7 +252,13 @@ describe("Docs external write (#1349)", () => {
       initialProps: { urls: second },
     });
 
-    act(() => result.current.urls?.onExternalWrite?.({ markdown: OUTSIDE_TEXT, title: null }));
+    act(() =>
+      result.current.urls?.onExternalWrite?.({
+        markdown: OUTSIDE_TEXT,
+        title: null,
+        serverStateVector: new Uint8Array([0]),
+      }),
+    );
     expect(result.current.detail?.markdown).toBe(OUTSIDE_TEXT);
 
     rerender({ urls: first });

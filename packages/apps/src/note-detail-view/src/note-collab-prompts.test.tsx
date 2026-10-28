@@ -17,7 +17,11 @@ vi.mock("@/text-editor-core/docs-collab", async () => {
     useDocsCollab: (options: { urls?: DocsCollabUrls }) => {
       React.useEffect(() => {
         if (!harness.prompt) return;
-        options.urls?.onExternalWrite?.({ markdown: harness.outsideMarkdown, title: "Outside" });
+        options.urls?.onExternalWrite?.({
+          markdown: harness.outsideMarkdown,
+          title: "Outside",
+          serverStateVector: new Uint8Array([0]),
+        });
       }, [options.urls]);
       return {
         onMarkdownChange: vi.fn(),

@@ -1,4 +1,5 @@
-import { loadCollabText } from "./docs-collab-server-io";
+import * as Y from "yjs";
+import { fetchYjsSnapshot, loadCollabText } from "./docs-collab-server-io";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 
 /**
@@ -20,9 +21,16 @@ export async function askAboutRefusedSave({
   if (!urls.onExternalWrite) return false;
   refs.externalWriteHoldRef.current = true;
   try {
-    const text = await loadCollabText(urls.documentUrl, refs.authTokenRef.current);
+    const authToken = refs.authTokenRef.current;
+    const text = await loadCollabText(urls.documentUrl, authToken);
+    const snapshot = await fetchYjsSnapshot(urls.yjsUrl, authToken);
+    if (!snapshot.update) throw new Error("No sidecar to seed the outside text from");
     refs.externalWriteSeenRef.current = text.etag ?? null;
-    urls.onExternalWrite({ markdown: text.markdown, title: text.title });
+    urls.onExternalWrite({
+      markdown: text.markdown,
+      title: text.title,
+      serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+    });
     return true;
   } catch {
     refs.externalWriteHoldRef.current = false;

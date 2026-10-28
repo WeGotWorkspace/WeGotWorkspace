@@ -11,7 +11,13 @@ describe("replaceDocumentWithExternalText", () => {
     paragraph.insert(0, [new Y.XmlText("stale-marker")]);
     ydoc.getXmlFragment("default").insert(0, [paragraph]);
 
-    replaceDocumentWithExternalText(ydoc, "from outside", "Outside", "markdown");
+    replaceDocumentWithExternalText(
+      ydoc,
+      "from outside",
+      "Outside",
+      "markdown",
+      Y.encodeStateVector(ydoc),
+    );
 
     expect(readContentFromYDoc(ydoc)).toContain("from outside");
     expect(readContentFromYDoc(ydoc)).not.toContain("stale-marker");
@@ -33,7 +39,7 @@ describe("replaceDocumentWithExternalText", () => {
     inline.delete(0, inline.length);
     inline.insert(0, "Typed over all of it");
 
-    replaceDocumentWithExternalText(ydoc, original, null, "markdown");
+    replaceDocumentWithExternalText(ydoc, original, null, "markdown", Y.encodeStateVector(ydoc));
 
     expect(readContentFromYDoc(ydoc)).toContain("The text from the upload.");
     expect(readContentFromYDoc(ydoc)).not.toContain("Typed over all of it");
@@ -43,17 +49,37 @@ describe("replaceDocumentWithExternalText", () => {
   it("converges two clients that rebuild the same state from the same text", () => {
     const stale = new Y.Doc();
     applyContentSeedToYDoc(stale, "Old text.", "markdown");
+    const serverVector = Y.encodeStateVector(stale);
     const first = new Y.Doc();
     const second = new Y.Doc();
     Y.applyUpdate(first, Y.encodeStateAsUpdate(stale));
     Y.applyUpdate(second, Y.encodeStateAsUpdate(stale));
 
-    replaceDocumentWithExternalText(first, "Outside text.", null, "markdown");
-    replaceDocumentWithExternalText(second, "Outside text.", null, "markdown");
+    replaceDocumentWithExternalText(first, "Outside text.", null, "markdown", serverVector);
+    replaceDocumentWithExternalText(second, "Outside text.", null, "markdown", serverVector);
     Y.applyUpdate(first, Y.encodeStateAsUpdate(second));
 
     expect(readContentFromYDoc(first).split("Outside text.").length - 1).toBe(1);
     expect(readContentFromYDoc(first)).not.toContain("Old text.");
     for (const doc of [stale, first, second]) doc.destroy();
+  });
+
+  it("converges when only one client holds extra local edits", () => {
+    const stale = new Y.Doc();
+    applyContentSeedToYDoc(stale, "Old text.", "markdown");
+    const serverVector = Y.encodeStateVector(stale);
+    const clean = new Y.Doc();
+    const busy = new Y.Doc();
+    Y.applyUpdate(clean, Y.encodeStateAsUpdate(stale));
+    Y.applyUpdate(busy, Y.encodeStateAsUpdate(stale));
+    const inline = (busy.getXmlFragment("default").get(0) as Y.XmlElement).get(0) as Y.XmlText;
+    inline.insert(0, "Local only. ");
+
+    replaceDocumentWithExternalText(clean, "Outside text.", null, "markdown", serverVector);
+    replaceDocumentWithExternalText(busy, "Outside text.", null, "markdown", serverVector);
+    Y.applyUpdate(clean, Y.encodeStateAsUpdate(busy));
+
+    expect(readContentFromYDoc(clean).split("Outside text.").length - 1).toBe(1);
+    for (const doc of [stale, clean, busy]) doc.destroy();
   });
 });

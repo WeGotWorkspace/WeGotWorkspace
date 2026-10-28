@@ -250,13 +250,23 @@ export function useDocsCollabJoin({
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
-        urls.onExternalWrite?.({ markdown: text.markdown, title: text.title });
+        urls.onExternalWrite?.({
+          markdown: text.markdown,
+          title: text.title,
+          serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+        });
         return false;
       }
       if (action === "rebuild") {
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
-        replaceDocumentWithExternalText(ydoc, text.markdown, text.title, documentFormat);
+        replaceDocumentWithExternalText(
+          ydoc,
+          text.markdown,
+          text.title,
+          documentFormat,
+          Y.encodeStateVectorFromUpdate(snapshot.update),
+        );
         refs.markdownOverrideRef.current = text.markdown;
         refs.externalWriteHoldRef.current = false;
         refs.localDirtySinceLastSaveRef.current = true;
@@ -336,10 +346,20 @@ export function useDocsCollabJoin({
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {
           refs.externalWriteHoldRef.current = true;
-          urls.onExternalWrite?.({ markdown: load.markdown, title: loadedTitle });
+          urls.onExternalWrite?.({
+            markdown: load.markdown,
+            title: loadedTitle,
+            serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+          });
           settlement = "prompted";
         } else if (action === "rebuild") {
-          replaceDocumentWithExternalText(ydoc, load.markdown, loadedTitle, documentFormat);
+          replaceDocumentWithExternalText(
+            ydoc,
+            load.markdown,
+            loadedTitle,
+            documentFormat,
+            Y.encodeStateVectorFromUpdate(snapshot.update),
+          );
           refs.markdownOverrideRef.current = load.markdown;
           refs.externalWriteHoldRef.current = false;
           refs.seedDoneRef.current = true;
