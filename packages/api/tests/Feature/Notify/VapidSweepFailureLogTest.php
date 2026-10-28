@@ -41,7 +41,7 @@ final class VapidSweepFailureLogTest extends WgwDatabaseTestCase
 
     public function test_sweep_logs_summary_when_a_send_is_rejected(): void
     {
-        $this->pushStatus = 403;
+        $this->pushStatus = 429;
         $this->seedDueNotificationWithSubscription('alice');
         $this->app->make(PushFailureTally::class)->record('stale.example', 500);
 
@@ -50,7 +50,7 @@ final class VapidSweepFailureLogTest extends WgwDatabaseTestCase
 
         $rejected = $this->logsNamed('vapid_send_rejected');
         $this->assertCount(1, $rejected);
-        $this->assertSame(403, $rejected[0]->context['status']);
+        $this->assertSame(429, $rejected[0]->context['status']);
 
         $summary = $this->logsNamed('vapid_sweep_failures');
         $this->assertCount(1, $summary);
@@ -58,7 +58,7 @@ final class VapidSweepFailureLogTest extends WgwDatabaseTestCase
         $this->assertSame([
             'sent' => 0,
             'failed' => 1,
-            'by_status' => [403 => 1],
+            'by_status' => [429 => 1],
             'by_host' => ['fcm.googleapis.com' => 1],
         ], $summary[0]->context);
         $this->assertStringNotContainsString('alice-device', $this->allLoggedText());
