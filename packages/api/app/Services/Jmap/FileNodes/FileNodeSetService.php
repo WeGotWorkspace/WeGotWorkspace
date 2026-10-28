@@ -7,7 +7,6 @@ namespace App\Services\Jmap\FileNodes;
 use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DocAttachmentPaths;
-use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
@@ -69,7 +68,6 @@ final class FileNodeSetService
         private readonly WgwStorage $storage,
         private readonly NoteMarkdownCodec $codec,
         private readonly StoragePaths $paths,
-        private readonly DocAttachmentsService $docAttachments,
         private readonly DriveStarService $stars,
         private readonly DriveShareAuthorizer $authorizer,
         private readonly FileNodeRelocator $relocator,
@@ -197,15 +195,11 @@ final class FileNodeSetService
         }
 
         $disk = $this->storage->files();
-        $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
         if ($node->is_dir) {
             $disk->deleteDirectory($key);
         } elseif ($disk->fileExists($key)) {
             $disk->delete($key);
         }
-        $this->index->recordDeleteWithSidecar($key);
-        $this->stars->deletePathPrefix($key);
-        $this->docAttachments->destroyDocsBestEffort($docIds);
         $this->relocator->afterHardDelete($key);
     }
 

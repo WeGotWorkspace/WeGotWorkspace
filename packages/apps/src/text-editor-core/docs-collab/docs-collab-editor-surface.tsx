@@ -1,13 +1,14 @@
 import { Editor } from "@tiptap/react";
 import Collaboration from "@tiptap/extension-collaboration";
 import StarterKit from "@tiptap/starter-kit";
+import { TrackChangesExtension } from "tiptap-track-changes";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import {
-  getTextEditorContent,
   setTextEditorContent,
   type TextEditorContentFormat,
 } from "@/text-editor-core/src/text-editor-content";
+import { getAcceptedTextEditorContent } from "@/text-editor-core/src/text-editor-track-changes";
 import { createTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import { DocsCollabEditor } from "./docs-collab-editor";
 import { seedClientId } from "./docs-collab-seed";
@@ -52,12 +53,17 @@ export function applyContentSeedToYDoc(
   tempEditor.destroy();
 }
 
+/**
+ * A helper editor with the live editor's schema, suggestion marks included:
+ * text y-prosemirror cannot rebuild in the schema is deleted from the bound doc.
+ */
 function createCollabContentEditor(ydoc: Y.Doc, format: TextEditorContentFormat): Editor {
   return new Editor({
     extensions: [
       StarterKit.configure({ undoRedo: false, link: false, underline: false }),
       Collaboration.configure({ document: ydoc }),
       ...createTextEditorExtensions({ format }).filter((ext) => ext.name !== "starterKit"),
+      TrackChangesExtension,
     ],
     editorProps: {
       attributes: { class: "text-editor-prose focus:outline-none" },
@@ -65,13 +71,22 @@ function createCollabContentEditor(ydoc: Y.Doc, format: TextEditorContentFormat)
   });
 }
 
-/** Serialize a collab Y.Doc to markdown or plain text (inverse of applyContentSeedToYDoc). */
+/**
+ * Serialize a collab Y.Doc to markdown or plain text (inverse of applyContentSeedToYDoc).
+ * Reads a copy: callers pass the live doc, and a read must never write to it (#1697).
+ */
 export function readContentFromYDoc(
   source: Y.Doc,
   format: TextEditorContentFormat = "markdown",
 ): string {
-  const editor = createCollabContentEditor(source, format);
-  const content = getTextEditorContent(editor, format);
-  editor.destroy();
-  return content;
+  const copy = new Y.Doc();
+  Y.applyUpdate(copy, Y.encodeStateAsUpdate(source));
+  const editor = createCollabContentEditor(copy, format);
+  try {
+    // Same as the live editor's save: pending suggestions stay out of the file.
+    return getAcceptedTextEditorContent(editor, format);
+  } finally {
+    editor.destroy();
+    copy.destroy();
+  }
 }
