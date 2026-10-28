@@ -113,6 +113,7 @@ final class MeetingsController
             ]);
         }
 
+        // A past clock is accepted on purpose: PATCH is holder-only and ending a reservation is what it is for.
         $this->reservations->patchExpiresAt(
             $roomId,
             $this->parseExpiresAt($request->validated()['expiresAt'] ?? null),
