@@ -9,6 +9,7 @@ function buildShell(
 ): DriveShellState {
   return {
     labels: {},
+    data: { user: { username: "testuser", name: "t", role: "user", roots: [] } },
     files: [],
     setFiles: vi.fn(),
     view: { type: "folder", path: "My Drive" },
@@ -72,7 +73,7 @@ describe("useDriveMutations upload action", () => {
     expect(result.current.uploadProgress).toBeNull();
   });
 
-  it("keeps the direct upload path when the operations have no queue (guest, mock)", async () => {
+  it("keeps the direct upload path when the operations have no queue (mock)", async () => {
     const uploadFiles = vi.fn().mockResolvedValue({
       user: { username: "testuser", name: "t", role: "user", roots: [] },
       cwd: "/users/testuser",
