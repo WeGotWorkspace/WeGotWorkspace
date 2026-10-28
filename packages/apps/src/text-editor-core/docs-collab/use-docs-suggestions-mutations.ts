@@ -75,9 +75,13 @@ export function useDocsSuggestionsMutations({
   const rootsInflight = useRef(new Map<string, Promise<DocsFileThread>>());
 
   /**
-   * The suggestion thread root for `changeId`, created when missing. One call
-   * per change id at a time, and the root id is derived from the change id, so
-   * a retry, a second tab or a race returns the same thread.
+   * The suggestion thread root for `changeId`, created when missing. The root
+   * is always looked up by change id, never by its id: a root keeps its id
+   * when the document moves, while the id derived for a new root depends on
+   * the path. Until the file's thread list has loaded, the list is fetched
+   * first, so a root that is already there (or moved along) is never created
+   * twice. One call per change id at a time; the server also returns the
+   * existing root for a change id, so a race still ends with one root.
    */
   const ensureSuggestionRoot = useCallback(
     (changeId: string, snapshot?: DocsSuggestionArchiveSnapshot): Promise<DocsFileThread> => {
@@ -86,15 +90,21 @@ export function useDocsSuggestionsMutations({
       if (existing) return Promise.resolve(existing);
       const pending = rootsInflight.current.get(changeId);
       if (pending) return pending;
-      const created = client
-        .create(path, rootCreateInput(path, changeId, snapshot))
-        .then((thread) => {
-          source.upsert(thread);
-          return thread;
-        })
-        .finally(() => {
-          rootsInflight.current.delete(changeId);
-        });
+      const { loaded, upsert } = source;
+      const created = (async () => {
+        if (!loaded) {
+          const listed = suggestionJournal(await client.list(path), changeId);
+          if (listed) {
+            upsert(listed);
+            return listed;
+          }
+        }
+        const thread = await client.create(path, rootCreateInput(path, changeId, snapshot));
+        upsert(thread);
+        return thread;
+      })().finally(() => {
+        rootsInflight.current.delete(changeId);
+      });
       rootsInflight.current.set(changeId, created);
       return created;
     },

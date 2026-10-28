@@ -185,18 +185,26 @@ export function useDocsSuggestions(
     editor,
     fileThreads: source.fileThreads,
     ensureSuggestionRoot,
-    enabled: Boolean(resolvedClient),
+    // Before the file's list has loaded every suggestion looks rootless.
+    enabled: Boolean(resolvedClient) && source.loaded,
   });
 
   useEffect(() => {
-    if (!editor || !editorHasTrackChanges(editor) || !resolvedClient) return;
+    if (!editor || !editorHasTrackChanges(editor) || !resolvedClient || !source.loaded) return;
     const activeChangeIds = new Set(getDocsTrackChangeGroups(editor).map((item) => item.changeId));
     for (const thread of source.fileThreads) {
       if (thread.kind !== "suggestion" || thread.archived) continue;
       if (!thread.changeId || activeChangeIds.has(thread.changeId)) continue;
       archiveSuggestion(thread.changeId);
     }
-  }, [archiveSuggestion, editor, editorSuggestions, resolvedClient, source.fileThreads]);
+  }, [
+    archiveSuggestion,
+    editor,
+    editorSuggestions,
+    resolvedClient,
+    source.fileThreads,
+    source.loaded,
+  ]);
 
   const selectSuggestion = useCallback(
     (changeId: string) => {

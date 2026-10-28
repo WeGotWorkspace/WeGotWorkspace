@@ -12,6 +12,12 @@ export const DOCS_THREADS_POLL_MS = 4_000;
 
 export type DocsThreadsSource = {
   fileThreads: DocsFileThread[];
+  /**
+   * `fileThreads` is the server's list for the current path. False before the
+   * first load and right after the path changes (a move), when the list may
+   * still be another path's or empty.
+   */
+  loaded: boolean;
   comments: DocsCommentThread[];
   suggestions: DocsSuggestionThread[];
   archivedSuggestions: DocsSuggestionWithThread[];
@@ -59,20 +65,33 @@ export function useDocsThreadsSource({
   poll?: boolean;
 }): DocsThreadsSource {
   const [fileThreads, setFileThreads] = useState<DocsFileThread[]>(() => immediateSnapshot(client));
+  const [loadedFor, setLoadedFor] = useState<{
+    client: DocsThreadsClient | null;
+    path: string | null;
+  } | null>(() => (client && isDocsThreadsSnapshotClient(client) ? { client, path } : null));
   const sinceRef = useRef<string | null>(null);
+  const latestRequest = useRef(0);
 
   const reload = useCallback(async () => {
     if (!client || !path) {
       setFileThreads([]);
+      setLoadedFor(null);
       return;
     }
     if (isDocsThreadsSnapshotClient(client)) {
       setFileThreads(client.snapshot());
+      setLoadedFor({ client, path });
       return;
     }
+    const request = ++latestRequest.current;
     const list = await client.list(path);
+    // A slower list for the path before a move must not overwrite this one.
+    if (request !== latestRequest.current) return;
     setFileThreads(list);
+    setLoadedFor({ client, path });
   }, [client, path]);
+
+  const loaded = Boolean(client && path) && loadedFor?.client === client && loadedFor.path === path;
 
   useEffect(() => {
     void reload();
@@ -118,6 +137,7 @@ export function useDocsThreadsSource({
   return useMemo(
     () => ({
       fileThreads,
+      loaded,
       comments: split.comments,
       suggestions: split.suggestions,
       archivedSuggestions: split.archivedSuggestions,
@@ -127,6 +147,7 @@ export function useDocsThreadsSource({
     }),
     [
       fileThreads,
+      loaded,
       reload,
       remove,
       split.archivedSuggestions,
