@@ -8,6 +8,9 @@ use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Notes\NoteRepository;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\SeedsWgwIdentity;
@@ -90,6 +93,61 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $this->create('bob', $uid, 'Retry', CalendarCollectionUris::groupNotebookCalDavUri('eng'))
             ->assertOk()
             ->assertJsonPath('id', $uid);
+    }
+
+    public function test_a_retry_after_much_later_still_returns_the_one_note(): void
+    {
+        // The tab closed before the first response arrived; the app sends the
+        // same create again on its next load, however long that takes.
+        $uid = (string) Str::uuid();
+        $this->create('bob', $uid, 'First')->assertCreated();
+        $this->travel(2)->days();
+
+        foreach (['Retry', 'Second tab'] as $title) {
+            $this->create('bob', $uid, $title)->assertOk()->assertJsonPath('id', $uid);
+        }
+
+        $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
+        $listed = collect($this->asUser('bob')
+            ->getJson('/api/v1/notes/items?notebookId='.CalendarCollectionUris::NOTE_GENERAL)
+            ->assertOk()
+            ->json('list'))
+            ->where('id', $uid);
+        $this->assertCount(1, $listed);
+        $this->assertSame('First', $listed->first()['title'] ?? null);
+    }
+
+    public function test_a_retry_that_loses_the_race_gets_the_note_the_winner_made(): void
+    {
+        // Two sends of one create: the other one commits after this request
+        // checked for an existing note and before it inserts its own.
+        $uid = (string) Str::uuid();
+        $raced = false;
+        // Deeper than this means the query runs inside the create's own transaction.
+        $outside = DB::connection('wgw')->transactionLevel();
+        DB::connection('wgw')->listen(function (QueryExecuted $query) use (&$raced, $uid, $outside): void {
+            if ($raced || $query->connection->transactionLevel() > $outside) {
+                return;
+            }
+            if (! str_contains($query->sql, 'calendarobjects') || ! in_array($uid, $query->bindings, true)) {
+                return;
+            }
+            $raced = true;
+            app(NoteRepository::class)->create('bob', [
+                'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+                'uid' => $uid,
+                'title' => 'Winner',
+                'body' => '',
+            ]);
+        });
+
+        $this->create('bob', $uid, 'Loser')
+            ->assertOk()
+            ->assertJsonPath('id', $uid)
+            ->assertJsonPath('title', 'Winner');
+
+        $this->assertTrue($raced, 'The race was never set up.');
+        $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
     }
 
     public function test_a_uid_that_is_not_a_uuid_is_ignored_and_the_server_mints(): void
