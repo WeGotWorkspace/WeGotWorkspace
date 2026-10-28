@@ -157,10 +157,6 @@ export type WgwSearchReindexStateResponse = {
 export type WgwDriveEntryType = DriveEntryType;
 export type WgwDriveRootPath = DriveRootPath;
 /**
- * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
- * unset: guests have no offline cache, so the id is not backfilled there.
- */
-/**
  * Why a queued upload failed. `too_large`: over the server's `maxSizeUpload`
  * (or a 413). `quota`: the device refused to store the file. `no_local_copy`:
  * a direct upload whose bytes are gone after a reload. `upload_failed`:
@@ -176,6 +172,10 @@ export type WgwDriveUploadPlaceholder = {
   /** Set while `status` is `failed`. */
   reason?: WgwDriveUploadErrorCode;
 };
+/**
+ * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
+ * unset: guests have no offline cache, so the id is not backfilled there.
+ */
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;
   upload?: WgwDriveUploadPlaceholder;

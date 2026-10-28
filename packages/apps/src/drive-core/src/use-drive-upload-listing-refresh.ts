@@ -38,11 +38,14 @@ export function useDriveUploadListingRefresh({
     const readCached = operations?.readCachedDirectory;
     if (!subscribe || !readCached || folderViewPath === null || !currentUsername.trim()) return;
     let active = true;
+    let latest = 0;
     const apiPath = apiPathFromUiPath(folderViewPath, currentUsername, groupRootNamesRef.current);
     const refresh = (placeholdersOnly: boolean) => {
+      const ticket = ++latest;
       void readCached(apiPath)
         .then((cached) => {
-          if (!active) return;
+          // An older read can finish after a newer one; only the newest applies.
+          if (!active || ticket !== latest) return;
           setFiles((previous) =>
             mergeDriveUploadPlaceholders(previous, cached, folderViewPath, currentUsername, {
               placeholdersOnly,

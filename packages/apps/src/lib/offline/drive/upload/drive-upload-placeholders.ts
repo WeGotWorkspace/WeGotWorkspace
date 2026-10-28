@@ -35,7 +35,7 @@ export function isUploadPlaceholderRow(row: Pick<OfflineDriveEntryRow, "uploadId
 
 function placeholderEntry(
   rowId: string,
-  item: Pick<OfflineDriveUploadItemRow, "id" | "batchId" | "name" | "size" | "createdAt">,
+  item: Pick<OfflineDriveUploadItemRow, "id" | "batchId" | "name" | "size" | "createdAt" | "error">,
   status: DriveUploadPlaceholderStatus,
 ): WgwDriveDirectoryEntry {
   return {
@@ -53,13 +53,18 @@ function placeholderEntry(
       mayManageStructure: false,
       mayShare: false,
     },
-    upload: { id: item.id, batchId: item.batchId, status },
+    upload: {
+      id: item.id,
+      batchId: item.batchId,
+      status,
+      ...(status === "failed" && item.error ? { reason: item.error.code } : {}),
+    },
   };
 }
 
 function placeholderRow(
   folderPath: string,
-  item: Pick<OfflineDriveUploadItemRow, "id" | "batchId" | "name" | "size" | "createdAt">,
+  item: Pick<OfflineDriveUploadItemRow, "id" | "batchId" | "name" | "size" | "createdAt" | "error">,
   status: DriveUploadPlaceholderStatus,
 ): OfflineDriveEntryRow {
   const id = uploadPlaceholderRowId(folderPath, item.id);
