@@ -98,11 +98,24 @@ export async function hasNoteCollabPendingServerSave(
     existingDatabaseNames === undefined
       ? await listExistingIndexedDatabaseNames()
       : existingDatabaseNames;
-  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, known)];
-  for (const name of names) {
+  for (const name of pendingSaveNamesToOpen(room, known)) {
     if (await collabIndexedDbHasPendingServerSave(name)) return true;
   }
   return false;
+}
+
+/**
+ * A missing database cannot hold a pending save, and opening one creates it.
+ * With a listing, open only names that exist (most notes were never opened on
+ * this device, #1714). Without one, open the `:v2` name as before.
+ */
+function pendingSaveNamesToOpen(
+  room: string,
+  existingDatabaseNames: ReadonlySet<string> | null,
+): string[] {
+  const names = [docsCollabIndexedDbKey(room), ...legacyNamesToOpen(room, existingDatabaseNames)];
+  if (existingDatabaseNames == null) return names;
+  return names.filter((name) => existingDatabaseNames.has(name));
 }
 
 /** Move the UID-keyed crash buffer after an offline create remaps to a server UID. */

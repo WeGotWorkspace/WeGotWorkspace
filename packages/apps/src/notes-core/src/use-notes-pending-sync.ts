@@ -18,7 +18,7 @@ export function useNotesPendingSync(
 
   const refresh = useCallback(async () => {
     if (!username) {
-      setPendingIds(new Set<string>());
+      setPendingIds((prev) => (prev.size === 0 ? prev : new Set<string>()));
       return;
     }
     try {
@@ -29,7 +29,8 @@ export function useNotesPendingSync(
         if (ids.has(note.id)) continue;
         if (await hasNoteCollabPendingServerSave(note.id, existingDatabaseNames)) ids.add(note.id);
       }
-      setPendingIds(ids);
+      // Same ids → keep the old set, so the list does not re-render every poll.
+      setPendingIds((prev) => (sameIdSet(prev, ids) ? prev : ids));
     } catch {
       // Keep the last known state if the offline store read fails.
     }
@@ -43,4 +44,10 @@ export function useNotesPendingSync(
   }, [refresh, online, refreshKey]);
 
   return pendingIds;
+}
+
+function sameIdSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
 }
