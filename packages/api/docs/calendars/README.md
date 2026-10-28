@@ -73,7 +73,7 @@ A feed link belongs to the calendar, not to the member who published it. Each to
 
 ### Upgrade notes
 
-Migration `2026_10_28_000740_wgw_bind_calendar_feed_tokens_to_calendar` converts tokens that were keyed by publisher and calendar uri.
+Migration `2026_10_28_000750_wgw_bind_calendar_feed_tokens_to_calendar` converts tokens that were keyed by publisher and calendar uri.
 
 - **An existing link keeps serving the calendar it serves at upgrade time.** Each token is bound to the calendar its uri resolves to during the migration. There is no record of which calendar a link was first published for, so the migration cannot restore an earlier target. After upgrading, check the feeds you rely on. If a link serves the wrong calendar, revoke it and publish the right calendar; that issues a new URL, which subscribers have to add again.
 - **A token that resolves to no calendar is removed.** Its URL returns 404.

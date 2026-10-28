@@ -34,7 +34,7 @@ final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
 {
     use CalendarsTestFixtures;
 
-    private const MIGRATION = 'migrations/wgw/2026_10_28_000740_wgw_bind_calendar_feed_tokens_to_calendar.php';
+    private const MIGRATION = 'migrations/wgw/2026_10_28_000750_wgw_bind_calendar_feed_tokens_to_calendar.php';
 
     private ?string $isolatedDatabase = null;
 
