@@ -11,6 +11,8 @@ const PUSH_SUBSCRIBE_LOCK = "wgw-push-subscribe";
 const PUSH_SUBSCRIBE_MAX_WAIT_MS = 15_000;
 /** Id of the run allowed to touch the push subscription; 0 once a run timed out. */
 let activeRun = 0;
+/** Only ever grows, so a timed-out run's id is never handed to a later run. */
+let runCounter = 0;
 let inTabRun: Promise<unknown> = Promise.resolve();
 
 export function shouldRequestNotificationPermission(permission: string): boolean {
@@ -62,8 +64,12 @@ function isSignedForOtherKey(subscription: PushSubscription, currentKey: Uint8Ar
  * here is transient and the next app load retries with the old subscription
  * still in place.
  */
-async function dropStaleSubscription(subscription: PushSubscription): Promise<void> {
+async function dropStaleSubscription(
+  subscription: PushSubscription,
+  isCurrent: () => boolean,
+): Promise<void> {
   await unsubscribePush(subscription.endpoint);
+  if (!isCurrent()) return;
   await subscription.unsubscribe();
 }
 
@@ -91,8 +97,9 @@ function subscribePushManagerOnce(): Promise<boolean> {
  * subscription once it timed out or a newer run started.
  */
 async function subscribeWithinLimit(): Promise<boolean> {
-  activeRun += 1;
-  const id = activeRun;
+  runCounter += 1;
+  const id = runCounter;
+  activeRun = id;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<boolean>((resolve) => {
     timer = setTimeout(() => {
@@ -120,7 +127,7 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
   let existing = await registration.pushManager.getSubscription();
   if (!isCurrent()) return false;
   if (existing && isSignedForOtherKey(existing, key)) {
-    await dropStaleSubscription(existing);
+    await dropStaleSubscription(existing, isCurrent);
     if (!isCurrent()) return false;
     existing = null;
   }

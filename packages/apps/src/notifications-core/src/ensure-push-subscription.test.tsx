@@ -281,6 +281,73 @@ describe("ensurePushPermissionAndSubscribe", () => {
     }
   });
 
+  it("does not post from a timed-out run once a newer run has started", async () => {
+    vi.useFakeTimers();
+    try {
+      stubNotification("granted");
+      let settleFirst: (value: unknown) => void = () => undefined;
+      let settleSecond: (value: unknown) => void = () => undefined;
+      subscribe
+        .mockReturnValueOnce(new Promise((resolve) => (settleFirst = resolve)))
+        .mockReturnValueOnce(new Promise((resolve) => (settleSecond = resolve)));
+      const subscriptionOf = (endpoint: string) => ({
+        toJSON: () => ({ endpoint, keys: { p256dh: "a", auth: "b" } }),
+      });
+
+      const first = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(first).resolves.toBe(false);
+
+      const second = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(subscribe).toHaveBeenCalledTimes(2);
+
+      settleFirst(subscriptionOf("https://push.example/first"));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(subscribePush).not.toHaveBeenCalled();
+
+      settleSecond(subscriptionOf("https://push.example/second"));
+      await expect(second).resolves.toBe(true);
+      expect(subscribePush).toHaveBeenCalledTimes(1);
+      expect(subscribePush).toHaveBeenCalledWith({
+        endpoint: "https://push.example/second",
+        keys: { p256dh: "a", auth: "b" },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not unsubscribe from a timed-out run once a newer run replaced the subscription", async () => {
+    vi.useFakeTimers();
+    try {
+      stubNotification("granted");
+      const stale = storedSubscription([9, 9, 9]);
+      getSubscription.mockResolvedValue(stale);
+      let settleDelete: () => void = () => undefined;
+      vi.mocked(unsubscribePush).mockReturnValueOnce(
+        new Promise<void>((resolve) => (settleDelete = resolve)),
+      );
+
+      const first = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(first).resolves.toBe(false);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+      expect(stale.unsubscribe).toHaveBeenCalledTimes(1);
+      expect(subscribe).toHaveBeenCalledTimes(1);
+
+      settleDelete();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(stale.unsubscribe).toHaveBeenCalledTimes(1);
+      expect(subscribe).toHaveBeenCalledTimes(1);
+      expect(subscribePush).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("still runs later subscribes after one fails", async () => {
     stubNotification("granted");
     subscribe.mockRejectedValueOnce(new Error("NotAllowedError"));
