@@ -119,6 +119,24 @@ wait until the loop hands the PR to a human. Their first job,
 - CI on a waiting PR can be started by hand: add `needs-human`, or push.
 - Without `REVIEW_LOOP_APP_SLUG`, nothing waits.
 
+## CI failures after the hand-over
+
+The reviewers cannot run the PHP suite, MySQL, or e2e, so an approved PR can
+still fail CI, which runs once the loop adds `ready-for-human`.
+`review-loop-ci-feedback.yml` runs when CI completes. If CI failed or timed
+out on a PR's head while that PR carries `ready-for-human`, it posts a
+change request from the loop bot, then removes the label. The review lists
+the failed or timed-out jobs (up to five), each with the last lines of its
+failed steps. It starts a normal fix round, which counts toward
+`REVIEW_LOOP_MAX_ROUNDS`. The fixer fixes the cause, or changes nothing and
+says why when the failure is not the change's, which stops the loop with
+`needs-human`.
+
+It reads the logs with the workflow's own token, so the loop's app needs no
+Actions permission. It runs from `main` and checks out no code. Security
+failures (Trivy, Gitleaks) are not sent back: their fixes are dependency or
+secret decisions for a human.
+
 ## Second reviewer
 
 With `REVIEW_LOOP_SECOND_AGENT_TOKEN` set, a second reviewer from another
