@@ -4,10 +4,10 @@ packages/apps/src/docs-core/src/use-docs-controller.tsx#useDocsController	251	3	
 packages/apps/src/docs-core/src/use-docs-home-actions.tsx#useDocsHomeActions	409	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-access-controller.ts#useDriveAccessController	232	1	grandfathered
 packages/apps/src/drive-core/src/use-drive-batch-actions.tsx#useDriveBatchActions	339	0	grandfathered
-packages/apps/src/drive-core/src/use-drive-controller.tsx#useDriveController	201	3	grandfathered
+packages/apps/src/drive-core/src/use-drive-controller.tsx#useDriveController	202	3	grandfathered
 packages/apps/src/drive-core/src/use-drive-grid-previews.ts#useDriveGridPreviews	292	5	grandfathered
 packages/apps/src/drive-core/src/use-drive-list.tsx#useDriveList	212	1	grandfathered
-packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	536	2	grandfathered
+packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	553	2	grandfathered
 packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	375	8	grandfathered
 packages/apps/src/installer-core/src/use-installer-controller.ts#useInstallerController	219	1	grandfathered
 packages/apps/src/meet-core/src/use-meet-call-session.ts#useMeetCallSession	326	5	grandfathered
@@ -23,6 +23,7 @@ packages/apps/src/notes-core/src/use-notes-notebook-mutations.tsx#useNotesNotebo
 packages/apps/src/notes-core/src/use-notes-shell.tsx#useNotesShell	201	6	grandfathered
 packages/apps/src/share-ui/use-share-mutations.ts#useShareMutations	217	0	grandfathered
 packages/apps/src/tasks-core/src/use-tasks-mutations.tsx#useTasksMutations	393	0	grandfathered
-packages/apps/src/text-editor-core/docs-collab/use-docs-collab-join.ts#useDocsCollabJoin	599	2	grandfathered
-packages/apps/src/text-editor-core/docs-collab/use-docs-collab-mesh.ts#useDocsCollabMesh	298	0	grandfathered
+packages/apps/src/text-editor-core/docs-collab/use-docs-collab-join.ts#useDocsCollabJoin	622	2	grandfathered
+packages/apps/src/text-editor-core/docs-collab/use-docs-collab-mesh.ts#useDocsCollabMesh	305	0	grandfathered
 packages/apps/src/text-editor-core/docs-collab/use-docs-collab-save.ts#useDocsCollabSave	217	0	grandfathered
+packages/apps/src/text-editor-core/docs-collab/use-docs-suggestions-thread-roots.ts#useDocsSuggestionThreadRoots	112	5	grandfathered
