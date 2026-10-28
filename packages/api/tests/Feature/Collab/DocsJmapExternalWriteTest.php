@@ -129,25 +129,56 @@ final class DocsJmapExternalWriteTest extends WgwDatabaseTestCase
     }
 
     /**
-     * onExists=replace destroys the old node with its sidecar and row, as a
-     * FileNode/set destroy does. The new document has no history to
-     * reconcile, and the open editor's stale autosave is refused.
+     * onExists=replace still destroys the old node, but Docs keys a document
+     * by its path: the sidecar and its row stay, so the upload is an outside
+     * write like an update. A client holding the old state must not keep it.
      */
-    public function test_a_create_that_replaces_a_collab_document_leaves_no_stale_history(): void
+    public function test_a_create_that_replaces_a_collab_document_is_detected(): void
     {
         $etag = (string) $this->saveThroughTheApp("# Doc\n")->headers->get('ETag');
+        $oldId = $this->nodeId(self::DOCUMENT_KEY);
 
         $this->createFile('together.md', "# Uploaded in Drive\n", 'replace')
-            ->assertJsonPath('methodResponses.0.1.created.f0.name', 'together.md');
+            ->assertJsonPath('methodResponses.0.1.created.f0.name', 'together.md')
+            ->assertJsonPath('methodResponses.0.1.destroyed.0', $oldId);
 
         $disk = Storage::disk('wgw_files');
         $this->assertSame("# Uploaded in Drive\n", $disk->get(self::DOCUMENT_KEY));
-        $this->assertFalse($disk->exists(self::SIDECAR_KEY));
-        $this->assertSame(0, DocYjsState::query()->count());
+        $this->assertSame(self::YJS, $disk->get(self::SIDECAR_KEY));
+        $response = $this->readYjs();
+        $response->assertOk()->assertHeader(CollabExternalWrite::HEADER, '1');
+        $this->assertSame(self::YJS, $response->getContent());
         $this->withBearer($this->token)
             ->putCollaboration($this->documentUrl(), "# Doc, edited\n", "\x05", ['If-Match' => $etag])
-            ->assertStatus(412);
+            ->assertStatus(409)
+            ->assertExactJson(['error' => 'external_write']);
         $this->assertSame("# Uploaded in Drive\n", $disk->get(self::DOCUMENT_KEY));
+    }
+
+    public function test_a_replace_over_a_document_without_a_row_is_detected(): void
+    {
+        $this->seedWithoutRow();
+        $this->nodeId(self::DOCUMENT_KEY);
+
+        $this->createFile('together.md', "# Uploaded in Drive\n", 'replace');
+
+        $row = DocYjsState::query()->where('storage_key', self::DOCUMENT_KEY)->sole();
+        $this->assertSame(hash('sha256', '# doc'), $row->content_etag);
+        $this->readYjs()->assertOk()->assertHeader(CollabExternalWrite::HEADER, '1');
+    }
+
+    /** A plain destroy still takes the Docs state with the document. */
+    public function test_a_destroy_still_removes_the_sidecar_and_row(): void
+    {
+        $this->saveThroughTheApp("# Doc\n");
+        $id = $this->nodeId(self::DOCUMENT_KEY);
+
+        $this->jmap([
+            ['FileNode/set', ['accountId' => 'alice', 'destroy' => [$id]], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.destroyed.0', $id);
+
+        $this->assertFalse(Storage::disk('wgw_files')->exists(self::SIDECAR_KEY));
+        $this->assertSame(0, DocYjsState::query()->count());
     }
 
     public function test_a_write_to_a_file_without_a_sidecar_records_nothing(): void

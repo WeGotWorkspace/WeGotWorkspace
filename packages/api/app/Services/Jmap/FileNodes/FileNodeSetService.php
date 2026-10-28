@@ -261,7 +261,7 @@ final class FileNodeSetService
             throw new FileNodeSetError($this->invalidProperties('Directory nodes must not carry a blobId.', ['blobId']));
         }
 
-        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload);
+        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload, incomingIsFile: $nodeType === 'file');
         $key = $parent->storage_key.'/'.$name;
         $disk = $this->storage->files();
 
@@ -468,6 +468,7 @@ final class FileNodeSetService
         array $principal,
         array $payload,
         ?string $ignoreNodeId = null,
+        bool $incomingIsFile = false,
     ): string {
         $existing = $this->findSibling($parent, $name, $compareCaseInsensitively, $ignoreNodeId);
         if ($existing === null) {
@@ -476,8 +477,7 @@ final class FileNodeSetService
 
         switch ($onExists) {
             case 'replace':
-                $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
-                $this->destroyed[] = (string) $existing->node_id;
+                $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                 return $name;
             case 'rename':
@@ -497,8 +497,7 @@ final class FileNodeSetService
                 } catch (\Throwable) {
                 }
                 if ($incomingTs !== false && $incomingTs > $existingTs) {
-                    $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
-                    $this->destroyed[] = (string) $existing->node_id;
+                    $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                     return $name;
                 }
@@ -514,6 +513,23 @@ final class FileNodeSetService
                     'existingId' => (string) $existing->node_id,
                 ]);
         }
+    }
+
+    /**
+     * #1517: a file created over a file at the same key keeps the Docs state
+     * there, so the new bytes are detected as an outside write.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    private function replaceSibling(JmapFileNode $existing, string $newKey, bool $incomingIsFile, array $principal, bool $onDestroyRemoveChildren): void
+    {
+        $destroy = fn () => $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
+        if ($incomingIsFile && ! $existing->is_dir && (string) $existing->storage_key === $newKey) {
+            $this->index->replaceKeepingDocsState($newKey, $destroy);
+        } else {
+            $destroy();
+        }
+        $this->destroyed[] = (string) $existing->node_id;
     }
 
     private function findSibling(JmapFileNode $parent, string $name, bool $caseInsensitive, ?string $ignoreNodeId): ?JmapFileNode

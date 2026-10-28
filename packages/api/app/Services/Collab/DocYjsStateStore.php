@@ -61,14 +61,9 @@ final class DocYjsStateStore
      */
     public function recordBeforeExternalWrite(string $documentKey): void
     {
-        if (CollabSidecarPaths::isSidecarName(basename($documentKey))) {
-            return;
-        }
-        $sidecarKey = $this->paths->virtualToStorageKey(
-            CollabSidecarPaths::sidecarVirtualPath($this->paths, '/'.$documentKey),
-        );
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
         $disk = $this->storage->files();
-        if (! $disk->fileExists($sidecarKey) || $this->find($documentKey) !== null) {
+        if ($sidecarKey === null || ! $disk->fileExists($sidecarKey) || $this->find($documentKey) !== null) {
             return;
         }
 
@@ -80,6 +75,50 @@ final class DocYjsStateStore
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * #1517: a file replacing a document at the same path (FileNode/set
+     * onExists) destroys the old node, and the sidecar and row would go with
+     * it. Docs keys a document by its path, so clients still holding the old
+     * state would keep it. Taken before the destroy, put back after it: the
+     * new bytes are then an outside write like any other.
+     *
+     * @return array{sidecar: string, content_etag: string, sidecar_etag: string}|null
+     */
+    public function holdForReplace(string $documentKey): ?array
+    {
+        $this->recordBeforeExternalWrite($documentKey);
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
+        $row = $this->find($documentKey);
+        $disk = $this->storage->files();
+        if ($sidecarKey === null || $row === null || ! $disk->fileExists($sidecarKey)) {
+            return null;
+        }
+
+        return [
+            'sidecar' => (string) $disk->read($sidecarKey),
+            'content_etag' => (string) $row->content_etag,
+            'sidecar_etag' => (string) $row->sidecar_etag,
+        ];
+    }
+
+    /** @param  array{sidecar: string, content_etag: string, sidecar_etag: string}  $held */
+    public function restoreAfterReplace(string $documentKey, array $held): void
+    {
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
+        if ($sidecarKey === null) {
+            return;
+        }
+        $this->storage->files()->write($sidecarKey, $held['sidecar']);
+        DocYjsState::query()->updateOrCreate(
+            ['storage_key_hash' => self::keyHash($documentKey)],
+            [
+                'storage_key' => $documentKey,
+                'content_etag' => $held['content_etag'],
+                'sidecar_etag' => $held['sidecar_etag'],
+            ],
+        );
     }
 
     /**
@@ -177,6 +216,18 @@ final class DocYjsStateStore
         if ($ids !== []) {
             DocYjsState::query()->whereKey($ids)->delete();
         }
+    }
+
+    /** A sidecar key itself is never a document. */
+    private function sidecarKeyFor(string $documentKey): ?string
+    {
+        if (CollabSidecarPaths::isSidecarName(basename($documentKey))) {
+            return null;
+        }
+
+        return $this->paths->virtualToStorageKey(
+            CollabSidecarPaths::sidecarVirtualPath($this->paths, '/'.$documentKey),
+        );
     }
 
     private function find(string $documentKey): ?DocYjsState

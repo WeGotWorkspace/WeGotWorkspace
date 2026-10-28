@@ -373,6 +373,19 @@ final class FileNodeIndexService
     }
 
     /**
+     * #1517: a file replacing a document at the same path keeps the Docs
+     * state there. Runs the destroy, then puts the sidecar and row back.
+     */
+    public function replaceKeepingDocsState(string $key, callable $destroy): void
+    {
+        $held = $this->sidecarLinks->holdForReplace($key);
+        $destroy();
+        if ($held !== null) {
+            $this->sidecarLinks->restoreAfterReplace($key, $held);
+        }
+    }
+
+    /**
      * Document delete on a write route. {@see recordDelete} stays sidecar-free
      * so a reindex of an already-missing file leaves an orphan sidecar in place.
      */
