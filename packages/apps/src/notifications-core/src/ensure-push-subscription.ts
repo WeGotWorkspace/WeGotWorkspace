@@ -4,8 +4,13 @@ import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
 const PUSH_SUBSCRIBE_LOCK = "wgw-push-subscribe";
-/** A hung subscribe() (Safari outside a user gesture) must not block later retries forever. */
+/**
+ * A hung subscribe() (Safari outside a user gesture) must not block later
+ * retries forever: it bounds both the wait for the lock and a run holding it.
+ */
 const PUSH_SUBSCRIBE_MAX_WAIT_MS = 15_000;
+/** Id of the run allowed to touch the push subscription; 0 once a run timed out. */
+let activeRun = 0;
 let inTabRun: Promise<unknown> = Promise.resolve();
 
 export function shouldRequestNotificationPermission(permission: string): boolean {
@@ -16,6 +21,7 @@ export function shouldRequestNotificationPermission(permission: string): boolean
 export function resetEnsurePushSubscriptionForTests(): void {
   permissionPrompt = null;
   inTabRun = Promise.resolve();
+  activeRun = 0;
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -70,7 +76,7 @@ async function dropStaleSubscription(subscription: PushSubscription): Promise<vo
  */
 function subscribePushManagerOnce(): Promise<boolean> {
   const run = inTabRun.then(() =>
-    withCrossTabLock(PUSH_SUBSCRIBE_LOCK, subscribePushManager, {
+    withCrossTabLock(PUSH_SUBSCRIBE_LOCK, subscribeWithinLimit, {
       maxWaitMs: PUSH_SUBSCRIBE_MAX_WAIT_MS,
     }),
   );
@@ -78,17 +84,44 @@ function subscribePushManagerOnce(): Promise<boolean> {
   return run;
 }
 
-async function subscribePushManager(): Promise<boolean> {
+/**
+ * Run the subscribe work, but give up after the limit so a hung subscribe()
+ * releases the Web Lock and the in-tab queue. The abandoned run cannot be
+ * cancelled; it checks `isCurrent` after each await and stops touching the
+ * subscription once it timed out or a newer run started.
+ */
+async function subscribeWithinLimit(): Promise<boolean> {
+  activeRun += 1;
+  const id = activeRun;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => {
+      if (activeRun === id) activeRun = 0;
+      resolve(false);
+    }, PUSH_SUBSCRIBE_MAX_WAIT_MS);
+  });
+  try {
+    return await Promise.race([subscribePushManager(() => activeRun === id), limit]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   const key = urlBase64ToUint8Array(await fetchVapidPublicKey());
+  if (!isCurrent()) return false;
   const registration = await navigator.serviceWorker.ready;
+  if (!isCurrent()) return false;
   // Safari often already has a PushSubscription after permission; subscribe()
   // then throws and used to be swallowed, so VAPID never got an endpoint row.
   // Reuse it unless it was made with another VAPID key: the push service then
   // rejects every send (403), so swap it for one on the current key.
   let existing = await registration.pushManager.getSubscription();
+  if (!isCurrent()) return false;
   if (existing && isSignedForOtherKey(existing, key)) {
     await dropStaleSubscription(existing);
+    if (!isCurrent()) return false;
     existing = null;
   }
   const subscription =
@@ -97,6 +130,7 @@ async function subscribePushManager(): Promise<boolean> {
       userVisibleOnly: true,
       applicationServerKey: key as BufferSource,
     }));
+  if (!isCurrent()) return false;
   await subscribePush(subscription.toJSON());
   return true;
 }

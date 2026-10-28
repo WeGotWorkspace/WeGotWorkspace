@@ -262,6 +262,25 @@ describe("ensurePushPermissionAndSubscribe", () => {
     ).toBe(true);
   });
 
+  it("lets a later subscribe run after one hangs past the limit", async () => {
+    vi.useFakeTimers();
+    try {
+      stubNotification("granted");
+      subscribe.mockReturnValueOnce(new Promise(() => undefined));
+
+      const first = ensurePushPermissionAndSubscribe();
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(first).resolves.toBe(false);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(subscribe).toHaveBeenCalledTimes(2);
+      expect(subscribePush).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("still runs later subscribes after one fails", async () => {
     stubNotification("granted");
     subscribe.mockRejectedValueOnce(new Error("NotAllowedError"));
