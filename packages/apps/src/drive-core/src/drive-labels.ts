@@ -1,4 +1,5 @@
 import { filesBrowserSidebarLabels } from "@/drive-core/src/files-browser-sidebar";
+import type { DriveFile } from "@/drive-core/src/drive-models";
 
 export const driveLabels = {
   /** Primary AppSidebar home (SST with Docs; Docs uses "My Docs"). */
@@ -34,6 +35,15 @@ export const driveLabels = {
     uploading: "Uploading",
     failed: "Upload failed",
   },
+  /** Why a placeholder failed, shown after "Upload failed". */
+  uploadFailedReason: {
+    too_large: "Too large to upload",
+    quota: "No room on this device",
+    no_local_copy: "File no longer on this device",
+    upload_failed: "Server did not accept it",
+  },
+  uploadCancel: "Cancel upload",
+  uploadRemoveFailed: "Remove",
   newMarkdown: "New document",
   gridView: "Grid view",
   listView: "List view",
@@ -121,3 +131,10 @@ export type DriveUILabels = {
     ? string
     : (typeof driveLabels)[K];
 };
+
+/** "Waiting to upload", "Uploading", or "Upload failed · <reason>". */
+export function driveUploadStatusText(upload: NonNullable<DriveFile["upload"]>): string {
+  const status = driveLabels.uploadPlaceholderStatus[upload.status];
+  if (upload.status !== "failed" || !upload.reason) return status;
+  return `${status} · ${driveLabels.uploadFailedReason[upload.reason]}`;
+}

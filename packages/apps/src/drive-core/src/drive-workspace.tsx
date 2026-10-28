@@ -25,6 +25,7 @@ import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { DriveNewMenu } from "@/drive-core/src/drive-new-menu";
 import { UnifiedSearchApiDropdown } from "@/unified-search-dropdown/src/unified-search-api-dropdown";
 import { useDriveController } from "@/drive-core/src/use-drive-controller";
+import { useDriveUploadPlaceholderActions } from "@/drive-core/src/use-drive-upload-placeholder-actions";
 import { useDocumentTitle } from "@/lib/document-title";
 import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
 import type { DriveWorkspaceProps } from "@/drive-core/src/drive-workspace-props";
@@ -127,6 +128,13 @@ export function DriveWorkspace({
     onChanged: refresh,
   });
 
+  const uploadPlaceholderActions = useDriveUploadPlaceholderActions(operations);
+  const fileExtraActions = useCallback(
+    (file: DriveFile) =>
+      file.upload ? uploadPlaceholderActions(file) : offlineEnabled ? extraFileActions(file) : [],
+    [extraFileActions, offlineEnabled, uploadPlaceholderActions],
+  );
+
   const handleMakeOfflineAvailable = useCallback(
     (file: DriveFile) => {
       void pinOfflineFile(file);
@@ -136,6 +144,8 @@ export function DriveWorkspace({
 
   const guardedOpenFile = useCallback(
     (file: DriveFile) => {
+      // A placeholder has nothing on the server to open yet.
+      if (file.upload) return;
       if (!canOpenOffline(file)) {
         showError("This file is not available offline. Make it available while online.");
         return;
@@ -330,7 +340,7 @@ export function DriveWorkspace({
             offlinePendingSyncIds={rowOfflinePendingSyncIds}
             onMakeOfflineAvailable={handleMakeOfflineAvailable}
             pinLoadingId={pinLoadingId}
-            extraFileActions={offlineEnabled ? extraFileActions : undefined}
+            extraFileActions={fileExtraActions}
             shareEnabled={shareEnabled}
             onOpenShare={handleOpenShareForFile}
             activeMayShare={activeMayShare}

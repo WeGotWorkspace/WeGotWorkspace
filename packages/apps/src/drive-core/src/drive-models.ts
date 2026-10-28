@@ -1,3 +1,4 @@
+import type { WgwDriveUploadPlaceholder } from "@/lib/api/wgw/types";
 import type { Note } from "@/lib/models/note";
 
 export const TOP_FOLDERS = ["My Drive", "Shared with me", "Trash"] as const;
@@ -24,7 +25,7 @@ export type DriveFile = Note & {
   /** Top-level drive location label (e.g. `My Drive`, shared drive name) for cross-drive listings. */
   location?: string;
   /** Set on a placeholder for a file still in the upload queue. */
-  upload?: { id: string; status: "queued" | "uploading" | "failed" };
+  upload?: Pick<WgwDriveUploadPlaceholder, "id" | "status" | "reason">;
 };
 
 export type ViewKey =

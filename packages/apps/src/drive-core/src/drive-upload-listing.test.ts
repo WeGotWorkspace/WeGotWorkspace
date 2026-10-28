@@ -60,6 +60,18 @@ describe("mergeDriveUploadPlaceholders", () => {
     ]);
   });
 
+  it("adds only placeholders to a listing that was just loaded", () => {
+    const real = driveFileFromEntry(entry("old.txt"), user);
+    const merged = mergeDriveUploadPlaceholders(
+      [real],
+      cached([entry("stale.txt"), entry("new.pdf", { id: "u1", batchId: "b", status: "queued" })]),
+      "My Drive",
+      user,
+      { placeholdersOnly: true },
+    );
+    expect(merged.map((file) => file.title)).toEqual(["old.txt", "new.pdf"]);
+  });
+
   it("drops placeholders when the folder has nothing cached any more", () => {
     const placeholder = driveFileFromEntry(
       entry("gone.pdf", { id: "u1", batchId: "b", status: "queued" }),

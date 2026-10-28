@@ -1,6 +1,6 @@
 import { parentAndName, pathFromDirectoryEntry } from "@/lib/files/api-path";
 import type { DriveUIData } from "@/drive-core/src/drive-types";
-import { driveLabels } from "@/drive-core/src/drive-labels";
+import { driveLabels, driveUploadStatusText } from "@/drive-core/src/drive-labels";
 import type { DriveFile, FileKind } from "@/drive-core/src/drive-models";
 import {
   normalizeApiVirtualPath,
@@ -98,11 +98,17 @@ export function driveFileFromEntry(
   const size = entry.type === "dir" ? "—" : entry.size > 0 ? formatBytesCompact(entry.size) : "0 B";
   const location =
     driveLocationLabel(normalizeApiVirtualPath(apiPath).replace(/^\/+/, ""), username) ?? undefined;
-  const upload = entry.upload ? { id: entry.upload.id, status: entry.upload.status } : undefined;
+  const upload = entry.upload
+    ? {
+        id: entry.upload.id,
+        status: entry.upload.status,
+        ...(entry.upload.reason ? { reason: entry.upload.reason } : {}),
+      }
+    : undefined;
   return {
     id: apiPath,
     notebook: upload
-      ? `${driveLabels.uploadPlaceholderStatus[upload.status]} · ${size}`
+      ? `${driveUploadStatusText(upload)} · ${size}`
       : entry.type === "dir"
         ? "Folder"
         : `File · ${size}`,

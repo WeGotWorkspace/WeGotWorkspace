@@ -168,6 +168,8 @@ export type DriveAPIOperations = {
   releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
   /** *Cancel* in the batch dialog: drop the batch, its placeholders, and its files. */
   cancelUploadBatch?: (batchId: string) => Promise<void>;
+  /** Drop one `queued` or `failed` file with its placeholder. False while it is uploading. */
+  removeQueuedUpload?: (itemId: string) => Promise<boolean>;
   /** Called after every upload queue change in any tab. Returns an unsubscribe. */
   subscribeUploadQueue?: (listener: () => void) => () => void;
 };

@@ -7,18 +7,21 @@ import type { DriveAPIOperations, DriveUIData } from "@/drive-core/src/drive-typ
  * cached listing: drop placeholders that left the queue, show new ones with
  * their current status, and add files that finished uploading. Rows of other
  * folders and real rows the cache already agrees with stay untouched.
+ * `placeholdersOnly` leaves real rows alone: for a listing that was just
+ * loaded, where the cache may be older than what is on screen.
  */
 export function mergeDriveUploadPlaceholders(
   previous: DriveFile[],
   cached: DriveUIData | null,
   folderUiPath: string,
   username: string,
+  options: { placeholdersOnly?: boolean } = {},
 ): DriveFile[] {
   const kept = previous.filter((file) => !(file.parent === folderUiPath && file.upload));
   if (!cached) return kept.length === previous.length ? previous : kept;
   const keptIds = new Set(kept.map((file) => file.id));
   const fromCache = mapDriveListingEntries(cached, username).filter(
-    (file) => file.upload || !keptIds.has(file.id),
+    (file) => file.upload || (!options.placeholdersOnly && !keptIds.has(file.id)),
   );
   return [...kept, ...fromCache];
 }

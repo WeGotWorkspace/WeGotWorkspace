@@ -447,6 +447,11 @@ describe("drive uploader", () => {
       ["big.txt", "failed", "too_large"],
     ]);
     expect(uploadCalls()).toHaveLength(1);
+    const listing = await readDirectoryEntriesFromCache(user, folder);
+    expect(listing.find((entry) => entry.name === "big.txt")?.upload).toMatchObject({
+      status: "failed",
+      reason: "too_large",
+    });
   });
 
   it("uploads a direct file from memory without an offline copy", async () => {

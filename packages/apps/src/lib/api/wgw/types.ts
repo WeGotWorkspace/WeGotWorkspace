@@ -160,12 +160,21 @@ export type WgwDriveRootPath = DriveRootPath;
  * Signed-in listings add `nodeId` from JMAP. The guest REST listing leaves it
  * unset: guests have no offline cache, so the id is not backfilled there.
  */
+/**
+ * Why a queued upload failed. `too_large`: over the server's `maxSizeUpload`
+ * (or a 413). `quota`: the device refused to store the file. `no_local_copy`:
+ * a direct upload whose bytes are gone after a reload. `upload_failed`:
+ * anything else that will not succeed by retrying. #1520 refines these classes.
+ */
+export type WgwDriveUploadErrorCode = "too_large" | "quota" | "no_local_copy" | "upload_failed";
 /** UI-only marker on a cached placeholder row for a file still in the upload queue. */
 export type WgwDriveUploadPlaceholder = {
   /** Upload queue item id. */
   id: string;
   batchId: string;
   status: "queued" | "uploading" | "failed";
+  /** Set while `status` is `failed`. */
+  reason?: WgwDriveUploadErrorCode;
 };
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;

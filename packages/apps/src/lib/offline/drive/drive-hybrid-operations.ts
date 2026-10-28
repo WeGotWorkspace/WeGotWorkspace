@@ -59,6 +59,7 @@ import {
   cancelDriveUploadBatch,
   enqueueDriveUploadBatch,
   releaseDriveUploadBatch,
+  removeDriveUploadItem,
 } from "@/lib/offline/drive/upload/drive-upload-store";
 import { resolveDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target";
 import {
@@ -305,6 +306,7 @@ export function createHybridDriveOperations(
     },
     releaseUploadBatch: (batchId, answers) => releaseDriveUploadBatch(username, batchId, answers),
     cancelUploadBatch: (batchId) => cancelDriveUploadBatch(username, batchId),
+    removeQueuedUpload: (itemId) => removeDriveUploadItem(username, itemId),
     subscribeUploadQueue: (listener) => onDriveUploadQueueChanged(username, listener),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);

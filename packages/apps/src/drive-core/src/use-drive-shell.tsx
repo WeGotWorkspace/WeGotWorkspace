@@ -225,6 +225,7 @@ export function useDriveShell({
     currentUsername,
     groupRootNamesRef,
     setFiles,
+    listing: data,
   });
 
   const selectView = useCallback(

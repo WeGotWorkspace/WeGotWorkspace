@@ -1,5 +1,9 @@
 import type { DriveUIData } from "@/drive-core/src/drive-types";
-import type { WgwDriveDirectoryEntry, WgwDriveUploadPlaceholder } from "@/lib/api/wgw/types";
+import type {
+  WgwDriveDirectoryEntry,
+  WgwDriveUploadErrorCode,
+  WgwDriveUploadPlaceholder,
+} from "@/lib/api/wgw/types";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
 import { driveEntriesTable, type OfflineDriveEntryRow } from "@/lib/offline/drive/drive-schema";
@@ -85,17 +89,22 @@ export async function findUploadPlaceholder(
   return driveEntriesTable(accountDb(username)).where("uploadId").equals(itemId).first();
 }
 
+/** `reason` is kept only on a `failed` placeholder, so the row can say why. */
 export async function setUploadPlaceholderStatus(
   username: string,
   itemId: string,
   status: DriveUploadPlaceholderStatus,
+  reason?: WgwDriveUploadErrorCode,
 ): Promise<void> {
   const table = driveEntriesTable(accountDb(username));
   const row = await table.where("uploadId").equals(itemId).first();
   if (!row) return;
   const entry = JSON.parse(row.data) as WgwDriveDirectoryEntry;
-  if (!entry.upload || entry.upload.status === status) return;
-  entry.upload = { ...entry.upload, status };
+  if (!entry.upload) return;
+  const nextReason = status === "failed" ? reason : undefined;
+  if (entry.upload.status === status && entry.upload.reason === nextReason) return;
+  const { reason: _previous, ...marker } = entry.upload;
+  entry.upload = { ...marker, status, ...(nextReason ? { reason: nextReason } : {}) };
   await table.put({ ...row, data: JSON.stringify(entry) });
 }
 

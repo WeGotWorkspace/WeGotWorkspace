@@ -324,8 +324,9 @@ export async function requeueDriveUpload(
     const transientFailures = item.transientFailures + (options.countFailure ? 1 : 0);
     if (transientFailures >= DRIVE_UPLOAD_MAX_TRANSIENT_FAILURES) {
       const message = options.message ?? "The upload kept failing.";
-      await items.put({ ...item, status: "failed", transientFailures, error: failure(message) });
-      await setUploadPlaceholderStatus(username, itemId, "failed");
+      const error = failure(message);
+      await items.put({ ...item, status: "failed", transientFailures, error });
+      await setUploadPlaceholderStatus(username, itemId, "failed", error.code);
       return;
     }
     const { retryAt: _previous, ...rest } = item;
@@ -356,7 +357,7 @@ export async function failDriveUpload(
     if (!item) return;
     // The `Blob` stays: a failed item keeps its bytes until it is retried or removed.
     await items.put({ ...item, status: "failed", bytesDone: 0, error });
-    await setUploadPlaceholderStatus(username, itemId, "failed");
+    await setUploadPlaceholderStatus(username, itemId, "failed", error.code);
   });
   notifyDriveUploadQueueChanged(username);
 }

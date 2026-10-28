@@ -245,3 +245,45 @@ describe("DriveListView", () => {
     expect(container.querySelector(".drive-list-view")).toBeTruthy();
   });
 });
+
+describe("upload placeholders", () => {
+  const FAILED: DriveFile = {
+    ...FILE,
+    id: "/users/alice/\u0000upload:u1",
+    title: "huge.bin",
+    kind: "file",
+    upload: { id: "u1", status: "failed", reason: "too_large" },
+  };
+  const QUEUED: DriveFile = {
+    ...FILE,
+    id: "/users/alice/\u0000upload:u2",
+    title: "waiting.txt",
+    upload: { id: "u2", status: "queued" },
+  };
+  const remove = { id: "upload-remove", label: "Remove", onClick: noop };
+
+  it.each([
+    ["grid", DriveGridView],
+    ["list", DriveListView],
+  ] as const)("shows the status and only the placeholder's own actions in %s view", (_, View) => {
+    render(
+      <div className="drive-workspace">
+        <View
+          {...baseBrowserProps({
+            items: [FAILED, QUEUED],
+            offlineEnabled: true,
+            canPinOffline: true,
+            onMakeOfflineAvailable: noop,
+            extraFileActions: (file) => (file.upload?.status === "failed" ? [remove] : []),
+          })}
+        />
+      </div>,
+    );
+
+    expect(screen.getByText("Upload failed · Too large to upload")).toBeTruthy();
+    expect(screen.getByText("Waiting to upload")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: driveLabels.offlineMakeAvailable })).toBeNull();
+    // Only the failed file has an action (Remove); the queued one gets no menu here.
+    expect(screen.getAllByRole("button", { name: "More actions" })).toHaveLength(1);
+  });
+});

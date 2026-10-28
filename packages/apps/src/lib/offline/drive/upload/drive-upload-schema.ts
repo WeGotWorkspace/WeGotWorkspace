@@ -1,4 +1,5 @@
 import type { EntityTable } from "dexie";
+import type { WgwDriveUploadErrorCode } from "@/lib/api/wgw/types";
 import type { WgwOfflineDatabase } from "@/lib/offline/core/offline-db";
 
 /**
@@ -41,13 +42,7 @@ export type OfflineDriveUploadBatchRow = {
 
 export type DriveUploadItemStatus = "queued" | "uploading" | "failed";
 
-/**
- * `too_large`: over the server's `maxSizeUpload` (or a 413). `quota`: the
- * device refused to store the file. `no_local_copy`: a direct upload whose
- * bytes are gone after a reload. `upload_failed`: anything else that will not
- * succeed by retrying. #1520 refines these classes.
- */
-export type DriveUploadErrorCode = "too_large" | "quota" | "no_local_copy" | "upload_failed";
+export type DriveUploadErrorCode = WgwDriveUploadErrorCode;
 
 export type DriveUploadItemError = { code: DriveUploadErrorCode; message: string };
 
