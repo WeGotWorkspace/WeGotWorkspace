@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\RateLimiter;
  *
  * The JWT carries no session id, so the per-browser key adds the browser id
  * the client already sends for presence (`X-WGW-Browser-Id`, validated by
- * {@see RtcBrowserId}). A missing or
- * malformed id shares one `none` bucket. The caller can mint browser ids, so
+ * {@see RtcBrowserId}). A missing or malformed id shares one `none` bucket.
+ * The caller can mint browser ids, so
  * a per-account ceiling caps the total. Limits are checked in order and a
  * full per-browser bucket stops before the account bucket is counted.
  *
