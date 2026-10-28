@@ -91,6 +91,19 @@ describe("note collab rooms use the v2 IndexedDB name", () => {
     expect(names.has(`/${room}`)).toBe(false);
   });
 
+  it("does not open or create the v2 database of a note never opened on this device", async () => {
+    // The pending-sync poll checks every cached note every few seconds (#1714).
+    const uid = "note-never-opened";
+    const room = noteCollabRoomKey(uid);
+
+    await expect(hasNoteCollabPendingServerSave(uid)).resolves.toBe(false);
+
+    const names = new Set(
+      (await indexedDB.databases()).flatMap((row) => (row.name ? [row.name] : [])),
+    );
+    expect(names.has(docsCollabIndexedDbKey(room))).toBe(false);
+  });
+
   it("reads a pending flag that already exists in the unsuffixed legacy database", async () => {
     const uid = "note-legacy-pending-exists";
     const room = noteCollabRoomKey(uid);
