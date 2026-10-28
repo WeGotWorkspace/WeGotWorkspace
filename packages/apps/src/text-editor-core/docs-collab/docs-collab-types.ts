@@ -79,7 +79,11 @@ export type DocsCollabUrls = {
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */
-  onExternalWrite?: (detail: { markdown: string; title: string | null }) => void;
+  onExternalWrite?: (detail: {
+    markdown: string;
+    title: string | null;
+    serverState: Uint8Array;
+  }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;
 };

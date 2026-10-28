@@ -250,13 +250,23 @@ export function useDocsCollabJoin({
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
-        urls.onExternalWrite?.({ markdown: text.markdown, title: text.title });
+        urls.onExternalWrite?.({
+          markdown: text.markdown,
+          title: text.title,
+          serverState: snapshot.update,
+        });
         return false;
       }
       if (action === "rebuild") {
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
-        replaceDocumentWithExternalText(ydoc, text.markdown, text.title, documentFormat);
+        replaceDocumentWithExternalText(
+          ydoc,
+          text.markdown,
+          text.title,
+          documentFormat,
+          snapshot.update,
+        );
         refs.markdownOverrideRef.current = text.markdown;
         refs.externalWriteHoldRef.current = false;
         refs.localDirtySinceLastSaveRef.current = true;
@@ -331,15 +341,28 @@ export function useDocsCollabJoin({
       if (snapshot.kind === "snapshot") {
         const pendingLocalWork =
           refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-        const action = decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
+        // Without the text there is nothing to rebuild from or to ask about.
+        const action = load.markdownError
+          ? "adopt"
+          : decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
         rememberSidecarEtag(room, snapshot.etag);
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {
           refs.externalWriteHoldRef.current = true;
-          urls.onExternalWrite?.({ markdown: load.markdown, title: loadedTitle });
+          urls.onExternalWrite?.({
+            markdown: load.markdown,
+            title: loadedTitle,
+            serverState: snapshot.update,
+          });
           settlement = "prompted";
         } else if (action === "rebuild") {
-          replaceDocumentWithExternalText(ydoc, load.markdown, loadedTitle, documentFormat);
+          replaceDocumentWithExternalText(
+            ydoc,
+            load.markdown,
+            loadedTitle,
+            documentFormat,
+            snapshot.update,
+          );
           refs.markdownOverrideRef.current = load.markdown;
           refs.externalWriteHoldRef.current = false;
           refs.seedDoneRef.current = true;
