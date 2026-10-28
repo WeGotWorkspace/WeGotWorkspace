@@ -6,6 +6,7 @@ import {
 } from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import {
+  getCollabRoomPendingRevision,
   isCollabRoomPendingServerSave,
   setCollabRoomPendingServerSave,
 } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
@@ -76,10 +77,10 @@ async function seedPendingRecord(noteIds: readonly string[]): Promise<void> {
   const existingDatabaseNames = await listExistingIndexedDatabaseNames();
   for (const id of noteIds) {
     const room = noteCollabRoomKey(id);
-    const before = isCollabRoomPendingServerSave(room);
+    const before = getCollabRoomPendingRevision(room);
     const pending = await hasNoteCollabPendingServerSave(id, existingDatabaseNames);
-    // An open editor or a finished save changed the record during the read: keep that.
-    if (isCollabRoomPendingServerSave(room) === before) {
+    // An open editor or a finished save wrote the room during the read: keep that.
+    if (getCollabRoomPendingRevision(room) === before) {
       setCollabRoomPendingServerSave(room, pending);
     }
   }

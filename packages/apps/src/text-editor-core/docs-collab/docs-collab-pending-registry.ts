@@ -1,6 +1,9 @@
 const STORAGE_KEY = "wgw:collab-pending-rooms";
 
 let memoryFallback: Set<string> | null = null;
+// Counts every set call per room, also those that change nothing, so a reader can tell
+// that someone wrote the room while it was reading elsewhere.
+const revisions = new Map<string, number>();
 
 function readRooms(): Set<string> {
   if (memoryFallback) return memoryFallback;
@@ -33,6 +36,7 @@ function writeRooms(rooms: Set<string>): void {
  */
 export function setCollabRoomPendingServerSave(room: string, pending: boolean): void {
   if (!room || typeof window === "undefined") return;
+  revisions.set(room, (revisions.get(room) ?? 0) + 1);
   const rooms = readRooms();
   if (rooms.has(room) === pending) return;
   if (pending) rooms.add(room);
@@ -43,4 +47,8 @@ export function setCollabRoomPendingServerSave(room: string, pending: boolean): 
 export function isCollabRoomPendingServerSave(room: string): boolean {
   if (!room || typeof window === "undefined") return false;
   return readRooms().has(room);
+}
+
+export function getCollabRoomPendingRevision(room: string): number {
+  return revisions.get(room) ?? 0;
 }

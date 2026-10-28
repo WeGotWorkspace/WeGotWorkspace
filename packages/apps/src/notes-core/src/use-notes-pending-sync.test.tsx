@@ -18,7 +18,10 @@ vi.mock("@/text-editor-core/docs-collab/docs-collab-persistence", () => ({
 
 import { hasNoteCollabPendingServerSave } from "@/lib/offline/notes/notes-collab-rooms";
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
-import { setCollabRoomPendingServerSave } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
+import {
+  isCollabRoomPendingServerSave,
+  setCollabRoomPendingServerSave,
+} from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import { useNotesPendingSync } from "@/notes-core/src/use-notes-pending-sync";
 import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 
@@ -144,6 +147,34 @@ describe("useNotesPendingSync", () => {
       });
       await waitFor(() => expect(result.current.has("a")).toBe(true));
       expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a clear that changed nothing during the read (room absent from the record)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(listPendingNoteIds).mockResolvedValue([]);
+      vi.mocked(readNotesBootstrapFromCache).mockResolvedValue({
+        data: { notes: [{ id: "z" }] },
+      } as never);
+      let release: (value: boolean) => void = () => undefined;
+      vi.mocked(hasNoteCollabPendingServerSave).mockImplementation(
+        () => new Promise<boolean>((resolve) => (release = resolve)),
+      );
+
+      const { result } = renderHook(() => useNotesPendingSync("carol"));
+      await waitFor(() => expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(1));
+
+      // A finished save clears a room that was never stored; the read saw the old flag.
+      setCollabRoomPendingServerSave("z", false);
+      release(true);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4100);
+      });
+      expect(isCollabRoomPendingServerSave("z")).toBe(false);
+      expect(result.current.has("z")).toBe(false);
     } finally {
       vi.useRealTimers();
     }
