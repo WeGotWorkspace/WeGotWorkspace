@@ -54,17 +54,35 @@ export function inertOutsideLayer(layer: Element): () => void {
 /**
  * Callback ref for modal Radix content. Portaled content mounts a commit after
  * its wrapper, so this runs on attach rather than in the wrapper's effect.
+ *
+ * The outside is snapshotted once per layer node. Radix composes the content
+ * ref anew on every render, so React detaches (`null`) and re-attaches the same
+ * node each commit; walking again then would make a popover opened from inside
+ * the layer inert (#1699). The release waits a microtask, and a re-attach of the
+ * same node in the meantime keeps the first snapshot.
  */
 export function useInertOutsideLayerRef<T extends Element>(
   forwardedRef: React.ForwardedRef<T>,
 ): React.RefCallback<T> {
-  const releaseRef = React.useRef<(() => void) | null>(null);
+  const attached = React.useRef<{ node: T; release: () => void } | null>(null);
+  const pendingDetach = React.useRef(0);
 
   return React.useCallback(
     (node: T | null) => {
-      releaseRef.current?.();
-      releaseRef.current = null;
-      if (node) releaseRef.current = inertOutsideLayer(node);
+      if (node) {
+        pendingDetach.current += 1; // Cancels a release scheduled by a detach.
+        if (attached.current?.node !== node) {
+          attached.current?.release();
+          attached.current = { node, release: inertOutsideLayer(node) };
+        }
+      } else if (attached.current) {
+        const ticket = ++pendingDetach.current;
+        queueMicrotask(() => {
+          if (pendingDetach.current !== ticket) return;
+          attached.current?.release();
+          attached.current = null;
+        });
+      }
       if (typeof forwardedRef === "function") forwardedRef(node);
       else if (forwardedRef) forwardedRef.current = node;
     },
