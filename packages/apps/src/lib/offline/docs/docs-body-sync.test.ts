@@ -76,15 +76,18 @@ describe("syncDocsBodiesFromHomeListing", () => {
     expect(result.synced).toBe(2);
     expect(result.failed).toBe(0);
     expect(makeDocsOfflineAvailable).toHaveBeenCalledTimes(2);
+    // Paced, and skipped when the local copy is newer than the listing's modifiedAt (s → ms).
     expect(makeDocsOfflineAvailable).toHaveBeenCalledWith(
       "alice",
       "/groups/team/roadmap.txt",
       "Group: team",
+      { beforeRequest: expect.any(Function), modifiedAtMs: 20_000 },
     );
     expect(makeDocsOfflineAvailable).toHaveBeenCalledWith(
       "alice",
       "/users/alice/todo.md",
       "My Drive",
+      { beforeRequest: expect.any(Function), modifiedAtMs: 10_000 },
     );
   });
 });
