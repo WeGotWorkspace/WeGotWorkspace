@@ -10,17 +10,25 @@ use App\Models\CalendarInstance;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarFeedService;
 use App\Services\Calendars\CollectionKind;
+use App\Services\Installer\WgwSchemaMigrator;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Xml\Property\SupportedCalendarComponentSet;
 use Tests\Support\CalendarsTestFixtures;
+use Tests\Support\InstallerMysqlTestDatabase;
 use Tests\Support\WgwDatabaseTestCase;
 use Tests\Support\WgwTestDatabase;
 
 /**
  * Feeds published before tokens were bound to a calendar keep serving the
  * calendar they served before the update; tokens that served nothing are dropped.
+ *
+ * The migration runs down and up inside each test. SQLite keeps that DDL in
+ * the per-test transaction. MySQL commits DDL implicitly, so on MySQL each test
+ * gets its own freshly migrated database instead of the shared transaction.
  */
 final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
 {
@@ -28,13 +36,11 @@ final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
 
     private const MIGRATION = 'migrations/wgw/2026_10_28_000740_wgw_bind_calendar_feed_tokens_to_calendar.php';
 
+    private ?string $isolatedDatabase = null;
+
     protected function setUp(): void
     {
         parent::setUp();
-        if (WgwTestDatabase::driver() !== 'sqlite') {
-            // MySQL commits DDL implicitly, which would end the per-test transaction.
-            $this->markTestSkipped('Runs the migration down and up; SQLite keeps it inside the test transaction.');
-        }
         $this->setUpCalendarsFixtures();
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
         foreach (['bob', 'carol'] as $username) {
@@ -44,6 +50,37 @@ final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
         }
         $this->seedEventViaPdo('bob', 'bob.ics', $this->sampleIcs('Bob plan'));
         $this->seedTeamCalendar('planning', 'Team plan');
+    }
+
+    protected function tearDown(): void
+    {
+        $database = $this->isolatedDatabase;
+        parent::tearDown();
+        if ($database !== null) {
+            InstallerMysqlTestDatabase::drop($database);
+        }
+    }
+
+    protected function beforeRefreshingDatabase(): void
+    {
+        parent::beforeRefreshingDatabase();
+        if (WgwTestDatabase::driver() !== 'mysql') {
+            return;
+        }
+        $this->isolatedDatabase = InstallerMysqlTestDatabase::createIsolated();
+        config(['database.connections.wgw.database' => $this->isolatedDatabase]);
+        DB::purge('wgw');
+    }
+
+    protected function refreshTestDatabase(): void
+    {
+        if ($this->isolatedDatabase === null) {
+            parent::refreshTestDatabase();
+
+            return;
+        }
+        Artisan::call('migrate:fresh', array_merge(['--force' => true], $this->migrateFreshUsing()));
+        $this->app[Kernel::class]->setArtisan(null);
     }
 
     public function test_existing_tokens_keep_serving_the_calendar_they_served_before(): void
@@ -61,6 +98,11 @@ final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
         $this->insertLegacyToken('legacygonecalendar', 'bob', 'gone');
 
         $migration->up();
+        $this->assertFeedTokensCascadeWithCalendar();
+
+        $migration->up();
+        app(WgwSchemaMigrator::class)->migrate();
+        $this->assertFeedTokensCascadeWithCalendar();
 
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'owner_username'));
         $this->assertSame(4, CalendarFeedToken::query()->count());
@@ -101,10 +143,32 @@ final class CalendarFeedTokenMigrationTest extends WgwDatabaseTestCase
         $this->assertSame('default', $rows[0]->calendar_uri);
 
         $migration->up();
+        $this->assertFeedTokensCascadeWithCalendar();
 
         $this->get('/api/v1/calendars/feeds/'.basename((string) parse_url((string) $personal, PHP_URL_PATH)))
             ->assertOk()
             ->assertSee('SUMMARY:Bob plan', false);
+    }
+
+    private function assertFeedTokensCascadeWithCalendar(): void
+    {
+        $foreignKeys = array_values(array_filter(
+            Schema::connection('wgw')->getForeignKeys('calendar_feed_tokens'),
+            static fn (array $foreignKey): bool => $foreignKey['columns'] === ['calendarid'],
+        ));
+        $this->assertCount(1, $foreignKeys);
+        $this->assertSame('calendars', $foreignKeys[0]['foreign_table']);
+        $this->assertSame(['id'], $foreignKeys[0]['foreign_columns']);
+        $this->assertSame('cascade', strtolower((string) $foreignKeys[0]['on_delete']));
+
+        if ($this->isolatedDatabase === null) {
+            return;
+        }
+        $engines = DB::connection('wgw')->select(
+            'SELECT LOWER(engine) AS table_engine FROM information_schema.tables WHERE table_schema = ? AND table_name IN (?, ?)',
+            [$this->isolatedDatabase, 'calendars', 'calendar_feed_tokens'],
+        );
+        $this->assertSame(['innodb', 'innodb'], array_map(static fn (object $row): string => (string) $row->table_engine, $engines));
     }
 
     private function insertLegacyToken(string $raw, string $owner, string $calendarUri): void
