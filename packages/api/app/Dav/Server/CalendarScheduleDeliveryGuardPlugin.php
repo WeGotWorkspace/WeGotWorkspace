@@ -13,10 +13,14 @@ use Sabre\VObject\ITip\Message;
 
 /**
  * CalDAV local delivery guard. Sabre's Schedule plugin updates whatever object
- * the recipient owns with the message UID. This listener runs first and stops
- * delivery to a recipient whose existing object is not the matching scheduling
- * object (see {@see CalendarSchedulingDeliveryPolicy}); that object stays as it
- * is and the message gets schedule status 3.8 (no authority, RFC 5546).
+ * the recipient owns with the message UID (`CalDAV\Backend\PDO::getCalendarObjectByUID()`
+ * only matches instances with access 1, so calendars shared to the recipient
+ * are never updated and a new copy goes to an owned default calendar). The
+ * guard inspects that same owned set (and instances without an access value).
+ * It runs first and stops delivery to a recipient whose existing object is not
+ * the matching scheduling object (see {@see CalendarSchedulingDeliveryPolicy});
+ * that object stays as it is, the message gets schedule status 3.8 (no
+ * authority, RFC 5546) and the skip is logged.
  */
 final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
 {
