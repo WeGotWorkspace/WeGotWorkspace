@@ -14,12 +14,16 @@
  * with file:line ranges, so a developer can find what tripped `check`.
  *
  * Determinism: this script builds the file list itself (same exclusions as
- * the file-size ratchet, plus story, mock and test folders), sorts it, and
- * passes it to jscpd with every option that changes the totals pinned:
- * thresholds from the baseline, `--mode mild`, `--kind exact`,
- * `--max-size 1mb`, one worker, `--no-gitignore`, and an empty config file
- * so no `.jscpd.json` in the tree is read. The JSON report goes to a temp
- * directory outside the repository.
+ * the file-size ratchet, plus story, mock and test folders) and copies those
+ * files into a temp directory, so jscpd scans exactly that list. No ignore
+ * globs, .gitignore or `.jscpd.json` take part. Every option that changes the
+ * totals is pinned: thresholds from the baseline, `--mode mild`, source
+ * limits that fail loudly instead of skipping, `--no-gitignore`, no
+ * symlinks, and an empty config file. The JSON report stays in the temp
+ * directory.
+ *
+ * jscpd 4 (JavaScript engine) on purpose: jscpd 5.4.1 (Rust engine) missed
+ * a 120-line block pasted verbatim from a 946-line file in this repo.
  *
  * Thresholds: 70 tokens and 10 lines. Lower values report import lists,
  * prop spreads and short guard clauses; higher values miss copied methods
@@ -27,6 +31,8 @@
  */
 import { execFile } from "node:child_process";
 import {
+  copyFileSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -41,7 +47,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { isExcluded } from "./file-size-ratchet.mjs";
+import { countLines, isExcluded } from "./file-size-ratchet.mjs";
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -50,9 +56,19 @@ const baselinePath = path.join(repoRoot, "tools/duplicate-code-baseline.json");
 const updateCommand = "pnpm duplicate-code:update";
 const reportCommand = "pnpm duplicate-code:report";
 
+/**
+ * `formats` are the jscpd formats that count. jscpd 4 also tokenizes the
+ * expressions inside TSX as a separate "javascript" stream. Clones in that
+ * stream join pieces from far apart in a file (a "281-line" clone of two
+ * unrelated components), so they are left out of the totals and the report.
+ */
 export const DUPLICATE_SCOPES = [
-  { root: "packages/apps/src", extensions: new Set([".ts", ".tsx"]), format: "typescript,tsx" },
-  { root: "packages/api/app", extensions: new Set([".php"]), format: "php" },
+  {
+    root: "packages/apps/src",
+    extensions: new Set([".ts", ".tsx"]),
+    formats: ["typescript", "tsx"],
+  },
+  { root: "packages/api/app", extensions: new Set([".php"]), formats: ["php"] },
 ];
 
 const scopeRoots = DUPLICATE_SCOPES.map((scope) => scope.root);
@@ -108,12 +124,19 @@ export function listScopeFiles(scope, baseDir = repoRoot) {
 }
 
 /**
- * @param {{ format: string }} scope
- * @param {string[]} files
- * @param {{ outDir: string, configPath: string, minTokens: number, minLines: number }} options
+ * jscpd skips a source over these limits without saying so. The mirror step
+ * fails instead, so a growing file cannot drop out of the scan.
  */
-export function jscpdArgs(scope, files, { outDir, configPath, minTokens, minLines }) {
+export const MAX_SOURCE_LINES = 20000;
+export const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * @param {{ formats: string[] }} scope
+ * @param {{ scanRoot: string, outDir: string, configPath: string, minTokens: number, minLines: number }} options
+ */
+export function jscpdArgs(scope, { scanRoot, outDir, configPath, minTokens, minLines }) {
   return [
+    scanRoot,
     "--config",
     configPath,
     "--min-tokens",
@@ -121,26 +144,47 @@ export function jscpdArgs(scope, files, { outDir, configPath, minTokens, minLine
     "--min-lines",
     String(minLines),
     "--format",
-    scope.format,
+    scope.formats.join(","),
     "--mode",
     "mild",
-    "--kind",
-    "exact",
+    "--max-lines",
+    String(MAX_SOURCE_LINES),
     "--max-size",
-    "1mb",
-    "--workers",
-    "1",
+    String(MAX_SOURCE_BYTES),
     "--no-gitignore",
+    "--noSymlinks",
     "--absolute",
     "--no-colors",
-    "--no-tips",
     "--silent",
     "--reporters",
     "json",
     "--output",
     outDir,
-    ...files,
   ];
+}
+
+/**
+ * Copy the listed files to `mirrorRoot` under their repo-relative paths, so
+ * jscpd scans exactly this list: no ignore globs, no .gitignore, no config.
+ * @param {string[]} files repo-relative
+ * @param {string} baseDir
+ * @param {string} mirrorRoot
+ */
+export function mirrorFiles(files, baseDir, mirrorRoot) {
+  for (const rel of files) {
+    const source = path.join(baseDir, rel);
+    const { size } = statSync(source);
+    const lines = countLines(readFileSync(source, "utf8"));
+    if (size > MAX_SOURCE_BYTES || lines > MAX_SOURCE_LINES) {
+      throw new Error(
+        `${rel}: ${lines} lines / ${size} bytes is over the duplicate scan limit ` +
+          `(${MAX_SOURCE_LINES} lines / ${MAX_SOURCE_BYTES} bytes); raise the limit in tools/duplicate-code-ratchet.mjs`,
+      );
+    }
+    const target = path.join(mirrorRoot, rel);
+    mkdirSync(path.dirname(target), { recursive: true });
+    copyFileSync(source, target);
+  }
 }
 
 function compareLocation(a, b) {
@@ -167,54 +211,90 @@ export function largestBlocks(blocks, limit = blocks.length) {
 }
 
 /**
- * @param {{ statistics: { total: { clones: number, duplicatedLines: number, sources: number } }, duplicates: any[] }} report
+ * Totals and blocks of the counted formats only.
+ * @param {{ statistics: { formats: Record<string, { total: { clones: number, duplicatedLines: number } }> }, duplicates: any[] }} report
  * @param {string} baseDir
+ * @param {string[]} formats
  */
-export function summarizeReport(report, baseDir) {
+export function summarizeReport(report, baseDir, formats) {
   const toLocation = (file) => ({
     path: path.relative(baseDir, file.name).split(path.sep).join("/"),
     start: file.start,
     end: file.end,
   });
-  const blocks = report.duplicates.map((clone) => {
-    const [first, second] = [toLocation(clone.firstFile), toLocation(clone.secondFile)].sort(
-      compareLocation,
-    );
-    return { lines: clone.lines, tokens: clone.tokens, first, second };
-  });
-  const { clones, duplicatedLines, sources } = report.statistics.total;
-  return { clones, duplicatedLines, sources, blocks: largestBlocks(blocks) };
+  const counted = new Set(formats);
+  const blocks = report.duplicates
+    .filter((clone) => counted.has(clone.format))
+    .map((clone) => {
+      const [first, second] = [toLocation(clone.firstFile), toLocation(clone.secondFile)].sort(
+        compareLocation,
+      );
+      return { lines: clone.lines, tokens: clone.tokens, first, second };
+    });
+  const totals = { clones: 0, duplicatedLines: 0 };
+  for (const format of formats) {
+    const total = report.statistics.formats[format]?.total;
+    if (!total) continue;
+    for (const key of Object.keys(totals)) totals[key] += total[key];
+  }
+  return { ...totals, blocks: largestBlocks(blocks) };
+}
+
+/** jscpd 4 exports neither its package.json nor its bin, so walk up from its entry. */
+function jscpdPackageDir() {
+  let dir = path.dirname(require.resolve("jscpd"));
+  while (!statSync(path.join(dir, "package.json"), { throwIfNoEntry: false })?.isFile()) {
+    const parent = path.dirname(dir);
+    if (parent === dir) throw new Error("jscpd package.json not found");
+    dir = parent;
+  }
+  return dir;
 }
 
 export function installedJscpdVersion() {
-  return require("jscpd/package.json").version;
+  return JSON.parse(readFileSync(path.join(jscpdPackageDir(), "package.json"), "utf8")).version;
 }
 
 /**
- * Run jscpd once per scope (in parallel) and summarize each report.
+ * Run jscpd once per scope (in parallel) on a temp mirror of the listed
+ * files, and summarize each report with repo-relative paths.
  * @param {{ baseDir?: string, minTokens: number, minLines: number }} options
  * @returns {Promise<Record<string, ReturnType<typeof summarizeReport>>>}
  */
 export async function measureScopes({ baseDir = repoRoot, minTokens, minLines }) {
+  const jscpd = path.join(jscpdPackageDir(), "bin/jscpd");
   // jscpd reports canonical absolute paths; /tmp and /var are symlinks on macOS.
-  const base = realpathSync(baseDir);
-  const jscpd = require.resolve("jscpd/run-jscpd.js");
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "wgw-duplicate-code-"));
+  const tempDir = realpathSync(mkdtempSync(path.join(os.tmpdir(), "wgw-duplicate-code-")));
   try {
     const configPath = path.join(tempDir, "jscpd.json");
     writeFileSync(configPath, "{}\n");
     const entries = await Promise.all(
       DUPLICATE_SCOPES.map(async (scope, index) => {
-        const files = listScopeFiles(scope, base);
-        const outDir = path.join(tempDir, String(index));
-        const args = jscpdArgs(scope, files, { outDir, configPath, minTokens, minLines });
-        await execFileAsync(process.execPath, [jscpd, ...args], {
-          cwd: base,
-          maxBuffer: 64 * 1024 * 1024,
-          env: { ...process.env, NO_COLOR: "1", JSCPD_NO_TIPS: "1" },
+        const mirrorRoot = path.join(tempDir, `scope-${index}`);
+        const files = listScopeFiles(scope, baseDir);
+        mirrorFiles(files, baseDir, mirrorRoot);
+        const outDir = path.join(tempDir, `report-${index}`);
+        const args = jscpdArgs(scope, {
+          scanRoot: path.join(mirrorRoot, scope.root),
+          outDir,
+          configPath,
+          minTokens,
+          minLines,
         });
-        const report = JSON.parse(readFileSync(path.join(outDir, "jscpd-report.json"), "utf8"));
-        return [scope.root, summarizeReport(report, base)];
+        await execFileAsync(process.execPath, [jscpd, ...args], {
+          cwd: mirrorRoot,
+          maxBuffer: 64 * 1024 * 1024,
+          env: { ...process.env, NO_COLOR: "1" },
+        });
+        const reportPath = path.join(outDir, "jscpd-report.json");
+        // jscpd writes no report when no file reaches the token minimum.
+        const report = statSync(reportPath, { throwIfNoEntry: false })
+          ? JSON.parse(readFileSync(reportPath, "utf8"))
+          : { statistics: { formats: {} }, duplicates: [] };
+        return [
+          scope.root,
+          { ...summarizeReport(report, mirrorRoot, scope.formats), files: files.length },
+        ];
       }),
     );
     return Object.fromEntries(entries);
@@ -376,8 +456,9 @@ async function measureAgainstBaseline() {
 }
 
 function totalsLine(root, totals, stored) {
+  const scanned = totals.files === undefined ? "" : ` in ${totals.files} scanned files`;
   const vs = stored ? ` (baseline ${stored.clones} clones, ${stored.duplicatedLines} lines)` : "";
-  return `${root}: ${totals.clones} clones, ${totals.duplicatedLines} duplicated lines in ${totals.sources} files${vs}`;
+  return `${root}: ${totals.clones} clones, ${totals.duplicatedLines} duplicated lines${scanned}${vs}`;
 }
 
 async function check() {
