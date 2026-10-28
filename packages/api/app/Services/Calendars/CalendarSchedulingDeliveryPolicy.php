@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Calendars;
 
+use Illuminate\Support\Facades\Log;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\ITip\Message;
 
@@ -21,6 +22,8 @@ use Sabre\VObject\ITip\Message;
  */
 final class CalendarSchedulingDeliveryPolicy
 {
+    public const SKIPPED_LOG = 'calendar.scheduling_delivery_skipped';
+
     public function __construct(
         private readonly CalendarPrincipalAddresses $addresses,
     ) {}
@@ -37,6 +40,19 @@ final class CalendarSchedulingDeliveryPolicy
                 && $this->listsAttendee($existing, (string) $message->sender),
             default => false,
         };
+    }
+
+    /**
+     * Record a refused delivery: the recipient keeps the object with this UID
+     * until they remove or change it. Logs identifiers only, no event content.
+     */
+    public function logSkipped(Message $message, string $recipientPrincipalUri): void
+    {
+        Log::warning(self::SKIPPED_LOG, [
+            'uid' => (string) $message->uid,
+            'recipient' => $recipientPrincipalUri,
+            'method' => strtoupper((string) $message->method),
+        ]);
     }
 
     /**

@@ -55,6 +55,7 @@ final class CalendarScheduleDeliveryGuardPlugin extends ServerPlugin
         foreach ($this->objects->ownedByPrincipal($principalUri, (string) $message->uid) as $candidate) {
             if (! $this->policy->allows($message, $principalUri, $this->objects->parse($candidate['object']))) {
                 $message->scheduleStatus = '3.8;No authority to change the existing object with this UID.';
+                $this->policy->logSkipped($message, $principalUri);
 
                 return false;
             }

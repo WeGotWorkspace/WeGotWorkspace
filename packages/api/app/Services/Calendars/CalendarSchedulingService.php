@@ -366,6 +366,8 @@ final class CalendarSchedulingService
         $uid = (string) $message->uid;
         [$existing, $allowed] = $this->existingForDelivery($message, $principalUri, $uid);
         if (! $allowed) {
+            $this->deliveryPolicy->logSkipped($message, $principalUri);
+
             return;
         }
 

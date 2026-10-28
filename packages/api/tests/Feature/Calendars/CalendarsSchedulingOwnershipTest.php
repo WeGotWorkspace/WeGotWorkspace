@@ -10,12 +10,15 @@ use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
+use App\Services\Calendars\CalendarSchedulingDeliveryPolicy;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\MailDelivery\MailDeliveryConfig;
 use App\Services\MailDelivery\MailDeliveryTransportResolver;
 use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -39,6 +42,9 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
 
     private const END = '2030-03-04T11:00:00Z';
 
+    /** @var list<array<string, mixed>> */
+    private array $skippedDeliveries = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,6 +52,11 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $this->seedWgwUser('dave', displayName: 'Dave');
         $this->seedDefaultCalendarFor('dave');
         Mail::fake();
+        Log::listen(function (MessageLogged $event): void {
+            if ($event->message === CalendarSchedulingDeliveryPolicy::SKIPPED_LOG) {
+                $this->skippedDeliveries[] = array_intersect_key($event->context, array_flip(['uid', 'recipient', 'method']));
+            }
+        });
     }
 
     public function test_invite_with_an_existing_uid_leaves_the_attendees_own_event_unchanged(): void
@@ -58,6 +69,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $this->assertSame('Board meeting', $this->titleOf('carol', $carolEventId));
         $this->assertSame([], $this->inboxRows('carol'));
         $this->assertCount(1, $this->ownedObjects('carol', $uid));
+        $this->assertSame([['uid' => $uid, 'recipient' => 'principals/carol', 'method' => 'REQUEST']], $this->skippedDeliveries);
     }
 
     public function test_cancel_with_an_existing_uid_leaves_the_attendees_own_event_in_place(): void
@@ -98,6 +110,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $copies = $this->ownedObjects('carol', $uid);
         $this->assertCount(1, $copies, 'the attendee gets a separate copy in a calendar she owns');
         $this->assertStringContainsString('SUMMARY:Bob invite', $this->ics($copies[0]));
+        $this->assertSame([], $this->skippedDeliveries);
     }
 
     public function test_organizer_update_and_cancel_still_reach_the_attendee_copy(): void
@@ -119,6 +132,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $this->jmapAs('bob', [['CalendarEvent/set', ['accountId' => 'bob', 'destroy' => [$bobEventId]], 'c0']])->assertOk();
 
         $this->assertSame([], $this->ownedObjects('carol', $uid));
+        $this->assertSame([], $this->skippedDeliveries);
     }
 
     public function test_reply_from_someone_who_is_not_invited_leaves_the_organizer_event_unchanged(): void
@@ -307,6 +321,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $this->assertContains($status, [201, 204]);
         $this->assertSame('Board meeting', $this->titleOf('carol', $carolEventId));
         $this->assertSame([], $this->inboxRows('carol'));
+        $this->assertSame([['uid' => $uid, 'recipient' => 'principals/carol', 'method' => 'REQUEST']], $this->skippedDeliveries);
     }
 
     public function test_caldav_organizer_update_still_reaches_the_attendee_copy(): void
@@ -320,6 +335,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $copies = $this->ownedObjects('carol', $uid);
         $this->assertCount(1, $copies);
         $this->assertStringContainsString('SUMMARY:Plan v2', $this->ics($copies[0]));
+        $this->assertSame([], $this->skippedDeliveries);
     }
 
     /**
@@ -352,6 +368,7 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $copies = $this->ownedObjects('carol', $uid);
         $this->assertCount(1, $copies, 'the attendee gets a separate copy in a calendar she owns');
         $this->assertStringContainsString('SUMMARY:Bob invite', $this->ics($copies[0]));
+        $this->assertSame([], $this->skippedDeliveries);
     }
 
     public function test_caldav_new_invite_copy_lands_in_a_calendar_the_attendee_owns(): void
