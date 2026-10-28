@@ -256,7 +256,7 @@ describe("Docs external write (#1349)", () => {
       result.current.urls?.onExternalWrite?.({
         markdown: OUTSIDE_TEXT,
         title: null,
-        serverStateVector: new Uint8Array([0]),
+        serverState: new Uint8Array([0, 0]),
       }),
     );
     expect(result.current.detail?.markdown).toBe(OUTSIDE_TEXT);

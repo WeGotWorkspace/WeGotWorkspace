@@ -551,7 +551,7 @@ const scenarios: Scenario[] = [
         text.markdown,
         text.title,
         "markdown",
-        Y.encodeStateVectorFromUpdate(flagged.update!),
+        flagged.update!,
       );
       rememberSidecarEtag(room, flagged.etag);
       // The rebuild saw the outside text, so its save names it.

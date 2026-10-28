@@ -20,7 +20,7 @@ vi.mock("@/text-editor-core/docs-collab", async () => {
         options.urls?.onExternalWrite?.({
           markdown: harness.outsideMarkdown,
           title: "Outside",
-          serverStateVector: new Uint8Array([0]),
+          serverState: new Uint8Array([0, 0]),
         });
       }, [options.urls]);
       return {

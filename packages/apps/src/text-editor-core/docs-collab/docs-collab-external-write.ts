@@ -12,9 +12,16 @@ export const EXTERNAL_WRITE_HEADER = "X-Wgw-External-Write";
 export type ExternalWriteDetail = {
   markdown: string;
   title: string | null;
-  /** State vector of the stale sidecar every client read; the rebuild seeds from it. */
-  serverStateVector: Uint8Array;
+  /** The stale sidecar every client read; the rebuild replaces exactly that state. */
+  serverState: Uint8Array;
 };
+
+/**
+ * Origin of the rebuild transaction. Unlike the server origin it is published
+ * to peers and other tabs: one that still holds the stale state and has not
+ * read the server since follows the rebuild instead of keeping the old text.
+ */
+export const EXTERNAL_REBUILD_ORIGIN = "external-rebuild";
 
 export type ExternalWriteAction = "adopt" | "rebuild" | "prompt";
 
@@ -43,18 +50,30 @@ export function decideExternalWrite(
  * person has since deleted, and the rebuild would leave the document empty.
  * It is the server sidecar's state vector, never the local one: local edits
  * and IndexedDB history differ per client and would seed different items.
+ *
+ * The server state is applied first, so the deletes cover everything a peer
+ * may still hold. A quiet rebuild deletes only that history: an item a peer
+ * typed after it stays, and the rebuild is safe to publish. `dropLocalWork`
+ * is the person's own choice in the prompt and deletes every other item too.
  */
 export function replaceDocumentWithExternalText(
   ydoc: Y.Doc,
   markdown: string,
   title: string | null,
   format: TextEditorContentFormat,
-  serverStateVector: Uint8Array,
+  serverState: Uint8Array,
+  { dropLocalWork = false }: { dropLocalWork?: boolean } = {},
 ): void {
+  Yjs.applyUpdate(ydoc, serverState, SERVER_ORIGIN);
+  const serverStateVector = Yjs.encodeStateVectorFromUpdate(serverState);
   const seeded = new Yjs.Doc();
-  const base = serverStateVector.join(",");
-  applyContentSeedToYDoc(seeded, markdown, format, base);
+  applyContentSeedToYDoc(seeded, markdown, format, serverStateVector.join(","));
   if (title !== null) writeNoteTitle(seeded, title);
-  adoptServerSnapshot(ydoc, Yjs.encodeStateAsUpdate(seeded), SERVER_ORIGIN);
+  adoptServerSnapshot(
+    ydoc,
+    Yjs.encodeStateAsUpdate(seeded),
+    EXTERNAL_REBUILD_ORIGIN,
+    dropLocalWork ? undefined : Yjs.decodeStateVector(serverStateVector),
+  );
   seeded.destroy();
 }

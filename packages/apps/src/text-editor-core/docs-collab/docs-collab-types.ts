@@ -82,7 +82,7 @@ export type DocsCollabUrls = {
   onExternalWrite?: (detail: {
     markdown: string;
     title: string | null;
-    serverStateVector: Uint8Array;
+    serverState: Uint8Array;
   }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;

@@ -253,7 +253,7 @@ export function useDocsCollabJoin({
         urls.onExternalWrite?.({
           markdown: text.markdown,
           title: text.title,
-          serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+          serverState: snapshot.update,
         });
         return false;
       }
@@ -265,7 +265,7 @@ export function useDocsCollabJoin({
           text.markdown,
           text.title,
           documentFormat,
-          Y.encodeStateVectorFromUpdate(snapshot.update),
+          snapshot.update,
         );
         refs.markdownOverrideRef.current = text.markdown;
         refs.externalWriteHoldRef.current = false;
@@ -349,7 +349,7 @@ export function useDocsCollabJoin({
           urls.onExternalWrite?.({
             markdown: load.markdown,
             title: loadedTitle,
-            serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+            serverState: snapshot.update,
           });
           settlement = "prompted";
         } else if (action === "rebuild") {
@@ -358,7 +358,7 @@ export function useDocsCollabJoin({
             load.markdown,
             loadedTitle,
             documentFormat,
-            Y.encodeStateVectorFromUpdate(snapshot.update),
+            snapshot.update,
           );
           refs.markdownOverrideRef.current = load.markdown;
           refs.externalWriteHoldRef.current = false;

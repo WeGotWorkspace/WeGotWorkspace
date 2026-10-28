@@ -1,4 +1,3 @@
-import * as Y from "yjs";
 import { fetchYjsSnapshot, loadCollabText } from "./docs-collab-server-io";
 import type { DocsCollabSessionRefs, DocsCollabUrls } from "./docs-collab-types";
 
@@ -29,7 +28,7 @@ export async function askAboutRefusedSave({
     urls.onExternalWrite({
       markdown: text.markdown,
       title: text.title,
-      serverStateVector: Y.encodeStateVectorFromUpdate(snapshot.update),
+      serverState: snapshot.update,
     });
     return true;
   } catch {
