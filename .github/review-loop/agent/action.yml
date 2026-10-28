@@ -67,11 +67,15 @@ runs:
         MAX_TURNS: ${{ inputs.max-turns }}
         AGENT_MODEL: ${{ inputs.model }}
         AGENT_EFFORT: ${{ inputs.effort }}
+        # A live Playwright spec boots the API and the app first, which takes
+        # longer than Claude Code's two-minute default for a command.
+        BASH_DEFAULT_TIMEOUT_MS: "600000"
+        BASH_MAX_TIMEOUT_MS: "900000"
       run: |
         read_only="Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
         case "$MODE" in
           review) tools="$read_only" ;;
-          fix) tools="$read_only,Edit,MultiEdit,Write,Bash(pnpm exec turbo run typecheck test:unit:*),Bash(pnpm --dir packages/apps exec vitest run:*),Bash(pnpm --dir packages/apps exec prettier:*),Bash(pnpm --dir packages/apps exec eslint:*)" ;;
+          fix) tools="$read_only,Edit,MultiEdit,Write,Bash(pnpm exec turbo run typecheck test:unit:*),Bash(pnpm --dir packages/apps exec vitest run:*),Bash(pnpm --dir packages/apps exec prettier:*),Bash(pnpm --dir packages/apps exec eslint:*),Bash(pnpm --dir packages/apps exec playwright test:*)" ;;
           *) echo "::error::Unknown mode '$MODE'."; exit 1 ;;
         esac
 
@@ -102,6 +106,21 @@ runs:
           --allowedTools "$tools" \
           --max-turns "$MAX_TURNS" \
           < "$PROMPT_FILE" > "$out"
+
+        # A tool outside the allowed list is refused, and the agent carries
+        # on. Log the refusals, so a claim like "I ran the tests" can be
+        # checked against what it could actually do.
+        # Best effort: output that is not JSON is reported below. Each line
+        # gets a prefix, so a refused command cannot pass as a workflow
+        # command.
+        denied=$(jq -r '[.permission_denials[]?
+            | (.tool_name | tostring)
+              + (.tool_input.command // "" | tostring | if . == "" then "" else ": " + . end)]
+            | unique | .[]' "$out" 2>/dev/null) || denied=""
+        if [ -n "$denied" ]; then
+          echo "::notice::The agent tried tools it may not use; they were refused."
+          printf '%s\n' "$denied" | sed 's/^/denied: /'
+        fi
 
         if ! jq -e '.structured_output' "$out" > "$result"; then
           echo "::error::Agent ended without a structured answer ($(jq -r '.subtype // "unknown"' "$out"))."

@@ -119,7 +119,8 @@ export function useCalendarAPI(source?: CalendarApiSource, options?: UseCalendar
     retry: load,
     successVersion,
     bootstrapRevision,
-    listLoading: phase === "loading" || reconnectSyncing,
+    // First paint only. A reconnect keeps the cached calendar on screen (#1532).
+    listLoading: phase === "loading",
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,
     operations,

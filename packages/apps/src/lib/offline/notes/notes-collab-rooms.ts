@@ -119,3 +119,23 @@ export async function migrateNoteCollabRoom(oldUid: string, newUid: string): Pro
   if (!hasOld) return;
   await migrateCollabPersistence(from, to);
 }
+
+/**
+ * Archive won over unsaved body edits (#1535): forget the local copy, so a
+ * restore later starts from the server. An open editor holds the database;
+ * the delete waits until that editor closes.
+ */
+export async function discardNoteCollabBuffer(uid: string): Promise<void> {
+  const room = noteCollabRoomKey(uid);
+  if (!room || typeof indexedDB === "undefined") return;
+  const known = await listExistingIndexedDatabaseNames();
+  const names = indexedDbNamesToOpen(room, known);
+  for (const name of names) {
+    if (known && !known.has(name)) continue;
+    try {
+      indexedDB.deleteDatabase(name);
+    } catch {
+      // A browser that refuses the delete keeps the buffer; it is not uploaded.
+    }
+  }
+}

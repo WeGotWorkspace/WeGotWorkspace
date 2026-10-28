@@ -207,6 +207,44 @@ describe("a note the app made", () => {
   });
 });
 
+describe("a create whose response never arrived", () => {
+  it("is sent again with the same UID on a later load, and the server keeps one note", async () => {
+    // A fake server that, like the API, answers a repeated UID with the note it has.
+    const server = new Map<string, Note>();
+    let tabOpen = true;
+    vi.mocked(createNoteItem).mockImplementation(async (body) => {
+      const id = String(body.id);
+      const stored = server.get(id) ?? { ...newNote, id, createPending: undefined };
+      server.set(id, stored);
+      // The first POST lands, but the tab closes before its response is read.
+      if (tabOpen) throw new TypeError("Failed to fetch");
+      return stored;
+    });
+
+    await createHybridNotesOperations(username).upsertNote(newNote);
+    await flushed();
+    expect(server.size).toBe(1);
+    expect(await listPendingNoteIds(username)).toEqual([uid]);
+
+    // Reopened long after any in-flight window: nothing may mint a new id.
+    tabOpen = false;
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.now() + 24 * 60 * 60 * 1000 });
+    try {
+      vi.mocked(fetchNotesLiveBootstrap).mockResolvedValue(bootstrap);
+      await fetchNotesHybridBootstrap();
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(vi.mocked(createNoteItem).mock.calls.map((call) => call[0].id)).toEqual([uid, uid]);
+    expect(server.size).toBe(1);
+    expect(await listOutboxMutations(username)).toHaveLength(0);
+    const rows = await notesTable().toArray();
+    expect(rows.map((row) => row.id)).toEqual([uid]);
+    expect(rows[0]?.pendingSync).toBe(false);
+  });
+});
+
 describe("a bootstrap snapshot", () => {
   it("keeps a note cached after the snapshot was taken, and drops an older one it lacks", async () => {
     const takenAt = Date.now();

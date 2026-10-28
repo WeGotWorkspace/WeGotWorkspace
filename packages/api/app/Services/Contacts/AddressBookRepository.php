@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
-use Illuminate\Support\Facades\DB;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 use Sabre\CardDAV\Plugin as CardDAVPlugin;
 use Sabre\DAV\PropPatch;
 
@@ -343,8 +342,8 @@ final class AddressBookRepository
         ];
     }
 
-    private function cardBackend(): CardPDO
+    private function cardBackend(): WgwCardBackend
     {
-        return new CardPDO(DB::connection('wgw')->getPdo());
+        return WgwCardBackend::fromConnection();
     }
 }

@@ -4729,26 +4729,69 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * JMAP event source / push (not implemented)
-         * @description Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.
+         * JMAP event source (short-burst push)
+         * @description RFC 8620 §7.3 event source, short-burst only (#1660). The response always ends at once: when a state differs from `Last-Event-ID` it holds one `state` event (a StateChange with only the differing types), its `id` and `retry`; otherwise only `retry: <WGW_JMAP_PUSH_RETRY_MS>` (default 3000). The `id` is `v1;Type=<128-bit hex hash>;…`, one independent hash per type, so a client can rebuild it from the per-type hashes it confirmed. A missing, unknown or malformed `Last-Event-ID` sends every requested type. States are the ones `Foo/get` returns (`Task` and `TaskList` use the REST task list state; `Notification` is the per-principal inbox marker). For `FileNode` the value is the global sequence `FileNode/changes` expects, sent only when the hash over the user's Drive root markers changed. Types of a disabled app are left out. Own rate limit: about 60 requests a minute per user and `X-WGW-Browser-Id`, with a ceiling of about 300 a minute per account; this route does not spend the shared API budget.
          */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The id of a previous `state` event, or one the client rebuilt from per-type hashes it confirmed. */
+                    "Last-Event-ID"?: string;
+                    /** @description The browser id the client sends for presence (32 lower-case hex). Keys the per-browser rate limit; a missing or malformed id shares one bucket. */
+                    "X-WGW-Browser-Id"?: string;
+                };
                 path: {
+                    /** @description `*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification. Unknown names are ignored. */
                     types: string;
-                    closeafter: string;
+                    /** @description Accepted for RFC compatibility; every response closes after one block. */
+                    closeafter: "state" | "no";
+                    /** @description Seconds; accepted for RFC compatibility. No ping is sent because the response ends at once. */
                     ping: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                403: components["responses"]["JmapForbidden"];
-                /** @description Not implemented */
-                501: {
+                /** @description Event stream that ends at once: `event: state`, `id`, `retry` and `data` (StateChange JSON), or only `retry`. */
+                200: {
                     headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example event: state
+                         *     id: v1;Note=0f4c…;Notification=9a1b…
+                         *     retry: 3000
+                         *     data: {"@type":"StateChange","changed":{"bob":{"Note":"2:inbox:12,work:7","Notification":"5"}}}
+                         */
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description Malformed types, closeafter or ping */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description Rate limited (per browser or per account). Wait `Retry-After` seconds and fall back to polling meanwhile. */
+                429: {
+                    headers: {
+                        /** @description Seconds until the bucket allows a request again. */
+                        "Retry-After"?: number;
                         [name: string]: unknown;
                     };
                     content: {
@@ -5875,7 +5918,7 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
-                /** @description `external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. */
+                /** @description `external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. `note_archived` — the note is archived (STATUS:CANCELLED). Nothing is written; restore the note first. Both codes are in `error` and `code`. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5954,7 +5997,15 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
-                409: components["responses"]["JmapConflict"];
+                /** @description `alreadyExists` — a move would put the note in a notebook that already holds its UID. `note_archived` — the note is archived (STATUS:CANCELLED) and the patch carries `title`, `body`, `categories`, `categoriesAdd`, `categoriesRemove`, `notebookId`, or `yjs`. Nothing is written. A patch with only `status` (restore, or archive again) is accepted. The code is in `error` and `code`. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
@@ -9893,7 +9944,7 @@ export interface components {
         ContactCardImportError: {
             index: number;
             message: string;
-            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
+            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed). */
             code?: string;
         };
         /** @description REST response for POST /contacts/cards/import. Per-card payload or property-cap failures appear in errors[] with code; siblings may still be in list. */

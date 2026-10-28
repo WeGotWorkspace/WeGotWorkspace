@@ -16,6 +16,10 @@ import type { WgwNoteUpsertRequest } from "@/lib/api/wgw/types";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { NOTES_DOMAIN } from "@/lib/offline/notes/notes-schema";
 import { announceNoteCreated } from "@/lib/offline/notes/notes-created-events";
+import {
+  isNoteArchivedRefusal,
+  settleNoteArchivedElsewhere,
+} from "@/lib/offline/notes/notes-archived-elsewhere";
 import { upgradeLegacyLocalNotes } from "@/lib/offline/notes/notes-legacy-local-ids";
 import {
   dropLocalNoteAfterServerGone,
@@ -61,8 +65,15 @@ async function flushOutboxNoteUpsert(
         return { saved: await updateNoteItem(noteId, { ...metadataRequest, etag: undefined }) };
       } catch (retryError) {
         if (isPreconditionFailed(retryError)) return { conflict: true };
-        throw retryError;
+        if (!isNoteArchivedRefusal(retryError)) throw retryError;
+        await settleNoteArchivedElsewhere(username, noteId);
+        return { gone: true };
       }
+    }
+    // Archive wins over a queued edit (#1535): drop it and say so.
+    if (isNoteArchivedRefusal(error)) {
+      await settleNoteArchivedElsewhere(username, noteId);
+      return { gone: true };
     }
     if (persistHttpStatus(error) !== 404) throw error;
     await dropLocalNoteAfterServerGone(username, noteId);
@@ -121,6 +132,8 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
   await upgradeLegacyLocalNotesOnce(username);
   const rows = await listOutboxMutations(username);
   const stateMismatches: string[] = [];
+  // Notes whose rows this flush already dropped (deleted or archived elsewhere).
+  const settled = new Set<string>();
 
   for (const row of rows) {
     if (row.domain !== NOTES_DOMAIN) continue;
@@ -129,6 +142,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
       if (row.op === "upsert") {
         const upsert = payload as NotesUpsertPayload;
         const noteId = upsert.noteId;
+        if (settled.has(noteId)) continue;
         const metadataRequest = noteMetadataUpsertRequest(
           noteId,
           upsert.metadata,
@@ -149,6 +163,7 @@ export async function flushNotesOutbox(username: string): Promise<OutboxFlushRes
           continue;
         }
         if ("gone" in result) {
+          settled.add(noteId);
           await removeOutboxMutation(username, row.id);
           continue;
         }
