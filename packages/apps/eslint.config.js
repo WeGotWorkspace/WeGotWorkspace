@@ -112,6 +112,76 @@ const messageClassificationRules = {
   ],
 };
 
+const IMPORT_DIRECTION_DOC =
+  "Import direction: src/lib sits below every *-core package, and two app packages do not import each other. Move the shared code down into src/lib or a shared package. See #1642.";
+
+// Files that already carry their own `no-restricted-imports` options (tests,
+// workspace/controller files, panes, stories). A later block replaces earlier
+// options for the same rule, so the direction rules skip them rather than
+// weaken those error-level rules.
+const OWN_IMPORT_RULES = [
+  "src/**/*.test.{ts,tsx}",
+  "src/**/__tests__/**",
+  "src/**/*-workspace.tsx",
+  "src/**/use-*-controller.{ts,tsx}",
+  "src/**/*-pane.tsx",
+  "src/**/*.stories.{ts,tsx}",
+  "src/**/*.stories.*.{ts,tsx}",
+];
+
+// `lib/` must not import a `*-core` package. Baseline when the rule was added:
+// 106 non-test files under src/lib. It is `warn` so lint stays green; the count
+// must only go down.
+const libImportDirectionRule = {
+  "no-restricted-imports": [
+    "warn",
+    {
+      patterns: [{ regex: "^(@/|(\\.\\./)+)[a-z-]+-core(/|$)", message: IMPORT_DIRECTION_DOC }],
+    },
+  ],
+};
+
+// App packages that import each other in both directions today. A one-way
+// import is allowed. Baseline (non-test files importing the other package):
+//   calendar-core 3 <-> meet-core 10
+//   calendar-core 5 <-> tasks-core 3
+//   docs-core 25 <-> drive-core 2
+//   docs-core 9 <-> text-editor-core 21
+//   drive-core 2 <-> text-editor-core 5
+//   meet-core 1 <-> settings-core 1
+// Break a cycle by removing one direction, then drop the pair from this list.
+const TWO_WAY_PAIRS = [
+  ["calendar-core", "meet-core"],
+  ["calendar-core", "tasks-core"],
+  ["docs-core", "drive-core"],
+  ["docs-core", "text-editor-core"],
+  ["drive-core", "text-editor-core"],
+  ["meet-core", "settings-core"],
+];
+
+const forbiddenByPackage = new Map();
+for (const [a, b] of TWO_WAY_PAIRS) {
+  forbiddenByPackage.set(a, [...(forbiddenByPackage.get(a) ?? []), b]);
+  forbiddenByPackage.set(b, [...(forbiddenByPackage.get(b) ?? []), a]);
+}
+
+// One block per package, so blocks never replace each other's options.
+const crossPackageBlocks = [...forbiddenByPackage].map(([pkg, others]) => ({
+  files: [`src/${pkg}/**/*.{ts,tsx}`],
+  ignores: OWN_IMPORT_RULES,
+  rules: {
+    "no-restricted-imports": [
+      "warn",
+      {
+        patterns: others.map((other) => ({
+          group: [`@/${other}`, `@/${other}/**`],
+          message: IMPORT_DIRECTION_DOC,
+        })),
+      },
+    ],
+  },
+}));
+
 export default tseslint.config(
   { ignores: ["dist", ".output"] },
   {
@@ -200,6 +270,12 @@ export default tseslint.config(
     ignores: ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"],
     rules: messageClassificationRules,
   },
+  {
+    files: ["src/lib/**/*.{ts,tsx}"],
+    ignores: OWN_IMPORT_RULES,
+    rules: libImportDirectionRule,
+  },
+  ...crossPackageBlocks,
   eslintPluginPrettier,
   storybook.configs["flat/recommended"],
 );
