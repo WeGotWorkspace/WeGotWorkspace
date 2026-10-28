@@ -58,6 +58,28 @@ See [ics-conversion-matrix.md](ics-conversion-matrix.md) for field mapping.
 
 Composite event ids in paths must be URL-encoded (`#` → `%23`). Scheduling inbox details: [scheduling.md](scheduling.md).
 
+## Published feeds
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/calendars/{calendarId}/feed` | Show the calendar's feed link |
+| POST | `/calendars/{calendarId}/feed` | Publish (returns the existing link if there is one) |
+| DELETE | `/calendars/{calendarId}/feed` | Revoke |
+| GET | `/calendars/feeds/{token}` | Public ICS / webcal feed (guest) |
+
+A feed link belongs to the calendar, not to the member who published it. Each token row in `calendar_feed_tokens` carries the Sabre `calendars.id` with `ON DELETE CASCADE`, so the link stops working when the calendar is deleted on any path (REST, CalDAV, user delete, group delete). It keeps working when the calendar is shared, unshared, or leaves a group.
+
+**Who manages a link.** Show, publish and revoke are open to every principal who may publish the calendar: the owner of a personal calendar, and every member of the group for a group calendar (group members hold owner access to it). Read and read-write sharees cannot see the link. On a group calendar all members see the same link, and any of them can revoke it.
+
+### Upgrade notes
+
+Migration `2026_10_28_000740_wgw_bind_calendar_feed_tokens_to_calendar` converts tokens that were keyed by publisher and calendar uri.
+
+- **An existing link keeps serving the calendar it serves at upgrade time.** Each token is bound to the calendar its uri resolves to during the migration. There is no record of which calendar a link was first published for, so the migration cannot restore an earlier target. After upgrading, check the feeds you rely on. If a link serves the wrong calendar, revoke it and publish the right calendar; that issues a new URL, which subscribers have to add again.
+- **A token that resolves to no calendar is removed.** Its URL returns 404.
+- **A calendar can keep more than one legacy link.** Before the upgrade, two members could each publish the same group calendar. Both links keep working. `GET` and `POST` show the oldest one only; the others are not listed. `DELETE` revokes all links of the calendar at once. New feeds are created at most once per calendar.
+- **Rollback** (`down()`) restores the publisher columns for personal calendar feeds only. Group calendar feeds, and extra links of one calendar beyond the oldest, are removed.
+
 ## Tests
 
 - Feature: `tests/Feature/Calendars/`
