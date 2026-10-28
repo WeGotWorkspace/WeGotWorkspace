@@ -119,7 +119,7 @@ Same as [rtc-network-matrix.md](rtc-network-matrix.md): **pass (M#)**, **fail (M
 
 | Row | P1 visible | P2 hidden | P3 closed | P4 two devices | P5 Meet hidden | P6 rotated | P7 key changed |
 | --- | ---------- | --------- | --------- | -------------- | -------------- | ---------- | -------------- |
-| D1 Chrome tab | pass (M1), incl. P1b | pass (M1), incl. P2b, P2c | | | partial (M1): call pass, lobby (P5b) not proven | | |
+| D1 Chrome tab | pass (M1), incl. P1b | pass (M1), incl. P2b, P2c | pass (M2) | | partial (M1): call pass, lobby (P5b) not proven | | pass (M2) |
 | D2 Chrome installed | | | | | | | |
 | D3 Edge tab | | | | | | | |
 | D4 Edge installed | | | | | | | |
@@ -158,7 +158,29 @@ Build under test: [#1702](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/
 
 ### Not run (M1)
 
-P2d, P3, P4, P6, P7, and every row other than D1.
+P2d, P3, P4, P6, P7, and every row other than D1. P3 and P7 were run later in [M2](#manual-runs-2026-10-28-m2).
+
+<a id="manual-runs-2026-10-28-m2"></a>
+
+## Manual runs — 2026-10-28 (Chrome desktop, partial, M2)
+
+Build under test: `main` of that day plus [#1652](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1652), [#1647](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1647) and [#1651](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1651) merged together on a local test install. [#1702](https://github.com/WeGotWorkspace/WeGotWorkspace/pull/1702) was **not** included. Chrome for Testing desktop, browser tab, A = `member`. Only P3 and P7 were run; this is not the full run.
+
+### Passed (M2)
+
+| ID | Setup | Result |
+| -- | ----- | ------ |
+| P3 | App page closed, browser left running. B sent a DM | After 20 s, the manual sweep printed `sent 1`. One OS notification with the DM text, shown by the service worker |
+| P7 | Moved `vapid-*.txt` aside; the sweep created new keys. App closed, B sent a DM | FCM answered 403. The log had `vapid_send_rejected` (status 403, host `fcm.googleapis.com`, reason `Forbidden`) at warning and one `vapid_sweep_failures` summary; the command printed `push send(s) failed`. The row was pruned and no notification was shown. On reopening: POST with `X-HTTP-Method-Override: DELETE` for the old endpoint (204), then POST of the new subscription (201), leaving one row. The next DM arrived as an OS notification |
+| Log hygiene | `grep` of the log after P7 for `/fcm/send/`, long `/wp/` tokens and `web.push.apple.com/` paths | 0 matches: no endpoint paths in the log |
+
+### Note (M2)
+
+In a brand-new Chrome for Testing profile, the first push after the first subscribe was not shown. Chrome replaced that subscription at once. The new endpoint was posted on the next app load. On the next sweep the old row answered 410 and was pruned (`vapid_send_rejected` at info). In an existing profile every push was delivered. This is not a failure, but watch for it in the full run on real Chrome.
+
+### Not run (M2)
+
+P1, P2, P4, P5, P6, and every row other than D1. P1, P2 and P5 depend on #1702, which was not in this build; see [M1](#manual-runs-2026-10-28).
 
 ## Full run — pending
 
@@ -168,4 +190,4 @@ The last acceptance criterion of [#1608](https://github.com/WeGotWorkspace/WeGot
 - real devices for the Safari, Android and iOS rows;
 - [#1606](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1606) for the per-app expectations in I2.
 
-A person runs it on their own devices. Record it as M2 with the commit under test, and update the scorecard.
+A person runs it on their own devices. Record it as M3 with the commit under test, and update the scorecard.
