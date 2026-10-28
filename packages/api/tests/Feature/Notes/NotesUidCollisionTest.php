@@ -59,6 +59,29 @@ final class NotesUidCollisionTest extends WgwDatabaseTestCase
         )->assertForbidden();
     }
 
+    public function test_another_user_cannot_reuse_a_note_uid_on_create_to_join_its_room(): void
+    {
+        // A create retry is matched on the client UID, so that UID must never
+        // reach a note the caller cannot already read.
+        $uid = (string) $this->as('alice')->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'title' => 'Private',
+            'body' => 'secret',
+        ])->assertCreated()->json('id');
+
+        $this->as('bob')->postJson('/api/v1/notes/items', [
+            'notebookId' => CalendarCollectionUris::NOTE_GENERAL,
+            'uid' => $uid,
+            'title' => 'Mine now',
+            'body' => '',
+        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists')->assertJsonMissing(['title' => 'Private']);
+
+        $room = '/api/v1/rooms/'.RoomTestHelper::fileRoomId($uid).'/participants';
+        $this->as('bob')->postJson($room, ['name' => 'Bob'])->assertForbidden();
+        $this->as('alice')->postJson($room, ['name' => 'Alice'])->assertSuccessful();
+        $this->as('alice')->getJson('/api/v1/notes/items/'.$uid)->assertOk()->assertJsonPath('title', 'Private');
+    }
+
     public function test_a_caldav_client_still_writes_its_own_notes(): void
     {
         $uid = 'dav-client-note-1';
