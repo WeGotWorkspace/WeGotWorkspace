@@ -224,6 +224,7 @@ describe("ensurePushPermissionAndSubscribe", () => {
     expect(subscribe).not.toHaveBeenCalled();
     expect(subscribePush).not.toHaveBeenCalled();
   });
+
   it("runs one replacement when several subscribe runs start at once", async () => {
     stubNotification("granted");
     const stale = storedSubscription([9, 9, 9]);
