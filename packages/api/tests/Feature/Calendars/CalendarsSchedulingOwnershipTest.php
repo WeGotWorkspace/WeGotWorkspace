@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Calendars;
 
 use App\Dav\SabreServerFactory;
+use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\Principal;
@@ -17,6 +18,7 @@ use App\Services\Settings\SettingKeys;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Sabre\DAV\Exception as SabreDavException;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\HTTP\Request as SabreRequest;
@@ -320,6 +322,57 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('SUMMARY:Plan v2', $this->ics($copies[0]));
     }
 
+    /**
+     * @return array<string, array{0: array<string, bool>}>
+     */
+    public static function shareRights(): array
+    {
+        return [
+            'read-only share' => [['mayReadItems' => true]],
+            'write share' => [['mayWriteAll' => true]],
+        ];
+    }
+
+    /**
+     * @param  array<string, bool>  $rights
+     */
+    #[DataProvider('shareRights')]
+    public function test_caldav_invite_does_not_reach_an_event_in_a_calendar_shared_to_the_attendee(array $rights): void
+    {
+        $this->createCalendar('dave', 'dave-plans', ['carol' => $rights]);
+        $daveEventId = $this->createEvent('dave', 'dave-plans', 'Dave only');
+        $uid = $this->uidOf('dave', $daveEventId);
+        $before = $this->calendarData('dave', 'dave-plans', $uid);
+
+        $status = $this->sabrePut('bob', '/calendars/bob/default/shared-uid.ics', $this->inviteIcs($uid, 'Bob invite'));
+
+        $this->assertContains($status, [201, 204]);
+        $this->assertSame($before, $this->calendarData('dave', 'dave-plans', $uid));
+        $this->assertSame('Dave only', $this->titleOf('dave', $daveEventId));
+        $copies = $this->ownedObjects('carol', $uid);
+        $this->assertCount(1, $copies, 'the attendee gets a separate copy in a calendar she owns');
+        $this->assertStringContainsString('SUMMARY:Bob invite', $this->ics($copies[0]));
+    }
+
+    public function test_caldav_new_invite_copy_lands_in_a_calendar_the_attendee_owns(): void
+    {
+        $this->createCalendar('dave', 'dave-plans', ['carol' => ['mayWriteAll' => true]]);
+        // List the shared calendar first in the attendee's calendar home.
+        foreach (CalendarInstance::query()->where('principaluri', 'principals/carol')->get() as $instance) {
+            $instance->update(['calendarorder' => (int) $instance->access === SharingPlugin::ACCESS_SHAREDOWNER ? 2 : 1]);
+        }
+        $first = app(WgwCalendarBackendFactory::class)->make()->getCalendarsForUser('principals/carol')[0] ?? [];
+        $this->assertNotSame(SharingPlugin::ACCESS_SHAREDOWNER, (int) ($first['share-access'] ?? 0));
+        $uid = 'caldav-new-'.uniqid();
+
+        $this->assertContains($this->sabrePut('bob', '/calendars/bob/default/new.ics', $this->inviteIcs($uid, 'Fresh invite')), [201, 204]);
+
+        $this->assertNull($this->calendarData('dave', 'dave-plans', $uid));
+        $copies = $this->ownedObjects('carol', $uid);
+        $this->assertCount(1, $copies);
+        $this->assertStringContainsString('SUMMARY:Fresh invite', $this->ics($copies[0]));
+    }
+
     // ---- helpers ------------------------------------------------------------
 
     /**
@@ -481,6 +534,24 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
             ->orderBy('id')
             ->get()
             ->all());
+    }
+
+    /**
+     * Raw data of the object with the UID in one of the owner's calendars.
+     */
+    private function calendarData(string $owner, string $calendarUri, string $uid): ?string
+    {
+        $calendarId = CalendarInstance::query()
+            ->where('principaluri', 'principals/'.$owner)
+            ->where('uri', $calendarUri)
+            ->value('calendarid');
+        $this->assertNotNull($calendarId);
+        $data = CalendarObject::query()
+            ->where('calendarid', (int) $calendarId)
+            ->where('uid', $uid)
+            ->value('calendardata');
+
+        return $data === null ? null : (string) $data;
     }
 
     private function ics(CalendarObject $object): string
