@@ -5875,7 +5875,7 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
-                /** @description `external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. */
+                /** @description `external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. `note_archived` — the note is archived (STATUS:CANCELLED). Nothing is written; restore the note first. Both codes are in `error` and `code`. */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -5954,7 +5954,15 @@ export interface paths {
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
                 404: components["responses"]["JmapNotFound"];
-                409: components["responses"]["JmapConflict"];
+                /** @description `alreadyExists` — a move would put the note in a notebook that already holds its UID. `note_archived` — the note is archived (STATUS:CANCELLED) and the patch carries `title`, `body`, `categories`, `categoriesAdd`, `categoriesRemove`, `notebookId`, or `yjs`. Nothing is written. A patch with only `status` (restore, or archive again) is accepted. The code is in `error` and `code`. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 412: components["responses"]["JmapPreconditionFailed"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
@@ -9893,7 +9901,7 @@ export interface components {
         ContactCardImportError: {
             index: number;
             message: string;
-            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex). */
+            /** @description Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed). */
             code?: string;
         };
         /** @description REST response for POST /contacts/cards/import. Per-card payload or property-cap failures appear in errors[] with code; siblings may still be in list. */

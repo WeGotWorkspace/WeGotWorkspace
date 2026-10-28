@@ -6938,7 +6938,7 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex)."
+                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed)."
                     }
                 },
                 "additionalProperties": false
@@ -17469,7 +17469,7 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     },
                     "409": {
-                        "description": "`external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse.",
+                        "description": "`external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. `note_archived` — the note is archived (STATUS:CANCELLED). Nothing is written; restore the note first. Both codes are in `error` and `code`.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -17548,7 +17548,14 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     },
                     "409": {
-                        "$ref": "#/components/responses/JmapConflict"
+                        "description": "`alreadyExists` — a move would put the note in a notebook that already holds its UID. `note_archived` — the note is archived (STATUS:CANCELLED) and the patch carries `title`, `body`, `categories`, `categoriesAdd`, `categoriesRemove`, `notebookId`, or `yjs`. Nothing is written. A patch with only `status` (restore, or archive again) is accepted. The code is in `error` and `code`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "412": {
                         "$ref": "#/components/responses/JmapPreconditionFailed"

@@ -24,6 +24,7 @@ use App\Dav\Server\RecurrenceGuardPlugin;
 use App\Dav\Server\SearchIndexPlugin;
 use App\Dav\Server\WebdavWriteGuardPlugin;
 use App\Dav\Server\WgwCalendarBackend;
+use App\Dav\Server\WgwCardBackend;
 use App\Events\EventDispatch;
 use App\Services\Calendars\CalendarMeetLinkWriteHook;
 use App\Services\Contacts\MemberUriSanitizer;
@@ -90,7 +91,7 @@ final class SabreServerFactory
             $nodes[] = new AppCalendarRoot($principalBackend, $caldavBackend, $authPlugin);
         }
         if ($card) {
-            $carddavBackend = new CardDAV\Backend\PDO($pdo);
+            $carddavBackend = new WgwCardBackend($pdo);
             $nodes[] = new AppAddressBookRoot($principalBackend, $carddavBackend, $authPlugin);
         }
         if ($files) {

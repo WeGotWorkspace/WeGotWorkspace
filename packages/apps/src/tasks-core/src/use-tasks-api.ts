@@ -143,8 +143,9 @@ export function useTasksAPI(source?: TasksApiSource, options?: UseTasksAPIOption
     retry: load,
     successVersion,
     bootstrapRevision,
-    listLoading: phase === "loading" || reconnectSyncing,
-    listRefreshing,
+    // First paint only. A reconnect keeps the cached list and spins the refresh icon (#1532).
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

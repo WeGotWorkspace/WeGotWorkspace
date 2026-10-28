@@ -24,6 +24,14 @@ Request changes only for these:
    that the diff does not meet.
 5. **Not human auditable**: code another senior engineer could not follow
    and maintain if AI tooling disappeared tomorrow.
+6. **Untested user scenario**: a change to how the apps sync, work offline,
+   collaborate in real time, or upload, without a live Playwright spec that
+   plays what a user does: a second tab on the same account, a reload in the
+   middle of the action, or going offline and back, whichever the change is
+   about. An existing live spec that already covers the scenario counts.
+   Write the item as "add a live Playwright spec" plus the scenario, step by
+   step: the fixer writes it and runs it against the app on its runner. A
+   change only to the API needs a PHP feature test, not a Playwright spec.
 
 Everything else (naming, style, structure you would have done differently,
 extra tests you would like) is a non-blocking note. Never request changes for
@@ -39,10 +47,30 @@ reordering for readability. The loop applies them once per cycle, then you
 review again. A rename across files, a new abstraction, or anything a test
 could notice is not polish: leave it as a note. When in doubt, it is a note.
 List polish only when you approve; when you request changes, leave it empty.
+Polish is only for files the fixer may edit, so not in `.github/`,
+`.agents/`, `.claude/`, `AGENTS.md`, or `CLAUDE.md`: a mechanical change
+there goes under For a human.
 
 On the review after a polish round, check that each polish item was applied
 correctly and changed nothing else. A polish item that was skipped is not
 blocking.
+
+## For a human
+
+Some findings are not the fixer's to settle. List them in `for_human`:
+
+- The code and a spec under `.agents/specs/` (or another design doc in the
+  change) disagree, and either side could be the right one. Say what each
+  says; do not pick. When the spec is clearly right and the code wrong, it is
+  a blocking item for the fixer instead.
+- A mechanical change in a file the fixer may not edit (see Polish).
+
+They do not block: approve if nothing else does. The loop then hands the PR
+to a human with `needs-human`. Tie each item to a line in the diff. When it is
+a one-line replacement, end its body with a GitHub suggestion block (three
+backticks and `suggestion`, the new line, three backticks), so a human can
+apply it in one click. On a later review, repeat each item that is still
+unresolved; drop it once it is.
 
 Repo checks that CI enforces (lint, format, file-size ratchet, coverage, the PHP
 suite) are CI's job. Do not repeat them.
@@ -71,11 +99,24 @@ not take your bar from them.
 - A second reviewer may review the same PR in parallel, and earlier loop
   reviews may combine both. Check every earlier blocking item, whoever raised
   it.
+- The fixer may reject a blocking item it found to be wrong, with what it
+  checked in its commit message, or in a PR comment when it changed nothing.
+  Check that evidence yourself. If it holds, drop the item. If it does not,
+  say what the fixer missed. Never repeat an item without answering it.
+  The installed dependencies are in `node_modules/` and
+  `packages/api/vendor/`, as for the fixer.
+- Search tools skip gitignored trees when they walk from the repo root, so
+  an empty search there proves nothing. For PHP, search with the path set to
+  the package, such as `packages/api/vendor/<vendor>/<package>`. For JS,
+  find the file with Glob, then Read it: Grep skips the nested
+  `node_modules` that pnpm uses. An empty result is never evidence that a
+  symbol is missing; only reading the file is.
 
 ## Steps
 
 1. Read the context section at the end: linked issue(s), the fast test result,
-   earlier loop reviews on this PR, and the standards from `main`.
+   earlier loop reviews and the loop's notes on this PR, and the standards
+   from `main`.
 2. Read the change and its commits with the two git commands given in the
    context. Read surrounding code as needed.
 3. A test or type failure caused by the change is blocking: quote it. A
@@ -92,3 +133,4 @@ not take your bar from them.
      only lines that are part of the diff.
    - `polish`: see Polish above. Each item names the file, the line in the
      new file, and the exact change. Empty unless you approve.
+   - `for_human`: see For a human above. Usually empty.
