@@ -17,7 +17,6 @@ import type {
   DriveAPIOperations,
   DriveAppBootstrap,
   DriveMutationOpts,
-  DriveUploadProgress,
   DriveUIData,
 } from "@/drive-core/src/drive-types";
 
@@ -56,16 +55,9 @@ export async function setDriveFileStar(
   if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
 }
 
-function uploadIdentifier(file: File): string {
-  const raw = `${file.name}-${file.size}-${file.lastModified}`;
-  return raw.replace(/[^0-9A-Za-z_]/g, "_");
-}
-
 function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
   return !entry.name.trim().startsWith(".");
 }
-
-const DRIVE_UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024; // Stay below stricter upload_max_filesize defaults.
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
@@ -284,6 +276,13 @@ function createSharedDriveOperations(): Pick<
 }
 
 /**
+ * Guests cannot upload yet: they will use the same upload queue and JMAP path
+ * as signed-in users (Epic #1499). Until then the Drive UI offers no upload
+ * to guests, and these operations refuse before any request is sent.
+ */
+export const GUEST_UPLOAD_UNAVAILABLE = "Uploading is not available for guests yet.";
+
+/**
  * Guests list over REST `/files/children`, which has no FileNode id.
  * Offline sync never runs for a guest (`useDriveAPI` skips that session),
  * so this route leaves `nodeId` empty instead of growing a guest cache.
@@ -374,9 +373,8 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
       if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
       return res.blob();
     },
-    async checkUploadReady(opts) {
-      const res = await wgwFetch("/files/content", { method: "HEAD", signal: opts?.signal });
-      if (!res.ok) throw new Error(`HEAD /files/content failed (${res.status})`);
+    async checkUploadReady() {
+      throw new Error(GUEST_UPLOAD_UNAVAILABLE);
     },
     async listEntriesByPaths(paths, opts) {
       const normalized = Array.from(
@@ -410,62 +408,8 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
         .map((path) => entriesByPath.get(path))
         .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
     },
-    async uploadFiles(input, opts) {
-      const targetCwd = normalizePath(input.cwd);
-      const totalBytes = input.files.reduce((sum, file) => sum + file.size, 0);
-      const allChunks = input.files.reduce(
-        (sum, file) => sum + Math.max(1, Math.ceil(file.size / DRIVE_UPLOAD_CHUNK_SIZE)),
-        0,
-      );
-      let uploadedBytes = 0;
-      let uploadedChunks = 0;
-      let filesCompleted = 0;
-      const filesTotal = input.files.length;
-      const publishProgress = (currentFileName: string) => {
-        if (!opts?.onProgress) return;
-        const progress: DriveUploadProgress = {
-          uploadedBytes,
-          totalBytes,
-          uploadedChunks,
-          totalChunks: allChunks,
-          currentFileName,
-          filesCompleted,
-          filesTotal,
-        };
-        opts.onProgress(progress);
-      };
-      publishProgress(input.files[0]?.name ?? "");
-      for (const file of input.files) {
-        const fileChunks = Math.max(1, Math.ceil(file.size / DRIVE_UPLOAD_CHUNK_SIZE));
-        const identifier = uploadIdentifier(file);
-        for (let chunkIndex = 0; chunkIndex < fileChunks; chunkIndex += 1) {
-          const start = chunkIndex * DRIVE_UPLOAD_CHUNK_SIZE;
-          const end = Math.min(file.size, start + DRIVE_UPLOAD_CHUNK_SIZE);
-          const chunkBlob = file.slice(start, end);
-
-          const form = new FormData();
-          form.append("file", chunkBlob, file.name);
-          form.append("resumableFilename", file.name);
-          form.append("resumableIdentifier", identifier);
-          form.append("resumableChunkNumber", String(chunkIndex + 1));
-          form.append("resumableTotalChunks", String(fileChunks));
-
-          const res = await wgwFetch(`/files/content?${pathQuery(targetCwd)}`, {
-            method: "POST",
-            body: form,
-            signal: opts?.signal,
-          });
-          if (!res.ok) throw new Error(`POST /files/content failed (${res.status})`);
-          uploadedChunks += 1;
-          uploadedBytes += chunkBlob.size;
-          publishProgress(file.name);
-        }
-        filesCompleted += 1;
-        publishProgress(file.name);
-      }
-      const state = await fetchGuestState(targetCwd, opts);
-      cwd = normalizePath(state.cwd);
-      return state;
+    async uploadFiles() {
+      throw new Error(GUEST_UPLOAD_UNAVAILABLE);
     },
   };
 }
