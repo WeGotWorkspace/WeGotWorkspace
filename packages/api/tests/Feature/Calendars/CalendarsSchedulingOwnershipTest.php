@@ -18,6 +18,7 @@ use App\Services\MailDelivery\OutboundMessageMail;
 use App\Services\Settings\SettingKeys;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
@@ -45,6 +46,8 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
     /** @var list<array<string, mixed>> */
     private array $skippedDeliveries = [];
 
+    private ?string $sabreDataDir = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -57,6 +60,15 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
                 $this->skippedDeliveries[] = array_intersect_key($event->context, array_flip(['uid', 'recipient', 'method']));
             }
         });
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->sabreDataDir !== null) {
+            File::deleteDirectory($this->sabreDataDir);
+            $this->sabreDataDir = null;
+        }
+        parent::tearDown();
     }
 
     public function test_invite_with_an_existing_uid_leaves_the_attendees_own_event_unchanged(): void
@@ -591,18 +603,24 @@ final class CalendarsSchedulingOwnershipTest extends WgwDatabaseTestCase
     private function inviteIcs(string $uid, string $summary, int $sequence = 0): string
     {
         return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WGW//Test//EN\r\n"
-            ."BEGIN:VEVENT\r\nUID:{$uid}\r\nSEQUENCE:{$sequence}\r\nSUMMARY:{$summary}\r\n"
+            ."BEGIN:VEVENT\r\nUID:{$uid}\r\nDTSTAMP:20300101T000000Z\r\nSEQUENCE:{$sequence}\r\nSUMMARY:{$summary}\r\n"
             ."DTSTART:20300304T100000Z\r\nDTEND:20300304T110000Z\r\n"
             ."ORGANIZER;CN=Bob:mailto:bob@example.test\r\n"
             ."ATTENDEE;CN=Carol;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:mailto:carol@example.test\r\n"
             ."END:VEVENT\r\nEND:VCALENDAR\r\n";
     }
 
+    /**
+     * PUT through Sabre as $username. Sabre keeps its lock file in the data
+     * dir, so the test points it at one temporary dir (removed in tearDown).
+     */
     private function sabrePut(string $username, string $path, string $body): int
     {
-        $dataDir = sys_get_temp_dir().'/wgw-sabre-sched-'.uniqid('', true);
-        mkdir($dataDir, 0775, true);
-        config(['wgw.data_dir' => $dataDir]);
+        if ($this->sabreDataDir === null) {
+            $this->sabreDataDir = sys_get_temp_dir().'/wgw-sabre-sched-'.uniqid('', true);
+            mkdir($this->sabreDataDir, 0775, true);
+            config(['wgw.data_dir' => $this->sabreDataDir]);
+        }
         $auth = 'Basic '.base64_encode($username.':secret');
         $_SERVER['HTTP_AUTHORIZATION'] = $auth;
 
