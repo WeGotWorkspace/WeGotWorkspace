@@ -27,11 +27,7 @@ final class CalendarRsvpService
     {
         $row = $this->validToken($token, $ip);
 
-        return [
-            'title' => $this->eventTitle($row),
-            'attendeeEmail' => (string) $row->attendee_email,
-            'participationStatus' => (string) ($row->used_partstat ?? 'needs-action'),
-        ];
+        return $this->summary($row, $this->findOrganizerEvent($row));
     }
 
     /**
@@ -74,7 +70,21 @@ final class CalendarRsvpService
         $row->used_partstat = $status;
         $row->save();
 
-        return $this->show($token, $ip);
+        // Same token check as show(), so an answer still counts as a second attempt.
+        return $this->summary($this->validToken($token, $ip), $event);
+    }
+
+    /**
+     * @param  array{object: CalendarObject, instance: CalendarInstance}|null  $event
+     * @return array{title: string, attendeeEmail: string, participationStatus: string}
+     */
+    private function summary(CalendarRsvpToken $row, ?array $event): array
+    {
+        return [
+            'title' => $this->eventTitle($row, $event),
+            'attendeeEmail' => (string) $row->attendee_email,
+            'participationStatus' => (string) ($row->used_partstat ?? 'needs-action'),
+        ];
     }
 
     private function validToken(string $token, string $ip): CalendarRsvpToken
@@ -102,9 +112,11 @@ final class CalendarRsvpService
         return $this->objects->organizerEvent((string) $row->organizer_username, (string) $row->event_uid);
     }
 
-    private function eventTitle(CalendarRsvpToken $row): string
+    /**
+     * @param  array{object: CalendarObject, instance: CalendarInstance}|null  $event
+     */
+    private function eventTitle(CalendarRsvpToken $row, ?array $event): string
     {
-        $event = $this->findOrganizerEvent($row);
         if ($event === null) {
             return 'Invitation';
         }
