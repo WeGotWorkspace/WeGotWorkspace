@@ -341,7 +341,10 @@ export function useDocsCollabJoin({
       if (snapshot.kind === "snapshot") {
         const pendingLocalWork =
           refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-        const action = decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
+        // Without the text there is nothing to rebuild from or to ask about.
+        const action = load.markdownError
+          ? "adopt"
+          : decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
         rememberSidecarEtag(room, snapshot.etag);
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {

@@ -205,6 +205,35 @@ describe("Docs external write (#1349)", () => {
     expect(result.current.prompt.open).toBe(false);
   }, 15_000);
 
+  it("adopts the snapshot and queues no save when the text read fails", async () => {
+    const puts: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("format=yjs")) {
+          return new Response(staleState(), {
+            status: 200,
+            headers: { ETag: '"sidecar"', "X-Wgw-External-Write": "1" },
+          });
+        }
+        if ((init?.method ?? "GET") === "PUT") {
+          puts.push(markdownFromFramedSave(init?.body));
+          return new Response("{}", { status: 200, headers: { ETag: '"saved"' } });
+        }
+        return new Response("{}", { status: 500 });
+      }),
+    );
+
+    const { result } = renderDocsWorkspaceHooks(docsUrls("docs/external-text-fails.md"));
+
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1500)));
+    expect(result.current.prompt.open).toBe(false);
+    expect(puts).toEqual([]);
+    const ydoc = result.current.collab.session?.ydoc;
+    expect(ydoc?.getText("stale-marker").toString()).toBe("stale");
+  }, 15_000);
+
   it("asks once with unsaved work and writes nothing while the prompt is up", async () => {
     const room = "docs/external-prompt.md";
     await markUnsavedWork(room);

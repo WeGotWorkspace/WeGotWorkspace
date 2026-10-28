@@ -133,6 +133,19 @@ test.describe("Docs collab outside write (live app)", () => {
 
     expect(await replaceViaFileNodeSet(page, fileName, ORIGINAL)).toBe(fileName);
 
+    // A second page in the same context joins the first page's tab-sync channel.
+    const sibling = await page.context().newPage();
+    await sibling.goto(docsUrlForFile(apiPath));
+    const siblingEditor = sibling.locator(".ProseMirror");
+    await expect(siblingEditor).toContainText(KEPT, { timeout: 30_000 });
+    await expect(siblingEditor).not.toContainText(TYPED);
+
+    // The already-open first page follows the rebuild without a reload.
+    await expect(editor).toContainText(KEPT, { timeout: 30_000 });
+    await expect(editor).not.toContainText(TYPED);
+    expect(((await editor.innerText()).match(/The text from the upload\./g) ?? []).length).toBe(1);
+    await sibling.close();
+
     // A fresh browser (no IndexedDB) while the first tab still holds the old state.
     const fresh = await browser.newContext({ storageState: await page.context().storageState() });
     const freshPage = await fresh.newPage();
@@ -141,9 +154,9 @@ test.describe("Docs collab outside write (live app)", () => {
     await expect(freshEditor).toContainText(KEPT, { timeout: 30_000 });
     await expect(freshEditor).not.toContainText(TYPED);
 
-    // Reopening the first tab (same IndexedDB) shows the upload too. That the
-    // open tab follows the fresh browser's rebuild over the mesh is covered by
-    // unit tests: two local contexts here do not form a mesh link.
+    // Reopening the first tab (same IndexedDB) shows the upload too. Separate
+    // browser contexts do not form a mesh link; the open tab's follow-up is
+    // checked above through the shared tab-sync channel.
     await fresh.close();
     await page.reload();
     const reopened = page.locator(".ProseMirror");
