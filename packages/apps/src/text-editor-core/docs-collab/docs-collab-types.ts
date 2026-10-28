@@ -100,8 +100,8 @@ export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {
 export type DocsCollabSession = {
   ydoc: Y.Doc;
   awareness: awarenessProtocol.Awareness;
-  /** `id` is a stable per-name author id used by track-changes (suggestion mode). */
-  user: { name: string; color: string; id: string };
+  /** Caret label and colour for peers (awareness only, never stored in the document). */
+  user: { name: string; color: string };
 };
 
 export type UseDocsCollabOptions = {

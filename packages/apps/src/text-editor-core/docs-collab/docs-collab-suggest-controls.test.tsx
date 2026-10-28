@@ -31,7 +31,8 @@ function createCollabEditor() {
     extensions: createCollaborativeTextEditorExtensions({
       document: ydoc,
       awareness,
-      user: { id: "u1", name: "Alex", color: "#3366ff" },
+      trackChangesUserKey: crypto.randomUUID(),
+      user: { name: "Alex", color: "#3366ff" },
       format: "markdown",
     }),
   });

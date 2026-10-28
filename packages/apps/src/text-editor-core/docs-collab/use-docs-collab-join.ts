@@ -53,7 +53,6 @@ import {
   MESH_ORIGIN,
   SERVER_ORIGIN,
 } from "./docs-collab-utils";
-import { trackChangesAuthorIdFromName } from "@/text-editor-core/src/text-editor-track-changes";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type MeshApi = Pick<
@@ -577,7 +576,7 @@ export function useDocsCollabJoin({
 
     const awareness = new awarenessProtocol.Awareness(ydoc);
     refs.awarenessRef.current = awareness;
-    const user = { name, color: colorForName(name), id: trackChangesAuthorIdFromName(name) };
+    const user = { name, color: colorForName(name) };
     awareness.setLocalStateField("user", user);
 
     setSession({
