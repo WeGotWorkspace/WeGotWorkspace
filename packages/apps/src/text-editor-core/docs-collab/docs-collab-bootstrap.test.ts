@@ -324,6 +324,13 @@ describe("adoptServerSnapshot", () => {
     return local;
   }
 
+  /** The join bootstrap: the local copy loaded from IndexedDB, then the snapshot arrived. */
+  function adoptOnJoin(local: Y.Doc, server: Y.Doc, loaded: Map<number, number>): boolean {
+    return adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", loaded, {
+      keepUnsavedEdits: true,
+    });
+  }
+
   it("keeps another tab's unsaved text that is in the local copy but not yet on the server (#1722)", () => {
     const server = docWithText("Saved line");
     const local = localCopyAheadOfServer(server, (other) => {
@@ -332,12 +339,7 @@ describe("adoptServerSnapshot", () => {
       appendParagraph(other, "a new paragraph");
     });
 
-    const dropped = adoptServerSnapshot(
-      local,
-      Y.encodeStateAsUpdate(server),
-      "server",
-      stateVector(local),
-    );
+    const dropped = adoptOnJoin(local, server, stateVector(local));
 
     const text = fragmentText(local);
     expect(text).toContain("Saved line typed just now");
@@ -356,7 +358,7 @@ describe("adoptServerSnapshot", () => {
       typed.insert(5, " and more");
     });
 
-    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+    adoptOnJoin(local, server, stateVector(local));
 
     const text = fragmentText(local);
     expect(text).toContain("first and more");
@@ -373,7 +375,7 @@ describe("adoptServerSnapshot", () => {
     });
     first.destroy();
 
-    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+    adoptOnJoin(local, server, stateVector(local));
 
     expect(fragmentText(local)).toContain("tab one, then tab two");
   });
@@ -385,7 +387,7 @@ describe("adoptServerSnapshot", () => {
       other.getText("title").insert(0, "First title");
     });
 
-    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+    adoptOnJoin(local, server, stateVector(local));
 
     expect(local.getMap("comments").get("thread-1")).toBe("unsaved comment");
     expect(local.getText("title").toString()).toBe("First title");
@@ -399,7 +401,7 @@ describe("adoptServerSnapshot", () => {
     Y.applyUpdate(local, Y.encodeStateAsUpdate(server));
     const loaded = stateVector(local);
 
-    const dropped = adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", loaded);
+    const dropped = adoptOnJoin(local, server, loaded);
 
     const text = fragmentText(local);
     expect(text).toContain("server copy");
@@ -413,7 +415,7 @@ describe("adoptServerSnapshot", () => {
     const server = docWithText("server copy");
     server.getText("title").insert(0, "Server title");
 
-    adoptServerSnapshot(local, Y.encodeStateAsUpdate(server), "server", stateVector(local));
+    adoptOnJoin(local, server, stateVector(local));
 
     expect(local.getText("title").toString()).toBe("Server title");
   });
@@ -428,6 +430,22 @@ describe("adoptServerSnapshot", () => {
     const text = fragmentText(local);
     expect(text).toContain("uploaded text");
     expect(text).not.toContain("unsaved");
+  });
+
+  it("deletes all of the given history without keepUnsavedEdits (rebuild over a stale sidecar)", () => {
+    const stale = docWithText("old text");
+    stale.getMap("comments").set("thread-1", "old comment");
+    stale.getText("title").insert(0, "Old title");
+    const local = new Y.Doc();
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(stale));
+    const rebuilt = docWithText("uploaded text");
+
+    adoptServerSnapshot(local, Y.encodeStateAsUpdate(rebuilt), "server", stateVector(stale));
+
+    expect(fragmentText(local)).toContain("uploaded text");
+    expect(fragmentText(local)).not.toContain("old text");
+    expect(local.getMap("comments").get("thread-1")).toBeUndefined();
+    expect(local.getText("title").toString()).toBe("");
   });
 
   it("reports whether it dropped local state", () => {

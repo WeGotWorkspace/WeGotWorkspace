@@ -1,6 +1,7 @@
 import * as encoding from "lib0/encoding";
 import * as Y from "yjs";
 import type { YjsSnapshot } from "./docs-collab-server-io";
+import { type ClockRange, findStaleSeedRanges } from "./docs-collab-stale-seed";
 import { isCollabDocumentGoneError } from "./docs-collab-utils";
 
 /** Backoff for a snapshot that failed for any reason other than "no sidecar". */
@@ -142,10 +143,20 @@ export function decideServerStateAdoption({
   return pendingServerSave ? "merge" : "adopt-server";
 }
 
+export type AdoptServerSnapshotOptions = {
+  /**
+   * Keep the loaded items that were written on top of server content and drop
+   * only a seed the local copy built on its own (`findStaleSeedRanges`). The
+   * shared local copy also holds text other tabs typed but have not saved yet
+   * (#1722). The join bootstrap sets this; an outside rewrite does not.
+   */
+  keepUnsavedEdits?: boolean;
+};
+
 /**
- * Adopt the server snapshot: apply it, then delete only the items this doc
- * has that the server does not (a stale local seed). Never wipe the body —
- * items the doc already holds are skipped by applyUpdate, so a wipe would stick.
+ * Adopt the server snapshot: apply it, then delete the local items it lacks
+ * that are a stale local seed. Never wipe the body — items the doc already
+ * holds are skipped by applyUpdate, so a wipe would stick.
  *
  * `loadedStateVector` is the doc's state when its local copy finished loading.
  * Only those items can be a stale seed; anything added since was typed or
@@ -159,31 +170,61 @@ export function adoptServerSnapshot(
   update: Uint8Array,
   origin: string,
   loadedStateVector?: ReadonlyMap<number, number>,
+  { keepUnsavedEdits = false }: AdoptServerSnapshotOptions = {},
 ): boolean {
   const serverSv = Y.decodeStateVector(Y.encodeStateVectorFromUpdate(update));
   const localSv = Y.decodeStateVector(Y.encodeStateVector(ydoc));
-  const localOnly: Array<[client: number, clock: number, len: number]> = [];
-  for (const [client, localClock] of localSv) {
-    const serverClock = serverSv.get(client) ?? 0;
-    const staleEnd = loadedStateVector
-      ? Math.min(localClock, loadedStateVector.get(client) ?? 0)
-      : localClock;
-    if (staleEnd > serverClock) localOnly.push([client, serverClock, staleEnd - serverClock]);
+  const localOnly = localItemsTheServerLacks(localSv, serverSv, loadedStateVector ?? localSv);
+  if (localOnly.length === 0) {
+    Y.applyUpdate(ydoc, update, origin);
+    return false;
   }
+  let dropped = false;
   ydoc.transact(() => {
     Y.applyUpdate(ydoc, update, origin);
-    if (localOnly.length === 0) return;
-    const encoder = new Y.UpdateEncoderV1();
-    encoding.writeVarUint(encoder.restEncoder, 0); // no structs, delete set only
-    encoding.writeVarUint(encoder.restEncoder, localOnly.length);
-    for (const [client, clock, len] of localOnly) {
-      encoder.resetDsCurVal();
-      encoding.writeVarUint(encoder.restEncoder, client);
-      encoding.writeVarUint(encoder.restEncoder, 1);
+    // The stale-seed check reads the server's content, so it runs after the apply.
+    const stale = keepUnsavedEdits ? findStaleSeedRanges(ydoc, localOnly) : localOnly;
+    if (stale.length === 0) return;
+    Y.applyUpdate(ydoc, encodeDeleteSet(stale), origin);
+    dropped = true;
+  }, origin);
+  return dropped;
+}
+
+/** Per client, the clocks the local doc holds, up to `limit`, past the server's. */
+function localItemsTheServerLacks(
+  localSv: ReadonlyMap<number, number>,
+  serverSv: ReadonlyMap<number, number>,
+  limit: ReadonlyMap<number, number>,
+): ClockRange[] {
+  const ranges: ClockRange[] = [];
+  for (const [client, localClock] of localSv) {
+    const serverClock = serverSv.get(client) ?? 0;
+    const end = Math.min(localClock, limit.get(client) ?? 0);
+    if (end > serverClock) ranges.push({ client, clock: serverClock, len: end - serverClock });
+  }
+  return ranges;
+}
+
+/** An update with no structs, only a delete set. Ranges are sorted by client. */
+function encodeDeleteSet(ranges: readonly ClockRange[]): Uint8Array {
+  const byClient = new Map<number, ClockRange[]>();
+  for (const range of ranges) {
+    const list = byClient.get(range.client) ?? [];
+    list.push(range);
+    byClient.set(range.client, list);
+  }
+  const encoder = new Y.UpdateEncoderV1();
+  encoding.writeVarUint(encoder.restEncoder, 0); // no structs
+  encoding.writeVarUint(encoder.restEncoder, byClient.size);
+  for (const [client, list] of byClient) {
+    encoder.resetDsCurVal();
+    encoding.writeVarUint(encoder.restEncoder, client);
+    encoding.writeVarUint(encoder.restEncoder, list.length);
+    for (const { clock, len } of list) {
       encoder.writeDsClock(clock);
       encoder.writeDsLen(len);
     }
-    Y.applyUpdate(ydoc, encoder.toUint8Array(), origin);
-  }, origin);
-  return localOnly.length > 0;
+  }
+  return encoder.toUint8Array();
 }
