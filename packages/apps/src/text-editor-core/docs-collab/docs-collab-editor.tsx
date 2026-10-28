@@ -27,7 +27,9 @@ import "@/text-editor-core/src/text-editor.css";
 export type DocsCollabEditorProps = {
   ydoc: Y.Doc;
   awareness: Awareness;
-  user: { name: string; color: string; id?: string };
+  user: { name: string; color: string };
+  /** Principal plus document, so the suggestion author id survives a remount. */
+  trackChangesUserKey: string;
   format?: TextEditorContentFormat;
   formatBar?: boolean | TextEditorFormatBarConfig;
   sheetFill?: boolean;
@@ -77,6 +79,7 @@ export function DocsCollabEditor({
   ydoc,
   awareness,
   user,
+  trackChangesUserKey,
   format = "markdown",
   formatBar = true,
   sheetFill = false,
@@ -150,6 +153,7 @@ export function DocsCollabEditor({
         document: ydoc,
         awareness,
         user,
+        trackChangesUserKey,
         fetchImageContent,
       }),
       editorProps,
@@ -161,7 +165,7 @@ export function DocsCollabEditor({
         ed.commands.updateUser(user);
       },
     },
-    [ydoc, awareness, format, user.color, user.name],
+    [ydoc, awareness, format, user.color, user.name, trackChangesUserKey],
   );
 
   useEffect(() => {

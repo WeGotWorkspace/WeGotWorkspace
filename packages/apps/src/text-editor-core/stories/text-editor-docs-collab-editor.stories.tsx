@@ -13,6 +13,7 @@ function DocsCollabEditorHarness() {
         ydoc={session.ydoc}
         awareness={session.awareness}
         user={session.user}
+        trackChangesUserKey="story"
         format="markdown"
         sheetFill
         formatBar={{ showPrint: false }}

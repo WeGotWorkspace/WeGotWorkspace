@@ -395,6 +395,28 @@ final class FileNodeIndexService
     }
 
     /**
+     * #1517: before a FileNode/set content write. Like a WebDAV PUT, it is an
+     * outside write to a Docs document, detected on the next yjs read.
+     */
+    public function recordBeforeContentWrite(string $key): void
+    {
+        $this->sidecarLinks->recordBeforeExternalWrite($key);
+    }
+
+    /**
+     * #1517: a file replacing a document at the same path keeps the Docs
+     * state there. Runs the destroy, then puts the sidecar and row back.
+     */
+    public function replaceKeepingDocsState(string $key, callable $destroy): void
+    {
+        $held = $this->sidecarLinks->holdForReplace($key);
+        $destroy();
+        if ($held !== null) {
+            $this->sidecarLinks->restoreAfterReplace($key, $held);
+        }
+    }
+
+    /**
      * Document delete on a write route. {@see recordDelete} stays sidecar-free
      * so a reindex of an already-missing file leaves an orphan sidecar in place.
      */

@@ -14,6 +14,24 @@ use Illuminate\Support\Str;
 
 final class VapidPushService
 {
+    /** Due deliveries handled per sweep run. */
+    private const SWEEP_BATCH = 100;
+
+    /** Shortest wait before a failed delivery is tried again (one cron tick). */
+    private const MIN_RETRY_SECONDS = 60;
+
+    /** A delivery that has not gone out this long after it was created is dropped. */
+    public const GIVE_UP_AFTER_SECONDS = 3600;
+
+    /**
+     * Push service answers that mean the subscription will never accept a push:
+     * 400 invalid request, 403 VAPID key mismatch, 404/410 expired or unsubscribed.
+     */
+    private const PERMANENT_REJECTIONS = [400, 403, 404, 410];
+
+    /** @var array<string, true> endpoint hashes that failed transiently during the current sweep */
+    private array $failedEndpoints = [];
+
     public function __construct(
         private readonly InstallerVapidKeyGenerator $keys,
         private readonly WebPushSender $sender,
@@ -90,33 +108,48 @@ final class VapidPushService
 
     /**
      * Send VAPID for local deliveries that were not acked in the 20s local-ack window.
+     *
+     * Oldest due first. A failed delivery is moved back by its own age (at least one
+     * tick), so it queues behind newer deliveries, and it is dropped once it is older
+     * than GIVE_UP_AFTER_SECONDS. One failing subscription cannot hold up the batch.
      */
     public function sweepDue(): int
     {
         $now = Carbon::now();
+        $this->giveUpStaleDeliveries($now);
+
         $due = NotificationDelivery::query()
             ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
             ->whereNull('acked_at')
             ->whereNull('sent_at')
             ->where('due_at', '<=', $now)
-            ->limit(100)
+            ->orderBy('due_at')
+            ->orderBy('id')
+            ->limit(self::SWEEP_BATCH)
             ->get();
 
         $sent = 0;
-        foreach ($due as $delivery) {
-            $notification = Notification::query()->find($delivery->notification_id);
-            if ($notification === null) {
-                $delivery->delete();
+        $this->failedEndpoints = [];
+        try {
+            foreach ($due as $delivery) {
+                $notification = Notification::query()->find($delivery->notification_id);
+                if ($notification === null) {
+                    $delivery->delete();
 
-                continue;
+                    continue;
+                }
+                $completed = $this->sendNotification($notification);
+                if ($completed === 0 && $this->receivingSubscriptions($notification) !== []) {
+                    $this->scheduleRetry($delivery, $now);
+
+                    continue;
+                }
+                $delivery->sent_at = $now;
+                $delivery->save();
+                $sent += $completed;
             }
-            $completed = $this->sendNotification($notification);
-            if ($completed === 0 && $this->receivingSubscriptions($notification) !== []) {
-                continue;
-            }
-            $delivery->sent_at = $now;
-            $delivery->save();
-            $sent += $completed;
+        } finally {
+            $this->failedEndpoints = [];
         }
 
         NotificationDelivery::query()
@@ -144,6 +177,10 @@ final class VapidPushService
 
                 continue;
             }
+            $hash = (string) $sub->endpoint_hash;
+            if (isset($this->failedEndpoints[$hash])) {
+                continue;
+            }
             $payloads[$scope] ??= json_encode($this->pushPayload($notification, $scope), JSON_THROW_ON_ERROR);
             $status = $this->sender->send(
                 (string) $sub->endpoint,
@@ -152,11 +189,13 @@ final class VapidPushService
                 $payloads[$scope],
                 $this->vapidAuth(),
             );
-            if ($status === 404 || $status === 410) {
+            if (in_array($status, self::PERMANENT_REJECTIONS, true)) {
                 $this->pruneEndpoint((string) $sub->endpoint);
                 $completed++;
             } elseif ($status >= 200 && $status < 300) {
                 $completed++;
+            } else {
+                $this->failedEndpoints[$hash] = true;
             }
         }
 
@@ -219,6 +258,23 @@ final class VapidPushService
         $origin = rtrim((string) (config('wgw.public_web_url') ?: config('app.url')), '/');
 
         return $origin.$path;
+    }
+
+    private function giveUpStaleDeliveries(Carbon $now): void
+    {
+        NotificationDelivery::query()
+            ->where('channel', NotificationDelivery::CHANNEL_LOCAL)
+            ->whereNull('acked_at')
+            ->whereNull('sent_at')
+            ->where('created_at', '<', $now->copy()->subSeconds(self::GIVE_UP_AFTER_SECONDS))
+            ->delete();
+    }
+
+    private function scheduleRetry(NotificationDelivery $delivery, Carbon $now): void
+    {
+        $age = $now->getTimestamp() - $delivery->created_at->getTimestamp();
+        $delivery->due_at = $now->copy()->addSeconds(max(self::MIN_RETRY_SECONDS, $age));
+        $delivery->save();
     }
 
     /**
