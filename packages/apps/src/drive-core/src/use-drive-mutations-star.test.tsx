@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { DriveShellState } from "./use-drive-shell";
 import type { DriveListState } from "./use-drive-list";
 import { useDriveMutations } from "./use-drive-mutations";
+import { createDriveAppBootstrap } from "@/lib/api/mock/drive-bootstrap";
 
 function buildShell(overrides: Partial<DriveShellState> = {}): DriveShellState {
   return {
+    data: createDriveAppBootstrap().data,
     labels: {},
     files: [
       {

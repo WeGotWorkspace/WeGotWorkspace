@@ -1,6 +1,7 @@
 const REFRESH_LOCK_KEY = "wgw.api.refresh.lock";
 const REFRESH_CHANNEL = "wgw-auth-refresh";
-const WEB_LOCK_NAME = "wgw-auth-refresh";
+/** Web Lock shared by every tab and the service worker before `POST /auth/refresh`. */
+export const AUTH_REFRESH_WEB_LOCK_NAME = "wgw-auth-refresh";
 const STALE_LOCK_TIMEOUT_MS = 30_000;
 const WAIT_POLL_MS = 250;
 
@@ -173,7 +174,9 @@ function webLocks(): LockManager | null {
 
 function runInWebLock(locks: LockManager, task: () => Promise<boolean>): Promise<boolean> {
   // DOM typings infer the callback result as T, so a promised boolean becomes Promise<Promise<boolean>>.
-  return locks.request(WEB_LOCK_NAME, { mode: "exclusive" }, () => task()).then((value) => value);
+  return locks
+    .request(AUTH_REFRESH_WEB_LOCK_NAME, { mode: "exclusive" }, () => task())
+    .then((value) => value);
 }
 
 /**

@@ -24,6 +24,14 @@ Request changes only for these:
    that the diff does not meet.
 5. **Not human auditable**: code another senior engineer could not follow
    and maintain if AI tooling disappeared tomorrow.
+6. **Untested user scenario**: a change to how the apps sync, work offline,
+   collaborate in real time, or upload, without a live Playwright spec that
+   plays what a user does: a second tab on the same account, a reload in the
+   middle of the action, or going offline and back, whichever the change is
+   about. An existing live spec that already covers the scenario counts.
+   Write the item as "add a live Playwright spec" plus the scenario, step by
+   step: the fixer writes it and runs it against the app on its runner. A
+   change only to the API needs a PHP feature test, not a Playwright spec.
 
 Everything else (naming, style, structure you would have done differently,
 extra tests you would like) is a non-blocking note. Never request changes for
