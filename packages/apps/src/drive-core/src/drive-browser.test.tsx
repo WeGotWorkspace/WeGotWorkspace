@@ -260,7 +260,7 @@ describe("upload placeholders", () => {
     title: "waiting.txt",
     upload: { id: "u2", status: "queued" },
   };
-  const remove = { id: "upload-remove", label: "Remove", onClick: noop };
+  const remove = { id: "upload-remove", label: "Remove", icon: null, onClick: noop };
 
   it.each([
     ["grid", DriveGridView],
