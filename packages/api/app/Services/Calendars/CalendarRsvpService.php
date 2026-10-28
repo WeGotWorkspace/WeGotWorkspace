@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\CalendarRsvpToken;
 
@@ -16,6 +17,7 @@ final class CalendarRsvpService
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarRepository $calendars,
         private readonly CalendarRsvpRateLimiter $rateLimiter,
+        private readonly CalendarSchedulingObjects $objects,
     ) {}
 
     /**
@@ -49,7 +51,7 @@ final class CalendarRsvpService
             throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
         }
 
-        $eventId = CalendarEventMapper::eventIdFromUri((string) $event->uri);
+        $eventId = CalendarEventMapper::eventIdFromUri((string) $event['object']->uri);
         $username = (string) $row->organizer_username;
         $current = $this->events->show($username, $eventId);
         $participants = is_array($current['participants'] ?? null) ? $current['participants'] : [];
@@ -89,14 +91,15 @@ final class CalendarRsvpService
         return $row;
     }
 
-    private function findOrganizerEvent(CalendarRsvpToken $row): ?CalendarObject
+    /**
+     * The event the organizer organizes with this UID: the organizer's own,
+     * then group, then write-shared calendars. Read-only shares are skipped.
+     *
+     * @return array{object: CalendarObject, instance: CalendarInstance}|null
+     */
+    private function findOrganizerEvent(CalendarRsvpToken $row): ?array
     {
-        return CalendarObject::query()
-            ->where('uid', (string) $row->event_uid)
-            ->whereHas('calendar.instances', function ($query) use ($row): void {
-                $query->where('principaluri', 'principals/'.$row->organizer_username);
-            })
-            ->first();
+        return $this->objects->organizerEvent((string) $row->organizer_username, (string) $row->event_uid);
     }
 
     private function eventTitle(CalendarRsvpToken $row): string
@@ -105,15 +108,9 @@ final class CalendarRsvpService
         if ($event === null) {
             return 'Invitation';
         }
-        $instance = $event->calendar?->instances()
-            ->where('principaluri', 'principals/'.$row->organizer_username)
-            ->first();
-        if ($instance === null) {
-            return 'Invitation';
-        }
         $payload = $this->mapper->toCalendarEvent(
-            $event,
-            $this->calendars->apiIdForInstance($instance),
+            $event['object'],
+            $this->calendars->apiIdForInstance($event['instance']),
             null,
             (string) $row->organizer_username,
         );

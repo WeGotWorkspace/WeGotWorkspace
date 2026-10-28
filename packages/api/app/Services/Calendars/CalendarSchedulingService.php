@@ -16,6 +16,7 @@ use App\Services\Search\SearchIndexerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Component\VCalendar;
 use Sabre\VObject\Component\VEvent;
 use Sabre\VObject\ITip\Broker;
@@ -34,6 +35,8 @@ final class CalendarSchedulingService
         private readonly SearchIndexerService $searchIndexer,
         private readonly BestEffortSearchIndexSync $searchIndexSync,
         private readonly CalendarImipService $imip,
+        private readonly CalendarSchedulingObjects $objects,
+        private readonly CalendarSchedulingDeliveryPolicy $deliveryPolicy,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
 
@@ -351,43 +354,50 @@ final class CalendarSchedulingService
         return false;
     }
 
+    /**
+     * The recipient's existing object for the UID decides what happens: none
+     * means a new copy in the default calendar; one that the policy accepts is
+     * updated in place; anything else (an unrelated event, or a copy from a
+     * different organizer) refuses the whole delivery for this recipient.
+     */
     private function deliverLocal(string $actorUsername, Message $message, string $principalUri): void
     {
         $method = strtoupper((string) ($message->method));
+        $uid = (string) $message->uid;
+        [$existing, $allowed] = $this->existingForDelivery($message, $principalUri, $uid);
+        if (! $allowed) {
+            return;
+        }
+
         if ($method === 'CANCEL') {
-            $this->consumeCancel($actorUsername, $principalUri, $message);
+            $this->consumeCancel($actorUsername, $principalUri, $message, $existing);
 
             return;
         }
 
-        $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid);
+        $this->deleteSchedulingObjectsForUid(
+            $principalUri,
+            $uid,
+            $method === 'REQUEST' ? (string) $message->sender : null,
+        );
 
         $caldav = $this->calBackend();
         $objectUri = 'sabredav-'.Str::uuid()->toString().'.ics';
         $payload = $message->message->serialize();
         $caldav->createSchedulingObject($principalUri, $objectUri, $payload);
 
-        $existing = $this->findEventByUid($principalUri, (string) $message->uid);
-        $current = null;
-        if ($existing !== null && is_string($existing->calendardata) && $existing->calendardata !== '') {
-            $parsedCurrent = Reader::read($existing->calendardata);
-            // Null calendardata is not an existing calendar to merge.
-            $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
-        }
-
+        $current = $existing !== null ? $this->objects->parse($existing['object']) : null;
         $newObject = (new Broker)->processMessage($message, $current);
         if ($newObject !== null) {
             $serialized = $newObject->serialize();
             if ($existing !== null) {
-                $instance = $this->instanceForObject($principalUri, $existing);
-                if ($instance !== null) {
-                    $caldav->updateCalendarObject(
-                        [(int) $instance->calendarid, (int) $instance->id],
-                        (string) $existing->uri,
-                        $serialized,
-                    );
-                    $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
-                }
+                $instance = $existing['instance'];
+                $caldav->updateCalendarObject(
+                    [(int) $instance->calendarid, (int) $instance->id],
+                    (string) $existing['object']->uri,
+                    $serialized,
+                );
+                $this->indexPath((string) $instance->principaluri, (string) $instance->uri, (string) $existing['object']->uri);
             } else {
                 $instance = $this->defaultCalendarInstance($principalUri);
                 if ($instance !== null) {
@@ -412,43 +422,62 @@ final class CalendarSchedulingService
     }
 
     /**
+     * Organizer messages (REQUEST, CANCEL) are checked against every object the
+     * recipient owns with this UID; a REPLY against the organizer's own event.
+     *
+     * @return array{0: array{object: CalendarObject, instance: CalendarInstance}|null, 1: bool}
+     */
+    private function existingForDelivery(Message $message, string $principalUri, string $uid): array
+    {
+        if (strtoupper((string) $message->method) === 'REPLY') {
+            $event = $this->objects->organizerEvent($this->usernameFromPrincipalUri($principalUri), $uid);
+
+            return [$event, $event === null
+                || $this->deliveryPolicy->allows($message, $principalUri, $this->objects->parse($event['object']))];
+        }
+
+        $owned = $this->objects->ownedByPrincipal($principalUri, $uid);
+        $allowed = $owned->every(fn (array $candidate): bool => $this->deliveryPolicy->allows(
+            $message,
+            $principalUri,
+            $this->objects->parse($candidate['object']),
+        ));
+
+        return [$owned->first(), $allowed];
+    }
+
+    /**
      * iTIP CANCEL is consumed automatically: drop inbox REQUEST leftovers and the
      * CANCEL itself, and remove a still-tentative invitee copy. Do not leave a
      * non-actionable CANCEL card in the invitations sidebar.
+     *
+     * @param  array{object: CalendarObject, instance: CalendarInstance}|null  $existing
      */
-    private function consumeCancel(string $actorUsername, string $principalUri, Message $message): void
+    private function consumeCancel(string $actorUsername, string $principalUri, Message $message, ?array $existing): void
     {
-        $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid);
+        $this->deleteSchedulingObjectsForUid($principalUri, (string) $message->uid, (string) $message->sender);
         $this->notifyInviteClear($actorUsername, $principalUri, (string) $message->uid);
 
-        $existing = $this->findEventByUid($principalUri, (string) $message->uid);
         if ($existing === null) {
             return;
         }
 
-        $raw = is_string($existing->calendardata) && $existing->calendardata !== '' ? $existing->calendardata : null;
-        $current = null;
-        if ($raw !== null) {
-            $parsedCurrent = Reader::read($raw);
-            $current = $parsedCurrent instanceof VCalendar ? $parsedCurrent : null;
-        }
-        $newObject = (new Broker)->processMessage($message, $current);
-        $instance = $this->instanceForObject($principalUri, $existing);
-        if ($instance === null) {
-            return;
-        }
+        $object = $existing['object'];
+        $instance = $existing['instance'];
+        $raw = is_string($object->calendardata) && $object->calendardata !== '' ? $object->calendardata : null;
+        $newObject = (new Broker)->processMessage($message, $this->objects->parse($object));
 
         $caldav = $this->calBackend();
         $calendarId = [(int) $instance->calendarid, (int) $instance->id];
         if (($raw !== null && $this->isTentativeInviteCopy($raw, $principalUri)) || $newObject === null) {
-            $caldav->deleteCalendarObject($calendarId, (string) $existing->uri);
-            $this->unindexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+            $caldav->deleteCalendarObject($calendarId, (string) $object->uri);
+            $this->unindexPath($principalUri, (string) $instance->uri, (string) $object->uri);
 
             return;
         }
 
-        $caldav->updateCalendarObject($calendarId, (string) $existing->uri, $newObject->serialize());
-        $this->indexPath($principalUri, (string) $instance->uri, (string) $existing->uri);
+        $caldav->updateCalendarObject($calendarId, (string) $object->uri, $newObject->serialize());
+        $this->indexPath($principalUri, (string) $instance->uri, (string) $object->uri);
     }
 
     private function notifyInviteRequest(string $actorUsername, string $principalUri, Message $message): void
@@ -524,7 +553,11 @@ final class CalendarSchedulingService
             : $principalUri;
     }
 
-    private function deleteSchedulingObjectsForUid(string $principalUri, string $uid): void
+    /**
+     * Drop inbox rows for the UID. With $organizer set, only rows from that
+     * organizer go: another organizer's invite with the same UID stays.
+     */
+    private function deleteSchedulingObjectsForUid(string $principalUri, string $uid, ?string $organizer = null): void
     {
         if ($uid === '') {
             return;
@@ -542,6 +575,10 @@ final class CalendarSchedulingService
             }
             $vevent = $parsed->VEVENT ?? null;
             if ($vevent === null || trim((string) ($vevent->UID ?? '')) !== $uid) {
+                continue;
+            }
+            if ($organizer !== null
+                && ! (isset($vevent->ORGANIZER) && $this->deliveryPolicy->sameCalendarUser((string) $vevent->ORGANIZER, $organizer))) {
                 continue;
             }
             $caldav->deleteSchedulingObject($principalUri, (string) $row['uri']);
@@ -587,33 +624,15 @@ final class CalendarSchedulingService
         $this->eventDispatch->fireMutation($username, 'calendars', 'deleted', $davPath);
     }
 
-    private function findEventByUid(string $principalUri, string $uid): ?CalendarObject
-    {
-        if ($uid === '') {
-            return null;
-        }
-
-        return CalendarObject::query()
-            ->where('uid', $uid)
-            ->whereHas('calendar.instances', function ($query) use ($principalUri): void {
-                $query->where('principaluri', $principalUri);
-            })
-            ->first();
-    }
-
-    private function instanceForObject(string $principalUri, CalendarObject $object): ?CalendarInstance
-    {
-        return CalendarInstance::query()
-            ->where('calendarid', (int) $object->calendarid)
-            ->where('principaluri', $principalUri)
-            ->first();
-    }
-
     private function defaultCalendarInstance(string $principalUri): ?CalendarInstance
     {
         return CalendarInstance::query()
             ->where('principaluri', $principalUri)
             ->where('uri', CalendarCollectionUris::EVENT_DEFAULT)
+            ->where(function ($query): void {
+                $query->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+                    ->orWhereNull('access');
+            })
             ->first();
     }
 

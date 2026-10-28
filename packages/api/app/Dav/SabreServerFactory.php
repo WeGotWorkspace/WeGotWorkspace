@@ -12,6 +12,7 @@ use App\Dav\Server\AppFilesRootCollection;
 use App\Dav\Server\AppUserFilesHomeCollection;
 use App\Dav\Server\CalendarMeetLinkPlugin;
 use App\Dav\Server\CalendarPropfindReadPlugin;
+use App\Dav\Server\CalendarScheduleDeliveryGuardPlugin;
 use App\Dav\Server\DocYjsStateDavPlugin;
 use App\Dav\Server\DriveShareMovePlugin;
 use App\Dav\Server\DriveStarPathPlugin;
@@ -138,6 +139,7 @@ final class SabreServerFactory
             $server->addPlugin(new CalDAV\Plugin);
             $server->addPlugin(new RecurrenceCapExceptionPlugin);
             $server->addPlugin(new CalDAV\Schedule\Plugin);
+            $server->addPlugin(app(CalendarScheduleDeliveryGuardPlugin::class));
             $server->addPlugin(new CalDAV\SharingPlugin);
             $server->addPlugin(new CalDAV\ICSExportPlugin);
             $server->addPlugin(new CalendarMeetLinkPlugin($this->meetLinkHook));
