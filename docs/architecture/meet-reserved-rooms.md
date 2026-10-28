@@ -80,6 +80,7 @@ If inbound `CONFERENCE` / `URL` / `X-GOOGLE-CONFERENCE` is a guest/join URL whos
 - **On insert:** `createdBy` = the authenticated DAV/JMAP actor who performed the write (same identity as iMIP `ORGANIZER` / DAV ACL — not left null, even when `ownerPrincipal` is a group).
 - **If a row already exists:** keep `createdBy` / `ownerPrincipal` (do not steal).
 - **Always** apply the event/scope clock to `expiresAt` — on insert **and** as an **upgrade** of an existing row. A blur-draft `now+30d` that then persists on Save **must** become DTEND+7, occurrence-end+7, or series/this-and-future `null`. Leaving the draft clock after the event exists is the same premature-sweep bug as a stale reschedule clock.
+- The clock is set as given only when the writer holds the row: same `ownerPrincipal`, its `createdBy`, or an owner-principal member. For anyone else (a pasted link to someone else's room) the clock may only move later or to `null`, never earlier, so a foreign event can keep a room alive but never get it swept.
 
 Incomplete or non-WGW hrefs never reserve. Read-only GET / conversion without persist does **not** POST.
 
@@ -95,7 +96,7 @@ Path must be `/meet`, `/meet/guest`, or `/meet/join` (`/meet?room=` is canonical
 
 ### `POST /meetings/rooms`
 
-Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. `ownerPrincipal` must be `u:{authenticated user}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share). Membership-only is not required. Otherwise **403**. Idempotent on room id: already reserved → keep owner / `createdBy`, and when the calendar hook is the caller, overwrite `expiresAt` with the event/scope clock.
+Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. `ownerPrincipal` must be `u:{authenticated user}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share). Membership-only is not required. Otherwise **403**. Idempotent on room id for a caller who holds the row (same `ownerPrincipal`, `createdBy`, or an owner-principal member): keep owner / `createdBy` and apply the supplied `expiresAt`. A code someone else holds answers **403** and their row is unchanged. A supplied `expiresAt` must be in the future (**422** otherwise). The route requires the `user` role, so a guest link session gets **403**.
 
 ### `GET /meetings/rooms/{id}`
 

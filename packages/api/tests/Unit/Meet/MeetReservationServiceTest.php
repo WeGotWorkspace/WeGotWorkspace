@@ -28,19 +28,43 @@ final class MeetReservationServiceTest extends WgwDatabaseTestCase
 
     public function test_reserve_is_idempotent_and_keeps_created_by(): void
     {
-        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', null);
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', Carbon::parse('2030-11-01T00:00:00Z'));
         $this->reservations->reserve(
             self::ROOM,
             'u:carol',
             'u:carol',
-            Carbon::parse('2026-12-01T00:00:00Z'),
+            Carbon::parse('2030-12-01T00:00:00Z'),
         );
 
         $row = MeetReservation::query()->find(self::ROOM);
         $this->assertNotNull($row);
         $this->assertSame('u:bob', $row->owner_principal);
         $this->assertSame('u:bob', $row->created_by);
-        $this->assertTrue($row->expires_at?->equalTo(Carbon::parse('2026-12-01T00:00:00Z')));
+        $this->assertTrue($row->expires_at?->equalTo(Carbon::parse('2030-12-01T00:00:00Z')));
+    }
+
+    public function test_reserve_by_someone_else_never_shortens_the_clock(): void
+    {
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', null);
+        $this->reservations->reserve(self::ROOM, 'u:carol', 'u:carol', Carbon::parse('2030-12-01T00:00:00Z'));
+        $this->assertNull(MeetReservation::query()->find(self::ROOM)?->expires_at);
+
+        $this->reservations->patchExpiresAt(self::ROOM, Carbon::parse('2030-12-01T00:00:00Z'));
+        $this->reservations->reserve(self::ROOM, 'u:carol', 'u:carol', Carbon::parse('2030-11-01T00:00:00Z'));
+
+        $this->assertTrue(
+            MeetReservation::query()->find(self::ROOM)?->expires_at?->equalTo(Carbon::parse('2030-12-01T00:00:00Z')),
+        );
+    }
+
+    public function test_reserve_by_the_holder_may_shorten_the_clock(): void
+    {
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', null);
+        $this->reservations->reserve(self::ROOM, 'u:bob', 'u:bob', Carbon::parse('2030-11-01T00:00:00Z'));
+
+        $this->assertTrue(
+            MeetReservation::query()->find(self::ROOM)?->expires_at?->equalTo(Carbon::parse('2030-11-01T00:00:00Z')),
+        );
     }
 
     public function test_reserve_normalizes_bare_username_created_by(): void

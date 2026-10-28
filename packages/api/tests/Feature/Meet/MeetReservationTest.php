@@ -148,34 +148,110 @@ final class MeetReservationTest extends WgwDatabaseTestCase
             ->assertJsonPath('expiresAt', $expires->toISOString());
     }
 
-    public function test_post_is_idempotent_and_keeps_owner_and_created_by(): void
+    public function test_post_is_idempotent_for_the_holder_and_keeps_owner_and_created_by(): void
     {
         $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'u:bob')->assertCreated();
 
         $expires = Carbon::now('UTC')->addDays(14)->startOfSecond();
+        $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'u:bob', extra: ['expiresAt' => $expires->toISOString()])
+            ->assertCreated()
+            ->assertJson([
+                'roomId' => self::ROOM,
+                'ownerPrincipal' => 'u:bob',
+                'createdBy' => 'u:bob',
+            ])
+            ->assertJsonPath('expiresAt', $expires->toISOString());
+    }
+
+    public function test_post_on_a_code_reserved_by_someone_else_is_forbidden_and_leaves_it_unchanged(): void
+    {
+        $expires = Carbon::now('UTC')->addDays(7)->startOfSecond();
+        $this->reserveMeetRoom(self::ROOM, extra: ['expiresAt' => $expires->toISOString()])->assertCreated();
+
         $this->withBearer($this->carolBearerToken())
             ->postJson('/api/v1/meetings/rooms', [
                 'room' => self::ROOM,
                 'ownerPrincipal' => 'u:carol',
+                'expiresAt' => Carbon::now('UTC')->addDays(30)->toISOString(),
+            ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+        // A past clock gets the same refusal, so it can never mark the row for the sweep.
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'u:carol',
+                'expiresAt' => Carbon::now('UTC')->subDay()->toISOString(),
+            ])
+            ->assertForbidden()
+            ->assertJson(['error' => 'forbidden']);
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'u:carol',
+            ])
+            ->assertForbidden();
+
+        $row = MeetReservation::query()->find(self::ROOM);
+        $this->assertNotNull($row);
+        $this->assertSame('u:bob', $row->owner_principal);
+        $this->assertSame('u:bob', $row->created_by);
+        $this->assertTrue($row->expires_at?->equalTo($expires));
+        $this->withBearer($this->userBearerToken())
+            ->patchJson($this->meetStatusPath(self::ROOM), ['expiresAt' => null])
+            ->assertOk();
+    }
+
+    public function test_post_by_an_owner_principal_member_is_idempotent(): void
+    {
+        $this->seedDesignGroupWith('bob', 'carol');
+        $this->reserveMeetRoom(self::ROOM, ownerPrincipal: 'groups/design')->assertCreated();
+
+        $expires = Carbon::now('UTC')->addDays(3)->startOfSecond();
+        $this->withBearer($this->carolBearerToken())
+            ->postJson('/api/v1/meetings/rooms', [
+                'room' => self::ROOM,
+                'ownerPrincipal' => 'groups/design',
                 'expiresAt' => $expires->toISOString(),
             ])
             ->assertCreated()
-            ->assertExactJson([
-                'reserved' => true,
-                'active' => false,
-                'roomId' => self::ROOM,
-            ]);
+            ->assertJson(['ownerPrincipal' => 'groups/design', 'createdBy' => 'u:bob'])
+            ->assertJsonPath('expiresAt', $expires->toISOString());
+    }
 
-        $status = $this->withBearer($this->userBearerToken())
-            ->getJson($this->meetStatusPath(self::ROOM))
-            ->assertOk()
-            ->assertJson([
-                'ownerPrincipal' => 'u:bob',
-                'createdBy' => 'u:bob',
-            ]);
-        $this->assertTrue(
-            Carbon::parse((string) $status->json('expiresAt'))->equalTo($expires),
-        );
+    public function test_post_rejects_an_expires_at_in_the_past(): void
+    {
+        $this->reserveMeetRoom(self::ROOM, extra: [
+            'expiresAt' => Carbon::now('UTC')->subMinute()->toISOString(),
+        ])
+            ->assertStatus(422)
+            ->assertJson(['code' => 'bad_request']);
+
+        $this->assertNull(MeetReservation::query()->find(self::ROOM));
+    }
+
+    public function test_calendar_reserve_by_someone_else_cannot_shorten_the_clock(): void
+    {
+        $expires = Carbon::now('UTC')->addDays(7)->startOfSecond();
+        $this->reserveMeetRoom(self::ROOM, extra: ['expiresAt' => $expires->toISOString()])->assertCreated();
+
+        app(MeetReservationService::class)->reserve(self::ROOM, 'u:carol', 'u:carol', Carbon::now()->subDays(30));
+
+        $row = MeetReservation::query()->find(self::ROOM);
+        $this->assertNotNull($row);
+        $this->assertTrue($row->expires_at?->equalTo($expires));
+        $this->assertSame(0, app(MeetReservationService::class)->sweepExpiredNeverActivated());
+    }
+
+    public function test_calendar_reserve_updates_the_clock_for_the_same_owner_principal(): void
+    {
+        $this->reserveMeetRoom(self::ROOM)->assertCreated();
+        $expires = Carbon::now('UTC')->addDays(9)->startOfSecond();
+
+        // A sharee writing to bob's calendar reserves for bob's principal.
+        app(MeetReservationService::class)->reserve(self::ROOM, 'u:bob', 'u:carol', $expires);
+
+        $this->assertTrue(MeetReservation::query()->find(self::ROOM)?->expires_at?->equalTo($expires));
     }
 
     public function test_post_omit_expires_at_on_existing_row_does_not_wipe_clock(): void
@@ -450,8 +526,12 @@ final class MeetReservationTest extends WgwDatabaseTestCase
     public function test_sweeper_prunes_never_activated_past_expires_at(): void
     {
         $this->reserveMeetRoom(self::ROOM, extra: [
-            'expiresAt' => Carbon::now()->subHour()->toISOString(),
+            'expiresAt' => Carbon::now()->addHour()->toISOString(),
         ])->assertCreated();
+        $row = MeetReservation::query()->find(self::ROOM);
+        $this->assertNotNull($row);
+        $row->expires_at = Carbon::now()->subHour();
+        $row->save();
 
         $deleted = app(MeetReservationService::class)->sweepExpiredNeverActivated();
 

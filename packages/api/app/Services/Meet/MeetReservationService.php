@@ -23,8 +23,11 @@ use Sabre\VObject\Reader;
 /**
  * Reservation persistence for Meet HTTP and the calendar ICS-write hook.
  *
- * Idempotent on room id: existing ownerPrincipal / createdBy are kept;
- * expiresAt is always overwritten when the caller supplies a clock.
+ * Idempotent on room id: existing ownerPrincipal / createdBy are kept. A writer
+ * who holds the reservation ({@see self::mayUpdate()}) sets its expiresAt
+ * clock. Anyone else (a calendar event that carries a pasted link) can only
+ * keep the row alive longer, never shorten its clock, so it cannot be swept
+ * early.
  */
 final class MeetReservationService
 {
@@ -76,8 +79,10 @@ final class MeetReservationService
         $createdBy = $this->normalizeActor($createdBy);
         $existing = $this->find($room);
         if ($existing instanceof MeetReservation) {
-            $existing->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
-            $existing->save();
+            if ($this->mayUpdate($existing, $ownerPrincipal, $createdBy) || $this->extendsClock($existing, $expiresAt)) {
+                $existing->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
+                $existing->save();
+            }
 
             return $existing;
         }
@@ -99,6 +104,33 @@ final class MeetReservationService
 
         $existing->expires_at = $expiresAt === null ? null : Carbon::instance($expiresAt);
         $existing->save();
+    }
+
+    /**
+     * Whether a reserve for this owner principal, written by this actor, may
+     * change an existing reservation: the same owner principal (a write to
+     * that owner's calendar), its creator, or someone who may manage it.
+     */
+    public function mayUpdate(MeetReservation $row, string $ownerPrincipal, string $createdBy): bool
+    {
+        $createdBy = $this->normalizeActor($createdBy);
+        if ($row->owner_principal === $ownerPrincipal || $row->created_by === $createdBy) {
+            return true;
+        }
+        if (! str_starts_with($createdBy, 'u:')) {
+            return false;
+        }
+
+        return $this->canManage($this->usernameFromActorPrincipal($createdBy), $row);
+    }
+
+    private function extendsClock(MeetReservation $row, ?DateTimeInterface $expiresAt): bool
+    {
+        if ($row->expires_at === null) {
+            return false;
+        }
+
+        return $expiresAt === null || $row->expires_at->lessThan($expiresAt);
     }
 
     public function canClaimOwnerPrincipal(string $username, string $ownerPrincipal): bool

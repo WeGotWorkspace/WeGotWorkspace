@@ -2692,7 +2692,7 @@ export interface paths {
         put?: never;
         /**
          * Reserve a meeting room
-         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
+         * @description Idempotent on room id for a caller who holds the reservation (same ownerPrincipal, createdBy, or an ownerPrincipal member). Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. A code reserved by someone else answers 403 and that reservation is unchanged. Omit or null expiresAt means no expiry; a supplied expiresAt must be in the future. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
          */
         post: {
             parameters: {
@@ -2723,8 +2723,15 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write */
+                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write, the room code is reserved by someone else, or the caller is a guest */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description expiresAt is not in the future */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2820,7 +2827,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Not createdBy or an ownerPrincipal member */
+                /** @description Not createdBy or an ownerPrincipal member, or the caller is a guest */
                 403: {
                     headers: {
                         [name: string]: unknown;

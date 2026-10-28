@@ -322,6 +322,31 @@ final class CalendarsMeetLinkTest extends WgwDatabaseTestCase
         $this->assertSame('2030-02-08T11:00:00+00:00', $this->iso($row->expires_at));
     }
 
+    public function test_inbound_reserve_of_a_past_event_leaves_another_owners_clock_alone(): void
+    {
+        MeetReservation::query()->create([
+            'id' => self::ROOM,
+            'owner_principal' => 'u:alice',
+            'created_by' => 'u:alice',
+            'expires_at' => new DateTimeImmutable('2030-01-10T11:00:00Z'),
+        ]);
+
+        $this->jmapAs('bob', [
+            ['CalendarEvent/set', ['accountId' => 'bob', 'create' => ['d' => [
+                'calendarIds' => ['default' => true],
+                'title' => 'Old pasted link',
+                'start' => '2020-02-01T10:00:00Z',
+                'end' => '2020-02-01T11:00:00Z',
+                'links' => ['link1' => ['@type' => 'Link', 'href' => $this->guestHref(self::ROOM)]],
+            ]]], 'c0'],
+        ])->assertOk();
+
+        $row = MeetReservation::query()->find(self::ROOM);
+        $this->assertNotNull($row);
+        $this->assertSame('u:alice', $row->created_by);
+        $this->assertSame('2030-01-10T11:00:00+00:00', $this->iso($row->expires_at));
+    }
+
     public function test_group_calendar_reserve_uses_group_owner_and_writer_created_by(): void
     {
         $team = $this->seedWgwGroup('principals/groups/team', 'Team');
