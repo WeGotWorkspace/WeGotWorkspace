@@ -30,6 +30,19 @@ describe("subscribePush", () => {
     });
   });
 
+  it("leaves the scope out when the app is not known", async () => {
+    await subscribePush(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      null,
+    );
+
+    const [, init] = vi.mocked(wgwFetch).mock.calls[0] ?? [];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      endpoint: "https://push.example/1",
+      keys: { p256dh: "a", auth: "b" },
+    });
+  });
+
   it("throws when the server refuses the subscription", async () => {
     vi.mocked(wgwFetch).mockResolvedValue(new Response("{}", { status: 422 }));
 

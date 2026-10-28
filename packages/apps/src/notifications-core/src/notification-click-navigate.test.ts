@@ -105,6 +105,15 @@ describe("notificationClickTarget", () => {
     });
   });
 
+  it("does not let dot segments open another app", () => {
+    expect(notificationClickTarget("/docs/../calendar", "/docs", origin)).toEqual({
+      href: "https://wegot.example/docs",
+      path: "/docs",
+      scope: "/docs",
+    });
+    expect(notificationClickTarget("/docs/%2e%2e/calendar", "/docs", origin).path).toBe("/docs");
+  });
+
   it("treats a missing or foreign scope as the suite scope", () => {
     expect(notificationClickTarget("/drive", undefined, origin).scope).toBe("/");
     expect(notificationClickTarget("/drive", "//evil.example", origin).scope).toBe("/");

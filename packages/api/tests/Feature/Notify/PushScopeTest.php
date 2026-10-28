@@ -18,7 +18,7 @@ use Tests\Support\WgwDatabaseTestCase;
 /**
  * Web Push per installed app (#1606): a subscription carries the scopes of the
  * apps that posted it, and the sweep only sends a notification to the
- * subscriptions whose scope covers the notification's domain.
+ * subscriptions whose scope covers the path the notification opens.
  */
 final class PushScopeTest extends WgwDatabaseTestCase
 {
@@ -30,6 +30,8 @@ final class PushScopeTest extends WgwDatabaseTestCase
 
     private const MEET = 'https://fcm.googleapis.com/fcm/send/alice-meet';
 
+    private const DRIVE = 'https://fcm.googleapis.com/fcm/send/alice-drive';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,11 +42,14 @@ final class PushScopeTest extends WgwDatabaseTestCase
             /** @var list<array{endpoint: string, payload: string}> */
             public array $sent = [];
 
+            /** @var array<string, int> push service answer per endpoint; 201 otherwise */
+            public array $statuses = [];
+
             public function send(string $endpoint, string $p256dh, string $auth, string $payload, array $vapid): int
             {
                 $this->sent[] = ['endpoint' => $endpoint, 'payload' => $payload];
 
-                return 201;
+                return $this->statuses[$endpoint] ?? 201;
             }
         });
         $this->app->forgetInstance(VapidPushService::class);
@@ -172,22 +177,85 @@ final class PushScopeTest extends WgwDatabaseTestCase
         $this->assertNotNull($delivery->sent_at);
     }
 
-    public function test_the_payload_names_the_receiving_scope_and_opens_inside_it(): void
+    public function test_a_notification_goes_to_the_app_it_opens_in(): void
     {
         $this->subscribe(self::SUITE, '/')->assertCreated();
         $this->subscribe(self::DOCS, '/docs')->assertCreated();
-        // A shared folder opens Drive; the Docs app has no Drive, so it opens Docs.
+        $this->subscribe(self::DRIVE, '/drive')->assertCreated();
+        // A shared folder is a Docs-domain notification that opens Drive.
         app(VapidPushService::class)->sendNotification($this->notification('docs', 'shared', '/drive'));
 
+        $this->assertEqualsCanonicalizing([self::SUITE, self::DRIVE], $this->sentEndpoints());
+        $drive = $this->payloadFor(self::DRIVE);
+        $this->assertSame('/drive', $drive['scope']);
+        $this->assertSame('/drive', $drive['navigate']);
+        $this->assertStringEndsWith('/drive', $drive['notification']['navigate']);
         $suite = $this->payloadFor(self::SUITE);
         $this->assertSame('/', $suite['scope']);
         $this->assertSame('/drive', $suite['navigate']);
-        $this->assertStringEndsWith('/drive', $suite['notification']['navigate']);
+    }
 
-        $docs = $this->payloadFor(self::DOCS);
-        $this->assertSame('/docs', $docs['scope']);
-        $this->assertSame('/docs', $docs['navigate']);
-        $this->assertStringEndsWith('/docs', $docs['notification']['navigate']);
+    public function test_the_domain_decides_when_the_notification_opens_the_suite_start(): void
+    {
+        $this->subscribe(self::SUITE, '/')->assertCreated();
+        $this->subscribe(self::DOCS, '/docs')->assertCreated();
+        $this->subscribe(self::CALENDAR, '/calendar')->assertCreated();
+        $service = app(VapidPushService::class);
+
+        foreach (['/', ''] as $navigate) {
+            $this->sender()->sent = [];
+            $service->sendNotification($this->notification('docs', 'shared', $navigate));
+
+            $this->assertEqualsCanonicalizing([self::SUITE, self::DOCS], $this->sentEndpoints(), "navigate '{$navigate}'");
+            // The Docs app opens its own start, not the suite home.
+            $docs = $this->payloadFor(self::DOCS);
+            $this->assertSame('/docs', $docs['scope']);
+            $this->assertSame('/docs', $docs['navigate']);
+            $this->assertSame('/', $this->payloadFor(self::SUITE)['navigate']);
+        }
+    }
+
+    public function test_a_notification_that_opens_outside_every_app_only_reaches_the_suite(): void
+    {
+        $this->subscribe(self::SUITE, '/')->assertCreated();
+        $this->subscribe(self::DOCS, '/docs')->assertCreated();
+        app(VapidPushService::class)->sendNotification($this->notification('docs', 'shared', '/share/abc'));
+
+        $this->assertSame([self::SUITE], $this->sentEndpoints());
+    }
+
+    public function test_dot_segments_in_navigate_cannot_reach_another_app(): void
+    {
+        $this->subscribe(self::SUITE, '/')->assertCreated();
+        $this->subscribe(self::DOCS, '/docs')->assertCreated();
+        $this->subscribe(self::CALENDAR, '/calendar')->assertCreated();
+        $service = app(VapidPushService::class);
+
+        foreach (['/docs/../calendar', '/docs/%2e%2e/calendar', '/docs/%2E%2E/./calendar'] as $navigate) {
+            $this->sender()->sent = [];
+            $service->sendNotification($this->notification('docs', 'shared', $navigate));
+
+            // The browser opens /calendar, so that is the app that gets it.
+            $this->assertEqualsCanonicalizing([self::SUITE, self::CALENDAR], $this->sentEndpoints(), $navigate);
+            $this->assertSame('/calendar', $this->payloadFor(self::CALENDAR)['navigate'], $navigate);
+            $this->assertSame('/calendar', $this->payloadFor(self::SUITE)['navigate'], $navigate);
+        }
+    }
+
+    public function test_a_scoped_subscription_that_fails_is_retried_not_marked_sent(): void
+    {
+        $this->subscribe(self::DOCS, '/docs')->assertCreated();
+        $this->subscribe(self::CALENDAR, '/calendar')->assertCreated();
+        $this->sender()->statuses[self::DOCS] = 503;
+        $id = $this->dueNotification('docs', 'shared', '/docs?file=report.md');
+
+        app(VapidPushService::class)->sweepDue();
+
+        $this->assertSame([self::DOCS], $this->sentEndpoints());
+        $delivery = NotificationDelivery::query()->where('notification_id', $id)->first();
+        $this->assertNotNull($delivery);
+        $this->assertNull($delivery->sent_at);
+        $this->assertTrue($delivery->due_at->isFuture());
     }
 
     public function test_an_in_scope_navigate_is_kept_for_a_single_app_subscription(): void
@@ -260,11 +328,11 @@ final class PushScopeTest extends WgwDatabaseTestCase
     }
 
     /**
-     * @return object{sent: list<array{endpoint: string, payload: string}>}
+     * @return object{sent: list<array{endpoint: string, payload: string}>, statuses: array<string, int>}
      */
     private function sender(): object
     {
-        /** @var object{sent: list<array{endpoint: string, payload: string}>} */
+        /** @var object{sent: list<array{endpoint: string, payload: string}>, statuses: array<string, int>} */
         return app(WebPushSender::class);
     }
 

@@ -13,6 +13,7 @@ import { offlineDbForAccount, resetOfflineDatabaseCache } from "@/lib/offline/co
 import { countDiscardedUnsyncedChanges, runLogoutStep } from "@/lib/offline/core/offline-wipe";
 import { docsAvailabilityTable } from "@/lib/offline/docs/docs-schema";
 import { notesNotesTable } from "@/lib/offline/notes/notes-schema";
+import { readPushScopes, rememberPushScope } from "@/notifications-core/src/push-scope";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const ACCESS_TOKEN_KEY = "wgw.api.access_token";
@@ -202,6 +203,16 @@ describe("user-initiated logout", () => {
     expect(revokeAt).toBeGreaterThan(pushAt);
     expect(window.localStorage.getItem("wgw.offline.chat.username")).toBeNull();
     expect(await indexedDbNames()).not.toContain("wgw-offline-alice");
+  });
+
+  it("forgets the remembered push scopes, so the next account does not inherit them", async () => {
+    installPushSubscription("https://push.example.test/subscription/alice");
+    installSession(Date.now() + 3_600_000, Date.now() + 86_400_000);
+    await rememberPushScope("/docs");
+
+    await wgwLogout();
+
+    await expect(readPushScopes()).resolves.toEqual([]);
   });
 
   it("still wipes when the service worker cannot be read", async () => {
