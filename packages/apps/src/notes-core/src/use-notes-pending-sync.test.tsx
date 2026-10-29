@@ -179,4 +179,35 @@ describe("useNotesPendingSync", () => {
       vi.useRealTimers();
     }
   });
+
+  it("keeps a clear written by another tab during the read", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(listPendingNoteIds).mockResolvedValue([]);
+      vi.mocked(readNotesBootstrapFromCache).mockResolvedValue({
+        data: { notes: [{ id: "y" }] },
+      } as never);
+      let release: (value: boolean) => void = () => undefined;
+      vi.mocked(hasNoteCollabPendingServerSave).mockImplementation(
+        () => new Promise<boolean>((resolve) => (release = resolve)),
+      );
+
+      const { result } = renderHook(() => useNotesPendingSync("dave"));
+      await waitFor(() => expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(1));
+
+      // Another tab clears a room that was never stored: only localStorage changes here.
+      window.localStorage.setItem(
+        "wgw:collab-pending-rooms",
+        JSON.stringify({ rooms: [], revisions: { y: 1 } }),
+      );
+      release(true);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4100);
+      });
+      expect(isCollabRoomPendingServerSave("y")).toBe(false);
+      expect(result.current.has("y")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

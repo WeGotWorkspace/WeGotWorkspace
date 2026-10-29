@@ -1,31 +1,48 @@
 const STORAGE_KEY = "wgw:collab-pending-rooms";
 
-let memoryFallback: Set<string> | null = null;
-// Counts every set call per room, also those that change nothing, so a reader can tell
-// that someone wrote the room while it was reading elsewhere.
-const revisions = new Map<string, number>();
+interface PendingState {
+  rooms: Set<string>;
+  // Counts every set call per room, also those that change nothing, so a reader can tell
+  // that someone, in any tab, wrote the room while it was reading elsewhere.
+  revisions: Record<string, number>;
+}
 
-function readRooms(): Set<string> {
+let memoryFallback: PendingState | null = null;
+
+function readState(): PendingState {
   if (memoryFallback) return memoryFallback;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : []);
+    // A plain array is the older format: every room has counter 0.
+    const list: unknown = Array.isArray(parsed) ? parsed : (parsed as { rooms?: unknown })?.rooms;
+    const rooms = new Set(Array.isArray(list) ? list.filter((v) => typeof v === "string") : []);
+    const revisions: Record<string, number> = {};
+    const stored = Array.isArray(parsed) ? null : (parsed as { revisions?: unknown })?.revisions;
+    if (stored && typeof stored === "object") {
+      for (const [room, n] of Object.entries(stored)) {
+        if (typeof n === "number") revisions[room] = n;
+      }
+    }
+    return { rooms, revisions };
   } catch {
-    memoryFallback = new Set<string>();
+    memoryFallback = { rooms: new Set<string>(), revisions: {} };
     return memoryFallback;
   }
 }
 
-function writeRooms(rooms: Set<string>): void {
+function writeState(state: PendingState): void {
   if (memoryFallback) {
-    memoryFallback = rooms;
+    memoryFallback = state;
     return;
   }
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...rooms]));
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ rooms: [...state.rooms], revisions: state.revisions }),
+    );
   } catch {
-    memoryFallback = rooms;
+    memoryFallback = state;
   }
 }
 
@@ -36,19 +53,19 @@ function writeRooms(rooms: Set<string>): void {
  */
 export function setCollabRoomPendingServerSave(room: string, pending: boolean): void {
   if (!room || typeof window === "undefined") return;
-  revisions.set(room, (revisions.get(room) ?? 0) + 1);
-  const rooms = readRooms();
-  if (rooms.has(room) === pending) return;
-  if (pending) rooms.add(room);
-  else rooms.delete(room);
-  writeRooms(rooms);
+  const state = readState();
+  state.revisions[room] = (state.revisions[room] ?? 0) + 1;
+  if (pending) state.rooms.add(room);
+  else state.rooms.delete(room);
+  writeState(state);
 }
 
 export function isCollabRoomPendingServerSave(room: string): boolean {
   if (!room || typeof window === "undefined") return false;
-  return readRooms().has(room);
+  return readState().rooms.has(room);
 }
 
 export function getCollabRoomPendingRevision(room: string): number {
-  return revisions.get(room) ?? 0;
+  if (!room || typeof window === "undefined") return 0;
+  return readState().revisions[room] ?? 0;
 }
