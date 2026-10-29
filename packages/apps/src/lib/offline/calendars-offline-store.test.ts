@@ -263,4 +263,58 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     const cached = await readCalendarBootstrapFromCache(username);
     expect(cached?.data.events.find((event) => event.id === "ev-far")?.title).toBe("Mine");
   });
+
+  const recurring = (id: string, start: string, rule: Record<string, unknown>) =>
+    ({
+      ...at(id, start),
+      recurrenceRules: [{ "@type": "RecurrenceRule", ...rule }],
+    }) as JmapCalendarEvent;
+  const liveWrite = (events: JmapCalendarEvent[], calendars = bootstrap.data.calendars) =>
+    writeCalendarBootstrapToCache(
+      username,
+      { ...bootstrap, data: { ...bootstrap.data, calendars, events } },
+      { window: liveWindow },
+    );
+
+  it("keeps a monthly series that a far-week merge omits (no occurrence that week)", async () => {
+    // Loaded with an earlier period; it recurs on the 28th, not in the far week.
+    await mergeCalendarRangeIntoCache(username, farWeek, [
+      recurring("ev-monthly", "2032-12-28T09:00:00", { frequency: "monthly" }),
+      at("ev-far-gone", "2033-01-12T09:00:00"),
+    ]);
+
+    await mergeCalendarRangeIntoCache(username, farWeek, []);
+
+    const cachedIds = await ids();
+    expect(cachedIds).toContain("ev-monthly");
+    expect(cachedIds).not.toContain("ev-far-gone");
+  });
+
+  it("keeps a count-only series that ended before the window on a live write", async () => {
+    await mergeCalendarRangeIntoCache(username, farWeek, [
+      recurring("ev-old-series", "2020-01-08T09:00:00", { frequency: "weekly", count: 10 }),
+    ]);
+
+    await liveWrite([inWindow]);
+
+    expect(await ids()).toContain("ev-old-series");
+  });
+
+  it("drops a series the live window omits although it occurs in that window", async () => {
+    await mergeCalendarRangeIntoCache(username, farWeek, [
+      recurring("ev-weekly", "2020-01-08T09:00:00", { frequency: "weekly" }),
+    ]);
+
+    await liveWrite([inWindow]);
+
+    expect(await ids()).not.toContain("ev-weekly");
+  });
+
+  it("drops events outside the window whose calendar the live snapshot no longer has", async () => {
+    await mergeCalendarRangeIntoCache(username, farWeek, [at("ev-far", "2033-01-12T10:00:00")]);
+
+    await liveWrite([], []);
+
+    expect(await ids()).toEqual([]);
+  });
 });

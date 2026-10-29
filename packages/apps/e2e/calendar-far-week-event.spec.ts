@@ -63,6 +63,10 @@ test.describe("Calendar weeks outside the loaded window (live app)", () => {
 });
 
 test.describe("Calendar UTC event outside the loaded window (live app)", () => {
+  // Chromium's offline emulation does not reach service-worker fetches: against
+  // a production build the app would still load the week through the worker.
+  test.use({ serviceWorkers: "block" });
+
   test("a UTC event from another client stays cached for offline", async ({ page }) => {
     test.setTimeout(120_000);
     const title = `e2e-far-utc-${Date.now()}`;
@@ -75,10 +79,13 @@ test.describe("Calendar UTC event outside the loaded window (live app)", () => {
         .poll(() => countEventCardsByTitle(page, title), { timeout: 20_000 })
         .toBeGreaterThan(0);
 
-      // Reload on the current week: the live bootstrap rewrites the cache.
-      await openCalendarWeek(page, isoDateYearsFromToday(0));
-      await page.waitForLoadState("networkidle");
-      await page.waitForTimeout(1_000);
+      // Load the current week twice: the first live bootstrap rewrites the
+      // cache, the second paints only from what that rewrite kept.
+      for (let load = 0; load < 2; load += 1) {
+        await openCalendarWeek(page, isoDateYearsFromToday(0));
+        await page.waitForLoadState("networkidle");
+        await page.waitForTimeout(1_000);
+      }
 
       await page.context().setOffline(true);
       await expectCalendarOffline(page);

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {
   calendarBootstrapWindow,
-  calendarEventMayOverlapRange,
   isUtcRangeInside,
+  rangeQueryCoversEvent,
 } from "@/lib/calendar-load-window";
 
 const today = Temporal.PlainDate.from("2026-10-27");
@@ -50,78 +50,77 @@ describe("isUtcRangeInside", () => {
   });
 });
 
-describe("calendarEventMayOverlapRange", () => {
+describe("rangeQueryCoversEvent", () => {
   const week = range("2033-01-10", "2033-01-17");
-
-  it("matches a single event inside the range", () => {
-    expect(calendarEventMayOverlapRange(event("2033-01-12T10:00:00"), week)).toBe(true);
-  });
-
-  it("does not match a single event weeks away", () => {
-    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00"), week)).toBe(false);
-    expect(calendarEventMayOverlapRange(event("2032-11-12T10:00:00"), week)).toBe(false);
-  });
-
-  it("matches an open-ended series that started before the range", () => {
-    const series = event("2020-01-06T09:00:00", {
-      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
+  const month = range("2033-01-01", "2033-02-01");
+  const utc = { timeZone: null } as Partial<JmapCalendarEvent>;
+  const series = (start: string, rule: Record<string, unknown>, extra = {}) =>
+    event(start, {
+      recurrenceRules: [{ "@type": "RecurrenceRule", ...rule }],
+      ...extra,
     } as Partial<JmapCalendarEvent>);
-    expect(calendarEventMayOverlapRange(series, week)).toBe(true);
+
+  it("covers a single event inside the range", () => {
+    expect(rangeQueryCoversEvent(event("2033-01-12T10:00:00"), week)).toBe(true);
   });
 
-  it("does not match a series whose last occurrence is before the range", () => {
-    const series = event("2020-01-06T09:00:00", {
-      recurrenceRules: [
-        { "@type": "RecurrenceRule", frequency: "weekly", until: "2021-01-01T00:00:00" },
-      ],
-    } as Partial<JmapCalendarEvent>);
-    expect(calendarEventMayOverlapRange(series, week)).toBe(false);
+  it("does not cover a single event outside the range", () => {
+    expect(rangeQueryCoversEvent(event("2033-03-12T10:00:00"), week)).toBe(false);
+    expect(rangeQueryCoversEvent(event("2032-11-12T10:00:00"), week)).toBe(false);
+  });
+
+  it("does not cover an event in the day at either edge (no padding outside the query)", () => {
+    expect(rangeQueryCoversEvent(event("2033-01-09T22:00:00"), week)).toBe(false);
+    expect(rangeQueryCoversEvent(event("2033-01-10T10:00:00"), week)).toBe(false);
+    expect(rangeQueryCoversEvent(event("2033-01-16T23:00:00"), week)).toBe(false);
   });
 
   it("reads a UTC start with a Z, as CalDAV clients store it", () => {
-    const utc = { timeZone: null } as Partial<JmapCalendarEvent>;
-    expect(calendarEventMayOverlapRange(event("2033-01-12T10:00:00Z", utc), week)).toBe(true);
-    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00Z", utc), week)).toBe(false);
-    expect(calendarEventMayOverlapRange(event("2032-11-12T10:00:00Z", utc), week)).toBe(false);
+    expect(rangeQueryCoversEvent(event("2033-01-12T10:00:00Z", utc), week)).toBe(true);
+    expect(rangeQueryCoversEvent(event("2033-03-12T10:00:00Z", utc), week)).toBe(false);
   });
 
   it("reads a start with a numeric offset", () => {
-    const offset = { timeZone: null } as Partial<JmapCalendarEvent>;
-    expect(calendarEventMayOverlapRange(event("2033-01-12T10:00:00+02:00", offset), week)).toBe(
-      true,
-    );
-    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00-05:00", offset), week)).toBe(
-      false,
-    );
+    expect(rangeQueryCoversEvent(event("2033-01-12T10:00:00+02:00", utc), week)).toBe(true);
+    expect(rangeQueryCoversEvent(event("2033-03-12T10:00:00-05:00", utc), week)).toBe(false);
   });
 
   it("reads an end with a Z", () => {
-    const utcEnd = {
+    // Starts before the range and runs into it: only the end puts it inside.
+    const multiDay = event("2033-01-08T10:00:00Z", {
       timeZone: null,
       duration: undefined,
-      end: "2033-03-12T11:00:00Z",
-    } as Partial<JmapCalendarEvent>;
-    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00Z", utcEnd), week)).toBe(false);
+      end: "2033-01-12T11:00:00Z",
+    } as Partial<JmapCalendarEvent>);
+    expect(rangeQueryCoversEvent(multiDay, week)).toBe(true);
   });
 
-  it("reads a series until with a Z", () => {
-    const ended = event("2020-01-06T09:00:00Z", {
-      timeZone: null,
-      recurrenceRules: [
-        { "@type": "RecurrenceRule", frequency: "weekly", until: "2021-01-01T00:00:00Z" },
-      ],
-    } as Partial<JmapCalendarEvent>);
-    const running = event("2020-01-06T09:00:00Z", {
-      timeZone: null,
-      recurrenceRules: [
-        { "@type": "RecurrenceRule", frequency: "weekly", until: "2040-01-01T00:00:00Z" },
-      ],
-    } as Partial<JmapCalendarEvent>);
-    expect(calendarEventMayOverlapRange(ended, week)).toBe(false);
-    expect(calendarEventMayOverlapRange(running, week)).toBe(true);
+  it("covers a series only when it has an occurrence in the range", () => {
+    const weekly = series("2020-01-08T09:00:00", { frequency: "weekly" });
+    const monthly = series("2020-01-28T09:00:00", { frequency: "monthly" });
+    expect(rangeQueryCoversEvent(weekly, week)).toBe(true);
+    expect(rangeQueryCoversEvent(monthly, week)).toBe(false);
+    expect(rangeQueryCoversEvent(monthly, month)).toBe(true);
   });
 
-  it("errs towards a match when the start cannot be read", () => {
-    expect(calendarEventMayOverlapRange(event("not-a-date"), week)).toBe(true);
+  it("does not cover a series that ended before the range, by count or until", () => {
+    const byCount = series("2020-01-08T09:00:00", { frequency: "weekly", count: 10 });
+    const byUntil = series(
+      "2020-01-08T09:00:00Z",
+      { frequency: "weekly", until: "2021-01-01T00:00:00Z" },
+      utc,
+    );
+    const runningUntil = series(
+      "2020-01-08T09:00:00Z",
+      { frequency: "weekly", until: "2040-01-01T00:00:00Z" },
+      utc,
+    );
+    expect(rangeQueryCoversEvent(byCount, month)).toBe(false);
+    expect(rangeQueryCoversEvent(byUntil, month)).toBe(false);
+    expect(rangeQueryCoversEvent(runningUntil, month)).toBe(true);
+  });
+
+  it("does not cover an event whose start cannot be read", () => {
+    expect(rangeQueryCoversEvent(event("not-a-date"), week)).toBe(false);
   });
 });
