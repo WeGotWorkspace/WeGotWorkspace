@@ -119,8 +119,34 @@ final class PendingSchemaMigrationsTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasTable('calendar_share_dismissals'));
     }
 
-    public function test_requests_wait_while_another_process_runs_the_migrations(): void
+    public function test_a_request_waits_for_the_lock_and_is_then_served(): void
     {
+        $token = $this->issueBearerTokenFor('admin');
+        $this->rollBackToPartialUpdate();
+        $marker = $this->dataDir.'/updates/schema-migrations.json';
+        @unlink($marker);
+
+        // Another process holds the lock for about 300 ms, as a short
+        // migration run would.
+        $holder = $this->holdLockInAnotherProcess(300_000);
+        try {
+            $started = microtime(true);
+            $calendars = $this->postCalendarGet($token);
+            $waited = microtime(true) - $started;
+        } finally {
+            proc_close($holder);
+        }
+
+        $calendars->assertOk();
+        $this->assertSame('Calendar/get', $calendars->json('methodResponses.0.0'), (string) $calendars->getContent());
+        $this->assertGreaterThanOrEqual(0.2, $waited, 'The request waited for the lock.');
+        $this->assertSame([], app(WgwSchemaMigrator::class)->pendingMigrations());
+        $this->assertSame('current', json_decode((string) file_get_contents($marker), true)['status']);
+    }
+
+    public function test_a_request_gets_503_when_the_lock_outlasts_the_wait(): void
+    {
+        $this->app->when(PendingSchemaMigrations::class)->needs('$lockWaitSeconds')->give(0.2);
         $token = $this->issueBearerTokenFor('admin');
         $this->rollBackToPartialUpdate();
         $marker = $this->dataDir.'/updates/schema-migrations.json';
@@ -130,7 +156,9 @@ final class PendingSchemaMigrationsTest extends TestCase
         $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB));
 
         try {
+            $started = microtime(true);
             $busy = $this->postCalendarGet($token);
+            $this->assertGreaterThanOrEqual(0.2, microtime(true) - $started, 'The request waited before giving up.');
             $busy->assertStatus(503);
             $busy->assertHeader('Retry-After', '1');
             $this->assertFalse(Schema::connection('wgw')->hasTable('calendar_share_dismissals'));
@@ -222,6 +250,30 @@ final class PendingSchemaMigrationsTest extends TestCase
             [self::DRIVE_MIGRATION, self::CALENDAR_MIGRATION],
             app(WgwSchemaMigrator::class)->pendingMigrations(),
         );
+    }
+
+    /**
+     * Starts a PHP process that takes the schema lock, holds it for
+     * $microseconds and exits. Returns once the lock is held.
+     *
+     * @return resource
+     */
+    private function holdLockInAnotherProcess(int $microseconds)
+    {
+        $path = $this->dataDir.'/'.SchemaMigrationLock::PATH;
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0775, true);
+        }
+        $code = '$h = fopen($argv[1], "c"); flock($h, LOCK_EX); echo "locked\\n"; usleep((int) $argv[2]); flock($h, LOCK_UN);';
+        $process = proc_open(
+            [PHP_BINARY, '-r', $code, $path, (string) $microseconds],
+            [1 => ['pipe', 'w']],
+            $pipes,
+        );
+        $this->assertIsResource($process);
+        $this->assertSame("locked\n", fgets($pipes[1]));
+
+        return $process;
     }
 
     private function postCalendarGet(string $token): TestResponse

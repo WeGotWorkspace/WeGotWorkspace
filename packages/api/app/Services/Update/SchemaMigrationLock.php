@@ -15,7 +15,7 @@ final class SchemaMigrationLock
 {
     public const PATH = 'updates/schema-migrations.lock';
 
-    private const POLL_MICROSECONDS = 250_000;
+    private const POLL_MICROSECONDS = 100_000;
 
     public function __construct(private UpdateStateStore $updates) {}
 
@@ -45,9 +45,11 @@ final class SchemaMigrationLock
     }
 
     /**
+     * Polls every 100 ms.
+     *
      * @return resource|null The held lock, or null when it stayed busy for $seconds.
      */
-    public function acquireWithin(int $seconds)
+    public function acquireWithin(float $seconds)
     {
         $deadline = microtime(true) + $seconds;
         while (true) {
@@ -65,7 +67,7 @@ final class SchemaMigrationLock
      * @param  callable(): void  $work
      * @return bool False when the lock stayed busy and $work did not run.
      */
-    public function runExclusive(callable $work, int $seconds): bool
+    public function runExclusive(callable $work, float $seconds): bool
     {
         $handle = $this->acquireWithin($seconds);
         if ($handle === null) {

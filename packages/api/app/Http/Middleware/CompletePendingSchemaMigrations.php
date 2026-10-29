@@ -14,8 +14,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Finishes an update whose migrations did not run before any route touches
  * the database. See {@see PendingSchemaMigrations}.
  *
- * While another process runs the migrations the request gets a 503 with
- * `Retry-After: 1` instead of a half-migrated schema.
+ * While another process runs the migrations the request waits for it (up to
+ * {@see PendingSchemaMigrations::LOCK_WAIT_SECONDS}) and is then served
+ * normally. Only when that wait runs out does it get a 503 with
+ * `Retry-After: 1`, never a half-migrated schema.
  */
 final class CompletePendingSchemaMigrations
 {

@@ -34,19 +34,29 @@ final class PendingSchemaMigrations
     /** A failed run is retried on a later request after this many seconds. */
     public const RETRY_AFTER_SECONDS = 300;
 
+    /**
+     * How long a request waits for another process to finish migrating. The
+     * apps do not retry a 503, so a short run should end in a normal answer.
+     * Kept under common FPM and proxy timeouts (30 s and up).
+     */
+    public const LOCK_WAIT_SECONDS = 15.0;
+
     public function __construct(
         private WgwSchemaMigrator $migrator,
         private AppPaths $paths,
         private UpdateStateStore $updates,
         private SchemaMigrationLock $lock,
+        private float $lockWaitSeconds = self::LOCK_WAIT_SECONDS,
     ) {}
 
     /**
      * Runs the pending migrations when this request is the first to see them.
+     * While another process holds the schema lock it waits up to
+     * {@see LOCK_WAIT_SECONDS}, then serves the request on the finished schema.
      *
-     * @return bool False while another process holds the schema lock. The
-     *              schema is then mid-change, so the caller must not serve
-     *              the request.
+     * @return bool False when the lock stayed busy for the whole wait. The
+     *              schema is then still changing, so the caller must not
+     *              serve the request.
      */
     public function applyIfPending(): bool
     {
@@ -60,7 +70,7 @@ final class PendingSchemaMigrations
         }
 
         try {
-            $lock = $this->lock->tryAcquire();
+            $lock = $this->lock->acquireWithin($this->lockWaitSeconds);
         } catch (\RuntimeException $e) {
             Log::error('Could not take the schema migration lock.', ['exception' => $e]);
 
@@ -81,7 +91,7 @@ final class PendingSchemaMigrations
 
     private function runPendingWhileLocked(string $signature): void
     {
-        // Another request may have finished, or failed, while this one waited.
+        // The process this request waited for has usually finished (or failed).
         if ($this->markerStatus($signature) !== null) {
             return;
         }
