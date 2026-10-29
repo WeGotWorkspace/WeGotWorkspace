@@ -2,6 +2,7 @@ import {
   sanitizeNotificationNavigate,
   WEB_PUSH_DECLARATIVE_VERSION,
 } from "./notification-click-navigate";
+import { isPushScope, ROOT_PUSH_SCOPE, type PushScope } from "./push-scope";
 
 export type NotificationPushPayload = {
   title: string;
@@ -11,6 +12,8 @@ export type NotificationPushPayload = {
   renotify: boolean;
   app_badge: number;
   declarative: boolean;
+  /** Scope of the app this subscription belongs to (#1606); `/` for older payloads. */
+  scope: PushScope;
 };
 
 export function parseNotificationPushPayload(raw: unknown): NotificationPushPayload | null {
@@ -31,5 +34,6 @@ export function parseNotificationPushPayload(raw: unknown): NotificationPushPayl
     renotify: source.renotify !== false && data.renotify !== false,
     app_badge: typeof source.app_badge === "number" ? source.app_badge : 1,
     declarative: data.web_push === WEB_PUSH_DECLARATIVE_VERSION,
+    scope: isPushScope(data.scope) ? data.scope : ROOT_PUSH_SCOPE,
   };
 }

@@ -19,6 +19,7 @@ describe("parseNotificationPushPayload", () => {
       renotify: true,
       app_badge: 1,
       declarative: false,
+      scope: "/",
     });
   });
 
@@ -49,5 +50,24 @@ describe("parseNotificationPushPayload", () => {
     expect(
       parseNotificationPushPayload({ title: "Hi", navigate: "https://evil.example" })?.navigate,
     ).toBe("/");
+  });
+
+  it("reads the scope of the app that received the push", () => {
+    expect(
+      parseNotificationPushPayload({ title: "Hi", navigate: "/docs", scope: "/docs" })?.scope,
+    ).toBe("/docs");
+    expect(
+      parseNotificationPushPayload({
+        web_push: 8030,
+        notification: { title: "Hi", navigate: "https://wegot.example/meet" },
+        scope: "/meet",
+      })?.scope,
+    ).toBe("/meet");
+  });
+
+  it("falls back to the suite scope for old payloads and unknown scopes", () => {
+    expect(parseNotificationPushPayload({ title: "Hi" })?.scope).toBe("/");
+    expect(parseNotificationPushPayload({ title: "Hi", scope: "/evil" })?.scope).toBe("/");
+    expect(parseNotificationPushPayload({ title: "Hi", scope: 3 })?.scope).toBe("/");
   });
 });

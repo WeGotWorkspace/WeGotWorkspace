@@ -11,6 +11,7 @@ export type Notification = components["schemas"]["Notification"];
 export type NotificationListResponse = components["schemas"]["NotificationListResponse"];
 export type NotificationOkResponse = components["schemas"]["NotificationOkResponse"];
 export type OkResponse = components["schemas"]["OkResponse"];
+export type PushScope = components["schemas"]["PushScope"];
 export type PushSubscriptionCreateRequest = components["schemas"]["PushSubscriptionCreateRequest"];
 export type PushSubscriptionResponse = components["schemas"]["PushSubscriptionResponse"];
 export type PushUnsubscribeRequest = components["schemas"]["PushUnsubscribeRequest"];

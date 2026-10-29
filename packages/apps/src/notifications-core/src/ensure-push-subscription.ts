@@ -1,5 +1,11 @@
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 import { withCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
+import {
+  currentPushScope,
+  pushScopesToPost,
+  readPushScopes,
+  rememberPushScope,
+} from "./push-scope";
 
 let permissionPrompt: Promise<NotificationPermission> | null = null;
 
@@ -131,6 +137,7 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
     if (!isCurrent()) return false;
     existing = null;
   }
+  const isNew = existing === null;
   const subscription =
     existing ??
     (await registration.pushManager.subscribe({
@@ -138,7 +145,16 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
       applicationServerKey: key as BufferSource,
     }));
   if (!isCurrent()) return false;
-  await subscribePush(subscription.toJSON());
+  const scope = currentPushScope();
+  // A new endpoint (first subscribe, or a swap after a VAPID key change) also
+  // carries the scopes the old one had, as `pushsubscriptionchange` does.
+  const scopes = isNew ? pushScopesToPost(await readPushScopes().catch(() => []), scope) : [scope];
+  for (const each of scopes) {
+    if (!isCurrent()) return false;
+    await subscribePush(subscription.toJSON(), each);
+  }
+  // For `pushsubscriptionchange`: the worker cannot tell which app it serves.
+  if (scope !== null) await rememberPushScope(scope).catch(() => undefined);
   return true;
 }
 

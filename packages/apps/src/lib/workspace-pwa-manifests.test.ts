@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WORKSPACE_APP_IDS } from "@/lib/workspace-app-icons";
 import { WORKSPACE_PWA_THEME_COLORS } from "@/lib/theme-preference";
 import { WORKSPACE_PWA_ICON_CACHE_VERSION } from "@/lib/workspace-pwa-head";
+import { PWA_MANIFEST_IDS } from "@/notifications-core/src/push-scope";
 
 const manifestsDir = join(import.meta.dirname, "../../public/manifests");
 
@@ -112,5 +113,21 @@ describe("workspace PWA manifests", () => {
     expect(install).not.toContain("--wai-");
     expect(raw).toContain(`"/pwa-icons/home-512.png?v=${version}"`);
     expect(raw).not.toMatch(/\.svg/);
+  });
+});
+
+describe("PWA_MANIFEST_IDS", () => {
+  it("lists the id of every web manifest, and each id is that manifest's scope", () => {
+    const ids = readdirSync(manifestsDir)
+      .filter((name) => name.endsWith(".webmanifest"))
+      .map((name) => {
+        const manifest = JSON.parse(readFileSync(join(manifestsDir, name), "utf8")) as {
+          id?: string;
+          scope?: string;
+        };
+        expect(manifest.id, name).toBe(manifest.scope);
+        return manifest.id;
+      });
+    expect([...PWA_MANIFEST_IDS].sort()).toEqual(ids.sort());
   });
 });

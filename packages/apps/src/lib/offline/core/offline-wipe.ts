@@ -1,4 +1,5 @@
 import { appendLogoutStepFailure } from "@/lib/api/wgw/session-debug";
+import { forgetPushScopes } from "@/notifications-core/src/push-scope";
 import { PENDING_SERVER_SAVE_KEY } from "@/text-editor-core/docs-collab/pending-server-save-key";
 
 const OFFLINE_DB_PREFIX = "wgw-offline-";
@@ -32,12 +33,28 @@ export async function runLogoutStep(step: () => Promise<void>, label: string): P
   }
 }
 
+async function forgetPushScopesBounded(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, INDEXED_DB_STEP_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([forgetPushScopes().catch(() => undefined), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Delete the server push row, then drop the browser subscription.
  * `navigator.serviceWorker.ready` never settles when no worker is registered,
  * which would block the rest of logout, so this uses `getRegistration()`.
  */
 export async function releasePushOnLogout(authorizedFetch: AuthorizedFetch): Promise<void> {
+  // The next sign-in on this device must not post the previous account's
+  // app scopes, or `/` recorded while this app was on /logout (#1606).
+  // A stalled IndexedDB open never rejects, so bound it: logout must go on.
+  await forgetPushScopesBounded();
   const subscription = await currentPushSubscription();
   if (!subscription) return;
   const endpoint = subscription.endpoint.trim();

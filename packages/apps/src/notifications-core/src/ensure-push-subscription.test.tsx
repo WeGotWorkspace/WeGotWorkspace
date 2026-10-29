@@ -6,7 +6,15 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   unsubscribePush: vi.fn(),
 }));
 
+vi.mock("./push-scope", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./push-scope")>()),
+  currentPushScope: vi.fn(() => "/"),
+  readPushScopes: vi.fn(async () => []),
+  rememberPushScope: vi.fn(async () => undefined),
+}));
+
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
+import { currentPushScope, readPushScopes, rememberPushScope } from "./push-scope";
 import {
   ensurePushPermissionAndSubscribe,
   resetEnsurePushSubscriptionForTests,
@@ -54,6 +62,9 @@ describe("ensurePushPermissionAndSubscribe", () => {
     vi.mocked(fetchVapidPublicKey).mockResolvedValue("AQID");
     vi.mocked(subscribePush).mockResolvedValue(undefined);
     vi.mocked(unsubscribePush).mockResolvedValue(undefined);
+    vi.mocked(currentPushScope).mockReset().mockReturnValue("/");
+    vi.mocked(rememberPushScope).mockReset().mockResolvedValue(undefined);
+    vi.mocked(readPushScopes).mockReset().mockResolvedValue([]);
     subscribe.mockResolvedValue({
       toJSON: () => ({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
     });
@@ -93,10 +104,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
 
     expect(requestPermission).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/1",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
   });
 
   it("does not prompt again when the browser already denied", async () => {
@@ -130,10 +141,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
 
     expect(subscribe).not.toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://web.push.apple.com/safari",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://web.push.apple.com/safari", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
   });
 
   it("returns false when PushManager subscribe fails and nothing is stored", async () => {
@@ -143,6 +154,90 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
 
     expect(subscribePush).not.toHaveBeenCalled();
+  });
+
+  it("posts the installed app's scope and remembers it for the service worker", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/docs",
+    );
+    expect(rememberPushScope).toHaveBeenCalledWith("/docs");
+  });
+
+  it("does not remember a scope the server did not store", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(subscribePush).mockRejectedValue(new Error("POST push subscription failed (500)"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("still reports push as enabled when remembering the scope fails", async () => {
+    stubNotification("granted");
+    vi.mocked(rememberPushScope).mockRejectedValue(new Error("IndexedDB unavailable"));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+  });
+
+  it("leaves the scope out and remembers nothing when the app is not known", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue(null);
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledTimes(1);
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      null,
+    );
+    expect(rememberPushScope).not.toHaveBeenCalled();
+  });
+
+  it("posts only the current scope when it reuses the stored subscription", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(readPushScopes).mockResolvedValue(["/calendar", "/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription(CURRENT_KEY));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(subscribePush).toHaveBeenCalledTimes(1);
+    expect(subscribePush).toHaveBeenCalledWith(expect.anything(), "/docs");
+  });
+
+  it("keeps the remembered scopes when it replaces a subscription made with another VAPID key", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue("/docs");
+    vi.mocked(readPushScopes).mockResolvedValue(["/calendar", "/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription([9, 9, 9]));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    const posted = vi
+      .mocked(subscribePush)
+      .mock.calls.map(([json, scope]) => [json.endpoint, scope]);
+    expect(posted).toEqual([
+      ["https://push.example/1", "/calendar"],
+      ["https://push.example/1", "/docs"],
+    ]);
+  });
+
+  it("keeps the remembered scopes on a new subscription when the app is not known", async () => {
+    stubNotification("granted");
+    vi.mocked(currentPushScope).mockReturnValue(null);
+    vi.mocked(readPushScopes).mockResolvedValue(["/docs"]);
+    getSubscription.mockResolvedValue(storedSubscription([9, 9, 9]));
+
+    await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+    expect(vi.mocked(subscribePush).mock.calls.map(([, scope]) => scope)).toEqual(["/docs"]);
   });
 
   it("replaces a subscription made with another VAPID key", async () => {
@@ -159,10 +254,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
       new Uint8Array(CURRENT_KEY),
     );
     expect(subscribePush).toHaveBeenCalledTimes(1);
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/1",
-      keys: { p256dh: "a", auth: "b" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } },
+      "/",
+    );
     expect(vi.mocked(unsubscribePush).mock.invocationCallOrder[0]).toBeLessThan(
       stale.unsubscribe.mock.invocationCallOrder[0],
     );
@@ -192,10 +287,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
     expect(unsubscribePush).not.toHaveBeenCalled();
     expect(current.unsubscribe).not.toHaveBeenCalled();
     expect(subscribe).not.toHaveBeenCalled();
-    expect(subscribePush).toHaveBeenCalledWith({
-      endpoint: "https://push.example/old",
-      keys: { p256dh: "x", auth: "y" },
-    });
+    expect(subscribePush).toHaveBeenCalledWith(
+      { endpoint: "https://push.example/old", keys: { p256dh: "x", auth: "y" } },
+      "/",
+    );
   });
 
   it("keeps a subscription whose VAPID key the browser does not expose", async () => {
@@ -310,10 +405,10 @@ describe("ensurePushPermissionAndSubscribe", () => {
       settleSecond(subscriptionOf("https://push.example/second"));
       await expect(second).resolves.toBe(true);
       expect(subscribePush).toHaveBeenCalledTimes(1);
-      expect(subscribePush).toHaveBeenCalledWith({
-        endpoint: "https://push.example/second",
-        keys: { p256dh: "a", auth: "b" },
-      });
+      expect(subscribePush).toHaveBeenCalledWith(
+        { endpoint: "https://push.example/second", keys: { p256dh: "a", auth: "b" } },
+        "/",
+      );
     } finally {
       vi.useRealTimers();
     }
