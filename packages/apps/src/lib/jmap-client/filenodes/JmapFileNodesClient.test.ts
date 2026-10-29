@@ -216,6 +216,89 @@ describe("JmapFileNodesClient", () => {
     });
   });
 
+  describe("getFileNodes past maxObjectsInGet", () => {
+    /** Rejects a get of more than `max` ids with `requestTooLarge`; echoes the rest. */
+    function getServer(max: number) {
+      let getRequests = 0;
+      return (body: JmapRequest) => ({
+        methodResponses: body.methodCalls.map(([name, args, id]) => {
+          const requested = (args.ids as string[] | null) ?? [];
+          if (requested.length > max) {
+            return [
+              "error",
+              { type: "requestTooLarge", description: "ids exceeds maxObjectsInGet." },
+              id,
+            ];
+          }
+          getRequests += 1;
+          return [
+            name,
+            {
+              accountId: ACCOUNT_ID,
+              state: `s${getRequests}`,
+              list: requested
+                .filter((nodeId) => nodeId !== "fn-missing")
+                .map((nodeId) => ({ id: nodeId, name: `${nodeId}.txt` })),
+              notFound: requested.filter((nodeId) => nodeId === "fn-missing"),
+            },
+            id,
+          ];
+        }),
+        sessionState: "1",
+      });
+    }
+
+    it("fetches more than 500 ids in 500-id chunks when the session does not state the limit", async () => {
+      const ids = Array.from({ length: 1012 }, (_, index) => `fn-${index}`);
+      const { client, recorded } = makeClient(getServer(500));
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.getFileNodes(ACCOUNT_ID, ids);
+
+      expect(got.list.map((node) => node.id)).toEqual(ids);
+      expect(got.state).toBe("s3");
+      expect(client.getState(ACCOUNT_ID, "FileNode")).toBe("s3");
+      expect(recorded.map((row) => (row.methodCalls[0]?.[1].ids as string[]).length)).toEqual([
+        500, 500, 12,
+      ]);
+      for (const row of recorded) expect(row.using).toEqual(FILENODE_USING);
+    });
+
+    it("uses the session's maxObjectsInGet and merges notFound across chunks", async () => {
+      const ids = ["fn-1", "fn-missing", "fn-3"];
+      const { client, recorded } = makeClient(getServer(2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.getFileNodes(ACCOUNT_ID, ids);
+
+      expect(got.list.map((node) => node.id)).toEqual(["fn-1", "fn-3"]);
+      expect(got.notFound).toEqual(["fn-missing"]);
+      expect(recorded.map((row) => row.methodCalls[0]?.[1].ids)).toEqual([
+        ["fn-1", "fn-missing"],
+        ["fn-3"],
+      ]);
+    });
+
+    it("keeps a list at the limit, an empty list, and null to one request", async () => {
+      const { client, recorded } = makeClient(getServer(2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      await fileNodes.getFileNodes(ACCOUNT_ID, ["fn-1", "fn-2"]);
+      const empty = await fileNodes.getFileNodes(ACCOUNT_ID, []);
+      await fileNodes.getFileNodes(ACCOUNT_ID, null);
+
+      expect(empty.state).toBe("s2");
+      expect(recorded.map((row) => row.methodCalls[0]?.[1].ids)).toEqual([
+        ["fn-1", "fn-2"],
+        [],
+        null,
+      ]);
+    });
+  });
+
   it("uses FileNode/set create then destroy with filenode using", async () => {
     const { client, recorded } = makeClient((body) => {
       const [name, args, id] = body.methodCalls[0]!;
