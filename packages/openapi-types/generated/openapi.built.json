@@ -9668,7 +9668,8 @@
                         ]
                     },
                     "uid": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative."
                     }
                 }
             },
@@ -10072,7 +10073,7 @@
                     },
                     "id": {
                         "$ref": "#/components/schemas/JmapId",
-                        "description": "Optional client-suggested channel id (uri slug)."
+                        "description": "Optional client-suggested channel id. Must start with chat-; the chat-grp- prefix is reserved for group default channels. Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix."
                     },
                     "guestRoomCode": {
                         "type": [
@@ -10327,7 +10328,7 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative."
                     },
                     "body": {
                         "type": "string",

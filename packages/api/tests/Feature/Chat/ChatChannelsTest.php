@@ -138,40 +138,65 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
             'name' => 'Design Reviews!',
             'kind' => 'channel',
         ])->assertCreated()->json();
-        $this->assertSame('chat-design-reviews', $created['id']);
+        $this->assertMatchesRegularExpression('/^chat-design-reviews-[0-9a-z]{6}$/', (string) $created['id']);
 
         // Renaming changes the display name only; the id (and thus room id,
         // deep links) stays the slug of the initial name.
         $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$created['id'], [
             'name' => 'Design Crits',
-        ])->assertOk()->assertJsonPath('id', 'chat-design-reviews')
+        ])->assertOk()->assertJsonPath('id', $created['id'])
             ->assertJsonPath('name', 'Design Crits');
 
-        // Same initial name dedupes with a numeric suffix.
+        // The same initial name gets its own random suffix: the id never
+        // depends on which names other channels use.
         $second = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
             'name' => 'Design Reviews',
             'kind' => 'channel',
         ])->assertCreated()->json();
-        $this->assertSame('chat-design-reviews-2', $second['id']);
+        $this->assertMatchesRegularExpression('/^chat-design-reviews-[0-9a-z]{6}$/', (string) $second['id']);
+        $this->assertNotSame($created['id'], $second['id']);
 
-        // Names that slug to nothing fall back to a ULID-based id.
-        $emoji = $this->asUser('alice')->postJson('/api/v1/chat/channels', [
-            'name' => '🎉🎉🎉',
-            'kind' => 'channel',
-        ])->assertCreated()->json();
-        $this->assertMatchesRegularExpression('/^chat-[0-9a-z]{26}$/', (string) $emoji['id']);
+        // Names that slug to nothing, or to the reserved group prefix, fall
+        // back to a ULID-based id.
+        foreach (['🎉🎉🎉', 'grp', 'GRP 42'] as $name) {
+            $id = (string) $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+                'name' => $name,
+                'kind' => 'channel',
+            ])->assertCreated()->json('id');
+            $this->assertMatchesRegularExpression('/^chat-[0-9a-z]{26}$/', $id, $name);
+        }
     }
 
-    public function test_client_supplied_id_is_validated_and_conflicts_are_409(): void
+    public function test_client_supplied_id_is_validated_and_conflicts_only_within_reach(): void
     {
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'General', 'kind' => 'channel', 'id' => 'chat-general',
         ])->assertCreated()->assertJsonPath('id', 'chat-general');
 
-        // Globally unique: bob cannot claim the same id for his own channel.
-        $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+        // The caller's own channel already has this id.
+        $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+            'name' => 'Again', 'kind' => 'channel', 'id' => 'chat-general',
+        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
+
+        // Bob cannot see alice's channel: his create answers like any other
+        // create, under an id of its own, and alice's channel is untouched.
+        $bobs = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
             'name' => 'Mine', 'kind' => 'channel', 'id' => 'chat-general',
-        ])->assertStatus(409);
+        ])->assertCreated()->assertJsonPath('name', 'Mine')->json('id');
+        $this->assertMatchesRegularExpression('/^chat-[0-9a-z]{26}$/', (string) $bobs);
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/chat-general')->assertNotFound();
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$bobs)->assertOk()->assertJsonPath('name', 'Mine');
+        $this->asUser('alice')->getJson('/api/v1/chat/channels/chat-general')->assertOk()
+            ->assertJsonPath('name', 'General')
+            ->assertJsonPath('isSharee', false);
+
+        // Once shared with carol, the id is within her reach: a conflict.
+        $this->asUser('alice')->patchJson('/api/v1/chat/channels/chat-general', [
+            'shareWith' => ['carol' => ['mayReadItems' => true]],
+        ])->assertOk();
+        $this->asUser('carol')->postJson('/api/v1/chat/channels', [
+            'name' => 'Hers', 'kind' => 'channel', 'id' => 'chat-general',
+        ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
 
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Bad', 'kind' => 'channel', 'id' => 'unprefixed',
@@ -180,6 +205,15 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Bad dm', 'kind' => 'dm', 'id' => 'chat-not-a-dm',
         ])->assertStatus(400);
+    }
+
+    public function test_group_default_channel_ids_are_reserved(): void
+    {
+        foreach (['chat-grp-anything', 'chat-GRP-anything'] as $id) {
+            $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+                'name' => 'Reserved', 'kind' => 'channel', 'id' => $id,
+            ])->assertStatus(400)->assertJsonPath('code', 'invalidProperties');
+        }
     }
 
     public function test_share_matrix_owner_sharee_and_non_member(): void

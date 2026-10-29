@@ -123,7 +123,7 @@
       },
       "id": {
         "$ref": "#/components/schemas/JmapId",
-        "description": "Optional client-suggested channel id (uri slug)."
+        "description": "Optional client-suggested channel id. Must start with chat-; the chat-grp- prefix is reserved for group default channels. Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix."
       },
       "guestRoomCode": {
         "type": ["string", "null"],
