@@ -125,6 +125,7 @@ describe("useDriveBatchActions offline undo", () => {
         reloadStarredFromServer: () => undefined,
         view: { type: "folder", path: "My Drive" },
         viewType: "folder",
+        fileById: (id) => files.find((file) => file.id === id) ?? null,
       });
     });
 

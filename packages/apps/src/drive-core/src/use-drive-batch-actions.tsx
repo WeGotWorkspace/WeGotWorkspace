@@ -96,7 +96,8 @@ type UseDriveBatchActionsArgs = {
   reloadStarredFromServer: () => void;
   view: ViewKey;
   viewType: ViewKey["type"];
-  fileById?: (id: string) => DriveFile | null;
+  /** Finds a row in any view, including Shared with me and Starred. */
+  fileById: (id: string) => DriveFile | null;
 };
 
 export function useDriveBatchActions({
@@ -323,9 +324,7 @@ export function useDriveBatchActions({
 
   const batchStar = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const rows = selectedIds
-      .map((id) => (fileById ? fileById(id) : files.find((file) => file.id === id)) ?? null)
-      .filter((file): file is DriveFile => file !== null);
+    const rows = selectedIds.flatMap((id) => fileById(id) ?? []);
     if (rows.length === 0) return;
 
     const nextValue = !selectedIds.every((id) => starred[id]);
@@ -373,7 +372,6 @@ export function useDriveBatchActions({
   }, [
     currentUsername,
     fileById,
-    files,
     groupRootNames,
     operations,
     queueMutation,
