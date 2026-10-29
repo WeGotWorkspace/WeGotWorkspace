@@ -130,4 +130,22 @@ final class AdminSearchTest extends WgwDatabaseTestCase
             ->deleteJson('/api/v1/admin/search/jobs/current')
             ->assertForbidden();
     }
+
+    /**
+     * A 200-character hex string is longer than search_terms.token (120).
+     * MySQL strict mode used to reject it and abort the whole reindex.
+     */
+    public function test_reindex_completes_when_a_file_has_a_token_longer_than_the_column(): void
+    {
+        app(WgwStorage::class)->files()->put(
+            'users/alice/checksum.txt',
+            'sha '.str_repeat('0123456789abcdef', 12).'01234567',
+        );
+
+        $this->withBearer($this->adminBearerToken())
+            ->postJson('/api/v1/admin/search/jobs')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Search reindex completed.');
+    }
 }
