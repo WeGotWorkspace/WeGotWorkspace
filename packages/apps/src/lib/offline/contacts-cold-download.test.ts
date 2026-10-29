@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddressBook, ContactCard } from "@/contacts-core/src/contacts-types";
+import { contactsDownloadTotal } from "@/contacts-core/src/contacts-group-utils";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
   enqueueOutboxMutation,
@@ -96,9 +97,9 @@ import {
 type LiveOptions = NonNullable<Parameters<typeof fetchContactsLiveBootstrap>[0]>;
 
 /** First download that gets the query and page 1, then loses the connection. */
-function stopAfterFirstPage(cardIds: string[]) {
+function stopAfterFirstPage(cardIds: string[], groupIds: string[] | null = []) {
   vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
-    await options?.onStart?.({ session, addressBooks: [book], cardIds, syncAnchor });
+    await options?.onStart?.({ session, addressBooks: [book], cardIds, groupIds, syncAnchor });
     await options?.onCardPage?.({ cards: [card(cardIds[0]!)], remainingCardIds: cardIds.slice(1) });
     throw new TypeError("network error");
   });
@@ -187,6 +188,51 @@ describe("contacts first download, saved page by page", () => {
     // Not "state-now": changes between the first attempt and the resume stay visible to /changes.
     expect(await readSyncToken(username, "default")).toBe("cards-at-query");
     expect(await readAddressBooksSyncToken(username)).toBe("books-at-query");
+  });
+
+  it("a resume shows All Contacts' full count from the start, groups left out", async () => {
+    stopAfterFirstPage(["a", "g", "b", "c"], ["g"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    const group = { ...card("g"), kind: "group", members: {} } as unknown as ContactCard;
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [group], remainingCardIds: ["b", "c"] });
+      await onCardPage({ cards: [card("b")], remainingCardIds: ["c"] });
+      await onCardPage({ cards: [card("c")], remainingCardIds: [] });
+    });
+
+    const pending: (number | undefined)[] = [];
+    const totals: (number | undefined)[] = [];
+    await loadContactsBootstrapForBoot((partial) => {
+      pending.push(partial.pendingContactCount);
+      totals.push(
+        contactsDownloadTotal(
+          "all",
+          "",
+          new Set(),
+          partial.data.cards,
+          partial.pendingContactCount,
+        ),
+      );
+    });
+
+    expect(pending).toEqual([2, 2, 1, 0]);
+    // Three contacts the whole way: the header does not climb page by page.
+    expect(totals).toEqual([3, 3, 3, 3]);
+  });
+
+  it("a resume leaves the count unknown when the server could not tell groups apart", async () => {
+    stopAfterFirstPage(["a", "b"], null);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: [] });
+    });
+
+    const pending: (number | undefined)[] = [];
+    await loadContactsBootstrapForBoot((partial) => {
+      pending.push(partial.pendingContactCount);
+    });
+
+    expect(pending).toEqual([undefined, undefined]);
   });
 
   it("offline boot shows the cards that were kept", async () => {
@@ -355,6 +401,7 @@ describe("contacts first download, saved page by page", () => {
         session,
         addressBooks: [book],
         cardIds: ["a", "b", "c", "d"],
+        groupIds: [],
         syncAnchor: { addressBookState: "books-later", contactCardState: "cards-later" },
       });
       await options?.onCardPage?.({ cards: [card("d")], remainingCardIds: ["a", "b", "c"] });
@@ -370,7 +417,13 @@ describe("contacts first download, saved page by page", () => {
   it("a finished first download does not clear and rewrite the pages it saved", async () => {
     const clears: string[] = [];
     vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
-      await options?.onStart?.({ session, addressBooks: [book], cardIds: ["a", "b"], syncAnchor });
+      await options?.onStart?.({
+        session,
+        addressBooks: [book],
+        cardIds: ["a", "b"],
+        groupIds: [],
+        syncAnchor,
+      });
       await options?.onCardPage?.({ cards: [card("a")], remainingCardIds: ["b"] });
       await options?.onCardPage?.({ cards: [card("b")], remainingCardIds: [] });
       // From here a clear followed by a rewrite could lose saved cards on a tab close.

@@ -342,6 +342,8 @@ export type ContactsDownloadStart = {
   addressBooks: AddressBook[];
   /** Every card id the query returned, in page order. */
   cardIds: string[];
+  /** Group card ids, so a resumed download can count contacts; null when unknown. */
+  groupIds: string[] | null;
   syncAnchor: ContactsBootstrapSyncAnchor;
 };
 
@@ -376,11 +378,12 @@ export async function fetchContactsLiveBootstrap(options?: {
   const { books, cards, contactCardStateAtQuery } = await contacts.getAddressBooksAndCards(
     accountId,
     {
-      onQuery: ({ books: queriedBooks, queryIds, contactCardStateAtQuery: cardState }) =>
+      onQuery: ({ books: queriedBooks, queryIds, contactCardStateAtQuery: cardState, groupIds }) =>
         options?.onStart?.({
           session,
           addressBooks: queriedBooks.list.map(toAddressBook),
           cardIds: queryIds,
+          groupIds,
           syncAnchor: { addressBookState: queriedBooks.state, contactCardState: cardState },
         }),
       onPage: async (snapshot) => {
@@ -394,6 +397,7 @@ export async function fetchContactsLiveBootstrap(options?: {
             addressBooks: snapshot.books.list.map(toAddressBook),
             cards: snapshot.cards.list.map(toContactCard),
           },
+          pendingContactCount: snapshot.pendingContactCount,
         });
       },
     },

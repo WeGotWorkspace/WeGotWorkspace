@@ -27,6 +27,7 @@ import {
   type ContactsBootstrapSyncAnchor,
 } from "@/lib/api/wgw/contacts";
 import { syncContactBooksAfterAddressBookChanges } from "@/lib/api/wgw/contacts-sync";
+import { countPendingContacts } from "@/lib/jmap-client";
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/browser-online";
 import { applyContactPatch } from "@/lib/offline/contacts/contacts-patch-merge";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
@@ -350,7 +351,7 @@ export async function fetchContactsHybridBootstrap(
   let saving: { username: string; id: string } | null = null;
   const bootstrap = await fetchContactsLiveBootstrap({
     onProgress,
-    onStart: async ({ session, addressBooks, cardIds, syncAnchor }) => {
+    onStart: async ({ session, addressBooks, cardIds, groupIds, syncAnchor }) => {
       const name = session.user.username;
       if (!name || (await hasContactsCopy(name))) return;
       const id = crypto.randomUUID();
@@ -358,6 +359,7 @@ export async function fetchContactsHybridBootstrap(
         id,
         ...syncAnchor,
         remainingCardIds: cardIds,
+        groupIds,
       });
       saving = { username: name, id };
     },
@@ -412,9 +414,15 @@ function resumeContactsColdDownload(
   if (inFlight) return inFlight;
   const run = (async () => {
     const cards = new Map(saved.data.cards.map((card) => [card.id, card]));
-    const publish = () =>
-      reportProgress?.({ ...saved, data: { ...saved.data, cards: [...cards.values()] } });
-    publish();
+    const groupIds = progress.groupIds ?? null;
+    // The count goes with the cards, so All Contacts shows its total from the start.
+    const publish = (remainingCardIds: string[]) =>
+      reportProgress?.({
+        ...saved,
+        data: { ...saved.data, cards: [...cards.values()] },
+        pendingContactCount: countPendingContacts(remainingCardIds, groupIds),
+      });
+    publish(progress.remainingCardIds);
     try {
       if (progress.remainingCardIds.length > 0) {
         await fetchContactCardPages(progress.remainingCardIds, async (page) => {
@@ -426,7 +434,7 @@ function resumeContactsColdDownload(
           );
           if (!kept) throw new ColdDownloadTakenOver();
           for (const card of kept) cards.set(card.id, card);
-          publish();
+          publish(page.remainingCardIds);
         });
       }
       const books = bookIdsOf(saved.data.addressBooks);

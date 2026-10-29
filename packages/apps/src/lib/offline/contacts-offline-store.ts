@@ -112,6 +112,11 @@ export type ContactsColdDownload = {
   contactCardState: string;
   /** Card ids from the query that are not saved yet. */
   remainingCardIds: string[];
+  /**
+   * Group card ids from the query, so a resume can show All Contacts' total
+   * from the start. Null (or missing) when the server cannot tell groups apart.
+   */
+  groupIds?: string[] | null;
 };
 
 function parseColdDownload(value: string | undefined): ContactsColdDownload | null {

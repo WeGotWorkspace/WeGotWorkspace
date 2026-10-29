@@ -114,6 +114,7 @@ const session = {
 type BootSnapshot = {
   session: typeof session;
   data: { addressBooks: (typeof book)[]; cards: ContactCard[] };
+  pendingContactCount?: number;
 };
 
 function emptyChanges(since: string, newState: string) {
@@ -191,6 +192,42 @@ describe("useContactsAPI first visit", () => {
     expect(addressBookChanges).toHaveBeenCalledWith("books-state", undefined);
     expect(listCards).not.toHaveBeenCalled();
     expect(listAddressBooks).not.toHaveBeenCalled();
+  });
+
+  it("reports the contacts still downloading until the snapshot is complete", async () => {
+    let resolveBoot: (value: BootSnapshot) => void = () => undefined;
+    const boot = new Promise<BootSnapshot>((resolve) => {
+      resolveBoot = resolve;
+    });
+    fetchContactsLiveBootstrap.mockImplementation(
+      async (options?: { onProgress?: (partial: BootSnapshot) => void }) => {
+        options?.onProgress?.({
+          session,
+          data: { addressBooks: [book], cards: [card("page-1")] },
+          pendingContactCount: 2,
+        });
+        return boot;
+      },
+    );
+
+    const { result } = renderHook(() => useContactsAPI());
+
+    await waitFor(() => {
+      expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
+    });
+    expect(result.current.pendingContactCount).toBe(2);
+
+    await act(async () => {
+      resolveBoot({
+        session,
+        data: { addressBooks: [book], cards: [card("page-1"), card("page-2"), card("page-3")] },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.mutationsLocked).toBe(false);
+    });
+    expect(result.current.pendingContactCount).toBeUndefined();
   });
 
   it("stays read-only during a cold download and fetches a page-1 edit on the next changes", async () => {
