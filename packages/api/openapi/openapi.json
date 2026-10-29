@@ -4268,6 +4268,26 @@
               }
             }
           },
+          "404": {
+            "description": "`share_unavailable`: no public link has this token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "`share_unavailable`: the link was revoked by its owner, or it is past `expiresAt`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests",
             "content": {
@@ -4615,6 +4635,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4637,26 +4677,6 @@
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
-          },
-          "403": {
-            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
             }
           }
         ],
@@ -4745,6 +4765,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4769,26 +4809,6 @@
             "schema": {
               "type": "string",
               "format": "uuid"
-            }
-          },
-          "403": {
-            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
             }
           }
         ],
@@ -4888,6 +4908,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share or invite, or a share the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4911,26 +4951,6 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
-          },
-          "403": {
-            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Unknown share or invite, or a share the caller neither owns nor holds a grant on.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
             }
           }
         ],
