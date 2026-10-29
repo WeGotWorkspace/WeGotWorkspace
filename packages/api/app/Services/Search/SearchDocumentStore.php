@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Search;
 
+use App\Models\CalendarObject;
+use App\Models\CalendarShareDismissal;
+use App\Models\Card;
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
+use Illuminate\Database\Eloquent\Builder;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class SearchDocumentStore
 {
@@ -27,6 +32,8 @@ final class SearchDocumentStore
             'source_subtype' => $this->nullableString($document['source_subtype'] ?? null),
             'source_key' => $sourceKey,
             'owner_username' => $this->nullableString($document['owner_username'] ?? null),
+            'collection_id' => $this->nullableInt($document['collection_id'] ?? null),
+            'object_id' => $this->nullableInt($document['object_id'] ?? null),
             'group_slug' => $this->nullableString($document['group_slug'] ?? null),
             'title' => $this->nullableString($document['title'] ?? null),
             'extension' => $this->nullableString($document['extension'] ?? null),
@@ -119,10 +126,6 @@ final class SearchDocumentStore
         array $filters = [],
         int $offset = 0,
     ): array {
-        $groupPrincipalOwners = array_values(array_unique(array_map(
-            static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (string $slug): bool => trim($slug) !== ''))
-        )));
         $query = SearchDocument::query()
             ->from('search_documents as d')
             ->select('d.*');
@@ -139,31 +142,7 @@ final class SearchDocumentStore
             $query->selectRaw('0 AS token_score');
         }
 
-        $query->where(function ($auth) use ($username, $groupSlugs, $groupPrincipalOwners): void {
-            $auth->where(function ($q) use ($username): void {
-                $q->whereIn('d.source_type', ['file', 'note'])
-                    ->where('d.owner_username', $username);
-            });
-
-            if ($groupSlugs !== []) {
-                $auth->orWhere(function ($q) use ($groupSlugs): void {
-                    $q->where('d.source_type', 'file')
-                        ->whereIn('d.group_slug', $groupSlugs);
-                });
-            }
-
-            $auth->orWhere(function ($q) use ($username): void {
-                $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                    ->where('d.owner_username', $username);
-            });
-
-            if ($groupPrincipalOwners !== []) {
-                $auth->orWhere(function ($q) use ($groupPrincipalOwners): void {
-                    $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                        ->whereIn('d.owner_username', $groupPrincipalOwners);
-                });
-            }
-        });
+        $this->whereReadable($query, $username, $groupSlugs);
 
         if ($sources !== []) {
             $query->whereIn('d.source_type', $sources);
@@ -231,43 +210,100 @@ final class SearchDocumentStore
         string $sourceType,
         string $sourceKey,
     ): ?array {
-        $groupPrincipalOwners = array_values(array_unique(array_map(
-            static fn (string $slug): string => 'groups/'.$slug,
-            array_values(array_filter($groupSlugs, static fn (mixed $slug): bool => trim($slug) !== ''))
-        )));
-
-        $row = SearchDocument::query()
+        $query = SearchDocument::query()
             ->from('search_documents as d')
             ->where('d.source_type', $sourceType)
-            ->where('d.source_key', $sourceKey)
-            ->where(function ($auth) use ($username, $groupSlugs, $groupPrincipalOwners): void {
-                $auth->where(function ($q) use ($username): void {
-                    $q->whereIn('d.source_type', ['file', 'note'])
-                        ->where('d.owner_username', $username);
-                });
-
-                if ($groupSlugs !== []) {
-                    $auth->orWhere(function ($q) use ($groupSlugs): void {
-                        $q->where('d.source_type', 'file')
-                            ->whereIn('d.group_slug', $groupSlugs);
-                    });
-                }
-
-                $auth->orWhere(function ($q) use ($username): void {
-                    $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                        ->where('d.owner_username', $username);
-                });
-
-                if ($groupPrincipalOwners !== []) {
-                    $auth->orWhere(function ($q) use ($groupPrincipalOwners): void {
-                        $q->whereIn('d.source_type', ['caldav', 'carddav'])
-                            ->whereIn('d.owner_username', $groupPrincipalOwners);
-                    });
-                }
-            })
-            ->first();
+            ->where('d.source_key', $sourceKey);
+        $this->whereReadable($query, $username, $groupSlugs);
+        $row = $query->first();
 
         return $row ? (array) $row->toArray() : null;
+    }
+
+    /**
+     * Rows the caller may read right now. Files and notes follow the storage
+     * path (own home, current groups). CalDAV and CardDAV rows also need their
+     * collection to still be the caller's: a live instance of one of the
+     * caller's principals, not dismissed by the caller, holding the object.
+     * A revoked share, a dismissed share, a left group or a deleted item drops
+     * out at once, without waiting for a reindex.
+     *
+     * @param  Builder<SearchDocument>  $query
+     * @param  list<string>  $groupSlugs
+     */
+    private function whereReadable(Builder $query, string $username, array $groupSlugs): void
+    {
+        $groupSlugs = array_values(array_filter($groupSlugs, static fn (string $slug): bool => trim($slug) !== ''));
+        $davOwners = array_values(array_unique(array_merge(
+            [$username],
+            array_map(static fn (string $slug): string => 'groups/'.$slug, $groupSlugs),
+        )));
+        $principalUris = array_map(static fn (string $owner): string => 'principals/'.$owner, $davOwners);
+
+        $query->where(function ($auth) use ($username, $groupSlugs, $davOwners, $principalUris): void {
+            $auth->where(function ($q) use ($username): void {
+                $q->whereIn('d.source_type', ['file', 'note'])
+                    ->where('d.owner_username', $username);
+            });
+
+            if ($groupSlugs !== []) {
+                $auth->orWhere(function ($q) use ($groupSlugs): void {
+                    $q->where('d.source_type', 'file')
+                        ->whereIn('d.group_slug', $groupSlugs);
+                });
+            }
+
+            $auth->orWhere(function ($q) use ($username, $davOwners, $principalUris): void {
+                $q->where('d.source_type', 'caldav')
+                    ->whereIn('d.owner_username', $davOwners)
+                    ->whereExists($this->liveCalendarObject($username, $principalUris));
+            });
+
+            $auth->orWhere(function ($q) use ($davOwners, $principalUris): void {
+                $q->where('d.source_type', 'carddav')
+                    ->whereIn('d.owner_username', $davOwners)
+                    ->whereExists($this->liveCard($principalUris));
+            });
+        });
+    }
+
+    /**
+     * @param  list<string>  $principalUris
+     * @return Builder<CalendarObject>
+     */
+    private function liveCalendarObject(string $username, array $principalUris): Builder
+    {
+        return CalendarObject::query()
+            ->from('calendarobjects as o')
+            ->join('calendarinstances as i', 'i.calendarid', '=', 'o.calendarid')
+            ->selectRaw('1')
+            ->whereColumn('o.id', 'd.object_id')
+            ->whereColumn('i.id', 'd.collection_id')
+            ->whereIn('i.principaluri', $principalUris)
+            ->where(function ($visible) use ($username): void {
+                // Same rule as CalendarShareVisibility: a dismissal hides sharee copies only.
+                $visible->whereNull('i.access')
+                    ->orWhereNotIn('i.access', [SharingPlugin::ACCESS_READ, SharingPlugin::ACCESS_READWRITE])
+                    ->orWhereNotIn(
+                        'i.calendarid',
+                        CalendarShareDismissal::query()->select('calendarid')->where('username', $username),
+                    );
+            });
+    }
+
+    /**
+     * @param  list<string>  $principalUris
+     * @return Builder<Card>
+     */
+    private function liveCard(array $principalUris): Builder
+    {
+        return Card::query()
+            ->from('cards as c')
+            ->join('addressbooks as a', 'a.id', '=', 'c.addressbookid')
+            ->selectRaw('1')
+            ->whereColumn('c.id', 'd.object_id')
+            ->whereColumn('a.id', 'd.collection_id')
+            ->whereIn('a.principaluri', $principalUris);
     }
 
     /**
