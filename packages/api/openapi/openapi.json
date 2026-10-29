@@ -4638,6 +4638,26 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         ],
         "requestBody": {
@@ -4657,6 +4677,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DriveShareDataResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4730,6 +4770,26 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         ],
         "requestBody": {
@@ -4749,6 +4809,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DriveShareInviteDataResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4831,6 +4911,26 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share or invite, or a share the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
             }
           }
         ],

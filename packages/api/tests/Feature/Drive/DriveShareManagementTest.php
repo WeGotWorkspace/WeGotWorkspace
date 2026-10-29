@@ -109,7 +109,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         $this->withBearer($carolToken)->patchJson('/api/v1/files/shares/'.$shareId, [
             'updatedAt' => '2026-01-01T00:00:00Z',
             'defaultAccess' => 'edit',
-        ])->assertStatus(404);
+        ])->assertForbidden();
 
         $this->withBearer($adminToken)->deleteJson('/api/v1/files/shares/'.$shareId)
             ->assertStatus(404);

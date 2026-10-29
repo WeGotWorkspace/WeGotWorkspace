@@ -350,12 +350,12 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->withBearer($this->token($role))->patchJson('/api/v1/files/shares/'.$this->shareId, [
             'updatedAt' => $updatedAt,
             'shareWith' => ['carol' => ['access' => self::EDITOR_ACCESS]],
-        ])->assertNotFound()
-            ->assertJsonPath('code', 'not_found');
+        ])->assertForbidden()
+            ->assertJsonPath('code', 'forbidden');
 
         $this->withBearer($this->token($role))->deleteJson('/api/v1/files/shares/'.$this->shareId)
-            ->assertNotFound()
-            ->assertJsonPath('code', 'not_found');
+            ->assertForbidden()
+            ->assertJsonPath('code', 'forbidden');
 
         $this->readCollab(self::PLAN, 'editor')->assertOk();
         $this->readCollab(self::PLAN, 'viewer')->assertOk();
