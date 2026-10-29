@@ -312,10 +312,30 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
         $this->assertSame(1, $windowed->json('methodResponses.0.1.position'));
     }
 
+    public function test_contact_card_query_filters_by_group_kind(): void
+    {
+        $janeId = $this->seedCardViaPdo('bob', 'jane.vcf', $this->sampleVcard('Jane Doe'));
+        $groupId = $this->seedCardViaPdo(
+            'bob',
+            'team.vcf',
+            "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Team\r\nN:Team;;;;\r\nUID:urn:uuid:99999999-2222-3333-4444-555555555555\r\nX-ADDRESSBOOKSERVER-KIND:group\r\nEND:VCARD\r\n",
+        );
+
+        $groups = $this->jmap([
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'group']], 'c0'],
+        ])->assertOk();
+        $this->assertSame([$groupId], $groups->json('methodResponses.0.1.ids'));
+        $this->assertNotContains($janeId, $groups->json('methodResponses.0.1.ids'));
+
+        $this->jmap([
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'individual']], 'c1'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.type', 'invalidArguments');
+    }
+
     public function test_contact_card_query_rejects_unsupported_filters_and_sorts(): void
     {
         $unsupportedFilter = $this->jmap([
-            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'group']], 'c0'],
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['name' => 'Jane']], 'c0'],
         ])->assertOk();
         $unsupportedFilter->assertJsonPath('methodResponses.0.1.type', 'unsupportedFilter');
 

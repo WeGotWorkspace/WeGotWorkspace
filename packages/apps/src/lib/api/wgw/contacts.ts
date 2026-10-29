@@ -358,14 +358,13 @@ export async function fetchContactsLiveBootstrap(options?: {
     accountId,
     {
       onPage: (snapshot) => {
-        const fetched = snapshot.cards.list.length + (snapshot.cards.notFound ?? []).length;
         options?.onProgress?.({
           session,
           data: {
             addressBooks: snapshot.books.list.map(toAddressBook),
             cards: snapshot.cards.list.map(toContactCard),
           },
-          pendingCardCount: Math.max(0, snapshot.cardTotal - fetched),
+          downloadingContactTotal: snapshot.contactTotal,
         });
       },
     },

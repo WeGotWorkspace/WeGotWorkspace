@@ -73,7 +73,16 @@ final class ContactCardRepository
 
         $uidFilter = isset($filter['uid']) && is_string($filter['uid']) ? $filter['uid'] : null;
 
-        $uris = $this->cardsInBook((int) $book->id, $uidFilter)->pluck('uri');
+        $cards = $this->cardsInBook((int) $book->id, $uidFilter);
+        if (($filter['kind'] ?? null) === 'group') {
+            // Prefilter in SQL, then confirm on the vCard text (LIKE may be
+            // case-insensitive or not, depending on the column type).
+            $uris = $cards->where('carddata', 'like', '%KIND:%')->get(['uri', 'carddata'])
+                ->filter(fn ($card) => preg_match('/^(?:X-ADDRESSBOOKSERVER-)?KIND\s*:\s*group\s*$/mi', (string) $card->carddata) === 1)
+                ->pluck('uri');
+        } else {
+            $uris = $cards->pluck('uri');
+        }
 
         $ids = [];
         foreach ($limit === null ? $uris : $uris->take($limit) as $uri) {

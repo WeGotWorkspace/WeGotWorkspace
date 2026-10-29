@@ -109,7 +109,7 @@ const session = {
 type BootSnapshot = {
   session: typeof session;
   data: { addressBooks: (typeof book)[]; cards: ContactCard[] };
-  pendingCardCount?: number;
+  downloadingContactTotal?: number;
 };
 
 function emptyChanges(since: string, newState: string) {
@@ -199,7 +199,7 @@ describe("useContactsAPI first visit", () => {
         options?.onProgress?.({
           session,
           data: { addressBooks: [book], cards: [card("page-1")] },
-          pendingCardCount: 2,
+          downloadingContactTotal: 3,
         });
         return boot;
       },
@@ -210,7 +210,7 @@ describe("useContactsAPI first visit", () => {
     await waitFor(() => {
       expect(result.current.data.cards.map((row) => row.id)).toEqual(["page-1"]);
     });
-    expect(result.current.pendingCardCount).toBe(2);
+    expect(result.current.downloadingContactTotal).toBe(3);
 
     await act(async () => {
       resolveBoot({
@@ -222,7 +222,7 @@ describe("useContactsAPI first visit", () => {
     await waitFor(() => {
       expect(result.current.mutationsLocked).toBe(false);
     });
-    expect(result.current.pendingCardCount).toBe(0);
+    expect(result.current.downloadingContactTotal).toBe(0);
   });
 
   it("stays read-only during a cold download and fetches a page-1 edit on the next changes", async () => {

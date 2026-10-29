@@ -17,8 +17,8 @@ export type ContactsWorkspaceProps = {
    * and delete stay closed until the snapshot is complete.
    */
   mutationsLocked?: boolean;
-  /** Cards the cold download has not fetched yet. The list header counts them. */
-  pendingCardCount?: number;
+  /** Contacts the cold download will end with. The list header shows it. */
+  downloadingContactTotal?: number;
   /** Refetch address books and cards without reloading the whole app shell. */
   onRefreshList?: () => void;
   /** Invoked when the user chooses log out; navigation is owned by the app shell. */

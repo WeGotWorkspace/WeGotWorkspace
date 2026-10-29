@@ -14,7 +14,7 @@ use App\Services\Jmap\JmapMethodException;
  * ContactCard/query over the existing ContactCardRepository::query().
  *
  * The repository requires filter.inAddressBook and supports the uid
- * condition; the envelope fans a book-less query out over every owned book
+ * and kind ("group") conditions; the envelope fans a book-less query out over every owned book
  * (RFC 9610 filter conditions are optional). Filter conditions and sort
  * comparators the backing query cannot honour are rejected with
  * unsupportedFilter / unsupportedSort (RFC 8620 §5.5) instead of silently
@@ -23,7 +23,7 @@ use App\Services\Jmap\JmapMethodException;
  */
 final class ContactCardQueryMethod implements JmapMethodInterface
 {
-    private const SUPPORTED_FILTER_CONDITIONS = ['inAddressBook', 'uid'];
+    private const SUPPORTED_FILTER_CONDITIONS = ['inAddressBook', 'uid', 'kind'];
 
     public function __construct(
         private readonly AddressBookRepository $books,
@@ -82,6 +82,11 @@ final class ContactCardQueryMethod implements JmapMethodInterface
         $tokens = $this->books->syncTokens($username);
         $queryState = JmapAccountStateCodec::compose($tokens);
 
+        $kind = $filter['kind'] ?? null;
+        if ($kind !== null && $kind !== 'group') {
+            throw new JmapMethodException('invalidArguments', 'filter.kind supports only "group".');
+        }
+
         $bookUris = [];
         $inAddressBook = $filter['inAddressBook'] ?? null;
         if ($inAddressBook !== null) {
@@ -99,6 +104,9 @@ final class ContactCardQueryMethod implements JmapMethodInterface
             $bookFilter = ['inAddressBook' => $bookUri];
             if (isset($filter['uid'])) {
                 $bookFilter['uid'] = $filter['uid'];
+            }
+            if ($kind !== null) {
+                $bookFilter['kind'] = $kind;
             }
             $result = $this->cards->query($username, $bookFilter, null);
             array_push($ids, ...$result['ids']);

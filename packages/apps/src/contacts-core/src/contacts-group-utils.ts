@@ -429,19 +429,21 @@ export function contactsGroupViewKey(groupCardId: string): string {
 }
 
 /**
- * Cards still downloading that the view's header should count. Only All
- * Contacts with every address book shown and no search takes every card, so
- * only there the count is known before the cards arrive. Elsewhere the header
- * counts loaded rows until the download is complete.
+ * Contacts (not groups) the cold download will finish with, for the header.
+ * Only All Contacts with every address book shown and no search lists every
+ * contact, so only there the total is known before the cards arrive.
+ * Elsewhere the header counts loaded rows until the download is complete.
+ * Returned as the total, not a remainder: the remainder plus the loaded rows
+ * would mix two renders, as the rows lag the download snapshot.
  */
-export function contactsViewDownloadingCount(
+export function contactsViewDownloadingTotal(
   view: string,
   searchQuery: string,
   hiddenBookIds: ReadonlySet<string>,
-  pendingCardCount: number,
+  downloadingContactTotal: number,
 ): number {
   if (view !== "all" || hiddenBookIds.size > 0 || searchQuery.trim()) return 0;
-  return pendingCardCount;
+  return downloadingContactTotal;
 }
 
 /** Hide cards whose every address book is unchecked in the sidebar (All Contacts). */

@@ -85,11 +85,13 @@ describe("JmapContactsClient contract batches", () => {
     expect(recorded[0]?.map(([name]) => name)).toEqual([
       "AddressBook/get",
       "ContactCard/query",
+      "ContactCard/query",
       "ContactCard/get",
     ]);
     expect(recorded[0]?.[0]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
     expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT });
-    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
+    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, filter: { kind: "group" } });
+    expect(recorded[0]?.[3]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
     expect(recorded[1]?.[0]).toEqual([
       "ContactCard/get",
       { accountId: ACCOUNT, ids: ["card-1"] },
@@ -136,11 +138,17 @@ describe("JmapContactsClient contract batches", () => {
       { length: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 3 },
       (_, index) => `card-${index}`,
     );
+    const groupIds = ["card-1", "card-5"];
     const { contacts, recorded } = await makeClient(
       (calls) => {
         return calls.map(([name, args, id]) => {
           if (name === "ContactCard/query") {
-            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+            const isGroupQuery = (args.filter as { kind?: string } | undefined)?.kind === "group";
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, ids: isGroupQuery ? groupIds : ids },
+              id,
+            );
           }
           const pageIds = (args.ids as string[]) ?? [];
           return methodResponse(
@@ -163,13 +171,13 @@ describe("JmapContactsClient contract batches", () => {
     const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
       onPage: (snapshot) => {
         pages.push(snapshot.cards.list.length);
-        totals.push(snapshot.cardTotal);
+        totals.push(snapshot.contactTotal);
       },
     });
     expect(got.cards.list).toHaveLength(ids.length);
     expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
-    // The query's id count, known before the first page: the list header shows it.
-    expect(totals).toEqual([ids.length, ids.length]);
+    // The query's non-group count, known before the first page: the list header shows it.
+    expect(totals).toEqual([ids.length - 2, ids.length - 2]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);

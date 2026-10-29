@@ -70,7 +70,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
     listLoading,
     listRefreshing,
     mutationsLocked,
-    pendingCardCount,
+    downloadingContactTotal,
     refreshList,
     data,
     session,
@@ -325,7 +325,7 @@ export function ContactsApp({ apiSource }: ContactsAppProps = {}) {
             listLoading={listLoading}
             listRefreshing={listRefreshing}
             mutationsLocked={mutationsLocked}
-            pendingCardCount={pendingCardCount}
+            downloadingContactTotal={downloadingContactTotal}
             onRefreshList={refreshList}
             initialView={initialView}
             initialContactId={initialContactId}

@@ -220,8 +220,8 @@ export class JmapContactsClient {
       onPage?: (snapshot: {
         books: GetResponse<JmapAddressBook>;
         cards: GetResponse<JmapContactCard>;
-        /** Card ids the query returned: the size of the finished download. */
-        cardTotal: number;
+        /** Cards in the finished download that are not groups: what All Contacts lists. */
+        contactTotal: number;
       }) => void;
     },
   ): Promise<{
@@ -232,11 +232,14 @@ export class JmapContactsClient {
   }> {
     const booksCallId = this.client.nextCallId();
     const queryCallId = this.client.nextCallId();
+    const groupQueryCallId = this.client.nextCallId();
     const cardStateCallId = this.client.nextCallId();
     const response = await this.client.request(
       [
         ["AddressBook/get", { accountId, ids: null }, booksCallId],
         ["ContactCard/query", { accountId }, queryCallId],
+        // Group cards come back in the unfiltered query but All Contacts omits them.
+        ["ContactCard/query", { accountId, filter: { kind: "group" } }, groupQueryCallId],
         // Empty get: state at query time, before later page gets advance it.
         ["ContactCard/get", { accountId, ids: [] }, cardStateCallId],
       ],
@@ -247,6 +250,9 @@ export class JmapContactsClient {
     );
     const queryInvocation = response.methodResponses.find(
       ([name, , id]) => id === queryCallId && name === "ContactCard/query",
+    );
+    const groupQueryInvocation = response.methodResponses.find(
+      ([name, , id]) => id === groupQueryCallId && name === "ContactCard/query",
     );
     const cardStateInvocation = response.methodResponses.find(
       ([name, , id]) => id === cardStateCallId && name === "ContactCard/get",
@@ -263,8 +269,13 @@ export class JmapContactsClient {
     ).state;
     this.client.setState(accountId, CONTACT_CARD_TYPE, contactCardStateAtQuery);
     const queryIds = (queryInvocation[1] as QueryResponse).ids ?? [];
+    // A failed group query leaves the groups counted: the header settles when the download ends.
+    const groupIds = new Set(
+      groupQueryInvocation ? ((groupQueryInvocation[1] as QueryResponse).ids ?? []) : [],
+    );
+    const contactTotal = queryIds.filter((id) => !groupIds.has(id)).length;
     const cards = await this.#getContactCardsByIds(accountId, queryIds, undefined, (partial) => {
-      options?.onPage?.({ books, cards: partial, cardTotal: queryIds.length });
+      options?.onPage?.({ books, cards: partial, contactTotal });
     });
     return { books, cards, contactCardStateAtQuery };
   }
