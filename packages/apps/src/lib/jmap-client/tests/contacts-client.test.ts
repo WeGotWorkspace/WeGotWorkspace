@@ -159,13 +159,17 @@ describe("JmapContactsClient contract batches", () => {
     );
 
     const pages: number[] = [];
+    const totals: number[] = [];
     const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
       onPage: (snapshot) => {
         pages.push(snapshot.cards.list.length);
+        totals.push(snapshot.cardTotal);
       },
     });
     expect(got.cards.list).toHaveLength(ids.length);
     expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
+    // The query's id count, known before the first page: the list header shows it.
+    expect(totals).toEqual([ids.length, ids.length]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);

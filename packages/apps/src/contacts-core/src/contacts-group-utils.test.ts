@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
+  contactsViewDownloadingCount,
   canWriteContactGroup,
   contactAndGroupShareAddressBook,
   contactsGroupViewKey,
@@ -622,5 +623,25 @@ describe("filterCardsByHiddenAddressBooks", () => {
       addressBookIds: { default: true, "group-eng": true },
     } as unknown as ContactCard;
     expect(filterCardsByHiddenAddressBooks([both], new Set(["group-eng"]))).toEqual([both]);
+  });
+});
+
+describe("contactsViewDownloadingCount", () => {
+  const none = new Set<string>();
+
+  it("counts every card still downloading in All Contacts", () => {
+    expect(contactsViewDownloadingCount("all", "", none, 960)).toBe(960);
+    expect(contactsViewDownloadingCount("all", "  ", none, 960)).toBe(960);
+  });
+
+  it("counts nothing where the view or a search picks only some cards", () => {
+    expect(contactsViewDownloadingCount("all", "ada", none, 960)).toBe(0);
+    expect(contactsViewDownloadingCount("all", "", new Set(["work"]), 960)).toBe(0);
+    expect(contactsViewDownloadingCount("book:default", "", none, 960)).toBe(0);
+    expect(contactsViewDownloadingCount("group:team", "", none, 960)).toBe(0);
+  });
+
+  it("is zero once the download is complete", () => {
+    expect(contactsViewDownloadingCount("all", "", none, 0)).toBe(0);
   });
 });
