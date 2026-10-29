@@ -29,6 +29,7 @@ function deps(overrides: Partial<DocsLocatorDeps> = {}): DocsLocatorDeps {
     fetchLocation: vi.fn(async () => ({ id: ID, path: PATH })),
     readCachedPath: vi.fn(async () => undefined),
     readCachedNodeId: vi.fn(async () => undefined),
+    recordLocation: vi.fn(async () => undefined),
     isOnline: () => true,
     ...overrides,
   };
@@ -63,11 +64,12 @@ describe("useDocsRouteDocument", () => {
     expect(result.current.document).toEqual({ status: "home" });
   });
 
-  it("opens a file link by path at once and swaps in the id", async () => {
+  it("waits for a file link's id before opening, then swaps in the id", async () => {
     const locator = deps();
     const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
 
-    expect(result.current.document).toEqual({ status: "ready", path: PATH });
+    // The editor's local copy is keyed by id: it must not open on the path first.
+    expect(result.current.document).toEqual({ status: "resolving" });
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({ to: "/docs", search: { id: ID }, replace: true }),
     );
@@ -149,12 +151,22 @@ describe("useDocsRouteDocument", () => {
     );
   });
 
-  it("keeps the file link when offline and the id is unknown", async () => {
+  it("opens the file link by path when offline and the id is unknown", async () => {
     const locator = deps({ isOnline: () => false });
     const { result } = render({ file: "users/alice/Roadmap.md" }, locator);
 
-    expect(result.current.document).toEqual({ status: "ready", path: PATH });
-    await waitFor(() => expect(locator.readCachedNodeId).toHaveBeenCalledWith(PATH));
+    await waitFor(() => expect(result.current.document).toEqual({ status: "ready", path: PATH }));
+    expect(locator.readCachedNodeId).toHaveBeenCalledWith(PATH);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("opens the file link by path when the server has no such file", async () => {
+    const fetchLocation = vi.fn<DocsLocatorDeps["fetchLocation"]>(async () => {
+      throw new WgwRequestError("not found", 404);
+    });
+    const { result } = render({ file: "users/alice/Roadmap.md" }, deps({ fetchLocation }));
+
+    await waitFor(() => expect(result.current.document).toEqual({ status: "ready", path: PATH }));
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -268,5 +280,52 @@ describe("useDocsRouteDocument", () => {
     act(() => result.current.retry());
 
     await waitFor(() => expect(result.current.document).toMatchObject({ status: "ready" }));
+  });
+
+  it("records every location the server answers, before the Doc opens", async () => {
+    const locator = deps();
+    const { result } = render({ id: ID }, locator);
+    await waitFor(() => expect(result.current.document).toMatchObject({ status: "ready" }));
+    expect(locator.recordLocation).toHaveBeenCalledWith(ID, PATH);
+  });
+
+  it("relocate moves an open Doc to where its id lives now", async () => {
+    const fetchLocation = vi.fn(async () => ({ id: ID, path: PATH }));
+    const { result } = render({ id: ID }, deps({ fetchLocation }));
+    await waitFor(() => expect(result.current.document).toMatchObject({ path: PATH }));
+
+    fetchLocation.mockResolvedValue({ id: ID, path: "/users/alice/Moved.md" });
+    let moved: boolean | undefined;
+    await act(async () => {
+      moved = await result.current.relocate();
+    });
+
+    expect(moved).toBe(true);
+    expect(result.current.document).toEqual({
+      status: "ready",
+      path: "/users/alice/Moved.md",
+      nodeId: ID,
+    });
+  });
+
+  it("relocate says not moved when the id is still here or gone", async () => {
+    const fetchLocation = vi.fn<DocsLocatorDeps["fetchLocation"]>(async () => ({
+      id: ID,
+      path: PATH,
+    }));
+    const { result } = render({ id: ID }, deps({ fetchLocation }));
+    await waitFor(() => expect(result.current.document).toMatchObject({ path: PATH }));
+
+    await expect(result.current.relocate()).resolves.toBe(false);
+    fetchLocation.mockRejectedValue(new WgwRequestError("gone", 404));
+    await expect(result.current.relocate()).resolves.toBe(false);
+    expect(result.current.document).toEqual({ status: "ready", path: PATH, nodeId: ID });
+  });
+
+  it("relocate does nothing on a file route", async () => {
+    const locator = deps();
+    const { result } = render({ file: "users/alice/Roadmap.md" }, locator, false);
+    await expect(result.current.relocate()).resolves.toBe(false);
+    expect(locator.fetchLocation).not.toHaveBeenCalled();
   });
 });
