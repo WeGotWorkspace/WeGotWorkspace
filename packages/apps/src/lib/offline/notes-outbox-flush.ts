@@ -124,10 +124,10 @@ function createAnswerHasMetadata(created: Note, metadata: NoteUpsertMetadata): b
 /** The queued row still owed after `saved` answered the send of an older version. */
 function rebaseNoteUpsertRow(row: OfflineOutboxRow, saved: Note): OfflineOutboxRow {
   // The note is on the server now: what is left is an update from its answer.
-  const { create: _create, ...payload } = JSON.parse(row.payload) as NotesUpsertPayload;
+  const { create, ...payload } = JSON.parse(row.payload) as NotesUpsertPayload;
   // A move merged into the row while the create was on its way is no longer
   // sent with a create: the update has to carry the notebook itself.
-  const moved = !sameNotebook(saved, payload.metadata);
+  const moved = create === true && !sameNotebook(saved, payload.metadata);
   return {
     ...row,
     payload: JSON.stringify(moved ? { ...payload, patchNotebook: true } : payload),

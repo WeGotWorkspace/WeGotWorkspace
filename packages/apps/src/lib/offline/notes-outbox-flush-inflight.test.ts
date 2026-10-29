@@ -203,6 +203,29 @@ describe("flushNotesOutbox with an edit queued mid-send (#1711)", () => {
     expect((await getNoteFromCache(username, noteId))?.notebookId).toBe("notes-work");
   });
 
+  it("does not move a note back when an update is answered from another notebook", async () => {
+    const saved = { ...draft, notebookId: "notes-drafts", tags: ["a"], etag: '"e1"' };
+    await upsertNoteInCache(username, saved, false);
+    await queueEdit(saved, '"e1"');
+    const firstAnswer = deferred<Note>();
+    updateNoteItem.mockReturnValueOnce(firstAnswer.promise);
+    const work = { notebook: "Work", notebookId: "notes-work" };
+    updateNoteItem.mockResolvedValueOnce({ ...saved, ...work, tags: ["a", "b"], etag: '"e3"' });
+
+    const flushing = flushNotesOutbox(username);
+    await vi.waitFor(() => expect(updateNoteItem).toHaveBeenCalledOnce());
+    await queueEdit({ ...saved, tags: ["a", "b"] }, '"e1"');
+    // Another device moved the note to Work; this tab's copy still says Drafts.
+    firstAnswer.resolve({ ...saved, ...work, etag: '"e2"' });
+    await flushing;
+
+    expect(updateNoteItem).toHaveBeenCalledTimes(2);
+    const request = updateNoteItem.mock.calls[1]?.[1];
+    expect(request).toMatchObject({ tags: ["a", "b"], etag: '"e2"' });
+    expect(request).not.toHaveProperty("notebook");
+    expect(request).not.toHaveProperty("notebookId");
+  });
+
   it("sends a queued unstar when a resent create is answered starred", async () => {
     await queueEdit({ ...draft, createPending: true, starred: false }, undefined);
     createNoteItem.mockResolvedValue({ ...draft, starred: true, etag: '"e1"' });
