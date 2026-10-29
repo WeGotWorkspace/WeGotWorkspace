@@ -12,6 +12,7 @@ import type { PushSink, PushTransport, StateChange } from "./push-transport";
 const H1 = "1".repeat(32);
 const H2 = "2".repeat(32);
 const HC = "c".repeat(32);
+const LEADER = "wgw-jmap-push/leader";
 
 /** Let cross-tab messages (one task each) and lock hand-overs run. */
 const settle = async () => {
@@ -255,6 +256,64 @@ describe("JmapPushHub", () => {
       c.view.set(true);
       await settle();
       expect(b.live()[0]!.reconnectNow).toHaveBeenCalledWith("visible");
+    });
+
+    // Chrome runs the timers of a tab hidden for 5 minutes once a minute, so a
+    // hidden leader would reconnect late while another tab is on screen.
+    it("a leader that becomes hidden hands the stream to a visible tab", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      a.view.set(false);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.streams).toHaveLength(2);
+      expect(b.live()).toEqual([b.streams[1]]);
+    });
+
+    it("a hidden leader keeps the stream while every tab is hidden, and hands it over when one shows", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      const c = b.tab("c", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+      expect(b.streams).toHaveLength(1);
+
+      c.view.set(true);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+    });
+
+    it("a hidden leader hands over to a visible tab that joins later", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+    });
+
+    it("a visible leader keeps the stream when another tab shows", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      c.view.set(true);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+      expect(b.streams).toHaveLength(1);
     });
   });
 
