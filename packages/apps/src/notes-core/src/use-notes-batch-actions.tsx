@@ -3,7 +3,6 @@ import { Star, StarOff } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
-import { noteShowsStarControls } from "./notes-note-utils";
 import { persistNoteOrDropGone } from "./notes-persist-access";
 import type { NotesAPIOperations } from "./notes-types";
 
@@ -144,9 +143,7 @@ export function useNotesBatchActions({
   );
 
   const batchStar = useCallback(() => {
-    const beforeRows = notes.filter(
-      (note) => selectedIds.includes(note.id) && noteShowsStarControls(note),
-    );
+    const beforeRows = notes.filter((note) => selectedIds.includes(note.id));
     const starIds = beforeRows.map((note) => note.id);
     if (starIds.length === 0) return;
     const result = batchToggleStarForIds(starIds);

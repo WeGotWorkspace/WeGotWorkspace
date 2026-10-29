@@ -109,7 +109,7 @@ type NoteShareAudienceFields = Pick<
 /**
  * Personal share recipient: Shared-with-me file grant, or a note under a
  * personally shared notebook (ACL dir grant from another user). Group notebooks
- * are not personal shares — members keep tags/stars.
+ * are not personal shares — members keep tags. Stars are per user and show for everyone.
  */
 export function isPersonalShareRecipient(note: NoteShareAudienceFields): boolean {
   if (note.sharedInbox) return true;
@@ -132,11 +132,6 @@ export function noteAllowsTagAssignment(
   mayEditContent: boolean,
 ): boolean {
   return noteShowsTags(note) && mayEditContent;
-}
-
-/** Star/unstar controls — same personal-share audience as hidden tags. */
-export function noteShowsStarControls(note: NoteShareAudienceFields): boolean {
-  return !isPersonalShareRecipient(note);
 }
 
 /**
@@ -492,7 +487,8 @@ export function filterVisibleNotes(
     if (view === "all") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && !isArchived;
     } else if (view === "starred") {
-      inView = !note.sharedInbox && !note.sharedNotebookGrant && !!starred[note.id] && !isArchived;
+      // A star is the caller's own, so Starred also lists notes shared with them.
+      inView = !!starred[note.id] && !isArchived;
     } else if (view === "archive") {
       inView = !note.sharedInbox && !note.sharedNotebookGrant && isArchived;
     } else if (view === "shared-with-me") {

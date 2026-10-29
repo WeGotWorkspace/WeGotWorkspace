@@ -27,7 +27,6 @@ import {
   noteListLocationLabel,
   notebookDisplayName,
   notesWithRenamedNotebook,
-  noteShowsStarControls,
   noteShowsTags,
   noteShowsSharedBadge,
   noteShowsViewOnlyBadge,
@@ -88,6 +87,23 @@ describe("notes-note-utils", () => {
     expect(noteTagsAfterToggle(["focus"], "plan,ning")).toBeNull();
     expect(noteTagsAfterToggle(["focus"], "Plan-ning")).toEqual(["focus", "plan-ning"]);
     expect(noteTagsAfterToggle(["focus"], "v2")).toBeNull();
+  });
+
+  it("lists a starred note shared with the caller under Starred", () => {
+    const shared: Note = {
+      ...sampleNote,
+      id: "shared-star",
+      sharedInbox: true,
+      sharedBy: "bob",
+      apiPath: "/users/bob/.notes/TeamPad/shared-star.md",
+    };
+    const visible = filterVisibleNotes([shared, { ...sampleNote, id: "own" }], {
+      view: "starred",
+      archived: {},
+      starred: { "shared-star": true },
+      searchQuery: "",
+    });
+    expect(visible.map((note) => note.id)).toEqual(["shared-star"]);
   });
 
   it("matches a tag view when the stored tag differs only in case", () => {
@@ -190,16 +206,13 @@ describe("notes-note-utils", () => {
     };
 
     expect(noteShowsTags(owned)).toBe(true);
-    expect(noteShowsStarControls(owned)).toBe(true);
     expect(noteAllowsTagAssignment(owned, true)).toBe(true);
     expect(noteAllowsTagAssignment(owned, false)).toBe(false);
 
     expect(noteShowsTags(sharedInbox)).toBe(false);
-    expect(noteShowsStarControls(sharedInbox)).toBe(false);
     expect(noteAllowsTagAssignment(sharedInbox, true)).toBe(false);
 
     expect(noteShowsTags(groupNote)).toBe(true);
-    expect(noteShowsStarControls(groupNote)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, true)).toBe(true);
     expect(noteAllowsTagAssignment(groupNote, false)).toBe(false);
   });
