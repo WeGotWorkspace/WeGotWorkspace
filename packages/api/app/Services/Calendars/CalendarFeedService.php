@@ -6,8 +6,10 @@ namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\CalendarFeedToken;
+use App\Models\CalendarInstance;
 use App\Support\ApiUrlBuilder;
 use Illuminate\Support\Str;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 final class CalendarFeedService
 {
@@ -19,15 +21,13 @@ final class CalendarFeedService
     ) {}
 
     /**
+     * The calendar's feed, for every principal who may publish the calendar.
+     *
      * @return array{httpsUrl: string, webcalUrl: string, mode: string}
      */
     public function show(string $username, string $calendarId): array
     {
-        $this->assertPublishable($username, $calendarId);
-        $row = CalendarFeedToken::query()
-            ->where('owner_username', $username)
-            ->where('calendar_uri', $calendarId)
-            ->first();
+        $row = $this->feedOf($this->publishableCalendarId($username, $calendarId));
         if ($row === null) {
             throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
         }
@@ -36,17 +36,17 @@ final class CalendarFeedService
     }
 
     /**
+     * Publishes the calendar, or returns its existing feed. A calendar has at
+     * most one feed, whoever published it; sending mode updates that feed.
+     *
      * @param  array<mixed>  $payload
      * @return array{created: bool, feed: array{httpsUrl: string, webcalUrl: string, mode: string}}
      */
     public function publish(string $username, string $calendarId, array $payload = []): array
     {
-        $this->assertPublishable($username, $calendarId);
+        $calendar = $this->publishableCalendarId($username, $calendarId);
         $mode = $this->requestedMode($payload);
-        $existing = CalendarFeedToken::query()
-            ->where('owner_username', $username)
-            ->where('calendar_uri', $calendarId)
-            ->first();
+        $existing = $this->feedOf($calendar);
         if ($existing !== null) {
             if ($mode !== null && $this->storedMode($existing) !== $mode) {
                 $existing->mode = $mode;
@@ -66,26 +66,25 @@ final class CalendarFeedService
             // Encrypted so show()/publish() can return the same public URL.
             // RSVP tokens are hash-only and cannot be redisplayed.
             'token_cipher' => $raw,
-            'owner_username' => $username,
-            'calendar_uri' => $calendarId,
+            'calendarid' => $calendar,
             'mode' => $stored,
         ]);
 
         return ['created' => true, 'feed' => $this->feedPayload($raw, $stored)];
     }
 
+    /** Ends every public URL of the calendar, whoever published it. */
     public function revoke(string $username, string $calendarId): void
     {
-        $this->assertPublishable($username, $calendarId);
         $deleted = CalendarFeedToken::query()
-            ->where('owner_username', $username)
-            ->where('calendar_uri', $calendarId)
+            ->where('calendarid', $this->publishableCalendarId($username, $calendarId))
             ->delete();
         if ($deleted === 0) {
             throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
         }
     }
 
+    /** Serves exactly the calendar the token was issued for. */
     public function publicIcs(string $token, string $ip): string
     {
         $token = $this->normalizePublicToken($token);
@@ -94,15 +93,8 @@ final class CalendarFeedService
         }
 
         $row = CalendarFeedToken::findByRawToken($token);
-        if ($row === null) {
-            throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
-        }
-
-        $instance = $this->calendars->findAccessibleCalendar(
-            (string) $row->owner_username,
-            (string) $row->calendar_uri,
-        );
-        if ($instance === null) {
+        $instance = $row === null ? null : $this->ownerInstance((int) $row->calendarid);
+        if ($row === null || $instance === null) {
             throw new ApiHttpException(404, 'Calendar feed not found.', 'not_found');
         }
 
@@ -147,12 +139,33 @@ final class CalendarFeedService
         return $row->mode === 'full' ? 'full' : 'busy';
     }
 
-    private function assertPublishable(string $username, string $calendarId): void
+    /** Sabre calendar id of a calendar the user may publish. */
+    private function publishableCalendarId(string $username, string $calendarId): int
     {
-        $this->calendars->findPublishableCalendar($username, $calendarId);
+        $instance = $this->calendars->findPublishableCalendar($username, $calendarId);
         if ($this->calendars->isSubscriptionCalendar($username, $calendarId)) {
             throw new ApiHttpException(403, 'Subscription calendars cannot be published.', 'forbidden');
         }
+
+        return (int) $instance->calendarid;
+    }
+
+    private function ownerInstance(int $calendarId): ?CalendarInstance
+    {
+        return CalendarInstance::query()
+            ->where('calendarid', $calendarId)
+            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+            ->whereHas('calendar', fn ($query) => $query->supportsVevent())
+            ->first();
+    }
+
+    /** The oldest feed of the calendar; tokens issued before feeds were per calendar may add more. */
+    private function feedOf(int $calendarId): ?CalendarFeedToken
+    {
+        return CalendarFeedToken::query()
+            ->where('calendarid', $calendarId)
+            ->orderBy('id')
+            ->first();
     }
 
     /**

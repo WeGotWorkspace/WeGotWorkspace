@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Calendars;
 
 use App\Exceptions\ApiHttpException;
+use App\Models\CalendarInstance;
 use App\Models\CalendarObject;
 use App\Models\CalendarRsvpToken;
 
@@ -16,6 +17,7 @@ final class CalendarRsvpService
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarRepository $calendars,
         private readonly CalendarRsvpRateLimiter $rateLimiter,
+        private readonly CalendarSchedulingObjects $objects,
     ) {}
 
     /**
@@ -25,11 +27,7 @@ final class CalendarRsvpService
     {
         $row = $this->validToken($token, $ip);
 
-        return [
-            'title' => $this->eventTitle($row),
-            'attendeeEmail' => (string) $row->attendee_email,
-            'participationStatus' => (string) ($row->used_partstat ?? 'needs-action'),
-        ];
+        return $this->summary($row, $this->findOrganizerEvent($row));
     }
 
     /**
@@ -49,7 +47,7 @@ final class CalendarRsvpService
             throw new ApiHttpException(404, 'Calendar event not found.', 'not_found');
         }
 
-        $eventId = CalendarEventMapper::eventIdFromUri((string) $event->uri);
+        $eventId = CalendarEventMapper::eventIdFromUri((string) $event['object']->uri);
         $username = (string) $row->organizer_username;
         $current = $this->events->show($username, $eventId);
         $participants = is_array($current['participants'] ?? null) ? $current['participants'] : [];
@@ -72,7 +70,21 @@ final class CalendarRsvpService
         $row->used_partstat = $status;
         $row->save();
 
-        return $this->show($token, $ip);
+        // Same token check as show(), so an answer still counts as a second attempt.
+        return $this->summary($this->validToken($token, $ip), $event);
+    }
+
+    /**
+     * @param  array{object: CalendarObject, instance: CalendarInstance}|null  $event
+     * @return array{title: string, attendeeEmail: string, participationStatus: string}
+     */
+    private function summary(CalendarRsvpToken $row, ?array $event): array
+    {
+        return [
+            'title' => $this->eventTitle($row, $event),
+            'attendeeEmail' => (string) $row->attendee_email,
+            'participationStatus' => (string) ($row->used_partstat ?? 'needs-action'),
+        ];
     }
 
     private function validToken(string $token, string $ip): CalendarRsvpToken
@@ -89,31 +101,28 @@ final class CalendarRsvpService
         return $row;
     }
 
-    private function findOrganizerEvent(CalendarRsvpToken $row): ?CalendarObject
+    /**
+     * The event the organizer organizes with this UID: the organizer's own,
+     * then group, then write-shared calendars. Read-only shares are skipped.
+     *
+     * @return array{object: CalendarObject, instance: CalendarInstance}|null
+     */
+    private function findOrganizerEvent(CalendarRsvpToken $row): ?array
     {
-        return CalendarObject::query()
-            ->where('uid', (string) $row->event_uid)
-            ->whereHas('calendar.instances', function ($query) use ($row): void {
-                $query->where('principaluri', 'principals/'.$row->organizer_username);
-            })
-            ->first();
+        return $this->objects->organizerEvent((string) $row->organizer_username, (string) $row->event_uid);
     }
 
-    private function eventTitle(CalendarRsvpToken $row): string
+    /**
+     * @param  array{object: CalendarObject, instance: CalendarInstance}|null  $event
+     */
+    private function eventTitle(CalendarRsvpToken $row, ?array $event): string
     {
-        $event = $this->findOrganizerEvent($row);
         if ($event === null) {
             return 'Invitation';
         }
-        $instance = $event->calendar?->instances()
-            ->where('principaluri', 'principals/'.$row->organizer_username)
-            ->first();
-        if ($instance === null) {
-            return 'Invitation';
-        }
         $payload = $this->mapper->toCalendarEvent(
-            $event,
-            $this->calendars->apiIdForInstance($instance),
+            $event['object'],
+            $this->calendars->apiIdForInstance($event['instance']),
             null,
             (string) $row->organizer_username,
         );

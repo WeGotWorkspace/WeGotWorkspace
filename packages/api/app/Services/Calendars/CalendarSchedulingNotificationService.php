@@ -34,6 +34,7 @@ final class CalendarSchedulingNotificationService
         private readonly MailDeliveryTransportResolver $mailResolver,
         private readonly CalendarSchedulingInviteHorizon $horizon,
         private readonly CalendarSchedulingRsvpScope $rsvpScope,
+        private readonly CalendarSchedulingObjects $objects,
     ) {}
 
     /**
@@ -469,7 +470,23 @@ final class CalendarSchedulingNotificationService
             return false;
         }
 
-        return $this->findEventByUid($organizerUsername, $uid) === null;
+        return ! $this->organizerCanSeeUid($organizerUsername, $uid);
+    }
+
+    /**
+     * Existence check only (hides stale invites): any calendar the organizer
+     * can reach, so an invite organized from a shared calendar stays listed.
+     */
+    private function organizerCanSeeUid(string $organizerUsername, string $uid): bool
+    {
+        $principalUris = $this->calendars->accessiblePrincipalUris($organizerUsername);
+
+        return CalendarObject::query()
+            ->where('uid', $uid)
+            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
+                $query->whereIn('principaluri', $principalUris);
+            })
+            ->exists();
     }
 
     private function deleteInboxForUid(string $username, string $uid): void
@@ -503,18 +520,14 @@ final class CalendarSchedulingNotificationService
         return isset($vevent->RRULE) || isset($vevent->{'RECURRENCE-ID'});
     }
 
+    /**
+     * The user's own invite copy: calendars the user owns, then the user's group
+     * calendars (a copy may be moved there). Never the organizer's event in a
+     * calendar shared to the user, so an RSVP cannot edit or move it.
+     */
     private function findEventByUid(string $username, string $uid): ?CalendarObject
     {
-        // Include group calendars the user can access — invite copies may live
-        // under principals/groups/{slug}, not only principals/{username}.
-        $principalUris = $this->calendars->accessiblePrincipalUris($username);
-
-        return CalendarObject::query()
-            ->where('uid', $uid)
-            ->whereHas('calendar.instances', function ($query) use ($principalUris): void {
-                $query->whereIn('principaluri', $principalUris);
-            })
-            ->first();
+        return $this->objects->attendeeCopy($username, $uid)['object'] ?? null;
     }
 
     /**

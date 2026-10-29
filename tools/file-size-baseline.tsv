@@ -1,4 +1,4 @@
-packages/api/app/Services/Calendars/CalendarRepository.php	878	grandfathered
+packages/api/app/Services/Calendars/CalendarRepository.php	874	grandfathered
 packages/api/app/Services/Chat/ChatChannelRepository.php	894	grandfathered
 packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	916	grandfathered
 packages/apps/src/calendar-core/src/calendar-workspace.tsx	1368	grandfathered
