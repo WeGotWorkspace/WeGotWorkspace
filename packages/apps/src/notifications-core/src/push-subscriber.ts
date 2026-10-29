@@ -8,12 +8,15 @@ import { decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
  */
 const PUSH_SUBSCRIBER_KEY = "wgw.push.subscriber";
 
-/** Username in the current access token, or null without a member session. */
+/**
+ * Username in the current access token, lowercased like the server's
+ * `principal`, or null without a member session.
+ */
 export function currentPushAccount(): string | null {
   const token = wgwCurrentAccessToken();
   if (!token) return null;
   const sub = decodeJwtPayload(token)?.sub;
-  return typeof sub === "string" && sub.trim() ? sub.trim() : null;
+  return typeof sub === "string" && sub.trim() ? normalizeAccount(sub) : null;
 }
 
 /**
@@ -39,8 +42,12 @@ export function recordPushSubscriber(account: string | null): void {
 function readPushSubscriber(): string | null {
   try {
     const value = window.localStorage.getItem(PUSH_SUBSCRIBER_KEY);
-    return value?.trim() ? value.trim() : null;
+    return value?.trim() ? normalizeAccount(value) : null;
   } catch {
     return null;
   }
+}
+
+function normalizeAccount(username: string): string {
+  return username.trim().toLowerCase();
 }
