@@ -143,12 +143,15 @@ export async function startContactsColdDownload(
 /**
  * Saves one page and the ids still missing in one transaction. A card with
  * unsynced local edits keeps the local row. Returns the cards it saved; none
- * when the download was finished or restarted elsewhere.
+ * when the download was finished or restarted elsewhere. `owner` is the
+ * ContactCard state the caller's download started at: a marker with another
+ * anchor belongs to another run, and nothing is written.
  */
 export async function saveContactsColdDownloadPage(
   username: string,
   cards: ContactCard[],
   remainingCardIds: string[],
+  owner?: string,
 ): Promise<ContactCard[]> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = contactsCardsTable(db);
@@ -156,6 +159,7 @@ export async function saveContactsColdDownloadPage(
     const row = await db.meta.get(META_COLD_DOWNLOAD);
     if (!row?.value) return [];
     const progress = JSON.parse(row.value) as ContactsColdDownload;
+    if (owner !== undefined && progress.contactCardState !== owner) return [];
     const existing = await table.bulkGet(cards.map((card) => card.id));
     const fresh = cards.filter((_, index) => !existing[index]?.pendingSync);
     await table.bulkPut(fresh.map((card) => contactCardRow(card, false)));
@@ -167,10 +171,21 @@ export async function saveContactsColdDownloadPage(
   });
 }
 
-/** Call after the sync tokens are stored: from here on the copy counts as complete. */
-export async function finishContactsColdDownload(username: string): Promise<void> {
+/**
+ * Call after the sync tokens are stored: from here on the copy counts as
+ * complete. With `owner` (the ContactCard state the caller's download started
+ * at) a marker that carries another anchor stays.
+ */
+export async function finishContactsColdDownload(username: string, owner?: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await db.meta.delete(META_COLD_DOWNLOAD);
+  await db.transaction("rw", db.meta, async () => {
+    if (owner !== undefined) {
+      const row = await db.meta.get(META_COLD_DOWNLOAD);
+      if (row?.value && (JSON.parse(row.value) as ContactsColdDownload).contactCardState !== owner)
+        return;
+    }
+    await db.meta.delete(META_COLD_DOWNLOAD);
+  });
 }
 
 export async function upsertContactCardInCache(

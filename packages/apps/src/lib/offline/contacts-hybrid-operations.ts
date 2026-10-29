@@ -328,34 +328,52 @@ type ContactsBootstrap = Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>;
 export async function fetchContactsHybridBootstrap(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
+  // An unfinished first download is never restarted: its saved pages, remaining
+  // ids and query-time anchor stay until it completes. Refresh finishes it.
+  const unfinishedName = readOfflineContactsUsername();
+  if (unfinishedName && readBrowserOnline() && (await readContactsColdDownload(unfinishedName))) {
+    const saved = await readContactsBootstrapFromCache(unfinishedName);
+    if (saved) return finishContactsDownload(unfinishedName, saved, onProgress);
+  }
   let savingFor: string | null = null;
+  let owner: string | null = null;
   const bootstrap = await fetchContactsLiveBootstrap({
     onProgress,
     onStart: async ({ session, addressBooks, cardIds, syncAnchor }) => {
       const name = session.user.username;
       if (!name) return;
-      const unfinished = await readContactsColdDownload(name);
-      if (!unfinished && (await hasContactsCopy(name))) return;
+      if (await readContactsColdDownload(name)) return;
+      if (await hasContactsCopy(name)) return;
       await startContactsColdDownload(name, session, addressBooks, {
         ...syncAnchor,
         remainingCardIds: cardIds,
       });
       savingFor = name;
+      owner = syncAnchor.contactCardState;
     },
     onCardPage: async ({ cards, remainingCardIds }) => {
-      if (savingFor) await saveContactsColdDownloadPage(savingFor, cards, remainingCardIds);
+      if (savingFor && owner) {
+        await saveContactsColdDownloadPage(savingFor, cards, remainingCardIds, owner);
+      }
     },
   });
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Contacts bootstrap missing username");
   }
+  if (savingFor) {
+    // Every page is stored already: replacing the copy now would only open a
+    // window where the cards are gone and the marker says nothing is missing.
+    await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
+    await finishContactsColdDownload(username, owner ?? undefined);
+    if (readBrowserOnline()) await runnerFor(username).flush();
+    return bootstrap;
+  }
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
   await writeContactsBootstrapToCache(username, bootstrap);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
-  await finishContactsColdDownload(username);
   return bootstrap;
 }
 
@@ -386,13 +404,21 @@ function resumeContactsColdDownload(
           username,
           page.cards,
           page.remainingCardIds,
+          progress.contactCardState,
         );
         for (const card of kept) cards.set(card.id, card);
         publish();
       });
     }
-    await rememberContactsSyncState(username, saved.data.addressBooks, progress);
-    await finishContactsColdDownload(username);
+    // A restarted download owns the marker now: it stores its own tokens.
+    const stored = await readContactsColdDownload(username);
+    if (
+      stored?.contactCardState === progress.contactCardState &&
+      stored.addressBookState === progress.addressBookState
+    ) {
+      await rememberContactsSyncState(username, saved.data.addressBooks, progress);
+      await finishContactsColdDownload(username, progress.contactCardState);
+    }
     // Edits queued offline on the partial copy go out now; the flush's pull
     // starts at the query-time tokens stored above.
     if (readBrowserOnline()) await runnerFor(username).flush();

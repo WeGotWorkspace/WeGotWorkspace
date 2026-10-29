@@ -268,4 +268,71 @@ describe("contacts first download, saved page by page", () => {
 
     expect(pullAddressBookChanges).toHaveBeenCalledTimes(1);
   });
+
+  it("a refresh during an unfinished first download keeps its pages and anchor", async () => {
+    stopAfterFirstPage(["a", "b", "c"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    vi.mocked(fetchContactsLiveBootstrap).mockClear();
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: ["c"] });
+      throw new TypeError("network error");
+    });
+
+    await expect(fetchContactsHybridBootstrap()).rejects.toThrow("network error");
+
+    expect(fetchContactsLiveBootstrap).not.toHaveBeenCalled();
+    expect(fetchContactCardPages).toHaveBeenCalledWith(["b", "c"], expect.any(Function));
+    expect(await cachedIds()).toEqual(["a", "b"]);
+    expect(await readContactsColdDownload(username)).toEqual({
+      ...syncAnchor,
+      remainingCardIds: ["c"],
+    });
+  });
+
+  it("a finished cold download keeps the pages it saved and flushes after the marker is gone", async () => {
+    vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+      await options?.onStart?.({ session, addressBooks: [book], cardIds: ["a", "b"], syncAnchor });
+      await options?.onCardPage?.({ cards: [card("a")], remainingCardIds: ["b"] });
+      await options?.onCardPage?.({ cards: [card("b")], remainingCardIds: [] });
+      expect(await cachedIds()).toEqual(["a", "b"]);
+      return { session, data: { addressBooks: [book], cards: [card("a"), card("b")] }, syncAnchor };
+    });
+    pullAddressBookChanges.mockImplementation(async () => {
+      expect(await readContactsColdDownload(username)).toBeNull();
+    });
+
+    await fetchContactsHybridBootstrap();
+
+    expect(await cachedIds()).toEqual(["a", "b"]);
+    expect(await readContactsColdDownload(username)).toBeNull();
+    expect(await readSyncToken(username, "default")).toBe("cards-at-query");
+  });
+
+  it("a resume that lost the marker to a restarted download leaves it alone", async () => {
+    stopAfterFirstPage(["a", "b", "c"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      // Another download restarts the marker with a newer anchor.
+      await db.meta.put({
+        key: "contacts:coldDownload",
+        value: JSON.stringify({
+          addressBookState: "books-2",
+          contactCardState: "cards-2",
+          remainingCardIds: ["x", "y"],
+        }),
+      });
+      await onCardPage({ cards: [card("b")], remainingCardIds: [] });
+    });
+
+    await loadContactsBootstrapForBoot();
+
+    expect(await cachedIds()).toEqual(["a"]);
+    expect(await readContactsColdDownload(username)).toEqual({
+      addressBookState: "books-2",
+      contactCardState: "cards-2",
+      remainingCardIds: ["x", "y"],
+    });
+    expect(await readSyncToken(username, "default")).toBeNull();
+  });
 });
