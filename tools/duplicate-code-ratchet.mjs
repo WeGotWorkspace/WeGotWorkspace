@@ -5,8 +5,11 @@
  * Scans two scopes with jscpd and compares each scope's clone count and
  * duplicated-line total to `tools/duplicate-code-baseline.json`.
  *
- * `check` fails when a total grew, and when it dropped while the baseline
- * still holds the old number (lower it with `update` in the same change).
+ * `check` fails when a total grew. When a total dropped it passes and prints
+ * a notice to lower the baseline with `update`. A drop does not fail because
+ * each total is one number for a whole scope: if drops failed, every PR that
+ * removes some duplication would edit the same baseline line, and parallel
+ * PRs would keep conflicting in the merge queue.
  * `update` only lowers totals. It never raises one. Raising a total, a
  * jscpd upgrade, or a threshold change is a hand edit of the baseline,
  * which needs code-owner review (.github/CODEOWNERS).
@@ -383,26 +386,25 @@ function scopeErrors(current, baseline) {
  * @param {Record<string, { clones: number, duplicatedLines: number }>} current
  * @param {ReturnType<typeof parseBaseline>} baseline
  * @param {{ jscpdVersion: string }} settings
- * @returns {{ errors: string[] }}
+ * @returns {{ errors: string[], notices: string[] }}
  */
 export function evaluate(current, baseline, { jscpdVersion }) {
   const version = versionError(baseline, jscpdVersion);
-  if (version) return { errors: [version] };
+  if (version) return { errors: [version], notices: [] };
   const errors = scopeErrors(current, baseline);
-  if (errors.length > 0) return { errors };
+  if (errors.length > 0) return { errors, notices: [] };
+  const notices = [];
   for (const root of scopeRoots) {
     for (const { key, label } of metrics) {
       const stored = baseline.scopes[root][key];
       const actual = current[root][key];
       if (actual > stored) errors.push(`${root}: ${label} grew from ${stored} to ${actual}`);
       if (actual < stored) {
-        errors.push(
-          `${root}: ${label} dropped from ${stored} to ${actual}; run ${updateCommand} and commit the baseline`,
-        );
+        notices.push(`${root}: ${label} dropped from ${stored} to ${actual}; ${updateCommand} can lower the baseline`);
       }
     }
   }
-  return { errors };
+  return { errors, notices };
 }
 
 /**
@@ -463,7 +465,7 @@ function totalsLine(root, totals, stored) {
 
 async function check() {
   const { baseline, current, seconds, jscpdVersion } = await measureAgainstBaseline();
-  const { errors } = evaluate(current, baseline, { jscpdVersion });
+  const { errors, notices } = evaluate(current, baseline, { jscpdVersion });
   if (errors.length > 0) {
     console.error(`Duplicate-code ratchet failed (${errors.length}):\n`);
     for (const error of errors) console.error(`  - ${error}`);
@@ -471,6 +473,7 @@ async function check() {
     process.exit(1);
   }
   for (const root of scopeRoots) console.log(totalsLine(root, current[root]));
+  for (const notice of notices) console.log(`Notice: ${notice}`);
   console.log(`Duplicate-code ratchet passed (jscpd ${jscpdVersion}, ${seconds}s).`);
 }
 
