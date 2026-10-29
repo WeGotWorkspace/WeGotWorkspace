@@ -17,10 +17,10 @@ class DriveStarService
     public function __construct(private StoragePaths $paths) {}
 
     /**
-     * @param  list<string>  $groupSlugs
+     * @param  callable(string): bool  $mayView  whether the user may still view the starred path
      * @return list<string>
      */
-    public function listPaths(string $username, array $groupSlugs): array
+    public function listPaths(string $username, callable $mayView): array
     {
         $rows = DriveStarredItem::query()
             ->where('username', $username)
@@ -33,10 +33,7 @@ class DriveStarService
                 continue;
             }
             $normalized = $this->paths->normalizeVirtualPath($path);
-            if (! $this->paths->isPathAllowed($normalized, $username, $groupSlugs, false)) {
-                continue;
-            }
-            if ($this->isHiddenBrowsePath($normalized)) {
+            if ($this->isHiddenBrowsePath($normalized) || ! $mayView($normalized)) {
                 continue;
             }
             $out[] = $normalized;
