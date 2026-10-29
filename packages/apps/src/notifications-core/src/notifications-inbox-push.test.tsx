@@ -7,6 +7,7 @@ import type { InboxPayload } from "./inbox-fan-out";
 const hub = vi.hoisted(() => {
   const state = {
     connected: false,
+    leading: true,
     listeners: [] as Array<{ types: readonly string[]; listener: StateChangeListener }>,
     statusListeners: new Set<(connected: boolean) => void>(),
   };
@@ -15,6 +16,9 @@ const hub = vi.hoisted(() => {
     value: {
       get connected() {
         return state.connected;
+      },
+      get leading() {
+        return state.leading;
       },
       subscribe(types: readonly string[], listener: StateChangeListener) {
         const entry = { types, listener };
@@ -36,8 +40,6 @@ const fanOut = vi.hoisted(() => {
   return {
     shared,
     value: {
-      leading: true,
-      start: () => () => undefined,
       onShared(listener: (payload: InboxPayload) => void) {
         shared.add(listener);
         return () => shared.delete(listener);
@@ -116,7 +118,7 @@ describe("notification inbox on push", () => {
     hub.state.connected = false;
     hub.state.listeners.length = 0;
     hub.state.statusListeners.clear();
-    fanOut.value.leading = true;
+    hub.state.leading = true;
     fanOut.value.share.mockReset();
     vi.mocked(listNotifications).mockReset();
     vi.mocked(ackLocalNotification).mockReset();
@@ -137,7 +139,7 @@ describe("notification inbox on push", () => {
     expect(hub.state.listeners.map((entry) => entry.types)).toEqual([["Notification"]]);
   });
 
-  it("a Notification state change fetches the inbox once in the leader tab and shares it", async () => {
+  it("a Notification state change fetches the inbox once in the tab that holds the stream and shares it", async () => {
     render(
       <NotificationsProvider>
         <Probe />
@@ -171,8 +173,8 @@ describe("notification inbox on push", () => {
     expect(fanOut.value.share).not.toHaveBeenCalled();
   });
 
-  it("a tab that does not lead fetches nothing on push and shows the rows the leader shared", async () => {
-    fanOut.value.leading = false;
+  it("a tab that does not hold the stream fetches nothing on push and shows the rows the leader shared", async () => {
+    hub.state.leading = false;
     render(
       <NotificationsProvider>
         <Probe />
@@ -202,7 +204,7 @@ describe("notification inbox on push", () => {
   });
 
   it("a hidden tab shows shared rows but does not ack them", async () => {
-    fanOut.value.leading = false;
+    hub.state.leading = false;
     setVisibility("hidden");
     render(
       <NotificationsProvider>
