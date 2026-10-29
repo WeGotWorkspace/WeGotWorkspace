@@ -74,7 +74,7 @@ How to read the delivery row:
 | NULL | set | The sweep handled it. Push went to every subscription, **or** A had no subscription at all (check step 3) |
 | NULL | NULL, `due_at` in the past | Not swept yet. Run step 1 |
 | NULL | NULL, `due_at` moved later | A send failed for a reason that is worth a retry. The log has `vapid_send_rejected` or `vapid_send_failed` |
-| row gone | | Older than one hour and never sent (given up), or cleaned up two hours after it was acked or sent |
+| row gone | | Older than one hour and never sent (given up), or acked or sent and cleaned up two hours after it was created |
 
 ## Cases
 
