@@ -165,6 +165,20 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     expect(await ids()).toEqual(expect.arrayContaining(["ev-now", "ev-far"]));
   });
 
+  it("keeps a UTC event with a Z start outside the live window", async () => {
+    await mergeCalendarRangeIntoCache(username, farWeek, [
+      { ...at("ev-far-utc", "2033-01-12T10:00:00Z"), timeZone: null },
+    ]);
+
+    await writeCalendarBootstrapToCache(
+      username,
+      { ...bootstrap, data: { ...bootstrap.data, events: [inWindow] } },
+      { window: liveWindow },
+    );
+
+    expect(await ids()).toEqual(expect.arrayContaining(["ev-now", "ev-far-utc"]));
+  });
+
   it("still drops an event inside the live window that the server no longer has", async () => {
     await writeCalendarBootstrapToCache(
       username,

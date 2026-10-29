@@ -78,6 +78,49 @@ describe("calendarEventMayOverlapRange", () => {
     expect(calendarEventMayOverlapRange(series, week)).toBe(false);
   });
 
+  it("reads a UTC start with a Z, as CalDAV clients store it", () => {
+    const utc = { timeZone: null } as Partial<JmapCalendarEvent>;
+    expect(calendarEventMayOverlapRange(event("2033-01-12T10:00:00Z", utc), week)).toBe(true);
+    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00Z", utc), week)).toBe(false);
+    expect(calendarEventMayOverlapRange(event("2032-11-12T10:00:00Z", utc), week)).toBe(false);
+  });
+
+  it("reads a start with a numeric offset", () => {
+    const offset = { timeZone: null } as Partial<JmapCalendarEvent>;
+    expect(calendarEventMayOverlapRange(event("2033-01-12T10:00:00+02:00", offset), week)).toBe(
+      true,
+    );
+    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00-05:00", offset), week)).toBe(
+      false,
+    );
+  });
+
+  it("reads an end with a Z", () => {
+    const utcEnd = {
+      timeZone: null,
+      duration: undefined,
+      end: "2033-03-12T11:00:00Z",
+    } as Partial<JmapCalendarEvent>;
+    expect(calendarEventMayOverlapRange(event("2033-03-12T10:00:00Z", utcEnd), week)).toBe(false);
+  });
+
+  it("reads a series until with a Z", () => {
+    const ended = event("2020-01-06T09:00:00Z", {
+      timeZone: null,
+      recurrenceRules: [
+        { "@type": "RecurrenceRule", frequency: "weekly", until: "2021-01-01T00:00:00Z" },
+      ],
+    } as Partial<JmapCalendarEvent>);
+    const running = event("2020-01-06T09:00:00Z", {
+      timeZone: null,
+      recurrenceRules: [
+        { "@type": "RecurrenceRule", frequency: "weekly", until: "2040-01-01T00:00:00Z" },
+      ],
+    } as Partial<JmapCalendarEvent>);
+    expect(calendarEventMayOverlapRange(ended, week)).toBe(false);
+    expect(calendarEventMayOverlapRange(running, week)).toBe(true);
+  });
+
   it("errs towards a match when the start cannot be read", () => {
     expect(calendarEventMayOverlapRange(event("not-a-date"), week)).toBe(true);
   });

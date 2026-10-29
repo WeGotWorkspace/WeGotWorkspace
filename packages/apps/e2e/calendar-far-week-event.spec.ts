@@ -3,9 +3,12 @@ import {
   clearCachedCalendarEvents,
   countEventCardsByTitle,
   createOfflineWeekEvent,
+  createUtcCalendarEventViaApi,
   deleteCalendarEventsByTitleViaApi,
+  expectCalendarOffline,
   expectCalendarOnline,
   isoDateYearsFromToday,
+  navigateCalendarInApp,
   openCalendarWeek,
 } from "./helpers/calendar-live";
 
@@ -57,4 +60,35 @@ test.describe("Calendar weeks outside the loaded window (live app)", () => {
       }
     });
   }
+});
+
+test.describe("Calendar UTC event outside the loaded window (live app)", () => {
+  test("a UTC event from another client stays cached for offline", async ({ page }) => {
+    test.setTimeout(120_000);
+    const title = `e2e-far-utc-${Date.now()}`;
+    const date = isoDateYearsFromToday(9);
+    await createUtcCalendarEventViaApi(title, `${date}T10:00:00`);
+    try {
+      await openCalendarWeek(page, date);
+      await expectCalendarOnline(page);
+      await expect
+        .poll(() => countEventCardsByTitle(page, title), { timeout: 20_000 })
+        .toBeGreaterThan(0);
+
+      // Reload on the current week: the live bootstrap rewrites the cache.
+      await openCalendarWeek(page, isoDateYearsFromToday(0));
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(1_000);
+
+      await page.context().setOffline(true);
+      await expectCalendarOffline(page);
+      await navigateCalendarInApp(page, `/calendar/week/${date}`);
+      await expect
+        .poll(() => countEventCardsByTitle(page, title), { timeout: 15_000 })
+        .toBeGreaterThan(0);
+    } finally {
+      await page.context().setOffline(false);
+      await deleteCalendarEventsByTitleViaApi(title);
+    }
+  });
 });
