@@ -37,6 +37,7 @@ final class NoteRepository
         private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
+        private readonly NoteCreateUid $createUid = new NoteCreateUid,
     ) {}
 
     /**
@@ -126,30 +127,29 @@ final class NoteRepository
         }
         $this->collectionAccess->assertCollectionWritable($instance, 'This notebook is read-only.');
 
-        // Decision 7: room key = UID. The app picks it (a UUID) so an offline
-        // create needs no temporary id; a UID another note has is a 409.
+        // Decision 7: room key = UID, a UUID the app picks; NoteCreateUid decides if it is kept.
         $clientUid = $payload['uid'] ?? null;
         $uid = is_string($clientUid) && Str::isUuid($clientUid) ? strtolower($clientUid) : (string) Str::uuid();
         $note = [
-            'id' => $uid,
             'title' => $payload['title'] ?? null,
             'body' => is_string($payload['body'] ?? null) ? $payload['body'] : '',
             'categories' => is_array($payload['categories'] ?? null) ? $payload['categories'] : [],
             'status' => $payload['status'] ?? null,
         ];
-        $ics = $this->converter->toIcs($note, $allowStoredTags);
-        $objectUri = $uid.'.ics';
 
         // The check and the insert in one transaction: two creates with the
         // same UID cannot both pass the check before either one is written.
         try {
-            DB::connection('wgw')->transaction(function () use ($uid, $instance, $objectUri, $ics): void {
+            $uid = DB::connection('wgw')->transaction(function () use ($username, $uid, $instance, $note, $allowStoredTags): string {
+                $uid = $this->createUid->resolve($this->notebooks, $username, $uid);
                 $this->moveHelper->assertUidAvailable($uid);
                 $this->calBackend()->createCalendarObject(
                     [(int) $instance->calendarid, (int) $instance->id],
-                    $objectUri,
-                    $ics,
+                    $uid.'.ics',
+                    $this->converter->toIcs(['id' => $uid] + $note, $allowStoredTags),
                 );
+
+                return $uid;
             });
         } catch (QueryException|PDOException $exception) {
             NoteUidConflict::throwIf($exception);
