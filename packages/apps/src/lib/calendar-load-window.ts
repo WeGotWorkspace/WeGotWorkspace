@@ -82,6 +82,36 @@ function seriesEndMs(event: JmapCalendarEvent, length: number): number {
   return latest;
 }
 
+export function isRecurringCalendarEvent(event: JmapCalendarEvent): boolean {
+  return (
+    (event.recurrenceRules ?? []).length > 0 ||
+    Object.keys(event.recurrenceOverrides ?? {}).length > 0
+  );
+}
+
+/**
+ * Whether a non-recurring event's own start/end intersect `range`, with no
+ * padding: the test for "the server query would have returned it". False for
+ * recurring events and for dates it cannot read.
+ */
+export function calendarEventIntersectsRange(
+  event: JmapCalendarEvent,
+  range: CalendarUtcRange,
+): boolean {
+  if (isRecurringCalendarEvent(event)) return false;
+  try {
+    const startMs = zonedStartMs(event.start, event.timeZone);
+    const endMs = startMs + eventLengthMs(event, startMs);
+    const rangeStart = range.utcStart.getTime();
+    const rangeEnd = range.utcEnd.getTime();
+    return endMs > startMs
+      ? startMs < rangeEnd && endMs > rangeStart
+      : startMs >= rangeStart && startMs < rangeEnd;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Whether the event may have an occurrence inside `range`. Errs towards true
  * (open-ended series, unparsable dates): a caller that drops events "inside a

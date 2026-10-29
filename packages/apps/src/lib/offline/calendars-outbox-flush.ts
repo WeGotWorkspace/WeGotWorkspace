@@ -5,6 +5,7 @@ import type {
   CalendarEventPatch,
   CalendarPatch,
 } from "@/calendar-core/src/calendar-types";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import {
   createCalendarEventLive,
   createCalendarLive,
@@ -122,16 +123,20 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const created = await createCalendarLive(draft);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: [
-                ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
-                created,
-              ],
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: [
+                  ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
+                  created,
+                ],
+              },
             },
-          });
+            { window: calendarBootstrapWindow() },
+          );
         }
       } else if (row.op === "calendarUpdate") {
         const calendarId = String(payload.calendarId ?? "");
@@ -139,15 +144,19 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const updated = await patchCalendarLive(calendarId, patch);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: latest.data.calendars.map((calendar) =>
-                calendar.id === calendarId ? updated : calendar,
-              ),
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: latest.data.calendars.map((calendar) =>
+                  calendar.id === calendarId ? updated : calendar,
+                ),
+              },
             },
-          });
+            { window: calendarBootstrapWindow() },
+          );
         }
       } else if (row.op === "calendarDelete") {
         const calendarId = String(payload.calendarId ?? "");

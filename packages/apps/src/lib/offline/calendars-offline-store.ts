@@ -21,7 +21,12 @@ import {
   type OfflineCalendarEventRow,
 } from "@/lib/offline/calendars/calendars-schema";
 import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
-import { calendarEventMayOverlapRange, type CalendarUtcRange } from "@/lib/calendar-load-window";
+import {
+  calendarEventIntersectsRange,
+  isRecurringCalendarEvent,
+  type CalendarUtcRange,
+} from "@/lib/calendar-load-window";
+import { occurrencesInRange } from "@/calendar-core/src/calendar-event-model";
 
 export {
   enqueueOutboxMutation,
@@ -93,7 +98,27 @@ function keepCachedRowOnBootstrapWrite(
   if (row.pendingSync) return true;
   if (incomingIds.has(row.id)) return false;
   if (row.locallyWritten === true) return true;
-  return window !== undefined && !calendarEventMayOverlapRange(parseEventRow(row), window);
+  if (window === undefined) return false;
+  return !snapshotCoversEvent(parseEventRow(row), window);
+}
+
+/**
+ * Whether the snapshot of `window` would have contained the event. A recurring
+ * master counts only when an occurrence falls inside; `count`, a missing
+ * `until` or overrides say nothing about that. Errs towards "not covered".
+ */
+function snapshotCoversEvent(event: JmapCalendarEvent, window: CalendarUtcRange): boolean {
+  if (!isRecurringCalendarEvent(event)) return calendarEventIntersectsRange(event, window);
+  try {
+    return (
+      occurrencesInRange([event], {
+        start: window.utcStart.toISOString().slice(0, 19),
+        end: window.utcEnd.toISOString().slice(0, 19),
+      }).length > 0
+    );
+  } catch {
+    return false;
+  }
 }
 
 function parseEventRow(row: OfflineCalendarEventRow): JmapCalendarEvent {
@@ -163,7 +188,7 @@ export async function mergeCalendarRangeIntoCache(
           !row.pendingSync &&
           row.locallyWritten !== true &&
           !incomingIds.has(row.id) &&
-          calendarEventMayOverlapRange(parseEventRow(row), range),
+          calendarEventIntersectsRange(parseEventRow(row), range),
       )
       .map((row) => row.id);
     if (goneIds.length > 0) {

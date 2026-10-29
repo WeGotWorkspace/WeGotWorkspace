@@ -153,13 +153,17 @@ async function writeCalendarsToCache(
 ): Promise<void> {
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) return;
-  await writeCalendarBootstrapToCache(username, {
-    ...cached,
-    data: {
-      ...cached.data,
-      calendars: mutate(cached.data.calendars),
+  await writeCalendarBootstrapToCache(
+    username,
+    {
+      ...cached,
+      data: {
+        ...cached.data,
+        calendars: mutate(cached.data.calendars),
+      },
     },
-  });
+    { window: calendarBootstrapWindow() },
+  );
 }
 
 export function createHybridCalendarOperations(username: string): CalendarAPIOperations {
