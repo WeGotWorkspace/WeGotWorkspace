@@ -134,20 +134,26 @@ final class JmapContactCardKindFilterTest extends WgwDatabaseTestCase
         $response->assertJsonPath('methodResponses.3.0', 'ContactCard/get');
     }
 
-    public function test_a_marked_card_the_vcard_guard_rejects_does_not_fail_the_query(): void
+    public function test_a_card_the_parser_rejects_does_not_fail_the_query(): void
     {
-        $group = $this->seedCardViaPdo('bob', 'team.vcf', $this->vcard([
+        $groupId = $this->seedCardViaPdo('bob', 'team.vcf', $this->vcard([
             'UID:urn:uuid:team', 'FN:Team', 'KIND:group',
         ]));
-        $this->seedCardViaPdo('bob', 'huge.vcf', $this->vcard([
-            'UID:urn:uuid:huge', 'FN:Huge', 'KIND:group', 'NOTE:'.str_repeat('a', 600 * 1024),
+        // CardDAV stores both without the size guard; the parser rejects them.
+        $tooLargeId = $this->seedCardViaPdo('bob', 'huge.vcf', $this->vcard([
+            'UID:urn:uuid:huge', 'FN:Huge', 'KIND:group', 'NOTE:'.str_repeat('x', 600_000),
         ]));
+        $brokenId = $this->seedCardViaPdo('bob', 'broken.vcf', "KIND:group but not a vCard\r\n");
 
         $response = $this->jmap([
             ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'group']], 'c0'],
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'individual']], 'c1'],
         ])->assertOk();
 
-        $this->assertSame([$group], $response->json('methodResponses.0.1.ids'));
+        $response->assertJsonPath('methodResponses.0.0', 'ContactCard/query');
+        $this->assertSame([$groupId], $response->json('methodResponses.0.1.ids'));
+        // Unreadable cards count as the default kind, like an unmarked card.
+        $this->assertEqualsCanonicalizing([$tooLargeId, $brokenId], $response->json('methodResponses.1.1.ids'));
     }
 
     public function test_kind_must_be_a_non_empty_string(): void
@@ -159,5 +165,12 @@ final class JmapContactCardKindFilterTest extends WgwDatabaseTestCase
 
         $response->assertJsonPath('methodResponses.0.1.type', 'invalidArguments');
         $response->assertJsonPath('methodResponses.1.1.type', 'invalidArguments');
+    }
+
+    public function test_a_kind_outside_rfc_9553_is_an_unsupported_filter(): void
+    {
+        $this->jmap([
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'robot']], 'c0'],
+        ])->assertOk()->assertJsonPath('methodResponses.0.1.type', 'unsupportedFilter');
     }
 }

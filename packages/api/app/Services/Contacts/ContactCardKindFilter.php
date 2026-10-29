@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class ContactCardKindFilter
 {
+    /** RFC 9553 §2.1.4 card kinds. */
+    public const KINDS = ['individual', 'group', 'org', 'location', 'device', 'application'];
+
     private const DEFAULT_KIND = 'individual';
 
     private const MARKERS = ['KIND', 'MEMBER', 'X-ABSHOWAS', 'kind', 'member', 'x-abshowas'];
@@ -43,7 +46,7 @@ final class ContactCardKindFilter
     }
 
     /**
-     * @return array<string, string> card id => kind, for cards that may not be individuals
+     * @return array<string, string> card id => kind, for readable cards that name a kind
      */
     private function kindsOfMarkedCards(int $addressBookId): array
     {
@@ -62,12 +65,15 @@ final class ContactCardKindFilter
             try {
                 $kind = $this->converter->cardFromVCard($raw, 'debug')['kind'] ?? null;
             } catch (\Throwable) {
-                // A card the vCard guard rejects stays an individual; it must not fail the query.
+                // CardDAV can store a blob the guard rejects (too large, too
+                // complex, not a vCard). Skip it like an unmarked card instead
+                // of failing the query for the whole book; ContactCard/get
+                // reports it in notFound.
                 continue;
             }
-            $kinds[ContactCardMapper::cardIdFromUri((string) $card->uri)] = is_string($kind) && $kind !== ''
-                ? $kind
-                : self::DEFAULT_KIND;
+            if (is_string($kind) && $kind !== '') {
+                $kinds[ContactCardMapper::cardIdFromUri((string) $card->uri)] = $kind;
+            }
         }
 
         return $kinds;

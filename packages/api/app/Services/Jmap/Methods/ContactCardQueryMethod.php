@@ -86,6 +86,9 @@ final class ContactCardQueryMethod implements JmapMethodInterface
         if ($kind !== null && (! is_string($kind) || $kind === '')) {
             throw new JmapMethodException('invalidArguments', 'filter.kind must be a non-empty string.');
         }
+        if ($kind !== null && ! in_array($kind, ContactCardKindFilter::KINDS, true)) {
+            throw new JmapMethodException('unsupportedFilter', 'filter.kind must be an RFC 9553 card kind.');
+        }
 
         $tokens = $this->books->syncTokens($username);
         $queryState = JmapAccountStateCodec::compose($tokens);
