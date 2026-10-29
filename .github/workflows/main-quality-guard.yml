@@ -1,0 +1,81 @@
+name: Main quality guard
+
+# A merge that skips the pull request and merge-queue CI (for example a merge
+# from a private fork) can break a repo-wide ratchet on main. The merge queue
+# then fails for every pull request until someone notices (#1776). This runs
+# the cheap repo-wide checks on every push to main and reports a failure on
+# one GitHub issue, so the breakage shows within minutes. It never blocks a
+# push and never changes a baseline. Checks and issue text:
+# tools/github/main-quality-guard.mjs.
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+# One run per ref. A newer push cancels the older run: only the latest state
+# of main matters.
+concurrency:
+  group: main-quality-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      # PHPStan (Larastan) boots the Laravel app.
+      - name: Prepare Laravel env
+        run: |
+          cp packages/api/.env.example packages/api/.env
+          php packages/api/artisan key:generate --force --no-interaction
+
+      # The checks run without GH_TOKEN, so their output cannot hold it.
+      - name: Run quality checks
+        run: node tools/github/main-quality-guard.mjs run "$RUNNER_TEMP/main-quality-guard.json"
+
+      # Runs after a failed check or a failed setup step (no results file),
+      # but only for main: a manual run on another branch must not report
+      # main as broken.
+      - name: Report on the tracking issue
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node tools/github/main-quality-guard.mjs report "$RUNNER_TEMP/main-quality-guard.json"
