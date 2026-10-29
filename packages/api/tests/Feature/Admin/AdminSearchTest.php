@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Models\JmapFileNode;
+use App\Models\SearchDocument;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Search\SearchReindexRunner;
 use App\Services\Search\SearchReindexStateStore;
@@ -45,6 +46,26 @@ final class AdminSearchTest extends WgwDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('inProgress', false)
             ->assertJsonPath('lastResult.ok', true);
+    }
+
+    /**
+     * Issue #1063: on MySQL the unique (document, token, field) index treats
+     * "één" and "een" as one value, which used to abort the whole reindex.
+     */
+    public function test_reindex_completes_when_a_file_has_accented_and_plain_spellings(): void
+    {
+        app(WgwStorage::class)->files()->put('users/alice/spellings.txt', 'één een Straße strasse');
+
+        $this->withBearer($this->adminBearerToken())
+            ->postJson('/api/v1/admin/search/jobs')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Search reindex completed.');
+
+        $this->assertTrue(SearchDocument::query()
+            ->where('source_type', 'file')
+            ->where('source_key', 'users/alice/spellings.txt')
+            ->exists());
     }
 
     public function test_stale_reindex_state_clears_without_taking_the_lock(): void
@@ -108,5 +129,23 @@ final class AdminSearchTest extends WgwDatabaseTestCase
         $this->withBearer($this->carolBearerToken())
             ->deleteJson('/api/v1/admin/search/jobs/current')
             ->assertForbidden();
+    }
+
+    /**
+     * A 200-character hex string is longer than search_terms.token (120).
+     * MySQL strict mode used to reject it and abort the whole reindex.
+     */
+    public function test_reindex_completes_when_a_file_has_a_token_longer_than_the_column(): void
+    {
+        app(WgwStorage::class)->files()->put(
+            'users/alice/checksum.txt',
+            'sha '.str_repeat('0123456789abcdef', 12).'01234567',
+        );
+
+        $this->withBearer($this->adminBearerToken())
+            ->postJson('/api/v1/admin/search/jobs')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Search reindex completed.');
     }
 }

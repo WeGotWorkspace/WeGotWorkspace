@@ -2703,7 +2703,7 @@ export interface paths {
         put?: never;
         /**
          * Reserve a meeting room
-         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
+         * @description Idempotent on room id for a caller who holds the reservation (createdBy, the ownerPrincipal user, or a member of the ownerPrincipal group; the same check as PATCH, so a write share on a group calendar is not enough). Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. A code reserved by someone else answers 403 and that reservation is unchanged. Omit or null expiresAt means no expiry; a supplied expiresAt must be in the future. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
          */
         post: {
             parameters: {
@@ -2734,8 +2734,15 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write */
+                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write, the room code is reserved by someone else, or the caller is a guest */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description expiresAt is not in the future */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2831,7 +2838,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Not createdBy or an ownerPrincipal member */
+                /** @description Not createdBy or an ownerPrincipal member, or the caller is a guest */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -5444,7 +5451,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get published ICS / webcal feed URLs for a calendar */
+        /**
+         * Get published ICS / webcal feed URLs for a calendar
+         * @description A feed belongs to the calendar, not to the member who published it. Every principal who may publish the calendar (the owner of a personal calendar, every member of the owning group) sees the same feed. 404 when the calendar has no feed.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -5472,7 +5482,7 @@ export interface paths {
         put?: never;
         /**
          * Publish a calendar as an ICS / webcal feed
-         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
+         * @description Creates a hashed-token public feed for a calendar the caller may publish (an owned personal calendar, or a calendar of a group the caller is in), or returns the calendar's existing feed, whoever published it. A calendar has at most one feed; publishing again does not rotate the URL. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
          */
         post: {
             parameters: {
@@ -5512,7 +5522,10 @@ export interface paths {
                 404: components["responses"]["JmapNotFound"];
             };
         };
-        /** Revoke a published ICS / webcal feed */
+        /**
+         * Revoke a published ICS / webcal feed
+         * @description Any principal who may publish the calendar revokes its feed, whoever published it. The feed also ends when the calendar is deleted.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -5550,7 +5563,7 @@ export interface paths {
         };
         /**
          * Download a public ICS / webcal feed
-         * @description Unauthenticated VCALENDAR of the published collection. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens are 404.
+         * @description Unauthenticated VCALENDAR of the calendar the token was issued for, and only that calendar. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens, and tokens of a deleted calendar, are 404.
          */
         get: {
             parameters: {

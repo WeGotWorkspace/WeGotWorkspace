@@ -9,6 +9,7 @@ import {
 import {
   wgwEnsureSession,
   wgwHasAuthenticatedSession,
+  wgwIsGuestSession,
   wgwLiveApiEnabled,
 } from "@/lib/api/wgw/http";
 import { MeetApp } from "@/meet-core/src/meet-app";
@@ -34,15 +35,21 @@ import {
 import { meetLabels } from "@/meet-core/src/meet-labels";
 import "@/meet-core/src/meet-workspace.css";
 
+/** A public Drive link session is not an account: Meet treats it as a guest. */
+function meetHasMemberSession(): boolean {
+  return wgwHasAuthenticatedSession() && !wgwIsGuestSession();
+}
+
 async function meetInviteHasSession(): Promise<boolean> {
   if (!wgwLiveApiEnabled()) return false;
-  if (wgwHasAuthenticatedSession()) return true;
+  if (wgwIsGuestSession()) return false;
+  if (meetHasMemberSession()) return true;
   try {
     await wgwEnsureSession();
   } catch {
     return false;
   }
-  return wgwHasAuthenticatedSession();
+  return meetHasMemberSession();
 }
 
 function channelFromUnknown(row: unknown): MeetInviteAccessChannel | null {
@@ -144,7 +151,7 @@ export function MeetInviteGate({
   accessIo = liveMeetInviteAccessIo,
 }: MeetInviteGateProps) {
   const navigate = useNavigate();
-  const sessionHint = wgwLiveApiEnabled() && wgwHasAuthenticatedSession();
+  const sessionHint = wgwLiveApiEnabled() && meetHasMemberSession();
   const [access, setAccess] = useState<MeetInviteAccess | "checking">(() =>
     sessionHint ? "member" : "checking",
   );
@@ -211,7 +218,7 @@ export function MeetChannelDeepLinkGate({
   accessIo = liveMeetInviteAccessIo,
   guestClosed = Boolean(channelId),
 }: MeetChannelDeepLinkGateProps) {
-  const sessionHint = wgwLiveApiEnabled() && wgwHasAuthenticatedSession();
+  const sessionHint = wgwLiveApiEnabled() && meetHasMemberSession();
   const [access, setAccess] = useState<MeetInviteAccess | "checking">(() =>
     !guestClosed || sessionHint ? "member" : "checking",
   );

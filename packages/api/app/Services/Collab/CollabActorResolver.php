@@ -26,6 +26,9 @@ final class CollabActorResolver
             ];
         }
 
+        // Room routes carry no auth middleware. The fallback resolves accounts
+        // only (a guest-role bearer resolves to null), so the `user` role below
+        // never describes a link guest.
         $realm = (string) config('wgw.auth_realm', 'SabreDAV');
         $username = $this->auth->tryAuthenticatedUsername($request, $realm);
         if ($username === null) {
