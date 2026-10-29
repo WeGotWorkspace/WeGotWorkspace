@@ -79,6 +79,7 @@ export class JmapPushHub {
   #published = "";
   #active = false;
   #stopRunning: (() => void) | null = null;
+  #leaveLeaderQueue: (() => void) | null = null;
   #eventSource: EventSourceLike | null = null;
   /** The stream's status while this tab leads, re-sent to tabs that join later. */
   #leaderStatus = false;
@@ -134,6 +135,7 @@ export class JmapPushHub {
       } else if (!visibility.visible() && releaseVisible) {
         releaseVisible();
         releaseVisible = null;
+        void this.#handOverIfHidden();
       }
     };
     syncVisible(false);
@@ -144,10 +146,11 @@ export class JmapPushHub {
     if (this.#options.onPageHide) cleanups.push(this.#options.onPageHide(bye));
 
     this.#publishTab();
-    const leave = runWhileLeader(locks, LEADER_LOCK, () => this.#lead(locks));
+    this.#joinLeaderQueue(locks);
     this.#stopRunning = () => {
       bye();
-      leave();
+      this.#leaveLeaderQueue?.();
+      this.#leaveLeaderQueue = null;
       for (const cleanup of cleanups.reverse()) cleanup();
     };
   }
@@ -159,6 +162,30 @@ export class JmapPushHub {
     this.#published = "";
     stop?.();
     this.#setConnected(false);
+  }
+
+  #joinLeaderQueue(locks: WebLocks): void {
+    this.#leaveLeaderQueue = runWhileLeader(locks, LEADER_LOCK, () => this.#lead(locks));
+  }
+
+  /**
+   * Chrome runs the timers of a tab hidden for 5 minutes once a minute, so a
+   * hidden leader would reconnect late. While another subscribed tab is
+   * visible, a hidden leader gives the lock back and queues again; the lock
+   * moves on until a visible tab holds it, which never hands it over. Pass
+   * `otherVisible` when another tab just said it became visible.
+   */
+  async #handOverIfHidden(otherVisible = false): Promise<void> {
+    const { locks, tabId, visibility } = this.#options;
+    if (!locks || !this.#eventSource || visibility.visible()) return;
+    if (!otherVisible) {
+      const visible = await heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null);
+      visible?.delete(tabId);
+      if (!visible || visible.size === 0) return;
+    }
+    if (!this.#active || !this.#eventSource || visibility.visible()) return;
+    this.#leaveLeaderQueue?.();
+    this.#joinLeaderQueue(locks);
   }
 
   #lead(locks: WebLocks): () => void {
@@ -200,6 +227,7 @@ export class JmapPushHub {
       eventSource.start(sink),
       ...(this.#options.wakeTransports?.() ?? []).map((transport) => transport.start(wakeOnly)),
     ];
+    void this.#handOverIfHidden();
     return () => {
       for (const stop of stops) stop();
       if (this.#eventSource === eventSource) this.#eventSource = null;
@@ -220,6 +248,7 @@ export class JmapPushHub {
             { v: 1, kind: "status", connected: this.#leaderStatus },
             { otherTabsOnly: true },
           );
+          void this.#handOverIfHidden();
         }
         break;
       case "bye":
@@ -233,6 +262,7 @@ export class JmapPushHub {
         this.#setConnected(message.connected);
         break;
       case "wake":
+        if (message.reason === "visible") void this.#handOverIfHidden(true);
         this.#eventSource?.reconnectNow(message.reason);
         break;
     }
