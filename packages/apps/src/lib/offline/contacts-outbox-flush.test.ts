@@ -212,4 +212,35 @@ describe("flushContactsOutbox", () => {
     expect(patchAddressBook).toHaveBeenCalledWith("default", { shareWith, isSubscribed: true });
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
   });
+
+  it("sends a patch merged in while the first one was on its way (#1711)", async () => {
+    const named = (full: string) => ({
+      name: { "@type": "Name" as const, isOrdered: false, full },
+    });
+    await enqueueCoalescedContactUpdate(username, "jane-doe", named("Jane A"), "state-1");
+    const answer = (state: string) => ({
+      created: {},
+      updated: { "jane-doe": state },
+      destroyed: [],
+      notCreated: {},
+      notUpdated: {},
+      notDestroyed: {},
+    });
+    let answerFirst!: (value: unknown) => void;
+    contactCardSet.mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)));
+    contactCardSet.mockResolvedValueOnce(answer("state-3"));
+    getCard.mockResolvedValue({ ...bootstrap.data.cards[0], ...named("Jane B") });
+
+    const flushing = flushContactsOutbox(username);
+    await vi.waitFor(() => expect(contactCardSet).toHaveBeenCalledOnce());
+    await enqueueCoalescedContactUpdate(username, "jane-doe", named("Jane B"), "state-1");
+    answerFirst(answer("state-2"));
+    await flushing;
+
+    expect(contactCardSet).toHaveBeenCalledTimes(2);
+    expect(contactCardSet.mock.calls[1]?.[0]).toEqual({
+      update: { "jane-doe": { ...named("Jane B"), ifInState: "state-2" } },
+    });
+    await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
 });

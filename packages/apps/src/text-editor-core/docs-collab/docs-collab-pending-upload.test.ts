@@ -12,6 +12,10 @@ import {
 import { holdCrossTabLock } from "@/lib/offline/core/cross-tab-lock";
 import type { DocsCollabUrls } from "./docs-collab-types";
 import { EXTERNAL_WRITE_HEADER } from "./docs-collab-external-write";
+import {
+  isCollabRoomPendingServerSave,
+  setCollabRoomPendingServerSave,
+} from "./docs-collab-pending-registry";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 let counter = 0;
@@ -108,9 +112,11 @@ describe("uploadPendingCollabRooms", () => {
   it("saves a body typed offline in a room that is no longer open", async () => {
     server();
     const room = await leftRoom("Typed offline");
+    setCollabRoomPendingServerSave(room.room, true);
 
     await uploadPendingCollabRooms([room]);
 
+    expect(isCollabRoomPendingServerSave(room.room)).toBe(false);
     expect(puts()).toHaveLength(1);
     const body = new TextDecoder().decode(puts()[0]?.[1]?.body as Uint8Array);
     expect(body).toContain("Typed offline");

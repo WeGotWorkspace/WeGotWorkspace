@@ -31,7 +31,7 @@ Prefer fixtures from `@/lib/api/mock/`:
 - `createSettingsAppBootstrap`, `createMailAppBootstrap`, `createDriveAppBootstrap`, …
 - `createMockDocsOperations`, `createInstallerAppBootstrap`, etc.
 
-Stories must not import `@/lib/api/wgw/http` for data loading. See [offline-first.md](offline-first.md).
+Stories must not import `@/lib/api/wgw/http` for data loading. See [offline-first.md](offline-first.md). ESLint enforces it (`paneAndStoryImportRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js)).
 
 For write flows, pass no-op or mock `operations` / slice handlers — see [workspace/feature-blueprint.md](../workspace/feature-blueprint.md).
 

@@ -18976,7 +18976,7 @@
                 "tags": [
                     "Notifications"
                 ],
-                "summary": "Ack local Notification API delivery (skip VAPID fallback)",
+                "summary": "Ack local delivery: a visible window or a Meet call showed the row (skip VAPID push)",
                 "security": [
                     {
                         "bearerAuth": []
