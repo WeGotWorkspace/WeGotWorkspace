@@ -9,6 +9,13 @@ final class SearchTokenService
     public const MAX_QUERY_TOKENS = 10;
 
     /**
+     * search_terms.token is VARCHAR(120). Longer runs (checksums, long slugs)
+     * are cut to their first 120 characters, the same at index and query
+     * time, so a search for the full string or its start still matches.
+     */
+    public const MAX_TOKEN_LENGTH = 120;
+
+    /**
      * Indexing passes no cap. Search passes {@see self::MAX_QUERY_TOKENS} so one
      * query cannot fan out into an unbounded set of LIKE scans.
      *
@@ -29,6 +36,7 @@ final class SearchTokenService
             if ($token === '' || mb_strlen($token) < 2) {
                 continue;
             }
+            $token = mb_substr($token, 0, self::MAX_TOKEN_LENGTH);
             // Avoid $tokens[$token] — PHP casts numeric strings to int array keys.
             if (isset($seen[$token])) {
                 continue;
