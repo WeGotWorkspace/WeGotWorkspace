@@ -2343,6 +2343,8 @@ export interface paths {
                 query: {
                     path: string;
                     format?: "markdown" | "yjs";
+                    /** @description Only with `format=yjs`. `markdown`: when there is no Yjs sidecar, answer 200 with the markdown and `X-Wgw-Collab-Fallback: markdown` instead of 204, so a client needs one request per document. Without it, no sidecar is still 204. */
+                    fallback?: "markdown";
                 };
                 header?: {
                     /** @description Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches. A `?format=yjs` read whose markdown changed outside the collab path answers 200 with X-Wgw-External-Write instead of 304, so the signal is not hidden. */
@@ -2360,6 +2362,15 @@ export interface paths {
                         ETag?: string;
                         /** @description Present with value 1 on `?format=yjs` when the stored markdown is not the text the Yjs sidecar was last saved with, for example after a WebDAV PUT. Absent when no save has linked the sidecar to its markdown yet, and after a rename or move. The body is still the stored sidecar bytes. The read does not rewrite them; the next collab save clears the flag. */
                         "X-Wgw-External-Write"?: string;
+                        /** @description Present with value `markdown` on `?format=yjs&fallback=markdown` when there is no Yjs sidecar. The body is then the markdown (`text/markdown`) and the ETag is the markdown tag, not a sidecar tag. */
+                        "X-Wgw-Collab-Fallback"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description `?format=yjs` without `fallback=markdown`: there is no Yjs sidecar. No body and no entity tag. */
+                204: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content?: never;
@@ -2692,7 +2703,7 @@ export interface paths {
         put?: never;
         /**
          * Reserve a meeting room
-         * @description Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
+         * @description Idempotent on room id for a caller who holds the reservation (createdBy, the ownerPrincipal user, or a member of the ownerPrincipal group; the same check as PATCH, so a write share on a group calendar is not enough). Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. A code reserved by someone else answers 403 and that reservation is unchanged. Omit or null expiresAt means no expiry; a supplied expiresAt must be in the future. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).
          */
         post: {
             parameters: {
@@ -2723,8 +2734,15 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write */
+                /** @description ownerPrincipal is not the authenticated user or a group calendar they can write, the room code is reserved by someone else, or the caller is a guest */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description expiresAt is not in the future */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2820,7 +2838,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Not createdBy or an ownerPrincipal member */
+                /** @description Not createdBy or an ownerPrincipal member, or the caller is a guest */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4729,26 +4747,69 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * JMAP event source / push (not implemented)
-         * @description Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.
+         * JMAP event source (short-burst push)
+         * @description RFC 8620 §7.3 event source, short-burst only (#1660). The response always ends at once: when a state differs from `Last-Event-ID` it holds one `state` event (a StateChange with only the differing types), its `id` and `retry`; otherwise only `retry: <WGW_JMAP_PUSH_RETRY_MS>` (default 3000). The `id` is `v1;Type=<128-bit hex hash>;…`, one independent hash per type, so a client can rebuild it from the per-type hashes it confirmed. A missing, unknown or malformed `Last-Event-ID` sends every requested type. States are the ones `Foo/get` returns (`Task` and `TaskList` use the REST task list state; `Notification` is the per-principal inbox marker). For `FileNode` the value is the global sequence `FileNode/changes` expects, sent only when the hash over the user's Drive root markers changed. Types of a disabled app are left out. Own rate limit: about 60 requests a minute per user and `X-WGW-Browser-Id`, with a ceiling of about 300 a minute per account; this route does not spend the shared API budget.
          */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The id of a previous `state` event, or one the client rebuilt from per-type hashes it confirmed. */
+                    "Last-Event-ID"?: string;
+                    /** @description The browser id the client sends for presence (32 lower-case hex). Keys the per-browser rate limit; a missing or malformed id shares one bucket. */
+                    "X-WGW-Browser-Id"?: string;
+                };
                 path: {
+                    /** @description `*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification. Unknown names are ignored. */
                     types: string;
-                    closeafter: string;
+                    /** @description Accepted for RFC compatibility; every response closes after one block. */
+                    closeafter: "state" | "no";
+                    /** @description Seconds; accepted for RFC compatibility. No ping is sent because the response ends at once. */
                     ping: string;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                403: components["responses"]["JmapForbidden"];
-                /** @description Not implemented */
-                501: {
+                /** @description Event stream that ends at once: `event: state`, `id`, `retry` and `data` (StateChange JSON), or only `retry`. */
+                200: {
                     headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        /**
+                         * @example event: state
+                         *     id: v1;Note=0f4c…;Notification=9a1b…
+                         *     retry: 3000
+                         *     data: {"@type":"StateChange","changed":{"bob":{"Note":"2:inbox:12,work:7","Notification":"5"}}}
+                         */
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description Malformed types, closeafter or ping */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Missing or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                403: components["responses"]["JmapForbidden"];
+                /** @description Rate limited (per browser or per account). Wait `Retry-After` seconds and fall back to polling meanwhile. */
+                429: {
+                    headers: {
+                        /** @description Seconds until the bucket allows a request again. */
+                        "Retry-After"?: number;
                         [name: string]: unknown;
                     };
                     content: {
@@ -5390,7 +5451,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get published ICS / webcal feed URLs for a calendar */
+        /**
+         * Get published ICS / webcal feed URLs for a calendar
+         * @description A feed belongs to the calendar, not to the member who published it. Every principal who may publish the calendar (the owner of a personal calendar, every member of the owning group) sees the same feed. 404 when the calendar has no feed.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -5418,7 +5482,7 @@ export interface paths {
         put?: never;
         /**
          * Publish a calendar as an ICS / webcal feed
-         * @description Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
+         * @description Creates a hashed-token public feed for a calendar the caller may publish (an owned personal calendar, or a calendar of a group the caller is in), or returns the calendar's existing feed, whoever published it. A calendar has at most one feed; publishing again does not rotate the URL. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.
          */
         post: {
             parameters: {
@@ -5458,7 +5522,10 @@ export interface paths {
                 404: components["responses"]["JmapNotFound"];
             };
         };
-        /** Revoke a published ICS / webcal feed */
+        /**
+         * Revoke a published ICS / webcal feed
+         * @description Any principal who may publish the calendar revokes its feed, whoever published it. The feed also ends when the calendar is deleted.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -5496,7 +5563,7 @@ export interface paths {
         };
         /**
          * Download a public ICS / webcal feed
-         * @description Unauthenticated VCALENDAR of the published collection. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens are 404.
+         * @description Unauthenticated VCALENDAR of the calendar the token was issued for, and only that calendar. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens, and tokens of a deleted calendar, are 404.
          */
         get: {
             parameters: {
@@ -6722,7 +6789,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a Docs comment or suggestion thread */
+        /**
+         * Create a Docs comment or suggestion thread
+         * @description Idempotent: a create with an id that already exists on this document returns that thread. A document has one suggestion thread per changeId, so a create for a changeId that already has one returns the existing thread, with its own id, even when the request carries another id (for example after the document moved).
+         */
         post: {
             parameters: {
                 query: {
@@ -6989,7 +7059,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ack local Notification API delivery (skip VAPID fallback) */
+        /** Ack local delivery: a visible window or a Meet call showed the row (skip VAPID push) */
         post: {
             parameters: {
                 query?: never;

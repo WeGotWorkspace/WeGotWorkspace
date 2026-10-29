@@ -77,7 +77,9 @@ export const GuestHasNoUpload: Story = {
     const canvas = within(canvasElement);
     const body = within(document.body);
 
-    expect(await canvas.findByRole("button", { name: L.newFolder })).toBeInTheDocument();
+    // No New menu at all: guests cannot create folders either (#1712).
+    await canvas.findAllByRole("button", { name: "More actions" });
+    expect(canvas.queryByRole("button", { name: L.newFolder })).toBeNull();
     expect(canvas.queryByRole("button", { name: L.newButtonMenu })).toBeNull();
     expect(body.queryByRole("menuitem", { name: L.uploadFiles })).toBeNull();
     expect(body.queryByRole("menuitem", { name: L.newMarkdown })).toBeNull();

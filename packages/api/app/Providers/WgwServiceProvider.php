@@ -6,12 +6,14 @@ namespace App\Providers;
 
 use App\Auth\SabreUserProvider;
 use App\Services\Auth\SabreCredentialValidator;
+use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Installer\DnsInstallerIpv4Resolver;
 use App\Services\Installer\InstallerIpv4Resolver;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Jmap\Blobs\JmapBlobGarbageCollector;
 use App\Services\Jmap\Blobs\JmapBlobService;
 use App\Services\Jmap\Capabilities\JmapCapabilitySet;
+use App\Services\Jmap\FileNodes\FileNodeRootMarkers;
 use App\Services\Jmap\JmapMethodDispatcher;
 use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
@@ -30,6 +32,18 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(WgwDatabaseProbe::class);
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
+        // One marker batch per request: every index write in it shares the pending root set.
+        $this->app->scoped(FileNodeRootMarkers::class);
+
+        // Group memberships and account status of share owners, cached for one request. Laravel only flushes scoped
+        // instances in Octane and queue workers, and route-cached controllers keep the instance
+        // they were built with, so the cache is also cleared in place whenever a request starts.
+        $this->app->scoped(DriveShareOwnerReach::class);
+        $this->app->rebinding('request', static function ($app): void {
+            if ($app->resolved(DriveShareOwnerReach::class)) {
+                $app->make(DriveShareOwnerReach::class)->forgetOwnerState();
+            }
+        });
 
         // JMAP envelope: the method-handler and capability-provider lists are
         // class constants (autowiring cannot construct lists); resolving them

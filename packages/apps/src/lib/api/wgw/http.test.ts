@@ -879,6 +879,36 @@ describe("MCP OAuth web session", () => {
 });
 
 describe("guest share session", () => {
+  it("reports a share: subject as a guest session and a signed-in user as not", async () => {
+    wgwEstablishGuestShareSession({
+      access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+        sub: "share:abc123",
+        role: "guest",
+      }),
+      expires_in: 3600,
+    });
+    expect(wgwIsGuestSession()).toBe(true);
+
+    globalThis.fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            access_token: makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
+              sub: "alice",
+              role: "user",
+            }),
+            expires_in: 3600,
+            refresh_expires_in: 1209600,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    ) as typeof fetch;
+    await wgwLoginWithCredentials("alice", "secret");
+
+    expect(wgwHasAuthenticatedSession()).toBe(true);
+    expect(wgwIsGuestSession()).toBe(false);
+  });
+
   it("stores a guest session kind with the access token", () => {
     const accessToken = makeJwt(Math.floor(Date.now() / 1_000) + 3600, {
       sub: "share:abc123",

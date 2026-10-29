@@ -24,6 +24,10 @@ use Illuminate\Support\Str;
  * wgw:jmap:filenodes-reindex command — out-of-band writes are expected,
  * not fatal (an out-of-band rename is indistinguishable from delete+create
  * and changes the node id; documented deviation).
+ *
+ * Every seq bump also touches the Drive root markers of the key
+ * ({@see FileNodeRootMarkers}); each public write is one marker batch, so a
+ * write bumps each root once.
  */
 final class FileNodeIndexService
 {
@@ -33,6 +37,7 @@ final class FileNodeIndexService
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly CollabSidecarMover $sidecars,
         private readonly DocYjsStateStore $sidecarLinks,
+        private readonly FileNodeRootMarkers $markers,
     ) {}
 
     // ---------------------------------------------------------------
@@ -207,6 +212,11 @@ final class FileNodeIndexService
 
     public function recordCreate(string $key): ?JmapFileNode
     {
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->createNode($key));
+    }
+
+    private function createNode(string $key): ?JmapFileNode
+    {
         if ($this->isHiddenKey($key)) {
             return null;
         }
@@ -235,12 +245,18 @@ final class FileNodeIndexService
             'created_seq' => $seq,
             'change_seq' => $seq,
         ]);
+        $this->markers->touch($key);
         $this->syncSearch($key);
 
         return $node;
     }
 
     public function recordContentWrite(string $key, ?string $sha256 = null): ?JmapFileNode
+    {
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->writeContent($key, $sha256));
+    }
+
+    private function writeContent(string $key, ?string $sha256): ?JmapFileNode
     {
         if ($this->isHiddenKey($key)) {
             return null;
@@ -263,6 +279,7 @@ final class FileNodeIndexService
         $row->content_sha256 = $row->is_dir ? null : $sha256;
         $row->change_seq = $this->nextSeq();
         $row->save();
+        $this->markers->touch($key);
         $this->syncSearch($key);
 
         return $row;
@@ -275,6 +292,11 @@ final class FileNodeIndexService
      * so nothing about them changed).
      */
     public function recordMove(string $fromKey, string $toKey): ?JmapFileNode
+    {
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->moveNode($fromKey, $toKey));
+    }
+
+    private function moveNode(string $fromKey, string $toKey): ?JmapFileNode
     {
         if ($this->isHiddenKey($fromKey)) {
             $this->syncSearch($fromKey, deleted: true);
@@ -311,6 +333,9 @@ final class FileNodeIndexService
         $row->parent_node_id = $newParent?->node_id;
         $row->change_seq = $this->nextSeq();
         $row->save();
+        // Old and new root sets, including share roots inside a moved folder.
+        $this->markers->touch($fromKey, withDescendantShares: true);
+        $this->markers->touch($toKey, withDescendantShares: true);
 
         $this->syncSearch($fromKey, deleted: true);
         $this->syncSearch($toKey);
@@ -327,6 +352,11 @@ final class FileNodeIndexService
     }
 
     public function recordDelete(string $key): void
+    {
+        $this->markers->batch(fn () => $this->deleteNode($key));
+    }
+
+    private function deleteNode(string $key): void
     {
         $row = $this->liveByKey($key);
         if ($row === null) {
@@ -347,6 +377,7 @@ final class FileNodeIndexService
             $node->change_seq = $this->nextSeq();
             $node->save();
         }
+        $this->markers->touch($key, withDescendantShares: true);
         $this->syncSearch($key, deleted: true);
     }
 
@@ -361,6 +392,28 @@ final class FileNodeIndexService
         $this->sidecarLinks->moveWithDocument($fromKey, $toKey);
 
         return $this->recordMove($fromKey, $toKey);
+    }
+
+    /**
+     * #1517: before a FileNode/set content write. Like a WebDAV PUT, it is an
+     * outside write to a Docs document, detected on the next yjs read.
+     */
+    public function recordBeforeContentWrite(string $key): void
+    {
+        $this->sidecarLinks->recordBeforeExternalWrite($key);
+    }
+
+    /**
+     * #1517: a file replacing a document at the same path keeps the Docs
+     * state there. Runs the destroy, then puts the sidecar and row back.
+     */
+    public function replaceKeepingDocsState(string $key, callable $destroy): void
+    {
+        $held = $this->sidecarLinks->holdForReplace($key);
+        $destroy();
+        if ($held !== null) {
+            $this->sidecarLinks->restoreAfterReplace($key, $held);
+        }
     }
 
     /**
@@ -387,6 +440,14 @@ final class FileNodeIndexService
      */
     public function ensureRootsIndexed(string $username, array $groupSlugs): void
     {
+        $this->markers->batch(fn () => $this->indexMissingRoots($username, $groupSlugs));
+    }
+
+    /**
+     * @param  list<string>  $groupSlugs
+     */
+    private function indexMissingRoots(string $username, array $groupSlugs): void
+    {
         foreach ($this->visibleRoots($username, $groupSlugs) as $root) {
             if ($this->liveByKey($root) !== null) {
                 continue;
@@ -402,6 +463,7 @@ final class FileNodeIndexService
                 }
             }
             $seq = $this->nextSeq();
+            $this->markers->touch($root);
             JmapFileNode::query()->create([
                 'node_id' => $this->mintNodeId(),
                 'storage_key' => $root,
@@ -415,6 +477,11 @@ final class FileNodeIndexService
     }
 
     public function reconcileDirectory(string $dirKey): void
+    {
+        $this->markers->batch(fn () => $this->reconcileChildren($dirKey));
+    }
+
+    private function reconcileChildren(string $dirKey): void
     {
         $dirNode = $this->liveByKey($dirKey);
         if ($dirNode === null || ! $dirNode->is_dir) {
@@ -466,6 +533,15 @@ final class FileNodeIndexService
      * @return array{indexed: int, tombstoned: int, pruned: int}
      */
     public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
+    {
+        return $this->markers->batch(fn (): array => $this->reindexTree($tombstoneRetentionDays, $progress));
+    }
+
+    /**
+     * @param  callable(int, int): void|null  $progress
+     * @return array{indexed: int, tombstoned: int, pruned: int}
+     */
+    private function reindexTree(int $tombstoneRetentionDays, ?callable $progress): array
     {
         $disk = $this->storage->files();
         $directoryKeys = $disk->allDirectories();
@@ -621,6 +697,7 @@ final class FileNodeIndexService
         if ($this->storage->files()->directoryExists($parentKey)) {
             $grand = $this->ensureParentIndexed($parentKey);
             $seq = $this->nextSeq();
+            $this->markers->touch($parentKey);
 
             return JmapFileNode::query()->create([
                 'node_id' => $this->mintNodeId(),

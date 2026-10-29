@@ -14,6 +14,7 @@ import {
 import { createCollaborativeTextEditorExtensions } from "@/text-editor-core/src/text-editor-extensions";
 import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
 import { getCommentMarkIdFromTarget } from "@/text-editor-core/src/text-editor-comment-commands";
+import { isLiveEditor } from "@/text-editor-core/src/text-editor-live";
 import { getTrackChangeIdFromTarget } from "@/text-editor-core/src/text-editor-track-changes";
 import { TextEditorSheet } from "@/text-editor-core/src/text-editor-sheet";
 import { TextEditorSource } from "@/text-editor-core/src/text-editor-source";
@@ -27,7 +28,9 @@ import "@/text-editor-core/src/text-editor.css";
 export type DocsCollabEditorProps = {
   ydoc: Y.Doc;
   awareness: Awareness;
-  user: { name: string; color: string; id?: string };
+  user: { name: string; color: string };
+  /** Principal plus document, so the suggestion author id survives a remount. */
+  trackChangesUserKey: string;
   format?: TextEditorContentFormat;
   formatBar?: boolean | TextEditorFormatBarConfig;
   sheetFill?: boolean;
@@ -77,6 +80,7 @@ export function DocsCollabEditor({
   ydoc,
   awareness,
   user,
+  trackChangesUserKey,
   format = "markdown",
   formatBar = true,
   sheetFill = false,
@@ -150,6 +154,7 @@ export function DocsCollabEditor({
         document: ydoc,
         awareness,
         user,
+        trackChangesUserKey,
         fetchImageContent,
       }),
       editorProps,
@@ -161,7 +166,7 @@ export function DocsCollabEditor({
         ed.commands.updateUser(user);
       },
     },
-    [ydoc, awareness, format, user.color, user.name],
+    [ydoc, awareness, format, user.color, user.name, trackChangesUserKey],
   );
 
   useEffect(() => {
@@ -190,10 +195,13 @@ export function DocsCollabEditor({
   });
 
   useEffect(() => {
-    editor?.commands.updateUser(user);
+    if (!isLiveEditor(editor)) return;
+    editor.commands.updateUser(user);
   }, [editor, user]);
 
   useEffect(() => {
+    // A rebuilt editor's old instance is already destroyed here (#1738).
+    if (editor && !isLiveEditor(editor)) return;
     onEditorReady?.(editor);
     return () => onEditorReady?.(null);
   }, [editor, onEditorReady]);

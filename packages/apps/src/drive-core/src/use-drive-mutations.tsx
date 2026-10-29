@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { Star, StarOff, Upload, FolderPlus, Pencil, ScrollText } from "lucide-react";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { canMoveDriveItemsToFolder } from "@/drive-core/src/drive-item-path";
@@ -25,9 +25,24 @@ import { joinFileNameForRename, splitFileNameForRename } from "@/lib/files/filen
  * The guest session flag counts too: the workspace mounts with placeholder or
  * cached member data (`role: "user"`) before guest data replaces it.
  */
-export function isDriveUploadEnabled(role: string, guestSession: boolean): boolean {
-  return !guestSession && role !== "guest";
+function isDriveGuest(role: string, guestSession: boolean): boolean {
+  return guestSession || role === "guest";
 }
+
+export function isDriveUploadEnabled(role: string, guestSession: boolean): boolean {
+  return !isDriveGuest(role, guestSession);
+}
+
+/** New folder, new file, rename, move and delete (guests have no write path yet, #1712). */
+export function isDriveStructureEditEnabled(role: string, guestSession: boolean): boolean {
+  return !isDriveGuest(role, guestSession);
+}
+
+/** Cancels the drag so a guest cannot start drag-to-move. */
+const NO_ITEM_DRAG = {
+  onDragStart: (event: DragEvent) => event.preventDefault(),
+  onDragEnd: () => {},
+};
 
 export type UseDriveMutationsArgs = {
   shell: DriveShellState;
@@ -66,6 +81,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     fileById,
     exitSelection,
     dropZoneProps,
+    itemDragHandlers: listItemDragHandlers,
     queueMutation,
     beginOptimisticUpdate,
   } = list;
@@ -93,6 +109,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   // upload, no drop target and no new Markdown file (Docs saves guest files
   // through upload).
   const uploadEnabled = isDriveUploadEnabled(data.user.role, wgwIsGuestSession());
+  const structureEnabled = isDriveStructureEditEnabled(data.user.role, wgwIsGuestSession());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetRenameDialog = useCallback(() => {
@@ -163,12 +180,18 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     });
   };
 
+  const itemDragHandlers = useCallback(
+    (id: string) => (structureEnabled ? listItemDragHandlers(id) : NO_ITEM_DRAG),
+    [listItemDragHandlers, structureEnabled],
+  );
+
   const commitMoveToFolder = useCallback(
     (ids: string[], destinationPath: string) => {
+      if (!structureEnabled) return;
       const movable = canMoveDriveItemsToFolder(files, ids, destinationPath);
       if (movable.length > 0) moveToFolder(movable, destinationPath);
     },
-    [files, moveToFolder],
+    [files, moveToFolder, structureEnabled],
   );
 
   const folderDropZoneProps = useCallback(
@@ -178,13 +201,15 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   );
 
   const requestDeleteSelected = () => {
-    if (selectedIds.length === 0) return;
+    if (!structureEnabled || selectedIds.length === 0) return;
     setConfirmDelete({ ids: selectedIds, permanent: inTrashView });
   };
   const requestDeleteItem = (file: DriveFile) => {
+    if (!structureEnabled) return;
     setConfirmDelete({ ids: [file.id], permanent: isUnderTrash(file.parent) });
   };
   const requestRenameItem = (file: DriveFile) => {
+    if (!structureEnabled) return;
     const isFolder = file.kind === "folder";
     const { baseName, extension, hasExtension } = splitFileNameForRename(file.title);
     setRenameDialog({
@@ -193,10 +218,13 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     });
     setRenameName(isFolder ? file.title : baseName);
   };
-  const openMoveDialog = useCallback((ids: string[]) => {
-    if (ids.length === 0) return;
-    setMoveDialog({ ids });
-  }, []);
+  const openMoveDialog = useCallback(
+    (ids: string[]) => {
+      if (!structureEnabled || ids.length === 0) return;
+      setMoveDialog({ ids });
+    },
+    [structureEnabled],
+  );
   const requestMoveSelected = () => openMoveDialog(selectedIds);
   const requestMoveItem = (file: DriveFile) => openMoveDialog([file.id]);
 
@@ -369,6 +397,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   };
 
   const createFolder = () => {
+    if (!structureEnabled) return;
     setNewFolderName("");
     setNewFolderDialogOpen(true);
   };
@@ -418,10 +447,10 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   };
 
   const createMarkdown = useCallback(() => {
-    if (!onOpenDocsFile) return;
+    if (!onOpenDocsFile || !structureEnabled) return;
     setMarkdownDialogError(null);
     setMarkdownDialogOpen(true);
-  }, [onOpenDocsFile]);
+  }, [onOpenDocsFile, structureEnabled]);
 
   const closeMarkdownDialog = useCallback(() => {
     if (markdownDialogSubmitting) return;
@@ -513,7 +542,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       const target = e.target as HTMLElement | null;
       const inField =
         !!target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
-      if (inField) return;
+      if (inField || !structureEnabled) return;
       const macDelete = isMac && (e.key === "Backspace" || (e.metaKey && e.key === "Backspace"));
       const winDelete = !isMac && e.key === "Delete";
       if ((macDelete || winDelete) && selectedIds.length > 0) {
@@ -523,7 +552,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedIds, inTrashView]);
+  }, [selectedIds, inTrashView, structureEnabled]);
 
   const { selectionBar } = useDriveSelectionBar({
     labels,
@@ -533,6 +562,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     activeId,
     inTrashView,
     operations,
+    structureEnabled,
     exitSelection,
     batchStar,
     requestDeleteSelected,
@@ -562,12 +592,14 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     setDropUploadActive,
     uploadProgress,
     uploadEnabled,
+    structureEnabled,
     fileInputRef,
     toggleStar,
     batchStar,
     moveToTrash,
     moveToFolder,
     commitMoveToFolder,
+    itemDragHandlers,
     folderDropZoneProps,
     selectionBar,
     requestDeleteSelected,

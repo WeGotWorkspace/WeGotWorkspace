@@ -4,7 +4,7 @@ import {
   noteBodyToMarkdown,
 } from "@/lib/models/note-body-markdown";
 import type { Note } from "@/lib/models/note";
-import { compareNotesDesc } from "@/notes-core/src/notes-date-utils";
+import { sortNotesDesc } from "@/notes-core/src/notes-date-utils";
 import type { NotesUILabels } from "@/notes-core/src/notes-labels";
 import { canCreateInNotebook, findNotebookCollection } from "@/notes-core/src/notes-notebook-write";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
@@ -527,11 +527,22 @@ export function filterVisibleNotes(
     if (!inView) return false;
     if (!q) return true;
     const liveName = notebookDisplayName(note, notebookCollections ?? []);
-    const haystack =
-      `${note.title ?? ""} ${note.excerpt} ${note.body.join(" ")} ${note.notebook} ${liveName} ${note.tags.join(" ")}`.toLowerCase();
-    return haystack.includes(q);
+    return noteSearchText(note, liveName).includes(q);
   });
-  return filtered.sort(compareNotesDesc);
+  return sortNotesDesc(filtered);
+}
+
+// Lowercased search text per note object. Notes are replaced, not mutated, so a
+// changed note gets a new entry and unchanged notes skip the join (#1714).
+const noteSearchTextCache = new WeakMap<Note, { liveName: string; text: string }>();
+
+function noteSearchText(note: Note, liveName: string): string {
+  const cached = noteSearchTextCache.get(note);
+  if (cached?.liveName === liveName) return cached.text;
+  const text =
+    `${note.title ?? ""} ${note.excerpt} ${note.body.join(" ")} ${note.notebook} ${liveName} ${note.tags.join(" ")}`.toLowerCase();
+  noteSearchTextCache.set(note, { liveName, text });
+  return text;
 }
 
 /**

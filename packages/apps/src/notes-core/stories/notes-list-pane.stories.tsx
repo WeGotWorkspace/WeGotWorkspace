@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { CollectionListWorkspace } from "@/collection-layout/src/collection-layout";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
+import { tagForNotesView } from "@/notes-core/src/use-notes-sidebar-model";
 import { useSyncRetryToast } from "@/hooks/use-sync-retry-toast";
 import { useNotesPaneStoryController } from "./notes-pane-stories.harness";
 import { NotesStoryScope } from "./notes-story-scope";
@@ -16,7 +17,7 @@ const storyChrome = {
 const EMPTY_PRESET = { notesOverride: [] };
 const LOADING_PRESET = { listLoading: true };
 
-export type NotesListPanePreset = "default" | "empty" | "loading" | "inNotebook";
+export type NotesListPanePreset = "default" | "empty" | "loading" | "inNotebook" | "inTag";
 
 export function NotesListPaneHarness({
   preset = "default",
@@ -45,6 +46,7 @@ export function NotesListPaneHarness({
     if (preset === "inNotebook" && firstNotebook) {
       controller.selectView(`nb:${firstNotebook}`);
     }
+    if (preset === "inTag") controller.selectView("tag:essay");
     // Storybook: apply notebook filter when preset/seed change, not on every controller churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [preset, firstNotebook]);
@@ -75,6 +77,7 @@ export function NotesListPaneHarness({
     toggleArchive: controller.toggleArchive,
     selectionBar: controller.selectionBar,
     onRefreshList: () => {},
+    onEditTag: tagForNotesView(controller.view, controller.tags) ? () => {} : undefined,
     pendingNoteIds: pendingNoteIds ? new Set(pendingNoteIds) : undefined,
   });
 
@@ -95,7 +98,7 @@ const meta = {
   argTypes: {
     preset: {
       control: "select",
-      options: ["default", "empty", "loading", "inNotebook"],
+      options: ["default", "empty", "loading", "inNotebook", "inTag"],
     },
   },
 } satisfies Meta<typeof NotesListPaneHarness>;
@@ -111,6 +114,7 @@ export const Default: Story = {
     await expect(canvas.getByRole("button", { name: /Endless scroll/i })).toBeInTheDocument();
     await expect(canvas.getByLabelText("3 Items")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Refresh notes" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Edit tag" })).toBeNull();
     await expect(canvasElement.querySelector(".list-item__tags")).toBeNull();
     await expect(canvas.queryByText("architecture")).toBeNull();
     await expect(canvas.queryByText("essay")).toBeNull();
@@ -159,5 +163,17 @@ export const ActiveNotebook: Story = {
     await expect(canvas.queryByRole("button", { name: "Edit" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Remove" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Delete notebook" })).toBeNull();
+  },
+};
+
+/** A tag filter adds "Edit tag" directly left of refresh (#1744). */
+export const ActiveTag: Story = {
+  tags: ["vitest-ci"],
+  args: { preset: "inTag" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const edit = await canvas.findByRole("button", { name: "Edit tag" });
+    const refresh = canvas.getByRole("button", { name: "Refresh notes" });
+    await expect(edit.nextElementSibling).toBe(refresh);
   },
 };

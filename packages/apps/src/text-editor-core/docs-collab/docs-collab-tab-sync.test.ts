@@ -7,11 +7,13 @@ import {
   electLeaderTabId,
   electStickyDocsLeaderTabId,
   isTabPresenceStale,
+  LEADER_CLAIM_GRACE_MS,
   meshMessageForTabRelay,
   pruneStaleTabs,
   resolveDocsLeaderClaim,
   routeTabSyncMessage,
   shouldResignOnHide,
+  TAB_PING_INTERVAL_MS,
   type TabPresence,
 } from "./docs-collab-tab-sync";
 
@@ -35,6 +37,9 @@ class MockBroadcastChannel {
     if (index >= 0) MockBroadcastChannel.peers.splice(index, 1);
   }
 }
+
+/** The mock channel above delivers synchronously, so no claim grace is needed. */
+const SYNC_CHANNEL = { claimGraceMs: 0 };
 
 function tab(tabId: string, visible: boolean, lastSeen: number): TabPresence {
   return { tabId, visible, lastSeen };
@@ -192,6 +197,7 @@ describe("docs-collab-tab-sync coordinator", () => {
         onResignLeader: vi.fn(),
       },
       "tab-a",
+      SYNC_CHANNEL,
     );
     const tabB = new DocsCollabTabCoordinator(
       "docs/test.md",
@@ -203,6 +209,7 @@ describe("docs-collab-tab-sync coordinator", () => {
         onResignLeader: vi.fn(),
       },
       "tab-b",
+      SYNC_CHANNEL,
     );
 
     tabA.start();
@@ -233,6 +240,7 @@ describe("docs-collab-tab-sync coordinator", () => {
         onResignLeader: vi.fn(),
       },
       "tab-a",
+      SYNC_CHANNEL,
     );
     const tabB = new DocsCollabTabCoordinator(
       "docs/test.md",
@@ -244,6 +252,7 @@ describe("docs-collab-tab-sync coordinator", () => {
         onResignLeader: vi.fn(),
       },
       "tab-b",
+      SYNC_CHANNEL,
     );
 
     tabA.start();
@@ -271,11 +280,13 @@ describe("docs-collab-tab-sync coordinator", () => {
       "docs/test.md",
       handlersFor(vi.fn(), onResignLeader),
       "tab-a",
+      SYNC_CHANNEL,
     );
     const tabB = new DocsCollabTabCoordinator(
       "docs/test.md",
       handlersFor(onBecomeLeaderB, vi.fn()),
       "tab-b",
+      SYNC_CHANNEL,
     );
 
     tabA.start();
@@ -300,6 +311,95 @@ describe("docs-collab-tab-sync coordinator", () => {
 
     tabA.stop();
     tabB.stop();
+  });
+});
+
+/** Delivers on a later task, like a real BroadcastChannel. */
+class AsyncBroadcastChannel {
+  static peers: AsyncBroadcastChannel[] = [];
+
+  onmessage: ((event: MessageEvent) => void) | null = null;
+
+  constructor(_name: string) {
+    AsyncBroadcastChannel.peers.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    for (const peer of AsyncBroadcastChannel.peers) {
+      if (peer !== this) setTimeout(() => peer.onmessage?.({ data } as MessageEvent), 1);
+    }
+  }
+
+  close(): void {
+    const index = AsyncBroadcastChannel.peers.indexOf(this);
+    if (index >= 0) AsyncBroadcastChannel.peers.splice(index, 1);
+  }
+}
+
+/**
+ * A second tab of the same account opens while the first one holds the mesh.
+ * The leader's ping only reaches it a moment after `start()`. Claiming the
+ * mesh in that moment made the new tab join the room too, which knocked the
+ * leader's peer off the server and left a follower holding a mesh session.
+ */
+describe("docs-collab-tab-sync leader claim on open", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    AsyncBroadcastChannel.peers = [];
+    vi.stubGlobal("BroadcastChannel", AsyncBroadcastChannel);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const handlers = (onBecomeLeader: () => void, onResignLeader: () => void = vi.fn()) => ({
+    onSyncFromTab: vi.fn(),
+    onAwarenessFromTab: vi.fn(),
+    onMeshStateFromLeader: vi.fn(),
+    onBecomeLeader,
+    onResignLeader,
+  });
+
+  it("does not claim the mesh when another tab already leads", () => {
+    const onBecomeLeaderA = vi.fn();
+    const onResignLeaderA = vi.fn();
+    const onBecomeLeaderB = vi.fn();
+    // "tab-b" sorts first, so a contested claim would move the mesh to it.
+    const tabA = new DocsCollabTabCoordinator(
+      "docs/test.md",
+      handlers(onBecomeLeaderA, onResignLeaderA),
+      "tab-z",
+    );
+    tabA.start();
+    vi.advanceTimersByTime(TAB_PING_INTERVAL_MS);
+    expect(tabA.meshLeader).toBe(true);
+
+    const tabB = new DocsCollabTabCoordinator("docs/test.md", handlers(onBecomeLeaderB), "tab-b");
+    tabB.start();
+    expect(tabB.meshLeader).toBe(false);
+    vi.advanceTimersByTime(TAB_PING_INTERVAL_MS * 3);
+
+    expect(onBecomeLeaderB).not.toHaveBeenCalled();
+    expect(tabB.meshLeader).toBe(false);
+    expect(tabA.meshLeader).toBe(true);
+    expect(onBecomeLeaderA).toHaveBeenCalledOnce();
+    expect(onResignLeaderA).not.toHaveBeenCalled();
+
+    tabA.stop();
+    tabB.stop();
+  });
+
+  it("claims the mesh shortly after opening when it is the only tab", () => {
+    const onBecomeLeader = vi.fn();
+    const tabA = new DocsCollabTabCoordinator("docs/test.md", handlers(onBecomeLeader), "tab-a");
+    tabA.start();
+    expect(tabA.meshLeader).toBe(false);
+    vi.advanceTimersByTime(LEADER_CLAIM_GRACE_MS);
+    expect(tabA.meshLeader).toBe(true);
+    expect(onBecomeLeader).toHaveBeenCalledOnce();
+    tabA.stop();
   });
 });
 

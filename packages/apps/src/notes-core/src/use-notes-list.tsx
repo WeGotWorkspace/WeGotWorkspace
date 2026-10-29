@@ -118,6 +118,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     ],
   );
 
+  const visibleIds = useMemo(() => visibleNotes.map((n) => n.id), [visibleNotes]);
+
   const {
     selectedIds,
     setSelectedIds,
@@ -137,7 +139,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   } = useWorkspaceListController<Note>({
     items: notes,
     setItems: setNotes,
-    visibleIds: visibleNotes.map((n) => n.id),
+    visibleIds,
     activeId,
     setActiveId,
     initialId: initialNoteId,

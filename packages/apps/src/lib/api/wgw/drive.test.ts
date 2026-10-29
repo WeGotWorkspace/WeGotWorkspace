@@ -31,6 +31,7 @@ vi.mock("@/lib/api/wgw/search", () => ({
 
 import {
   createWgwDriveOperations,
+  GUEST_STRUCTURE_UNAVAILABLE,
   GUEST_UPLOAD_UNAVAILABLE,
   fetchDriveLiveBootstrap,
   resetDriveJmapSessionForTests,
@@ -296,6 +297,23 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path === "/files/context")).toBe(true);
   });
 
+  it("asks for the drive user once for many blob reads (one /files/context, not one per preview)", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    await Promise.all([
+      ops.readFileBlob("/users/bob/readme.md"),
+      ops.readFileBlob("/users/bob/readme.md"),
+      ops.readFileBlob("/users/bob/readme.md"),
+    ]);
+    await ops.readFileBlob("/users/bob/readme.md");
+
+    const contextCalls = wgwFetch.mock.calls.filter((call) => String(call[0]) === "/files/context");
+    expect(contextCalls).toHaveLength(1);
+    const downloads = wgwFetch.mock.calls.filter((call) =>
+      String(call[0]).startsWith("/jmap/download/"),
+    );
+    expect(downloads).toHaveLength(4);
+  });
+
   it("reads file bytes via fnb download and rejects uploads over maxSizeUpload", async () => {
     const ops = createWgwDriveOperations("/users/bob");
     const blob = await ops.readFileBlob("/users/bob/readme.md");
@@ -375,6 +393,36 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     await expect(ops.checkUploadReady()).rejects.toThrow(GUEST_UPLOAD_UNAVAILABLE);
     await expect(ops.uploadFiles({ cwd: "/users/bob/Test", files: [file] })).rejects.toThrow(
       GUEST_UPLOAD_UNAVAILABLE,
+    );
+    expect(wgwFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses guest folder, file, rename, move and delete before sending any request", async () => {
+    wgwIsGuestSession.mockReturnValue(true);
+    wgwGuestSharePath.mockReturnValue("/users/bob/Test");
+    const ops = createWgwDriveOperations("/users/bob/Test");
+
+    await expect(ops.createFolder({ cwd: "/users/bob/Test", name: "New" })).rejects.toThrow(
+      GUEST_STRUCTURE_UNAVAILABLE,
+    );
+    await expect(ops.createFile({ cwd: "/users/bob/Test", name: "a.md" })).rejects.toThrow(
+      GUEST_STRUCTURE_UNAVAILABLE,
+    );
+    await expect(
+      ops.renameItem({ destination: "/users/bob/Test", from: "/users/bob/Test/a.md", to: "b.md" }),
+    ).rejects.toThrow(GUEST_STRUCTURE_UNAVAILABLE);
+    await expect(
+      ops.renameItem({
+        destination: "/users/bob/Test/Sub",
+        from: "/users/bob/Test/a.md",
+        to: "a.md",
+      }),
+    ).rejects.toThrow(GUEST_STRUCTURE_UNAVAILABLE);
+    await expect(ops.deleteItems(["/users/bob/Test/a.md"])).rejects.toThrow(
+      GUEST_STRUCTURE_UNAVAILABLE,
+    );
+    await expect(ops.deleteItems(["/users/bob/Test/a.md", "/users/bob/Test/b.md"])).rejects.toThrow(
+      GUEST_STRUCTURE_UNAVAILABLE,
     );
     expect(wgwFetch).not.toHaveBeenCalled();
   });

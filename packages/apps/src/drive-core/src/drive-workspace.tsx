@@ -225,6 +225,7 @@ export function DriveWorkspace({
     requestMoveItem,
     isUnderTrash,
     setConfirmDelete,
+    structureEnabled,
   } = controller;
 
   const handleDetailClose = useCallback(() => {
@@ -274,10 +275,13 @@ export function DriveWorkspace({
           !isTopLevelDriveApiPath(active.apiPath) &&
           activeMayShare === true
         }
-        canManageStructure={resolveDriveFileCanManageStructure(active.mayManageStructure, {
-          isActive: true,
-          activeMayManageStructure,
-        })}
+        canManageStructure={
+          structureEnabled &&
+          resolveDriveFileCanManageStructure(active.mayManageStructure, {
+            isActive: true,
+            activeMayManageStructure,
+          })
+        }
         onShare={
           shareEnabled && active.apiPath
             ? () => handleOpenShareForFile(active.apiPath!, active.title)
@@ -302,6 +306,7 @@ export function DriveWorkspace({
     shareEnabled,
     showError,
     starred,
+    structureEnabled,
     toggleStar,
   ]);
 
@@ -417,6 +422,7 @@ function DriveSidebar({
     createMarkdown,
     fileInputRef,
     uploadEnabled,
+    structureEnabled,
   } = controller;
 
   return (
@@ -433,12 +439,15 @@ function DriveSidebar({
         />
       }
       primaryButton={
-        <DriveNewMenu
-          labels={labels}
-          onCreateFolder={createFolder}
-          onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
-          onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
-        />
+        // New folder is the menu's main action; guests cannot create anything yet (#1712).
+        structureEnabled ? (
+          <DriveNewMenu
+            labels={labels}
+            onCreateFolder={createFolder}
+            onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
+            onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
+          />
+        ) : null
       }
     >
       <SidebarSection items={primarySidebarItems} />

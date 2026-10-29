@@ -105,8 +105,13 @@ export async function flushDriveOutbox(username: string): Promise<DriveOutboxFlu
       failed += 1;
       const status = httpStatusFromFlushError(error);
       const message = error instanceof Error ? error.message : String(error);
+      // Some Drive REST writes still throw an Error without a status, so the text is the
+      // only sign of a 412 there. Drop the regex once they throw a typed error.
       const isStateMismatch =
-        status === 409 || status === 412 || /precondition failed/i.test(message);
+        status === 409 ||
+        status === 412 ||
+        // eslint-disable-next-line no-restricted-syntax -- reviewed exception (#1642), see above
+        /precondition failed/i.test(message);
       if (isStateMismatch) {
         const path = driveOutboxApiPath(row);
         if (path) stateMismatches.push(path);
