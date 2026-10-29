@@ -85,6 +85,21 @@ describe("useDocsRouteDocument", () => {
     expect(result.current.document).toEqual({ status: "ready", path: PATH, nodeId: ID });
   });
 
+  it("does not look the swapped-in id up again", async () => {
+    const locator = deps();
+    const { result, rerender } = render({ file: "users/alice/Roadmap.md" }, locator);
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+
+    rerender({ search: { id: ID }, refreshKey: 0 });
+    await act(async () => {});
+    expect(result.current.document).toEqual({ status: "ready", path: PATH, nodeId: ID });
+    expect(locator.fetchLocation).toHaveBeenCalledTimes(1);
+
+    // A later refresh still asks the server.
+    rerender({ search: { id: ID }, refreshKey: 1 });
+    await waitFor(() => expect(locator.fetchLocation).toHaveBeenCalledTimes(2));
+  });
+
   it("resolves an id to its current path", async () => {
     const { result } = render({ id: ID }, deps());
 
