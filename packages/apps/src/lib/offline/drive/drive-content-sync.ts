@@ -26,6 +26,7 @@ import {
   driveContentBlobsTable,
   type OfflineDriveContentBlobRow,
 } from "@/lib/offline/drive/drive-schema";
+import { listingModifiedAtMs } from "@/lib/offline/docs/docs-body-sync";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
 import { readDriveEntryFromCache } from "@/lib/offline/drive/drive-directory-offline-store";
 
@@ -141,7 +142,7 @@ export async function syncDriveFileContent(
     await makeDocsOfflineAvailable(username, normalized, "", {
       beforeRequest: options?.beforeRequest,
       // Background sync skips a document whose local copy is newer than the file.
-      modifiedAtMs: background && entryModifiedAt !== null ? entryModifiedAt * 1000 : undefined,
+      modifiedAtMs: background ? listingModifiedAtMs(entryModifiedAt) : undefined,
     });
     await writeDriveAvailability(username, {
       id: room,
