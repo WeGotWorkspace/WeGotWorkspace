@@ -307,6 +307,8 @@ describe("contacts first download, saved page by page", () => {
     await vi.waitFor(() => expect(fetchContactCardPages).toHaveBeenCalled());
     // Refresh in the header while the resume runs; a restart would clear the saved cards.
     const refresh = loadContactsBootstrapHybrid();
+    // Let the refresh read the stored copy while the resume still holds the marker.
+    await new Promise((resolve) => setTimeout(resolve, 50));
     held.open();
     await Promise.all([resume, refresh.catch(() => undefined)]);
 

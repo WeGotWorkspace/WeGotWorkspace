@@ -68,6 +68,11 @@ export async function readContactsBootstrapFromCache(
   };
 }
 
+/**
+ * Replaces the stored copy with `bootstrap` in one transaction, so a closed
+ * tab never leaves the books written and the cards cleared. Rows with unsynced
+ * local edits stay.
+ */
 export async function writeContactsBootstrapToCache(
   username: string,
   bootstrap: ContactsAppBootstrap,
@@ -75,50 +80,60 @@ export async function writeContactsBootstrapToCache(
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const cards = contactsCardsTable(db);
   const books = contactsBooksTable(db);
-  const pendingRows = await cards.filter((row) => row.pendingSync).toArray();
-  await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
   rememberOfflineContactsUsername(username);
-  await books.clear();
-  await books.bulkPut(
-    bootstrap.data.addressBooks.map((book) => ({
-      id: book.id ?? "default",
-      data: JSON.stringify(book),
-    })),
-  );
-  await cards.clear();
-  await cards.bulkPut(bootstrap.data.cards.map((card) => contactCardRow(card, false)));
-  if (pendingRows.length > 0) {
-    await cards.bulkPut(pendingRows);
-  }
+  await db.transaction("rw", cards, books, db.meta, async () => {
+    const pendingRows = await cards.filter((row) => row.pendingSync).toArray();
+    await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
+    await books.clear();
+    await books.bulkPut(
+      bootstrap.data.addressBooks.map((book) => ({
+        id: book.id ?? "default",
+        data: JSON.stringify(book),
+      })),
+    );
+    await cards.clear();
+    await cards.bulkPut(bootstrap.data.cards.map((card) => contactCardRow(card, false)));
+    if (pendingRows.length > 0) {
+      await cards.bulkPut(pendingRows);
+    }
+  });
 }
 
 /**
  * A first download that has not finished. While this row exists the stored
  * copy is partial: boot fetches `remainingCardIds`, and only then stores the
  * query-time states as sync tokens (so `/changes` replays every change made
- * since the query, including on cards saved early).
+ * since the query, including on cards saved early). `id` names the download
+ * that owns the row: only that download may save pages into it or finish it.
  */
 export type ContactsColdDownload = {
+  id: string;
   addressBookState: string;
   contactCardState: string;
   /** Card ids from the query that are not saved yet. */
   remainingCardIds: string[];
 };
 
-export async function readContactsColdDownload(
-  username: string,
-): Promise<ContactsColdDownload | null> {
-  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const row = await db.meta.get(META_COLD_DOWNLOAD);
-  if (!row?.value) return null;
+function parseColdDownload(value: string | undefined): ContactsColdDownload | null {
+  if (!value) return null;
   try {
-    return JSON.parse(row.value) as ContactsColdDownload;
+    return JSON.parse(value) as ContactsColdDownload;
   } catch {
     return null;
   }
 }
 
-/** True when a session and at least one book or card are stored. */
+export async function readContactsColdDownload(
+  username: string,
+): Promise<ContactsColdDownload | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return parseColdDownload((await db.meta.get(META_COLD_DOWNLOAD))?.value);
+}
+
+/**
+ * True when a session and at least one book or card are stored: the same rule
+ * {@link readContactsBootstrapFromCache} uses, without parsing every row.
+ */
 export async function hasContactsCopy(username: string): Promise<boolean> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   if (!(await db.meta.get(META_SESSION))?.value) return false;
@@ -127,7 +142,8 @@ export async function hasContactsCopy(username: string): Promise<boolean> {
 
 /**
  * Marks the copy unfinished, then stores the session and books with no cards
- * yet. The marker goes first: a copy without it counts as complete.
+ * yet. The marker goes first: a copy without it counts as complete. Only for a
+ * device with no copy; an unfinished copy is resumed, never restarted.
  */
 export async function startContactsColdDownload(
   username: string,
@@ -142,20 +158,21 @@ export async function startContactsColdDownload(
 
 /**
  * Saves one page and the ids still missing in one transaction. A card with
- * unsynced local edits keeps the local row. Returns the cards it saved; none
- * when the download was finished or restarted elsewhere.
+ * unsynced local edits keeps the local row. Returns the cards it saved, or
+ * null when download `downloadId` no longer owns the marker (finished, or
+ * taken over by another download); nothing is written then.
  */
 export async function saveContactsColdDownloadPage(
   username: string,
+  downloadId: string,
   cards: ContactCard[],
   remainingCardIds: string[],
-): Promise<ContactCard[]> {
+): Promise<ContactCard[] | null> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = contactsCardsTable(db);
   return db.transaction("rw", table, db.meta, async () => {
-    const row = await db.meta.get(META_COLD_DOWNLOAD);
-    if (!row?.value) return [];
-    const progress = JSON.parse(row.value) as ContactsColdDownload;
+    const progress = parseColdDownload((await db.meta.get(META_COLD_DOWNLOAD))?.value);
+    if (!progress || progress.id !== downloadId) return null;
     const existing = await table.bulkGet(cards.map((card) => card.id));
     const fresh = cards.filter((_, index) => !existing[index]?.pendingSync);
     await table.bulkPut(fresh.map((card) => contactCardRow(card, false)));
@@ -167,10 +184,43 @@ export async function saveContactsColdDownloadPage(
   });
 }
 
-/** Call after the sync tokens are stored: from here on the copy counts as complete. */
-export async function finishContactsColdDownload(username: string): Promise<void> {
+/**
+ * Last step of download `downloadId`: stores its query-time states as the
+ * sync tokens for `bookIds` and removes the marker, in one transaction.
+ * Returns false (and writes nothing) when another download owns the marker.
+ */
+export async function finishContactsColdDownload(
+  username: string,
+  downloadId: string,
+  bookIds: string[],
+): Promise<boolean> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  await db.meta.delete(META_COLD_DOWNLOAD);
+  return db.transaction("rw", db.meta, async () => {
+    const progress = parseColdDownload((await db.meta.get(META_COLD_DOWNLOAD))?.value);
+    if (!progress || progress.id !== downloadId) return false;
+    await db.meta.put({ key: META_ADDRESS_BOOKS_STATE, value: progress.addressBookState });
+    for (const bookId of bookIds) {
+      await db.meta.put({ key: metaKeyForBookState(bookId), value: progress.contactCardState });
+    }
+    await db.meta.delete(META_COLD_DOWNLOAD);
+    return true;
+  });
+}
+
+/** A full snapshot replaced the copy: whatever download was unfinished is done. */
+export async function discardContactsColdDownload(username: string): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction("rw", db.meta, async () => {
+    if (!(await db.meta.get(META_COLD_DOWNLOAD))) return false;
+    await db.meta.delete(META_COLD_DOWNLOAD);
+    return true;
+  });
+}
+
+/** True when contact edits are waiting in the outbox. */
+export async function hasQueuedContactEdits(username: string): Promise<boolean> {
+  const rows = await listOutboxMutationsForDomain(username, CONTACTS_DOMAIN);
+  return rows.length > 0;
 }
 
 export async function upsertContactCardInCache(

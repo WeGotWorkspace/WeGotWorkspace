@@ -271,11 +271,12 @@ describe("useContactsAPI first visit", () => {
 
   it("reopening after a dropped first download fetches only the rest, read-only until done", async () => {
     await startContactsColdDownload(username, session, [book], {
+      id: "first-download",
       addressBookState: "books-at-query",
       contactCardState: "cards-at-query",
       remainingCardIds: ["page-1", "page-2"],
     });
-    await saveContactsColdDownloadPage(username, [card("page-1")], ["page-2"]);
+    await saveContactsColdDownloadPage(username, "first-download", [card("page-1")], ["page-2"]);
     let deliver: () => Promise<void> = async () => undefined;
     fetchContactCardPages.mockImplementation(
       (

@@ -33,9 +33,11 @@ import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
 import {
   createTempContactId,
   enqueueCoalescedContactUpdate,
+  discardContactsColdDownload,
   enqueueOutboxMutation,
   finishContactsColdDownload,
   hasContactsCopy,
+  hasQueuedContactEdits,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
   readContactsColdDownload,
@@ -319,53 +321,86 @@ async function rememberContactsSyncState(
 
 type ContactsBootstrap = Awaited<ReturnType<typeof fetchContactsLiveBootstrap>>;
 
+function bookIdsOf(books: AddressBook[]): string[] {
+  return books.map((book) => book.id).filter((id): id is string => Boolean(id));
+}
+
 /**
- * Full download. On a cold device (or after an unfinished first download)
- * each card page is saved as it arrives, behind a "not finished" marker. A
- * refresh over a complete copy still replaces it only at the end, so an
- * interrupted refresh cannot mix old and new rows.
+ * After a download finished and its marker is gone: send edits queued on the
+ * partial copy. The flush pulls `/changes` from the tokens just stored. With
+ * nothing queued it is left to the next refresh, so a download costs no extra
+ * pull.
+ */
+async function sendQueuedEditsAfterDownload(username: string): Promise<void> {
+  if (!readBrowserOnline() || !(await hasQueuedContactEdits(username))) return;
+  await runnerFor(username).flush();
+}
+
+/**
+ * Full download. On a device with no copy, each card page is saved as it
+ * arrives, behind a marker this download owns; once the last page is in, only
+ * the query-time tokens are stored (no rewrite of the saved pages). With a
+ * stored copy (complete, or an unfinished one reached outside
+ * {@link loadContactsBootstrapHybrid}) nothing changes until the full snapshot
+ * is in; then it replaces the copy in one transaction.
  */
 export async function fetchContactsHybridBootstrap(
   onProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
-  let savingFor: string | null = null;
+  let saving: { username: string; id: string } | null = null;
   const bootstrap = await fetchContactsLiveBootstrap({
     onProgress,
     onStart: async ({ session, addressBooks, cardIds, syncAnchor }) => {
       const name = session.user.username;
-      if (!name) return;
-      const unfinished = await readContactsColdDownload(name);
-      if (!unfinished && (await hasContactsCopy(name))) return;
+      if (!name || (await hasContactsCopy(name))) return;
+      const id = crypto.randomUUID();
       await startContactsColdDownload(name, session, addressBooks, {
+        id,
         ...syncAnchor,
         remainingCardIds: cardIds,
       });
-      savingFor = name;
+      saving = { username: name, id };
     },
     onCardPage: async ({ cards, remainingCardIds }) => {
-      if (savingFor) await saveContactsColdDownloadPage(savingFor, cards, remainingCardIds);
+      if (saving)
+        await saveContactsColdDownloadPage(saving.username, saving.id, cards, remainingCardIds);
     },
   });
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Contacts bootstrap missing username");
   }
+  const savedPages = saving as { username: string; id: string } | null;
+  if (savedPages) {
+    const books = bookIdsOf(bootstrap.data.addressBooks);
+    if (await finishContactsColdDownload(username, savedPages.id, books)) {
+      await sendQueuedEditsAfterDownload(username);
+    }
+    return bootstrap;
+  }
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
   }
   await writeContactsBootstrapToCache(username, bootstrap);
   await rememberContactsSyncState(username, bootstrap.data.addressBooks, bootstrap.syncAnchor);
-  await finishContactsColdDownload(username);
+  if (await discardContactsColdDownload(username)) {
+    await sendQueuedEditsAfterDownload(username);
+  }
   return bootstrap;
 }
+
+/** Ends a resume early: another download owns the marker now. */
+class ColdDownloadTakenOver extends Error {}
 
 const resumesInFlight = new Map<string, Promise<ContactsAppBootstrap>>();
 
 /**
  * Finishes an interrupted first download: fetches only the missing cards,
  * then stores the original query-time states as sync tokens. The next
- * `/changes` replays everything since that query. Throws on a network error;
- * the saved pages and the marker stay for the next try.
+ * `/changes` replays everything since that query. Page saves and the finish
+ * only apply while the marker still names this download. One resume per user
+ * at a time: a second caller (a Refresh, a reconnect) joins the running one.
+ * Throws on a network or HTTP error; the saved pages and the marker stay.
  */
 function resumeContactsColdDownload(
   username: string,
@@ -380,22 +415,27 @@ function resumeContactsColdDownload(
     const publish = () =>
       reportProgress?.({ ...saved, data: { ...saved.data, cards: [...cards.values()] } });
     publish();
-    if (progress.remainingCardIds.length > 0) {
-      await fetchContactCardPages(progress.remainingCardIds, async (page) => {
-        const kept = await saveContactsColdDownloadPage(
-          username,
-          page.cards,
-          page.remainingCardIds,
-        );
-        for (const card of kept) cards.set(card.id, card);
-        publish();
-      });
+    try {
+      if (progress.remainingCardIds.length > 0) {
+        await fetchContactCardPages(progress.remainingCardIds, async (page) => {
+          const kept = await saveContactsColdDownloadPage(
+            username,
+            progress.id,
+            page.cards,
+            page.remainingCardIds,
+          );
+          if (!kept) throw new ColdDownloadTakenOver();
+          for (const card of kept) cards.set(card.id, card);
+          publish();
+        });
+      }
+      const books = bookIdsOf(saved.data.addressBooks);
+      if (await finishContactsColdDownload(username, progress.id, books)) {
+        await sendQueuedEditsAfterDownload(username);
+      }
+    } catch (error) {
+      if (!(error instanceof ColdDownloadTakenOver)) throw error;
     }
-    await rememberContactsSyncState(username, saved.data.addressBooks, progress);
-    await finishContactsColdDownload(username);
-    // Edits queued offline on the partial copy go out now; the flush's pull
-    // starts at the query-time tokens stored above.
-    if (readBrowserOnline()) await runnerFor(username).flush();
     return (await readContactsBootstrapFromCache(username)) ?? saved;
   })().finally(() => resumesInFlight.delete(username));
   resumesInFlight.set(username, run);
@@ -413,18 +453,23 @@ async function finishContactsDownload(
   return resumeContactsColdDownload(username, saved, progress, reportProgress);
 }
 
+/**
+ * Explicit load (header Refresh, cold boot). With an unfinished first download
+ * stored, it joins or starts the resume: a new full download would have to
+ * clear the saved cards first.
+ */
 export async function loadContactsBootstrapHybrid(
   reportProgress?: (bootstrap: ContactsBootstrap) => void,
 ): Promise<ContactsBootstrap> {
+  const username = readOfflineContactsUsername();
+  const saved = username ? await readContactsBootstrapFromCache(username) : null;
   if (!readBrowserOnline()) {
-    const username = readOfflineContactsUsername();
-    if (username) {
-      const cached = await readContactsBootstrapFromCache(username);
-      if (cached) return cached;
-    }
+    if (saved) return saved;
     throw new Error("No cached contacts available offline");
   }
-
+  if (username && saved && (await readContactsColdDownload(username))) {
+    return finishContactsDownload(username, saved, reportProgress);
+  }
   return fetchContactsHybridBootstrap(reportProgress);
 }
 
@@ -458,7 +503,11 @@ export async function loadContactsBootstrapForBoot(
     if (cached) {
       try {
         return await finishContactsDownload(username, cached, reportProgress);
-      } catch {
+      } catch (error) {
+        // Offline or a proxy error is expected here; anything else should leave a trace.
+        if (!isFetchNetworkError(error)) {
+          console.warn("[contacts] resuming the first download failed", error);
+        }
         return (await readContactsBootstrapFromCache(username)) ?? cached;
       }
     }
