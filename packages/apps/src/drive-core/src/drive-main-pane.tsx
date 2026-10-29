@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Cloud, CloudAlert, Download } from "lucide-react";
 import { Button } from "@/button/src/button";
 import { useConnectivity } from "@/hooks/use-connectivity";
@@ -17,6 +17,7 @@ import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
+import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
 
 type DriveController = ReturnType<typeof useDriveController>;
 
@@ -66,6 +67,7 @@ export function DriveMainPane({
     viewMode,
     filePreviews,
     richPreviews,
+    setTilesInView,
     selectedIds,
     starred,
     selectionMode,
@@ -100,6 +102,10 @@ export function DriveMainPane({
     !searchQuery.trim() &&
     folderListingError?.path === view.path &&
     visibleItems.length === 0;
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Grid previews load only for tiles on (or near) screen.
+  useDriveTilesInView(scrollRef, setTilesInView, viewMode === "grid");
 
   const { show, showError } = useAppToast();
   const { online } = useConnectivity();
@@ -232,7 +238,7 @@ export function DriveMainPane({
       )}
 
       <div className="drive-main-pane__body">
-        <div className="drive-main-pane__scroll collection-state-host">
+        <div ref={scrollRef} className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
             <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
           ) : showFolderListingFailed ? (

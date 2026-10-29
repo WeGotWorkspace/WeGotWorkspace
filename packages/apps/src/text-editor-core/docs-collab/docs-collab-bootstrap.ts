@@ -10,7 +10,11 @@ export const SNAPSHOT_RETRY_DELAYS_MS = [500, 1500, 4000] as const;
 export type SnapshotOutcome =
   | { kind: "snapshot"; update: Uint8Array; etag: string | null; externalWrite: boolean }
   /** The server answered 204: there is genuinely no sidecar. Seeding is safe. */
-  | { kind: "absent" }
+  | {
+      kind: "absent";
+      /** The markdown, when the request asked the server for it as fallback. */
+      markdown?: string;
+    }
   /** Exhausted the retries. The caller must not seed — it would duplicate. */
   | { kind: "failed"; error: unknown }
   /** The caller did not supply a snapshot endpoint. */
@@ -66,7 +70,11 @@ async function loadSnapshotWithRetry(
     }
     try {
       const snapshot = await fetchSnapshot();
-      if (!snapshot.update) return { kind: "absent" };
+      if (!snapshot.update) {
+        return snapshot.markdown === undefined
+          ? { kind: "absent" }
+          : { kind: "absent", markdown: snapshot.markdown };
+      }
       return {
         kind: "snapshot",
         update: snapshot.update,
@@ -82,6 +90,19 @@ async function loadSnapshotWithRetry(
   }
 
   return { kind: "failed", error: lastError };
+}
+
+/** The snapshot alone, with the same retries and C7 outcome as the bootstrap. */
+export function loadSnapshotOutcome(
+  fetchSnapshot: () => Promise<YjsSnapshot>,
+  {
+    sleep = defaultSleep,
+    retryDelaysMs = SNAPSHOT_RETRY_DELAYS_MS,
+    isCurrent = () => true,
+    onAttemptFailed = () => undefined,
+  }: Omit<BootstrapLoadOptions, "loadMarkdown" | "fetchSnapshot"> = {},
+): Promise<SnapshotOutcome> {
+  return loadSnapshotWithRetry(fetchSnapshot, { sleep, retryDelaysMs, isCurrent, onAttemptFailed });
 }
 
 /**

@@ -184,6 +184,7 @@ export function useDriveController({
     knownGroupRoots: shell.knownGroupRoots,
     filePreviews: list.filePreviews,
     richPreviews: list.richPreviews,
+    setTilesInView: list.setTilesInView,
     dropUploadActive: mutations.dropUploadActive,
     setDropUploadActive: mutations.setDropUploadActive,
     uploadProgress: mutations.uploadProgress,

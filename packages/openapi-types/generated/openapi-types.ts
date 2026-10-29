@@ -2343,6 +2343,8 @@ export interface paths {
                 query: {
                     path: string;
                     format?: "markdown" | "yjs";
+                    /** @description Only with `format=yjs`. `markdown`: when there is no Yjs sidecar, answer 200 with the markdown and `X-Wgw-Collab-Fallback: markdown` instead of 204, so a client needs one request per document. Without it, no sidecar is still 204. */
+                    fallback?: "markdown";
                 };
                 header?: {
                     /** @description Entity tag from an earlier load of this same representation. The markdown tag is sha1 of the markdown bytes. The `?format=yjs` tag is sha1 of the Yjs sidecar. Those tags are not interchangeable. The server answers 304 when that representation still matches. A `?format=yjs` read whose markdown changed outside the collab path answers 200 with X-Wgw-External-Write instead of 304, so the signal is not hidden. */
@@ -2360,6 +2362,15 @@ export interface paths {
                         ETag?: string;
                         /** @description Present with value 1 on `?format=yjs` when the stored markdown is not the text the Yjs sidecar was last saved with, for example after a WebDAV PUT. Absent when no save has linked the sidecar to its markdown yet, and after a rename or move. The body is still the stored sidecar bytes. The read does not rewrite them; the next collab save clears the flag. */
                         "X-Wgw-External-Write"?: string;
+                        /** @description Present with value `markdown` on `?format=yjs&fallback=markdown` when there is no Yjs sidecar. The body is then the markdown (`text/markdown`) and the ETag is the markdown tag, not a sidecar tag. */
+                        "X-Wgw-Collab-Fallback"?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description `?format=yjs` without `fallback=markdown`: there is no Yjs sidecar. No body and no entity tag. */
+                204: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content?: never;

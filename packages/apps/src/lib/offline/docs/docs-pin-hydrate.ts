@@ -10,7 +10,8 @@ import {
   resolveDocsCollabDatabase,
 } from "@/text-editor-core/docs-collab/docs-collab-persistence";
 import { applyContentSeedToYDoc } from "@/text-editor-core/docs-collab/docs-collab-editor-surface";
-import { loadBootstrapInParallel } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
+import { isRateLimitedError } from "@/lib/offline/core/background-sync-pacer";
+import { loadSnapshotOutcome } from "@/text-editor-core/docs-collab/docs-collab-bootstrap";
 import { rememberSidecarEtag } from "@/text-editor-core/docs-collab/docs-collab-etag";
 import {
   fetchYjsSnapshot,
@@ -40,6 +41,10 @@ export function buildDocsCollabUrlsForPath(apiPath: string): {
 export type DocsPinHydrateInput = {
   apiPath: string;
   authToken?: string;
+  /** Background sync paces every request through this. */
+  beforeRequest?: () => Promise<void>;
+  /** Skip the network when the local copy is not empty (it is known to be current). */
+  keepLocalCopy?: boolean;
 };
 
 /** Seed an empty editable doc into y-indexeddb (offline create before first open). */
@@ -72,10 +77,17 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
 /**
  * Headless collab bootstrap: hydrate y-indexeddb for a room without joining mesh.
  * Mirrors join server bootstrap when online; leaves local IDB state when offline.
+ *
+ * One request per document: `&fallback=markdown` returns the sidecar, or the
+ * markdown when there is none. A server without the fallback answers 204, and
+ * the markdown is then fetched separately. A failed load throws: the caller
+ * must not mark it synced.
  */
 export async function hydrateDocsCollabForOffline({
   apiPath,
   authToken,
+  beforeRequest,
+  keepLocalCopy = false,
 }: DocsPinHydrateInput): Promise<void> {
   const room = docsCollabRoomKey(apiPath);
   if (!isDocsCollabEditablePath(room)) {
@@ -98,26 +110,42 @@ export async function hydrateDocsCollabForOffline({
       );
     }
 
+    if (keepLocalCopy && !isYDocEmpty(ydoc)) return;
+
     if (getConnectivitySnapshot()) {
       const resolvedAuthToken =
         authToken !== undefined ? authToken : ((await wgwEnsureFreshAccessToken()) ?? undefined);
-      const load = await loadBootstrapInParallel({
-        loadMarkdown: () => loadMarkdown(urls.documentUrl, resolvedAuthToken),
-        fetchSnapshot: () => fetchYjsSnapshot(urls.yjsUrl, resolvedAuthToken),
-      });
-
-      if (load.snapshot.kind === "snapshot") {
-        Y.applyUpdate(ydoc, load.snapshot.update, SERVER_ORIGIN);
-        rememberSidecarEtag(room, load.snapshot.etag);
-      } else if (load.snapshot.kind === "absent") {
-        rememberSidecarEtag(room, null);
-      }
+      // A 429 stops the retries at once; the caller's pacer decides when to try again.
+      let rateLimited = false;
+      const snapshot = await loadSnapshotOutcome(
+        async () => {
+          await beforeRequest?.();
+          return fetchYjsSnapshot(`${urls.yjsUrl}&fallback=markdown`, resolvedAuthToken);
+        },
+        {
+          isCurrent: () => !rateLimited,
+          onAttemptFailed: (error) => {
+            if (isRateLimitedError(error)) rateLimited = true;
+          },
+        },
+      );
 
       // C7: seed only when the server confirmed there is no sidecar. A failed
       // snapshot load leaves the local state alone rather than duplicating it.
-      const maySeed = load.snapshot.kind === "absent" || load.snapshot.kind === "skipped";
-      if (maySeed && isYDocEmpty(ydoc) && load.markdown) {
-        applyContentSeedToYDoc(ydoc, load.markdown, documentFormat);
+      if (snapshot.kind === "failed") throw snapshot.error;
+      if (snapshot.kind === "snapshot") {
+        Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
+        rememberSidecarEtag(room, snapshot.etag);
+      } else if (snapshot.kind === "absent") {
+        rememberSidecarEtag(room, null);
+        if (isYDocEmpty(ydoc)) {
+          let markdown = snapshot.markdown;
+          if (markdown === undefined) {
+            await beforeRequest?.();
+            markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
+          }
+          if (markdown) applyContentSeedToYDoc(ydoc, markdown, documentFormat);
+        }
       }
     } else if (isYDocEmpty(ydoc)) {
       throw new Error("Go online once to download this document for offline use.");

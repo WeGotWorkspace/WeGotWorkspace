@@ -19,6 +19,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class FilesController
 {
+    /** On `?format=yjs&fallback=markdown`: the body is the markdown because there is no sidecar. */
+    public const COLLAB_FALLBACK_HEADER = 'X-Wgw-Collab-Fallback';
+
     public function __construct(
         private DriveService $drive,
         private DriveGroupResolver $groups,
@@ -159,7 +162,20 @@ final class FilesController
             $snapshot = $this->collabDocuments->getYjsSnapshot($request, $path);
             // C7: a 204 means "no sidecar" and carries no entity tag.
             if ($snapshot === null) {
-                return response('', 204);
+                if ($request->query('fallback') !== 'markdown') {
+                    return response('', 204);
+                }
+
+                // Opt-in: "no sidecar" plus the markdown in one response, marked so a
+                // client never mistakes it for sidecar bytes.
+                $response = $this->collaborationBody(
+                    $request,
+                    $this->collabDocuments->getMarkdown($request, $path),
+                    'text/markdown; charset=utf-8',
+                );
+                $response->headers->set(self::COLLAB_FALLBACK_HEADER, 'markdown');
+
+                return $response;
             }
 
             return $this->collaborationBody(

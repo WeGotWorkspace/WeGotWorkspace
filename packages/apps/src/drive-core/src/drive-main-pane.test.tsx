@@ -49,6 +49,7 @@ function renderPane({
     viewMode: "grid",
     filePreviews: {},
     richPreviews: {},
+    setTilesInView: vi.fn(),
     selectedIds: new Set<string>(),
     starred: {},
     folderListingPending,

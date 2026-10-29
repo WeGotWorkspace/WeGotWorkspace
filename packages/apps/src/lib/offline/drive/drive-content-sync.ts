@@ -1,6 +1,11 @@
 import { wgwFetch } from "@/lib/api/wgw/http";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { normalizeApiVirtualPath } from "@/drive-core/src/drive-path-utils";
+import {
+  backgroundSyncPacer,
+  BackgroundSyncRateLimitedError,
+  parseRetryAfterMs,
+} from "@/lib/offline/core/background-sync-pacer";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
   isEligibleForAutoContentSync,
@@ -21,11 +26,13 @@ import {
   driveContentBlobsTable,
   type OfflineDriveContentBlobRow,
 } from "@/lib/offline/drive/drive-schema";
+import { listingModifiedAtMs } from "@/lib/offline/docs/docs-body-sync";
 import { makeDocsOfflineAvailable } from "@/lib/offline/docs/docs-offline-pin-core";
 import { readDriveEntryFromCache } from "@/lib/offline/drive/drive-directory-offline-store";
 
 const DRIVE_CONTENT_SYNC_META_KEY = "drive:auto-sync:content-progress";
-const DRIVE_CONTENT_SYNC_CONCURRENCY = 4;
+/** Low on purpose: the pacer sets the rate; this keeps browser connections free for the user. */
+const DRIVE_CONTENT_SYNC_CONCURRENCY = 2;
 
 export type DriveContentSyncProgress = ProgressiveSyncProgress;
 
@@ -93,6 +100,12 @@ export async function migrateDriveContentBlobPath(
 async function fetchFileBlob(apiPath: string, signal?: AbortSignal): Promise<Blob> {
   const normalized = normalizeApiVirtualPath(apiPath);
   const res = await wgwFetch(`/files/content?path=${encodeURIComponent(normalized)}`, { signal });
+  if (res.status === 429) {
+    throw new BackgroundSyncRateLimitedError(
+      "GET /files/content failed (429)",
+      parseRetryAfterMs(res.headers.get("Retry-After")),
+    );
+  }
   if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
   return res.blob();
 }
@@ -112,15 +125,25 @@ async function needsContentResync(
 export async function syncDriveFileContent(
   username: string,
   apiPath: string,
-  options?: { source?: "auto" | "manual"; signal?: AbortSignal },
+  options?: {
+    source?: "auto" | "manual";
+    signal?: AbortSignal;
+    /** Background sync paces every request through this. */
+    beforeRequest?: () => Promise<void>;
+  },
 ): Promise<void> {
   const normalized = normalizeApiVirtualPath(apiPath);
   const room = normalized.replace(/^\/+/, "");
   const entry = await readDriveEntryFromCache(username, room);
   const entryModifiedAt = entry?.time ?? null;
+  const background = options?.source !== "manual";
 
   if (isDocsCollabEditablePath(room)) {
-    await makeDocsOfflineAvailable(username, normalized, "");
+    await makeDocsOfflineAvailable(username, normalized, "", {
+      beforeRequest: options?.beforeRequest,
+      // Background sync skips a document whose local copy is newer than the file.
+      modifiedAtMs: background ? listingModifiedAtMs(entryModifiedAt) : undefined,
+    });
     await writeDriveAvailability(username, {
       id: room,
       source: options?.source ?? "auto",
@@ -130,6 +153,7 @@ export async function syncDriveFileContent(
     return;
   }
 
+  await options?.beforeRequest?.();
   const blob = await fetchFileBlob(normalized, options?.signal);
   await writeDriveContentBlob(username, normalized, blob, entryModifiedAt);
   if (options?.source === "manual") {
@@ -158,14 +182,21 @@ export async function syncDriveContentFromCache(
 
   queue.sort((a, b) => b.modifiedAt - a.modifiedAt);
 
+  const signal = options?.signal;
+  const pacer = backgroundSyncPacer();
   return runProgressiveSync({
     username,
     metaKey: DRIVE_CONTENT_SYNC_META_KEY,
     items: queue,
     concurrency: DRIVE_CONTENT_SYNC_CONCURRENCY,
-    signal: options?.signal,
+    signal,
+    pacer,
     syncOne: async (item) => {
-      await syncDriveFileContent(username, item.path, { source: "auto", signal: options?.signal });
+      await syncDriveFileContent(username, item.path, {
+        source: "auto",
+        signal,
+        beforeRequest: () => pacer.acquire(signal),
+      });
     },
   });
 }
