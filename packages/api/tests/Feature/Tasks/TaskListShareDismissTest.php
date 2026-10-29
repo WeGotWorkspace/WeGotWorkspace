@@ -85,6 +85,20 @@ final class TaskListShareDismissTest extends WgwDatabaseTestCase
         $this->assertContains('My Copy', $this->listNames('alice'));
     }
 
+    public function test_a_rejected_restore_leaves_the_list_dismissed(): void
+    {
+        [, $sharedId, $taskId] = $this->sharedListWithTask('Stay Gone');
+        $this->asUser('alice')->deleteJson('/api/v1/tasks/tasklists/'.$sharedId)->assertOk();
+        $patch = fn (array $body): TestResponse => $this->asUser('alice')->patchJson('/api/v1/tasks/tasklists/'.$sharedId, $body);
+
+        $patch(['isSubscribed' => true, 'description' => 'Not mine to change'])->assertForbidden();
+        $patch(['isSubscribed' => true, 'name' => ' '])->assertStatus(400);
+        $patch(['isSubscribed' => 1])->assertStatus(400);
+
+        $this->assertNotFound($this->asUser('alice')->getJson('/api/v1/tasks/tasklists/'.$sharedId));
+        $this->assertNotFound($this->asUser('alice')->getJson('/api/v1/tasks/items/'.$taskId));
+    }
+
     public function test_is_subscribed_false_dismisses_like_delete(): void
     {
         [$listId, $sharedId, $taskId] = $this->sharedListWithTask('Unsubscribe');

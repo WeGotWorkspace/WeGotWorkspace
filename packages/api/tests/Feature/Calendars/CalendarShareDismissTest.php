@@ -112,6 +112,20 @@ final class CalendarShareDismissTest extends WgwDatabaseTestCase
         $this->assertSame([$eventId], $this->jmap('alice', 'CalendarEvent/get', ['ids' => [$eventId]])['notFound']);
     }
 
+    public function test_a_rejected_restore_leaves_the_calendar_dismissed(): void
+    {
+        [, $sharedId, $eventId] = $this->sharedCalendarWithEvent('Stay Gone', 'stay-gone');
+        $this->dismiss($sharedId);
+
+        foreach ([['description' => 'Not mine to change'], ['timeZone' => 'Europe/Amsterdam'], ['name' => ' ']] as $extra) {
+            $updated = $this->jmap('alice', 'Calendar/set', ['update' => [$sharedId => ['isSubscribed' => true, ...$extra]]]);
+            $this->assertArrayHasKey($sharedId, $updated['notUpdated'], (string) json_encode($extra));
+        }
+
+        $this->assertSame([$sharedId], $this->jmap('alice', 'Calendar/get', ['ids' => [$sharedId]])['notFound']);
+        $this->assertSame([$eventId], $this->jmap('alice', 'CalendarEvent/get', ['ids' => [$eventId]])['notFound']);
+    }
+
     public function test_is_subscribed_must_be_a_boolean(): void
     {
         [, $sharedId] = $this->sharedCalendarWithEvent('Typed', 'typed');

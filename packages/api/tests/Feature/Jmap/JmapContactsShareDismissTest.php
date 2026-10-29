@@ -52,6 +52,20 @@ final class JmapContactsShareDismissTest extends WgwDatabaseTestCase
         $this->assertArrayHasKey('n', $created['created']);
     }
 
+    public function test_a_rejected_restore_leaves_the_book_dismissed(): void
+    {
+        [$sharedId, $cardId] = $this->sharedBookWithCard();
+        $this->jmap('alice', 'AddressBook/set', ['destroy' => [$sharedId]]);
+
+        foreach ([['name' => 'Mine now'], ['description' => 'Not mine to change'], ['isSubscribed' => 1]] as $extra) {
+            $updated = $this->jmap('alice', 'AddressBook/set', ['update' => [$sharedId => ['isSubscribed' => true, ...$extra]]]);
+            $this->assertArrayHasKey($sharedId, $updated['notUpdated'], (string) json_encode($extra));
+        }
+
+        $this->assertSame([$sharedId], $this->jmap('alice', 'AddressBook/get', ['ids' => [$sharedId]])['notFound']);
+        $this->assertSame([$cardId], $this->jmap('alice', 'ContactCard/get', ['ids' => [$cardId]])['notFound']);
+    }
+
     public function test_a_revoked_share_cannot_be_restored(): void
     {
         [$sharedId] = $this->sharedBookWithCard();

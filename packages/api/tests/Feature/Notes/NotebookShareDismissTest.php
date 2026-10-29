@@ -102,6 +102,24 @@ final class NotebookShareDismissTest extends WgwDatabaseTestCase
         $this->asUser('alice')->getJson('/api/v1/notes/items/'.$noteId)->assertOk();
     }
 
+    public function test_a_rejected_restore_leaves_the_notebook_dismissed(): void
+    {
+        [, $sharedId, $noteId] = $this->sharedNotebookWithNote('Stay Gone');
+        $this->asUser('alice')->deleteJson('/api/v1/notes/notebooks/'.$sharedId)->assertOk();
+        $patch = fn (array $body): TestResponse => $this->asUser('alice')->patchJson('/api/v1/notes/notebooks/'.$sharedId, $body);
+
+        $patch(['isSubscribed' => true, 'description' => 'Not mine to change'])->assertForbidden();
+        $patch(['isSubscribed' => true, 'name' => ' '])->assertStatus(400);
+        $patch(['isSubscribed' => 1])->assertStatus(400);
+        $jmap = $this->jmapAs('alice', [
+            ['Notebook/set', ['accountId' => 'alice', 'update' => [$sharedId => ['isSubscribed' => true, 'shareWith' => []]]], 'c0'],
+        ]);
+        $this->assertNotNull($jmap->json('methodResponses.0.1.notUpdated.'.$sharedId.'.type'));
+
+        $this->assertNotFound($this->asUser('alice')->getJson('/api/v1/notes/notebooks/'.$sharedId));
+        $this->assertNotFound($this->asUser('alice')->getJson('/api/v1/notes/items/'.$noteId));
+    }
+
     public function test_is_subscribed_false_dismisses_like_delete(): void
     {
         [$notebookId, $sharedId, $noteId] = $this->sharedNotebookWithNote('Unsubscribe');
