@@ -220,6 +220,41 @@ describe("useDriveShell folder listing sync", () => {
     expect(result.current.files.map((file) => file.title)).toEqual(["plan.md"]);
   });
 
+  it("keeps a failed folder load as an error instead of an empty listing, and retries it", async () => {
+    const changeDir = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("FileNode query+get failed"))
+      .mockResolvedValueOnce(folderData(PROJECTS_CWD, ["plan.md"]));
+    const operations = createOperations(changeDir);
+    const bootstrap = driveData(["old.txt"]);
+    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    expect(result.current.folderListingError).toBeNull();
+
+    act(() => {
+      result.current.selectView({ type: "folder", path: "My Drive/Projects" });
+    });
+
+    await waitFor(() =>
+      expect(result.current.folderListingError).toEqual({
+        path: "My Drive/Projects",
+        message: "FileNode query+get failed",
+      }),
+    );
+    expect(result.current.folderListingPending).toBe(false);
+
+    act(() => {
+      result.current.retryFolderListing();
+    });
+    expect(result.current.folderListingError).toBeNull();
+    expect(result.current.folderListingPending).toBe(true);
+
+    await waitFor(() => expect(result.current.folderListingPending).toBe(false));
+    expect(changeDir).toHaveBeenCalledTimes(2);
+    expect(result.current.folderListingError).toBeNull();
+    expect(result.current.files.map((file) => file.title)).toContain("plan.md");
+  });
+
   it("loads Shared with me entries when the shared view is selected", async () => {
     const changeDir = vi.fn().mockResolvedValue(driveData(["old.txt"]));
     const listEntriesByPaths = vi.fn().mockResolvedValue([]);

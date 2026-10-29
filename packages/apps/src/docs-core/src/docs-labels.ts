@@ -89,7 +89,12 @@ export const docsLabels = {
   insertImageChooseFromDrive: "Choose from Drive",
   deleteImage: "Delete image",
   viewSource: "Edit source",
+  /** Source toggle when the document cannot be edited (guest view). */
+  viewSourceReadOnly: "View source",
   hideSource: "Hide source",
+  /** Shown above a Doc opened through a share link; guests cannot save yet (#1713). */
+  guestReadOnlyNotice:
+    "Editing isn't available for guests yet. You can read and print this document.",
   rename: driveLabels.detailRename,
   /** Docs rename dialog copy (Drive uses generic "Rename item"). */
   renameDialogTitle: "Rename document",

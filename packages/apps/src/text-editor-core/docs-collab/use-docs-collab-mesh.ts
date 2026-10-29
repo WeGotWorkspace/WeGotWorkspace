@@ -245,10 +245,17 @@ export function useDocsCollabMesh({
       authToken: string,
       isCurrent: () => boolean,
     ): Promise<DocsCollabMeshPeer[] | null> => {
+      // Leadership can move to another tab during an await below. A follower
+      // that joins anyway holds a session nothing relays from, and its join
+      // drops the leader's peer from the room.
+      const stillWanted = () => {
+        const tabSync = refs.tabSyncRef.current;
+        return isCurrent() && (!tabSync || tabSync.isMeshLeader());
+      };
       if (wgwHasAuthenticatedSession() && !wgwIsGuestSession()) {
         await getPrincipalLinkRegistry().waitForPrincipalJoinAttempt();
       }
-      if (!isCurrent()) return null;
+      if (!stillWanted()) return null;
       const raced = refs.meshRef.current;
       if (raced) return raced.getRoomPeers();
 
@@ -279,7 +286,7 @@ export function useDocsCollabMesh({
 
       // Re-check after the await. Between these checks and `new` there must be
       // no await, so check-and-create stays atomic.
-      if (!isCurrent()) return null;
+      if (!stillWanted()) return null;
       const racedAfterFetch = refs.meshRef.current;
       if (racedAfterFetch) return racedAfterFetch.getRoomPeers();
       const parked = resumeDocsCollabMeshSession(room);
