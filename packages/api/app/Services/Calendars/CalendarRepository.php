@@ -458,6 +458,7 @@ final class CalendarRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
+
         $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
         $existing = $this->findCalendarInstance($principalUri, (string) $instance->uri);

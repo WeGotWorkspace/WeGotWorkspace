@@ -551,6 +551,7 @@ final class ChatChannelRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
+
         $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         if ($newGroupSlug === null) {
             $principalUri = $this->principalUri($username);
