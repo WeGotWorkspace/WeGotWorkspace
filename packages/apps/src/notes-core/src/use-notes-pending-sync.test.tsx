@@ -97,6 +97,18 @@ describe("useNotesPendingSync", () => {
       expect(hasNoteCollabPendingServerSave).toHaveBeenCalledTimes(1000);
       vi.mocked(hasNoteCollabPendingServerSave).mockClear();
 
+      // One later poll reads the shared record a constant number of times, not once per note.
+      const getItem = vi.spyOn(Storage.prototype, "getItem");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4100);
+      });
+      const recordReads = getItem.mock.calls.filter(
+        ([key]) => key === "wgw:collab-pending-rooms",
+      ).length;
+      getItem.mockRestore();
+      expect(recordReads).toBeGreaterThanOrEqual(1);
+      expect(recordReads).toBeLessThanOrEqual(2);
+
       // A save is marked pending, then lands: the next poll ticks pick both up.
       setCollabRoomPendingServerSave("n7", true);
       await act(async () => {

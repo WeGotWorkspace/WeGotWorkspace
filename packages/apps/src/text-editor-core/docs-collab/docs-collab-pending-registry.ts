@@ -9,7 +9,7 @@ interface PendingState {
 
 let memoryFallback: PendingState | null = null;
 
-function readState(): PendingState {
+function readState(withRevisions = true): PendingState {
   if (memoryFallback) return memoryFallback;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -18,7 +18,10 @@ function readState(): PendingState {
     const list: unknown = Array.isArray(parsed) ? parsed : (parsed as { rooms?: unknown })?.rooms;
     const rooms = new Set(Array.isArray(list) ? list.filter((v) => typeof v === "string") : []);
     const revisions: Record<string, number> = {};
-    const stored = Array.isArray(parsed) ? null : (parsed as { revisions?: unknown })?.revisions;
+    const stored =
+      withRevisions && !Array.isArray(parsed)
+        ? (parsed as { revisions?: unknown })?.revisions
+        : null;
     if (stored && typeof stored === "object") {
       for (const [room, n] of Object.entries(stored)) {
         if (typeof n === "number") revisions[room] = n;
@@ -62,7 +65,13 @@ export function setCollabRoomPendingServerSave(room: string, pending: boolean): 
 
 export function isCollabRoomPendingServerSave(room: string): boolean {
   if (!room || typeof window === "undefined") return false;
-  return readState().rooms.has(room);
+  return readState(false).rooms.has(room);
+}
+
+/** One read of every pending room, for callers that test many rooms in a loop. */
+export function readCollabPendingRooms(): ReadonlySet<string> {
+  if (typeof window === "undefined") return new Set<string>();
+  return readState(false).rooms;
 }
 
 export function getCollabRoomPendingRevision(room: string): number {

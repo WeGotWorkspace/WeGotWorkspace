@@ -7,7 +7,7 @@ import {
 import { listPendingNoteIds, readNotesBootstrapFromCache } from "@/lib/offline/notes-offline-store";
 import {
   getCollabRoomPendingRevision,
-  isCollabRoomPendingServerSave,
+  readCollabPendingRooms,
   setCollabRoomPendingServerSave,
 } from "@/text-editor-core/docs-collab/docs-collab-pending-registry";
 import { listExistingIndexedDatabaseNames } from "@/text-editor-core/docs-collab/docs-collab-persistence";
@@ -46,9 +46,11 @@ export function useNotesPendingSync(
         seedRef.current = { username, done };
       }
       await seedRef.current.done;
+      // One read of the shared record per tick, not one per note.
+      const pendingRooms = readCollabPendingRooms();
       for (const note of notes) {
         if (ids.has(note.id)) continue;
-        if (isCollabRoomPendingServerSave(noteCollabRoomKey(note.id))) ids.add(note.id);
+        if (pendingRooms.has(noteCollabRoomKey(note.id))) ids.add(note.id);
       }
       // Same ids → keep the old set, so the list does not re-render every poll.
       setPendingIds((prev) => (sameIdSet(prev, ids) ? prev : ids));
