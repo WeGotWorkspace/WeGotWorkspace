@@ -290,12 +290,32 @@ function WindowHarness({
   cards,
   activeId,
   scrollerRef,
+  listLoading = false,
 }: {
   cards: ContactCard[];
   activeId: string;
   scrollerRef: (node: HTMLDivElement | null) => void;
+  listLoading?: boolean;
 }) {
-  const panel = ContactsListPanel({
+  const panel = WindowPanel({ cards, activeId, listLoading });
+  return (
+    <div ref={scrollerRef} className="contacts-list-scroller">
+      {panel.listContent}
+    </div>
+  );
+}
+
+/** Calls the panel hook; only use while a React component is rendering. */
+function WindowPanel({
+  cards,
+  activeId = "",
+  listLoading = false,
+}: {
+  cards: ContactCard[];
+  activeId?: string;
+  listLoading?: boolean;
+}) {
+  return ContactsListPanel({
     L: defaultContactsLabels,
     sidebarOpen: true,
     onToggleSidebar: vi.fn(),
@@ -304,7 +324,7 @@ function WindowHarness({
     selectedGroupId: null,
     selectedIds: [],
     selectionMode: false,
-    listLoading: false,
+    listLoading,
     visibleCards: cards,
     searchQuery: "",
     setSearchQuery: vi.fn(),
@@ -319,15 +339,19 @@ function WindowHarness({
     onSwipeRemoveFromGroup: vi.fn(),
     selectionBar: null,
   });
-  return (
-    <div ref={scrollerRef} className="contacts-list-scroller">
-      {panel.listContent}
-    </div>
-  );
 }
 
 describe("ContactsListPanel window", () => {
   const cards = Array.from({ length: 120 }, (_, index) => personAt(index));
+
+  /** Id of the first card row painted at `scrollTop`. */
+  function cardIdAt(scrollTop: number): string {
+    const rows = flattenContactListRows(cards);
+    const index = rows.findIndex((_, i) => contactListRowOffset(rows, i + 1) > scrollTop);
+    const row = rows[index];
+    if (row?.kind !== "card") throw new Error(`no card row at ${scrollTop}`);
+    return row.card.id;
+  }
 
   function mount(activeId: string) {
     const holder: { current: HTMLDivElement | null } = { current: null };
@@ -394,6 +418,77 @@ describe("ContactsListPanel window", () => {
     expect(scroller.scrollTop).toBe(contactListRowOffset(rows, index));
     expect(scrollIntoView).toHaveBeenCalled();
     scrollIntoView.mockRestore();
+  });
+
+  it("keeps windowing on scroll when rows arrive before the spinner clears", () => {
+    // First visit: cards land while the spinner still shows, so the list
+    // element mounts on a later render with the same row count.
+    const holder: { current: HTMLDivElement | null } = { current: null };
+    const scrollerRef = (node: HTMLDivElement | null) => {
+      holder.current = node;
+      if (!node) return;
+      Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
+    };
+    const { rerender } = render(
+      <TooltipProvider>
+        <WindowHarness cards={cards} activeId="" scrollerRef={scrollerRef} listLoading />
+      </TooltipProvider>,
+    );
+    rerender(
+      <TooltipProvider>
+        <WindowHarness cards={cards} activeId="" scrollerRef={scrollerRef} />
+      </TooltipProvider>,
+    );
+    const scroller = holder.current;
+    if (!scroller) throw new Error("scroller missing");
+
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
+  });
+
+  it("keeps windowing on scroll when the scroller remounts with the same rows", () => {
+    // Live first visit: the import drop zone appears once the cold download
+    // unlocks, which wraps and remounts the scroller with an unchanged row count.
+    const clientHeight = vi
+      .spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(400);
+    const dropZone = {
+      active: false,
+      overlay: null,
+      onDragOver: vi.fn(),
+      onDragLeave: vi.fn(),
+      onDrop: vi.fn(),
+    };
+    function Workspace({ withDropZone }: { withDropZone: boolean }) {
+      const panel = WindowPanel({ cards });
+      return <CollectionListWorkspace {...panel} dropZone={withDropZone ? dropZone : undefined} />;
+    }
+    const { container, rerender } = render(
+      <TooltipProvider>
+        <Workspace withDropZone={false} />
+      </TooltipProvider>,
+    );
+    rerender(
+      <TooltipProvider>
+        <Workspace withDropZone />
+      </TooltipProvider>,
+    );
+    const scroller = container.querySelector<HTMLElement>(
+      ".collection-list-drop-zone .notes-swipe-list",
+    );
+    if (!scroller) throw new Error("scroller missing");
+
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
+    clientHeight.mockRestore();
   });
 
   it("animates from the full visible id list, not the mounted window", () => {
