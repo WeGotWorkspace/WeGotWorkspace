@@ -3633,7 +3633,7 @@
             "description": "Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag."
           },
           "403": {
-            "description": "No read access to the path",
+            "description": "A share-link guest: live collaboration is for signed-in users",
             "content": {
               "application/json": {
                 "schema": {
@@ -3643,7 +3643,7 @@
             }
           },
           "404": {
-            "description": "Unknown path",
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3715,7 +3715,7 @@
             }
           },
           "403": {
-            "description": "No write access to the path",
+            "description": "The caller can read the document but may not edit it, or is a share-link guest",
             "content": {
               "application/json": {
                 "schema": {
@@ -3725,7 +3725,7 @@
             }
           },
           "404": {
-            "description": "Unknown path",
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3823,6 +3823,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           }
         }
       }
@@ -3865,6 +3868,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           }
         }
       },
@@ -3916,6 +3922,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           },
           "409": {
             "$ref": "#/components/responses/JmapConflict"

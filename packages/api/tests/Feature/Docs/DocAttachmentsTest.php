@@ -358,11 +358,11 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
         $this->withBearer($alice)->putCollaboration(
             '/api/v1/files/collaboration?path='.urlencode($foreignUser),
             'nope',
-        )->assertForbidden();
+        )->assertNotFound();
         $this->withBearer($alice)->putCollaboration(
             '/api/v1/files/collaboration?path='.urlencode($foreignGroup),
             'nope',
-        )->assertForbidden();
+        )->assertNotFound();
         $this->withBearer($alice)->putCollaboration(
             '/api/v1/files/collaboration?path='.urlencode($own),
             '# ok',

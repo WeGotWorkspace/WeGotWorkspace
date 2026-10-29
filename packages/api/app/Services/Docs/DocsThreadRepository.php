@@ -10,11 +10,9 @@ use App\Models\CalendarObject;
 use App\Models\DocsThreadIndex;
 use App\Models\Principal;
 use App\Services\Docs\Conversion\DocsThreadJournalConverter;
-use App\Services\Drive\CollabDocFormats;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Notify\DocsThreadActivityNotify;
 use App\Services\VObject\VJournalUidGuard;
-use App\Storage\StoragePaths;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
@@ -37,8 +35,7 @@ final class DocsThreadRepository
         private readonly DocsThreadPoolProvisioner $pools,
         private readonly DocsThreadEventEmitter $events,
         private readonly DriveShareAuthorizer $authorizer,
-        private readonly StoragePaths $paths,
-        private readonly CollabDocFormats $collabDocs,
+        private readonly DocsThreadDocAccess $docs,
         private readonly VJournalUidGuard $uidGuard,
     ) {}
 
@@ -48,7 +45,7 @@ final class DocsThreadRepository
      */
     public function list(array $principal, string $path): array
     {
-        $path = $this->requireReadableDocPath($path, $principal);
+        $path = $this->docs->requireReadable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return ['list' => []];
@@ -64,7 +61,7 @@ final class DocsThreadRepository
      */
     public function create(array $principal, string $path, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $kind = (string) ($payload['kind'] ?? '');
         if (! in_array($kind, [DocsThreadJournalConverter::KIND_COMMENT, DocsThreadJournalConverter::KIND_SUGGESTION], true)) {
             throw new ApiHttpException(400, 'kind must be comment or suggestion.', 'invalidProperties', ['kind']);
@@ -134,7 +131,7 @@ final class DocsThreadRepository
      */
     public function reply(array $principal, string $path, string $threadId, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $rootUid = DocsThreadJournalConverter::normalizeUlid($threadId);
         $instance = $this->requirePoolForPath($path);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
@@ -189,7 +186,7 @@ final class DocsThreadRepository
      */
     public function toggleReaction(array $principal, string $path, string $threadId, string $emoji): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $emoji = trim($emoji);
         if ($emoji === '') {
             throw new ApiHttpException(400, 'emoji is required.', 'bad_request');
@@ -224,7 +221,7 @@ final class DocsThreadRepository
      */
     public function patch(array $principal, string $path, string $threadId, array $payload): array
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $instance = $this->requirePoolForPath($path);
 
         $changeId = isset($payload['changeId']) && $payload['changeId'] !== ''
@@ -282,7 +279,7 @@ final class DocsThreadRepository
      */
     public function archiveOrphanSuggestions(array $principal, string $path, array $activeChangeIds): void
     {
-        $path = $this->requireMutableDocPath($path, $principal);
+        $path = $this->docs->requireCommentable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return;
@@ -309,7 +306,7 @@ final class DocsThreadRepository
      */
     public function changes(array $principal, string $path, ?string $since): array
     {
-        $path = $this->requireReadableDocPath($path, $principal);
+        $path = $this->docs->requireReadable($path, $principal);
         $instance = $this->pools->findPool(DocsThreadCollectionUris::ownerPrincipalUri($path));
         if ($instance === null) {
             return [
@@ -346,45 +343,6 @@ final class DocsThreadRepository
             )),
             'hasMoreChanges' => ($changes['result_truncated'] ?? false) === true,
         ];
-    }
-
-    /**
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function requireReadableDocPath(string $path, array $principal): string
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $this->assertCollabDoc($path);
-        try {
-            $this->authorizer->assertMayRead($path, $principal);
-        } catch (\InvalidArgumentException) {
-            throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
-        }
-
-        return $path;
-    }
-
-    /**
-     * @param  array{username: string, role: string}  $principal
-     */
-    private function requireMutableDocPath(string $path, array $principal): string
-    {
-        $path = $this->paths->normalizeVirtualPath($path);
-        $this->assertCollabDoc($path);
-        try {
-            $this->authorizer->assertMayComment($path, $principal);
-        } catch (\InvalidArgumentException) {
-            throw new ApiHttpException(403, 'Access denied for this path.', 'forbidden');
-        }
-
-        return $path;
-    }
-
-    private function assertCollabDoc(string $path): void
-    {
-        if (! $this->collabDocs->isCollabDocPath($path)) {
-            throw new ApiHttpException(400, 'Threads are only available on Docs files.', 'bad_request');
-        }
     }
 
     private function requirePoolForPath(string $path): CalendarInstance

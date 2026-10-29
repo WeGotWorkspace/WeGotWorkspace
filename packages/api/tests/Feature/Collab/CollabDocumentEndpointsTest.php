@@ -268,8 +268,8 @@ final class CollabDocumentEndpointsTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->issueBearerTokenFor('bob'))
             ->putCollaboration('/api/v1/files/collaboration?path='.urlencode(self::ROOM), 'nope')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_document_room_with_spaces_is_supported(): void

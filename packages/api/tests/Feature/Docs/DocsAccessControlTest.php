@@ -116,8 +116,8 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($adminToken)
             ->get('/api/v1/files/collaboration?path=/groups/other/plan.md')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_non_member_cannot_access_team_collaboration(): void
@@ -127,7 +127,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($carolToken)
             ->get('/api/v1/files/collaboration?path=/groups/team/team-only.md')
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_missing_path_on_content_returns_bad_request(): void

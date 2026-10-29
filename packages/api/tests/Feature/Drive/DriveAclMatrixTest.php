@@ -95,16 +95,16 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
     {
         $this->withBearer($this->token($role))
             ->getJson('/api/v1/files/children?path=/users/alice')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->download(self::PRIVATE_FILE, $role)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->readCollab(self::PRIVATE_FILE, $role)
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_owner_can_read_files_outside_the_share(): void
@@ -490,14 +490,14 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->token('viewer'))
             ->getJson('/api/v1/files/children?path=/groups/team')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->download('/groups/team/roster.md', 'viewer')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->writeCollab('/groups/team/roster.md', 'viewer', "non-member\n")
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
         $this->assertSame('member write', $this->readCollab('/groups/team/roster.md', 'editor')->assertOk()->getContent());
     }
 
@@ -521,12 +521,12 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->assertSame('via group', $this->readCollab($path, 'owner')->assertOk()->getContent());
 
         $this->download($path, 'viewer')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->readCollab($path, 'viewer')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
-        $this->writeCollab($path, 'viewer', "outside group\n")->assertForbidden();
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
+        $this->writeCollab($path, 'viewer', "outside group\n")->assertNotFound();
         $this->assertSame('via group', $this->readCollab($path, 'owner')->assertOk()->getContent());
     }
 
@@ -612,6 +612,6 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $docId = $created['id'];
 
         $this->writeCollab('/users/bob/.attachments/'.$docId.'/x.md', 'owner', 'nope')
-            ->assertForbidden();
+            ->assertNotFound();
     }
 }
