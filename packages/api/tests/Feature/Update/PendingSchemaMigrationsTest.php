@@ -136,6 +136,33 @@ final class PendingSchemaMigrationsTest extends TestCase
         $this->assertSame('current', json_decode((string) file_get_contents($marker), true)['status']);
     }
 
+    public function test_a_request_gets_503_while_another_holds_the_schema_lock(): void
+    {
+        $this->rollBackToPartialUpdate();
+        mkdir($this->dataDir.'/updates', 0775, true);
+        $lock = fopen($this->dataDir.'/updates/schema-migrations.lock', 'c');
+        $this->assertIsResource($lock);
+        $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB));
+
+        try {
+            $token = $this->issueBearerTokenFor('admin');
+            $this->withBearer($token)->postJson('/api/v1/jmap', [
+                'using' => [JmapCapabilities::CORE, JmapCapabilities::CALENDARS],
+                'methodCalls' => [['Calendar/get', ['accountId' => 'admin', 'ids' => null], 'c0']],
+            ])->assertStatus(503)->assertHeader('Retry-After', '1');
+            $this->assertFalse(Schema::connection('wgw')->hasTable('calendar_share_dismissals'));
+            $marker = $this->dataDir.'/updates/schema-migrations.json';
+            $this->assertFileDoesNotExist($marker);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+
+        $calendars = $this->jmap([JmapCapabilities::CALENDARS], ['Calendar/get', ['accountId' => 'admin', 'ids' => null], 'c0']);
+        $this->assertSame('Calendar/get', $calendars->json('methodResponses.0.0'), (string) $calendars->getContent());
+        $this->assertTrue(Schema::connection('wgw')->hasTable('calendar_share_dismissals'));
+    }
+
     /**
      * Drop two tables and their migration rows, as if the update stopped
      * before those migrations ran.

@@ -22,7 +22,9 @@ final class CompletePendingSchemaMigrations
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $this->pending->applyIfPending();
+        if (! $this->pending->applyIfPending()) {
+            return response()->json(['message' => 'Finishing a database update. Retry shortly.'], 503, ['Retry-After' => '1']);
+        }
 
         return $next($request);
     }

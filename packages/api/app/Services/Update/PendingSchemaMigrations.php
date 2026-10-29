@@ -38,31 +38,43 @@ final class PendingSchemaMigrations
         private UpdateStateStore $updates,
     ) {}
 
-    public function applyIfPending(): void
+    /**
+     * @return bool False while another request holds the schema lock and is
+     *              migrating: the caller must not run a route against a
+     *              half-migrated schema.
+     */
+    public function applyIfPending(): bool
     {
         if (! $this->hasPersistentDatabase()) {
-            return;
+            return true;
         }
 
         $signature = $this->migrator->migrationSetSignature();
         if ($this->markerSkipsRun($signature)) {
-            return;
-        }
-        if (! $this->paths->runtimeInstallReady() || $this->updateIsRunning()) {
-            return;
+            return true;
         }
 
         $lock = $this->acquireLock();
-        if ($lock === null) {
-            return;
+        if ($lock === false) {
+            return false;
         }
 
         try {
+            // Another request may have finished while this one took the lock.
+            if ($this->markerSkipsRun($signature)
+                || ! $this->paths->runtimeInstallReady()
+                || $this->updateIsRunning()) {
+                return true;
+            }
             $this->runPending($signature);
         } finally {
-            flock($lock, LOCK_UN);
-            fclose($lock);
+            if (is_resource($lock)) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
         }
+
+        return true;
     }
 
     private function runPending(string $signature): void
@@ -147,22 +159,23 @@ final class PendingSchemaMigrations
     }
 
     /**
-     * @return resource|null
+     * @return resource|true|false True when the lock cannot be used at all
+     *                              (no writable data dir); false when held elsewhere.
      */
     private function acquireLock()
     {
         $path = $this->absolute(self::LOCK);
         if (! $this->ensureParentDir($path)) {
-            return null;
+            return true;
         }
         $handle = @fopen($path, 'c');
         if (! is_resource($handle)) {
-            return null;
+            return true;
         }
         if (! flock($handle, LOCK_EX | LOCK_NB)) {
             fclose($handle);
 
-            return null;
+            return false;
         }
 
         return $handle;
