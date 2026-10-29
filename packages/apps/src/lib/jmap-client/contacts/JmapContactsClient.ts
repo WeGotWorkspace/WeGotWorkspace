@@ -220,6 +220,8 @@ export class JmapContactsClient {
       onPage?: (snapshot: {
         books: GetResponse<JmapAddressBook>;
         cards: GetResponse<JmapContactCard>;
+        /** Card ids the query returned: the size of the finished download. */
+        cardTotal: number;
       }) => void;
     },
   ): Promise<{
@@ -262,7 +264,7 @@ export class JmapContactsClient {
     this.client.setState(accountId, CONTACT_CARD_TYPE, contactCardStateAtQuery);
     const queryIds = (queryInvocation[1] as QueryResponse).ids ?? [];
     const cards = await this.#getContactCardsByIds(accountId, queryIds, undefined, (partial) => {
-      options?.onPage?.({ books, cards: partial });
+      options?.onPage?.({ books, cards: partial, cardTotal: queryIds.length });
     });
     return { books, cards, contactCardStateAtQuery };
   }

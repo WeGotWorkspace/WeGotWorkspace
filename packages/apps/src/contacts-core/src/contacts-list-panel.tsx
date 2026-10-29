@@ -48,6 +48,8 @@ type ContactsListPanelProps = {
   listLoading: boolean;
   listRefreshing?: boolean;
   visibleCards: ContactCard[];
+  /** Cards still downloading that this view will show; the header count includes them. */
+  downloadingCardCount?: number;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -77,6 +79,7 @@ export function ContactsListPanel({
   listLoading,
   listRefreshing = false,
   visibleCards,
+  downloadingCardCount = 0,
   searchQuery,
   setSearchQuery,
   searchInputRef,
@@ -108,7 +111,9 @@ export function ContactsListPanel({
   );
 
   const headerCount =
-    selectionMode || selectedIds.length > 1 ? selectedIds.length : visibleCards.length;
+    selectionMode || selectedIds.length > 1
+      ? selectedIds.length
+      : visibleCards.length + downloadingCardCount;
   const headerCountLabel =
     selectionMode || selectedIds.length > 1
       ? L.listSelected(headerCount)

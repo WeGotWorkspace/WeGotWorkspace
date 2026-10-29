@@ -428,6 +428,22 @@ export function contactsGroupViewKey(groupCardId: string): string {
   return `group:${groupCardId}`;
 }
 
+/**
+ * Cards still downloading that the view's header should count. Only All
+ * Contacts with every address book shown and no search takes every card, so
+ * only there the count is known before the cards arrive. Elsewhere the header
+ * counts loaded rows until the download is complete.
+ */
+export function contactsViewDownloadingCount(
+  view: string,
+  searchQuery: string,
+  hiddenBookIds: ReadonlySet<string>,
+  pendingCardCount: number,
+): number {
+  if (view !== "all" || hiddenBookIds.size > 0 || searchQuery.trim()) return 0;
+  return pendingCardCount;
+}
+
 /** Hide cards whose every address book is unchecked in the sidebar (All Contacts). */
 export function filterCardsByHiddenAddressBooks(
   cards: ContactCard[],
