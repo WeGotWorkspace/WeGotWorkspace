@@ -125,7 +125,14 @@ function createAnswerHasMetadata(created: Note, metadata: NoteUpsertMetadata): b
 function rebaseNoteUpsertRow(row: OfflineOutboxRow, saved: Note): OfflineOutboxRow {
   // The note is on the server now: what is left is an update from its answer.
   const { create: _create, ...payload } = JSON.parse(row.payload) as NotesUpsertPayload;
-  return { ...row, payload: JSON.stringify(payload), ifInState: baseUpdatedAt(saved) };
+  // A move merged into the row while the create was on its way is no longer
+  // sent with a create: the update has to carry the notebook itself.
+  const moved = !sameNotebook(saved, payload.metadata);
+  return {
+    ...row,
+    payload: JSON.stringify(moved ? { ...payload, patchNotebook: true } : payload),
+    ifInState: baseUpdatedAt(saved),
+  };
 }
 
 /**

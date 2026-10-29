@@ -183,6 +183,26 @@ describe("flushNotesOutbox with an edit queued mid-send (#1711)", () => {
     expect((await getNoteFromCache(username, noteId))?.notebookId).toBe("notes-work");
   });
 
+  it("sends a move queued while the create is on its way", async () => {
+    const pending = { ...draft, createPending: true };
+    await queueEdit(pending, undefined);
+    const createAnswer = deferred<Note>();
+    createNoteItem.mockReturnValue(createAnswer.promise);
+    const work = { notebook: "Work", notebookId: "notes-work" };
+    updateNoteItem.mockResolvedValue({ ...draft, ...work, etag: '"e2"' });
+
+    const flushing = flushNotesOutbox(username);
+    await vi.waitFor(() => expect(createNoteItem).toHaveBeenCalledOnce());
+    await queueEdit({ ...pending, ...work }, undefined);
+    createAnswer.resolve({ ...draft, notebookId: "notes-drafts", etag: '"e1"' });
+    await flushing;
+
+    expect(createNoteItem.mock.calls[0]?.[0]).toMatchObject({ notebook: "Drafts" });
+    expect(updateNoteItem).toHaveBeenCalledOnce();
+    expect(updateNoteItem.mock.calls[0]?.[1]).toMatchObject({ ...work, etag: '"e1"' });
+    expect((await getNoteFromCache(username, noteId))?.notebookId).toBe("notes-work");
+  });
+
   it("sends a queued unstar when a resent create is answered starred", async () => {
     await queueEdit({ ...draft, createPending: true, starred: false }, undefined);
     createNoteItem.mockResolvedValue({ ...draft, starred: true, etag: '"e1"' });

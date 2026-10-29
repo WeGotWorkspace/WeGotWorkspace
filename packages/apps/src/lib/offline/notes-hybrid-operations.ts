@@ -365,8 +365,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         : note.createPending === true;
       // A debounced save names its fields: lay only those over the cached copy,
       // which may already hold edits made after this one (a tag, a star).
+      // Also while the create is in flight: a snapshot taken at the last
+      // keystroke must not replace a tag or move queued after it.
+      const patch =
+        existing && opts?.fields ? { id: note.id, ...noteFieldsPatch(note, opts.fields) } : note;
+      // The create sends the whole cached note, whatever fields were named.
       const fields = createPending ? undefined : opts?.fields;
-      const patch = fields ? { id: note.id, ...noteFieldsPatch(note, fields) } : note;
       // Without a cached copy, keep the full note locally rather than a partial
       // one; metadataSelection still limits what goes on the wire.
       const merged = withCreatePending(

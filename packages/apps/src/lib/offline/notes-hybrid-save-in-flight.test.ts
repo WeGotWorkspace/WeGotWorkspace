@@ -71,6 +71,34 @@ describe("upsertNote while the note's queued save is on its way (#1711)", () => 
     );
   });
 
+  it("keeps a tag queued during the create when an older title save arrives", async () => {
+    const ops = createHybridNotesOperations(username);
+    const createAnswer = deferred<Note>();
+    createNoteItem.mockReturnValue(createAnswer.promise);
+    updateNoteItem.mockImplementation(async (_id: string, request: { title?: string }) => ({
+      ...draft,
+      title: request.title,
+      tags: ["urgent"],
+      etag: '"e2"',
+    }));
+
+    await ops.upsertNote({ ...draft, createPending: true });
+    await vi.waitFor(() => expect(createNoteItem).toHaveBeenCalledOnce());
+    await ops.upsertNote({ ...draft, createPending: true, tags: ["urgent"] }, { fields: ["tags"] });
+    // The debounced title save holds the snapshot from the last keystroke.
+    await ops.upsertNote({ ...draft, createPending: true, title: "T" }, { fields: ["title"] });
+
+    const [row] = await listOutboxMutations(username);
+    expect(JSON.parse(row?.payload ?? "{}").metadata).toMatchObject({
+      title: "T",
+      tags: ["urgent"],
+    });
+    const cached = await getNoteFromCache(username, noteId);
+    expect(cached).toMatchObject({ title: "T", tags: ["urgent"] });
+    createAnswer.resolve({ ...draft, etag: '"e1"' });
+    await vi.waitFor(async () => expect(await listOutboxMutations(username)).toEqual([]));
+  });
+
   it("merges a title typed during the follow-up save into it", async () => {
     const ops = createHybridNotesOperations(username);
     const createAnswer = deferred<Note>();
