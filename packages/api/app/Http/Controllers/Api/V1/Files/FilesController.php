@@ -9,10 +9,12 @@ use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\CollabExternalWrite;
 use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\FramedPayload;
-use App\Services\Drive\DriveForbiddenException;
+use App\Services\Drive\DriveAccessDeniedException;
 use App\Services\Drive\DriveGroupResolver;
+use App\Services\Drive\DriveNotFoundException;
 use App\Services\Drive\DriveService;
 use App\Services\Rtc\RoomIdCodec;
+use App\Storage\StoragePaths;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +29,7 @@ final class FilesController
         private DriveGroupResolver $groups,
         private RoomIdCodec $roomIds,
         private DocCollabDocumentService $collabDocuments,
+        private StoragePaths $paths,
     ) {}
 
     public function context(Request $request): JsonResponse
@@ -38,7 +41,7 @@ final class FilesController
 
     public function children(Request $request): JsonResponse
     {
-        $path = $this->requirePath($request);
+        $path = $this->requireDrivePath($request);
         $principal = $this->principal($request);
 
         return $this->jsonData(fn () => $this->drive->listDirectory($principal, $path));
@@ -86,11 +89,7 @@ final class FilesController
             $this->drive->assertReadableNodeId($this->principal($request), $nodeId);
 
             return response('', 200);
-        } catch (DriveForbiddenException $e) {
-            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
-        } catch (\InvalidArgumentException $e) {
-            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
-        } catch (\RuntimeException $e) {
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             throw new ApiHttpException(404, $e->getMessage(), 'not_found');
         }
     }
@@ -104,42 +103,30 @@ final class FilesController
                 $this->principal($request),
                 $nodeId,
             );
-        } catch (DriveForbiddenException $e) {
-            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
-        } catch (\InvalidArgumentException $e) {
-            throw new ApiHttpException(403, $e->getMessage(), 'forbidden');
-        } catch (\RuntimeException $e) {
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             throw new ApiHttpException(404, $e->getMessage(), 'not_found');
         }
     }
 
     public function headContent(Request $request): Response
     {
-        try {
-            $this->drive->assertReadableFile($this->principal($request), $this->requirePath($request));
+        return $this->driveCall(function () use ($request): Response {
+            $this->drive->assertReadableFile($this->principal($request), $this->requireDrivePath($request));
 
             return response('', 200);
-        } catch (\InvalidArgumentException $e) {
-            throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
-        } catch (\RuntimeException $e) {
-            throw new ApiHttpException(404, $e->getMessage(), 'not_found');
-        }
+        });
     }
 
     public function download(Request $request): Response
     {
-        try {
+        return $this->driveCall(function () use ($request): Response {
             $this->drive->assertFilesEnabled();
 
             return $this->drive->downloadResponse(
                 $this->principal($request),
-                $this->requirePath($request),
+                $this->requireDrivePath($request),
             );
-        } catch (\InvalidArgumentException $e) {
-            throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
-        } catch (\RuntimeException $e) {
-            throw new ApiHttpException(404, $e->getMessage(), 'not_found');
-        }
+        });
     }
 
     public function uploadProbe(): Response
@@ -269,7 +256,7 @@ final class FilesController
 
     public function star(Request $request): JsonResponse
     {
-        $path = $this->requirePath($request);
+        $path = $this->requireDrivePath($request);
 
         return $this->jsonData(fn () => $this->drive->updateStar(
             $this->username($request),
@@ -280,7 +267,7 @@ final class FilesController
 
     public function unstar(Request $request): JsonResponse
     {
-        $path = $this->requirePath($request);
+        $path = $this->requireDrivePath($request);
 
         return $this->jsonData(fn () => $this->drive->updateStar(
             $this->username($request),
@@ -314,8 +301,24 @@ final class FilesController
      */
     private function jsonData(callable $callback): JsonResponse
     {
+        return $this->driveCall(fn (): JsonResponse => response()->json(['data' => $callback()]));
+    }
+
+    /**
+     * Run a drive call and map its errors: a refused or missing path is 404, other invalid
+     * input is 400.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function driveCall(callable $callback): mixed
+    {
         try {
-            return response()->json(['data' => $callback()]);
+            return $callback();
+        } catch (DriveAccessDeniedException|DriveNotFoundException $e) {
+            throw $this->notFound($e);
         } catch (\InvalidArgumentException $e) {
             throw new ApiHttpException(400, $e->getMessage(), 'bad_request');
         } catch (\RuntimeException $e) {
@@ -331,6 +334,31 @@ final class FilesController
         }
 
         return $path;
+    }
+
+    /**
+     * A drive path for children, content and star. A `..` segment is answered as not found:
+     * it never resolves to a path outside the one the caller asked for.
+     */
+    private function requireDrivePath(Request $request): string
+    {
+        $path = $this->requirePath($request);
+        if ($this->paths->hasParentSegment($path)) {
+            throw new ApiHttpException(404, 'Path not found.', 'not_found');
+        }
+
+        return $path;
+    }
+
+    /**
+     * A refused path reads as a missing one: 404 `not_found`, with no hint whether
+     * something exists where the caller may not look.
+     */
+    private function notFound(DriveAccessDeniedException|DriveNotFoundException $e): ApiHttpException
+    {
+        $message = $e instanceof DriveAccessDeniedException ? 'Path not found.' : $e->getMessage();
+
+        return new ApiHttpException(404, $message, 'not_found');
     }
 
     private function queryNodeId(Request $request): ?string

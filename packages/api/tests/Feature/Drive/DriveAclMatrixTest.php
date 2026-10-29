@@ -163,7 +163,7 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'forbidden');
 
         $this->download($path, 'owner')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
     }
 
@@ -295,8 +295,8 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
             ->assertJsonFragment(['name' => 'editor-dir', 'type' => 'dir']);
 
         $this->download(self::OWNER_TRASH.'/plan-renamed.md', 'editor')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
     }
 
     public function test_admin_cannot_read_another_users_private_files(): void
@@ -309,12 +309,12 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->token('owner'))
             ->getJson('/api/v1/files/children?path='.urlencode('/users/bob'))
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->download('/users/bob/secret.md', 'owner')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
     }
 
     #[DataProvider('rightsProvider')]
@@ -560,11 +560,11 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->assertSame(self::PLAN_BODY, $ownerTrashed->streamedContent());
 
         $this->download(self::OWNER_TRASH.'/plan.md', 'editor')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->download(self::OWNER_TRASH.'/plan.md', 'dave')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
 
         $this->moveNode('owner', $planId, $this->workspaceNodeId())->assertOk()
             ->assertJsonPath('methodResponses.0.1.updated.'.$planId, null);
@@ -592,11 +592,11 @@ final class DriveAclMatrixTest extends WgwDatabaseTestCase
         $this->assertSame(self::PLAN_BODY, $moved->streamedContent());
 
         $this->download(self::PLAN, 'editor')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
         $this->download('/users/alice/plan.md', 'editor')
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
     }
 
     public function test_editor_cannot_write_attachment_under_another_principal_prefix(): void

@@ -3534,6 +3534,16 @@
         "responses": {
           "200": {
             "description": "Listing"
+          },
+          "404": {
+            "description": "Unknown directory, or a path the caller may not list. A `..` segment is not found too. The answer is the same for all of these.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
@@ -4139,6 +4149,16 @@
         "responses": {
           "200": {
             "description": "Stream"
+          },
+          "404": {
+            "description": "Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
@@ -4808,6 +4828,16 @@
         "responses": {
           "200": {
             "description": "Starred"
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4835,6 +4865,16 @@
         "responses": {
           "200": {
             "description": "Unstarred"
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"

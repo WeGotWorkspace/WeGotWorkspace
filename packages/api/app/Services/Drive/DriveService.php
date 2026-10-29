@@ -78,7 +78,10 @@ final class DriveService
         $dir = $this->paths->normalizeVirtualPath($dir);
         $listingContext = $this->authorizer->listingRightsContext($principal, $dir);
         if (! $listingContext->rightsFor($dir)['mayView']) {
-            throw new \InvalidArgumentException('Access denied for this path.');
+            throw new DriveAccessDeniedException;
+        }
+        if (! $this->paths->isProvisionedDirectory($dir) && ! $this->disk()->directoryExists($this->paths->virtualToStorageKey($dir))) {
+            throw new DriveNotFoundException('Directory not found.');
         }
         $this->session->setCwd($dir);
 
@@ -254,7 +257,7 @@ final class DriveService
         $groupSlugs = $this->groups->allowedGroupSlugs($username);
         $path = $this->paths->normalizeVirtualPath($path);
         if (! $this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
-            throw new \InvalidArgumentException('Access denied for this path.');
+            throw new DriveAccessDeniedException;
         }
         $this->stars->setStarred($username, $path, $starred);
 
@@ -273,7 +276,7 @@ final class DriveService
         $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $disk->fileExists($key)) {
-            throw new \InvalidArgumentException('File not found.');
+            throw new DriveNotFoundException('File not found.');
         }
     }
 
@@ -414,8 +417,9 @@ final class DriveService
         $virtual = $this->paths->normalizeVirtualPath('/'.ltrim((string) $node->storage_key, '/'));
         try {
             $this->authorizer->assertMayRead($virtual, $principal);
-        } catch (\InvalidArgumentException $e) {
-            throw new DriveForbiddenException($e->getMessage(), 0, $e);
+        } catch (\InvalidArgumentException) {
+            // Same answer as an unknown id: the status must not tell that the node exists.
+            throw new \RuntimeException('File not found.');
         }
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $this->disk()->fileExists($key)) {

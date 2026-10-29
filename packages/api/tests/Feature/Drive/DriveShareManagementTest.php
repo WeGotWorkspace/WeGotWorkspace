@@ -151,7 +151,7 @@ final class DriveShareManagementTest extends WgwDatabaseTestCase
         ])->assertOk();
 
         $this->withBearer($granteeToken)->getJson('/api/v1/files/children?path=/users/bob')
-            ->assertStatus(400);
+            ->assertNotFound();
 
         $this->withBearer($granteeToken)->get('/api/v1/files/content?path='.urlencode('/users/bob/Jaap.md'))
             ->assertOk();

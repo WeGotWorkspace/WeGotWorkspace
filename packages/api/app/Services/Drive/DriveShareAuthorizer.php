@@ -352,6 +352,6 @@ final class DriveShareAuthorizer
 
     private function deny(): never
     {
-        throw new \InvalidArgumentException('Access denied for this path.');
+        throw new DriveAccessDeniedException;
     }
 }

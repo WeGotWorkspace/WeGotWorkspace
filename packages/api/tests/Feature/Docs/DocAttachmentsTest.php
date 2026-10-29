@@ -114,7 +114,7 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->carolBearerToken())->get(
             '/api/v1/files/content?id='.$groupImage->node_id,
-        )->assertStatus(403);
+        )->assertNotFound();
     }
 
     public function test_content_by_id_idor_denies_without_doc_may_view(): void
@@ -124,14 +124,14 @@ final class DocAttachmentsTest extends WgwDatabaseTestCase
 
         $this->withBearer($this->carolBearerToken())->get(
             '/api/v1/files/content?id='.$image->node_id,
-        )->assertStatus(403);
+        )->assertNotFound();
 
         $this->seedPrivateFile('bob', 'private.png', 'nope');
         $nodes = $this->fileNodeGetAll();
         $otherId = $this->fileNodeIdByName($nodes, 'private.png');
         $this->withBearer($this->carolBearerToken())->get(
             '/api/v1/files/content?id='.$otherId,
-        )->assertStatus(403);
+        )->assertNotFound();
 
         $this->withBearer($this->userBearerToken())->get(
             '/api/v1/files/content?id=fn-'.str_repeat('0', 32),

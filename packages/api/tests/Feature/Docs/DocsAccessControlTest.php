@@ -33,7 +33,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $bobToken = $this->userBearerToken();
 
         $response = $this->getDocContent($bobToken, '/users/carol/docs/secret.md');
-        $response->assertStatus(400);
+        $response->assertNotFound();
 
         $carolToken = $this->carolBearerToken();
         $this->getDocContent($carolToken, '/users/carol/docs/secret.md')
@@ -88,7 +88,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $this->seedDocFile('carol', 'admin-proof.md', 'stay private');
         $adminToken = $this->adminBearerToken();
 
-        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertStatus(400);
+        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertNotFound();
 
         $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
         $carolDocsId = $this->fileNodeIdByName($carolNodes, 'docs');
@@ -162,7 +162,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
 
         $this->getDocContent($token, '/users/bob/docs/missing.md')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
     }
 
