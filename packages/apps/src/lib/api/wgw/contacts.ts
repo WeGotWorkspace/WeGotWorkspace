@@ -364,6 +364,7 @@ export async function fetchContactsLiveBootstrap(options?: {
             addressBooks: snapshot.books.list.map(toAddressBook),
             cards: snapshot.cards.list.map(toContactCard),
           },
+          pendingContactCount: snapshot.pendingContactCount,
         });
       },
     },
