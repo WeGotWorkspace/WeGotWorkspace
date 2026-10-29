@@ -444,8 +444,9 @@ export async function readContactsCacheForBoot(
 /**
  * Boot path: a stored address book paints immediately. A cold device still
  * downloads the book, reporting each page through `reportProgress`. A first
- * download that stopped halfway fetches only the missing cards; if that drops
- * again, the saved part opens and the next boot tries again.
+ * download that stopped halfway fetches only the missing cards. If that fails
+ * (network gone, a 502 from a proxy), the saved part opens and the next boot
+ * or refresh tries again.
  * Explicit refresh stays on {@link loadContactsBootstrapHybrid}.
  */
 export async function loadContactsBootstrapForBoot(
@@ -457,8 +458,7 @@ export async function loadContactsBootstrapForBoot(
     if (cached) {
       try {
         return await finishContactsDownload(username, cached, reportProgress);
-      } catch (error) {
-        if (!isFetchNetworkError(error)) throw error;
+      } catch {
         return (await readContactsBootstrapFromCache(username)) ?? cached;
       }
     }

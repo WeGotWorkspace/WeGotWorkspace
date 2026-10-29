@@ -186,12 +186,15 @@ describe("contacts first download, saved page by page", () => {
     expect(fetchContactCardPages).not.toHaveBeenCalled();
   });
 
-  it("a resume that loses the connection again keeps what it has and shows it", async () => {
+  it.each([
+    ["the connection drops", new TypeError("network error")],
+    ["the server answers 502", new Error("Bad Gateway")],
+  ])("a resume where %s keeps what it has and shows it", async (_label, failure) => {
     stopAfterFirstPage(["a", "b", "c"]);
     await fetchContactsHybridBootstrap().catch(() => undefined);
     vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
       await onCardPage({ cards: [card("b")], remainingCardIds: ["c"] });
-      throw new TypeError("network error");
+      throw failure;
     });
 
     const loaded = await loadContactsBootstrapForBoot();
