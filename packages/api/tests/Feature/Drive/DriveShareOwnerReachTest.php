@@ -19,7 +19,7 @@ use Tests\Support\WgwDatabaseTestCase;
  * the team group, his shares on the team folder are dormant: hidden from his share management
  * and ignored for every grantee, invite and public link. Re-adding bob brings them back.
  * Deleting the group revokes them for good: a new group under the same slug starts without them,
- * even once bob joins it.
+ * even once bob joins it. While bob's account is disabled all his shares are dormant too.
  */
 final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
 {
@@ -227,6 +227,47 @@ final class DriveShareOwnerReachTest extends WgwDatabaseTestCase
         $this->withBearer($this->carolBearerToken())->get('/api/v1/files/content?path='.urlencode(self::DOC))
             ->assertOk();
         $this->assertEqualsCanonicalizing([$siblingShareId, $freshShareId], $this->sharedWithCarolShareIds());
+    }
+
+    public function test_shares_of_a_disabled_account_are_dormant_until_it_is_enabled(): void
+    {
+        $bob = $this->userBearerToken();
+        $admin = $this->adminBearerToken();
+        $ownPath = $this->seedPrivateFile('bob', 'own.md', 'own body');
+        $this->withBearer($bob)->postJson('/api/v1/files/shares', [
+            'path' => $ownPath,
+            'kind' => 'member',
+            'defaultAccess' => 'view',
+            'shareWith' => ['carol' => ['access' => 'view']],
+        ])->assertOk();
+        $this->createBoxShare(['carol' => ['access' => 'view']]);
+        $publicToken = (string) $this->withBearer($bob)->postJson('/api/v1/files/shares', [
+            'path' => $ownPath,
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.publicToken');
+        $guestJwt = (string) $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])
+            ->assertOk()
+            ->json('access_token');
+
+        $this->withBearer($admin)->patchJson('/api/v1/admin/users/bob', ['enabled' => false])->assertOk();
+
+        $carol = $this->carolBearerToken();
+        $this->assertAccessDenied($this->withBearer($carol)->get('/api/v1/files/content?path='.urlencode($ownPath)));
+        $this->assertAccessDenied($this->withBearer($carol)->get('/api/v1/files/content?path='.urlencode(self::DOC)));
+        $this->assertSame([], $this->sharedWithCarolShareIds());
+        $this->assertAccessDenied($this->withBearer($guestJwt)->get('/api/v1/files/content?path='.urlencode($ownPath)));
+        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])
+            ->assertStatus(410)
+            ->assertJsonPath('code', 'share_unavailable');
+        $this->assertSame(0, DriveShare::query()->whereNotNull('revoked_at')->count(), 'Nothing is revoked.');
+
+        $this->withBearer($admin)->patchJson('/api/v1/admin/users/bob', ['enabled' => true])->assertOk();
+
+        $this->withBearer($carol)->get('/api/v1/files/content?path='.urlencode($ownPath))->assertOk();
+        $this->withBearer($carol)->get('/api/v1/files/content?path='.urlencode(self::DOC))->assertOk();
+        $this->assertCount(2, $this->sharedWithCarolShareIds());
+        $this->postJson('/api/v1/files/share-sessions', ['token' => $publicToken])->assertOk();
     }
 
     public function test_owner_group_memberships_load_once_per_request(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Drive;
 
 use App\Models\DriveShare;
+use App\Models\User;
 
 /**
  * Whether a principal reaches a share path: their own personal tree, or the tree of a group
@@ -16,14 +17,20 @@ use App\Models\DriveShare;
  *
  * Reach is decided per group (the group named in the path), not per folder inside it.
  *
- * Bound as a scoped singleton (WgwServiceProvider): group memberships are loaded at most once per
- * principal per request, however many shares a request resolves. The provider clears the cache at
- * the start of every request, so a membership change applies on the next request.
+ * A disabled account reaches nothing, so its shares are dormant while it is disabled and work
+ * again once it is enabled.
+ *
+ * Bound as a scoped singleton (WgwServiceProvider): group memberships and account status are
+ * loaded at most once per principal per request, however many shares a request resolves. The
+ * provider clears the cache at the start of every request, so a change applies on the next request.
  */
 final class DriveShareOwnerReach
 {
     /** @var array<string, list<string>> */
     private array $groupSlugsByPrincipal = [];
+
+    /** @var array<string, bool> */
+    private array $enabledByPrincipal = [];
 
     public function __construct(
         private DriveSharePathScope $scope,
@@ -35,7 +42,7 @@ final class DriveShareOwnerReach
         $principal = trim($username);
         $segments = explode('/', ltrim($path, '/'));
         $name = (string) ($segments[1] ?? '');
-        if ($principal === '' || $name === '') {
+        if ($principal === '' || $name === '' || ! $this->isEnabled($principal)) {
             return false;
         }
         if ($segments[0] === 'users') {
@@ -56,9 +63,20 @@ final class DriveShareOwnerReach
         );
     }
 
-    public function forgetGroupMemberships(): void
+    public function forgetOwnerState(): void
     {
         $this->groupSlugsByPrincipal = [];
+        $this->enabledByPrincipal = [];
+    }
+
+    private function isEnabled(string $principal): bool
+    {
+        $key = strtolower($principal);
+
+        return $this->enabledByPrincipal[$key] ??= User::query()
+            ->where('username', $key)
+            ->first(['enabled'])
+            ?->isEnabled() ?? false;
     }
 
     /**

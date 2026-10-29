@@ -32,13 +32,13 @@ final class WgwServiceProvider extends ServiceProvider
         $this->app->singleton(StoragePaths::class);
         $this->app->singleton(WgwStorage::class);
 
-        // Group memberships of share owners, cached for one request. Laravel only flushes scoped
+        // Group memberships and account status of share owners, cached for one request. Laravel only flushes scoped
         // instances in Octane and queue workers, and route-cached controllers keep the instance
         // they were built with, so the cache is also cleared in place whenever a request starts.
         $this->app->scoped(DriveShareOwnerReach::class);
         $this->app->rebinding('request', static function ($app): void {
             if ($app->resolved(DriveShareOwnerReach::class)) {
-                $app->make(DriveShareOwnerReach::class)->forgetGroupMemberships();
+                $app->make(DriveShareOwnerReach::class)->forgetOwnerState();
             }
         });
 
