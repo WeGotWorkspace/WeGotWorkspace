@@ -79,7 +79,11 @@ export type DocsCollabUrls = {
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */
-  onExternalWrite?: (detail: { markdown: string; title: string | null }) => void;
+  onExternalWrite?: (detail: {
+    markdown: string;
+    title: string | null;
+    serverState: Uint8Array;
+  }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;
 };
@@ -96,8 +100,8 @@ export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {
 export type DocsCollabSession = {
   ydoc: Y.Doc;
   awareness: awarenessProtocol.Awareness;
-  /** `id` is a stable per-name author id used by track-changes (suggestion mode). */
-  user: { name: string; color: string; id: string };
+  /** Caret label and colour for peers (awareness only, never stored in the document). */
+  user: { name: string; color: string };
 };
 
 export type UseDocsCollabOptions = {

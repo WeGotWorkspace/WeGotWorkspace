@@ -26,8 +26,9 @@ const commentThread = (id: string, anchorFrom: number): DocsCommentThread => ({
 
 const suggestion = (changeId: string, from: number): DocsSuggestionWithThread => ({
   changeId,
+  authorId: "u-1",
   authorName: "Alex",
-  authorColor: "#336699",
+  authorColor: "teal",
   timestamp: "2026-01-01T00:00:00.000Z",
   from,
   to: from + 1,

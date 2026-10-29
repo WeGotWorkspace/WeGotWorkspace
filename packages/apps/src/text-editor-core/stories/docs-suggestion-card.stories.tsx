@@ -10,6 +10,7 @@ import {
   replaceSuggestion,
   replaceSuggestionWithReactions,
   longReplaceSuggestion,
+  unknownAuthorSuggestion,
 } from "./docs-suggestion-card.stories.fixtures";
 
 const noop = () => {};
@@ -32,7 +33,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Standalone track-change suggestion card. Insert, delete, replace, and format-change fixtures mirror getDocsTrackChangeGroups output; each card shows an inline diff using the shared collab highlight primitive (green insertions, red strikethrough deletions, blue format before → after). Panel stories live under Docs suggestions/Panel.",
+          "Standalone track-change suggestion card. Insert, delete, replace, and format-change fixtures mirror getDocsTrackChangeGroups output merged with the suggestion thread (author name, time and avatar colour come from the thread); each card shows an inline diff using the shared collab highlight primitive (green insertions, red strikethrough deletions, blue format before → after). Panel stories live under Docs suggestions/Panel.",
       },
     },
   },
@@ -121,5 +122,20 @@ export const WithReactionsOnly: Story = {
   name: "With reactions only",
   render: () => (
     <DocsSuggestionCard {...cardHandlers} suggestion={replaceSuggestionWithReactions} active />
+  ),
+};
+
+export const UnknownAuthor: Story = {
+  name: "Unknown author (no thread)",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "An older document's suggestion with no suggestion thread: the document carries no author, so the card shows “Unknown author” and still accepts or rejects.",
+      },
+    },
+  },
+  render: () => (
+    <DocsSuggestionCard {...cardHandlers} suggestion={unknownAuthorSuggestion} active={false} />
   ),
 };

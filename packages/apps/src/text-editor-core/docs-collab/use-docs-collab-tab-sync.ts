@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
-import type * as Y from "yjs";
+import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import type { DocsCollabSessionRefs, DocsCollabTabSyncApi } from "./docs-collab-types";
 import { tagOf } from "./docs-rtc-session";
 import {
   applyAwarenessUpdate,
   documentUpdateFromSyncMessage,
+  encodeUpdateBroadcast,
   handleSyncMessage,
 } from "./docs-collab-mesh-sync";
 import {
@@ -45,6 +46,16 @@ export function applyFollowerTabSync(input: {
   });
   input.broadcast({ type: "sync", u: input.updateBytes });
   input.noteLocalUpdate(update);
+}
+
+/**
+ * Answer another tab's state vector with what it lacks, as a sync update
+ * message. Null when it lacks nothing (an empty update is two bytes).
+ */
+export function answerTabStateRequest(ydoc: Y.Doc, stateVector: Uint8Array): Uint8Array | null {
+  const diff = Y.encodeStateAsUpdate(ydoc, stateVector);
+  if (diff.byteLength <= 2) return null;
+  return encodeUpdateBroadcast(diff);
 }
 
 type MeshApi = Pick<
@@ -141,6 +152,8 @@ export function useDocsCollabTabSync({
       onResignLeader: () => {
         void leaveMeshAsFollower();
       },
+      localStateVector: () => Y.encodeStateVector(ydoc),
+      answerStateRequest: (stateVector) => answerTabStateRequest(ydoc, stateVector),
     };
 
     const coordinator = new DocsCollabTabCoordinator(room, handlers);

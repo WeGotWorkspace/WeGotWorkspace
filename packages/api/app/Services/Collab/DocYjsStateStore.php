@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Collab;
 
 use App\Models\DocYjsState;
+use App\Storage\StoragePaths;
 use App\Storage\WgwStorage;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,7 @@ final class DocYjsStateStore
 {
     public function __construct(
         private readonly WgwStorage $storage,
+        private readonly StoragePaths $paths,
     ) {}
 
     public static function contentEtag(string $markdown): string
@@ -52,14 +54,16 @@ final class DocYjsStateStore
     }
 
     /**
-     * Before a write outside the collab path replaces a document that has a
-     * sidecar and no row yet. The markdown on disk now is what the sidecar
-     * was saved with: until #1349 that write path was blocked.
+     * Before a write outside the collab path (WebDAV, JMAP FileNode/set)
+     * replaces a document that has a sidecar and no row yet. The markdown on
+     * disk now is what the sidecar was saved with: until #1349 that write
+     * path was blocked. A sidecar key itself is never a document.
      */
-    public function recordBeforeExternalWrite(string $documentKey, string $sidecarKey): void
+    public function recordBeforeExternalWrite(string $documentKey): void
     {
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
         $disk = $this->storage->files();
-        if (! $disk->fileExists($sidecarKey) || $this->find($documentKey) !== null) {
+        if ($sidecarKey === null || ! $disk->fileExists($sidecarKey) || $this->find($documentKey) !== null) {
             return;
         }
 
@@ -71,6 +75,50 @@ final class DocYjsStateStore
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * #1517: a file replacing a document at the same path (FileNode/set
+     * onExists) destroys the old node, and the sidecar and row would go with
+     * it. Docs keys a document by its path, so clients still holding the old
+     * state would keep it. Taken before the destroy, put back after it: the
+     * new bytes are then an outside write like any other.
+     *
+     * @return array{sidecar: string, content_etag: string, sidecar_etag: string}|null
+     */
+    public function holdForReplace(string $documentKey): ?array
+    {
+        $this->recordBeforeExternalWrite($documentKey);
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
+        $row = $this->find($documentKey);
+        $disk = $this->storage->files();
+        if ($sidecarKey === null || $row === null || ! $disk->fileExists($sidecarKey)) {
+            return null;
+        }
+
+        return [
+            'sidecar' => (string) $disk->read($sidecarKey),
+            'content_etag' => (string) $row->content_etag,
+            'sidecar_etag' => (string) $row->sidecar_etag,
+        ];
+    }
+
+    /** @param  array{sidecar: string, content_etag: string, sidecar_etag: string}  $held */
+    public function restoreAfterReplace(string $documentKey, array $held): void
+    {
+        $sidecarKey = $this->sidecarKeyFor($documentKey);
+        if ($sidecarKey === null) {
+            return;
+        }
+        $this->storage->files()->write($sidecarKey, $held['sidecar']);
+        DocYjsState::query()->updateOrCreate(
+            ['storage_key_hash' => self::keyHash($documentKey)],
+            [
+                'storage_key' => $documentKey,
+                'content_etag' => $held['content_etag'],
+                'sidecar_etag' => $held['sidecar_etag'],
+            ],
+        );
     }
 
     /**
@@ -168,6 +216,18 @@ final class DocYjsStateStore
         if ($ids !== []) {
             DocYjsState::query()->whereKey($ids)->delete();
         }
+    }
+
+    /** A sidecar key itself is never a document. */
+    private function sidecarKeyFor(string $documentKey): ?string
+    {
+        if (CollabSidecarPaths::isSidecarName(basename($documentKey))) {
+            return null;
+        }
+
+        return $this->paths->virtualToStorageKey(
+            CollabSidecarPaths::sidecarVirtualPath($this->paths, '/'.$documentKey),
+        );
     }
 
     private function find(string $documentKey): ?DocYjsState
