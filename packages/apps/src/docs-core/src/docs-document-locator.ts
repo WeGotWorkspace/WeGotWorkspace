@@ -111,14 +111,23 @@ export async function locateDocsByPath(
  * Paths this tab already knows for an id, so swapping `?file=` for `?id=`
  * (or a rename inside Docs) does not flash a loading state.
  */
-const knownPaths = new Map<string, string>();
+const knownPaths = new Map<string, { path: string; at: number }>();
+
+/** A `?file=` → `?id=` swap is one lookup, not two. */
+const JUST_LOCATED_MS = 5_000;
 
 export function rememberDocsLocation(nodeId: string, path: string): void {
-  knownPaths.set(nodeId, path);
+  knownPaths.set(nodeId, { path, at: Date.now() });
 }
 
 export function knownDocsPath(nodeId: string): string | undefined {
-  return knownPaths.get(nodeId);
+  return knownPaths.get(nodeId)?.path;
+}
+
+/** The server named this path for the id a moment ago. */
+export function justLocatedDocsPath(nodeId: string): string | undefined {
+  const known = knownPaths.get(nodeId);
+  return known && Date.now() - known.at < JUST_LOCATED_MS ? known.path : undefined;
 }
 
 export function forgetDocsLocationsForTest(): void {

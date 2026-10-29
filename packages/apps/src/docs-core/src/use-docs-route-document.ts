@@ -8,6 +8,7 @@ import {
 } from "@/docs-core/src/docs-route-search";
 import {
   createDocsLocatorDeps,
+  justLocatedDocsPath,
   knownDocsPath,
   locateDocsById,
   locateDocsByPath,
@@ -52,6 +53,8 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
   /** A `?file=` link whose id could not be found: open it by path. */
   const [pathOnly, setPathOnly] = useState<string | null>(null);
   const [recheck, setRecheck] = useState(0);
+  /** The id the lookup effect last ran for: its first run may reuse a fresh answer. */
+  const checkedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -66,6 +69,13 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
     if (!id) return;
     if (!canResolve) {
       setIdState({ id, status: "not-found", offline: false });
+      return;
+    }
+    const firstForId = checkedIdRef.current !== id;
+    checkedIdRef.current = id;
+    const fresh = firstForId ? justLocatedDocsPath(id) : undefined;
+    if (fresh) {
+      setIdState({ id, status: "ready", path: fresh });
       return;
     }
     const controller = new AbortController();
