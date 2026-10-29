@@ -53,6 +53,7 @@ import { detailFooterLastEditedTag } from "@/workspace-shell/src/detail-footer-l
 import { isSidebarOverlayViewport } from "@/workspace-shell/src/sidebar-breakpoint";
 import { WorkspaceDetailFooter } from "@/workspace-shell/src/workspace-detail-footer";
 import { DocsCollabEditor } from "./docs-collab-editor";
+import { notifyDocumentGone } from "./docs-collab-utils";
 import { DocsImagePickerDialog } from "./docs-image-picker-dialog";
 import { useDocsImageInsert } from "./use-docs-image-insert";
 import { DocsCollabSuggestControls } from "./docs-collab-suggest-controls";
@@ -208,9 +209,8 @@ function DocsCollabWorkspaceInner({
     if (!urls) return undefined;
     return {
       ...urls,
-      onDocumentGone: () => {
-        reportDocumentGoneRef.current();
-      },
+      onDocumentGone: () =>
+        notifyDocumentGone(urls.onDocumentGone, () => reportDocumentGoneRef.current()),
     };
   }, [urls]);
   const formatBarMode = resolveDocsCollabFormatBarMode(permissions);

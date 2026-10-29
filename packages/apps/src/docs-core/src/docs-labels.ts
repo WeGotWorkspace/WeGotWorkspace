@@ -36,6 +36,14 @@ export const docsLabels = {
   documentGoneDescription: "It was deleted on the server. Your local copy is still here.",
   documentGoneKeep: "Keep local copy",
   documentGoneClose: "Dismiss",
+  /** `/docs?id=` while the id is turned into a path (#1751). */
+  documentOpening: "Opening document…",
+  documentNotFoundTitle: "This document could not be found",
+  documentNotFoundDescription:
+    "It may have been deleted or moved to the trash, or you no longer have access.",
+  documentNotFoundOffline: "This document is not available offline. Connect to open it.",
+  documentNotFoundRetry: "Try again",
+  documentNotFoundBack: "Go to Docs",
   accessLostTitle: "Access lost",
   accessLostMessage:
     "You no longer have access to this document. Your local copy is still on this device.",

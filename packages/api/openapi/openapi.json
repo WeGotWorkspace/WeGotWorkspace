@@ -3674,6 +3674,16 @@
             }
           },
           {
+            "name": "node",
+            "in": "query",
+            "required": false,
+            "description": "FileNode id of the document the client opened (#1751). When that file is no longer at `path` (renamed or moved elsewhere, or another file took the path) the save is refused with 404 and nothing is written. Without it a save may create the file.",
+            "schema": {
+              "type": "string",
+              "pattern": "^fn-[0-9a-f]{32}$"
+            }
+          },
+          {
             "name": "If-None-Match",
             "in": "header",
             "required": false,
@@ -3704,6 +3714,16 @@
               }
             }
           },
+          "400": {
+            "description": "Malformed body or `node`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "403": {
             "description": "No write access to the path",
             "content": {
@@ -3715,7 +3735,7 @@
             }
           },
           "404": {
-            "description": "Unknown path",
+            "description": "Unknown path, or the file named by `node` is no longer at `path`",
             "content": {
               "application/json": {
                 "schema": {
@@ -4158,6 +4178,61 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        },
+        "x-wgw-access": "user"
+      }
+    },
+    "/files/node": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "Locate a file by FileNode id or path",
+        "description": "Returns the FileNode id and current path of a file the caller may read. Pass `id` (FileNode id `fn-` + 32 hex) to find where a file lives now, or `path` to learn its stable id. `id` wins when both are set. A directory, a file in product trash, or a missing file is 404. Signed-in users only; public share guests keep using paths.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^fn-[0-9a-f]{32}$"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File location",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriveFileNodeLocationDataResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or malformed id or path"
+          },
+          "403": {
+            "description": "The caller may not read the file"
+          },
+          "404": {
+            "description": "No such file, a directory, or a file in trash"
           }
         },
         "x-wgw-access": "user"

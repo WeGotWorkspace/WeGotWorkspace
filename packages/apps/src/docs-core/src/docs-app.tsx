@@ -3,11 +3,9 @@ import { useOnReconnect } from "@/hooks/use-connectivity";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useAppToast } from "@/hooks/use-app-toast";
 import { WorkspaceLiveAppShell } from "@/lib/live/workspace-live-app-shell";
-import {
-  docsApiPathFromSearch,
-  docsSearchFromApiPath,
-  parseDocsRouteSearch,
-} from "@/docs-core/src/docs-route-search";
+import { docsSearchFromApiPath, parseDocsRouteSearch } from "@/docs-core/src/docs-route-search";
+import { useDocsRouteDocument } from "@/docs-core/src/use-docs-route-document";
+import { DocsRouteStatus } from "@/docs-core/src/docs-route-status";
 import { useOpenDocsFile } from "@/docs-core/src/use-open-docs-file";
 import {
   isAccessTokenExpired,
@@ -54,18 +52,33 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const { phase, error, retry, successVersion, session, data, networkOperations } =
     useDocsAPI(apiSource);
 
-  const filePath = useMemo(
-    () => docsApiPathFromSearch(parseDocsRouteSearch(search as Record<string, unknown>).file),
+  const routeSearch = useMemo(
+    () => parseDocsRouteSearch(search as Record<string, unknown>),
     [search],
   );
+  const isGuestSession = wgwIsGuestSession();
   const offlineUsername = resolveDocsOfflineUsername(session.user.username);
   const [editorInboundKey, setEditorInboundKey] = useState(0);
-  useDriveFileNodeInbound(filePath ? offlineUsername : undefined, editorInboundKey);
+  const {
+    document: routeDocument,
+    followPath,
+    retry: retryRouteDocument,
+    relocate: relocateRouteDocument,
+  } = useDocsRouteDocument({
+    search: routeSearch,
+    canResolve: wgwLiveApiEnabled() && !isGuestSession,
+    username: offlineUsername,
+    refreshKey: editorInboundKey,
+  });
+  const filePath = routeDocument.status === "ready" ? routeDocument.path : null;
+  const fileNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
+  const onDocumentRoute = routeDocument.status !== "home";
+  useDriveFileNodeInbound(onDocumentRoute ? offlineUsername : undefined, editorInboundKey);
   useOnReconnect(
     useCallback(() => {
-      if (!filePath) return;
+      if (!onDocumentRoute) return;
       setEditorInboundKey((key) => key + 1);
-    }, [filePath]),
+    }, [onDocumentRoute]),
   );
 
   useNotificationsMarkReadOnConsume({
@@ -80,15 +93,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     window.location.assign("/logout");
   }, []);
 
-  const handleFileRenamed = useCallback(
-    (apiPath: string) => {
-      void navigate({
-        to: "/docs",
-        search: docsSearchFromApiPath(apiPath),
-      });
-    },
-    [navigate],
-  );
+  const handleFileRenamed = followPath;
 
   const handleOpenHomeFile = useOpenDocsFile();
 
@@ -105,7 +110,6 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     username: session.user.username ?? "",
   });
 
-  const isGuestSession = wgwIsGuestSession();
   const showCollab = isDocsCollabEditablePath(filePath) && !isGuestSession;
   const {
     myRights: collabMyRights,
@@ -185,7 +189,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
     const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
-      buildDocsCollabUrls(filePath);
+      buildDocsCollabUrls(filePath, fileNodeId);
     return {
       signalUrl,
       collabApiBaseUrl,
@@ -197,8 +201,10 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       onPersistForbidden: () => {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
+      // A save to the old path after a rename elsewhere: look up where the id lives now.
+      onDocumentGone: relocateRouteDocument,
     };
-  }, [collabAuthToken, filePath, showCollab, showError]);
+  }, [collabAuthToken, fileNodeId, filePath, relocateRouteDocument, showCollab, showError]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 
@@ -221,7 +227,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
       successVersion={successVersion}
       render={() => (
         <div>
-          {filePath === null ? (
+          {routeDocument.status === "resolving" || routeDocument.status === "not-found" ? (
+            <DocsRouteStatus document={routeDocument} onRetry={retryRouteDocument} />
+          ) : filePath === null ? (
             <DocsHomeWorkspace
               session={session}
               offlineUsername={resolveDocsOfflineUsername(session.user.username)}

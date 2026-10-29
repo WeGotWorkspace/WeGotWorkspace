@@ -72,6 +72,24 @@ export async function readCachedDriveNodeId(
   return nodeId || undefined;
 }
 
+/**
+ * FileNode id → path (leading slash) from the offline cache. `undefined` when no
+ * file row has the id, or when two file rows claim it (a stale row the next crawl
+ * fixes): an ambiguous answer must not open the wrong document.
+ */
+export async function readCachedDrivePathForNodeId(
+  username: string,
+  nodeId: string,
+): Promise<string | undefined> {
+  const id = nodeId.trim();
+  if (!id) return undefined;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const rows = await driveEntriesTable(db).where("nodeId").equals(id).toArray();
+  const files = rows.filter((row) => row.type === "file");
+  if (files.length !== 1) return undefined;
+  return `/${files[0].id.replace(/^\/+/, "")}`;
+}
+
 export async function upsertDriveEntries(
   username: string,
   entries: readonly WgwDriveDirectoryEntry[],

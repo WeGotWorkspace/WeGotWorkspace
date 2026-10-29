@@ -230,6 +230,10 @@ final class OpenApiContract
             if ($openApiPath === '/files/shares/by-principal') {
                 return 'principal=alice';
             }
+            if ($openApiPath === '/files/node') {
+                // An unknown id is 404 for every role; a sample path would be an ACL 403.
+                return 'id=fn-'.str_repeat('0', 32);
+            }
 
             return 'path='.rawurlencode('/users/bob');
         }

@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\Dav\CapabilitiesController as DavCapabilitiesCon
 use App\Http\Controllers\Api\V1\Files\DocsThreadsController;
 use App\Http\Controllers\Api\V1\Files\DriveSharesController;
 use App\Http\Controllers\Api\V1\Files\DriveShareSessionsController;
+use App\Http\Controllers\Api\V1\Files\FileNodeLocateController;
 use App\Http\Controllers\Api\V1\Files\FilesController;
 use App\Http\Controllers\Api\V1\Home\StateController as HomeStateController;
 use App\Http\Controllers\Api\V1\Installer\ActionController as InstallerActionController;
@@ -176,6 +177,9 @@ Route::middleware(['wgw.auth', 'throttle:wgw-api', 'wgw.role:user'])->group(func
         ->where('inviteId', '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}');
     Route::get('files/shared-with-me', [DriveSharesController::class, 'sharedWithMe']);
     Route::post('files/share-sessions/accept', [DriveShareSessionsController::class, 'accept']);
+
+    // FileNode id <-> current path for a readable file; Docs opens by id (#1751).
+    Route::get('files/node', FileNodeLocateController::class);
 
     // Docs comment/suggestion threads (Task #749): VJOURNAL in a DAV-hidden
     // owner pool, keyed by ?path=, ACL via DriveShareAuthorizer only.

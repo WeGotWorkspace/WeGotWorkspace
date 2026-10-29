@@ -16,8 +16,11 @@ export type DocsCollabUrls = {
  * Collab endpoints for a drive path. Accents, parentheses and `&` have to survive
  * both the `/rooms/{roomId}` segment (base64url of the UTF-8 path) and the
  * `?path=` query, so neither is interpolated raw.
+ *
+ * `nodeId` is the FileNode the editor opened. Saves name it, so a save to the
+ * old path after a rename elsewhere is refused instead of making a copy (#1751).
  */
-export function buildDocsCollabUrls(filePath: string): DocsCollabUrls {
+export function buildDocsCollabUrls(filePath: string, nodeId?: string): DocsCollabUrls {
   const baseUrl = wgwApiBaseUrl();
   const room = filePath.replace(/^\/+/, "");
   const roomId = encodeFileRoomId(room);
@@ -28,7 +31,9 @@ export function buildDocsCollabUrls(filePath: string): DocsCollabUrls {
     signalUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/events`,
     collabApiBaseUrl: `${baseUrl}/rooms`,
     collabRtcUrl: `${baseUrl}/rooms/${encodeURIComponent(roomId)}/configuration`,
-    documentUrl: `${baseUrl}/files/collaboration?path=${pathQuery}`,
+    documentUrl: `${baseUrl}/files/collaboration?path=${pathQuery}${
+      nodeId ? `&node=${encodeURIComponent(nodeId)}` : ""
+    }`,
     yjsUrl: `${baseUrl}/files/collaboration?path=${pathQuery}&format=yjs`,
   };
 }

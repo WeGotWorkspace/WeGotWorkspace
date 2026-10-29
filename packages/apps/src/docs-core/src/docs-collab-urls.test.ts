@@ -27,6 +27,19 @@ function decodeFileRoomId(roomId: string): string {
 }
 
 describe("buildDocsCollabUrls", () => {
+  it("names the opened FileNode on the save URL only", () => {
+    const id = `fn-${"a".repeat(32)}`;
+    const urls = buildDocsCollabUrls("/users/alice/plan.md", id);
+    expect(new URL(urls.documentUrl, "http://localhost").searchParams.get("node")).toBe(id);
+    expect(new URL(urls.yjsUrl, "http://localhost").searchParams.get("node")).toBeNull();
+    expect(
+      new URL(
+        buildDocsCollabUrls("/users/alice/plan.md").documentUrl,
+        "http://localhost",
+      ).searchParams.has("node"),
+    ).toBe(false);
+  });
+
   it.each(PATHS)("strips the leading slash for %s", (_label, filePath, room) => {
     expect(buildDocsCollabUrls(filePath).room).toBe(room);
   });
