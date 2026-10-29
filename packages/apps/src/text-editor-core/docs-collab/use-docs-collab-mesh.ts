@@ -209,9 +209,7 @@ export function useDocsCollabMesh({
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
-          // Ask back only when the sender holds an update we never received:
-          // a lost update otherwise keeps every later one pending until a
-          // reload. Asking back every time ping-pongs forever between two docs.
+          // A writer holds an update we missed; see `pullBack` for the loop guard.
           if (outcome.pullBack && msg.from) sendSyncStep1(msg.from);
         }
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
