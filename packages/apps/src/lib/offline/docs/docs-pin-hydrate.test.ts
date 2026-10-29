@@ -80,7 +80,26 @@ describe("hydrateDocsCollabForOffline", () => {
     expect(await localDocIsEmpty(apiPath)).toBe(false);
   });
 
-  it("fetches the markdown only when there is no sidecar", async () => {
+  it("makes one request when there is no sidecar: the server falls back to the markdown", async () => {
+    const apiPath = nextPath();
+    const fetchMock = stubFetch({
+      yjs: {
+        status: 200,
+        body: "# Hello",
+        headers: { "content-type": "text/markdown", "X-Wgw-Collab-Fallback": "markdown" },
+      },
+    });
+    const beforeRequest = vi.fn(async () => undefined);
+
+    await hydrateDocsCollabForOffline({ apiPath, beforeRequest });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]![0])).toContain("format=yjs&fallback=markdown");
+    expect(beforeRequest).toHaveBeenCalledTimes(1);
+    expect(await localDocIsEmpty(apiPath)).toBe(false);
+  });
+
+  it("fetches the markdown separately from a server without the fallback (204)", async () => {
     const apiPath = nextPath();
     const fetchMock = stubFetch({
       yjs: { status: 204 },

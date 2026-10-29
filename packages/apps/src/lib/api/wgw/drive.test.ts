@@ -296,6 +296,23 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     expect(paths.some((path) => path === "/files/context")).toBe(true);
   });
 
+  it("asks for the drive user once for many blob reads (one /files/context, not one per preview)", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    await Promise.all([
+      ops.readFileBlob("/users/bob/readme.md"),
+      ops.readFileBlob("/users/bob/readme.md"),
+      ops.readFileBlob("/users/bob/readme.md"),
+    ]);
+    await ops.readFileBlob("/users/bob/readme.md");
+
+    const contextCalls = wgwFetch.mock.calls.filter((call) => String(call[0]) === "/files/context");
+    expect(contextCalls).toHaveLength(1);
+    const downloads = wgwFetch.mock.calls.filter((call) =>
+      String(call[0]).startsWith("/jmap/download/"),
+    );
+    expect(downloads).toHaveLength(4);
+  });
+
   it("reads file bytes via fnb download and rejects uploads over maxSizeUpload", async () => {
     const ops = createWgwDriveOperations("/users/bob");
     const blob = await ops.readFileBlob("/users/bob/readme.md");

@@ -73,6 +73,7 @@ describe("isRetryableListingError", () => {
     expect(isRetryableListingError(new TypeError("Failed to fetch"))).toBe(true);
     expect(isRetryableListingError(statusError(404))).toBe(false);
     expect(isRetryableListingError(statusError(403))).toBe(false);
+    expect(isRetryableListingError(new Error("This folder is not available offline."))).toBe(false);
   });
 });
 
@@ -142,5 +143,22 @@ describe("useDriveFolderListingSync", () => {
 
     expect(hook.result.current.listingError).toBeNull();
     expect(showError).toHaveBeenCalledTimes(1);
+  });
+
+  it("paints cached rows that arrive after the live listing failed, and clears the error", async () => {
+    const changeDir = vi.fn().mockRejectedValue(statusError(429));
+    let resolveCache: (value: DriveUIData) => void = () => undefined;
+    const readCachedDirectory = vi.fn(
+      () => new Promise<DriveUIData>((resolve) => (resolveCache = resolve)),
+    );
+    const { hook, setFiles } = setup({ changeDir, readCachedDirectory });
+    await flush();
+    expect(hook.result.current.listingError?.path).toBe(FOLDER);
+
+    resolveCache(listing([ROW]));
+    await flush();
+
+    expect(setFiles).toHaveBeenCalled();
+    expect(hook.result.current.listingError).toBeNull();
   });
 });
