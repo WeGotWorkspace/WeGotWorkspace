@@ -350,7 +350,6 @@ final class TaskListRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
-
         $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
         $existing = $this->findTaskListInstance($principalUri, (string) $instance->uri);
