@@ -10,9 +10,9 @@ use Illuminate\Database\Eloquent\Collection;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
- * Per-user hide of an inbound share. Does not change the owner's shareWith grant.
- * Restore is the inverse ({@see restore}) so a later "add again" UI does not
- * need a second storage model.
+ * Per-user dismissal of an inbound share. Does not change the owner's shareWith
+ * grant. {@see CalendarCollectionAccess} applies it to listings and to every
+ * lookup by id; {@see restore} is the inverse.
  */
 final class CalendarShareVisibility
 {
