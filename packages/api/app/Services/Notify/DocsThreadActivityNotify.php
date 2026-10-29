@@ -47,6 +47,7 @@ final class DocsThreadActivityNotify
         bool $isReply,
         array $recipients,
         ?string $snippet = null,
+        ?string $nodeId = null,
     ): array {
         $name = basename($path) ?: $path;
         $preview = $snippet !== null ? mb_substr(trim($snippet), 0, self::PREVIEW_MAX) : null;
@@ -64,7 +65,7 @@ final class DocsThreadActivityNotify
             'kind' => $kind,
             'isReply' => $isReply,
             'snippet' => $preview,
-            'navigate' => self::navigate($path),
+            'navigate' => self::navigate($path, $nodeId),
             'tag' => self::tag($threadId),
             'dedupe_key' => self::dedupeKey($threadId),
             'supersede' => true,
@@ -101,8 +102,15 @@ final class DocsThreadActivityNotify
         ];
     }
 
-    public static function navigate(string $path): string
+    /**
+     * Docs link for the notification. By FileNode id when known, so the link
+     * still opens the doc after a rename or move (#1751); else by path.
+     */
+    public static function navigate(string $path, ?string $nodeId = null): string
     {
+        if ($nodeId !== null && preg_match('/^fn-[0-9a-f]{32}$/', $nodeId) === 1) {
+            return '/docs?id='.$nodeId;
+        }
         $trimmed = ltrim(trim($path), '/');
 
         return $trimmed === '' ? '/docs' : '/docs?file='.rawurlencode($trimmed);
