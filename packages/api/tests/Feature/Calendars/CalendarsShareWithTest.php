@@ -11,6 +11,7 @@ use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Jmap\JmapCapabilities;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CalendarsTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -402,6 +403,91 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
         $this->assertFalse($shared['myRights']['mayShare']);
         $this->assertFalse($shared['myRights']['mayWriteAll']);
         $this->assertTrue($shared['myRights']['mayReadItems']);
+    }
+
+    /**
+     * @return array<string, array{0: bool, 1: bool}>
+     */
+    public static function overlappingSharesProvider(): array
+    {
+        return [
+            'direct read, group write, group shared first' => [false, true],
+            'direct read, group write, direct shared first' => [false, false],
+            'direct write, group read, group shared first' => [true, true],
+            'direct write, group read, direct shared first' => [true, false],
+        ];
+    }
+
+    #[DataProvider('overlappingSharesProvider')]
+    public function test_event_resolves_through_the_strongest_of_overlapping_shares(bool $directWrite, bool $groupFirst): void
+    {
+        $calendarId = $this->createPersonalCalendar('carol', 'Overlap', 'overlap');
+        $grants = [
+            'groups/'.self::TEAM => ! $directWrite,
+            'bob' => $directWrite,
+        ];
+        if (! $groupFirst) {
+            $grants = array_reverse($grants, true);
+        }
+        foreach ($grants as $sharee => $write) {
+            $this->shareCalendar('carol', $calendarId, $sharee, write: $write);
+        }
+        $eventId = $this->createEventAs('carol', $calendarId, 'Planning');
+
+        $this->assertEventWritableThroughListedCalendar('bob', 'Overlap', $eventId);
+    }
+
+    public function test_group_calendar_event_stays_writable_with_an_extra_read_share(): void
+    {
+        $team = Principal::query()->where('uri', 'principals/groups/'.self::TEAM)->first();
+        $alice = Principal::forUsername('alice');
+        $this->assertNotNull($team);
+        $this->assertNotNull($alice);
+        $this->addPrincipalToGroup($team, $alice);
+
+        $created = $this->jmapAs('bob', [
+            ['Calendar/set', ['accountId' => 'bob', 'create' => ['c' => [
+                'name' => 'Team Plans',
+                'id' => 'team-plans',
+                'groupSlug' => self::TEAM,
+                'shareWith' => ['alice' => ['mayReadItems' => true]],
+            ]]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.c');
+        $eventId = $this->createEventAs('bob', (string) $created['id'], 'Standup');
+
+        $this->assertEventWritableThroughListedCalendar('alice', 'Team Plans', $eventId);
+    }
+
+    private function createEventAs(string $username, string $calendarId, string $title): string
+    {
+        return (string) $this->jmapAs($username, [
+            ['CalendarEvent/set', ['accountId' => $username, 'create' => ['e' => array_merge(
+                $this->sampleCalendarEventPayload($calendarId),
+                ['title' => $title],
+            )]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.created.e.id');
+    }
+
+    private function assertEventWritableThroughListedCalendar(string $username, string $calendarName, string $eventId): void
+    {
+        $listed = $this->calendarNamed($username, $calendarName);
+        $this->assertTrue($listed['myRights']['mayWriteAll']);
+
+        $viewed = $this->jmapAs($username, [
+            ['CalendarEvent/get', ['accountId' => $username, 'ids' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1.list.0');
+        $this->assertSame([(string) $listed['id'] => true], $viewed['calendarIds']);
+
+        $updated = $this->jmapAs($username, [
+            ['CalendarEvent/set', ['accountId' => $username, 'update' => [$eventId => ['title' => 'Edited']]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertArrayHasKey($eventId, $updated['updated']);
+        $this->assertArrayNotHasKey($eventId, $updated['notUpdated'] ?? []);
+
+        $destroyed = $this->jmapAs($username, [
+            ['CalendarEvent/set', ['accountId' => $username, 'destroy' => [$eventId]], 'c0'],
+        ])->assertOk()->json('methodResponses.0.1');
+        $this->assertSame([$eventId], $destroyed['destroyed']);
     }
 
     private function createPersonalCalendar(string $username, string $name, string $id, ?string $color = null): string

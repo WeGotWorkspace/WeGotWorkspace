@@ -8,6 +8,7 @@ use App\Models\CalendarShareDismissal;
 use App\Models\Principal;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Tasks\InboxTaskListProvisioner;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\OptimisticConcurrencyTestHelpers;
 use Tests\Support\TasksTestFixtures;
 use Tests\Support\WgwDatabaseTestCase;
@@ -352,6 +353,61 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
             ->deleteJson('/api/v1/tasks/tasklists/'.InboxTaskListProvisioner::URI)
             ->assertForbidden()
             ->assertJsonPath('code', 'forbidden');
+    }
+
+    /**
+     * @return array<string, array{0: bool, 1: bool}>
+     */
+    public static function overlappingSharesProvider(): array
+    {
+        return [
+            'direct read, group write, group shared first' => [false, true],
+            'direct read, group write, direct shared first' => [false, false],
+            'direct write, group read, group shared first' => [true, true],
+            'direct write, group read, direct shared first' => [true, false],
+        ];
+    }
+
+    #[DataProvider('overlappingSharesProvider')]
+    public function test_task_resolves_through_the_strongest_of_overlapping_shares(bool $directWrite, bool $groupFirst): void
+    {
+        $listId = $this->createPersonalList('carol', 'Overlap');
+        $grants = [
+            'groups/'.self::TEAM => ! $directWrite,
+            'bob' => $directWrite,
+        ];
+        if (! $groupFirst) {
+            $grants = array_reverse($grants, true);
+        }
+        foreach ($grants as $sharee => $write) {
+            $this->shareList('carol', $listId, $sharee, write: $write);
+        }
+        $taskId = (string) $this->asUser('carol')
+            ->postJson('/api/v1/tasks/items', [
+                'taskListIds' => [$listId => true],
+                'title' => 'Carol task',
+            ])
+            ->assertCreated()
+            ->json('id');
+
+        $listed = $this->listNamed('bob', 'Overlap');
+        $this->assertTrue($listed['myRights']['mayWriteAll']);
+
+        $taskUrl = '/api/v1/tasks/items/'.$taskId;
+        $this->asUser('bob')
+            ->getJson($taskUrl)
+            ->assertOk()
+            ->assertJsonPath('taskListId', (string) $listed['id']);
+
+        $this->asUser('bob')
+            ->patchJson($taskUrl, ['title' => 'Edited'], $this->withIfMatch($this->fetchEtagFromGetAs('bob', $taskUrl)))
+            ->assertOk()
+            ->assertJsonPath('title', 'Edited');
+
+        $this->asUser('bob')
+            ->deleteJson($taskUrl, [], $this->withIfMatch($this->fetchEtagFromGetAs('bob', $taskUrl)))
+            ->assertOk()
+            ->assertJsonPath('ok', true);
     }
 
     private function asUser(string $username)
