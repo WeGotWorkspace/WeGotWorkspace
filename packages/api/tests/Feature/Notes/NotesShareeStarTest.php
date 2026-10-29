@@ -94,6 +94,23 @@ final class NotesShareeStarTest extends WgwDatabaseTestCase
         $this->assertSame([$this->noteId], $this->starredIds('alice'));
     }
 
+    public function test_dismissing_the_share_hides_the_star_and_restoring_it_shows_it_again(): void
+    {
+        $this->shareWithAlice();
+        $this->asUser('alice')->postJson('/api/v1/notes/items/'.$this->noteId.'/star')->assertOk();
+        $sharedId = (string) collect($this->asUser('alice')->getJson('/api/v1/notes/notebooks')->assertOk()->json('list'))
+            ->firstWhere('name', 'Team Notes')['id'];
+
+        $this->asUser('alice')->deleteJson('/api/v1/notes/notebooks/'.$sharedId)->assertOk();
+
+        $this->assertSame([], $this->starredIds('alice'));
+        $this->asUser('alice')->deleteJson('/api/v1/notes/items/'.$this->noteId.'/star')->assertNotFound();
+
+        $this->asUser('alice')->patchJson('/api/v1/notes/notebooks/'.$sharedId, ['isSubscribed' => true])->assertOk();
+
+        $this->assertSame([$this->noteId], $this->starredIds('alice'));
+    }
+
     private function shareWithAlice(): void
     {
         $this->asUser('bob')->patchJson('/api/v1/notes/notebooks/'.$this->notebookId, [
