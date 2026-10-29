@@ -21,6 +21,7 @@ import {
   type OfflineCalendarEventRow,
 } from "@/lib/offline/calendars/calendars-schema";
 import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
+import { calendarEventMayOverlapRange, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 export {
   enqueueOutboxMutation,
@@ -75,19 +76,39 @@ export async function readCalendarBootstrapFromCache(
   };
 }
 
+export type CalendarBootstrapCacheWriteOptions = {
+  /**
+   * The range a live bootstrap fetched. Cached events outside it stay: they
+   * came from a period loaded on demand and the snapshot says nothing about
+   * them (#1675). Omit when `bootstrap` is the whole cache.
+   */
+  window?: CalendarUtcRange;
+};
+
+function keepCachedRowOnBootstrapWrite(
+  row: OfflineCalendarEventRow,
+  incomingIds: ReadonlySet<string>,
+  window: CalendarUtcRange | undefined,
+): boolean {
+  if (row.pendingSync) return true;
+  if (incomingIds.has(row.id)) return false;
+  if (row.locallyWritten === true) return true;
+  return window !== undefined && !calendarEventMayOverlapRange(parseEventRow(row), window);
+}
+
+function parseEventRow(row: OfflineCalendarEventRow): JmapCalendarEvent {
+  return JSON.parse(row.data) as JmapCalendarEvent;
+}
+
 export async function writeCalendarBootstrapToCache(
   username: string,
   bootstrap: CalendarAppBootstrap,
+  options: CalendarBootstrapCacheWriteOptions = {},
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const events = calendarsEventsTable(db);
   const calendars = calendarsCalendarsTable(db);
   const groups = calendarsGroupsTable(db);
-  const existingRows = await events.toArray();
-  const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
-  const keepRows = existingRows.filter(
-    (row) => row.pendingSync || (row.locallyWritten === true && !incomingIds.has(row.id)),
-  );
   await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
   rememberOfflineCalendarsUsername(username);
   await calendars.clear();
@@ -105,11 +126,53 @@ export async function writeCalendarBootstrapToCache(
       data: JSON.stringify(group),
     })),
   );
-  await events.clear();
-  await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
-  if (keepRows.length > 0) {
-    await events.bulkPut(keepRows);
-  }
+  // One transaction: a period loaded on demand must not land between the read
+  // and the clear and then be lost.
+  await db.transaction("rw", events, async () => {
+    const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
+    const keepRows = (await events.toArray()).filter((row) =>
+      keepCachedRowOnBootstrapWrite(row, incomingIds, options.window),
+    );
+    await events.clear();
+    await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
+    if (keepRows.length > 0) {
+      await events.bulkPut(keepRows);
+    }
+  });
+}
+
+/**
+ * Merge one on-demand period into the cache (#1675): upsert what the server
+ * returned and drop cached events in that period it no longer has. Rows with
+ * a pending or just-written local change stay.
+ */
+export async function mergeCalendarRangeIntoCache(
+  username: string,
+  range: CalendarUtcRange,
+  incoming: readonly JmapCalendarEvent[],
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const events = calendarsEventsTable(db);
+  await db.transaction("rw", events, async () => {
+    const existing = await events.toArray();
+    const incomingIds = new Set(incoming.map((event) => event.id));
+    const pendingIds = new Set(existing.filter((row) => row.pendingSync).map((row) => row.id));
+    const goneIds = existing
+      .filter(
+        (row) =>
+          !row.pendingSync &&
+          row.locallyWritten !== true &&
+          !incomingIds.has(row.id) &&
+          calendarEventMayOverlapRange(parseEventRow(row), range),
+      )
+      .map((row) => row.id);
+    if (goneIds.length > 0) {
+      await events.bulkDelete(goneIds);
+    }
+    await events.bulkPut(
+      incoming.filter((event) => !pendingIds.has(event.id)).map((event) => eventRow(event, false)),
+    );
+  });
 }
 
 export async function upsertCalendarEventInCache(

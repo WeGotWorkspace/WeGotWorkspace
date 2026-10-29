@@ -14,6 +14,7 @@ import {
   createCalendarLive,
   deleteCalendarEventLive,
   deleteCalendarLive,
+  fetchCalendarEventsInRangeLive,
   fetchCalendarLiveBootstrap,
   importEventsLive,
   patchCalendarEventLive,
@@ -49,6 +50,7 @@ import {
   createTempCalendarId,
   enqueueCoalescedCalendarEventUpdate,
   enqueueOutboxMutation,
+  mergeCalendarRangeIntoCache,
   readCalendarBootstrapFromCache,
   removeCalendarEventFromCache,
   upsertCalendarEventInCache,
@@ -63,6 +65,7 @@ import {
   reportCalendarsSyncConflicts,
 } from "@/lib/offline/calendars-sync-conflicts";
 import { readOfflineCalendarsUsername } from "@/lib/offline/offline-session";
+import { calendarBootstrapWindow, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 function rethrowUnlessOfflineQueue(error: unknown): void {
   if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -461,21 +464,23 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
   if (!username) {
     throw new Error("Calendar bootstrap missing username");
   }
+  // The live snapshot only covers this window; events loaded for other periods stay.
+  const liveWindow = { window: calendarBootstrapWindow() };
   // Write first so pendingSync rows survive a live snapshot that raced ahead of
   // flush; then drain the outbox and return the merged cache (not the raw live
   // payload, which would revert optimistic patches in the UI).
-  await writeCalendarBootstrapToCache(username, bootstrap);
+  await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
   if (readBrowserOnline()) {
     await runnerFor(username).flush();
     const refreshed = await refreshStaleCalendarSubscriptionsLive().catch(() => false);
     if (refreshed) {
       bootstrap = await fetchCalendarLiveBootstrap();
-      await writeCalendarBootstrapToCache(username, bootstrap);
+      await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
       await runnerFor(username).flush();
     }
     const merged = (await readCalendarBootstrapFromCache(username)) ?? bootstrap;
     bootstrap = await withSubscriptionUrls(merged).catch(() => merged);
-    await writeCalendarBootstrapToCache(username, bootstrap);
+    await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
   }
   const cached = await readCalendarBootstrapFromCache(username);
   return cached ?? bootstrap;
@@ -492,6 +497,20 @@ export async function loadCalendarBootstrapHybrid(): Promise<CalendarAppBootstra
   }
 
   return fetchCalendarHybridBootstrap();
+}
+
+/**
+ * Load one period outside the bootstrap window into the cache (#1675).
+ * Offline it does nothing and keeps what is cached; returns whether it loaded.
+ */
+export async function loadCalendarRangeHybrid(
+  username: string,
+  range: CalendarUtcRange,
+): Promise<boolean> {
+  if (!readBrowserOnline()) return false;
+  const events = await fetchCalendarEventsInRangeLive(range);
+  await mergeCalendarRangeIntoCache(username, range, events);
+  return true;
 }
 
 export function getCalendarsSyncRunner(
