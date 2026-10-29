@@ -131,8 +131,9 @@ async function subscribePushManager(isCurrent: () => boolean): Promise<boolean> 
   // rejects every send (403), so swap it for one on the current key.
   // Each account on a shared browser gets its own endpoint. Sign-out drops the
   // subscription, but a session that ends without it (refresh expiry) leaves
-  // the previous account's subscription and server row behind. Replace it; the
-  // server prunes that row once the push service rejects the old endpoint.
+  // the previous account's subscription and server row behind. Replace it: the
+  // old endpoint is then dead, and the server prunes that row once the push
+  // service rejects it. Without a record the subscription is kept as-is.
   const account = currentPushAccount();
   let existing = await registration.pushManager.getSubscription();
   if (!isCurrent()) return false;
