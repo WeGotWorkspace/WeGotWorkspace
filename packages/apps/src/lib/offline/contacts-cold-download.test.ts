@@ -3,13 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddressBook, ContactCard } from "@/contacts-core/src/contacts-types";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import {
+  enqueueOutboxMutation,
   readAddressBooksSyncToken,
   readContactsBootstrapFromCache,
   readContactsColdDownload,
   readSyncToken,
+  startContactsColdDownload,
   upsertContactCardInCache,
   writeContactsBootstrapToCache,
 } from "@/lib/offline/contacts-offline-store";
+import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/offline-db";
 import { contactsBooksTable, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 
@@ -48,11 +51,13 @@ vi.mock("@/lib/offline/browser-online", () => ({
 
 const {
   connectedContacts,
+  patchAddressBook,
   pullAddressBookChanges,
   syncAllContactBooks,
   syncContactBooksAfterAddressBookChanges,
 } = vi.hoisted(() => ({
   connectedContacts: vi.fn(),
+  patchAddressBook: vi.fn(),
   pullAddressBookChanges: vi.fn(),
   syncAllContactBooks: vi.fn(),
   syncContactBooksAfterAddressBookChanges: vi.fn(),
@@ -60,7 +65,7 @@ const {
 
 vi.mock("@/lib/api/wgw/contacts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/contacts")>();
-  return { ...actual, connectedContacts };
+  return { ...actual, connectedContacts, patchAddressBook };
 });
 
 vi.mock("@/lib/api/wgw/contacts-bootstrap", () => ({
@@ -83,6 +88,7 @@ import {
   fetchContactsHybridBootstrap,
   getContactsSyncRunner,
   loadContactsBootstrapForBoot,
+  loadContactsBootstrapHybrid,
   readContactsCacheForBoot,
   refreshCachedContacts,
 } from "@/lib/offline/contacts-hybrid-operations";
@@ -96,6 +102,15 @@ function stopAfterFirstPage(cardIds: string[]) {
     await options?.onCardPage?.({ cards: [card(cardIds[0]!)], remainingCardIds: cardIds.slice(1) });
     throw new TypeError("network error");
   });
+}
+
+/** A promise plus its resolver, to hold a request until the test lets it go. */
+function gate() {
+  let open: () => void = () => undefined;
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { open, opened };
 }
 
 async function cachedIds(): Promise<string[]> {
@@ -140,7 +155,7 @@ describe("contacts first download, saved page by page", () => {
     await expect(fetchContactsHybridBootstrap()).rejects.toThrow("network error");
 
     expect(await cachedIds()).toEqual(["a"]);
-    expect(await readContactsColdDownload(username)).toEqual({
+    expect(await readContactsColdDownload(username)).toMatchObject({
       ...syncAnchor,
       remainingCardIds: ["b", "c"],
     });
@@ -264,8 +279,114 @@ describe("contacts first download, saved page by page", () => {
     pullAddressBookChanges.mockImplementation(async () => {
       expect(await readAddressBooksSyncToken(username)).toBe("books-at-query");
     });
+    // An edit queued offline on the partial copy goes out once the download is finished.
+    patchAddressBook.mockResolvedValue(book);
+    await enqueueOutboxMutation(username, {
+      id: "queued-book-edit",
+      domain: CONTACTS_DOMAIN,
+      op: "bookUpdate",
+      payload: JSON.stringify({ addressBookId: "default", patch: { isSubscribed: true } }),
+    });
     await loadContactsBootstrapForBoot();
 
+    expect(patchAddressBook).toHaveBeenCalledTimes(1);
     expect(pullAddressBookChanges).toHaveBeenCalledTimes(1);
+  });
+
+  it("a Refresh during a resume joins it instead of restarting the download", async () => {
+    stopAfterFirstPage(["a", "b", "c"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    const held = gate();
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: ["c"] });
+      await held.opened;
+      await onCardPage({ cards: [card("c")], remainingCardIds: [] });
+    });
+
+    const resume = refreshCachedContacts(username);
+    await vi.waitFor(() => expect(fetchContactCardPages).toHaveBeenCalled());
+    // Refresh in the header while the resume runs; a restart would clear the saved cards.
+    const refresh = loadContactsBootstrapHybrid();
+    held.open();
+    await Promise.all([resume, refresh.catch(() => undefined)]);
+
+    expect(fetchContactsLiveBootstrap).toHaveBeenCalledTimes(1);
+    expect(fetchContactCardPages).toHaveBeenCalledTimes(1);
+    expect(await cachedIds()).toEqual(["a", "b", "c"]);
+    expect(await readContactsColdDownload(username)).toBeNull();
+    expect(await readSyncToken(username, "default")).toBe("cards-at-query");
+  });
+
+  it("a resume never finishes a download that another one took over", async () => {
+    stopAfterFirstPage(["a", "b", "c"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      // Another tab restarts the download with a new anchor while this one runs.
+      await startContactsColdDownload(username, session, [book], {
+        id: "other-download",
+        addressBookState: "books-later",
+        contactCardState: "cards-later",
+        remainingCardIds: ["x", "y"],
+      });
+      await onCardPage({ cards: [card("b")], remainingCardIds: ["c"] });
+      await onCardPage({ cards: [card("c")], remainingCardIds: [] });
+    });
+
+    await loadContactsBootstrapForBoot();
+
+    // The other download still owns the copy: its ids and anchor stay, no token is stored.
+    expect(await readContactsColdDownload(username)).toMatchObject({
+      id: "other-download",
+      contactCardState: "cards-later",
+      remainingCardIds: ["x", "y"],
+    });
+    expect(await readSyncToken(username, "default")).toBeNull();
+    expect(await readAddressBooksSyncToken(username)).toBeNull();
+  });
+
+  it("a full download over an unfinished copy keeps its cards, ids and anchor until it is done", async () => {
+    stopAfterFirstPage(["a", "b", "c"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+    const before = await readContactsColdDownload(username);
+    vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+      await options?.onStart?.({
+        session,
+        addressBooks: [book],
+        cardIds: ["a", "b", "c", "d"],
+        syncAnchor: { addressBookState: "books-later", contactCardState: "cards-later" },
+      });
+      await options?.onCardPage?.({ cards: [card("d")], remainingCardIds: ["a", "b", "c"] });
+      throw new Error("Bad Gateway");
+    });
+
+    await expect(fetchContactsHybridBootstrap()).rejects.toThrow("Bad Gateway");
+
+    expect(await cachedIds()).toEqual(["a"]);
+    expect(await readContactsColdDownload(username)).toEqual(before);
+  });
+
+  it("a finished first download does not clear and rewrite the pages it saved", async () => {
+    const clears: string[] = [];
+    vi.mocked(fetchContactsLiveBootstrap).mockImplementation(async (options?: LiveOptions) => {
+      await options?.onStart?.({ session, addressBooks: [book], cardIds: ["a", "b"], syncAnchor });
+      await options?.onCardPage?.({ cards: [card("a")], remainingCardIds: ["b"] });
+      await options?.onCardPage?.({ cards: [card("b")], remainingCardIds: [] });
+      // From here a clear followed by a rewrite could lose saved cards on a tab close.
+      vi.spyOn(IDBObjectStore.prototype, "clear").mockImplementation(function (
+        this: IDBObjectStore,
+      ) {
+        clears.push(this.name);
+        throw new Error("cleared after the last page");
+      });
+      return { session, data: { addressBooks: [book], cards: [card("a"), card("b")] }, syncAnchor };
+    });
+
+    await fetchContactsHybridBootstrap();
+    vi.restoreAllMocks();
+
+    expect(clears).toEqual([]);
+    expect(await cachedIds()).toEqual(["a", "b"]);
+    expect(await readContactsColdDownload(username)).toBeNull();
+    expect(await readSyncToken(username, "default")).toBe("cards-at-query");
   });
 });
