@@ -1,6 +1,6 @@
 # JMAP Push
 
-Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server built** (#1660; client still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
+Design for telling open apps "data you can see changed, sync now", without WebSockets. It implements JMAP Push over an event source ([RFC 8620 §7](https://www.rfc-editor.org/rfc/rfc8620#section-7)) on top of the change counters the server already keeps. It is the transport half of [notifications.md](notifications.md), which sets the rules for silent and active news. Epic: #1659. Status: **server and client hub built** (#1660, #1661; app adoption and the mesh `check-now` still to do); revised after three external reviews (see [plan.md](../../.agents/specs/1659-live-updates/plan.md#considered)).
 
 ---
 
@@ -176,15 +176,21 @@ We write that reader ourselves, about a hundred lines with tests, instead of dep
 
 Behaviour:
 
-- `types=*`, `closeafter=state`, `ping=0`.
-- After the response ends, reconnect after the server's `retry` (visible), or a longer interval when every tab is hidden.
+- `types=*`, `closeafter=state`, `ping=0`. The URL comes from the session's `eventSourceUrl`; a guest share session has no push.
+- After the response ends, reconnect after the server's `retry` (visible), or after 30 s when every tab is hidden.
+- A wake reconnects early, but never sooner than 2 s after the previous request.
 - Offline: stop. Online again: reconnect at once. The reconnect flush already syncs the apps.
 - `401`: refresh the token through the shared auth path, then reconnect.
-- `429` or repeated failures: wait `Retry-After` (or back off), and report push as down so the app polls return to their normal interval.
+- `429` or repeated failures: wait `Retry-After` (or back off from `retry`, doubling up to 60 s), and report push as down so the app polls return to their normal interval. A single failure does not count as down; the second in a row does.
+- `501`, or a response that is not an event stream: push is off on this server. Report it down and ask again after 5 minutes.
+
+The code is in `packages/apps/src/lib/jmap-client/push/` (reader, transport, hub, leader) and `packages/apps/src/lib/api/wgw/jmap-push.ts` (wiring to the authenticated fetch).
 
 ### Leader and fan-out
 
 Only one tab per browser holds the stream. The leader is elected with a Web Locks lock (`navigator.locks`), not the presence leader, so a blocked or failing mesh cannot stop the safety net. The leader publishes each StateChange on a `crossTabTopic` (`lib/offline/core/cross-tab-topic.ts`), so every tab hears it, the leader included. When the leader closes, the next tab takes the lock and reconnects with the id it rebuilds from the confirmed hashes it already holds.
+
+Only tabs with a subscriber take part, so an app that does not use push costs nothing. Each such tab also holds a Web Lock while it is open, and another while it is visible. The leader reads them with `navigator.locks.query()`: a tab that crashed without saying goodbye drops out of the confirmed-hash map, and "every tab hidden" needs no heartbeat. Without Web Locks the hub stays off and the apps keep their polls.
 
 ### Apps
 
@@ -192,7 +198,7 @@ Only one tab per browser holds the stream. The leader is elected with a Web Lock
 useJmapStateChange(["Note", "Notebook"], (states) => notesAdapter.syncIfStale(states));
 ```
 
-Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows its current state. A new `syncIfStale` calls `sync()` only when a pushed state differs from the adapter's own, and reports success or failure to the hub. That `sync()` uses `/changes`, which returns only what changed, so there is no per-collection hint and no new sync path.
+Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows its current state. A new `syncIfStale` calls `sync()` only when a pushed state differs from the adapter's own, and reports success or failure to the hub: the listener resolves `false` when the sync failed. A type the adapter has no state for yet is not confirmed. Pushes that arrive while a listener runs collapse into one next call with the newest states. That `sync()` uses `/changes`, which returns only what changed, so there is no per-collection hint and no new sync path.
 
 **Collab rooms lead.** While a note or doc has an active collab room in this browser, the Yjs layer already has its content. The app then does not refetch that item's body on a push; it only applies metadata (title, tags, notebook, archive state). Without this rule every collaborator would fetch the doc they are typing in every few seconds.
 
@@ -206,7 +212,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Drive, Docs home | `FileNode` | `FileNode/changes` for the visible folder (`use-drive-file-node-inbound.ts`) |
 | Tasks | `Task`, `TaskList` | `refreshList` |
 
-The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not.
+The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`.
 
 ## Mesh "check now"
 
