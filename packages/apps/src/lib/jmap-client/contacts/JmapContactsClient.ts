@@ -255,7 +255,11 @@ export class JmapContactsClient {
       [
         ["AddressBook/get", { accountId, ids: null }, booksCallId],
         ["ContactCard/query", { accountId }, queryCallId],
-        ["ContactCard/query", { accountId, filter: { kind: "group" } }, groupsCallId],
+        [
+          "ContactCard/query",
+          { accountId, filter: { kind: "group" } satisfies JmapContactCardFilterCondition },
+          groupsCallId,
+        ],
         // Empty get: state at query time, before later page gets advance it.
         ["ContactCard/get", { accountId, ids: [] }, cardStateCallId],
       ],
