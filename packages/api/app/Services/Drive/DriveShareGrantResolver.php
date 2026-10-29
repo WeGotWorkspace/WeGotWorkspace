@@ -10,7 +10,10 @@ use Illuminate\Support\Collection;
 
 final class DriveShareGrantResolver
 {
-    public function __construct(private DriveSharePathScope $scope) {}
+    public function __construct(
+        private DriveSharePathScope $scope,
+        private DriveShareOwnerReach $ownerReach,
+    ) {}
 
     /**
      * @param  list<array{
@@ -170,7 +173,7 @@ final class DriveShareGrantResolver
 
     /**
      * Live member-grant share roots for a user (direct + via member groups),
-     * as normalized virtual paths. Revoked/expired shares are skipped.
+     * as normalized virtual paths. Revoked, expired and dormant shares are skipped.
      *
      * @param  list<string>  $groupSlugs
      * @return list<string>
@@ -203,6 +206,9 @@ final class DriveShareGrantResolver
             if ($this->scope->isInProductTrash($path)) {
                 continue;
             }
+            if (! $this->ownerReach->ownerReachesShare($share)) {
+                continue;
+            }
             $paths[$path] = true;
         }
 
@@ -210,6 +216,9 @@ final class DriveShareGrantResolver
     }
 
     /**
+     * Null when the grant's share is revoked, expired, trashed, dormant (owner no longer
+     * reaches the share path) or does not cover $requestedPath.
+     *
      * @return array{
      *   shareId: string,
      *   rootPath: string,
@@ -240,6 +249,9 @@ final class DriveShareGrantResolver
             return null;
         }
         if (! $this->scope->isWithin($sharePath, $requestedPath)) {
+            return null;
+        }
+        if (! $this->ownerReach->ownerReachesShare($share)) {
             return null;
         }
 
