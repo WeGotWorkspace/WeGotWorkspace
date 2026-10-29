@@ -208,7 +208,10 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         toastMessage: nowStarred ? "Starred" : "Unstarred",
         icon: toastIcon,
         execute: async () => {
-          await persistNoteOrDropGone(operations.upsertNote(updated), () => dropGoneNote(id));
+          // The cached copy is already starred, so name the field to send it.
+          await persistNoteOrDropGone(operations.upsertNote(updated, { fields: ["starred"] }), () =>
+            dropGoneNote(id),
+          );
         },
         undo: () => {
           applyStarToggle(id);

@@ -139,4 +139,24 @@ describe("useNotesMutations star toast undo", () => {
     const updatedNotes = updater(mockNotes);
     expect(updatedNotes[0].starred).toBe(true);
   });
+
+  it("saves the star as a named field, since the cached copy is already starred", async () => {
+    const queueMutation = vi.fn();
+    const shell = buildShell();
+    const list = buildList({ queueMutation });
+
+    const { result } = renderHook(() => useNotesMutations({ shell, list }));
+
+    act(() => {
+      result.current.toggleStar("n-1");
+    });
+    await act(async () => {
+      await queueMutation.mock.calls[0][0].execute();
+    });
+
+    expect(shell.operations?.upsertNote).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "n-1", starred: true }),
+      { fields: ["starred"] },
+    );
+  });
 });

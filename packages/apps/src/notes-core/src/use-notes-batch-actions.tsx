@@ -168,7 +168,9 @@ export function useNotesBatchActions({
         if (!operations) return;
         await Promise.all(
           updatedRows.map((row) =>
-            persistNoteOrDropGone(operations.upsertNote(row), () => dropGoneNote(row.id)),
+            persistNoteOrDropGone(operations.upsertNote(row, { fields: ["starred"] }), () =>
+              dropGoneNote(row.id),
+            ),
           ),
         );
       },
