@@ -72,6 +72,25 @@ describe("notes-route-search", () => {
     ).toBe("shared-nb:/users/bob/.notes/TeamPad");
   });
 
+  // #1752: mid-navigation the pathname is new but params still belong to the
+  // previous route (e.g. /notes/starred has no tagSlug).
+  it("reads tag and shared notebook slugs from the path when params are stale", () => {
+    expect(notesViewFromLocation("/notes/tags/focus", {})).toBe("tag:focus");
+    expect(notesViewFromLocation("/notes/tags/focus/n-1", { noteId: "n-1" })).toBe("tag:focus");
+    expect(notesViewFromLocation("/notes/tags/next", { tagSlug: "focus" })).toBe("tag:next");
+    expect(
+      notesViewFromLocation("/notes/shared-nb/%252Fusers%252Fbob%252F.notes%252FTeamPad", {}),
+    ).toBe("shared-nb:/users/bob/.notes/TeamPad");
+  });
+
+  it("decodes tag slugs the router encoded twice", () => {
+    // notesNavigateTarget encodes the tag, the router encodes the param again.
+    expect(notesViewFromLocation("/notes/tags/my%2520tag", {})).toBe("tag:my tag");
+    expect(notesViewFromLocation("/notes/tags/50%2525", {})).toBe("tag:50%");
+    // A hand-typed URL with a single encoding still works.
+    expect(notesViewFromLocation("/notes/tags/my%20tag", {})).toBe("tag:my tag");
+  });
+
   it("does not let a notebook named Starred take over /notes/starred", () => {
     expect(notesViewFromLocation("/notes/starred", {})).toBe("starred");
     expect(notesViewFromLocation("/notes/archive", {})).toBe("archive");
