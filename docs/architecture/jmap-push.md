@@ -212,7 +212,7 @@ Each JMAP adapter (`lib/jmap-client/adapter/*`) already has `sync()` and knows i
 | Drive, Docs home | `FileNode` | `FileNode/changes` for the visible folder (`use-drive-file-node-inbound.ts`) |
 | Tasks | `Task`, `TaskList` | `refreshList` |
 
-The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`.
+The existing polls stay as the fallback. They slow down while push is connected and return to their normal interval when it is not. `useJmapPushConnected()` gives a poll that state; both hooks live in `lib/api/wgw/use-jmap-state-change.ts`. Work that one tab should do per push, such as fetching the inbox once and sharing it, checks `hub.leading`: the tab that holds the stream is visible whenever any subscribed tab is.
 
 ## Mesh "check now"
 
