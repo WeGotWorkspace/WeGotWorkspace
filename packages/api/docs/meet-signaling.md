@@ -73,7 +73,8 @@ A call in a chat channel uses the deterministic room id = the channel collection
 Principal rooms (presence/chat/typing over data channels, `principal_peers` / `principal_messages`):
 
 - `p_workspace` — workspace-wide room, any authenticated user may join.
-- `p_groups.{slug}` — addresses the Sabre group principal `principals/groups/{slug}`; membership is checked on join via `GroupDirectoryService::memberPrincipalUris`. Any other room form is denied.
+- `p_groups.{slug}` — addresses the Sabre group principal `principals/groups/{slug}`; membership is checked via `GroupDirectoryService::memberPrincipalUris` on join and again on every configuration, poll, send, relay and leave request. Any other room form is denied.
+- **Access while connected.** Principal and collab rooms re-run the join check on every request of a peer that is already in the room. A caller who lost access (removed from the group, share revoked) gets 403 `forbidden` on their next request, and all their peers in that room are removed, so the others stop seeing them in the roster. The check runs before the peer lookup, so without access to the room every peer id gets the same answer. `POST /files/rooms` hands out a collab room id only to a caller who passes the same check as the join; anything else is 404.
 - Peer identity is the Sabre username: `owner_user = u:{username}` is exposed as `user` in the roster (authoritative); the peer id is `{sanitized-username}-{6 hex}` (random suffix keeps multiple tabs apart).
 - Policy: SinceCursor poll with the conditional 204 fast path, 90 s peer timeout, send types `offer`/`answer`/`ice` only.
 

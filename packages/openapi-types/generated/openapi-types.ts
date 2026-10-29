@@ -2575,7 +2575,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolve file collab room */
+        /**
+         * Resolve file collab room
+         * @description Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.
+         */
         post: {
             parameters: {
                 query: {
@@ -2593,6 +2596,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Missing path */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path, or a path the caller may not read */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
