@@ -555,13 +555,16 @@ final class TaskRepository
             return null;
         }
 
-        $object = CalendarObject::query()->find((int) $rows->first()->id);
+        $objectId = (int) $rows->first()->id;
+        $object = CalendarObject::query()->find($objectId);
         if ($object === null) {
             return null;
         }
 
+        // Keep instances of this object's own list, then the strongest one.
         $instances = CalendarInstance::query()
-            ->whereIn('id', $rows->pluck('instance_id')->all())
+            ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
+            ->orderBy('id')
             ->get();
         $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
         if ($instance === null) {
