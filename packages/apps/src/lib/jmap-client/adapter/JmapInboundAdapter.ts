@@ -68,9 +68,19 @@ export abstract class JmapInboundAdapter {
       return true;
     } catch (error) {
       if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
-        await this.refetchAll();
-        return true;
+        return this.#refetchAllReported();
       }
+      this.reportSyncError(error);
+      return false;
+    }
+  }
+
+  /** The full re-list can fail too (#1792: `requestTooLarge` above 500 records). */
+  async #refetchAllReported(): Promise<boolean> {
+    try {
+      await this.refetchAll();
+      return true;
+    } catch (error) {
       this.reportSyncError(error);
       return false;
     }
