@@ -3,6 +3,7 @@ import type * as Y from "yjs";
 import { getConnectivitySnapshot } from "@/lib/offline/browser-online";
 import { readContentFromYDoc } from "./docs-collab-editor-surface";
 import { setDocsCollabSyncState } from "./docs-collab-sync-registry";
+import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
 import { clearDocsCollabPendingServerSave } from "./docs-collab-persistence";
 import { markRoomServerFailure, markRoomServerSuccess } from "./docs-collab-room-backoff";
 import { persistCollabSave } from "./docs-collab-save-attempt";
@@ -62,6 +63,7 @@ export function useDocsCollabSave({
       setPendingSync(pending);
       setFailedSync(pending && failed && getConnectivitySnapshot());
       refs.pendingServerSaveRef.current = pending;
+      setCollabRoomPendingServerSave(room, pending);
       setDocsCollabSyncState(room, {
         pendingServerSave: pending,
         failedSync: pending && failed && getConnectivitySnapshot(),
