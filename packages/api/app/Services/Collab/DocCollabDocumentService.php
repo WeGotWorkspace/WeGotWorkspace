@@ -102,6 +102,7 @@ final class DocCollabDocumentService
     public function put(Request $request, array $body): array
     {
         $virtual = $this->resolveWritablePath($request, $body['room'] ?? null);
+        $openedNodeId = $this->openedNodeId($request);
         $hasMarkdown = array_key_exists('markdown', $body);
         $hasYjs = array_key_exists('yjs', $body);
         if (! $hasMarkdown && ! $hasYjs) {
@@ -139,6 +140,7 @@ final class DocCollabDocumentService
         // puts the previous sidecar back.
         $lock = $this->acquireDocumentLock($sidecarKey);
         try {
+            $this->assertOpenedFileIsStillHere($openedNodeId, $documentKey);
             $this->assertSidecarPrecondition($request, $sidecarKey, $yjsBytes !== null);
             $previousSidecar = $this->readSidecarBytes($sidecarKey);
             $this->assertNoUnseenExternalWrite($request, $documentKey, $previousSidecar);
@@ -176,6 +178,42 @@ final class DocCollabDocumentService
         }
 
         return ['ok' => true, 'etag' => $this->storedSidecarEtag($sidecarKey)];
+    }
+
+    /**
+     * #1751: Docs names the FileNode it opened in `?node=`. Without it a save
+     * may create the file (older clients, a doc made offline).
+     */
+    private function openedNodeId(Request $request): ?string
+    {
+        $node = $request->query('node');
+        if ($node === null || $node === '') {
+            return null;
+        }
+        if (! is_string($node) || preg_match('/^fn-[0-9a-f]{32}$/', $node) !== 1) {
+            $this->fail('invalid_node');
+        }
+
+        return $node;
+    }
+
+    /**
+     * After a rename or move elsewhere the old path is empty, or holds another
+     * file. Writing there would split the document, so the save is 404 and the
+     * editor looks the id up again. A file the index has not seen yet passes.
+     */
+    private function assertOpenedFileIsStillHere(?string $nodeId, string $documentKey): void
+    {
+        if ($nodeId === null) {
+            return;
+        }
+        if (! $this->storage->files()->fileExists($documentKey)) {
+            $this->fail('not_found', 404);
+        }
+        $live = $this->fileNodes->liveByKey($documentKey);
+        if ($live !== null && $live->node_id !== $nodeId) {
+            $this->fail('not_found', 404);
+        }
     }
 
     /**

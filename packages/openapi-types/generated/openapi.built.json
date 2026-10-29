@@ -13644,6 +13644,16 @@
                         }
                     },
                     {
+                        "name": "node",
+                        "in": "query",
+                        "required": false,
+                        "description": "FileNode id of the document the client opened (#1751). When that file is no longer at `path` (renamed or moved elsewhere, or another file took the path) the save is refused with 404 and nothing is written. Without it a save may create the file.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^fn-[0-9a-f]{32}$"
+                        }
+                    },
+                    {
                         "name": "If-None-Match",
                         "in": "header",
                         "required": false,
@@ -13674,6 +13684,16 @@
                             }
                         }
                     },
+                    "400": {
+                        "description": "Malformed body or `node`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "403": {
                         "description": "No write access to the path",
                         "content": {
@@ -13685,7 +13705,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown path",
+                        "description": "Unknown path, or the file named by `node` is no longer at `path`",
                         "content": {
                             "application/json": {
                                 "schema": {
