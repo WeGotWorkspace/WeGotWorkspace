@@ -16,6 +16,8 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   subscribePush: vi.fn(),
 }));
 
+vi.mock("@/lib/api/wgw/jmap-push", () => ({ defaultJmapPushHub: () => null }));
+
 vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({
   ensurePushPermissionAndSubscribe: vi.fn(async () => false),
 }));
