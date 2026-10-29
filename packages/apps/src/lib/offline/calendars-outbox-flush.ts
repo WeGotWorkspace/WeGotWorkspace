@@ -21,7 +21,8 @@ import {
 } from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
+import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import {
   listOutboxMutations,
   markOutboxError,
@@ -85,6 +86,8 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
   const schedulingConflicts: string[] = [];
   const tempToServerId = new Map<string, string>();
   const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
+  // Rows sent again in this flush (`sendChangedRowAgain` appends to `orderedRows`).
+  const resends = new Map<string, number>();
 
   for (const row of orderedRows) {
     try {
@@ -102,7 +105,13 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const eventId = resolveEventId(String(payload.eventId ?? ""));
         const patch = payload.patch as CalendarEventPatch;
         const event = await patchCalendarEventLive(eventId, patch);
-        await upsertCalendarEventInCache(username, event, false);
+        // A patch merged in while this one was sent stays queued.
+        const settlement = await settleSentOutboxMutation(username, row, {
+          cacheTables: (db) => [calendarsEventsTable(db)],
+          onRemoved: () => upsertCalendarEventInCache(username, event, false),
+        });
+        sendChangedRowAgain(orderedRows, resends, settlement);
+        continue;
       } else if (row.op === "delete") {
         const eventId = resolveEventId(String(payload.eventId ?? ""));
         await deleteCalendarEventLive(eventId);

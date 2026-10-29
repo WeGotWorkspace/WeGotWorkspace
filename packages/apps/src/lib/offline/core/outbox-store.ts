@@ -1,4 +1,9 @@
-import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
+import type { Table } from "dexie";
+import {
+  offlineAccountKeyFromUsername,
+  offlineDbForAccount,
+  type WgwOfflineDatabase,
+} from "@/lib/offline/core/offline-db";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 
 /** Append a mutation to the account outbox. `createdAt`/`retries` are managed here. */
@@ -46,6 +51,82 @@ export async function putOutboxMutation(username: string, row: OfflineOutboxRow)
 export async function removeOutboxMutation(username: string, id: string): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   await db.outbox.delete(id);
+}
+
+/** What became of a row the flush has just sent. */
+export type SentOutboxSettlement =
+  /** Unchanged since the flush read it: removed. */
+  | { kind: "removed" }
+  /** An edit was merged in while the request was on its way: still queued. */
+  | { kind: "changed"; row: OfflineOutboxRow }
+  /** Someone else removed it meanwhile (a delete dropped the entity's rows). */
+  | { kind: "missing" };
+
+function sameMutation(left: OfflineOutboxRow, right: OfflineOutboxRow): boolean {
+  return (
+    left.op === right.op && left.payload === right.payload && left.ifInState === right.ifInState
+  );
+}
+
+export type SettleSentOutboxOptions = {
+  /** Turns the still-queued row into what is owed, e.g. the answer's concurrency token. */
+  rebase?: (row: OfflineOutboxRow) => OfflineOutboxRow;
+  /** Cache tables the callbacks write; they join the same transaction. */
+  cacheTables?: (db: WgwOfflineDatabase) => Table[];
+  /** Cache the server's answer: nothing newer is queued. */
+  onRemoved?: () => Promise<void>;
+  /** A newer edit is queued: the cache keeps that local copy. */
+  onChanged?: (row: OfflineOutboxRow) => Promise<void>;
+};
+
+/**
+ * Settle a row the server accepted. It is removed only when it is unchanged
+ * since `sent` was read. An edit coalesced into it while the request was on
+ * its way stays queued, so it is sent too, and the server's older answer is
+ * not cached over it (#1711). One transaction covers the outbox and the
+ * cache, so a write that caches and queues together lands before or after.
+ */
+export async function settleSentOutboxMutation(
+  username: string,
+  sent: OfflineOutboxRow,
+  options: SettleSentOutboxOptions = {},
+): Promise<SentOutboxSettlement> {
+  const { rebase, cacheTables, onRemoved, onChanged } = options;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const tables = [db.outbox, ...(cacheTables?.(db) ?? [])];
+  return db.transaction("rw", tables, async (): Promise<SentOutboxSettlement> => {
+    const current = await db.outbox.get(sent.id);
+    if (!current) return { kind: "missing" };
+    if (sameMutation(current, sent)) {
+      await db.outbox.delete(sent.id);
+      await onRemoved?.();
+      return { kind: "removed" };
+    }
+    const row = rebase ? rebase(current) : current;
+    if (row !== current) await db.outbox.put(row);
+    await onChanged?.(row);
+    return { kind: "changed", row };
+  });
+}
+
+/** How often one row is sent again in a flush because edits kept arriving. */
+export const MAX_RESENDS_PER_FLUSH = 5;
+
+/**
+ * Put a row that changed while it was sent at the end of `rows`, so the
+ * running flush (a `for...of` over `rows`) sends it too: online, nothing else
+ * would start the next flush. `resends` counts per row id for this flush.
+ */
+export function sendChangedRowAgain(
+  rows: OfflineOutboxRow[],
+  resends: Map<string, number>,
+  settlement: SentOutboxSettlement,
+): void {
+  if (settlement.kind !== "changed") return;
+  const count = resends.get(settlement.row.id) ?? 0;
+  if (count >= MAX_RESENDS_PER_FLUSH) return;
+  resends.set(settlement.row.id, count + 1);
+  rows.push(settlement.row);
 }
 
 /**
