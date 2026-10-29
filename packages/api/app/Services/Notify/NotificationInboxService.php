@@ -62,7 +62,8 @@ final class NotificationInboxService
     }
 
     /**
-     * Record that the client showed a local Notification API toast (tab unfocused).
+     * Record that a visible window, or one in a Meet call, has shown this row,
+     * so the VAPID sweep skips push for it on every device.
      */
     public function ackLocalDelivery(string $username, string $id): void
     {

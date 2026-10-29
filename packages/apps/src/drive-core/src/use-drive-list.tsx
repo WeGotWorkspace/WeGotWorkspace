@@ -14,6 +14,8 @@ import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files
 import { isDocsEditorPreviewFile } from "@/lib/file-preview/file-preview-utils";
 
 const WRITE_QUEUE_DELAY_MS = 2500;
+/** List view shows no thumbnails: only the detail file's preview loads. */
+const NO_TILES_IN_VIEW: ReadonlySet<string> = new Set();
 
 export type UseDriveListArgs = {
   shell: DriveShellState;
@@ -45,6 +47,8 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [viewMode, setViewMode] = usePersistedDriveViewMode("grid");
+  // Empty until the grid reports its tiles on screen; `null` = visibility unknown (load all).
+  const [tilesInView, setTilesInView] = useState<ReadonlySet<string> | null>(NO_TILES_IN_VIEW);
   const recentOpenRef = useRef<{ key: string; at: number } | null>(null);
   const isTouch = useIsTouch();
   const lastTouchTapRef = useRef<{ id: string; at: number } | null>(null);
@@ -128,6 +132,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     operations,
     enabled: viewMode === "grid" || detailOpen,
     extraFile: detailPreviewFile,
+    tilesInView: viewMode === "grid" ? tilesInView : NO_TILES_IN_VIEW,
   });
 
   const openFile = (f: DriveFile) => {
@@ -201,6 +206,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const dropZoneProps = sidebarDropZoneProps;
 
   return {
+    setTilesInView,
     activeId,
     setActiveId,
     selectedIds,

@@ -29,7 +29,9 @@ import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 export function useInstallerController({
   data,
   operations,
-}: Pick<InstallerWorkspaceProps, "data" | "operations">) {
+  onOpenWorkspace,
+  onAdminSignedIn,
+}: Pick<InstallerWorkspaceProps, "data" | "operations" | "onOpenWorkspace" | "onAdminSignedIn">) {
   const [installerState, setInstallerState] = useState<WgwInstallerRuntimeState | null>(data.state);
   const [screen, setScreen] = useState<InstallerScreen>(() => installerScreenFromState(data.state));
   const [actionPending, setActionPending] = useState(false);
@@ -191,27 +193,24 @@ export function useInstallerController({
     ],
   );
 
-  const openWorkspace = useCallback(
-    async (fallback?: () => void) => {
-      if (openingWorkspace) return;
-      const credentials = freshAdminRef.current;
-      if (!credentials) {
-        fallback?.();
-        return;
-      }
-      setOpeningWorkspace(true);
-      try {
-        await wgwLoginWithCredentials(credentials.username, credentials.password);
-        freshAdminRef.current = null;
-        window.location.assign("/");
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not sign in.");
-      } finally {
-        setOpeningWorkspace(false);
-      }
-    },
-    [openingWorkspace],
-  );
+  const openWorkspace = useCallback(async () => {
+    if (openingWorkspace) return;
+    const credentials = freshAdminRef.current;
+    if (!credentials) {
+      onOpenWorkspace?.();
+      return;
+    }
+    setOpeningWorkspace(true);
+    try {
+      await wgwLoginWithCredentials(credentials.username, credentials.password);
+      freshAdminRef.current = null;
+      onAdminSignedIn?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not sign in.");
+    } finally {
+      setOpeningWorkspace(false);
+    }
+  }, [onAdminSignedIn, onOpenWorkspace, openingWorkspace]);
 
   const rerunChecks = useCallback(async () => {
     if (!operations || actionPending) return;

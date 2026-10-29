@@ -16,10 +16,10 @@ const ACCOUNT_ID = "bob";
 
 type RecordedCall = { using: string[]; methodCalls: JmapInvocation[] };
 
-function session(): JmapSession {
+function session(core: Record<string, unknown> = {}): JmapSession {
   return {
     capabilities: {
-      [CORE_CAPABILITY]: { maxSizeUpload: 25_000_000 },
+      [CORE_CAPABILITY]: { maxSizeUpload: 25_000_000, ...core },
       [CALENDARS_CAPABILITY]: {},
       [FILENODE_CAPABILITY]: {},
     },
@@ -44,7 +44,10 @@ function session(): JmapSession {
   };
 }
 
-function makeClient(handler: (body: JmapRequest) => unknown): {
+function makeClient(
+  handler: (body: JmapRequest) => unknown,
+  core: Record<string, unknown> = {},
+): {
   client: JmapClient;
   recorded: RecordedCall[];
 } {
@@ -53,7 +56,7 @@ function makeClient(handler: (body: JmapRequest) => unknown): {
     sessionUrl: SESSION_URL,
     fetch: async (input, init) => {
       if (input === SESSION_URL) {
-        return new Response(JSON.stringify(session()), { status: 200 });
+        return new Response(JSON.stringify(session(core)), { status: 200 });
       }
       const body = JSON.parse(String(init?.body)) as JmapRequest;
       recorded.push({ using: body.using, methodCalls: body.methodCalls });
@@ -101,6 +104,115 @@ describe("JmapFileNodesClient", () => {
     expect(getCall?.[1]).toEqual({
       accountId: ACCOUNT_ID,
       "#ids": { resultOf: queryCall?.[2], name: "FileNode/query", path: "/ids" },
+    });
+  });
+
+  describe("queryAndGetFileNodes past maxObjectsInGet", () => {
+    /**
+     * Server stand-in: answers the query with `ids`, rejects a get of more
+     * than `max` ids with `requestTooLarge` (as `HandlesGetArguments` does),
+     * and echoes each id back as a node with a per-request state.
+     */
+    function largeFolderServer(ids: string[], max: number) {
+      let getRequests = 0;
+      return (body: JmapRequest) => {
+        const queryIds = new Map<string, string[]>();
+        return {
+          methodResponses: body.methodCalls.map(([name, args, id]) => {
+            if (name === "FileNode/query") {
+              queryIds.set(id, ids);
+              return [name, { accountId: ACCOUNT_ID, ids, queryState: "1", position: 0 }, id];
+            }
+            const ref = args["#ids"] as { resultOf: string } | undefined;
+            const requested = ref ? (queryIds.get(ref.resultOf) ?? []) : (args.ids as string[]);
+            if (requested.length > max) {
+              return [
+                "error",
+                { type: "requestTooLarge", description: "ids exceeds maxObjectsInGet." },
+                id,
+              ];
+            }
+            getRequests += 1;
+            return [
+              name,
+              {
+                accountId: ACCOUNT_ID,
+                state: `s${getRequests}`,
+                list: requested.map((nodeId) => ({ id: nodeId, name: `${nodeId}.txt` })),
+                notFound: [],
+              },
+              id,
+            ];
+          }),
+          sessionState: "1",
+        };
+      };
+    }
+
+    it("fetches the query ids in chunks of the session's maxObjectsInGet", async () => {
+      const ids = ["fn-1", "fn-2", "fn-3", "fn-4", "fn-5"];
+      const { client, recorded } = makeClient(largeFolderServer(ids, 2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.queryAndGetFileNodes(ACCOUNT_ID, { parentId: "fn-big" });
+
+      expect(got.list.map((node) => node.id)).toEqual(ids);
+      expect(got.notFound).toEqual([]);
+      expect(got.state).toBe("s3");
+      expect(client.getState(ACCOUNT_ID, "FileNode")).toBe("s3");
+      const chunkGets = recorded.slice(1).map((row) => row.methodCalls);
+      expect(chunkGets.map((calls) => calls.map(([name, args]) => [name, args.ids]))).toEqual([
+        [["FileNode/get", ["fn-1", "fn-2"]]],
+        [["FileNode/get", ["fn-3", "fn-4"]]],
+        [["FileNode/get", ["fn-5"]]],
+      ]);
+      for (const row of recorded) expect(row.using).toEqual(FILENODE_USING);
+    });
+
+    it("falls back to 500-id chunks when the session does not state maxObjectsInGet", async () => {
+      const ids = Array.from({ length: 1012 }, (_, index) => `fn-${index}`);
+      const { client, recorded } = makeClient(largeFolderServer(ids, 500));
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.queryAndGetFileNodes(ACCOUNT_ID, { parentId: "fn-big" });
+
+      expect(got.list).toHaveLength(1012);
+      expect(got.list.map((node) => node.id)).toEqual(ids);
+      expect(
+        recorded.slice(1).map((row) => (row.methodCalls[0]?.[1].ids as string[]).length),
+      ).toEqual([500, 500, 12]);
+    });
+
+    it("keeps a folder at the limit to the single query+get round trip", async () => {
+      const ids = ["fn-1", "fn-2"];
+      const { client, recorded } = makeClient(largeFolderServer(ids, 2), { maxObjectsInGet: 2 });
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      const got = await fileNodes.queryAndGetFileNodes(ACCOUNT_ID, { parentId: "fn-small" });
+
+      expect(got.list.map((node) => node.id)).toEqual(ids);
+      expect(recorded).toHaveLength(1);
+    });
+
+    it("still throws when the get fails for another reason", async () => {
+      const { client, recorded } = makeClient((body) => ({
+        methodResponses: body.methodCalls.map(([name, , id]) =>
+          name === "FileNode/query"
+            ? [name, { accountId: ACCOUNT_ID, ids: ["fn-1"], queryState: "1" }, id]
+            : ["error", { type: "forbidden" }, id],
+        ),
+        sessionState: "1",
+      }));
+      await client.connect();
+      const fileNodes = new JmapFileNodesClient(client);
+
+      await expect(
+        fileNodes.queryAndGetFileNodes(ACCOUNT_ID, { parentId: "fn-docs" }),
+      ).rejects.toThrow(/FileNode query\+get failed: .*forbidden/);
+      expect(recorded).toHaveLength(1);
     });
   });
 

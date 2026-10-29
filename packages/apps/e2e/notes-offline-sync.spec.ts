@@ -10,6 +10,7 @@ import {
   seedNoteWithToken,
   deleteFilteredArchivedNotes,
   expectOfflineIndicator,
+  expectPendingDotHidden,
   expectPendingDotVisible,
   expectSyncCompleted,
   noteTokenOnServer,
@@ -43,6 +44,28 @@ test.describe("Notes offline sync (live app)", () => {
     await page.context().setOffline(false);
     await expectSyncCompleted(page);
     await expect(page.locator(".ProseMirror")).toContainText(token);
+  });
+
+  test("offline edit of a note you leave: background save clears its pending dot", async ({
+    page,
+  }) => {
+    const token = `e2e-left-${Date.now()}`;
+
+    await prepareNotesForOfflineSync(page);
+    await openFirstNote(page);
+
+    await page.context().setOffline(true);
+    await expectOfflineIndicator(page);
+    await appendToActiveNoteBody(page, token);
+
+    // Leave the note: its editor unmounts and the body waits for a background save.
+    await page.locator(".list-item__button").nth(1).click();
+    await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 15_000 });
+    await expectPendingDotVisible(page);
+
+    await page.context().setOffline(false);
+    await expect.poll(() => noteTokenOnServer(page, token), { timeout: 45_000 }).toBe(true);
+    await expectPendingDotHidden(page);
   });
 
   test("offline create + body edit reconnect preserves body", async ({ page }) => {

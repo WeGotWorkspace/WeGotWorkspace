@@ -20,6 +20,11 @@ Use when reviewing diffs or before multitask chunk handoff. Not every item requi
 - [ ] Copy-pasted blocks (DRY violation)
 - [ ] Long Tailwind strings in TSX or raw CSS properties where `@apply` belongs ([apps-ui](../apps-ui/SKILL.md))
 
+Two CI checks block new copies (no warn-only phase):
+
+- **Duplicate-code ratchet** (`pnpm check:duplicate-code`, runs in `ci:quality:apps`). [jscpd](https://github.com/kucherenko/jscpd) scans `packages/apps/src` (TypeScript/TSX) and `packages/api/app` (PHP) for exact copies of at least 70 tokens and 10 lines. It skips the files the file-size ratchet skips, plus `stories/`, `mock/`, `mocks/`, `tests/`, `__tests__/` folders and `*.fixtures.ts(x)`. `tools/duplicate-code-baseline.json` stores the clone count and duplicated-line total per scope. The check fails when either number grows. It also fails when a number drops and the baseline still holds the old value: run `pnpm duplicate-code:update` and commit the baseline in the same PR. `update` only lowers numbers. When the check fails, `pnpm duplicate-code:report` (optionally `-- --top 30`) prints the totals and the largest duplicated blocks as `file:start-end` pairs. Extract the shared code instead of copying it. Raising a number, changing the thresholds, or upgrading jscpd is a hand edit of the baseline that needs code-owner review.
+- **DAV backend copies** (`DavBackendCopyAllowlistTest`, API Architecture suite). Only the listed classes may define `calBackend()` or `cardBackend()`. A new definition fails. A listed class that no longer defines the method also fails, so remove it from the list in the same PR. The list shrinks as [#1639](https://github.com/WeGotWorkspace/wegotworkspace/issues/1639) replaces the copies with one shared backend.
+
 ## Coupling
 
 - [ ] Feature envy (method uses another module's data more than its own)
@@ -72,4 +77,4 @@ A new counted source file over 800 lines is a merge block unless its baseline en
 
 - [ ] Legacy PHP patterns in `packages/api` (see `api/SKILL.md` forbidden list)
 - [ ] Inline `style={}` presets that should be CSS variables ([apps-ui](../apps-ui/SKILL.md))
-- [ ] `window.location` or router calls inside workspace packages ([workspace](../workspace/SKILL.md))
+- [ ] `window.location` or router calls inside workspace packages ([workspace](../workspace/SKILL.md)); ESLint blocks them in `*-workspace.tsx` and `use-*-controller.ts(x)` (`workspaceNavigationRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js))

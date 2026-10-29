@@ -82,6 +82,45 @@ describe("useListReorderAnimation", () => {
     vi.restoreAllMocks();
   });
 
+  it("animates only the rows that moved when the list scrolled since the last reorder", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
+
+    let order = ["a", "b", "c"];
+    let scrollY = 0;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const id = this.getAttribute("data-list-item-id");
+      // The container (no id) and its rows both move up when the list scrolls.
+      const top = (id ? order.indexOf(id) * 40 : 0) - scrollY;
+      return {
+        x: 0,
+        y: top,
+        top,
+        left: 0,
+        bottom: top + 40,
+        right: 100,
+        width: 100,
+        height: 40,
+      } as DOMRect;
+    });
+
+    const { rerender, container } = render(<ListHarness ids={order} />);
+
+    scrollY = 30;
+    order = ["b", "a", "c"];
+    rerender(<ListHarness ids={order} />);
+
+    const row = (id: string) =>
+      container.querySelector<HTMLElement>(`[data-list-item-id="${id}"]`)!;
+    expect(row("a").style.transition).toContain("transform");
+    expect(row("b").style.transition).toContain("transform");
+    expect(row("c").style.transition).toBe("");
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   it("skips FLIP when a row is only removed (swipe-archive path)", () => {
     const matchMedia = vi.fn().mockReturnValue({ matches: false });
     vi.stubGlobal("matchMedia", matchMedia);

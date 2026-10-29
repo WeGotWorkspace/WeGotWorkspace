@@ -57,6 +57,11 @@ export type UseDriveGridPreviewsArgs = {
   enabled?: boolean;
   /** Also prefetch for this file (e.g. detail panel active item). */
   extraFile?: DriveFile | null;
+  /**
+   * Grid tiles on or near screen. Media previews load only for these.
+   * `null` or absent: visibility unknown, every media file in `items` loads.
+   */
+  tilesInView?: ReadonlySet<string> | null;
 };
 
 export function useDriveGridPreviews({
@@ -64,6 +69,7 @@ export function useDriveGridPreviews({
   operations,
   enabled = true,
   extraFile = null,
+  tilesInView = null,
 }: UseDriveGridPreviewsArgs) {
   const [fetchedPreviews, setFetchedPreviews] = useState<Record<string, PreviewEntry>>({});
   const [richPreviews, setRichPreviews] = useState<Record<string, PreviewEntry>>({});
@@ -73,7 +79,11 @@ export function useDriveGridPreviews({
   const blobUrlsRef = useRef<Record<string, string>>({});
   const inFlightRef = useRef(0);
   const queueRef = useRef<Array<() => void>>([]);
+  /** Media previews queued or loading, so a re-render does not queue them twice. */
+  const requestedMediaRef = useRef<Set<string>>(new Set());
+  const wantedMediaIdsRef = useRef<Set<string>>(new Set());
 
+  /** Every file whose preview this view may show; loaded previews of these are kept. */
   const previewTargets = useMemo(() => {
     if (!enabled) {
       return extraFile && (isMediaPreviewable(extraFile) || isTextPreviewable(extraFile))
@@ -93,6 +103,17 @@ export function useDriveGridPreviews({
     return Array.from(map.values());
   }, [enabled, extraFile, items]);
 
+  /** The media previews to load now: tiles on screen, plus the detail file. */
+  const mediaFetchTargets = useMemo(
+    () =>
+      previewTargets.filter(
+        (file) =>
+          isMediaPreviewable(file) &&
+          (!tilesInView || tilesInView.has(file.id) || file.id === extraFile?.id),
+      ),
+    [extraFile, previewTargets, tilesInView],
+  );
+
   const textPreviewTargets = useMemo(() => {
     if (!extraFile || !isTextPreviewable(extraFile)) return [] as DriveFile[];
     return [extraFile];
@@ -101,6 +122,10 @@ export function useDriveGridPreviews({
   useEffect(() => {
     previewTargetIdsRef.current = new Set(previewTargets.map((file) => file.id));
   }, [previewTargets]);
+
+  useEffect(() => {
+    wantedMediaIdsRef.current = new Set(mediaFetchTargets.map((file) => file.id));
+  }, [mediaFetchTargets]);
 
   const excerptPreviews = useMemo(
     () => buildExcerptPreviews(textPreviewTargets),
@@ -179,8 +204,15 @@ export function useDriveGridPreviews({
     (file: DriveFile) => {
       if (!operations?.readFileBlob || !file.apiPath) return;
       if (fetchedPreviewsRef.current[file.id]?.kind === "blob-url") return;
+      if (requestedMediaRef.current.has(file.id)) return;
+      requestedMediaRef.current.add(file.id);
 
       enqueue(() => {
+        // Scrolled away while queued: skip; it queues again when it comes back.
+        if (!wantedMediaIdsRef.current.has(file.id)) {
+          requestedMediaRef.current.delete(file.id);
+          return;
+        }
         inFlightRef.current += 1;
         void operations
           .readFileBlob(file.apiPath!)
@@ -205,6 +237,7 @@ export function useDriveGridPreviews({
             // Tile falls back to icon.
           })
           .finally(() => {
+            requestedMediaRef.current.delete(file.id);
             inFlightRef.current -= 1;
             runNext();
           });
@@ -282,10 +315,8 @@ export function useDriveGridPreviews({
   useEffect(() => {
     if (!enabled && !extraFile) return;
 
-    for (const file of previewTargets) {
-      if (isMediaPreviewable(file)) {
-        fetchMediaPreview(file);
-      }
+    for (const file of mediaFetchTargets) {
+      fetchMediaPreview(file);
     }
     for (const file of textPreviewTargets) {
       fetchTextPreview(file);
@@ -297,7 +328,7 @@ export function useDriveGridPreviews({
     fetchDocsRichPreview,
     fetchMediaPreview,
     fetchTextPreview,
-    previewTargets,
+    mediaFetchTargets,
     textPreviewTargets,
   ]);
 
@@ -339,6 +370,7 @@ export function useDriveGridPreviews({
   }, [previewTargets, revokeBlobUrl]);
 
   useEffect(() => {
+    const requestedMedia = requestedMediaRef.current;
     return () => {
       for (const id of Object.keys(blobUrlsRef.current)) {
         revokeBlobUrl(id);
@@ -346,6 +378,7 @@ export function useDriveGridPreviews({
       fetchedPreviewsRef.current = {};
       richPreviewsRef.current = {};
       queueRef.current = [];
+      requestedMedia.clear();
     };
   }, [revokeBlobUrl]);
 
