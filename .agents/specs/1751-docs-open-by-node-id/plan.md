@@ -50,8 +50,10 @@ Considered: putting `nodeId` on `DriveFile` and changing every `onOpenFile(apiPa
 
 ## Invariants
 
-- An old `/docs?file=<path>` link still opens the Doc. A wrong change sends old bookmarks and notification links to Docs home. Proof: `path: packages/apps/src/docs-core/src/use-docs-route-document.test.tsx` assertion `opens a file link by path at once and swaps in the id`.
-- Offline, a `?file=` link opens without any network call succeeding, and an `?id=` link opens from the Drive cache. A wrong change shows not found on a train. Proof: `path: packages/apps/src/docs-core/src/use-docs-route-document.test.tsx` assertions `falls back to the cached path when the network fails` and `keeps the file link when offline and the id is unknown`.
+- An old `/docs?file=<path>` link still opens the Doc. A wrong change sends old bookmarks and notification links to Docs home. Proof: `path: packages/apps/src/docs-core/src/use-docs-route-document.test.tsx` assertions `waits for a file link's id before opening, then swaps in the id` and `opens the file link by path when the server has no such file`.
+- Offline, a `?file=` link opens without any network call succeeding, and an `?id=` link opens from the local caches (Docs' own id ↔ path record, then the Drive cache). A wrong change shows not found on a train. Proof: `path: packages/apps/src/docs-core/src/use-docs-route-document.test.tsx` assertions `falls back to the cached path when the network fails` and `opens the file link by path when offline and the id is unknown`; `path: packages/apps/e2e/docs-open-by-id.spec.ts` test `an id link reopens from the cache while the server is unreachable`.
+- Typing while someone else renames or moves the Doc never splits it into two files. A wrong change leaves the typed text in a new file at the old path. Proof: `path: packages/api/tests/Feature/Docs/DocsCollabSaveByNodeIdTest.php` assertion `test_save_after_the_file_moved_is_404_and_writes_nothing`; `path: packages/apps/e2e/docs-open-by-id.spec.ts` test `typing while someone else renames keeps the text on the renamed file`.
+- A save without `node` still creates the file (older clients, a Doc made offline). Proof: `path: packages/api/tests/Feature/Docs/DocsCollabSaveByNodeIdTest.php` assertion `test_save_without_a_node_still_creates_the_file`.
 - Guests keep `?file=` and never call the user-only endpoint. A wrong change turns every guest share link into an error. Proof: `path: packages/apps/src/docs-core/src/use-docs-route-document.test.tsx` assertion `does not resolve for guests`; `path: packages/apps/src/share-ui/share-destination.test.ts` (unchanged).
 - The endpoint never resolves an id the caller cannot read, and never resolves into product trash. A wrong change leaks a path or reopens a trashed Doc. Proof: `path: packages/api/tests/Feature/Docs/DocsFileNodeLocateTest.php` assertions `test_stranger_cannot_resolve`, `test_trashed_doc_is_not_found`.
 - Notes collab is untouched. Proof: `path: packages/apps/src/notes-core/src/note-collab-path.test.ts` (unchanged, green).
@@ -83,6 +85,15 @@ Considered: putting `nodeId` on `DriveFile` and changing every `onOpenFile(apiPa
 - **Inputs:** inbound refresh key and reconnect hook `path: packages/apps/src/docs-core/src/docs-app.tsx:62`
 - **Done when:** with `?id=` open, a server-side rename or move is picked up on reconnect, inbound refresh, and tab visibility; the editor re-renders on the new path; the URL does not change.
 - **Verify with:** vitest for the hook; browser e2e: open by id, rename in Drive in a second tab, return to the Docs tab.
+- **Parallel with:** none
+
+### Chunk D: A save never splits a moved Doc
+
+- **id:** `docs-save-follows-id`
+- **Skill:** api, workspace
+- **Inputs:** `DocCollabDocumentService::put` `path: packages/api/app/Services/Collab/DocCollabDocumentService.php:102`; editor database choice `path: packages/apps/src/text-editor-core/docs-collab/docs-collab-persistence.ts:150`
+- **Done when:** Docs saves carry `&node=<id>`; the server answers 404 and writes nothing when that file is no longer at the path (or another file took it); the editor then looks the id up again (`relocate`) and moves to the new path without the "gone" notice; the id ↔ path record (`docs-node-paths`) makes the editor open its id-keyed local copy, so typed text follows the move; `?file=` waits for its id before the editor opens.
+- **Verify with:** `cd packages/api && vendor/bin/phpunit --filter=DocsCollabSaveByNodeIdTest`; `pnpm --dir packages/apps exec vitest run src/docs-core src/lib/offline/docs`; e2e `docs-open-by-id.spec.ts`.
 - **Parallel with:** none
 
 ## Test plan

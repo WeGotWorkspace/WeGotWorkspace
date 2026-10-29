@@ -14,6 +14,7 @@ Do not record chunk completion here. The GitHub issue and the test or file that 
 | `api-file-node-locate` | builder | api | `packages/api/app/Http/Controllers/Api/V1/Files/FileNodeLocateController.php`, `packages/api/app/Services/Drive/DriveFileNodeLocator.php`, `packages/api/routes/api.php`, `packages/api/openapi/openapi.json`, `packages/api/app/Services/Notify/DocsThreadActivityNotify.php` | `pnpm test:api-done-gate` |
 | `apps-docs-route-id` | builder | workspace | `packages/apps/src/docs-core/src/docs-route-search.ts`, `packages/apps/src/docs-core/src/use-docs-route-document.ts`, `packages/apps/src/docs-core/src/docs-app.tsx`, `packages/apps/src/lib/api/wgw/drive-node-locate.ts` | `pnpm --dir packages/apps exec vitest run src/docs-core` |
 | `apps-docs-follow-rename` | builder | workspace | `packages/apps/src/docs-core/src/use-docs-route-document.ts`, `packages/apps/src/docs-core/src/docs-app.tsx` | `pnpm --dir packages/apps exec vitest run src/docs-core` |
+| `docs-save-follows-id` | builder | api, workspace | `packages/api/app/Services/Collab/DocCollabDocumentService.php`, `packages/apps/src/lib/offline/docs/docs-node-paths.ts`, `packages/apps/src/docs-core/src/docs-collab-urls.ts`, `packages/apps/src/text-editor-core/docs-collab/docs-collab-persistence.ts` | `cd packages/api && vendor/bin/phpunit --filter=DocsCollabSaveByNodeIdTest`; `pnpm --dir packages/apps exec vitest run src/docs-core src/lib/offline/docs` |
 
 ## Notes
 
