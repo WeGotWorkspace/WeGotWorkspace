@@ -6,7 +6,7 @@ export type CalendarSettingsInfo = Pick<
   CalendarInfo,
   "scope" | "groupSlug" | "mayShare" | "mayWrite" | "subscriptionId"
 > &
-  Partial<Pick<CalendarInfo, "id" | "isDefault">>;
+  Partial<Pick<CalendarInfo, "id" | "isDefault" | "mayDelete">>;
 
 /**
  * Personal owners (`mayShare === true` or omitted). Group calendars stay
@@ -61,7 +61,8 @@ export function canRenameCalendar(calendar?: CalendarSettingsInfo): boolean {
 
 /**
  * Move Owner between personal and group (same options as create).
- * Default, provisioned group, subscriptions, and sharees stay locked.
+ * Default, provisioned group, subscriptions, and sharees stay locked. Moving a
+ * group calendar out of its group needs the delete right (`mayDelete`).
  */
 export function canChangeCalendarOwner(calendar?: CalendarSettingsInfo): boolean {
   if (!calendar) return false;
@@ -69,6 +70,7 @@ export function canChangeCalendarOwner(calendar?: CalendarSettingsInfo): boolean
   if (calendar.isDefault) return false;
   if (isSharedWithMeCalendar(calendar)) return false;
   if (!canManageCalendarSharing(calendar)) return false;
+  if (calendar.scope === "group" && calendar.mayDelete === false) return false;
   const slug = calendar.groupSlug?.trim();
   if (calendar.scope === "group" && slug && calendar.id === `group-${slug}`) {
     return false;
