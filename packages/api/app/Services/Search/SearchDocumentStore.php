@@ -6,9 +6,20 @@ namespace App\Services\Search;
 
 use App\Models\SearchDocument;
 use App\Models\SearchTerm;
+use Illuminate\Support\Facades\Log;
 
 final class SearchDocumentStore
 {
+    /**
+     * Column lengths in search_documents. MySQL strict mode rejects a longer
+     * value (1406), which used to stop a whole reindex.
+     */
+    private const MAX_SOURCE_KEY_LENGTH = 512;
+
+    private const MAX_TITLE_LENGTH = 512;
+
+    private const MAX_EXTENSION_LENGTH = 32;
+
     public function __construct(
         private SearchTokenService $tokens,
     ) {}
@@ -19,6 +30,17 @@ final class SearchDocumentStore
      */
     public function upsert(string $sourceType, string $sourceKey, array $document, array $tokensByField): void
     {
+        // The key identifies the document, so it cannot be cut short. A file
+        // nested deeper than the column allows stays out of search.
+        if (mb_strlen($sourceKey) > self::MAX_SOURCE_KEY_LENGTH) {
+            Log::warning('search_index_source_key_too_long', [
+                'source_type' => $sourceType,
+                'length' => mb_strlen($sourceKey),
+            ]);
+
+            return;
+        }
+
         // UTC so updated_at stays in lexicographic order across a DST change.
         // deleteStaleRows() compares this string against a gmdate('c') cutoff.
         $now = gmdate('c');
@@ -28,8 +50,8 @@ final class SearchDocumentStore
             'source_key' => $sourceKey,
             'owner_username' => $this->nullableString($document['owner_username'] ?? null),
             'group_slug' => $this->nullableString($document['group_slug'] ?? null),
-            'title' => $this->nullableString($document['title'] ?? null),
-            'extension' => $this->nullableString($document['extension'] ?? null),
+            'title' => $this->nullableString($document['title'] ?? null, self::MAX_TITLE_LENGTH),
+            'extension' => $this->nullableString($document['extension'] ?? null, self::MAX_EXTENSION_LENGTH),
             'category' => $this->nullableString($document['category'] ?? null),
             'content_type' => $this->nullableString($document['content_type'] ?? null),
             'size' => $this->nullableInt($document['size'] ?? null),
@@ -309,15 +331,18 @@ final class SearchDocumentStore
         }
     }
 
-    private function nullableString(mixed $value): ?string
+    private function nullableString(mixed $value, ?int $maxLength = null): ?string
     {
         if (! is_string($value)) {
             return null;
         }
 
         $trimmed = trim($value);
+        if ($trimmed === '') {
+            return null;
+        }
 
-        return $trimmed === '' ? null : $trimmed;
+        return $maxLength === null ? $trimmed : mb_substr($trimmed, 0, $maxLength);
     }
 
     private function nullableInt(mixed $value): ?int
