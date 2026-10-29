@@ -134,14 +134,20 @@ final class CalendarCollectionAccess
 
     public function assertGroupOwnedDeleteAllowed(string $username, CalendarInstance $instance): void
     {
-        if ($this->mayDeleteGroupOwned($username, $instance)) {
-            return;
-        }
+        $this->assertGroupOwnedAdmin($username, $instance, 'Only an instance admin can delete a group collection.');
+    }
 
-        throw new ApiHttpException(
-            403,
-            'Only an instance admin can delete a group collection.',
-            'group_delete_admin_only',
+    /**
+     * Moving a group-owned collection out of its group (to personal or to
+     * another group) removes it for the rest of the group, so it needs the
+     * same right as deleting it. Personal collections move freely.
+     */
+    public function assertGroupOwnedTransferAllowed(string $username, CalendarInstance $instance): void
+    {
+        $this->assertGroupOwnedAdmin(
+            $username,
+            $instance,
+            'Only an instance admin can move a group collection out of its group.',
         );
     }
 
@@ -155,6 +161,13 @@ final class CalendarCollectionAccess
         $this->shareVisibility->dismiss($username, (int) $instance->calendarid);
 
         return true;
+    }
+
+    private function assertGroupOwnedAdmin(string $username, CalendarInstance $instance, string $message): void
+    {
+        if (! $this->mayDeleteGroupOwned($username, $instance)) {
+            throw new ApiHttpException(403, $message, 'group_delete_admin_only');
+        }
     }
 
     /**

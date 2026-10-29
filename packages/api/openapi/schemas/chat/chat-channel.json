@@ -162,7 +162,7 @@
       },
       "groupSlug": {
         "type": ["string", "null"],
-        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null)."
+        "description": "Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`."
       },
       "shareWith": {
         "description": "Patch share grants. Keys are JMAP ids; a null grant revokes that principal.",

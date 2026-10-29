@@ -9892,7 +9892,7 @@ export interface components {
             timeZone?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
@@ -9925,7 +9925,7 @@ export interface components {
             description?: string | null;
             color?: string | null;
             isSubscribed?: boolean;
-            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. */
+            /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids (username or groups/{slug}); a null grant revokes that principal. Allowed for personal owners and group-collection managers. */
             shareWith?: {
@@ -10788,6 +10788,7 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
@@ -10850,7 +10851,7 @@ export interface components {
             name?: string;
             color?: string | null;
             topic?: string | null;
-            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). */
+            /** @description Transfer ownership to principals/groups/{slug} (or back to personal with null). Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
