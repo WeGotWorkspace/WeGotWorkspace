@@ -129,7 +129,8 @@ const ACTIONS = {
     await sleep(3_500);
   },
   async tagRename(tab: Tab, c: Case) {
-    await tab.getByRole("button", { name: `Rename tag t-${c.id}` }).click();
+    await tab.locator(".notes-sidebar-tags__item", { hasText: `t-${c.id}` }).click();
+    await tab.getByRole("button", { name: "Edit tag" }).click();
     const dialog = tab.getByRole("dialog");
     await dialog.locator("input").fill(`rn-${c.id}`);
     await dialog.getByRole("button", { name: "Rename" }).click();
