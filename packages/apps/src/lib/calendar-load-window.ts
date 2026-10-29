@@ -1,5 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { isInstantOrOffset, localToPlainDateTime } from "@/lib/jmap-client/mapping/datetime";
 
 /**
  * Which events the client holds: a bootstrap window around today, plus each
@@ -39,8 +40,21 @@ export function isUtcRangeInside(inner: CalendarUtcRange, outer: CalendarUtcRang
   );
 }
 
+/**
+ * Epoch ms of a JSCalendar date-time. CalDAV clients that store UTC (Apple,
+ * Google, Thunderbird) come back as `…Z` with no time zone, and an offset is
+ * an instant too. Anything else is wall-clock time in the event's zone.
+ */
 function zonedStartMs(localDateTime: string, timeZone: string | null | undefined): number {
-  const local = Temporal.PlainDateTime.from(localDateTime);
+  const trimmed = localDateTime.trim();
+  if (isInstantOrOffset(trimmed)) {
+    try {
+      return Temporal.Instant.from(trimmed).epochMilliseconds;
+    } catch {
+      // Not a full instant (a date with an offset): read it as UTC wall-clock time below.
+    }
+  }
+  const local = localToPlainDateTime(trimmed);
   try {
     return local.toZonedDateTime(timeZone || "UTC").epochMilliseconds;
   } catch {
@@ -77,7 +91,11 @@ function seriesEndMs(event: JmapCalendarEvent, length: number): number {
   for (const rule of rules) {
     const until = (rule as { until?: unknown }).until;
     if (typeof until !== "string") return Number.POSITIVE_INFINITY;
-    latest = Math.max(latest, zonedStartMs(until, event.timeZone) + length);
+    try {
+      latest = Math.max(latest, zonedStartMs(until, event.timeZone) + length);
+    } catch {
+      return Number.POSITIVE_INFINITY;
+    }
   }
   return latest;
 }
