@@ -29,6 +29,7 @@ export {
 
 const META_ADDRESS_BOOKS_STATE = "contacts:addressBooks:state";
 const META_SESSION = "contacts:session";
+const META_COLD_DOWNLOAD = "contacts:coldDownload";
 
 function metaKeyForBookState(bookId: string): string {
   return `contacts:book:${bookId}:state`;
@@ -89,6 +90,87 @@ export async function writeContactsBootstrapToCache(
   if (pendingRows.length > 0) {
     await cards.bulkPut(pendingRows);
   }
+}
+
+/**
+ * A first download that has not finished. While this row exists the stored
+ * copy is partial: boot fetches `remainingCardIds`, and only then stores the
+ * query-time states as sync tokens (so `/changes` replays every change made
+ * since the query, including on cards saved early).
+ */
+export type ContactsColdDownload = {
+  addressBookState: string;
+  contactCardState: string;
+  /** Card ids from the query that are not saved yet. */
+  remainingCardIds: string[];
+};
+
+export async function readContactsColdDownload(
+  username: string,
+): Promise<ContactsColdDownload | null> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const row = await db.meta.get(META_COLD_DOWNLOAD);
+  if (!row?.value) return null;
+  try {
+    return JSON.parse(row.value) as ContactsColdDownload;
+  } catch {
+    return null;
+  }
+}
+
+/** True when a session and at least one book or card are stored. */
+export async function hasContactsCopy(username: string): Promise<boolean> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  if (!(await db.meta.get(META_SESSION))?.value) return false;
+  return (await contactsBooksTable(db).count()) + (await contactsCardsTable(db).count()) > 0;
+}
+
+/**
+ * Marks the copy unfinished, then stores the session and books with no cards
+ * yet. The marker goes first: a copy without it counts as complete.
+ */
+export async function startContactsColdDownload(
+  username: string,
+  session: ContactsAppBootstrap["session"],
+  addressBooks: AddressBook[],
+  progress: ContactsColdDownload,
+): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.meta.put({ key: META_COLD_DOWNLOAD, value: JSON.stringify(progress) });
+  await writeContactsBootstrapToCache(username, { session, data: { addressBooks, cards: [] } });
+}
+
+/**
+ * Saves one page and the ids still missing in one transaction. A card with
+ * unsynced local edits keeps the local row. Returns the cards it saved; none
+ * when the download was finished or restarted elsewhere.
+ */
+export async function saveContactsColdDownloadPage(
+  username: string,
+  cards: ContactCard[],
+  remainingCardIds: string[],
+): Promise<ContactCard[]> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  const table = contactsCardsTable(db);
+  return db.transaction("rw", table, db.meta, async () => {
+    const row = await db.meta.get(META_COLD_DOWNLOAD);
+    if (!row?.value) return [];
+    const progress = JSON.parse(row.value) as ContactsColdDownload;
+    const existing = await table.bulkGet(cards.map((card) => card.id));
+    const fresh = cards.filter((_, index) => !existing[index]?.pendingSync);
+    await table.bulkPut(fresh.map((card) => contactCardRow(card, false)));
+    await db.meta.put({
+      key: META_COLD_DOWNLOAD,
+      value: JSON.stringify({ ...progress, remainingCardIds }),
+    });
+    return fresh;
+  });
+}
+
+/** Call after the sync tokens are stored: from here on the copy counts as complete. */
+export async function finishContactsColdDownload(username: string): Promise<void> {
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  await db.meta.delete(META_COLD_DOWNLOAD);
 }
 
 export async function upsertContactCardInCache(

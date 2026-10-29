@@ -26,6 +26,12 @@ export const CONTACT_CARD_GET_MAX_IDS_PER_REQUEST = 40;
 
 export const CONTACTS_USING = [CORE_CAPABILITY, CONTACTS_CAPABILITY];
 
+/** One ContactCard/get request: its response and the ids not requested yet. */
+export type ContactCardPage = {
+  page: GetResponse<JmapContactCard>;
+  remainingIds: JmapId[];
+};
+
 function assertSetSucceeded<T>(response: SetResponse<T>): void {
   const notCreated = Object.entries(response.notCreated ?? {});
   if (notCreated.length) throw new JmapSetItemError("create", notCreated[0][0], notCreated[0][1]);
@@ -100,6 +106,19 @@ export class JmapContactsClient {
     const resolvedIds =
       ids === undefined || ids === null ? (await this.queryContactCards(accountId)).ids : ids;
     return this.#getContactCardsByIds(accountId, resolvedIds, properties);
+  }
+
+  /**
+   * ContactCard/get for known ids, one {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST}
+   * page per request. `onPage` is awaited before the next request, so a caller
+   * can save each page before the next one is asked for.
+   */
+  async getContactCardPages(
+    accountId: JmapId,
+    ids: JmapId[],
+    onPage: (page: ContactCardPage) => void | Promise<void>,
+  ): Promise<void> {
+    await this.#getContactCardsByIds(accountId, ids, undefined, (_all, page) => onPage(page));
   }
 
   async contactCardChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {
@@ -216,11 +235,19 @@ export class JmapContactsClient {
   async getAddressBooksAndCards(
     accountId: JmapId,
     options?: {
-      /** Fired after each card page so the list can paint before the last page. */
-      onPage?: (snapshot: {
+      /** Awaited after the query batch, before the first card page. */
+      onQuery?: (start: {
         books: GetResponse<JmapAddressBook>;
-        cards: GetResponse<JmapContactCard>;
-      }) => void;
+        queryIds: JmapId[];
+        contactCardStateAtQuery: JmapState;
+      }) => void | Promise<void>;
+      /** Awaited after each card page so the list can paint before the last page. */
+      onPage?: (
+        snapshot: {
+          books: GetResponse<JmapAddressBook>;
+          cards: GetResponse<JmapContactCard>;
+        } & ContactCardPage,
+      ) => void | Promise<void>;
     },
   ): Promise<{
     books: GetResponse<JmapAddressBook>;
@@ -261,9 +288,13 @@ export class JmapContactsClient {
     ).state;
     this.client.setState(accountId, CONTACT_CARD_TYPE, contactCardStateAtQuery);
     const queryIds = (queryInvocation[1] as QueryResponse).ids ?? [];
-    const cards = await this.#getContactCardsByIds(accountId, queryIds, undefined, (partial) => {
-      options?.onPage?.({ books, cards: partial });
-    });
+    await options?.onQuery?.({ books, queryIds, contactCardStateAtQuery });
+    const cards = await this.#getContactCardsByIds(
+      accountId,
+      queryIds,
+      undefined,
+      (partial, page) => options?.onPage?.({ books, cards: partial, ...page }),
+    );
     return { books, cards, contactCardStateAtQuery };
   }
 
@@ -282,12 +313,12 @@ export class JmapContactsClient {
     accountId: JmapId,
     ids: JmapId[],
     properties?: string[] | null,
-    onPage?: (cards: GetResponse<JmapContactCard>) => void,
+    onPage?: (cards: GetResponse<JmapContactCard>, page: ContactCardPage) => void | Promise<void>,
   ): Promise<GetResponse<JmapContactCard>> {
     const pageSize = Math.min(this.#maxObjectsInGet(), CONTACT_CARD_GET_MAX_IDS_PER_REQUEST);
     if (ids.length <= pageSize) {
       const page = await this.#getContactCardsPage(accountId, ids, properties);
-      onPage?.(page);
+      await onPage?.(page, { page, remainingIds: [] });
       return page;
     }
     const list: JmapContactCard[] = [];
@@ -301,12 +332,15 @@ export class JmapContactsClient {
       state = page.state;
       list.push(...page.list);
       notFound.push(...(page.notFound ?? []));
-      onPage?.({
-        accountId: responseAccountId,
-        state,
-        list: list.slice(),
-        notFound: notFound.slice(),
-      });
+      await onPage?.(
+        {
+          accountId: responseAccountId,
+          state,
+          list: list.slice(),
+          notFound: notFound.slice(),
+        },
+        { page, remainingIds: ids.slice(index + pageSize) },
+      );
     }
     this.client.setState(accountId, CONTACT_CARD_TYPE, state);
     return { accountId: responseAccountId, state, list, notFound };

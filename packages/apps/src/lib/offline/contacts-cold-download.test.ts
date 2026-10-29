@@ -46,8 +46,15 @@ vi.mock("@/lib/offline/browser-online", () => ({
   subscribeBrowserOnline: vi.fn(() => () => undefined),
 }));
 
-const { connectedContacts, syncContactBooksAfterAddressBookChanges } = vi.hoisted(() => ({
+const {
+  connectedContacts,
+  pullAddressBookChanges,
+  syncAllContactBooks,
+  syncContactBooksAfterAddressBookChanges,
+} = vi.hoisted(() => ({
   connectedContacts: vi.fn(),
+  pullAddressBookChanges: vi.fn(),
+  syncAllContactBooks: vi.fn(),
   syncContactBooksAfterAddressBookChanges: vi.fn(),
 }));
 
@@ -62,6 +69,8 @@ vi.mock("@/lib/api/wgw/contacts-bootstrap", () => ({
 }));
 
 vi.mock("@/lib/api/wgw/contacts-sync", () => ({
+  pullAddressBookChanges,
+  syncAllContactBooks,
   syncContactBooksAfterAddressBookChanges,
 }));
 
@@ -72,6 +81,7 @@ import {
 import { readBrowserOnline } from "@/lib/offline/browser-online";
 import {
   fetchContactsHybridBootstrap,
+  getContactsSyncRunner,
   loadContactsBootstrapForBoot,
   readContactsCacheForBoot,
   refreshCachedContacts,
@@ -102,6 +112,8 @@ describe("contacts first download, saved page by page", () => {
       accountId: username,
     });
     syncContactBooksAfterAddressBookChanges.mockResolvedValue(undefined);
+    pullAddressBookChanges.mockResolvedValue(undefined);
+    syncAllContactBooks.mockResolvedValue(undefined);
     const memory = new Map<string, string>();
     const storage = {
       getItem: (key: string) => memory.get(key) ?? null,
@@ -231,5 +243,26 @@ describe("contacts first download, saved page by page", () => {
 
     expect(await cachedIds()).toEqual(["old"]);
     expect(await readContactsColdDownload(username)).toBeNull();
+  });
+
+  it("an outbox flush waits while the first download is unfinished", async () => {
+    stopAfterFirstPage(["a", "b"]);
+    await fetchContactsHybridBootstrap().catch(() => undefined);
+
+    await getContactsSyncRunner(username).flush();
+
+    // No sync token yet: a pull now would start at "0:" and download every card again.
+    expect(pullAddressBookChanges).not.toHaveBeenCalled();
+    expect(syncAllContactBooks).not.toHaveBeenCalled();
+
+    vi.mocked(fetchContactCardPages).mockImplementation(async (_ids, onCardPage) => {
+      await onCardPage({ cards: [card("b")], remainingCardIds: [] });
+    });
+    pullAddressBookChanges.mockImplementation(async () => {
+      expect(await readAddressBooksSyncToken(username)).toBe("books-at-query");
+    });
+    await loadContactsBootstrapForBoot();
+
+    expect(pullAddressBookChanges).toHaveBeenCalledTimes(1);
   });
 });

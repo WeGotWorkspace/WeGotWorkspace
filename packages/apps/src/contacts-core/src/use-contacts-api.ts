@@ -12,6 +12,7 @@ import {
   createHybridContactsOperations,
   getContactsSyncRunner,
   loadContactsBootstrapForBoot,
+  readContactsCacheForBoot,
   refreshCachedContacts,
 } from "@/lib/offline/contacts-hybrid-operations";
 import {
@@ -62,7 +63,7 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
   const readCache = useCallback(async () => {
     const username = readOfflineContactsUsername();
     if (!username) return null;
-    return readContactsBootstrapFromCache(username);
+    return readContactsCacheForBoot(username);
   }, []);
 
   const { phase, error, data, load, successVersion, patchBootstrap, complete } = useHybridBootstrap(
