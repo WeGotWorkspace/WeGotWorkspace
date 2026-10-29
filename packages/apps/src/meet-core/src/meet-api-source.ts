@@ -1,6 +1,6 @@
 import { createWorkspaceSource } from "@/lib/api/create-workspace-source";
 import { createMeetAppBootstrap } from "@/lib/api/mock/meet-bootstrap";
-import { wgwFetchPrincipal, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
+import { wgwFetchPrincipal, wgwIsGuestSession, wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import {
   createWgwMeetGuestOperations,
   createWgwMeetOperations,
@@ -36,10 +36,12 @@ function meetBootstrapUsesAuthenticatedOps(bootstrap?: MeetAppBootstrap): boolea
 /**
  * Cookie-session visitors get authenticated bootstrap + ops (locked lobby name,
  * knock as their principal). Anonymous visitors stay on guest signaling.
+ * A public Drive link session is not an account: the server treats it as
+ * anonymous on Meet, so it stays on guest signaling too.
  * Host vs knock is decided later from roomStatus / channel ACL — not here.
  */
 export async function meetGuestLinkAllowsHostUpgrade(room: string | null): Promise<boolean> {
-  if (!room) return false;
+  if (!room || wgwIsGuestSession()) return false;
   try {
     await wgwFetchPrincipal();
   } catch {
@@ -57,6 +59,7 @@ export async function meetGuestLinkAllowsHostUpgrade(room: string | null): Promi
 export function createWgwMeetGuestOrHostApiSource(_room: string | null): MeetApiSource {
   return {
     async loadBootstrap() {
+      if (wgwIsGuestSession()) return fetchMeetGuestBootstrap();
       try {
         await wgwFetchPrincipal();
         return fetchMeetLiveBootstrap();
