@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Notify;
 
 use App\Models\Notification;
+use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Notify\DocsThreadActivityNotify;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\DocsTestFixtures;
@@ -61,6 +62,24 @@ final class DocsThreadActivityNotifyTest extends WgwDatabaseTestCase
         $this->assertSame(DocsThreadActivityNotify::navigate(self::PATH), $bob->navigate);
         $this->assertSame($rootId, $bob->data['threadId'] ?? null);
         $this->assertFalse($bob->data['isReply'] ?? true);
+    }
+
+    public function test_comment_notification_links_to_the_doc_by_node_id(): void
+    {
+        $node = app(FileNodeIndexService::class)->recordCreate(ltrim(self::PATH, '/'));
+        $this->assertNotNull($node);
+        $this->shareWithAliceComment();
+
+        $this->asAlice()->postJson($this->threadsPath(), [
+            'id' => $this->ulid('AZ'),
+            'kind' => 'comment',
+            'body' => 'see the new section',
+            'anchorText' => 'Plan',
+        ])->assertCreated();
+
+        $bob = Notification::query()->where('principal', 'bob')->first();
+        $this->assertNotNull($bob);
+        $this->assertSame('/docs?id='.$node->node_id, $bob->navigate);
     }
 
     public function test_reply_notifies_owner_and_prior_participant(): void

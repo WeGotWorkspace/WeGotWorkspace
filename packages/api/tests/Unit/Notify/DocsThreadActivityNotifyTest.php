@@ -43,6 +43,31 @@ final class DocsThreadActivityNotifyTest extends TestCase
         $this->assertSame('working on it', $reply['body']);
     }
 
+    public function test_navigate_links_by_node_id_when_known(): void
+    {
+        $id = 'fn-'.str_repeat('a', 32);
+        $this->assertSame('/docs?id='.$id, DocsThreadActivityNotify::navigate('/users/bob/docs/plan.md', $id));
+        $this->assertSame(
+            '/docs?file=users%2Fbob%2Fdocs%2Fplan.md',
+            DocsThreadActivityNotify::navigate('/users/bob/docs/plan.md', 'not-a-node'),
+        );
+        $this->assertSame('/docs?file=users%2Fbob%2Fdocs%2Fplan.md', DocsThreadActivityNotify::navigate('/users/bob/docs/plan.md'));
+
+        $data = DocsThreadActivityNotify::eventData(
+            'Alice',
+            '/users/bob/docs/plan.md',
+            'thread-1',
+            'msg-1',
+            'comment',
+            false,
+            ['bob'],
+            null,
+            $id,
+        );
+        $this->assertSame('/docs?id='.$id, $data['navigate']);
+        $this->assertSame('/users/bob/docs/plan.md', $data['path']);
+    }
+
     public function test_suggestion_copy_and_path_owners(): void
     {
         $copy = DocsThreadActivityNotify::formatCopy([
