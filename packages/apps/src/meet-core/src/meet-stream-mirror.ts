@@ -21,15 +21,16 @@ export function isDisplayCaptureStream(stream: MediaStream | null | undefined): 
 }
 
 /**
- * Local self-preview and remote peer camera tiles use mirror; screen share never does.
- * Prefer disclosed `screen` from control chat when present (reliable across peers).
+ * Only the local camera self-view is mirrored, so it reads like a mirror.
+ * Every remote camera (guest or signed-in member) is shown the right way round,
+ * the way the sender's camera sees them. Screen share is never mirrored.
+ * `screen` is the disclosed share flag from control chat when known.
  */
 export function shouldMirrorMeetStream(
   stream: MediaStream | null | undefined,
-  disclosedScreen?: boolean | null,
+  source: { local: boolean; screen?: boolean | null },
 ): boolean {
-  if (!stream) return false;
-  if (disclosedScreen === true) return false;
-  if (isDisplayCaptureStream(stream)) return false;
-  return true;
+  if (!stream || !source.local) return false;
+  if (source.screen === true) return false;
+  return !isDisplayCaptureStream(stream);
 }
