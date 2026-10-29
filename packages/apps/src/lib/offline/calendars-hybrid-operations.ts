@@ -153,15 +153,10 @@ async function writeCalendarsToCache(
 ): Promise<void> {
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) return;
+  // The window keeps a period merged between the read above and this write.
   await writeCalendarBootstrapToCache(
     username,
-    {
-      ...cached,
-      data: {
-        ...cached.data,
-        calendars: mutate(cached.data.calendars),
-      },
-    },
+    { ...cached, data: { ...cached.data, calendars: mutate(cached.data.calendars) } },
     { window: calendarBootstrapWindow() },
   );
 }

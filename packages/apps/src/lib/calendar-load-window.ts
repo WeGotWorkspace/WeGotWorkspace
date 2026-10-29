@@ -1,5 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
-import type { JmapCalendarEvent } from "@/lib/jmap-client";
+import { expandEvents, type CalendarEventsMap } from "@/lib/calendar-engine";
+import { jmapEventToInternalRows, type JmapCalendarEvent } from "@/lib/jmap-client";
 import { isInstantOrOffset, localToPlainDateTime } from "@/lib/jmap-client/mapping/datetime";
 
 /**
@@ -17,8 +18,8 @@ export type CalendarUtcRange = {
 const WINDOW_MONTHS_BACK = 12;
 const WINDOW_MONTHS_AHEAD = 24;
 
-/** Floating times and zone lookups can shift an event by up to a day. */
-const EVENT_SPAN_PADDING_MS = 24 * 60 * 60 * 1000;
+/** Floating times and zone offsets can shift an event by up to a day. */
+const EDGE_MARGIN_MS = 24 * 60 * 60 * 1000;
 
 export function plainDateToUtc(date: Temporal.PlainDate): Date {
   return new Date(`${date.toString()}T00:00:00Z`);
@@ -76,80 +77,63 @@ function eventLengthMs(event: JmapCalendarEvent, startMs: number): number {
       return Math.max(0, zonedStartMs(event.end, event.timeZone) - startMs);
     }
   } catch {
-    // Unparsable length: treat as a point in time; the span padding still applies.
+    // Unparsable length: treat the event as a point in time.
   }
   return 0;
 }
 
-/** Last instant a series can occur: the latest `until`, or open-ended. */
-function seriesEndMs(event: JmapCalendarEvent, length: number): number {
-  const rules = event.recurrenceRules ?? [];
-  const overrides = Object.keys(event.recurrenceOverrides ?? {});
-  if (rules.length === 0 && overrides.length === 0) return Number.NaN;
-  if (overrides.length > 0) return Number.POSITIVE_INFINITY;
-  let latest = Number.NEGATIVE_INFINITY;
-  for (const rule of rules) {
-    const until = (rule as { until?: unknown }).until;
-    if (typeof until !== "string") return Number.POSITIVE_INFINITY;
-    try {
-      latest = Math.max(latest, zonedStartMs(until, event.timeZone) + length);
-    } catch {
-      return Number.POSITIVE_INFINITY;
-    }
-  }
-  return latest;
-}
-
-export function isRecurringCalendarEvent(event: JmapCalendarEvent): boolean {
+export function isRecurringMaster(event: JmapCalendarEvent): boolean {
   return (
-    (event.recurrenceRules ?? []).length > 0 ||
+    (event.recurrenceRules?.length ?? 0) > 0 ||
     Object.keys(event.recurrenceOverrides ?? {}).length > 0
   );
 }
 
-/**
- * Whether a non-recurring event's own start/end intersect `range`, with no
- * padding: the test for "the server query would have returned it". False for
- * recurring events and for dates it cannot read.
- */
-export function calendarEventIntersectsRange(
+function utcPlainDateTime(epochMs: number): Temporal.PlainDateTime {
+  return Temporal.Instant.fromEpochMilliseconds(epochMs)
+    .toZonedDateTimeISO("UTC")
+    .toPlainDateTime();
+}
+
+/** Expand the series over [startMs, endMs) the way the views do; any occurrence counts. */
+function seriesHasOccurrenceBetween(
   event: JmapCalendarEvent,
-  range: CalendarUtcRange,
+  startMs: number,
+  endMs: number,
 ): boolean {
-  if (isRecurringCalendarEvent(event)) return false;
   try {
-    const startMs = zonedStartMs(event.start, event.timeZone);
-    const endMs = startMs + eventLengthMs(event, startMs);
-    const rangeStart = range.utcStart.getTime();
-    const rangeEnd = range.utcEnd.getTime();
-    return endMs > startMs
-      ? startMs < rangeEnd && endMs > rangeStart
-      : startMs >= rangeStart && startMs < rangeEnd;
+    const rows: CalendarEventsMap = new Map();
+    for (const row of jmapEventToInternalRows(event)) rows.set(row.key, row.event);
+    const range = { start: utcPlainDateTime(startMs), end: utcPlainDateTime(endMs) };
+    return expandEvents(rows, range).size > 0;
   } catch {
     return false;
   }
 }
 
 /**
- * Whether the event may have an occurrence inside `range`. Errs towards true
- * (open-ended series, unparsable dates): a caller that drops events "inside a
- * fetched range but missing from its response" then defers to the server.
+ * True only when a `CalendarEvent/query` for `range` certainly returns this
+ * event while the server still has it. A cached event the response omitted
+ * may then be dropped. Everything else errs towards false (keep):
+ *
+ * - The check runs a day inside the range, so floating times and zone offsets
+ *   at the edges never count.
+ * - A recurring master counts only when the series has an occurrence there
+ *   (the server answers per occurrence too); `count`, a missing `until` or
+ *   overrides alone do not.
+ * - An event whose start cannot be read never counts.
  */
-export function calendarEventMayOverlapRange(
-  event: JmapCalendarEvent,
-  range: CalendarUtcRange,
-): boolean {
+export function rangeQueryCoversEvent(event: JmapCalendarEvent, range: CalendarUtcRange): boolean {
+  const innerStart = range.utcStart.getTime() + EDGE_MARGIN_MS;
+  const innerEnd = range.utcEnd.getTime() - EDGE_MARGIN_MS;
+  if (innerEnd <= innerStart) return false;
+  if (isRecurringMaster(event)) return seriesHasOccurrenceBetween(event, innerStart, innerEnd);
   let startMs: number;
   try {
     startMs = zonedStartMs(event.start, event.timeZone);
   } catch {
-    return true;
+    return false;
   }
-  const length = eventLengthMs(event, startMs);
-  const seriesEnd = seriesEndMs(event, length);
-  const endMs = Number.isNaN(seriesEnd) ? startMs + length : seriesEnd;
-  return (
-    startMs - EVENT_SPAN_PADDING_MS < range.utcEnd.getTime() &&
-    endMs + EVENT_SPAN_PADDING_MS > range.utcStart.getTime()
-  );
+  const endMs = startMs + eventLengthMs(event, startMs);
+  return startMs < innerEnd && (endMs > innerStart || startMs >= innerStart);
 }

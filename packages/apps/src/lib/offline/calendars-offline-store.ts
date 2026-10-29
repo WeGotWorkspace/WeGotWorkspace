@@ -22,11 +22,10 @@ import {
 } from "@/lib/offline/calendars/calendars-schema";
 import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
 import {
-  calendarEventIntersectsRange,
-  isRecurringCalendarEvent,
+  isRecurringMaster,
+  rangeQueryCoversEvent,
   type CalendarUtcRange,
 } from "@/lib/calendar-load-window";
-import { occurrencesInRange } from "@/calendar-core/src/calendar-event-model";
 
 export {
   enqueueOutboxMutation,
@@ -83,9 +82,10 @@ export async function readCalendarBootstrapFromCache(
 
 export type CalendarBootstrapCacheWriteOptions = {
   /**
-   * The range a live bootstrap fetched. Cached events outside it stay: they
-   * came from a period loaded on demand and the snapshot says nothing about
-   * them (#1675). Omit when `bootstrap` is the whole cache.
+   * The bootstrap window the snapshot's events cover (#1675). A cached event
+   * the snapshot omits is dropped only when the window certainly covers it, or
+   * its calendar is gone. Others came from a period loaded on demand and stay.
+   * Without it, every omitted event is dropped.
    */
   window?: CalendarUtcRange;
 };
@@ -93,32 +93,14 @@ export type CalendarBootstrapCacheWriteOptions = {
 function keepCachedRowOnBootstrapWrite(
   row: OfflineCalendarEventRow,
   incomingIds: ReadonlySet<string>,
+  calendarIds: ReadonlySet<string>,
   window: CalendarUtcRange | undefined,
 ): boolean {
   if (row.pendingSync) return true;
   if (incomingIds.has(row.id)) return false;
   if (row.locallyWritten === true) return true;
-  if (window === undefined) return false;
-  return !snapshotCoversEvent(parseEventRow(row), window);
-}
-
-/**
- * Whether the snapshot of `window` would have contained the event. A recurring
- * master counts only when an occurrence falls inside; `count`, a missing
- * `until` or overrides say nothing about that. Errs towards "not covered".
- */
-function snapshotCoversEvent(event: JmapCalendarEvent, window: CalendarUtcRange): boolean {
-  if (!isRecurringCalendarEvent(event)) return calendarEventIntersectsRange(event, window);
-  try {
-    return (
-      occurrencesInRange([event], {
-        start: window.utcStart.toISOString().slice(0, 19),
-        end: window.utcEnd.toISOString().slice(0, 19),
-      }).length > 0
-    );
-  } catch {
-    return false;
-  }
+  if (!window || !calendarIds.has(row.calendarId)) return false;
+  return !rangeQueryCoversEvent(parseEventRow(row), window);
 }
 
 function parseEventRow(row: OfflineCalendarEventRow): JmapCalendarEvent {
@@ -155,8 +137,9 @@ export async function writeCalendarBootstrapToCache(
   // and the clear and then be lost.
   await db.transaction("rw", events, async () => {
     const incomingIds = new Set(bootstrap.data.events.map((event) => event.id));
+    const calendarIds = new Set(bootstrap.data.calendars.map((calendar) => calendar.id));
     const keepRows = (await events.toArray()).filter((row) =>
-      keepCachedRowOnBootstrapWrite(row, incomingIds, options.window),
+      keepCachedRowOnBootstrapWrite(row, incomingIds, calendarIds, options.window),
     );
     await events.clear();
     await events.bulkPut(bootstrap.data.events.map((event) => eventRow(event, false)));
@@ -168,9 +151,17 @@ export async function writeCalendarBootstrapToCache(
 
 /**
  * Merge one on-demand period into the cache (#1675): upsert what the server
- * returned and drop cached events in that period it no longer has. Rows with
+ * returned and drop single events in that period it no longer has. Rows with
  * a pending or just-written local change stay.
  */
+/**
+ * The period query returns a series only when it occurs in that period, so an
+ * omitted recurring master says nothing; `/changes` and the bootstrap settle it.
+ */
+function isMissingFromRange(event: JmapCalendarEvent, range: CalendarUtcRange): boolean {
+  return !isRecurringMaster(event) && rangeQueryCoversEvent(event, range);
+}
+
 export async function mergeCalendarRangeIntoCache(
   username: string,
   range: CalendarUtcRange,
@@ -188,7 +179,7 @@ export async function mergeCalendarRangeIntoCache(
           !row.pendingSync &&
           row.locallyWritten !== true &&
           !incomingIds.has(row.id) &&
-          calendarEventIntersectsRange(parseEventRow(row), range),
+          isMissingFromRange(parseEventRow(row), range),
       )
       .map((row) => row.id);
     if (goneIds.length > 0) {

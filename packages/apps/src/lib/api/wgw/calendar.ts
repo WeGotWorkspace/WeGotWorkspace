@@ -88,8 +88,6 @@ function toCalendarInfo(calendar: JmapCalendar): CalendarInfo {
   return calendarInfoFromJmap(calendar);
 }
 
-export { calendarBootstrapWindow };
-
 /**
  * Events for one period outside the bootstrap window (#1675). Uses the shared
  * set/bootstrap client: the inbound adapter's `/changes` state stays untouched.

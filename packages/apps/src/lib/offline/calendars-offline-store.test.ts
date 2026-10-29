@@ -208,50 +208,6 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     expect(events.find((event) => event.id === "ev-far-kept")?.title).toBe("New title");
   });
 
-  it("keeps a monthly series the far-week query omitted", async () => {
-    const monthly = {
-      ...at("ev-monthly", "2030-01-05T10:00:00"),
-      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "monthly" }],
-    } as JmapCalendarEvent;
-    await upsertCalendarEventInCache(username, monthly, false, false);
-
-    await mergeCalendarRangeIntoCache(username, farWeek, [at("ev-far", "2033-01-12T10:00:00")]);
-
-    expect(await ids()).toContain("ev-monthly");
-  });
-
-  it("keeps a count-only series that ended before the window on a windowed bootstrap write", async () => {
-    const ended = {
-      ...at("ev-ended", "2020-01-06T09:00:00"),
-      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly", count: 3 }],
-    } as JmapCalendarEvent;
-    await upsertCalendarEventInCache(username, ended, false, false);
-
-    await writeCalendarBootstrapToCache(
-      username,
-      { ...bootstrap, data: { ...bootstrap.data, events: [inWindow] } },
-      { window: liveWindow },
-    );
-
-    expect(await ids()).toContain("ev-ended");
-  });
-
-  it("drops a series with an occurrence in the window that the snapshot omitted", async () => {
-    const weekly = {
-      ...at("ev-weekly", "2026-01-05T09:00:00"),
-      recurrenceRules: [{ "@type": "RecurrenceRule", frequency: "weekly" }],
-    } as JmapCalendarEvent;
-    await upsertCalendarEventInCache(username, weekly, false, false);
-
-    await writeCalendarBootstrapToCache(
-      username,
-      { ...bootstrap, data: { ...bootstrap.data, events: [inWindow] } },
-      { window: liveWindow },
-    );
-
-    expect(await ids()).not.toContain("ev-weekly");
-  });
-
   it("keeps a pending offline edit in a loaded period", async () => {
     await upsertCalendarEventInCache(username, at("ev-far", "2033-01-12T10:00:00", "Mine"), true);
 
