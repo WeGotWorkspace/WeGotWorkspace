@@ -115,25 +115,17 @@ const messageClassificationRules = {
 const IMPORT_DIRECTION_DOC =
   "Import direction: src/lib sits below every *-core package, and two app packages do not import each other. Move the shared code down into src/lib or a shared package. See #1642.";
 
-// Files that already carry their own `no-restricted-imports` options (tests,
-// workspace/controller files, panes, stories). A later block replaces earlier
-// options for the same rule, so the direction rules skip them rather than
-// weaken those error-level rules.
-const OWN_IMPORT_RULES = [
-  "src/**/*.test.{ts,tsx}",
-  "src/**/__tests__/**",
-  "src/**/*-workspace.tsx",
-  "src/**/use-*-controller.{ts,tsx}",
-  "src/**/*-pane.tsx",
-  "src/**/*.stories.{ts,tsx}",
-  "src/**/*.stories.*.{ts,tsx}",
-];
+// Tests only. Panes, workspaces, controllers and stories are checked too: the
+// direction rules use `@typescript-eslint/no-restricted-imports`, a separate
+// rule from the error-level core `no-restricted-imports` those files carry, so
+// neither replaces the other's options.
+const DIRECTION_IGNORES = ["src/**/*.test.{ts,tsx}", "src/**/__tests__/**"];
 
 // `lib/` must not import a `*-core` package. Baseline when the rule was added:
 // 106 non-test files under src/lib. It is `warn` so lint stays green; the count
 // must only go down.
 const libImportDirectionRule = {
-  "no-restricted-imports": [
+  "@typescript-eslint/no-restricted-imports": [
     "warn",
     {
       patterns: [{ regex: "^(@/|(\\.\\./)+)[a-z-]+-core(/|$)", message: IMPORT_DIRECTION_DOC }],
@@ -142,12 +134,13 @@ const libImportDirectionRule = {
 };
 
 // App packages that import each other in both directions today. A one-way
-// import is allowed. Baseline (non-test files importing the other package):
-//   calendar-core 3 <-> meet-core 10
+// import is allowed. Baseline (non-test files, panes, workspaces,
+// controllers and stories included, importing the other package):
+//   calendar-core 3 <-> meet-core 13
 //   calendar-core 5 <-> tasks-core 3
-//   docs-core 25 <-> drive-core 2
-//   docs-core 9 <-> text-editor-core 21
-//   drive-core 2 <-> text-editor-core 5
+//   docs-core 27 <-> drive-core 3
+//   docs-core 9 <-> text-editor-core 36
+//   drive-core 2 <-> text-editor-core 6
 //   meet-core 1 <-> settings-core 1
 // Break a cycle by removing one direction, then drop the pair from this list.
 const TWO_WAY_PAIRS = [
@@ -168,9 +161,9 @@ for (const [a, b] of TWO_WAY_PAIRS) {
 // One block per package, so blocks never replace each other's options.
 const crossPackageBlocks = [...forbiddenByPackage].map(([pkg, others]) => ({
   files: [`src/${pkg}/**/*.{ts,tsx}`],
-  ignores: OWN_IMPORT_RULES,
+  ignores: DIRECTION_IGNORES,
   rules: {
-    "no-restricted-imports": [
+    "@typescript-eslint/no-restricted-imports": [
       "warn",
       {
         patterns: others.map((other) => ({
@@ -272,7 +265,7 @@ export default tseslint.config(
   },
   {
     files: ["src/lib/**/*.{ts,tsx}"],
-    ignores: OWN_IMPORT_RULES,
+    ignores: DIRECTION_IGNORES,
     rules: libImportDirectionRule,
   },
   ...crossPackageBlocks,
