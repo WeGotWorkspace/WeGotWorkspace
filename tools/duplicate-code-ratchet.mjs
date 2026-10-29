@@ -5,11 +5,8 @@
  * Scans two scopes with jscpd and compares each scope's clone count and
  * duplicated-line total to `tools/duplicate-code-baseline.json`.
  *
- * `check` fails when a total grew. When a total dropped it passes and prints
- * a notice to lower the baseline with `update`. A drop does not fail because
- * each total is one number for a whole scope: if drops failed, every PR that
- * removes some duplication would edit the same baseline line, and parallel
- * PRs would keep conflicting in the merge queue.
+ * `check` fails when a total grew, and when it dropped while the baseline
+ * still holds the old number (lower it with `update` in the same change).
  * `update` only lowers totals. It never raises one. Raising a total, a
  * jscpd upgrade, or a threshold change is a hand edit of the baseline,
  * which needs code-owner review (.github/CODEOWNERS).
@@ -54,10 +51,7 @@ import { countLines, isExcluded } from "./file-size-ratchet.mjs";
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
-const repoRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-);
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const baselinePath = path.join(repoRoot, "tools/duplicate-code-baseline.json");
 const updateCommand = "pnpm duplicate-code:update";
 const reportCommand = "pnpm duplicate-code:report";
@@ -80,13 +74,7 @@ export const DUPLICATE_SCOPES = [
 const scopeRoots = DUPLICATE_SCOPES.map((scope) => scope.root);
 
 /** Folders that hold stories, mocks or tests even when the file name does not say so. */
-const excludedDirs = new Set([
-  "stories",
-  "mock",
-  "mocks",
-  "tests",
-  "__tests__",
-]);
+const excludedDirs = new Set(["stories", "mock", "mocks", "tests", "__tests__"]);
 const excludedFixtures = /\.fixtures\.(ts|tsx)$/;
 
 const metrics = [
@@ -126,8 +114,7 @@ export function listScopeFiles(scope, baseDir = repoRoot) {
         walk(full);
         continue;
       }
-      if (!entry.isFile() || !scope.extensions.has(path.extname(entry.name)))
-        continue;
+      if (!entry.isFile() || !scope.extensions.has(path.extname(entry.name))) continue;
       const rel = path.relative(baseDir, full).split(path.sep).join("/");
       if (!isExcludedFromDuplicateScan(rel)) files.push(rel);
     }
@@ -147,10 +134,7 @@ export const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
  * @param {{ formats: string[] }} scope
  * @param {{ scanRoot: string, outDir: string, configPath: string, minTokens: number, minLines: number }} options
  */
-export function jscpdArgs(
-  scope,
-  { scanRoot, outDir, configPath, minTokens, minLines },
-) {
+export function jscpdArgs(scope, { scanRoot, outDir, configPath, minTokens, minLines }) {
   return [
     scanRoot,
     "--config",
@@ -242,10 +226,9 @@ export function summarizeReport(report, baseDir, formats) {
   const blocks = report.duplicates
     .filter((clone) => counted.has(clone.format))
     .map((clone) => {
-      const [first, second] = [
-        toLocation(clone.firstFile),
-        toLocation(clone.secondFile),
-      ].sort(compareLocation);
+      const [first, second] = [toLocation(clone.firstFile), toLocation(clone.secondFile)].sort(
+        compareLocation,
+      );
       return { lines: clone.lines, tokens: clone.tokens, first, second };
     });
   const totals = { clones: 0, duplicatedLines: 0 };
@@ -260,11 +243,7 @@ export function summarizeReport(report, baseDir, formats) {
 /** jscpd 4 exports neither its package.json nor its bin, so walk up from its entry. */
 function jscpdPackageDir() {
   let dir = path.dirname(require.resolve("jscpd"));
-  while (
-    !statSync(path.join(dir, "package.json"), {
-      throwIfNoEntry: false,
-    })?.isFile()
-  ) {
+  while (!statSync(path.join(dir, "package.json"), { throwIfNoEntry: false })?.isFile()) {
     const parent = path.dirname(dir);
     if (parent === dir) throw new Error("jscpd package.json not found");
     dir = parent;
@@ -273,9 +252,7 @@ function jscpdPackageDir() {
 }
 
 export function installedJscpdVersion() {
-  return JSON.parse(
-    readFileSync(path.join(jscpdPackageDir(), "package.json"), "utf8"),
-  ).version;
+  return JSON.parse(readFileSync(path.join(jscpdPackageDir(), "package.json"), "utf8")).version;
 }
 
 /**
@@ -284,16 +261,10 @@ export function installedJscpdVersion() {
  * @param {{ baseDir?: string, minTokens: number, minLines: number }} options
  * @returns {Promise<Record<string, ReturnType<typeof summarizeReport>>>}
  */
-export async function measureScopes({
-  baseDir = repoRoot,
-  minTokens,
-  minLines,
-}) {
+export async function measureScopes({ baseDir = repoRoot, minTokens, minLines }) {
   const jscpd = path.join(jscpdPackageDir(), "bin/jscpd");
   // jscpd reports canonical absolute paths; /tmp and /var are symlinks on macOS.
-  const tempDir = realpathSync(
-    mkdtempSync(path.join(os.tmpdir(), "wgw-duplicate-code-")),
-  );
+  const tempDir = realpathSync(mkdtempSync(path.join(os.tmpdir(), "wgw-duplicate-code-")));
   try {
     const configPath = path.join(tempDir, "jscpd.json");
     writeFileSync(configPath, "{}\n");
@@ -322,10 +293,7 @@ export async function measureScopes({
           : { statistics: { formats: {} }, duplicates: [] };
         return [
           scope.root,
-          {
-            ...summarizeReport(report, mirrorRoot, scope.formats),
-            files: files.length,
-          },
+          { ...summarizeReport(report, mirrorRoot, scope.formats), files: files.length },
         ];
       }),
     );
@@ -359,9 +327,7 @@ export function parseBaseline(text) {
   for (const [root, totals] of Object.entries(data.scopes)) {
     for (const { key } of metrics) {
       if (!isCount(totals?.[key])) {
-        throw new Error(
-          `baseline: ${root} ${key} must be a non-negative integer`,
-        );
+        throw new Error(`baseline: ${root} ${key} must be a non-negative integer`);
       }
     }
   }
@@ -403,13 +369,11 @@ function scopeErrors(current, baseline) {
   /** @type {string[]} */
   const errors = [];
   for (const root of scopeRoots) {
-    if (!baseline.scopes[root])
-      errors.push(`${root}: scope has no baseline entry`);
+    if (!baseline.scopes[root]) errors.push(`${root}: scope has no baseline entry`);
     else if (!current[root]) errors.push(`${root}: scope was not measured`);
   }
   for (const root of Object.keys(baseline.scopes)) {
-    if (!scopeRoots.includes(root))
-      errors.push(`${root}: baseline entry is not a scanned scope`);
+    if (!scopeRoots.includes(root)) errors.push(`${root}: baseline entry is not a scanned scope`);
   }
   return errors;
 }
@@ -419,28 +383,26 @@ function scopeErrors(current, baseline) {
  * @param {Record<string, { clones: number, duplicatedLines: number }>} current
  * @param {ReturnType<typeof parseBaseline>} baseline
  * @param {{ jscpdVersion: string }} settings
- * @returns {{ errors: string[], notices: string[] }}
+ * @returns {{ errors: string[] }}
  */
 export function evaluate(current, baseline, { jscpdVersion }) {
   const version = versionError(baseline, jscpdVersion);
-  if (version) return { errors: [version], notices: [] };
+  if (version) return { errors: [version] };
   const errors = scopeErrors(current, baseline);
-  if (errors.length > 0) return { errors, notices: [] };
-  const notices = [];
+  if (errors.length > 0) return { errors };
   for (const root of scopeRoots) {
     for (const { key, label } of metrics) {
       const stored = baseline.scopes[root][key];
       const actual = current[root][key];
-      if (actual > stored)
-        errors.push(`${root}: ${label} grew from ${stored} to ${actual}`);
+      if (actual > stored) errors.push(`${root}: ${label} grew from ${stored} to ${actual}`);
       if (actual < stored) {
-        notices.push(
-          `${root}: ${label} dropped from ${stored} to ${actual}; ${updateCommand} can lower the baseline`,
+        errors.push(
+          `${root}: ${label} dropped from ${stored} to ${actual}; run ${updateCommand} and commit the baseline`,
         );
       }
     }
   }
-  return { errors, notices };
+  return { errors };
 }
 
 /**
@@ -463,9 +425,7 @@ export function nextBaseline(current, baseline, { jscpdVersion }) {
       const stored = baseline.scopes[root][key];
       const actual = current[root][key];
       if (actual > stored) {
-        errors.push(
-          `${root}: update refuses to raise ${label} from ${stored} to ${actual}`,
-        );
+        errors.push(`${root}: update refuses to raise ${label} from ${stored} to ${actual}`);
       } else {
         scopes[root][key] = actual;
       }
@@ -496,45 +456,33 @@ async function measureAgainstBaseline() {
 }
 
 function totalsLine(root, totals, stored) {
-  const scanned =
-    totals.files === undefined ? "" : ` in ${totals.files} scanned files`;
-  const vs = stored
-    ? ` (baseline ${stored.clones} clones, ${stored.duplicatedLines} lines)`
-    : "";
+  const scanned = totals.files === undefined ? "" : ` in ${totals.files} scanned files`;
+  const vs = stored ? ` (baseline ${stored.clones} clones, ${stored.duplicatedLines} lines)` : "";
   return `${root}: ${totals.clones} clones, ${totals.duplicatedLines} duplicated lines${scanned}${vs}`;
 }
 
 async function check() {
-  const { baseline, current, seconds, jscpdVersion } =
-    await measureAgainstBaseline();
-  const { errors, notices } = evaluate(current, baseline, { jscpdVersion });
+  const { baseline, current, seconds, jscpdVersion } = await measureAgainstBaseline();
+  const { errors } = evaluate(current, baseline, { jscpdVersion });
   if (errors.length > 0) {
     console.error(`Duplicate-code ratchet failed (${errors.length}):\n`);
     for (const error of errors) console.error(`  - ${error}`);
-    console.error(
-      `\nRun ${reportCommand} to list the largest duplicated blocks.`,
-    );
+    console.error(`\nRun ${reportCommand} to list the largest duplicated blocks.`);
     process.exit(1);
   }
   for (const root of scopeRoots) console.log(totalsLine(root, current[root]));
-  for (const notice of notices) console.log(`Notice: ${notice}`);
-  console.log(
-    `Duplicate-code ratchet passed (jscpd ${jscpdVersion}, ${seconds}s).`,
-  );
+  console.log(`Duplicate-code ratchet passed (jscpd ${jscpdVersion}, ${seconds}s).`);
 }
 
 async function update() {
   const { baseline, current, jscpdVersion } = await measureAgainstBaseline();
-  const { baseline: next, errors } = nextBaseline(current, baseline, {
-    jscpdVersion,
-  });
+  const { baseline: next, errors } = nextBaseline(current, baseline, { jscpdVersion });
   if (!next) {
     for (const error of errors) console.error(error);
     process.exit(1);
   }
   writeFileSync(baselinePath, formatBaseline(next));
-  for (const root of scopeRoots)
-    console.log(totalsLine(root, next.scopes[root]));
+  for (const root of scopeRoots) console.log(totalsLine(root, next.scopes[root]));
   console.log("Duplicate-code baseline updated.");
 }
 
@@ -545,40 +493,29 @@ async function report(args) {
     console.error("usage: duplicate-code-ratchet.mjs report [--top N]");
     process.exit(2);
   }
-  const { baseline, current, seconds, jscpdVersion } =
-    await measureAgainstBaseline();
+  const { baseline, current, seconds, jscpdVersion } = await measureAgainstBaseline();
   console.log(
     `jscpd ${jscpdVersion}, min ${baseline.minTokens} tokens / ${baseline.minLines} lines, ${seconds}s\n`,
   );
   for (const root of scopeRoots) {
     console.log(totalsLine(root, current[root], baseline.scopes[root]));
-    for (const block of current[root].blocks.slice(0, top))
-      console.log(`  ${formatBlock(block)}`);
+    for (const block of current[root].blocks.slice(0, top)) console.log(`  ${formatBlock(block)}`);
     console.log("");
   }
 }
 
 async function main() {
-  const [command, ...rest] = process.argv
-    .slice(2)
-    .filter((arg) => arg !== "--");
+  const [command, ...rest] = process.argv.slice(2).filter((arg) => arg !== "--");
   if (command === "check") return check();
   if (command === "update") return update();
   if (command === "report") return report(rest);
-  console.error(
-    "usage: duplicate-code-ratchet.mjs check | update | report [--top N]",
-  );
+  console.error("usage: duplicate-code-ratchet.mjs check | update | report [--top N]");
   process.exit(2);
 }
 
-if (
-  process.argv[1] &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error) => {
-    console.error(
-      error?.stderr?.toString?.() || error?.message || String(error),
-    );
+    console.error(error?.stderr?.toString?.() || error?.message || String(error));
     process.exit(1);
   });
 }
