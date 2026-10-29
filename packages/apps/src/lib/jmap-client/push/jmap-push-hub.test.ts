@@ -322,6 +322,20 @@ describe("JmapPushHub", () => {
       expect(c.hub.connected).toBe(false);
     });
 
+    it("a tab that joins later learns the current status", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      b.live()[0]!.ctx.onStatus(true);
+      await settle();
+
+      const late = b.tab("late");
+      cleanup.push(late.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(late.hub.connected).toBe(true);
+    });
+
     it("a tab whose hub stopped reports push down", async () => {
       const b = browser();
       const a = b.tab("a");
