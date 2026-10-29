@@ -14,6 +14,7 @@ import {
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { apiPathFromUiPath, uiPathFromApiPath } from "@/drive-core/src/drive-path-utils";
 import type { DriveAPIOperations } from "@/drive-core/src/drive-types";
+import { isFetchNetworkError } from "@/lib/offline/core/browser-online";
 import { guardOfflineCacheStep } from "@/lib/offline/core/offline-cache-guard";
 
 /** Waits before each automatic retry of a failed listing. The Retry button works at any time. */
@@ -22,13 +23,17 @@ export const FOLDER_LISTING_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_
 /** A listing that failed and has no cached rows to show instead. */
 export type DriveFolderListingError = { path: string; message: string };
 
-/** Too many requests, a server error, or no HTTP status at all (network): worth another try. */
+/**
+ * Worth another try: 408, 429, a 5xx, or a network failure. A 403, a 404 or an
+ * error without a status (for example "not available offline") is not.
+ */
 export function isRetryableListingError(error: unknown): boolean {
+  if (isFetchNetworkError(error)) return true;
   const status =
     error && typeof error === "object" && "status" in error
       ? (error as { status?: unknown }).status
       : undefined;
-  if (typeof status !== "number") return true;
+  if (typeof status !== "number") return false;
   return status === 408 || status === 429 || status >= 500;
 }
 
@@ -99,24 +104,26 @@ export function useDriveFolderListingSync({
 
     const controller = new AbortController();
     const apiPath = apiPathFromUiPath(folderViewPath, currentUsername, groupRootNamesRef.current);
-    let liveSettled = false;
+    let liveSucceeded = false;
     let cachedIds: ReadonlySet<string> = new Set();
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const readCached = operations.readCachedDirectory;
     if (readCached) {
       void guardOfflineCacheStep(readCached(apiPath), null).then((cached) => {
-        if (!cached || liveSettled || controller.signal.aborted) return;
+        // A failed live load does not drop cached rows that arrive after it.
+        if (!cached || liveSucceeded || controller.signal.aborted) return;
         cachedIds = new Set(mapDriveListingEntries(cached, currentUsername).map((file) => file.id));
         setFiles((previous) => mergeDriveFolderListing(previous, cached, currentUsername));
         setHydratedFolderPath(folderViewPath);
+        setListingError(null);
       });
     }
 
     void operations
       .changeDir(apiPath, { signal: controller.signal })
       .then((nextData) => {
-        liveSettled = true;
+        liveSucceeded = true;
         failedAttemptsRef.current = 0;
         setListingError(null);
         const resolvedPath = uiPathFromApiPath(nextData.cwd, currentUsername);
@@ -136,7 +143,6 @@ export function useDriveFolderListingSync({
         }
       })
       .catch((error: unknown) => {
-        liveSettled = true;
         if (controller.signal.aborted) return;
         pendingFolderRefetchRef.current = false;
         setHydratedFolderPath(folderViewPath);

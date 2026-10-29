@@ -68,7 +68,15 @@ export type YjsSnapshot = {
   update: Uint8Array | null;
   etag: string | null;
   externalWrite?: boolean;
+  /**
+   * Set only for a `&fallback=markdown` request when there is no sidecar: the
+   * server sent the markdown in the same response.
+   */
+  markdown?: string;
 };
+
+/** Response header that marks a `&fallback=markdown` body as markdown, not sidecar bytes. */
+export const COLLAB_FALLBACK_HEADER = "X-Wgw-Collab-Fallback";
 
 export type YjsSnapshotLoad = {
   applied: boolean;
@@ -91,6 +99,10 @@ export async function fetchYjsSnapshot(yjsUrl: string, authToken?: string): Prom
       res.status,
       parseRetryAfterMs(res.headers.get("Retry-After")),
     );
+  }
+
+  if (res.headers.get(COLLAB_FALLBACK_HEADER) === "markdown") {
+    return { update: null, etag: null, externalWrite: false, markdown: await res.text() };
   }
 
   const update = new Uint8Array(await res.arrayBuffer());

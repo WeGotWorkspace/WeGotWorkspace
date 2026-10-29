@@ -78,9 +78,10 @@ export async function seedEmptyDocsCollabOffline(apiPath: string): Promise<void>
  * Headless collab bootstrap: hydrate y-indexeddb for a room without joining mesh.
  * Mirrors join server bootstrap when online; leaves local IDB state when offline.
  *
- * The snapshot comes first. The markdown is fetched only when the server has no
- * sidecar and the local copy is empty, so a document costs one request when it
- * has a sidecar. A failed load throws: the caller must not mark it synced.
+ * One request per document: `&fallback=markdown` returns the sidecar, or the
+ * markdown when there is none. A server without the fallback answers 204, and
+ * the markdown is then fetched separately. A failed load throws: the caller
+ * must not mark it synced.
  */
 export async function hydrateDocsCollabForOffline({
   apiPath,
@@ -119,7 +120,7 @@ export async function hydrateDocsCollabForOffline({
       const snapshot = await loadSnapshotOutcome(
         async () => {
           await beforeRequest?.();
-          return fetchYjsSnapshot(urls.yjsUrl, resolvedAuthToken);
+          return fetchYjsSnapshot(`${urls.yjsUrl}&fallback=markdown`, resolvedAuthToken);
         },
         {
           isCurrent: () => !rateLimited,
@@ -138,8 +139,11 @@ export async function hydrateDocsCollabForOffline({
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
         if (isYDocEmpty(ydoc)) {
-          await beforeRequest?.();
-          const markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
+          let markdown = snapshot.markdown;
+          if (markdown === undefined) {
+            await beforeRequest?.();
+            markdown = await loadMarkdown(urls.documentUrl, resolvedAuthToken);
+          }
           if (markdown) applyContentSeedToYDoc(ydoc, markdown, documentFormat);
         }
       }

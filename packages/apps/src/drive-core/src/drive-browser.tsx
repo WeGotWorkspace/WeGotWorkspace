@@ -245,7 +245,6 @@ export function DriveGridView({
   onShare,
   fileCanShare,
   fileCanManageStructure,
-  searchActive: _searchActive = false,
   showLocationColumn = false,
   offlineAvailableIds,
   offlinePendingSyncIds,
@@ -603,6 +602,7 @@ function FileTile({
   // interactive tile target (axe nested-interactive).
   return (
     <div
+      data-drive-file-id={file.id}
       onContextMenu={
         pickerChrome
           ? undefined

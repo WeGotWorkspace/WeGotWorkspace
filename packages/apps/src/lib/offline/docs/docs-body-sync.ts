@@ -67,6 +67,11 @@ function fileLocationFromSourceKey(sourceKey: string, username: string): string 
   return "Documents";
 }
 
+/** Listing mtime (seconds) in ms; `undefined` when the index has none. */
+export function listingModifiedAtMs(modifiedAt: number | null | undefined): number | undefined {
+  return typeof modifiedAt === "number" && modifiedAt > 0 ? modifiedAt * 1000 : undefined;
+}
+
 export async function readDocsBodySyncProgress(username: string): Promise<DocsBodySyncProgress> {
   return readProgressiveSyncProgress(username, DOCS_BODY_SYNC_META_KEY);
 }
@@ -105,7 +110,8 @@ export async function syncDocsBodiesFromListingResults(
         {
           beforeRequest: () => pacer.acquire(signal),
           // Drive sync usually got here first; an unchanged document costs no request.
-          modifiedAtMs: (row.modifiedAt ?? 0) * 1000,
+          // An unknown mtime means "fetch": it never proves the local copy is current.
+          modifiedAtMs: listingModifiedAtMs(row.modifiedAt),
         },
       );
     },
