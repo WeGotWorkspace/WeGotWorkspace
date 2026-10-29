@@ -12,11 +12,11 @@ type CandidateRange = { start: number; end: number };
  * local copy when it loaded and that the server lacks. A candidate is kept
  * when it was written on top of content the server has: its left or right
  * neighbour at insert time, or its parent, is a server item or another kept
- * item. Text another tab typed but has not
- * saved yet always is (#1722). A seed is built in an empty document, so its
- * items only point at each other. A candidate at the top level of the document
- * (a new comment, a first title) is also kept when the server has nothing in
- * that place it could be a second copy of.
+ * item. Text another tab typed but has not saved yet always is (#1722). A
+ * seed is built in an empty document, so its items only point at each other.
+ * A candidate at the top level of the document (a new comment, a first title)
+ * is also kept when the server has nothing in that place it could be a second
+ * copy of.
  *
  * Call it after the server update is applied: the top-level check reads the
  * server's content from the doc.
