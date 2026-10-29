@@ -59,4 +59,21 @@ describe("JmapInboundAdapter", () => {
     await expect(adapter.syncIfStale({ Note: "n2" })).resolves.toBe(false);
     expect(adapter.errors).toEqual([failure]);
   });
+
+  // #1792: a full re-list the server refuses (requestTooLarge) must not escape sync().
+  it("reports a failed refetch instead of throwing, and does not confirm the push", async () => {
+    const adapter = new TestAdapter();
+    const stale = () =>
+      adapter.pull.mockRejectedValueOnce(
+        new JmapMethodError("Note/changes", "c0", { type: "cannotCalculateChanges" }),
+      );
+    const tooLarge = new JmapMethodError("Note/get", "c1", { type: "requestTooLarge" });
+    adapter.refetch.mockRejectedValue(tooLarge);
+
+    stale();
+    await expect(adapter.sync()).resolves.toBeUndefined();
+    stale();
+    await expect(adapter.syncIfStale({ Note: "n2" })).resolves.toBe(false);
+    expect(adapter.errors).toEqual([tooLarge, tooLarge]);
+  });
 });
