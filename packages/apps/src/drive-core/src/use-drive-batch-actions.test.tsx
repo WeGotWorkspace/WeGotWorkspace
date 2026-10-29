@@ -715,7 +715,8 @@ describe("useDriveBatchActions", () => {
       { path: "/users/alice/notes.md", starred: true },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    expect(reloadStarredFromServer).not.toHaveBeenCalled();
+    // Starred also lists items outside the open folder, so it refreshes from any view.
+    expect(reloadStarredFromServer).toHaveBeenCalledTimes(1);
 
     act(() => queued().undo());
 

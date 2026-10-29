@@ -165,7 +165,8 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
       ),
       execute: async (signal) => {
         await operations.setStar({ path: apiPath, starred: nextValue }, { signal });
-        if (view.type === "starred") reloadStarredFromServer();
+        // Starred lists items outside the open folder, so refresh it from any view.
+        reloadStarredFromServer();
       },
       undo: () => {
         setStarred((s) => ({ ...s, [id]: beforeStarred }));

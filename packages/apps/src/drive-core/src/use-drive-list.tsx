@@ -199,8 +199,11 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     [isTouch, listHandleSelect, openFile, selectionMode, visibleItems],
   );
 
+  // Shared with me and Starred list items that are not in the current folder.
   const fileById = (id: string) =>
-    (liveSearchResults?.find((file) => file.id === id) ?? files.find((file) => file.id === id)) ||
+    liveSearchResults?.find((file) => file.id === id) ??
+    files.find((file) => file.id === id) ??
+    visibleItems.find((file) => file.id === id) ??
     null;
 
   const dropZoneProps = sidebarDropZoneProps;
