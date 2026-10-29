@@ -21,6 +21,13 @@ export function encodeSyncStep1(ydoc: Y.Doc): Uint8Array {
   return encoding.toUint8Array(encoder);
 }
 
+/** Step 2 against the doc's own state vector: the delete set and pending structs only. */
+export function encodeOwnDeleteSetStep2(ydoc: Y.Doc): Uint8Array {
+  const encoder = encoding.createEncoder();
+  syncProtocol.writeSyncStep2(encoder, ydoc, Y.encodeStateVector(ydoc));
+  return encoding.toUint8Array(encoder);
+}
+
 export function encodeUpdateBroadcast(update: Uint8Array): Uint8Array {
   const encoder = encoding.createEncoder();
   syncProtocol.writeUpdate(encoder, update);
@@ -112,7 +119,10 @@ export function handleGuardedSyncMessage(input: {
     return {
       kind: "reply",
       reply: { type: "sync", u: encoding.toUint8Array(encoder) },
-      pullBack: stateVectorIsAhead(input.ydoc, remoteStateVector),
+      // Only a writer's step 2 is always applied. Asking a reader or commenter
+      // could ping-pong: each side mutes the other's step 2 and asks again.
+      pullBack:
+        input.trust?.access === "write" && stateVectorIsAhead(input.ydoc, remoteStateVector),
     };
   }
 

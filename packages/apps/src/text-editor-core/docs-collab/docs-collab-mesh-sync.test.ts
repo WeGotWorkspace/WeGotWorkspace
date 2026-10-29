@@ -7,6 +7,7 @@ import {
   applyAwarenessUpdate,
   encodeFullAwarenessBroadcast,
   encodeSyncStep1,
+  encodeOwnDeleteSetStep2,
   encodeUpdateBroadcast,
   handleGuardedSyncMessage,
   handleSyncMessage,
@@ -213,6 +214,43 @@ describe("handleGuardedSyncMessage", () => {
     });
 
     expect(outcome).toMatchObject({ kind: "reply", pullBack: true });
+  });
+
+  it("does not ask back a sender that may not write, so two such peers cannot ping-pong", () => {
+    const a = editedDoc("from a");
+    const b = editedDoc("from b");
+
+    for (const access of ["read", "comment"] as const) {
+      expect(
+        handleGuardedSyncMessage({
+          bytes: encodeSyncStep1(a),
+          ydoc: b,
+          trust: { user: "x", access },
+        }),
+      ).toMatchObject({ kind: "reply", pullBack: false });
+    }
+    expect(handleGuardedSyncMessage({ bytes: encodeSyncStep1(a), ydoc: b })).toMatchObject({
+      kind: "reply",
+      pullBack: false,
+    });
+  });
+
+  it("carries a deletion in a step 2 against the doc's own state vector", () => {
+    const source = new Y.Doc();
+    source.getText("t").insert(0, "hello world");
+    const peer = new Y.Doc();
+    Y.applyUpdate(peer, Y.encodeStateAsUpdate(source));
+    source.getText("t").delete(5, 6);
+    expect(peer.getText("t").toString()).toBe("hello world");
+
+    const outcome = handleGuardedSyncMessage({
+      bytes: encodeOwnDeleteSetStep2(source),
+      ydoc: peer,
+      trust: { user: "admin", access: "write" },
+    });
+
+    expect(outcome).toMatchObject({ kind: "update" });
+    expect(peer.getText("t").toString()).toBe("hello");
   });
 
   it("does not ask back when the peer's step 1 shows nothing new", () => {

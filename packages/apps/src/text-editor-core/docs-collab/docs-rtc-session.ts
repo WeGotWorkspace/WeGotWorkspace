@@ -31,6 +31,7 @@ import {
   collabMessageFromChannel,
 } from "@/text-editor-core/docs-collab/docs-collab-channel";
 import {
+  encodeOwnDeleteSetStep2,
   encodeSyncStep1,
   encodeUpdateBroadcast,
   isDocumentBearingSyncMessage,
@@ -467,6 +468,10 @@ export class DocsRtcSession {
     const doc = this.options.getYDoc?.();
     if (!doc) return;
     this.broadcast({ type: "sync", u: encodeSyncStep1(doc) });
+    // A step 1 shows only missing structs. A deletion leaves the state vector
+    // unchanged, so also send the delete set. A step 2, not an update: an update
+    // would re-arm the state check timer.
+    this.broadcast({ type: "sync", u: encodeOwnDeleteSetStep2(doc) });
   }
 
   private emit(msg: DocsCollabMeshMessage): void {
