@@ -4640,7 +4640,7 @@
                     },
                     "isSubscribed": {
                         "type": "boolean",
-                        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+                        "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
                     },
                     "shareWith": {
                         "oneOf": [
@@ -6642,7 +6642,8 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
@@ -6787,7 +6788,8 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
@@ -9864,6 +9866,10 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "isSubscribed": {
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
