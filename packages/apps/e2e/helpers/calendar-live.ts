@@ -86,6 +86,67 @@ export async function calendarCacheReady(page: Page): Promise<boolean> {
   });
 }
 
+/** ISO date (YYYY-MM-DD) `years` from today; negative goes back. */
+export function isoDateYearsFromToday(years: number): string {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + years);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Empty the cached calendar events, so the next load has to come from the API. */
+export async function clearCachedCalendarEvents(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const username = localStorage.getItem("wgw.offline.calendars.username");
+    if (!username) throw new Error("No offline calendar user");
+    const dbName = `wgw-offline-${username.trim().toLowerCase()}`;
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(dbName);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("calendars_events", "readwrite");
+        tx.objectStore("calendars_events").clear();
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+}
+
+/** Test cleanup through the API: delete every event with this exact title. */
+export async function deleteCalendarEventsByTitleViaApi(title: string): Promise<number> {
+  const apiBase = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
+  const tokenResponse = await fetch(`${apiBase}/api/v1/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: E2E_USERNAME, password: E2E_PASSWORD }),
+  });
+  if (!tokenResponse.ok) throw new Error(`Cleanup sign-in failed (${tokenResponse.status})`);
+  const { access_token: token } = (await tokenResponse.json()) as { access_token: string };
+  const jmap = async (methodCalls: unknown[]) => {
+    const response = await fetch(`${apiBase}/api/v1/jmap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        using: ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:calendars"],
+        methodCalls,
+      }),
+    });
+    if (!response.ok) throw new Error(`Cleanup JMAP call failed (${response.status})`);
+    return (await response.json()) as { methodResponses: [string, Record<string, unknown>][] };
+  };
+  const query = await jmap([
+    ["CalendarEvent/query", { accountId: E2E_USERNAME, filter: { title } }, "q"],
+  ]);
+  const ids = (query.methodResponses[0]?.[1]?.ids as string[] | undefined) ?? [];
+  if (ids.length === 0) return 0;
+  await jmap([["CalendarEvent/set", { accountId: E2E_USERNAME, destroy: ids }, "s"]]);
+  return ids.length;
+}
+
 export async function expectCalendarOffline(page: Page): Promise<void> {
   await expect(page.locator('[data-connectivity="offline"]')).toBeVisible({
     timeout: 15_000,
