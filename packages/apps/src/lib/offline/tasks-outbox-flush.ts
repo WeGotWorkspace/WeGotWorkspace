@@ -16,7 +16,8 @@ import {
   TasksRequestError,
 } from "@/lib/api/wgw/tasks";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
+import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
   listOutboxMutations,
   markOutboxError,
@@ -28,7 +29,7 @@ import {
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
 } from "@/lib/offline/tasks-offline-store";
-import { taskCreateFromTask } from "@/lib/offline/tasks/tasks-patch-merge";
+import { taskCreateFromTask, taskEtag } from "@/lib/offline/tasks/tasks-patch-merge";
 
 export type OutboxFlushResult = {
   etagMismatches: string[];
@@ -47,6 +48,8 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
 
   const rows = await listOutboxMutations(username);
   const etagMismatches: string[] = [];
+  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
+  const resends = new Map<string, number>();
 
   for (const row of rows) {
     if (row.domain !== TASKS_DOMAIN) continue;
@@ -62,7 +65,14 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
         const taskId = String(payload.taskId ?? "");
         const patch = payload.patch as TaskPatch;
         const task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
-        await upsertTaskInCache(username, task, false);
+        // A patch merged in while this one was sent is owed on top of `task`.
+        const settlement = await settleSentOutboxMutation(username, row, {
+          rebase: (current) => ({ ...current, ifInState: taskEtag(task) }),
+          cacheTables: (db) => [tasksItemsTable(db)],
+          onRemoved: () => upsertTaskInCache(username, task, false),
+        });
+        sendChangedRowAgain(rows, resends, settlement);
+        continue;
       } else if (row.op === "move") {
         const taskId = String(payload.taskId ?? "");
         const taskListId = String(payload.taskListId ?? "");

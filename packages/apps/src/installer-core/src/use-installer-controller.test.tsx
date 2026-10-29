@@ -4,8 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import type { InstallerAPIOperations } from "@/installer-core/src/installer-types";
 import { useInstallerController } from "@/installer-core/src/use-installer-controller";
 import { createInstallerAppBootstrap } from "@/lib/api/mock/installer-bootstrap";
+import { wgwLoginWithCredentials } from "@/lib/api/wgw/http";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
+vi.mock("@/lib/api/wgw/http", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/wgw/http")>()),
+  wgwLoginWithCredentials: vi.fn(),
+}));
 
 function controllerWith(databaseNext: InstallerAPIOperations["databaseNext"]) {
   const { data, operations } = createInstallerAppBootstrap();
@@ -43,5 +48,48 @@ describe("useInstallerController database step", () => {
 
     expect(result.current.databaseError).toBe("MySQL rejected that username or password.");
     expect(result.current.databaseErrorCode).toBeNull();
+  });
+});
+
+describe("useInstallerController open workspace", () => {
+  const admin = { username: "admin", email: "admin@example.test", password: "correct-horse" };
+
+  function controllerWithNavigation() {
+    const onOpenWorkspace = vi.fn();
+    const onAdminSignedIn = vi.fn();
+    const { data, operations } = createInstallerAppBootstrap();
+    const hook = renderHook(() =>
+      useInstallerController({ data, operations, onOpenWorkspace, onAdminSignedIn }),
+    );
+    return { ...hook, onOpenWorkspace, onAdminSignedIn };
+  }
+
+  it("signs the new admin in and lets the app open the workspace", async () => {
+    vi.mocked(wgwLoginWithCredentials).mockResolvedValue(undefined);
+    const { result, onOpenWorkspace, onAdminSignedIn } = controllerWithNavigation();
+
+    await act(async () => {
+      await result.current.createWorkspace(admin);
+    });
+    expect(result.current.screen).toBe("ready");
+
+    await act(async () => {
+      await result.current.openWorkspace();
+    });
+
+    expect(wgwLoginWithCredentials).toHaveBeenCalledWith(admin.username, admin.password);
+    expect(onAdminSignedIn).toHaveBeenCalledTimes(1);
+    expect(onOpenWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("lets the app send the user to sign in when this tab holds no new admin", async () => {
+    const { result, onOpenWorkspace, onAdminSignedIn } = controllerWithNavigation();
+
+    await act(async () => {
+      await result.current.openWorkspace();
+    });
+
+    expect(onOpenWorkspace).toHaveBeenCalledTimes(1);
+    expect(onAdminSignedIn).not.toHaveBeenCalled();
   });
 });

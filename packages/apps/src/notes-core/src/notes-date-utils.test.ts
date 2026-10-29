@@ -5,6 +5,7 @@ import {
   formatNoteDateForList,
   formatNoteLastEdited,
   parseNoteTimestamp,
+  sortNotesDesc,
 } from "@/notes-core/src/notes-date-utils";
 
 function formatTime(d: Date): string {
@@ -109,5 +110,20 @@ describe("formatNoteDateForDetail", () => {
 
   it("returns raw string when timestamp is invalid", () => {
     expect(formatNoteDateForDetail("unknown")).toBe("unknown");
+  });
+});
+
+describe("sortNotesDesc", () => {
+  it("orders exactly like compareNotesDesc", () => {
+    const notes = [
+      { id: "a", date: "2026-01-02T10:00:00.000Z" },
+      { id: "b", date: "—" },
+      { id: "c", date: "2026-03-01T08:00:00.000Z" },
+      { id: "d", date: "2026-01-02T10:00:00.000Z" },
+      { id: "e", date: "" },
+      { id: "f", date: "2025-12-31T23:59:59.000Z" },
+    ];
+    const expected = [...notes].sort(compareNotesDesc).map((note) => note.id);
+    expect(sortNotesDesc([...notes]).map((note) => note.id)).toEqual(expected);
   });
 });

@@ -31,6 +31,7 @@ import {
   enqueueCoalescedNoteUpdate,
   enqueueOutboxMutation,
   getNoteFromCache,
+  hasQueuedNoteUpsert,
   listOutboxMutations,
   readNotesBootstrapFromCache,
   removeNoteFromCache,
@@ -364,8 +365,12 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         : note.createPending === true;
       // A debounced save names its fields: lay only those over the cached copy,
       // which may already hold edits made after this one (a tag, a star).
+      // Also while the create is in flight: a snapshot taken at the last
+      // keystroke must not replace a tag or move queued after it.
+      const patch =
+        existing && opts?.fields ? { id: note.id, ...noteFieldsPatch(note, opts.fields) } : note;
+      // The create sends the whole cached note, whatever fields were named.
       const fields = createPending ? undefined : opts?.fields;
-      const patch = fields ? { id: note.id, ...noteFieldsPatch(note, fields) } : note;
       // Without a cached copy, keep the full note locally rather than a partial
       // one; metadataSelection still limits what goes on the wire.
       const merged = withCreatePending(
@@ -373,9 +378,15 @@ export function createHybridNotesOperations(username: string): NotesAPIOperation
         createPending,
       );
       const queued = { tagDelta: tagDeltaFromOpts(opts), previous: existing, fields };
-      // Not on the server yet, or offline: the outbox keeps the order (create
-      // first), and online it is sent right away.
-      if (createPending || !readBrowserOnline()) {
+      // Not on the server yet, offline, or a queued save of this note not sent
+      // yet: the outbox keeps the order (create first) and merges this edit
+      // into that save, so the two never race (#1711). Online it is sent
+      // right away.
+      if (
+        createPending ||
+        !readBrowserOnline() ||
+        (await hasQueuedNoteUpsert(username, merged.id))
+      ) {
         const saved = await queueOfflineUpsert(username, merged, queued);
         if (readBrowserOnline()) void runner.flush();
         return saved;
