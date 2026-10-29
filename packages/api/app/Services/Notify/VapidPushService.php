@@ -10,6 +10,7 @@ use App\Models\NotificationDelivery;
 use App\Models\PushSubscription;
 use App\Services\Installer\InstallerVapidKeyGenerator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class VapidPushService
@@ -54,31 +55,41 @@ final class VapidPushService
         }
         $hash = hash('sha256', $endpoint);
         $now = Carbon::now();
-        $existing = PushSubscription::query()
-            ->where('principal', strtolower($username))
-            ->where('endpoint_hash', $hash)
-            ->first();
-        if ($existing !== null) {
-            $existing->p256dh = $input['keys']['p256dh'];
-            $existing->auth = $input['keys']['auth'];
-            $existing->user_agent = $userAgent;
-            $existing->updated_at = $now;
-            $existing->save();
+        $principal = strtolower($username);
 
-            return $existing;
-        }
+        // An endpoint belongs to one browser profile, so the latest poster owns it.
+        return DB::connection('wgw')->transaction(function () use ($principal, $hash, $endpoint, $input, $userAgent, $now): PushSubscription {
+            PushSubscription::query()
+                ->where('endpoint_hash', $hash)
+                ->where('principal', '!=', $principal)
+                ->delete();
 
-        return PushSubscription::query()->create([
-            'id' => (string) Str::ulid(),
-            'principal' => strtolower($username),
-            'endpoint' => $endpoint,
-            'endpoint_hash' => $hash,
-            'p256dh' => $input['keys']['p256dh'],
-            'auth' => $input['keys']['auth'],
-            'user_agent' => $userAgent,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+            $existing = PushSubscription::query()
+                ->where('principal', $principal)
+                ->where('endpoint_hash', $hash)
+                ->first();
+            if ($existing !== null) {
+                $existing->p256dh = $input['keys']['p256dh'];
+                $existing->auth = $input['keys']['auth'];
+                $existing->user_agent = $userAgent;
+                $existing->updated_at = $now;
+                $existing->save();
+
+                return $existing;
+            }
+
+            return PushSubscription::query()->create([
+                'id' => (string) Str::ulid(),
+                'principal' => $principal,
+                'endpoint' => $endpoint,
+                'endpoint_hash' => $hash,
+                'p256dh' => $input['keys']['p256dh'],
+                'auth' => $input['keys']['auth'],
+                'user_agent' => $userAgent,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        });
     }
 
     public function unsubscribe(string $username, string $endpoint): void
