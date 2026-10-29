@@ -29,21 +29,21 @@ Drive disk I/O is `WgwStorage::files()`. Observation hooks are **three**: `FileN
 
 `NotifyListener` allow-list:
 
-| domain     | action            |
-| ---------- | ----------------- |
-| `docs`     | `shared`          |
-| `docs`     | `thread_activity` |
-| `calendar` | `alert_due`       |
-| `calendar` | `invite`          |
-| `calendar` | `rsvp`            |
-| `calendar` | `shared`          |
-| `notes`    | `shared`          |
-| `tasks`    | `alert_due`       |
-| `tasks`    | `list_shared`     |
-| `tasks`    | `status_changed`  |
-| `chat`     | `message_posted`  |
-| `chat`     | `mentioned`       |
-| `meet`     | `started`         |
+| domain | action |
+|--------|--------|
+| `docs` | `shared` |
+| `docs` | `thread_activity` |
+| `calendar` | `alert_due` |
+| `calendar` | `invite` |
+| `calendar` | `rsvp` |
+| `calendar` | `shared` |
+| `notes` | `shared` |
+| `tasks` | `alert_due` |
+| `tasks` | `list_shared` |
+| `tasks` | `status_changed` |
+| `chat` | `message_posted` |
+| `chat` | `mentioned` |
+| `meet` | `started` |
 
 Recipients come from `$event->data['recipients']`. The actor is never notified. Inbox uniqueness is `(principal, dedupe_key)`. Events may set `supersede` to refresh an existing row (title/body/navigate, unread) or `clear` to delete it (CANCEL).
 
@@ -61,7 +61,7 @@ Shared hosting: cron `* * * * * php packages/api/artisan schedule:run`. Laravel 
 
 - **Tier 1 (a window the user is looking at, or a Meet call):** the inbox poll (~15s) **local-acks** unread rows so VAPID skips them on every device. A window acks only while `document.visibilityState === 'visible'`, or while it holds the user's live Meet call (`MeetCallStore` status `in-call`; the lobby does not count), also when that call window is behind another app. A window that becomes visible or joins a call acks the unread rows it already listed; on becoming visible it also re-fetches the inbox, so rows that arrived after its last (throttled) hidden poll are acked within the grace. A failed ack is retried on the next poll or visibility change. There is no idle timer: a visible window on an unattended screen still acks. Gate: `notifications-core/src/local-ack-gate.ts`; wiring: `use-notifications-local-ack.ts`. This includes Meet (`/meet` hides the suite tray but the host still polls) and a visible installed PWA. A visible window plays the inbox chime and pulses the badge; it shows no OS notification. Open tabs also wake on principal-mesh `notify-hint` (same room as Meet chat acceleration): targeted `sendTo` after chat post; recipients re-GET the inbox — mesh payload is never inbox SoT.
 - **Tier 2 (hidden window, no call):** the window keeps polling and updates the bell, but it does not ack and creates no page-level `new Notification()`. The service-worker push below is the only OS notification path. Its payload `tag` is the inbox row `tag`, or the row id when there is none, so a device shows one notification per tag: a superseding row replaces the earlier one instead of stacking.
-- **VAPID:** install-scoped keypair (`wgw-content/keys/vapid-*.txt` or `WGW_VAPID_*`). Custom service worker (`injectManifest` + `src/sw.ts`) handles `push` / `notificationclick` / `pushsubscriptionchange`. Vite dev on localhost registers that worker (`devOptions.enabled`, `type: "module"`) so sweep payloads reach `http://127.0.0.1:5173`; Docker HTTPS (`*.localhost`) is also a secure origin. Payload shape is `application/notification+json` (`title`, `body`, `navigate`, `tag`, `renotify`, `app_badge`). The signed-in host requests Notification permission once (`default` only) and then `pushManager.subscribe`s (reusing `getSubscription()` when present) so a `push_subscriptions` row exists for this origin. Sign-out deletes that row and unsubscribes the browser. When a session ended without sign-out and another account signs in, the client replaces the browser subscription instead of reusing it (see Member sign-out in `packages/apps/docs/offline-platform.md`). Permission granted is **not** enough — Safari in particular must persist a `web.push.apple.com` endpoint. VAPID subject defaults to `mailto:noreply@example.com` (Safari Web Push rejects `@localhost`). PHP needs `gmp` or `bcmath` for VAPID signatures; without them `minishlink/web-push` warns and Laravel debug used to abort the send. The sweep takes up to 100 due deliveries per run, oldest `due_at` first. A failed send (timeout, 413, 429, 5xx) does not mark `sent_at`; it moves `due_at` back by the delivery's age (at least 60s), so retries back off and newer deliveries go first. A delivery still unsent one hour after it was created is deleted. A permanent rejection prunes the subscription instead; the signed-in client posts its subscription again on its next visit. Web Push reaches every device when no window of that principal was visible or in a Meet call during the 20s local-ack grace. A hidden tab or a minimized PWA no longer holds push back. Push lands ~20–80s after the event (20s local-ack grace, then up to one 60s cron tick).
+- **VAPID:** install-scoped keypair (`wgw-content/keys/vapid-*.txt` or `WGW_VAPID_*`). Custom service worker (`injectManifest` + `src/sw.ts`) handles `push` / `notificationclick` / `pushsubscriptionchange`. Vite dev on localhost registers that worker (`devOptions.enabled`, `type: "module"`) so sweep payloads reach `http://127.0.0.1:5173`; Docker HTTPS (`*.localhost`) is also a secure origin. Payload shape is `application/notification+json` (`title`, `body`, `navigate`, `tag`, `renotify`, `app_badge`). The signed-in host requests Notification permission once (`default` only) and then `pushManager.subscribe`s (reusing `getSubscription()` when present) so a `push_subscriptions` row exists for this origin. Sign-out deletes that row and unsubscribes the browser. The browser records which account last posted its subscription (`wgw.push.subscriber`). When a different account signs in after a session ended without sign-out, the client unsubscribes and subscribes again instead of reusing the endpoint. A subscription with no record (first visit after this was added) is posted as-is, because re-subscribing outside a user gesture can fail in Safari. The server keeps one row per account and endpoint, and a POST never removes another account's row; a leftover row is pruned once the push service rejects its endpoint (see Member sign-out in `packages/apps/docs/offline-platform.md`). Permission granted is **not** enough — Safari in particular must persist a `web.push.apple.com` endpoint. VAPID subject defaults to `mailto:noreply@example.com` (Safari Web Push rejects `@localhost`). PHP needs `gmp` or `bcmath` for VAPID signatures; without them `minishlink/web-push` warns and Laravel debug used to abort the send. The sweep takes up to 100 due deliveries per run, oldest `due_at` first. A failed send (timeout, 413, 429, 5xx) does not mark `sent_at`; it moves `due_at` back by the delivery's age (at least 60s), so retries back off and newer deliveries go first. A delivery still unsent one hour after it was created is deleted. A permanent rejection prunes the subscription instead; the signed-in client posts its subscription again on its next visit. Web Push reaches every device when no window of that principal was visible or in a Meet call during the 20s local-ack grace. A hidden tab or a minimized PWA no longer holds push back. Push lands ~20–80s after the event (20s local-ack grace, then up to one 60s cron tick).
 - **Subscription rotation (`pushsubscriptionchange`, [#1604](https://github.com/WeGotWorkspace/WeGotWorkspace/issues/1604)):** browsers may replace or expire a push subscription without an open window. `sw.ts` hands the event to `notifications-core/src/push-subscription-change.ts`, which:
   1. **Gets its own access token.** The window keeps the bearer JWT in `localStorage`, which a worker cannot read. A same-origin worker `fetch` does carry the HttpOnly `wgw_refresh` cookie (`SameSite=Strict`, path `/api/v1/auth`), so the worker posts `POST /auth/refresh` itself. It holds the same Web Lock as the tabs (`AUTH_REFRESH_WEB_LOCK_NAME`, `wgw-auth-refresh`) so it never rotates the cookie under a tab. The server's replay grace window covers a browser without Web Locks. The rotated cookie lands in the shared cookie jar; open tabs keep their still-valid access token and refresh with the new cookie later. A background rotation therefore renews the refresh cookie (not the tab-side `refreshExpiresAt`).
   2. **Picks a subscription made with the current key.** It fetches `GET /notifications/push/vapid-public-key`, then uses `event.newSubscription` (or `pushManager.getSubscription()`) when its `applicationServerKey` matches. Otherwise it unsubscribes that one and calls `pushManager.subscribe` with the server key.
@@ -105,9 +105,9 @@ OpenAPI-first under `/api/v1/notifications`. Tray-only UI — no new first SPA p
 Until a prefs store exists, treat every allow-listed action as:
 
 | Channel | Default |
-| ------- | ------- |
-| `inbox` | **on**  |
-| `push`  | **on**  |
+|---------|---------|
+| `inbox` | **on** |
+| `push`  | **on** |
 
 That matches current code: `NotifyListener` always upserts a `notifications` row and schedules a `local` delivery; `VapidPushService::sweepDue` sends VAPID when the local-ack grace expires.
 
@@ -129,11 +129,11 @@ Also gate **scheduling** of the local delivery in `NotifyListener` when `push` i
 
 ### What not to do now vs cheap seams
 
-| Do **not** add now                                                                                       | Keep / prefer                                                                             |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Prefs table, OpenAPI, settings UI                                                                        | Stable `domain` + `action` on envelope and inbox rows (already present)                   |
-| Speculative mute / digest / quiet-hours schema                                                           | Strict allow-list curation (`domain.action` stays the prefs grain)                        |
+| Do **not** add now | Keep / prefer |
+|--------------------|---------------|
+| Prefs table, OpenAPI, settings UI | Stable `domain` + `action` on envelope and inbox rows (already present) |
+| Speculative mute / digest / quiet-hours schema | Strict allow-list curation (`domain.action` stays the prefs grain) |
 | Filtering the inbox GET as a substitute for “inbox off” (hides rows that should never have been written) | Format-at-edge facts on the row so push-only send can format without re-reading producers |
-| Coupling new producers to a prefs API                                                                    | Document expansion actions with the same key shape so defaults/overrides drop in later    |
+| Coupling new producers to a prefs API | Document expansion actions with the same key shape so defaults/overrides drop in later |
 
 See also the expansion plan note: [.agents/plans/suite-notify-inbox-expansion.md](../../.agents/plans/suite-notify-inbox-expansion.md) (Future prefs + optional Chore draft).
