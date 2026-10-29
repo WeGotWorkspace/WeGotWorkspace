@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
-  contactsViewDownloadingCount,
+  contactsDownloadTotal,
   canWriteContactGroup,
   contactAndGroupShareAddressBook,
   contactsGroupViewKey,
@@ -626,22 +626,41 @@ describe("filterCardsByHiddenAddressBooks", () => {
   });
 });
 
-describe("contactsViewDownloadingCount", () => {
+describe("contactsDownloadTotal", () => {
   const none = new Set<string>();
+  const person = (id: string) =>
+    ({ id, kind: "individual", addressBookIds: { default: true } }) as unknown as ContactCard;
+  const group = (id: string) =>
+    ({
+      id,
+      kind: "group",
+      members: {},
+      addressBookIds: { default: true },
+    }) as unknown as ContactCard;
+  const snapshot = (count: number) => Array.from({ length: count }, (_, i) => person(`p-${i}`));
 
-  it("counts every card still downloading in All Contacts", () => {
-    expect(contactsViewDownloadingCount("all", "", none, 960)).toBe(960);
-    expect(contactsViewDownloadingCount("all", "  ", none, 960)).toBe(960);
+  it("adds the contacts still downloading to the snapshot's contacts, not the rows on screen", () => {
+    // The bootstrap holds 80 cards while the list rows still show the previous 40.
+    expect(contactsDownloadTotal("all", "", none, snapshot(80), 920)).toBe(1000);
+    expect(contactsDownloadTotal("all", "  ", none, snapshot(80), 920)).toBe(1000);
   });
 
-  it("counts nothing where the view or a search picks only some cards", () => {
-    expect(contactsViewDownloadingCount("all", "ada", none, 960)).toBe(0);
-    expect(contactsViewDownloadingCount("all", "", new Set(["work"]), 960)).toBe(0);
-    expect(contactsViewDownloadingCount("book:default", "", none, 960)).toBe(0);
-    expect(contactsViewDownloadingCount("group:team", "", none, 960)).toBe(0);
+  it("leaves group cards out of the loaded part", () => {
+    expect(contactsDownloadTotal("all", "", none, [...snapshot(40), group("g-1")], 960)).toBe(1000);
   });
 
-  it("is zero once the download is complete", () => {
-    expect(contactsViewDownloadingCount("all", "", none, 0)).toBe(0);
+  it("is unknown where the view or a search picks only some cards", () => {
+    expect(contactsDownloadTotal("all", "ada", none, snapshot(40), 960)).toBeUndefined();
+    expect(contactsDownloadTotal("all", "", new Set(["work"]), snapshot(40), 960)).toBeUndefined();
+    expect(contactsDownloadTotal("book:default", "", none, snapshot(40), 960)).toBeUndefined();
+    expect(contactsDownloadTotal("group:team", "", none, snapshot(40), 960)).toBeUndefined();
+  });
+
+  it("is unknown when no download runs or groups cannot be told apart", () => {
+    expect(contactsDownloadTotal("all", "", none, snapshot(1000), undefined)).toBeUndefined();
+  });
+
+  it("is the snapshot's contacts once the last page is in", () => {
+    expect(contactsDownloadTotal("all", "", none, snapshot(1000), 0)).toBe(1000);
   });
 });

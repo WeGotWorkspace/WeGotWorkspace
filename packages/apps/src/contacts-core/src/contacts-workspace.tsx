@@ -43,7 +43,7 @@ import {
   canWriteContactGroup,
   contactAndGroupShareAddressBook,
   contactsGroupViewKey,
-  contactsViewDownloadingCount,
+  contactsDownloadTotal,
 } from "@/contacts-core/src/contacts-group-utils";
 import type { ContactsWorkspaceProps } from "@/contacts-core/src/contacts-workspace-props";
 import { useContactsController } from "@/contacts-core/src/use-contacts-controller";
@@ -66,7 +66,7 @@ export function ContactsWorkspace({
   listLoading: incomingListLoading = false,
   listRefreshing: incomingListRefreshing = false,
   mutationsLocked = false,
-  pendingCardCount = 0,
+  pendingContactCount,
   onRefreshList,
   onLogout,
   className,
@@ -371,11 +371,12 @@ export function ContactsWorkspace({
             listLoading,
             listRefreshing,
             visibleCards,
-            downloadingCardCount: contactsViewDownloadingCount(
+            downloadTotal: contactsDownloadTotal(
               view,
               searchQuery,
               hiddenAddressBookIds,
-              pendingCardCount,
+              data.cards,
+              pendingContactCount,
             ),
             searchQuery,
             setSearchQuery,

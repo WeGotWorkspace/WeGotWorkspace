@@ -8,10 +8,11 @@ export type ContactsAppBootstrap = {
   data: ContactsUIData;
   session: WorkspaceSession;
   /**
-   * Cards a cold download has not fetched yet. Set only on the progress
-   * snapshots painted before the last page; a finished snapshot leaves it out.
+   * Non-group cards a cold download has not fetched yet. Set only on progress
+   * snapshots, and only when the server can tell groups apart; a finished
+   * snapshot leaves it out.
    */
-  pendingCardCount?: number;
+  pendingContactCount?: number;
 };
 
 const fullRights: AddressBook["myRights"] = {

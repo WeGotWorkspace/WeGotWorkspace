@@ -215,8 +215,8 @@ export function useContactsAPI(source?: ContactsApiSource, options?: UseContacts
     listRefreshing: listRefreshing || reconnectSyncing || coldDownload,
     /** Cold download: list is visible but create, edit, and delete stay closed. */
     mutationsLocked: coldDownload,
-    /** Cards the cold download has not fetched yet; 0 once the snapshot is complete. */
-    pendingCardCount: coldDownload ? (data?.pendingCardCount ?? 0) : 0,
+    /** Non-group cards the cold download has not fetched yet; undefined when none is running or it is unknown. */
+    pendingContactCount: coldDownload ? data?.pendingContactCount : undefined,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

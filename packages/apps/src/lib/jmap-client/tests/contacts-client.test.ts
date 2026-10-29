@@ -85,11 +85,13 @@ describe("JmapContactsClient contract batches", () => {
     expect(recorded[0]?.map(([name]) => name)).toEqual([
       "AddressBook/get",
       "ContactCard/query",
+      "ContactCard/query",
       "ContactCard/get",
     ]);
     expect(recorded[0]?.[0]?.[1]).toEqual({ accountId: ACCOUNT, ids: null });
     expect(recorded[0]?.[1]?.[1]).toEqual({ accountId: ACCOUNT });
-    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
+    expect(recorded[0]?.[2]?.[1]).toEqual({ accountId: ACCOUNT, filter: { kind: "group" } });
+    expect(recorded[0]?.[3]?.[1]).toEqual({ accountId: ACCOUNT, ids: [] });
     expect(recorded[1]?.[0]).toEqual([
       "ContactCard/get",
       { accountId: ACCOUNT, ids: ["card-1"] },
@@ -159,17 +161,13 @@ describe("JmapContactsClient contract batches", () => {
     );
 
     const pages: number[] = [];
-    const totals: number[] = [];
     const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
       onPage: (snapshot) => {
         pages.push(snapshot.cards.list.length);
-        totals.push(snapshot.cardTotal);
       },
     });
     expect(got.cards.list).toHaveLength(ids.length);
     expect(pages).toEqual([CONTACT_CARD_GET_MAX_IDS_PER_REQUEST, ids.length]);
-    // The query's id count, known before the first page: the list header shows it.
-    expect(totals).toEqual([ids.length, ids.length]);
     const getBatches = recorded.slice(1);
     expect(getBatches).toHaveLength(2);
     expect(getBatches[0]).toHaveLength(1);
@@ -177,6 +175,93 @@ describe("JmapContactsClient contract batches", () => {
       CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
     );
     expect((getBatches[1]?.[0]?.[1].ids as string[]).length).toBe(3);
+  });
+
+  it("reports the contacts still to come with every page, leaving groups out", async () => {
+    const ids = Array.from(
+      { length: CONTACT_CARD_GET_MAX_IDS_PER_REQUEST + 3 },
+      (_, index) => `card-${index}`,
+    );
+    // One group in the first page, two in the second.
+    const groupIds = ["card-1", "card-40", "card-42"];
+    const { contacts, recorded } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            const filter = args.filter as { kind?: string } | undefined;
+            return methodResponse(
+              name,
+              { accountId: ACCOUNT, ids: filter?.kind === "group" ? groupIds : ids },
+              id,
+            );
+          }
+          const pageIds = (args.ids as string[] | null) ?? [];
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        }),
+      { maxObjectsInGet: 500, maxCallsInRequest: 32 },
+    );
+
+    const pending: (number | undefined)[] = [];
+    await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pending.push(snapshot.pendingContactCount);
+      },
+    });
+
+    // After page 1: card-40..card-42 are left, two of them groups.
+    expect(pending).toEqual([1, 0]);
+    expect(recorded[0]?.map(([name, args]) => [name, args.filter])).toEqual([
+      ["AddressBook/get", undefined],
+      ["ContactCard/query", undefined],
+      ["ContactCard/query", { kind: "group" }],
+      ["ContactCard/get", undefined],
+    ]);
+  });
+
+  it("leaves the contacts still to come unknown when the server rejects the kind filter", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const { contacts } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query" && args.filter) {
+            return methodResponse("error", { type: "unsupportedFilter" }, id);
+          }
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[] | null) ?? [];
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        }),
+      { maxObjectsInGet: 2, maxCallsInRequest: 8 },
+    );
+
+    const pending: (number | undefined)[] = [];
+    const got = await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onPage: (snapshot) => {
+        pending.push(snapshot.pendingContactCount);
+      },
+    });
+
+    expect(got.cards.list.map((card) => card.id)).toEqual(ids);
+    expect(pending).toEqual([undefined, undefined]);
   });
 
   it("reports ContactCard state from the query batch, not later pages", async () => {

@@ -65,7 +65,7 @@ function ListHarness({
   listRefreshing = false,
   onRefreshList,
   slot = "both",
-  downloadingCardCount,
+  downloadTotal,
   selectedIds = [],
 }: {
   visibleCards: ContactCard[];
@@ -73,7 +73,7 @@ function ListHarness({
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   slot?: "list" | "header" | "both";
-  downloadingCardCount?: number;
+  downloadTotal?: number;
   selectedIds?: string[];
 }) {
   // ContactsListPanel uses hooks; call it only while a React component is rendering.
@@ -102,7 +102,7 @@ function ListHarness({
     onSwipeRemoveFromGroup: vi.fn(),
     selectionBar: null,
     onRefreshList,
-    downloadingCardCount,
+    downloadTotal,
   });
   if (slot === "list") return <>{panel.listContent}</>;
   if (slot === "header") return <>{panel.header}</>;
@@ -203,11 +203,7 @@ describe("ContactsListPanel header count", () => {
   it("counts the cards still downloading, not only the rows loaded so far", () => {
     render(
       <TooltipProvider>
-        <ListHarness
-          visibleCards={[personCard, orgCard]}
-          downloadingCardCount={998}
-          slot="header"
-        />
+        <ListHarness visibleCards={[personCard, orgCard]} downloadTotal={1000} slot="header" />
       </TooltipProvider>,
     );
     expect(headerCount()).toBe("(1000)");
@@ -229,7 +225,7 @@ describe("ContactsListPanel header count", () => {
         <ListHarness
           visibleCards={[personCard, orgCard]}
           selectedIds={[personCard.id, orgCard.id]}
-          downloadingCardCount={998}
+          downloadTotal={1000}
           slot="header"
         />
       </TooltipProvider>,
