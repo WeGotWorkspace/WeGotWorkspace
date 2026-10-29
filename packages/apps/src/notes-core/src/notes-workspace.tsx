@@ -469,7 +469,7 @@ export function NotesWorkspace({
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
                   ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag} className="max-w-full min-w-0">
+                    <li key={tag} className="notes-sidebar-tags__row">
                       <button
                         type="button"
                         {...sidebarSelectMarker}

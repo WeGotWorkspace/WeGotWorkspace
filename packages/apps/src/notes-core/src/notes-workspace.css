@@ -378,6 +378,11 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
+/* Cap the flex item so a long tag ellipsizes instead of overflowing the sidebar. */
+.notes-workspace .notes-sidebar-tags__row {
+  @apply min-w-0 max-w-full;
+}
+
 .notes-workspace .notes-sidebar-tags__item {
   @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
   @apply cursor-pointer rounded-full outline-none;
