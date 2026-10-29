@@ -409,6 +409,19 @@ describe("ensurePushPermissionAndSubscribe", () => {
       });
     });
 
+    it("treats a username that differs only in case as the same account", async () => {
+      stubNotification("granted");
+      window.localStorage.setItem(SUBSCRIBER_KEY, "Alice");
+      signInAs("alice");
+      const previous = storedSubscription(CURRENT_KEY);
+      getSubscription.mockResolvedValue(previous);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(previous.unsubscribe).not.toHaveBeenCalled();
+      expect(subscribe).not.toHaveBeenCalled();
+    });
+
     it("keeps a subscription with no recorded account and records the signed-in one", async () => {
       stubNotification("granted");
       signInAs("bob");
