@@ -18,11 +18,16 @@ use Illuminate\Support\Str;
  * - a UID that only notes out of the caller's reach use is not kept: the
  *   note gets a fresh UID, like a client UID that is not a UUID.
  *
- * Call inside the create transaction: the read locks the UID until the insert.
+ * Call inside the create transaction, like VJournalUidGuard: the locking read
+ * holds a gap lock on MySQL, and SQLite's IMMEDIATE transaction holds the
+ * write lock. Other databases may not lock a free UID; within one notebook
+ * the unique (calendarid, uid) index still catches a race (NoteUidConflict).
  */
 final class NoteCreateUid
 {
-    public function resolve(NotebookRepository $notebooks, string $username, string $uid): string
+    public function __construct(private readonly NotebookRepository $notebooks) {}
+
+    public function resolve(string $username, string $uid): string
     {
         $calendarIds = CalendarObject::query()
             ->where('uid', $uid)
@@ -34,7 +39,7 @@ final class NoteCreateUid
         }
 
         foreach ($calendarIds as $calendarId) {
-            if ($notebooks->findAccessibleInstanceForCalendar($username, (int) $calendarId) !== null) {
+            if ($this->notebooks->findAccessibleInstanceForCalendar($username, (int) $calendarId) !== null) {
                 throw new ApiHttpException(409, NoteMoveHelper::UID_CONFLICT, 'alreadyExists');
             }
         }

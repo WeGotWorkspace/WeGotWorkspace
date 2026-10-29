@@ -34,10 +34,10 @@ final class NoteRepository
         private readonly CalendarCollectionAccess $collectionAccess,
         private readonly SearchIndexerService $searchIndexer,
         private readonly NoteYjsProjection $yjsProjection,
+        private readonly NoteCreateUid $createUid,
         private readonly JmapNoteStateService $noteStates = new JmapNoteStateService,
         private readonly BestEffortSearchIndexSync $searchIndexSync = new BestEffortSearchIndexSync,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
-        private readonly NoteCreateUid $createUid = new NoteCreateUid,
     ) {}
 
     /**
@@ -141,7 +141,7 @@ final class NoteRepository
         // same UID cannot both pass the check before either one is written.
         try {
             $uid = DB::connection('wgw')->transaction(function () use ($username, $uid, $instance, $note, $allowStoredTags): string {
-                $uid = $this->createUid->resolve($this->notebooks, $username, $uid);
+                $uid = $this->createUid->resolve($username, $uid);
                 $this->moveHelper->assertUidAvailable($uid);
                 $this->calBackend()->createCalendarObject(
                     [(int) $instance->calendarid, (int) $instance->id],

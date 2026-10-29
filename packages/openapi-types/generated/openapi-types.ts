@@ -10842,7 +10842,7 @@ export interface components {
             color?: string | null;
             topic?: string | null;
             groupSlug?: string | null;
-            /** @description Optional client-suggested channel id. Must start with chat-; the chat-grp- prefix is reserved for group default channels. Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix. */
+            /** @description Optional client-suggested channel id: chat- followed by a ULID or UUID (any other shape is a 400). Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix. */
             id?: components["schemas"]["JmapId"];
             /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
             guestRoomCode?: string | null;

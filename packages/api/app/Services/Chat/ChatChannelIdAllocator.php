@@ -14,13 +14,14 @@ use Illuminate\Support\Str;
  *
  * Channel ids are unique across the instance, so every member addresses the
  * same id (sharee instances are normalized onto it). The answer to a create
- * still only depends on channels the caller can see:
+ * must not tell the caller which ids other people's channels use:
  *
+ * - a client id must be `chat-` plus a ULID or UUID, so an id taken
+ *   elsewhere cannot be guessed; any other shape (a readable slug, the
+ *   reserved `chat-grp-` group default prefix) is refused for every caller;
  * - a client id of a channel the caller can see is a 409;
  * - a client id only out-of-reach channels use is not kept: the channel gets
  *   a fresh id, and the response carries it;
- * - `chat-grp-` ids are reserved for group default channels
- *   (ChatCollectionUris::groupDefaultUri) and are refused for every caller;
  * - without a client id, the id is the slug of the initial name plus a short
  *   random suffix, so it never reflects which names other channels use.
  *
@@ -51,14 +52,14 @@ final class ChatChannelIdAllocator
      */
     private function clientId(string $requestedId, Closure $visibleToCaller): string
     {
-        $prefix = ChatCollectionUris::PREFIX_CHANNEL;
         // Only chat- ids: dm- uris are exclusively minted by openDm's hash.
-        if (! str_starts_with($requestedId, $prefix)) {
-            throw new ApiHttpException(400, 'Channel id must start with "'.$prefix.'" for this kind.', 'invalidProperties', ['id']);
+        $suffix = str_starts_with($requestedId, ChatCollectionUris::PREFIX_CHANNEL)
+            ? substr($requestedId, strlen(ChatCollectionUris::PREFIX_CHANNEL))
+            : '';
+        if (! Str::isUlid($suffix) && ! Str::isUuid($suffix)) {
+            throw new ApiHttpException(400, 'Channel id must be "'.ChatCollectionUris::PREFIX_CHANNEL.'" followed by a ULID or UUID.', 'invalidProperties', ['id']);
         }
-        if (str_starts_with(strtolower($requestedId), self::RESERVED_GROUP_PREFIX)) {
-            throw new ApiHttpException(400, 'Channel ids starting with "'.self::RESERVED_GROUP_PREFIX.'" are reserved.', 'invalidProperties', ['id']);
-        }
+        $requestedId = strtolower($requestedId);
         if (! $this->taken($requestedId)) {
             return $requestedId;
         }

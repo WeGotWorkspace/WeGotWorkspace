@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Chat;
 
 use App\Models\Principal;
+use Illuminate\Support\Str;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
 
@@ -169,38 +170,49 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
 
     public function test_client_supplied_id_is_validated_and_conflicts_only_within_reach(): void
     {
+        $id = 'chat-'.strtolower((string) Str::ulid());
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
-            'name' => 'General', 'kind' => 'channel', 'id' => 'chat-general',
-        ])->assertCreated()->assertJsonPath('id', 'chat-general');
+            'name' => 'General', 'kind' => 'channel', 'id' => $id,
+        ])->assertCreated()->assertJsonPath('id', $id);
 
         // The caller's own channel already has this id.
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
-            'name' => 'Again', 'kind' => 'channel', 'id' => 'chat-general',
+            'name' => 'Again', 'kind' => 'channel', 'id' => $id,
         ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
 
-        // Bob cannot see alice's channel: his create answers like any other
-        // create, under an id of its own, and alice's channel is untouched.
+        // Bob cannot see alice's channel: his create answers with a channel
+        // of his own under a fresh id, and alice's channel is untouched.
         $bobs = $this->asUser('bob')->postJson('/api/v1/chat/channels', [
-            'name' => 'Mine', 'kind' => 'channel', 'id' => 'chat-general',
+            'name' => 'Mine', 'kind' => 'channel', 'id' => $id,
         ])->assertCreated()->assertJsonPath('name', 'Mine')->json('id');
+        $this->assertNotSame($id, $bobs);
         $this->assertMatchesRegularExpression('/^chat-[0-9a-z]{26}$/', (string) $bobs);
-        $this->asUser('bob')->getJson('/api/v1/chat/channels/chat-general')->assertNotFound();
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$id)->assertNotFound();
         $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$bobs)->assertOk()->assertJsonPath('name', 'Mine');
-        $this->asUser('alice')->getJson('/api/v1/chat/channels/chat-general')->assertOk()
+        $this->asUser('alice')->getJson('/api/v1/chat/channels/'.$id)->assertOk()
             ->assertJsonPath('name', 'General')
             ->assertJsonPath('isSharee', false);
 
         // Once shared with carol, the id is within her reach: a conflict.
-        $this->asUser('alice')->patchJson('/api/v1/chat/channels/chat-general', [
+        $this->asUser('alice')->patchJson('/api/v1/chat/channels/'.$id, [
             'shareWith' => ['carol' => ['mayReadItems' => true]],
         ])->assertOk();
         $this->asUser('carol')->postJson('/api/v1/chat/channels', [
-            'name' => 'Hers', 'kind' => 'channel', 'id' => 'chat-general',
+            'name' => 'Hers', 'kind' => 'channel', 'id' => $id,
         ])->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
 
+        // A UUID works too; an uppercase id is stored lowercase.
+        $uuid = (string) Str::uuid();
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
-            'name' => 'Bad', 'kind' => 'channel', 'id' => 'unprefixed',
-        ])->assertStatus(400);
+            'name' => 'Uuid', 'kind' => 'channel', 'id' => 'chat-'.strtoupper($uuid),
+        ])->assertCreated()->assertJsonPath('id', 'chat-'.$uuid);
+
+        // Readable or otherwise guessable ids are refused for every caller.
+        foreach (['chat-general', 'unprefixed', 'chat-'.$uuid.'-x'] as $bad) {
+            $this->asUser('alice')->postJson('/api/v1/chat/channels', [
+                'name' => 'Bad', 'kind' => 'channel', 'id' => $bad,
+            ])->assertStatus(400)->assertJsonPath('code', 'invalidProperties');
+        }
 
         $this->asUser('alice')->postJson('/api/v1/chat/channels', [
             'name' => 'Bad dm', 'kind' => 'dm', 'id' => 'chat-not-a-dm',
