@@ -13,13 +13,13 @@ import { driveLabels } from "@/drive-core/src/drive-labels";
 import { DRIVE_MOCK_FILES } from "@/drive-core/src/drive-mock-files";
 import type { DriveFile, ViewKey } from "@/drive-core/src/drive-models";
 import { useDriveFolderListingSync } from "@/drive-core/src/use-drive-folder-listing-sync";
-import { useDriveUploadListingRefresh } from "@/drive-core/src/use-drive-upload-listing-refresh";
 import {
   DRIVE_TRASH_UI_PATH,
   normalizeDriveFolderUiPath,
   uiPathFromApiPath,
 } from "@/drive-core/src/drive-path-utils";
 import { isDriveUnderTrash } from "@/drive-core/src/drive-visible-items";
+import { mapDriveListingEntries } from "@/drive-core/src/drive-batch-utils";
 import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import {
   driveStarredPathMap,
@@ -72,8 +72,7 @@ export function useDriveShell({
   const currentUsername = data.user.username || session.user.username || "";
   const [files, setFiles] = useState<DriveFile[]>(() => {
     if (!operations) return DRIVE_MOCK_FILES;
-    if (data.directory.files.length === 0) return [];
-    return data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername));
+    return mapDriveListingEntries(data, currentUsername);
   });
   const [internalView, setInternalView] = useState<ViewKey>({ type: "folder", path: "My Drive" });
   const isViewControlled = onViewChange !== undefined;
@@ -189,7 +188,7 @@ export function useDriveShell({
     if (isViewControlled && folderViewPath !== cwdPath) {
       return;
     }
-    setFiles(data.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)));
+    setFiles(mapDriveListingEntries(data, currentUsername));
     syncedFolderPathRef.current = folderViewPath ?? cwdPath;
     setHydratedFolderPath(cwdPath);
     if (!isViewControlled) {
@@ -217,14 +216,6 @@ export function useDriveShell({
     setHydratedFolderPath,
     commitView,
     showError,
-  });
-
-  useDriveUploadListingRefresh({
-    operations,
-    folderViewPath,
-    currentUsername,
-    groupRootNamesRef,
-    setFiles,
     listing: data,
   });
 
