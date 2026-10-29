@@ -284,12 +284,16 @@ final class ChatChannelsTest extends WgwDatabaseTestCase
             ->assertJsonPath('groupSlug', 'devs');
         $this->asUser('carol')->getJson('/api/v1/chat/channels/'.$created['id'])->assertNotFound();
 
-        // Transfer group → personal, then personal → group.
+        // Moving it out of the group is admin-only; a member moves a personal channel in.
         $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$created['id'], ['groupSlug' => null])
-            ->assertOk()
-            ->assertJsonPath('scope', 'personal')
-            ->assertJsonPath('groupSlug', null);
-        $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$created['id'], ['groupSlug' => 'devs'])
+            ->assertForbidden()
+            ->assertJsonPath('code', 'group_delete_admin_only');
+        $this->asUser('bob')->getJson('/api/v1/chat/channels/'.$created['id'])->assertOk()
+            ->assertJsonPath('groupSlug', 'devs');
+        $mine = (string) $this->asUser('bob')->postJson('/api/v1/chat/channels', [
+            'name' => 'Bob talk', 'kind' => 'channel',
+        ])->assertCreated()->json('id');
+        $this->asUser('bob')->patchJson('/api/v1/chat/channels/'.$mine, ['groupSlug' => 'devs'])
             ->assertOk()
             ->assertJsonPath('scope', 'group')
             ->assertJsonPath('groupSlug', 'devs');
