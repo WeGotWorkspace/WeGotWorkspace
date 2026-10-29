@@ -34,7 +34,9 @@ import {
   encodeSyncStep1,
   encodeUpdateBroadcast,
   isDocumentBearingSyncMessage,
+  SYNC_UPDATE,
 } from "@/text-editor-core/docs-collab/docs-collab-mesh-sync";
+import { DocsCollabMeshStateCheck } from "@/text-editor-core/docs-collab/docs-collab-mesh-state-check";
 import { YJS_HTTP_POLL_MS } from "@/text-editor-core/docs-collab/docs-collab-http-wire";
 import { DocsCollabPrincipalReuse } from "@/text-editor-core/docs-collab/docs-collab-principal-reuse";
 import type {
@@ -183,6 +185,9 @@ export class DocsRtcSession {
 
   /** Outbound tickets stay off the wire until a published JWK can verify them. */
   private readonly sendTicket: boolean;
+
+  /** Sends our state vector after our updates go quiet, so a peer that missed one catches up. */
+  private readonly stateCheck = new DocsCollabMeshStateCheck(() => this.broadcastStateVector());
 
   constructor(private readonly options: DocsRtcSessionOptions) {
     this.room = options.room;
@@ -458,6 +463,12 @@ export class DocsRtcSession {
     this.sendTo(peerId, { type: "sync", u: encodeSyncStep1(doc) });
   }
 
+  private broadcastStateVector(): void {
+    const doc = this.options.getYDoc?.();
+    if (!doc) return;
+    this.broadcast({ type: "sync", u: encodeSyncStep1(doc) });
+  }
+
   private emit(msg: DocsCollabMeshMessage): void {
     for (const listener of this.listeners) listener(msg);
   }
@@ -608,6 +619,7 @@ export class DocsRtcSession {
       if (bytes) this.mesh.broadcastJson(header, bytes);
       else this.mesh.broadcastJson(header);
     });
+    if (msg.type === "sync" && msg.u[0] === SYNC_UPDATE) this.stateCheck.noteUpdateSent();
   }
 
   sendTo(remoteId: string, msg: DocsCollabMeshMessage): void {
@@ -676,6 +688,7 @@ export class DocsRtcSession {
 
   async leave(): Promise<void> {
     liveCollabSessions.get(this.room)?.delete(this);
+    this.stateCheck.stop();
     this.http?.stop();
     this.reuse.dispose();
     this.seenReusedRosterIds.clear();

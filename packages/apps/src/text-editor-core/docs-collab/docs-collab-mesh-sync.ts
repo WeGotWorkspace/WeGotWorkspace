@@ -56,8 +56,22 @@ export function documentUpdateFromSyncMessage(bytes: Uint8Array): Uint8Array | n
   return decoding.readVarUint8Array(decoder);
 }
 
+/**
+ * True when `remoteStateVector` counts structs this doc has not integrated.
+ * A gap that leaves later updates pending counts too: the state vector only
+ * covers what was integrated.
+ */
+export function stateVectorIsAhead(ydoc: Y.Doc, remoteStateVector: Uint8Array): boolean {
+  const local = Y.decodeStateVector(Y.encodeStateVector(ydoc));
+  for (const [client, clock] of Y.decodeStateVector(remoteStateVector)) {
+    if (clock > (local.get(client) ?? 0)) return true;
+  }
+  return false;
+}
+
 export type GuardedSyncOutcome =
-  | { kind: "reply"; reply: SyncReply }
+  /** `pullBack`: the sender holds state this doc lacks, so ask it with a step 1. */
+  | { kind: "reply"; reply: SyncReply; pullBack: boolean }
   | { kind: "update"; verdict: DocsCollabUpdateVerdict }
   | { kind: "ignored" }
   | { kind: "hydration-blocked"; requestPull: true };
@@ -67,10 +81,13 @@ export type GuardedSyncOutcome =
  * between decoding a message and applying it.
  *
  * A step 1 only asks for state and is answered whoever sent it — joining the
- * room already required read access. A step 2 and an update both carry content,
- * and a step 2 is not a safe shortcut: a tampered client can put its own edits
- * in one. Both go through the guard with the sender's resolved right, which
- * defaults to `read` when the transport could not establish who they are.
+ * room already required read access. Its state vector also shows whether the
+ * sender holds updates this doc missed; then the caller pulls them back.
+ *
+ * A step 2 and an update both carry content, and a step 2 is not a safe
+ * shortcut: a tampered client can put its own edits in one. Both go through
+ * the guard with the sender's resolved right, which defaults to `read` when
+ * the transport could not establish who they are.
  */
 export function handleGuardedSyncMessage(input: {
   bytes: Uint8Array;
@@ -89,11 +106,13 @@ export function handleGuardedSyncMessage(input: {
     if (!mayAnswer && isYDocEmpty(input.ydoc)) {
       return { kind: "hydration-blocked", requestPull: true };
     }
+    const remoteStateVector = decoding.readVarUint8Array(decoder);
     const encoder = encoding.createEncoder();
-    syncProtocol.writeSyncStep2(encoder, input.ydoc, decoding.readVarUint8Array(decoder));
+    syncProtocol.writeSyncStep2(encoder, input.ydoc, remoteStateVector);
     return {
       kind: "reply",
       reply: { type: "sync", u: encoding.toUint8Array(encoder) },
+      pullBack: stateVectorIsAhead(input.ydoc, remoteStateVector),
     };
   }
 

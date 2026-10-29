@@ -209,9 +209,11 @@ export function useDocsCollabMesh({
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
+          // Ask back only when the sender holds an update we never received:
+          // a lost update otherwise keeps every later one pending until a
+          // reload. Asking back every time ping-pongs forever between two docs.
+          if (outcome.pullBack && msg.from) sendSyncStep1(msg.from);
         }
-        // dc-open already pulls once per peer. Answering an empty step 1 with
-        // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && msg.u instanceof Uint8Array) {
