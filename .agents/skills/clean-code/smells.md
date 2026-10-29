@@ -49,10 +49,15 @@ Two CI checks block new copies (no warn-only phase):
 
 ## React hooks
 
-Scan **new or changed** `use*.ts(x)` files. Thresholds are handoff/merge blockers per [code-review/SKILL.md](../code-review/SKILL.md) — split or document an exception in the PR.
+Scan **new or changed** `use*.ts(x)` files.
 
-- [ ] **Hook body > ~200 lines** — extract sub-hooks or pure modules; orchestrator should wire concerns, not implement them.
-- [ ] **> 4 `useEffect`s in one hook** — split by concern (sync, selection, draft, visibility, DOM listeners).
+**Checked by CI (merge blockers).** An exported `use*` hook in `packages/apps/src` with a body over 200 lines or more than 4 `useEffect` or `useLayoutEffect` calls is a merge block unless it is on the hook-size baseline. A baselined hook is a merge block when either number grows, or when it shrinks and the baseline was not lowered. `pnpm check:hook-size` (`tools/hook-size-ratchet.mjs`) measures each exported hook with the TypeScript compiler and runs in `ci:quality:apps`. Body lines count from the opening to the closing brace. After a split or a shrink, run `pnpm hook-ratchet:update`: it only lowers or deletes rows in `tools/hook-size-baseline.tsv`. Raising or adding a row needs code-owner review.
+
+- [ ] **Hook body > 200 lines** — extract sub-hooks or pure modules; orchestrator should wire concerns, not implement them.
+- [ ] **> 4 `useEffect`s in one hook** (`useLayoutEffect` counts too) — split by concern (sync, selection, draft, visibility, DOM listeners).
+
+**Review prompts (not merge blockers).** No script can judge these. Raise them in review; the author splits or explains in the PR.
+
 - [ ] **> 2 unrelated concerns in one hook** (e.g. Yjs + TipTap + DOM + draft lifecycle) — split; see [workspace/collab-hooks.md](../workspace/collab-hooks.md) for collab layout.
 - [ ] **State + ref duplication** for the same value (stale-closure workaround) — refactor to a subscription helper or document why both are required.
 - [ ] **DOM listeners in orchestrator hooks** — extract `use-*-pointer.ts`, `use-*-outside-click.ts`, or similar focused hooks.
