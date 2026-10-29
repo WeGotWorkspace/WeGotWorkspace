@@ -92,3 +92,36 @@ test("release stack does not pass the admin password to any service", { skip }, 
   const services = composeServices(releaseCompose);
   assert.deepEqual(servicesWith(services, "WGW_INSTALL_ADMIN_PASSWORD"), []);
 });
+
+const heartbeatFile = "/tmp/wgw-scheduler-heartbeat";
+
+for (const [label, file] of [
+  ["install", installCompose],
+  ["release", releaseCompose],
+]) {
+  test(`${label} stack gives the scheduler its own health check`, { skip }, () => {
+    const { scheduler } = composeServices(file);
+    const check = (scheduler.healthcheck?.test ?? []).join(" ");
+    // Without its own check the scheduler inherits the image HEALTHCHECK,
+    // which curls Apache on port 80. Nothing listens there in this container.
+    assert.match(check, /\S/, "scheduler has no healthcheck");
+    assert.notEqual(scheduler.healthcheck.disable, true);
+    assert.doesNotMatch(check, /curl|127\.0\.0\.1|api\/v1\/health/);
+    assert.ok(check.includes(heartbeatFile), `healthcheck does not read ${heartbeatFile}`);
+  });
+
+  test(`${label} stack touches the heartbeat only after schedule:run succeeds`, { skip }, () => {
+    const { scheduler } = composeServices(file);
+    const loop = (scheduler.command ?? []).join(" ");
+    assert.match(loop, new RegExp(`schedule:run[^;]*&& touch ${heartbeatFile};`));
+  });
+
+  test(`${label} stack: each long-running service with its own entrypoint has a health check`, { skip }, () => {
+    const services = composeServices(file);
+    const missing = Object.keys(services)
+      .filter((name) => services[name].entrypoint && services[name].restart !== "no")
+      .filter((name) => !services[name].healthcheck?.test?.length)
+      .sort();
+    assert.deepEqual(missing, []);
+  });
+}
