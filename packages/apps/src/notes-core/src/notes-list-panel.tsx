@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { IconButton } from "@/button/src/button";
 import { ViewHeader } from "@/view-header/src/view-header";
 import { useListReorderAnimation } from "@/hooks/use-list-reorder-animation";
@@ -51,6 +51,8 @@ type NotesListPanelProps = {
   toggleArchive: (id: string) => void;
   selectionBar: ReactNode;
   onRefreshList?: () => void;
+  /** Set only on a tag view: opens the rename dialog for that tag. */
+  onEditTag?: () => void;
   pendingNoteIds?: ReadonlySet<string>;
 };
 
@@ -82,6 +84,7 @@ export function NotesListPanel({
   toggleArchive,
   selectionBar,
   onRefreshList,
+  onEditTag,
   pendingNoteIds,
 }: NotesListPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
@@ -110,6 +113,15 @@ export function NotesListPanel({
         }
         actions={
           <div className="notes-list-panel__header-actions flex items-center gap-2">
+            {onEditTag ? (
+              <IconButton
+                label={L.editTag}
+                onClick={onEditTag}
+                icon={<Pencil className="size-4" />}
+                size="md"
+                variant="outline"
+              />
+            ) : null}
             {onRefreshList ? (
               <IconButton
                 label={L.refreshList}
