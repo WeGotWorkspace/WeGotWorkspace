@@ -385,6 +385,21 @@ final class VapidPushTest extends WgwDatabaseTestCase
         $this->assertSame(1, PushSubscription::query()->count());
     }
 
+    public function test_subscribe_moves_an_endpoint_from_the_previous_principal(): void
+    {
+        $endpoint = 'https://fcm.googleapis.com/fcm/send/shared-browser';
+        $this->seedDueSharedNotification('alice');
+        $this->subscribeDirect('alice', $endpoint);
+        $this->subscribeDirect('bob', $endpoint);
+
+        $rows = PushSubscription::query()->get();
+        $this->assertCount(1, $rows);
+        $this->assertSame('bob', $rows[0]->principal);
+
+        app(VapidPushService::class)->sweepDue();
+        $this->assertSame([], app(WebPushSender::class)->sent);
+    }
+
     private function subscribeDirect(string $principal, string $endpoint): void
     {
         app(VapidPushService::class)->subscribe($principal, [
