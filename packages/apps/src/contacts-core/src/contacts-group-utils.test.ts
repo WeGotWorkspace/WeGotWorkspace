@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ContactCard } from "@/contacts-core/src/contacts-types";
 import {
-  contactsViewDownloadingTotal,
   canWriteContactGroup,
   contactAndGroupShareAddressBook,
   contactsGroupViewKey,
+  contactsViewDownloadingTotal,
   filterCardsByHiddenAddressBooks,
   filterCardsByView,
   cardWithAddedGroupMember,
