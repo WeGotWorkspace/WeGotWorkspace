@@ -135,6 +135,19 @@ async function serverCardCount(api: Jmap): Promise<number> {
   return (query.ids as string[]).length;
 }
 
+/** Cards All Contacts counts: every card except groups. */
+async function serverContactCount(api: Jmap): Promise<number> {
+  const [[, groups]] = await api.call([
+    ["ContactCard/query", { accountId: api.accountId, filter: { kind: "group" } }, "g"],
+  ]);
+  return (await serverCardCount(api)) - (groups.ids as string[]).length;
+}
+
+/** The All Contacts header count, such as "(1000)". */
+function headerCount(page: Page) {
+  return page.locator(".view-header__title-count").first();
+}
+
 /** Ids of a page request: one ContactCard/get with explicit ids (not the empty state get). */
 function cardPageIds(route: Route): string[] | null {
   const body = JSON.parse(route.request().postData() ?? "{}") as {
@@ -257,6 +270,9 @@ test.describe("Contacts first download on a new device", () => {
     await expect(page.getByText("Could not load live contacts")).toHaveCount(0);
     expect((await storedContacts(page)).unfinished).toBe(true);
 
+    // The resume counts from the first download's query, before the offline changes.
+    const contactsAtQuery = await serverContactCount(api);
+
     // 3. While offline, the server changes: one contact created, one stored card deleted.
     const deletedId = keptSeeded[1]!;
     const deletedName = seededName(seededIds.indexOf(deletedId) + 1);
@@ -264,6 +280,7 @@ test.describe("Contacts first download on a new device", () => {
     await destroyCards(api, [deletedId]);
     seededIds = seededIds.filter((id) => id !== deletedId);
     const serverTotal = await serverCardCount(api);
+    const contactsNow = await serverContactCount(api);
 
     // 4. Online reload: the stored names show first, then only the missing cards are fetched.
     await goOnline(page);
@@ -283,11 +300,20 @@ test.describe("Contacts first download on a new device", () => {
     await search(page, keptName);
     await expect(page.getByText(keptName, { exact: true }).first()).toBeVisible();
     await expect.poll(() => afterPages.length, { timeout: 30_000 }).toBe(1);
+    // With only the first page stored, the header already shows the whole book.
+    await search(page, "");
+    await expect(headerCount(page)).toHaveText(`(${contactsAtQuery})`);
     releaseFirstResumePage();
 
+    // Header counts seen while the rest arrives: the total, never a count that climbs.
+    const headerCounts = new Set<string>();
     await expect
       .poll(
         async () => {
+          const shown = await headerCount(page)
+            .textContent({ timeout: 1_000 })
+            .catch(() => null);
+          if (shown) headerCounts.add(shown);
           const now = await storedContacts(page);
           const ids = new Set(now.ids);
           return {
@@ -308,13 +334,17 @@ test.describe("Contacts first download on a new device", () => {
         total: serverTotal,
       });
 
+    // One created, one deleted: before and after /changes the total is the same.
+    expect(contactsNow).toBe(contactsAtQuery);
+    expect([...headerCounts]).toEqual([`(${contactsAtQuery})`]);
+
     // No card the first page stored is asked for again.
     const refetched = afterPages.flat().filter((id) => firstPage.has(id));
     expect(refetched).toEqual([]);
 
     // The list shows the whole book, the contact created offline, not the deleted one.
     await search(page, "");
-    await expect(page.getByText(`(${serverTotal})`).first()).toBeVisible();
+    await expect(headerCount(page)).toHaveText(`(${contactsNow})`);
     await search(page, CREATED_OFFLINE);
     await expect(page.getByText(CREATED_OFFLINE, { exact: true }).first()).toBeVisible();
     await search(page, deletedName);
