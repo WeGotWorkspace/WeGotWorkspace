@@ -39,12 +39,18 @@ final class PrincipalSignalingService
     }
 
     /**
+     * ICE settings for a room the caller may join. The room in the URL counts:
+     * a group room answers only to its current members.
+     *
+     * @param  array<string, mixed>  $body
      * @return array{stunUrls: string, turnAvailable: bool, forceRelay: bool, debug: bool}
      */
-    public function rtcSettings(Request $request): array
+    public function rtcSettings(Request $request, array $body): array
     {
-        return $this->run(function () use ($request): array {
-            $this->actors->requireUsername($request);
+        return $this->run(function () use ($request, $body): array {
+            $username = $this->actors->requireUsername($request);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $this->rooms->assertMayJoin($room, $username);
 
             return $this->rtcSettingsService->publicSettings();
         });
@@ -57,8 +63,10 @@ final class PrincipalSignalingService
     public function relay(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $username = $this->actors->requireUsername($request);
+            $ownerMarker = $this->actors->ownerMarker($username);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $this->assertStillMayJoin($room, $username, $ownerMarker);
 
             return $this->relays->issue($this->store, 'principal', $room, $ownerMarker, $body);
         });
@@ -115,9 +123,11 @@ final class PrincipalSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $username = $this->actors->requireUsername($request);
+            $ownerMarker = $this->actors->ownerMarker($username);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
+            $this->assertStillMayJoin($room, $username, $ownerMarker);
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
 
             $sig = $body['sig'] ?? null;
@@ -140,10 +150,12 @@ final class PrincipalSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $username = $this->actors->requireUsername($request);
+            $ownerMarker = $this->actors->ownerMarker($username);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $from = $this->store->readSendFrom($body);
             $to = $this->store->cleanPeer($body['to'] ?? null);
+            $this->assertStillMayJoin($room, $username, $ownerMarker);
             $this->store->assertPeerOwnedByActor($room, $from, $ownerMarker);
 
             $type = (string) ($body['type'] ?? '');
@@ -162,14 +174,54 @@ final class PrincipalSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
+            $username = $this->actors->requireUsername($request);
+            $ownerMarker = $this->actors->ownerMarker($username);
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
+            try {
+                $this->rooms->assertMayJoin($room, $username);
+            } catch (PrincipalResponseException $denied) {
+                // Leaving without access only ends the caller's own presence.
+                $this->assertOwnPeerOr($denied, $room, $peerId, $ownerMarker);
+                $this->store->leaveOwnedPeers($room, $ownerMarker);
+
+                return ['ok' => true];
+            }
             $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
             $this->store->leave($room, $peerId);
 
             return ['ok' => true];
         });
+    }
+
+    /**
+     * Room access is checked on every request, not only on join, so a member
+     * removed from a group is out of its room on their next poll. The check
+     * runs before the peer lookup: without access to the room, every peer id
+     * gets the same answer. On refusal the caller's own peers in the room are
+     * removed, so the others stop seeing them in the roster.
+     */
+    private function assertStillMayJoin(string $room, string $username, string $ownerMarker): void
+    {
+        try {
+            $this->rooms->assertMayJoin($room, $username);
+        } catch (PrincipalResponseException $denied) {
+            $this->store->leaveOwnedPeers($room, $ownerMarker);
+            throw $denied;
+        }
+    }
+
+    /**
+     * A caller without room access may still remove their own peer. Any other
+     * peer id, live or unknown, gets the same refusal as the room itself.
+     */
+    private function assertOwnPeerOr(PrincipalResponseException $denied, string $room, string $peerId, string $ownerMarker): void
+    {
+        try {
+            $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
+        } catch (RtcSignalingException) {
+            throw $denied;
+        }
     }
 
     /**

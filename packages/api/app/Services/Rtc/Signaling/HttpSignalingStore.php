@@ -505,6 +505,26 @@ final class HttpSignalingStore
         }
     }
 
+    /**
+     * Remove every peer this owner has in the room, with its mailbox. Used
+     * when the owner no longer has access, so all of their tabs leave at once.
+     */
+    public function leaveOwnedPeers(string $room, string $ownerMarker): void
+    {
+        if ($ownerMarker === '') {
+            return;
+        }
+
+        $peerIds = $this->peerQuery()
+            ->where('room', $room)
+            ->where('owner_user', $ownerMarker)
+            ->pluck('peer_id')
+            ->all();
+        foreach ($peerIds as $peerId) {
+            $this->leave($room, (string) $peerId);
+        }
+    }
+
     public function cleanPeer(mixed $peer): string
     {
         if (! is_string($peer) || preg_match($this->policy->peerIdPattern, $peer) !== 1) {

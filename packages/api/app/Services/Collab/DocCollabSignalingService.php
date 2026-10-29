@@ -81,8 +81,11 @@ final class DocCollabSignalingService
     public function relay(Request $request, array $body): array
     {
         return $this->run(function () use ($request, $body): array {
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
+            $principal = $this->actors->requirePrincipal($request);
+            $ownerMarker = $this->actors->ownerMarker($principal['username']);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($room);
+            $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
 
             return $this->relays->issue($this->store, 'collab', $roomKey, $ownerMarker, $body);
         });
@@ -157,9 +160,10 @@ final class DocCollabSignalingService
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $roomKey = $this->rooms->roomKey($room);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
+            $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
 
-            $access = $this->reauthorize($room, $roomKey, $peerId, $principal);
+            $access = $this->refreshAccess($room, $roomKey, $peerId, $principal);
             $knownRosterSig = is_string($body['sig'] ?? null) ? (string) $body['sig'] : null;
             // A 204 carries no ticket, so the handover window at the start of
             // every grid step answers in full instead.
@@ -191,8 +195,9 @@ final class DocCollabSignalingService
             $room = $this->rooms->cleanRoom($body['room'] ?? null);
             $roomKey = $this->rooms->roomKey($room);
             $from = $this->store->readSendFrom($body);
+            $this->assertStillMayJoin($room, $roomKey, $principal, $ownerMarker);
             $this->store->assertPeerOwnedByActor($roomKey, $from, $ownerMarker);
-            $access = $this->reauthorize($room, $roomKey, $from, $principal);
+            $access = $this->refreshAccess($room, $roomKey, $from, $principal);
 
             $type = (string) ($body['type'] ?? '');
             if ($type === 'yjs' || $type === 'yjs-sv') {
@@ -225,9 +230,20 @@ final class DocCollabSignalingService
         return $this->run(function () use ($request, $body): array {
             $this->store->pruneOldRowsSampled();
 
-            $ownerMarker = $this->actors->ownerMarker($this->actors->requireUsername($request));
-            $roomKey = $this->rooms->roomKey($this->rooms->cleanRoom($body['room'] ?? null));
+            $principal = $this->actors->requirePrincipal($request);
+            $ownerMarker = $this->actors->ownerMarker($principal['username']);
+            $room = $this->rooms->cleanRoom($body['room'] ?? null);
+            $roomKey = $this->rooms->roomKey($room);
             $peerId = $this->store->cleanPeer($body['peerId'] ?? null);
+            try {
+                $this->joinAuthorizer->assertMayJoin($room, $principal);
+            } catch (CollabResponseException $denied) {
+                // Leaving without access only ends the caller's own presence.
+                $this->assertOwnPeerOr($denied, $roomKey, $peerId, $ownerMarker);
+                $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
+
+                return ['ok' => true];
+            }
             $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
             $this->store->leave($roomKey, $peerId);
 
@@ -236,23 +252,46 @@ final class DocCollabSignalingService
     }
 
     /**
-     * Re-read the share grant for a peer that is already in the room. Losing
-     * read access ends the session with a 403 the client acts on; a narrowed
-     * right is written back to the peer row so the roster other peers read,
-     * and the ticket they verify, both follow the grant.
+     * Re-read document access on every request of a peer that is already in
+     * the room (poll, send, relay). Losing read access ends the session
+     * with a 403 the client acts on, and the caller's peers leave the room.
+     * The check runs before the peer lookup, so without access every peer id
+     * gets the same answer.
      *
      * @param  array{username: string, role: string}  $principal
-     * @return 'read'|'comment'|'write'
      */
-    private function reauthorize(string $room, string $roomKey, string $peerId, array $principal): string
+    private function assertStillMayJoin(string $room, string $roomKey, array $principal, string $ownerMarker): void
     {
         try {
             $this->joinAuthorizer->assertMayJoin($room, $principal);
         } catch (CollabResponseException $denied) {
-            $this->store->leave($roomKey, $peerId);
+            $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
             throw $denied;
         }
+    }
 
+    /**
+     * A caller without document access may still remove their own peer. Any
+     * other peer id, live or unknown, gets the same refusal as the room itself.
+     */
+    private function assertOwnPeerOr(CollabResponseException $denied, string $roomKey, string $peerId, string $ownerMarker): void
+    {
+        try {
+            $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
+        } catch (RtcSignalingException) {
+            throw $denied;
+        }
+    }
+
+    /**
+     * A narrowed right is written back to the peer row so the roster other
+     * peers read, and the ticket they verify, both follow the grant.
+     *
+     * @param  array{username: string, role: string}  $principal
+     * @return 'read'|'comment'|'write'
+     */
+    private function refreshAccess(string $room, string $roomKey, string $peerId, array $principal): string
+    {
         $access = $this->joinAuthorizer->accessFor($room, $principal);
         $this->store->rewriteAccess($roomKey, $peerId, $access);
 
