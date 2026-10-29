@@ -14,8 +14,6 @@ use Illuminate\Database\Schema\Blueprint;
  */
 return new class extends WgwMigration
 {
-    private const INDEX = 'idx_search_collection';
-
     public function up(): void
     {
         if (! $this->wgwHasTable('search_documents') || $this->wgwHasColumn('search_documents', 'collection_id')) {
@@ -25,7 +23,6 @@ return new class extends WgwMigration
         $this->wgw()->table('search_documents', function (Blueprint $table): void {
             $table->unsignedBigInteger('collection_id')->nullable();
             $table->unsignedBigInteger('object_id')->nullable();
-            $table->index(['source_type', 'collection_id'], self::INDEX);
         });
 
         if ($this->wgwHasTable('calendarinstances') && $this->wgwHasTable('addressbooks')) {
@@ -40,7 +37,6 @@ return new class extends WgwMigration
         }
 
         $this->wgw()->table('search_documents', function (Blueprint $table): void {
-            $table->dropIndex(self::INDEX);
             $table->dropColumn(['collection_id', 'object_id']);
         });
     }
