@@ -16,6 +16,7 @@ import {
   listOutboxMutationsForDomain,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
+import { readPendingWrites, type PendingWrite } from "@/lib/offline/core/inbound-sync";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
   NOTES_DOMAIN,
@@ -553,27 +554,8 @@ function isNotePendingField(value: unknown): value is NotePendingField {
 export async function listPendingNoteFields(
   username: string,
 ): Promise<Map<string, Set<NotePendingField>>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const out = new Map<string, Set<NotePendingField>>();
-  for (const row of rows) {
-    let payload: { noteId?: unknown; fields?: unknown } | null = null;
-    try {
-      payload = JSON.parse(row.payload) as { noteId?: unknown; fields?: unknown };
-    } catch {
-      continue;
-    }
-    const noteId = typeof payload?.noteId === "string" ? payload.noteId : null;
-    if (!noteId) continue;
-    const fields = out.get(noteId) ?? new Set<NotePendingField>();
-    if (row.op === "archive" || row.op === "restore") fields.add("archived");
-    if (row.op === "delete") fields.add("delete");
-    if (Array.isArray(payload?.fields)) {
-      for (const field of payload.fields) {
-        if (isNotePendingField(field)) fields.add(field);
-      }
-    }
-    out.set(noteId, fields);
-  }
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) out.set(noteId, write.fields);
   return out;
 }
 
@@ -599,12 +581,9 @@ export async function writeSyncToken(
  * means the server has not seen the change yet, which is not a conflict.
  */
 export async function listPendingNoteBases(username: string): Promise<Map<string, string[]>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const bases = new Map<string, string[]>();
-  for (const row of rows) {
-    const noteId = notesOutboxNoteId(row);
-    if (!noteId || !row.ifInState) continue;
-    bases.set(noteId, [...(bases.get(noteId) ?? []), row.ifInState]);
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) {
+    if (write.bases.length > 0) bases.set(noteId, write.bases);
   }
   return bases;
 }
@@ -625,13 +604,7 @@ export async function hasQueuedNoteUpsert(username: string, noteId: string): Pro
 }
 
 export async function listOutboxNoteIds(username: string): Promise<Set<string>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
-  const ids = new Set<string>();
-  for (const row of rows) {
-    const noteId = notesOutboxNoteId(row);
-    if (noteId) ids.add(noteId);
-  }
-  return ids;
+  return new Set((await readQueuedNoteWrites(username)).keys());
 }
 
 /**
@@ -639,14 +612,36 @@ export async function listOutboxNoteIds(username: string): Promise<Set<string>> 
  * queued but must not pin a notebook sync token until `cannotCalculateChanges`.
  */
 export async function listNoteIdsBlockingSyncToken(username: string): Promise<Set<string>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const blocking = new Set<string>();
-  for (const row of rows) {
-    if (row.lastError === "stateMismatch") continue;
-    const noteId = notesOutboxNoteId(row);
-    if (noteId) blocking.add(noteId);
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) {
+    if (write.blocksToken) blocking.add(noteId);
   }
   return blocking;
+}
+
+/** Queued Notes outbox writes per note id, read through the shared inbound engine. */
+async function readQueuedNoteWrites(
+  username: string,
+): Promise<Map<string, PendingWrite<NotePendingField>>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  return readPendingWrites(rows, (row) => ({
+    id: notesOutboxNoteId(row),
+    fields: notePendingFieldsOfRow(row),
+  }));
+}
+
+/** Fields the outbox recorded at enqueue time. Key presence is not a change. */
+function notePendingFieldsOfRow(row: OfflineOutboxRow): NotePendingField[] {
+  const fields: NotePendingField[] = [];
+  if (row.op === "archive" || row.op === "restore") fields.push("archived");
+  if (row.op === "delete") fields.push("delete");
+  try {
+    const payload = JSON.parse(row.payload) as { fields?: unknown };
+    if (Array.isArray(payload?.fields)) fields.push(...payload.fields.filter(isNotePendingField));
+  } catch {
+    // ignore malformed payloads
+  }
+  return fields;
 }
 
 /** Note id targeted by an outbox row. */
