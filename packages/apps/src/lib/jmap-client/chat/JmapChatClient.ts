@@ -65,10 +65,15 @@ export class JmapChatClient {
         { accountId, ids: pageIds },
         CHAT_USING,
       );
+    const hadState = this.client.getState(accountId, MESSAGE_TYPE) !== undefined;
     const response = ids
       ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
       : await getPage(null);
-    this.client.setState(accountId, MESSAGE_TYPE, response.state);
+    // The get state is the full current token. With explicit ids and a stored
+    // token, that token may be a partial `/changes` resume cursor: keep it.
+    if (!ids || !hadState) {
+      this.client.setState(accountId, MESSAGE_TYPE, response.state);
+    }
     return response;
   }
 

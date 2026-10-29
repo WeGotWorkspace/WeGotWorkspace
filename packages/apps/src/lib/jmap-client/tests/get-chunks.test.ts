@@ -179,3 +179,25 @@ describe("clients chunk a get over maxObjectsInGet", () => {
     });
   }
 });
+
+describe("JmapChatClient.getMessages state", () => {
+  it("keeps a stored resume token when explicit ids are fetched", async () => {
+    const { client } = await makeServer(2);
+    client.setState(ACCOUNT, "ChatMessage", "resume-token");
+    await new JmapChatClient(client).getMessages(ACCOUNT, ids(5));
+    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("resume-token");
+  });
+
+  it("stores the get state when nothing is stored yet", async () => {
+    const { client } = await makeServer(2);
+    await new JmapChatClient(client).getMessages(ACCOUNT, []);
+    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("state-1");
+  });
+
+  it("replaces a stored token on a get-all refetch", async () => {
+    const { client } = await makeServer(2);
+    client.setState(ACCOUNT, "ChatMessage", "expired");
+    await new JmapChatClient(client).getMessages(ACCOUNT);
+    expect(client.getState(ACCOUNT, "ChatMessage")).toBe("state-1");
+  });
+});
