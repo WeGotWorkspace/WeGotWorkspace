@@ -36,7 +36,7 @@ Considered:
 - **Extend `OfflineDomainStore` with inbound methods and let the core call the store directly.** Rejected. The ingest decision (merge, skip, conflict) differs per domain only in a few policy bits, while the store functions differ in shape (field merge, list membership, notebook rows). A binding object with a small policy keeps the core free of domain types.
 - **One policy for an unknown base right away.** Rejected for the Notes and Tasks chunks, because both must stay unchanged. The engine takes the policy as a binding option. Contacts and Calendars choose "not moved" when they migrate, because their queued updates already carry a base.
 - **A generic React hook that owns polling.** Rejected. Polling and triggers stay in the app hooks and the JMAP adapter base from #1785; the engine is called by them.
-- **Chosen:** a pure core (pending-write reader, conflict decision, scope reconcile, token hold) plus one runner for "changes per scope with a full-list fallback". Tasks' "scope feed, then re-list each touched scope" is the same runner with a scope-level feed.
+- **Chosen:** a pure core (pending-write reader, conflict decision, scope reconcile, token hold) plus one runner for "changes per scope with a full-list fallback". Tasks keeps its own pull (one account-wide state, then a full re-list of each touched list) and uses the core pieces only: forcing it through the per-scope runner would change when its state advances.
 
 ## Affected packages
 
@@ -99,7 +99,7 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 - **id:** `tasks-on-core`
 - **Skill:** workspace
 - **Inputs:** engine from chunk B, Notes binding from chunk C as the reference
-- **Done when:** `syncTasksInbound` keeps its lock handling and becomes a binding with a scope-level feed. `readTasksPendingWrites` and `serverMovedSince` are replaced by the engine's, with the "not moved" policy. The snapshot and per-list reconciles use the engine's scope reconcile. Tasks unit tests and `tasks-inbound-sync.spec.ts` pass unchanged.
+- **Done when:** `syncTasksInbound` keeps its lock handling and its pull. `readTasksPendingWrites` is built on the engine's pending-write reader, and the conflict check is the engine's `serverMovedSince` with the "not moved" policy. The snapshot and per-list reconciles use the engine's scope reconcile. Tasks unit tests and `tasks-inbound-sync.spec.ts` pass unchanged.
 - **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline src/tasks-core` and the live `tasks-inbound-sync` spec
 - **Parallel with:** none
 
