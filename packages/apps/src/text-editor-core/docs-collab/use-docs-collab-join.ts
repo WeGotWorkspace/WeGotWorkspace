@@ -382,6 +382,8 @@ export function useDocsCollabJoin({
               snapshot.update,
               SERVER_ORIGIN,
               loaded?.ydoc === ydoc ? loaded.stateVector : new Map(),
+              // The shared local copy holds other tabs' unsaved typing (#1722).
+              { keepUnsavedEdits: true },
             );
           } else {
             Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
