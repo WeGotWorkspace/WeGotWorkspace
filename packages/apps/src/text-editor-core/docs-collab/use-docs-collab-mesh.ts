@@ -209,9 +209,9 @@ export function useDocsCollabMesh({
         if (outcome.kind === "reply") {
           if (msg.from) refs.meshRef.current?.sendTo(msg.from, outcome.reply);
           else refs.meshRef.current?.broadcast(outcome.reply);
+          // A writer holds an update we missed; see `pullBack` for the loop guard.
+          if (outcome.pullBack && msg.from) sendSyncStep1(msg.from);
         }
-        // dc-open already pulls once per peer. Answering an empty step 1 with
-        // another step 1 ping-pongs forever between two unseeded docs.
         mayRelayToTabs = mayRelayGuardedOutcomeToTabs(outcome);
       }
       if (msg.type === "awareness" && msg.u instanceof Uint8Array) {
