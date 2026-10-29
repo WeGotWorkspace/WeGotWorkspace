@@ -35,10 +35,11 @@ export type JmapContactCard = {
 };
 
 /**
- * ContactCard/query FilterCondition — only the filters the envelope already
- * accepts (`inAddressBook`, `uid`). Do not add `kind` or other RFC keys here.
+ * ContactCard/query FilterCondition — the filters the envelope accepts:
+ * `inAddressBook`, `uid` and `kind` (the Contacts list asks for `group`).
  */
 export type JmapContactCardFilterCondition = {
   inAddressBook?: JmapId;
   uid?: string;
+  kind?: string;
 };

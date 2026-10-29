@@ -59,7 +59,12 @@ final class ContactCardKindFilter
         $kinds = [];
         foreach ($cards as $card) {
             $raw = is_string($card->carddata) ? $card->carddata : (string) $card->carddata;
-            $kind = $this->converter->cardFromVCard($raw, 'debug')['kind'] ?? null;
+            try {
+                $kind = $this->converter->cardFromVCard($raw, 'debug')['kind'] ?? null;
+            } catch (\Throwable) {
+                // A card the vCard guard rejects stays an individual; it must not fail the query.
+                continue;
+            }
             $kinds[ContactCardMapper::cardIdFromUri((string) $card->uri)] = is_string($kind) && $kind !== ''
                 ? $kind
                 : self::DEFAULT_KIND;

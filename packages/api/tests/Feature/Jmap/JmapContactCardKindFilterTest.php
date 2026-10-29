@@ -134,6 +134,22 @@ final class JmapContactCardKindFilterTest extends WgwDatabaseTestCase
         $response->assertJsonPath('methodResponses.3.0', 'ContactCard/get');
     }
 
+    public function test_a_marked_card_the_vcard_guard_rejects_does_not_fail_the_query(): void
+    {
+        $group = $this->seedCardViaPdo('bob', 'team.vcf', $this->vcard([
+            'UID:urn:uuid:team', 'FN:Team', 'KIND:group',
+        ]));
+        $this->seedCardViaPdo('bob', 'huge.vcf', $this->vcard([
+            'UID:urn:uuid:huge', 'FN:Huge', 'KIND:group', 'NOTE:'.str_repeat('a', 600 * 1024),
+        ]));
+
+        $response = $this->jmap([
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'group']], 'c0'],
+        ])->assertOk();
+
+        $this->assertSame([$group], $response->json('methodResponses.0.1.ids'));
+    }
+
     public function test_kind_must_be_a_non_empty_string(): void
     {
         $response = $this->jmap([
