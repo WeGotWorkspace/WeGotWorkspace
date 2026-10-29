@@ -102,8 +102,8 @@ final class AdminGroupManagementService
 
         $slug = basename(str_replace('\\', '/', $uri));
 
-        // Shares on the group's folder are revoked with the group, so a later group with the same
-        // slug starts without them, whoever joins it.
+        // Shares on the group's folder are revoked with the group, and grants to the group are
+        // removed, so a later group with the same slug starts without them, whoever joins it.
         DB::connection('wgw')->transaction(function () use ($principal, $slug): void {
             GroupMember::query()
                 ->where('principal_id', $principal->id)
@@ -113,6 +113,7 @@ final class AdminGroupManagementService
             $principal->delete();
 
             $this->driveShares->revokeAllUnderPath('/groups/'.$slug);
+            $this->driveShares->removeGrantsToGroup($slug);
         });
 
         $groupFiles = $this->groupFiles->pathForSlug($slug);
