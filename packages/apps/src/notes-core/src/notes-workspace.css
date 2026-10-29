@@ -378,38 +378,9 @@
   padding-inline: var(--app-sidebar-item-padding-x, calc(2 * 1.875rem * 0.85 * 112 / 512));
 }
 
-.notes-workspace .notes-sidebar-tags__row {
-  @apply inline-flex max-w-full items-center gap-0.5;
-}
-
 .notes-workspace .notes-sidebar-tags__item {
   @apply inline-flex max-w-full appearance-none border-0 bg-transparent p-0;
   @apply cursor-pointer rounded-full outline-none;
-}
-
-.notes-workspace .notes-sidebar-tags__edit.button {
-  @apply relative z-10 shrink-0;
-  width: var(--control-height-xs, 1.75rem);
-  height: var(--control-height-xs, 1.75rem);
-  min-width: var(--control-height-xs, 1.75rem);
-  min-height: var(--control-height-xs, 1.75rem);
-  color: color-mix(in oklab, var(--workspace-foreground) 45%, transparent);
-}
-
-.notes-workspace .notes-sidebar-tags__edit:hover,
-.notes-workspace .notes-sidebar-tags__edit:focus-visible {
-  color: var(--workspace-foreground);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .notes-workspace .notes-sidebar-tags__edit.button {
-    opacity: 0;
-  }
-
-  .notes-workspace .notes-sidebar-tags__row:hover .notes-sidebar-tags__edit.button,
-  .notes-workspace .notes-sidebar-tags__row:focus-within .notes-sidebar-tags__edit.button {
-    opacity: 1;
-  }
 }
 
 .notes-workspace .notes-sidebar-tags__item:focus-visible {

@@ -1,4 +1,4 @@
-import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
@@ -20,7 +20,6 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { IconButton } from "@/button/src/button";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
@@ -264,6 +263,7 @@ export function NotesWorkspace({
     sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
     showTagsSection,
+    selectedTag,
   } = useNotesSidebarModel({
     labels: L,
     view,
@@ -275,7 +275,6 @@ export function NotesWorkspace({
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
-    onRenameTag: openRenameTagDialog,
   });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
@@ -469,8 +468,8 @@ export function NotesWorkspace({
             {showTagsSection ? (
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
-                  ({ tag, selected, onSelect, onRename, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag} className="notes-sidebar-tags__row" {...dropHandlers}>
+                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
+                    <li key={tag}>
                       <button
                         type="button"
                         {...sidebarSelectMarker}
@@ -481,17 +480,10 @@ export function NotesWorkspace({
                         )}
                         onClick={onSelect}
                         aria-pressed={selected}
+                        {...dropHandlers}
                       >
                         <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                       </button>
-                      <IconButton
-                        label={L.renameTagActionFor(tag)}
-                        icon={<Pencil className="size-3.5" aria-hidden />}
-                        size="xs"
-                        variant="ghost"
-                        className="notes-sidebar-tags__edit"
-                        onClick={onRename}
-                      />
                     </li>
                   ),
                 )}
@@ -527,6 +519,7 @@ export function NotesWorkspace({
             toggleArchive,
             selectionBar,
             onRefreshList,
+            onEditTag: selectedTag ? () => openRenameTagDialog(selectedTag) : undefined,
             pendingNoteIds,
             notebookCollections,
           })

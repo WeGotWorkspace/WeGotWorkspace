@@ -31,8 +31,8 @@ export type NotesUILabels = {
   addTag: string;
   /** Shown when a newly typed tag is outside a-z and hyphen. */
   tagCharsetHint: string;
-  /** Pencil action on a sidebar tag row. */
-  renameTagActionFor: (tag: string) => string;
+  /** Header pencil on a tag view: opens the rename tag dialog. */
+  editTag: string;
   renameTagTitle: string;
   renameTagDescription: string;
   renameTagNameLabel: string;
@@ -166,7 +166,7 @@ export const defaultNotesLabels: NotesUILabels = {
   addNotebook: "Create notebook",
   addTag: "New tag",
   tagCharsetHint: "Use letters a–z and -",
-  renameTagActionFor: (tag) => `Rename tag ${tag}`,
+  editTag: "Edit tag",
   renameTagTitle: "Rename tag",
   renameTagDescription: "Every note with this tag gets the new name.",
   renameTagNameLabel: "Tag name",
