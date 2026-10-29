@@ -621,7 +621,30 @@ export async function listFileNodeEntriesByPaths(
       }
     }),
   );
+  const missing = normalized.filter((path) => !entriesByPath.has(path));
+  if (missing.length > 0) await addSharedRootEntries(session, missing, entriesByPath, opts?.signal);
   return normalized
     .map((path) => entriesByPath.get(path))
     .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
+}
+
+/**
+ * An item shared with the caller sits in the owner's folder, which the caller
+ * cannot list. Resolve such a path from the shared-with-me roots instead.
+ */
+async function addSharedRootEntries(
+  session: DriveJmapSession,
+  paths: readonly string[],
+  into: Map<string, WgwDriveDirectoryEntry>,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    await loadSharedRoots(session, signal);
+  } catch {
+    return;
+  }
+  for (const path of paths) {
+    const node = session.sharedRootPaths.has(path) ? session.cache.nodeAtPath(path) : undefined;
+    if (node) into.set(path, fileNodeToDirectoryEntry(path, node));
+  }
 }
