@@ -8,7 +8,10 @@ use App\Models\Concerns\UsesWgwConnection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Published ICS/webcal feed token.
+ * Published ICS/webcal feed token of one calendar.
+ *
+ * calendarid is Sabre `calendars.id` (FK, ON DELETE CASCADE): the feed belongs
+ * to the calendar, not to the member who published it, and ends with it.
  *
  * token_hash is SHA-256 for public GET lookup (same as RSVP). token_cipher is
  * Laravel-encrypted (APP_KEY) so GET /calendars/{id}/feed can redisplay the
@@ -20,8 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $id
  * @property string $token_hash
  * @property string $token_cipher
- * @property string $owner_username
- * @property string $calendar_uri
+ * @property int $calendarid
  * @property string $mode
  */
 final class CalendarFeedToken extends Model
@@ -36,8 +38,7 @@ final class CalendarFeedToken extends Model
     protected $fillable = [
         'token_hash',
         'token_cipher',
-        'owner_username',
-        'calendar_uri',
+        'calendarid',
         'mode',
     ];
 

@@ -2,6 +2,10 @@
 
 Same-instance meeting invites use Sabre’s `ITip\Broker` and CalDAV Scheduling (RFC 6638). Event writes from JMAP `CalendarEvent/set` and CalDAV PUT share that path: a REQUEST (or CANCEL) lands in the attendee’s `schedulingobjects` inbox and a tentative VEVENT is copied to their default calendar.
 
+## Which object a message changes
+
+UID lookups for scheduling never search a read-only shared calendar. Delivery to an attendee and the attendee's inbox copy only use calendars the attendee owns (own calendars first, then group calendars). The organizer's event, for a REPLY or a guest RSVP link, is looked up in the organizer's own calendars, then group calendars, then calendars shared to the organizer with write access. A REQUEST or CANCEL updates the attendee's copy only when its ORGANIZER is the sender. A REPLY updates the organizer's own event only for an attendee already on it. When the attendee already owns an object with that UID that does not qualify, the message is not delivered to that attendee and the object stays unchanged (CalDAV: schedule status `3.8`). The skip is not temporary: it lasts until the attendee removes or changes the blocking object, and until then every later REQUEST or CANCEL from that organizer for the UID is skipped for that attendee too (for example after the attendee imported the same event without an ORGANIZER). Each skip logs a `calendar.scheduling_delivery_skipped` warning with the UID, the recipient principal and the method (no event content), so a missing update can be traced on the server. An object with the same UID in a calendar shared to the attendee never blocks delivery; the attendee gets a separate copy in a calendar they own. The inbox RSVP answers the attendee's own copy; a guest RSVP link answers the organizer's own event.
+
 ## REST inbox
 
 | Method | Path | Effect |
