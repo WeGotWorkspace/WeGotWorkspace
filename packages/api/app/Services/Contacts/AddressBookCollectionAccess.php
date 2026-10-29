@@ -144,6 +144,26 @@ final class AddressBookCollectionAccess
     }
 
     /**
+     * A patch with `isSubscribed: true` restores a dismissed inbound share
+     * before the patch looks the book up, so the patch finds it again. Only a
+     * book the user still has a grant on comes back.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function restoreWhenSubscribing(string $username, string $addressBookId, array $payload): void
+    {
+        $bookId = AddressBookCollectionUris::parseSharedApiId($addressBookId);
+        if ($bookId === null || ($payload['isSubscribed'] ?? null) !== true) {
+            return;
+        }
+
+        $inboundAccess = $this->shareInvites->highestAccessByBook($this->shareePrincipalUris($username));
+        if (array_key_exists($bookId, $inboundAccess)) {
+            $this->shareVisibility->restore($username, $bookId);
+        }
+    }
+
+    /**
      * @return Collection<int, Addressbook>
      */
     private function ownedBooks(string $username)

@@ -563,7 +563,10 @@ final class TaskRepository
         $instances = CalendarInstance::query()
             ->whereIn('id', $rows->pluck('instance_id')->all())
             ->get();
-        $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
+        $instance = $this->collectionAccess->withoutDismissed(
+            $username,
+            $this->collectionAccess->preferHighestAccessPerCalendar($instances),
+        )->first();
         if ($instance === null) {
             return null;
         }

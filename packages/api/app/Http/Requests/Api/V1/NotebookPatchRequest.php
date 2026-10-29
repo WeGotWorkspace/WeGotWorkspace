@@ -20,6 +20,7 @@ final class NotebookPatchRequest extends FormRequest
             'name' => ['sometimes', 'string', 'min:1', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string', 'max:4096'],
             'color' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'isSubscribed' => ['sometimes', 'boolean'],
             'groupSlug' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9._-]{1,190}$/'],
             'shareWith' => ['sometimes', 'nullable', 'array'],
         ];

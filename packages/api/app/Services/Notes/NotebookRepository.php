@@ -145,6 +145,7 @@ final class NotebookRepository
      */
     public function update(string $username, string $notebookId, array $payload): array
     {
+        $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::Notebook, $notebookId, $payload);
         $resolved = $this->resolveWritableNotebook($username, $notebookId);
         if ($resolved === null) {
             throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
@@ -187,6 +188,7 @@ final class NotebookRepository
         if (array_key_exists('groupSlug', $payload)) {
             $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
         }
+        $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
@@ -284,7 +286,7 @@ final class NotebookRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    public function findOwnedNotebook(string $username, string $notebookId): ?CalendarInstance
+    private function findOwnedNotebook(string $username, string $notebookId): ?CalendarInstance
     {
         if (CalendarCollectionUris::parseGroupNotebookApiId($notebookId) !== null) {
             return null;
@@ -326,13 +328,13 @@ final class NotebookRepository
 
         $owned = $this->findOwnedNotebook($username, $notebookId);
         if ($owned !== null) {
-            return $owned;
+            return $this->collectionAccess->unlessDismissed($username, $owned);
         }
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
             $instance = $this->findNotebookInstance(AdminConstants::GROUP_PREFIX.$slug, $notebookId);
             if ($instance !== null) {
-                return $instance;
+                return $this->collectionAccess->unlessDismissed($username, $instance);
             }
         }
 

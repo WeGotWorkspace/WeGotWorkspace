@@ -152,6 +152,7 @@ final class CalendarRepository
      * @return array<string, mixed> */
     public function update(string $username, string $calendarId, array $payload): array
     {
+        $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::EventCalendar, $calendarId, $payload);
         $resolved = $this->resolveWritableCalendar($username, $calendarId);
         if ($resolved === null) {
             throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
@@ -199,6 +200,7 @@ final class CalendarRepository
         if (array_key_exists('groupSlug', $payload)) {
             $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
         }
+        $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
@@ -286,14 +288,7 @@ final class CalendarRepository
         $previous = $this->parseInstancesState($since);
 
         if ($since === null || $since === '' || $since === '0') {
-            return [
-                'oldState' => '0',
-                'newState' => $currentState,
-                'hasMoreChanges' => false,
-                'created' => $this->apiIdsForInstances($instances),
-                'updated' => [],
-                'destroyed' => [],
-            ];
+            return ['oldState' => '0', 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => $this->apiIdsForInstances($instances), 'updated' => [], 'destroyed' => []];
         }
 
         if ($since === $currentState) {
@@ -373,13 +368,13 @@ final class CalendarRepository
 
         $owned = $this->findCalendarInstance($this->principalUri($username), $calendarId);
         if ($owned !== null) {
-            return $owned;
+            return $this->collectionAccess->unlessDismissed($username, $owned);
         }
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
             $instance = $this->findCalendarInstance(AdminConstants::GROUP_PREFIX.$slug, $calendarId);
             if ($instance !== null) {
-                return $instance;
+                return $this->collectionAccess->unlessDismissed($username, $instance);
             }
         }
 

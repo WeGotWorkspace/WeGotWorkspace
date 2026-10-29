@@ -142,6 +142,7 @@ final class TaskListRepository
      */
     public function update(string $username, string $taskListId, array $payload): array
     {
+        $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::TaskList, $taskListId, $payload);
         $resolved = $this->resolveWritableTaskList($username, $taskListId);
         if ($resolved === null) {
             throw new ApiHttpException(404, 'Task list not found.', 'not_found');
@@ -184,6 +185,7 @@ final class TaskListRepository
         if (array_key_exists('groupSlug', $payload)) {
             $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
         }
+        $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
         $instance->refresh();
         $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
@@ -266,7 +268,7 @@ final class TaskListRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    public function findOwnedTaskList(string $username, string $taskListId): ?CalendarInstance
+    private function findOwnedTaskList(string $username, string $taskListId): ?CalendarInstance
     {
         if (CalendarCollectionUris::parseGroupTaskListApiId($taskListId) !== null) {
             return null;
@@ -288,13 +290,13 @@ final class TaskListRepository
 
         $owned = $this->findOwnedTaskList($username, $taskListId);
         if ($owned !== null) {
-            return $owned;
+            return $this->collectionAccess->unlessDismissed($username, $owned);
         }
 
         foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
             $instance = $this->findTaskListInstance(AdminConstants::GROUP_PREFIX.$slug, $taskListId);
             if ($instance !== null) {
-                return $instance;
+                return $this->collectionAccess->unlessDismissed($username, $instance);
             }
         }
 

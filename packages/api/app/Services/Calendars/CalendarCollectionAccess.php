@@ -145,7 +145,11 @@ final class CalendarCollectionAccess
         );
     }
 
-    /** Hide an inbound share. Returns true when the instance was a sharee. */
+    /**
+     * Leave an inbound share: it drops out of listings and out of every lookup
+     * by id until restored. The owner's grant stays. Returns true when the
+     * instance was a sharee.
+     */
     public function dismissIfSharee(string $username, CalendarInstance $instance): bool
     {
         if (! $this->shareInvites->isSharee($instance)) {
@@ -155,6 +159,85 @@ final class CalendarCollectionAccess
         $this->shareVisibility->dismiss($username, (int) $instance->calendarid);
 
         return true;
+    }
+
+    /**
+     * The instance a lookup by id may return: null when it is an inbound share
+     * the user dismissed, so a dismissed share answers like a missing one.
+     */
+    public function unlessDismissed(string $username, CalendarInstance $instance): ?CalendarInstance
+    {
+        return $this->withoutDismissed($username, new Collection([$instance]))->first();
+    }
+
+    /**
+     * Drops inbound shares the user dismissed, for item lookups that collect
+     * candidate instances themselves.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function withoutDismissed(string $username, Collection $instances): Collection
+    {
+        return $this->shareVisibility->rejectDismissedSharees($username, $instances);
+    }
+
+    /**
+     * A collection patch with `isSubscribed: true` restores a dismissed inbound
+     * share before the patch looks the collection up, so the rest of the patch
+     * applies to it. The sharee instance only exists while the owner's grant
+     * does, so a revoked share cannot come back this way.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function restoreWhenSubscribing(string $username, CollectionKind $kind, string $apiId, array $payload): void
+    {
+        if ($this->requestedSubscription($payload) !== true) {
+            return;
+        }
+
+        $principalUris = [$this->principalUri($username)];
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            $principalUris[] = AdminConstants::GROUP_PREFIX.$slug;
+        }
+        $instances = CalendarInstance::query()
+            ->whereIn('principaluri', $principalUris)
+            ->where('uri', $apiId)
+            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
+            ->get();
+        foreach ($instances as $instance) {
+            if ($this->shareInvites->isSharee($instance)) {
+                $this->shareVisibility->restore($username, (int) $instance->calendarid);
+            }
+        }
+    }
+
+    /**
+     * A collection patch with `isSubscribed: false` dismisses an inbound share,
+     * like a delete does. Owners and group members have nothing to dismiss.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function dismissWhenUnsubscribing(string $username, CalendarInstance $instance, array $payload): void
+    {
+        if ($this->requestedSubscription($payload) === false) {
+            $this->dismissIfSharee($username, $instance);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function requestedSubscription(array $payload): ?bool
+    {
+        if (! array_key_exists('isSubscribed', $payload)) {
+            return null;
+        }
+        if (! is_bool($payload['isSubscribed'])) {
+            throw new ApiHttpException(400, 'isSubscribed must be a boolean.', 'invalidProperties', ['isSubscribed']);
+        }
+
+        return $payload['isSubscribed'];
     }
 
     /**

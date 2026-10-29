@@ -15,7 +15,6 @@ final class AddressBookRepository
     public function __construct(
         private readonly AddressBookCollectionAccess $collectionAccess,
         private readonly AddressBookShareInvites $shareInvites,
-        private readonly AddressBookShareVisibility $shareVisibility,
     ) {}
 
     /**
@@ -54,6 +53,7 @@ final class AddressBookRepository
      */
     public function update(string $username, string $addressBookId, array $payload): array
     {
+        $this->collectionAccess->restoreWhenSubscribing($username, $addressBookId, $payload);
         $listing = $this->requireListing($username, $addressBookId);
 
         if (array_key_exists('name', $payload)) {
@@ -62,20 +62,11 @@ final class AddressBookRepository
 
         if ($listing->isSharee) {
             $this->assertShareePatchAllowed($payload);
-            if (array_key_exists('isSubscribed', $payload)) {
-                if ($payload['isSubscribed'] === false) {
-                    $this->shareVisibility->dismiss($username, (int) $listing->book->id);
-                } elseif ($payload['isSubscribed'] === true) {
-                    $this->shareVisibility->restore($username, (int) $listing->book->id);
-                }
+            if (($payload['isSubscribed'] ?? null) === false) {
+                $this->collectionAccess->dismissIfSharee($username, $listing);
             }
 
-            $restored = $this->collectionAccess->listingFor($username, $addressBookId);
-            if ($restored === null) {
-                return $this->mapListing($listing);
-            }
-
-            return $this->mapListing($restored);
+            return $this->mapListing($listing);
         }
 
         if (array_key_exists('shareWith', $payload)) {

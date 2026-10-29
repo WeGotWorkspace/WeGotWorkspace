@@ -25,6 +25,7 @@ final class CalendarEventMutationSupport
 {
     public function __construct(
         private readonly CalendarRepository $calendars,
+        private readonly CalendarCollectionAccess $collectionAccess,
         private readonly CalendarEventMapper $mapper,
         private readonly CalendarSchedulingService $scheduling,
         private readonly CalendarMeetLinkWriteHook $meetLinkHook,
@@ -619,10 +620,10 @@ final class CalendarEventMutationSupport
             return null;
         }
 
-        $instance = CalendarInstance::query()
+        $instance = $this->collectionAccess->withoutDismissed($username, CalendarInstance::query()
             ->where('calendarid', (int) $object->calendarid)
             ->whereIn('principaluri', $principalUris)
-            ->first();
+            ->get())->first();
 
         if ($instance === null) {
             return null;
