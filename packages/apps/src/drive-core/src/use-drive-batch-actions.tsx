@@ -358,8 +358,7 @@ export function useDriveBatchActions({
             ),
           ),
         );
-        // Starred lists items outside the open folder, so refresh it from any view.
-        reloadStarredFromServer();
+        reloadStarredFromServer(); // Starred spans folders: refresh from any view.
       },
       rollback: () => {
         setStarred(previousStarred);

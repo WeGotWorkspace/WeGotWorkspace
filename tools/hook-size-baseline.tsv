@@ -18,7 +18,7 @@ packages/apps/src/meet-core/src/use-meet-mutations.ts#useMeetMutations	385	3	gra
 packages/apps/src/notes-core/src/use-notes-api.ts#useNotesAPI	250	3	grandfathered
 packages/apps/src/notes-core/src/use-notes-batch-actions.tsx#useNotesBatchActions	210	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-list.tsx#useNotesList	231	5	grandfathered
-packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	741	2	grandfathered
+packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	739	2	grandfathered
 packages/apps/src/notes-core/src/use-notes-notebook-mutations.tsx#useNotesNotebookMutations	231	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-shell.tsx#useNotesShell	185	6	grandfathered
 packages/apps/src/share-ui/use-share-mutations.ts#useShareMutations	217	0	grandfathered

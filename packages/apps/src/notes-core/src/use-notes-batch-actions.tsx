@@ -3,6 +3,7 @@ import { Star, StarOff } from "lucide-react";
 import { runQueuedBatchAction } from "@/hooks/use-batch-actions";
 import { buildPermanentDeleteDescription } from "@/lib/workspace/destructive-dialog";
 import type { Note } from "@/lib/models/note";
+import { saveNoteStar } from "./notes-note-utils";
 import { persistNoteOrDropGone } from "./notes-persist-access";
 import type { NotesAPIOperations } from "./notes-types";
 
@@ -168,9 +169,7 @@ export function useNotesBatchActions({
         if (!operations) return;
         await Promise.all(
           updatedRows.map((row) =>
-            persistNoteOrDropGone(operations.upsertNote(row, { fields: ["starred"] }), () =>
-              dropGoneNote(row.id),
-            ),
+            persistNoteOrDropGone(saveNoteStar(operations, row), () => dropGoneNote(row.id)),
           ),
         );
       },

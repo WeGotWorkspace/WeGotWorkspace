@@ -28,6 +28,7 @@ import {
   notesViewAfterNotebookMove,
   notesViewForCreate,
   persistBestEffort,
+  saveNoteStar,
 } from "./notes-note-utils";
 import { resolveNotesCreateTarget } from "./notes-create-target";
 import { changedNoteMetadataFields, createNoteSaveDebouncer } from "./notes-save-debouncer";
@@ -202,17 +203,12 @@ export function useNotesMutations({ shell, list }: UseNotesMutationsArgs) {
         show(nowStarred ? "Starred" : "Unstarred", { icon: toastIcon });
         return;
       }
-      const updated = { ...current, starred: nowStarred };
       queueMutation({
         key: `notes:star:${id}`,
         toastMessage: nowStarred ? "Starred" : "Unstarred",
         icon: toastIcon,
-        execute: async () => {
-          // The cached copy is already starred, so name the field to send it.
-          await persistNoteOrDropGone(operations.upsertNote(updated, { fields: ["starred"] }), () =>
-            dropGoneNote(id),
-          );
-        },
+        execute: () =>
+          persistNoteOrDropGone(saveNoteStar(operations, starredNote), () => dropGoneNote(id)),
         undo: () => {
           applyStarToggle(id);
           setNotes((prev) =>
