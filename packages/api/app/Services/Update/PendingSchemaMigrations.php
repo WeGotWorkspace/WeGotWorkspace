@@ -22,12 +22,14 @@ use Illuminate\Support\Facades\Log;
  * The first request served by the new code finishes the job in a clean
  * process. A marker in the data directory keeps later requests to a file
  * read and a directory listing.
+ *
+ * Every step after the marker check runs under {@see SchemaMigrationLock}.
+ * Requests that arrive while another process holds it are turned away, so
+ * no request reads or writes a schema that is still changing.
  */
 final class PendingSchemaMigrations
 {
     private const MARKER = 'updates/schema-migrations.json';
-
-    private const LOCK = 'updates/schema-migrations.lock';
 
     /** A failed run is retried on a later request after this many seconds. */
     public const RETRY_AFTER_SECONDS = 300;
@@ -36,12 +38,15 @@ final class PendingSchemaMigrations
         private WgwSchemaMigrator $migrator,
         private AppPaths $paths,
         private UpdateStateStore $updates,
+        private SchemaMigrationLock $lock,
     ) {}
 
     /**
-     * @return bool False while another request holds the schema lock and is
-     *              migrating: the caller must not run a route against a
-     *              half-migrated schema.
+     * Runs the pending migrations when this request is the first to see them.
+     *
+     * @return bool False while another process holds the schema lock. The
+     *              schema is then mid-change, so the caller must not serve
+     *              the request.
      */
     public function applyIfPending(): bool
     {
@@ -50,63 +55,75 @@ final class PendingSchemaMigrations
         }
 
         $signature = $this->migrator->migrationSetSignature();
-        if ($this->markerSkipsRun($signature)) {
+        if ($this->markerStatus($signature) === 'current') {
             return true;
         }
 
-        $lock = $this->acquireLock();
-        if ($lock === false) {
+        try {
+            $lock = $this->lock->tryAcquire();
+        } catch (\RuntimeException $e) {
+            Log::error('Could not take the schema migration lock.', ['exception' => $e]);
+
+            return true;
+        }
+        if ($lock === null) {
             return false;
         }
 
         try {
-            // Another request may have finished while this one took the lock.
-            if ($this->markerSkipsRun($signature)
-                || ! $this->paths->runtimeInstallReady()
-                || $this->updateIsRunning()) {
-                return true;
-            }
-            $this->runPending($signature);
+            $this->runPendingWhileLocked($signature);
         } finally {
-            if (is_resource($lock)) {
-                flock($lock, LOCK_UN);
-                fclose($lock);
-            }
+            $this->lock->release($lock);
         }
 
         return true;
     }
 
-    private function runPending(string $signature): void
+    private function runPendingWhileLocked(string $signature): void
     {
+        // Another request may have finished, or failed, while this one waited.
+        if ($this->markerStatus($signature) !== null) {
+            return;
+        }
+        if (! $this->paths->runtimeInstallReady() || $this->updateIsRunning()) {
+            return;
+        }
+
         try {
             $pending = $this->migrator->pendingMigrations();
-            if ($pending === []) {
-                $this->writeMarker(['signature' => $signature, 'status' => 'current']);
-
-                return;
-            }
-
-            @set_time_limit(0);
-            ignore_user_abort(true);
-            $this->updates->appendLog(sprintf(
-                'Running %d database migration(s) the update left pending, starting at %s.',
-                count($pending),
-                $pending[0],
-            ));
-            $this->migrator->migrate();
-            $this->writeMarker(['signature' => $signature, 'status' => 'current']);
-            $this->updates->appendLog('Pending database migrations finished.');
-            Log::warning('Applied database migrations an update left pending.', ['migrations' => $pending]);
         } catch (\Throwable $e) {
-            $this->writeMarker([
-                'signature' => $signature,
-                'status' => 'failed',
-                'failedAt' => time(),
-            ]);
+            Log::error('Could not list pending database migrations.', ['exception' => $e]);
+
+            return;
+        }
+        if ($pending === []) {
+            $this->writeMarker(['signature' => $signature, 'status' => 'current']);
+
+            return;
+        }
+
+        @set_time_limit(0);
+        ignore_user_abort(true);
+        // Written first so a process killed mid-run still backs off the
+        // next request. Success overwrites it.
+        $this->writeFailedMarker($signature);
+        $this->updates->appendLog(sprintf(
+            'Running %d database migration(s) the update left pending, starting at %s.',
+            count($pending),
+            $pending[0],
+        ));
+        try {
+            $this->migrator->migrate();
+        } catch (\Throwable $e) {
+            $this->writeFailedMarker($signature);
             $this->updates->appendLog('Pending database migrations failed: '.$e->getMessage());
             Log::error('Could not apply database migrations an update left pending.', ['exception' => $e]);
+
+            return;
         }
+        $this->writeMarker(['signature' => $signature, 'status' => 'current']);
+        $this->updates->appendLog('Pending database migrations finished.');
+        Log::warning('Applied database migrations an update left pending.', ['migrations' => $pending]);
     }
 
     private function hasPersistentDatabase(): bool
@@ -120,19 +137,27 @@ final class PendingSchemaMigrations
         return ($connection['driver'] ?? '') !== '' && $database !== '' && $database !== ':memory:';
     }
 
-    private function markerSkipsRun(string $signature): bool
+    /**
+     * @return 'current'|'failed'|null 'failed' only inside the retry window.
+     */
+    private function markerStatus(string $signature): ?string
     {
         $raw = @file_get_contents($this->absolute(self::MARKER));
         $marker = is_string($raw) ? json_decode($raw, true) : null;
         if (! is_array($marker) || ($marker['signature'] ?? null) !== $signature) {
-            return false;
+            return null;
         }
         if (($marker['status'] ?? null) === 'current') {
-            return true;
+            return 'current';
         }
         $failedAt = $marker['failedAt'] ?? null;
 
-        return is_int($failedAt) && time() - $failedAt < self::RETRY_AFTER_SECONDS;
+        return is_int($failedAt) && time() - $failedAt < self::RETRY_AFTER_SECONDS ? 'failed' : null;
+    }
+
+    private function writeFailedMarker(string $signature): void
+    {
+        $this->writeMarker(['signature' => $signature, 'status' => 'failed', 'failedAt' => time()]);
     }
 
     /**
@@ -156,29 +181,6 @@ final class PendingSchemaMigrations
         fclose($handle);
 
         return ! $free;
-    }
-
-    /**
-     * @return resource|true|false True when the lock cannot be used at all
-     *                              (no writable data dir); false when held elsewhere.
-     */
-    private function acquireLock()
-    {
-        $path = $this->absolute(self::LOCK);
-        if (! $this->ensureParentDir($path)) {
-            return true;
-        }
-        $handle = @fopen($path, 'c');
-        if (! is_resource($handle)) {
-            return true;
-        }
-        if (! flock($handle, LOCK_EX | LOCK_NB)) {
-            fclose($handle);
-
-            return false;
-        }
-
-        return $handle;
     }
 
     /**

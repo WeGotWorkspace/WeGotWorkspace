@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\ApiHttpException;
 use App\Services\Update\PendingSchemaMigrations;
 use Closure;
 use Illuminate\Http\Request;
@@ -12,6 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Finishes an update whose migrations did not run before any route touches
  * the database. See {@see PendingSchemaMigrations}.
+ *
+ * While another process runs the migrations the request gets a 503 with
+ * `Retry-After: 1` instead of a half-migrated schema.
  */
 final class CompletePendingSchemaMigrations
 {
@@ -23,7 +27,13 @@ final class CompletePendingSchemaMigrations
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->pending->applyIfPending()) {
-            return response()->json(['message' => 'Finishing a database update. Retry shortly.'], 503, ['Retry-After' => '1']);
+            throw new ApiHttpException(
+                503,
+                'Database migrations are running. Try again shortly.',
+                'unavailable',
+                [],
+                ['Retry-After' => 1],
+            );
         }
 
         return $next($request);
