@@ -94,15 +94,15 @@ That push reaches every device of the recipient, also one where the app is open.
 
 ## Active news on the client
 
-Today the inbox polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) and re-fetches on a mesh `notify-hint`. In this design:
+The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) while push is down. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`); the toast (steps 4–6) and `check-now` are not yet. In this design:
 
 1. The server exposes a per-user `Notification` state in the event source. The `notifications` table has no change marker today, and `supersede` rewrites rows in place. So it gets one: an `updated_at` (or a per-principal sequence) that create, supersede, clear and read all touch.
-2. When the `Notification` state changes, the hub fetches the inbox once and fans the new rows out to every tab. `notify-hint` becomes a generic mesh "check now".
-3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely.
+2. When the `Notification` state changes, one tab fetches the inbox once and fans the new rows out to every tab. That tab holds the Web Lock `wgw-notifications/inbox-leader` (`inbox-fan-out.ts`); the others skip the fetch and show the rows it shares on a `crossTabTopic`. A failed fetch is not confirmed, so the server sends the change again. `notify-hint` becomes a generic mesh "check now".
+3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely. Two visible tabs never both ack a row: a tab first takes the Web Lock `wgw-notifications/local-ack/<id>` without waiting (`local-ack-claims.ts`) and holds it while the row is unread; a tab that does not get it skips the row, and tries again on its next refresh if the holder's ack failed or the holder closed.
 4. **One tab shows the toast:** the most recently focused visible tab, elected through the hub. Every tab reports its focus, visibility and current route to the hub. If no tab is visible, no tab shows anything itself and nothing is acked: the Web Push service worker is the only OS notification path (#1605).
 5. The toast uses the existing toast primitive (`ui/sonner.tsx`, `AppToastCallout`) in a notification style. It names the app and the actor, acts on click through the item's `navigate`, and marks the row read on that click. It is `role="status"`, never takes focus, and follows reduced motion.
 6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change.
-7. The 15 s poll stays as the fallback and slows down while push is connected.
+7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace.
 
 ## The mesh as messenger
 
