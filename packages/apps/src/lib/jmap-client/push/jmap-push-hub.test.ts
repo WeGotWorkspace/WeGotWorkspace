@@ -106,6 +106,21 @@ describe("JmapPushHub", () => {
     expect(b.locks.holder("wgw-jmap-push/leader")).toBe("a");
   });
 
+  it("reports leading only in the tab that holds the stream", async () => {
+    const b = browser();
+    const a = b.tab("a");
+    const c = b.tab("c");
+    expect(a.hub.leading).toBe(false);
+    const leaveA = a.hub.subscribe(["Note"], vi.fn());
+    cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+    await settle();
+    expect([a.hub.leading, c.hub.leading]).toEqual([true, false]);
+
+    leaveA();
+    await settle();
+    expect([a.hub.leading, c.hub.leading]).toEqual([false, true]);
+  });
+
   it("opens no stream while nothing subscribes", async () => {
     const b = browser();
     b.tab("a");

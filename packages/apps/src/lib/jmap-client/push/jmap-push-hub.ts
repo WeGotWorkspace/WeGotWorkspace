@@ -92,6 +92,15 @@ export class JmapPushHub {
     return this.#connected;
   }
 
+  /**
+   * True while this tab holds the browser's stream. Work one tab should do per
+   * push (fetch the inbox once and share it) runs here: the leader is visible
+   * whenever any subscribed tab is, so a paused background tab never holds it up.
+   */
+  get leading(): boolean {
+    return this.#eventSource !== null;
+  }
+
   /** Listen for pushed states of `types`; returns the unsubscribe function. */
   subscribe(types: readonly string[], listener: StateChangeListener): () => void {
     const subscription = new StateChangeSubscription(types, listener, () => this.#publishTab());
