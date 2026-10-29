@@ -24,11 +24,8 @@ export function InstallerApp({ apiSource }: InstallerAppProps = {}) {
           key={key}
           data={data}
           operations={operations}
-          onOpenWorkspace={() => {
-            if (typeof window !== "undefined") {
-              window.location.assign(buildWgwLoginHref("/"));
-            }
-          }}
+          onOpenWorkspace={() => window.location.assign(buildWgwLoginHref("/"))}
+          onAdminSignedIn={() => window.location.assign("/")}
         />
       )}
     />

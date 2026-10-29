@@ -67,4 +67,4 @@ A new counted source file over 800 lines is a merge block unless its baseline en
 
 - [ ] Legacy PHP patterns in `packages/api` (see `api/SKILL.md` forbidden list)
 - [ ] Inline `style={}` presets that should be CSS variables ([apps-ui](../apps-ui/SKILL.md))
-- [ ] `window.location` or router calls inside workspace packages ([workspace](../workspace/SKILL.md))
+- [ ] `window.location` or router calls inside workspace packages ([workspace](../workspace/SKILL.md)); ESLint blocks them in `*-workspace.tsx` and `use-*-controller.ts(x)` (`workspaceNavigationRules` in [`packages/apps/eslint.config.js`](../../../packages/apps/eslint.config.js))
