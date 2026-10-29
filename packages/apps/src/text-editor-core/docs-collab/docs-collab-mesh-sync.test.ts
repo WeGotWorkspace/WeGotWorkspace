@@ -193,6 +193,43 @@ describe("handleGuardedSyncMessage", () => {
     ).toBe(true);
   });
 
+  /**
+   * A step 1 only pulls. A peer that missed one of our updates answers it and
+   * stays behind, so the step 1 also has to tell it that we hold more (#1737).
+   */
+  it("asks back when the peer's step 1 shows state this doc lacks", () => {
+    const ahead = new Y.Doc();
+    const updates: Uint8Array[] = [];
+    ahead.on("update", (update: Uint8Array) => updates.push(update));
+    ahead.getText("t").insert(0, "hel");
+    ahead.getText("t").insert(3, "lo");
+    const behind = new Y.Doc();
+    Y.applyUpdate(behind, updates[0]!);
+
+    const outcome = handleGuardedSyncMessage({
+      bytes: encodeSyncStep1(ahead),
+      ydoc: behind,
+      trust: { user: "admin", access: "write" },
+    });
+
+    expect(outcome).toMatchObject({ kind: "reply", pullBack: true });
+  });
+
+  it("does not ask back when the peer's step 1 shows nothing new", () => {
+    const local = editedDoc("shared body");
+    const same = new Y.Doc();
+    Y.applyUpdate(same, Y.encodeStateAsUpdate(local));
+
+    const fromEqual = handleGuardedSyncMessage({ bytes: encodeSyncStep1(same), ydoc: local });
+    const fromEmpty = handleGuardedSyncMessage({
+      bytes: encodeSyncStep1(new Y.Doc()),
+      ydoc: local,
+    });
+
+    expect(fromEqual).toMatchObject({ kind: "reply", pullBack: false });
+    expect(fromEmpty).toMatchObject({ kind: "reply", pullBack: false });
+  });
+
   it("tells a state request apart from a message carrying content", () => {
     expect(isDocumentBearingSyncMessage(encodeSyncStep1(new Y.Doc()))).toBe(false);
     expect(isDocumentBearingSyncMessage(encodeUpdateBroadcast(new Uint8Array([0, 0])))).toBe(true);
