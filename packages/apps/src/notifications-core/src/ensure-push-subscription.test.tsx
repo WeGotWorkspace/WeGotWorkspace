@@ -6,6 +6,11 @@ vi.mock("@/lib/api/wgw/notifications", () => ({
   unsubscribePush: vi.fn(),
 }));
 
+vi.mock("@/lib/api/wgw/http", () => ({
+  wgwCurrentAccessToken: vi.fn(() => null),
+}));
+
+import { wgwCurrentAccessToken } from "@/lib/api/wgw/http";
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from "@/lib/api/wgw/notifications";
 import {
   ensurePushPermissionAndSubscribe,
@@ -16,6 +21,12 @@ import {
 const subscribe = vi.fn();
 const getSubscription = vi.fn();
 const CURRENT_KEY = [1, 2, 3]; // "AQID", the stubbed VAPID public key
+const SUBSCRIBER_KEY = "wgw.push.subscriber";
+
+function signInAs(username: string): void {
+  const payload = btoa(JSON.stringify({ sub: username }));
+  vi.mocked(wgwCurrentAccessToken).mockReturnValue(`header.${payload}.signature`);
+}
 
 function storedSubscription(applicationServerKey: number[] | null) {
   return {
@@ -46,6 +57,8 @@ function stubNotification(permission: NotificationPermission): ReturnType<typeof
 describe("ensurePushPermissionAndSubscribe", () => {
   beforeEach(() => {
     resetEnsurePushSubscriptionForTests();
+    window.localStorage.removeItem(SUBSCRIBER_KEY);
+    vi.mocked(wgwCurrentAccessToken).mockReturnValue(null);
     vi.mocked(fetchVapidPublicKey).mockReset();
     vi.mocked(subscribePush).mockReset();
     vi.mocked(unsubscribePush).mockReset();
@@ -357,5 +370,84 @@ describe("ensurePushPermissionAndSubscribe", () => {
     await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
 
     expect(subscribePush).toHaveBeenCalledTimes(1);
+  });
+
+  describe("on a browser another account used before", () => {
+    it("replaces the subscription another account posted", async () => {
+      stubNotification("granted");
+      window.localStorage.setItem(SUBSCRIBER_KEY, "alice");
+      signInAs("bob");
+      const previous = storedSubscription(CURRENT_KEY);
+      getSubscription.mockResolvedValue(previous);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(previous.unsubscribe).toHaveBeenCalledTimes(1);
+      expect(unsubscribePush).not.toHaveBeenCalled();
+      expect(subscribe).toHaveBeenCalledTimes(1);
+      expect(subscribePush).toHaveBeenCalledWith({
+        endpoint: "https://push.example/1",
+        keys: { p256dh: "a", auth: "b" },
+      });
+      expect(window.localStorage.getItem(SUBSCRIBER_KEY)).toBe("bob");
+    });
+
+    it("keeps the subscription when the same account signs in again", async () => {
+      stubNotification("granted");
+      window.localStorage.setItem(SUBSCRIBER_KEY, "alice");
+      signInAs("alice");
+      const previous = storedSubscription(CURRENT_KEY);
+      getSubscription.mockResolvedValue(previous);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(previous.unsubscribe).not.toHaveBeenCalled();
+      expect(subscribe).not.toHaveBeenCalled();
+      expect(subscribePush).toHaveBeenCalledWith({
+        endpoint: "https://push.example/old",
+        keys: { p256dh: "x", auth: "y" },
+      });
+    });
+
+    it("keeps a subscription with no recorded account and records the signed-in one", async () => {
+      stubNotification("granted");
+      signInAs("bob");
+      const previous = storedSubscription(CURRENT_KEY);
+      getSubscription.mockResolvedValue(previous);
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(previous.unsubscribe).not.toHaveBeenCalled();
+      expect(subscribe).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(SUBSCRIBER_KEY)).toBe("bob");
+    });
+
+    it("keeps the previous record when the server does not store the subscription", async () => {
+      stubNotification("granted");
+      window.localStorage.setItem(SUBSCRIBER_KEY, "alice");
+      signInAs("bob");
+      vi.mocked(subscribePush).mockRejectedValue(new Error("POST push subscription failed (503)"));
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+
+      expect(window.localStorage.getItem(SUBSCRIBER_KEY)).toBe("alice");
+    });
+
+    it("subscribes once after the previous account's subscription was dropped", async () => {
+      stubNotification("granted");
+      window.localStorage.setItem(SUBSCRIBER_KEY, "alice");
+      signInAs("bob");
+      const previous = storedSubscription(CURRENT_KEY);
+      getSubscription.mockResolvedValueOnce(previous).mockResolvedValue(null);
+      subscribe.mockRejectedValueOnce(new Error("NotAllowedError"));
+
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(false);
+      await expect(ensurePushPermissionAndSubscribe()).resolves.toBe(true);
+
+      expect(previous.unsubscribe).toHaveBeenCalledTimes(1);
+      expect(subscribe).toHaveBeenCalledTimes(2);
+      expect(subscribePush).toHaveBeenCalledTimes(1);
+      expect(window.localStorage.getItem(SUBSCRIBER_KEY)).toBe("bob");
+    });
   });
 });
