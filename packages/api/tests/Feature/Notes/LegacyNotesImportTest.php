@@ -6,6 +6,7 @@ namespace Tests\Feature\Notes;
 
 use App\Models\CalendarObject;
 use App\Models\DriveStarredItem;
+use App\Models\NoteStar;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notes\NoteMarkdownCodec;
@@ -102,6 +103,18 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
         $this->assertSame(0, Artisan::call('wgw:notes:migrate-files'));
 
         $this->assertNull($this->notesIn('Drafts')->firstWhere('title', 'Welcome'));
+    }
+
+    public function test_a_note_unstarred_after_the_import_stays_unstarred(): void
+    {
+        $this->putLegacyNotes();
+        $this->runMigration();
+        $this->assertSame(1, NoteStar::query()->where('username', 'bob')->count());
+        NoteStar::query()->where('username', 'bob')->delete();
+
+        $this->assertSame(0, Artisan::call('wgw:notes:migrate-files'));
+
+        $this->assertSame(0, NoteStar::query()->where('username', 'bob')->count());
     }
 
     /**

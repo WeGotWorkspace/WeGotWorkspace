@@ -12,10 +12,11 @@ use App\Models\Principal;
 use App\Services\Notes\Conversion\NoteJournalConverter;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Str;
 
 /**
- * One-way import of Drive `.notes/*.md` files into VJOURNAL notebooks.
+ * One-way import of Drive `.notes/*.md` files (v0.1.96 and older) into
+ * VJOURNAL notebooks. Safe to run again: {@see LegacyNoteImportLedger} skips
+ * files that already became a note. The source files stay on disk.
  */
 final class NotesFileMigrator
 {
@@ -25,12 +26,14 @@ final class NotesFileMigrator
         private readonly NotebookRepository $notebooks,
         private readonly NoteRepository $notes,
         private readonly SearchIndexerService $search,
+        private readonly LegacyNoteImportLedger $ledger,
     ) {}
 
     /**
      * @return array{
      *   mapped: int,
      *   imported: int,
+     *   alreadyImported: int,
      *   starred: int,
      *   skipped: int,
      *   discardedYjs: int,
@@ -38,10 +41,13 @@ final class NotesFileMigrator
      *   notices: list<string>
      * }
      */
-    public function migrate(): array
+    public function migrate(bool $discardYjs = true): array
     {
         $disk = $this->storage->files();
-        $pathToUid = $this->buildPathUidMap(array_values($disk->allFiles()));
+        $files = $this->legacyNoteFiles();
+        $pathToUid = $this->buildPathUidMap($files);
+        $created = [];
+        $alreadyImported = 0;
         $imported = 0;
         $skipped = 0;
         $starred = 0;
@@ -50,6 +56,13 @@ final class NotesFileMigrator
         $notices = [];
 
         foreach ($pathToUid as $virtualPath => $uid) {
+            $earlier = $this->ledger->importedUid($virtualPath);
+            if ($earlier !== null) {
+                $pathToUid[$virtualPath] = $earlier;
+                $alreadyImported++;
+
+                continue;
+            }
             $key = ltrim($virtualPath, '/');
             if (! $disk->fileExists($key)) {
                 $skipped++;
@@ -95,18 +108,28 @@ final class NotesFileMigrator
             $notebookName = $parsed['notebook'] !== '' ? $parsed['notebook'] : 'General';
             $groupSlug = $parsed['scope'] === 'group' ? $parsed['owner'] : null;
             $notebook = $this->notebooks->findOrCreateNamed($username, $notebookName, $groupSlug);
+            $calendarId = $this->notebooks->findAccessibleNotebook($username, (string) $notebook['id'])?->calendarid;
+            $earlier = $calendarId !== null ? $this->ledger->claimEarlierImport((int) $calendarId, $title, $body) : null;
+            if ($earlier !== null) {
+                $this->ledger->record($virtualPath, $earlier);
+                $pathToUid[$virtualPath] = $earlier;
+                $alreadyImported++;
+
+                continue;
+            }
 
             try {
-                $created = $this->notes->create($username, [
+                $note = $this->notes->create($username, [
+                    'uid' => $uid,
                     'notebookId' => $notebook['id'],
                     'title' => $title !== '' ? $title : null,
                     'body' => $body,
                     'categories' => $tags,
                     'status' => $parsed['archived'] ? 'CANCELLED' : null,
                 ], allowStoredTags: true);
-                $pathToUid[$virtualPath] = is_string($created['id'] ?? null)
-                    ? (string) $created['id']
-                    : $uid;
+                $pathToUid[$virtualPath] = is_string($note['id'] ?? null) ? (string) $note['id'] : $uid;
+                $this->ledger->record($virtualPath, $pathToUid[$virtualPath]);
+                $created[] = $pathToUid[$virtualPath];
                 $imported++;
             } catch (\Throwable $exception) {
                 $skipped++;
@@ -114,13 +137,19 @@ final class NotesFileMigrator
             }
         }
 
-        $starred = $this->backfillStars($pathToUid, $notices);
-        $discardedYjs = $this->discardYjsSidecars(array_values($disk->allFiles()));
-        $this->reindexImported(array_values($pathToUid));
+        $starred = $this->backfillStars($pathToUid, array_flip($created), $notices);
+        $discardedYjs = $discardYjs ? $this->discardYjsSidecars($files) : 0;
+        if (! $discardYjs) {
+            foreach ($this->yjsSidecars($files) as $sidecar) {
+                $notices[] = 'collaborative edits not imported, kept on disk: /'.$sidecar;
+            }
+        }
+        $this->reindexImported($created);
 
         return [
             'mapped' => count($pathToUid),
             'imported' => $imported,
+            'alreadyImported' => $alreadyImported,
             'starred' => $starred,
             'skipped' => $skipped,
             'discardedYjs' => $discardedYjs,
@@ -149,7 +178,7 @@ final class NotesFileMigrator
             if (str_starts_with(basename($key), '._')) {
                 continue;
             }
-            $map['/'.$key] = (string) Str::uuid();
+            $map['/'.$key] = $this->ledger->uidFor('/'.$key);
         }
 
         return $map;
@@ -186,10 +215,14 @@ final class NotesFileMigrator
     }
 
     /**
+     * Stars only notes this run created: an earlier run already starred the
+     * others, and someone may have unstarred them since.
+     *
      * @param  array<string, string>  $pathToUid
+     * @param  array<string, int>  $createdUids
      * @param  list<string>  $notices
      */
-    private function backfillStars(array $pathToUid, array &$notices): int
+    private function backfillStars(array $pathToUid, array $createdUids, array &$notices): int
     {
         $count = 0;
         foreach (DriveStarredItem::query()->get() as $row) {
@@ -201,6 +234,9 @@ final class NotesFileMigrator
                     $notices[] = 'star skip (path not in map): '.$normalized;
                 }
 
+                continue;
+            }
+            if (! isset($createdUids[$uid])) {
                 continue;
             }
             $object = CalendarObject::query()->where('uid', $uid)->first();
@@ -228,14 +264,7 @@ final class NotesFileMigrator
     {
         $disk = $this->storage->files();
         $discarded = 0;
-        foreach ($files as $key) {
-            $key = ltrim(str_replace('\\', '/', (string) $key), '/');
-            if (! preg_match('#(?:^|/)\\.[^/]+\\.md\\.yjs$#', $key) && ! str_ends_with($key, '.md.yjs')) {
-                continue;
-            }
-            if (! str_contains($key, '/.notes/')) {
-                continue;
-            }
+        foreach ($this->yjsSidecars($files) as $key) {
             if ($disk->fileExists($key)) {
                 $disk->delete($key);
                 $discarded++;
@@ -243,6 +272,44 @@ final class NotesFileMigrator
         }
 
         return $discarded;
+    }
+
+    /**
+     * @param  list<string>  $files
+     * @return list<string>
+     */
+    private function yjsSidecars(array $files): array
+    {
+        $sidecars = [];
+        foreach ($files as $key) {
+            $key = ltrim(str_replace('\\', '/', (string) $key), '/');
+            if (str_ends_with($key, '.md.yjs') && str_contains($key, '/.notes/')) {
+                $sidecars[] = $key;
+            }
+        }
+
+        return $sidecars;
+    }
+
+    /**
+     * Files under the personal and group `.notes` trees only: walking the
+     * whole Drive would make the update slow on large installs.
+     *
+     * @return list<string>
+     */
+    private function legacyNoteFiles(): array
+    {
+        $disk = $this->storage->files();
+        $files = [];
+        foreach (['users', 'groups'] as $root) {
+            foreach ($disk->directories($root) as $home) {
+                if ($disk->directoryExists($home.'/.notes')) {
+                    array_push($files, ...$disk->allFiles($home.'/.notes'));
+                }
+            }
+        }
+
+        return $files;
     }
 
     /**
