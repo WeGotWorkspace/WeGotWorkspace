@@ -196,57 +196,15 @@ final class TaskRepository
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
     ): array {
-        $located = $this->findOwnedTask($username, $taskId);
-        if ($located === null) {
-            throw new ApiHttpException(404, 'Task not found.', 'not_found');
-        }
-
-        $this->collectionAccess->assertCollectionWritable($located['instance'], 'This task list is read-only.');
-        $this->assertObjectPreconditions($located['object'], $ifMatch, $ifUnmodifiedSince, $requirePrecondition);
-
-        $instance = $located['instance'];
-        $object = $located['object'];
-        $objectUri = (string) $object->uri;
-        $taskListId = $this->taskListUriForInstance($instance);
-        $existingTask = $this->mapper->toTask($object, $taskListId, $located['vtodoUid']);
-        if ($existingTask === null) {
-            throw new ApiHttpException(404, 'Task not found.', 'not_found');
-        }
-
-        $taskPayload = $this->normalizeTaskPayload($payload, $existingTask);
-        $taskPayload['id'] = $existingTask['id'];
-        $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($instance);
-        $taskPayload['uid'] = $existingTask['uid'];
-
-        $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
-        $ics = $this->updatedIcs($raw, $taskPayload, $existingTask, $located['vtodoUid']);
-
-        $this->calBackend()->updateCalendarObject(
-            [(int) $instance->calendarid, (int) $instance->id],
-            $objectUri,
-            $ics,
-        );
-        $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
-        $this->searchIndexSync->sync(
-            'tasks',
-            fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
-            $davPath,
+        return $this->rewriteOwnedTask(
             $username,
+            $taskId,
+            static fn (array $existingTask): array => $payload,
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+            'Could not load updated task.',
         );
-
-        $updated = $this->findObjectInCalendar((int) $instance->calendarid, $objectUri);
-        if ($updated === null) {
-            throw new ApiHttpException(500, 'Could not load updated task.', 'server_error');
-        }
-
-        $task = $this->mapper->toTask($updated, $taskListId, $located['vtodoUid']);
-        if ($task === null) {
-            throw new ApiHttpException(500, 'Could not load updated task.', 'server_error');
-        }
-
-        $this->notifyStatusChanged($username, $instance, $existingTask, $task);
-
-        return $task;
     }
 
     /**
@@ -260,6 +218,33 @@ final class TaskRepository
         ?string $ifMatch = null,
         ?string $ifUnmodifiedSince = null,
         bool $requirePrecondition = true,
+    ): array {
+        return $this->rewriteOwnedTask(
+            $username,
+            $taskId,
+            static fn (array $existingTask): array => ConversionSupport::deepMergeTaskPatch($existingTask, $patch),
+            $ifMatch,
+            $ifUnmodifiedSince,
+            $requirePrecondition,
+            'Could not load patched task.',
+        );
+    }
+
+    /**
+     * Shared write path for {@see update()} and {@see patch()}: checks access and
+     * preconditions, rewrites the VTODO, re-indexes it and returns the stored task.
+     *
+     * @param  callable(array<string, mixed>): array<string, mixed>  $buildPayload  maps the existing task to the payload to normalize
+     * @return array<string, mixed>
+     */
+    private function rewriteOwnedTask(
+        string $username,
+        string $taskId,
+        callable $buildPayload,
+        ?string $ifMatch,
+        ?string $ifUnmodifiedSince,
+        bool $requirePrecondition,
+        string $reloadFailedMessage,
     ): array {
         $located = $this->findOwnedTask($username, $taskId);
         if ($located === null) {
@@ -278,8 +263,7 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
-        $merged = ConversionSupport::deepMergeTaskPatch($existingTask, $patch);
-        $taskPayload = $this->normalizeTaskPayload($merged, $existingTask);
+        $taskPayload = $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask);
         $taskPayload['id'] = $existingTask['id'];
         $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($instance);
         $taskPayload['uid'] = $existingTask['uid'];
@@ -302,12 +286,12 @@ final class TaskRepository
 
         $updated = $this->findObjectInCalendar((int) $instance->calendarid, $objectUri);
         if ($updated === null) {
-            throw new ApiHttpException(500, 'Could not load patched task.', 'server_error');
+            throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
         $task = $this->mapper->toTask($updated, $taskListId, $located['vtodoUid']);
         if ($task === null) {
-            throw new ApiHttpException(500, 'Could not load patched task.', 'server_error');
+            throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
         $this->notifyStatusChanged($username, $instance, $existingTask, $task);
