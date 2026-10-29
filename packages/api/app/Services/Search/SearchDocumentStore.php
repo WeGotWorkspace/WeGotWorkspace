@@ -305,7 +305,13 @@ final class SearchDocumentStore
             }
         }
         if ($rows !== []) {
-            SearchTerm::query()->insert($rows);
+            // The unique (document_id, token, field) index compares tokens with
+            // the column collation. MySQL utf8mb4_unicode_ci treats "één" and
+            // "een" (or "straße" and "strasse") as one value, and PHP cannot
+            // mirror every collation, so let the index decide. The first
+            // spelling stays; weight is per field, so nothing is lost. MySQL
+            // LIKE uses the same collation, so either spelling still matches.
+            SearchTerm::query()->upsert($rows, ['document_id', 'token', 'field'], ['weight', 'updated_at']);
         }
     }
 
