@@ -9331,7 +9331,7 @@ export interface components {
             /** @description Rejected — names are server-set from the principal display name. */
             name?: string;
             description?: string | null;
-            /** @description Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals). */
+            /** @description Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored. */
             isSubscribed?: boolean;
             /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
             shareWith?: {
@@ -9913,6 +9913,7 @@ export interface components {
             description?: string | null;
             timeZone?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. */
             groupSlug?: string | null;
@@ -9946,6 +9947,7 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. */
             groupSlug?: string | null;
@@ -10810,6 +10812,8 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
+            isSubscribed?: boolean;
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
