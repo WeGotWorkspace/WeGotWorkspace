@@ -60,6 +60,30 @@ final class DriveShareAccess
     }
 
     /**
+     * Rights for a path the caller cannot reach.
+     *
+     * @return array{
+     *   mayView: false,
+     *   mayComment: false,
+     *   mayReview: false,
+     *   mayEditContent: false,
+     *   mayManageStructure: false,
+     *   mayShare: false
+     * }
+     */
+    public static function none(): array
+    {
+        return [
+            'mayView' => false,
+            'mayComment' => false,
+            'mayReview' => false,
+            'mayEditContent' => false,
+            'mayManageStructure' => false,
+            'mayShare' => false,
+        ];
+    }
+
+    /**
      * @return array{
      *   mayView: bool,
      *   mayComment: bool,

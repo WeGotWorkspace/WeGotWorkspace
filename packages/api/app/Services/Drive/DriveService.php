@@ -702,7 +702,7 @@ final class DriveService
         ?DriveShareListingRightsContext $listingContext,
     ): bool {
         if ($listingContext !== null) {
-            return $listingContext->rightsFor($virtualPath)['mayView'];
+            return $listingContext->listsEveryEntry() || $listingContext->rightsFor($virtualPath)['mayView'];
         }
 
         try {
