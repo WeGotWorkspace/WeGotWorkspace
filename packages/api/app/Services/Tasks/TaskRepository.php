@@ -8,6 +8,7 @@ use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
 use App\Models\CalendarInstance;
+use App\Services\Calendars\CollectionKind;
 use App\Models\CalendarObject;
 use App\Models\GroupMember;
 use App\Services\Admin\AdminConstants;
@@ -561,12 +562,19 @@ final class TaskRepository
             return null;
         }
 
-        // Keep instances of this object's own list, then the strongest one.
-        $instances = CalendarInstance::query()
-            ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
-            ->orderBy('id')
-            ->get();
-        $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
+        // Resolve through the instance the task-list list shows; a dismissed
+        // share is not listed, so fall back to the strongest instance of this
+        // object's own list.
+        $calendarId = (int) $object->calendarid;
+        $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
+            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId);
+        if ($instance === null) {
+            $instances = CalendarInstance::query()
+                ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
+                ->orderBy('id')
+                ->get();
+            $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
+        }
         if ($instance === null) {
             return null;
         }

@@ -410,6 +410,27 @@ final class TasksTaskListsShareWithTest extends WgwDatabaseTestCase
             ->assertJsonPath('ok', true);
     }
 
+    public function test_task_resolves_through_the_listed_instance_when_equal_shares_overlap(): void
+    {
+        $listId = $this->createPersonalList('carol', 'Equal');
+        $this->shareList('carol', $listId, 'groups/'.self::TEAM, write: true);
+        $this->shareList('carol', $listId, 'bob', write: true);
+        $taskId = (string) $this->asUser('carol')
+            ->postJson('/api/v1/tasks/items', [
+                'taskListIds' => [$listId => true],
+                'title' => 'Carol task',
+            ])
+            ->assertCreated()
+            ->json('id');
+
+        $listed = $this->listNamed('bob', 'Equal');
+
+        $this->asUser('bob')
+            ->getJson('/api/v1/tasks/items/'.$taskId)
+            ->assertOk()
+            ->assertJsonPath('taskListId', (string) $listed['id']);
+    }
+
     private function asUser(string $username)
     {
         $token = $username === 'bob'

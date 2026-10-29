@@ -437,6 +437,16 @@ final class CalendarsShareWithTest extends WgwDatabaseTestCase
         $this->assertEventWritableThroughListedCalendar('bob', 'Overlap', $eventId);
     }
 
+    public function test_event_resolves_through_the_listed_instance_when_equal_shares_overlap(): void
+    {
+        $calendarId = $this->createPersonalCalendar('carol', 'Equal', 'equal');
+        $this->shareCalendar('carol', $calendarId, 'groups/'.self::TEAM, write: true);
+        $this->shareCalendar('carol', $calendarId, 'bob', write: true);
+        $eventId = $this->createEventAs('carol', $calendarId, 'Planning');
+
+        $this->assertEventWritableThroughListedCalendar('bob', 'Equal', $eventId);
+    }
+
     public function test_group_calendar_event_stays_writable_with_an_extra_read_share(): void
     {
         $team = Principal::query()->where('uri', 'principals/groups/'.self::TEAM)->first();
