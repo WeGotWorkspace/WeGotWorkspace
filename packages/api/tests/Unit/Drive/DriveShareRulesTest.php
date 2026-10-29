@@ -8,6 +8,7 @@ use App\Exceptions\ApiHttpException;
 use App\Services\Drive\CollabDocFormats;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveShareAccess;
+use App\Services\Drive\DriveShareOwnerReach;
 use App\Services\Drive\DriveSharePathScope;
 use App\Services\Drive\DriveShareRules;
 use App\Storage\StoragePaths;
@@ -25,7 +26,7 @@ final class DriveShareRulesTest extends TestCase
         $this->rules = new DriveShareRules(
             new StoragePaths,
             new DriveSharePathScope(new StoragePaths),
-            new DriveGroupResolver,
+            new DriveShareOwnerReach(new DriveSharePathScope(new StoragePaths), new DriveGroupResolver),
             new CollabDocFormats,
             app(WgwStorage::class),
         );

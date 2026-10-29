@@ -14,6 +14,10 @@ use Illuminate\Http\Request;
 /**
  * Resolves the authenticated username for meet endpoints: JWT bearer,
  * {@code sabre_ui_auth} cookie, or HTTP Basic.
+ *
+ * Only accounts resolve. A guest-role bearer (a public Drive link session,
+ * subject {@code share:<key>}) is not an account: Meet, RTC, presence and
+ * collaboration treat it exactly like an anonymous caller.
  */
 final class MeetRequestAuth
 {
@@ -29,7 +33,7 @@ final class MeetRequestAuth
     public function tryAuthenticatedUsername(Request $request, string $realm): ?string
     {
         $principal = $this->bearer->authenticate($request->header('Authorization'));
-        if ($principal !== null) {
+        if ($principal !== null && $principal['role'] !== 'guest') {
             $username = strtolower(trim($principal['username']));
             if ($username !== '') {
                 return $username;

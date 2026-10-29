@@ -7,7 +7,6 @@ namespace App\Services\Calendars;
 use App\Dav\Server\WgwCalendarBackendFactory;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
-use App\Models\CalendarFeedToken;
 use App\Models\CalendarInstance;
 use App\Models\CalendarSubscription;
 use App\Models\Principal;
@@ -751,14 +750,11 @@ final class CalendarRepository
         return $this->subscriptionIdsByUser[$username];
     }
 
+    /** Feed tokens need no cleanup here: they cascade with the `calendars` row. */
     private function forgetCalendarSideTables(string $username, string $calendarUri): void
     {
         CalendarSubscription::query()
             ->where('username', $username)
-            ->where('calendar_uri', $calendarUri)
-            ->delete();
-        CalendarFeedToken::query()
-            ->where('owner_username', $username)
             ->where('calendar_uri', $calendarUri)
             ->delete();
         unset($this->subscriptionIdsByUser[$username]);
