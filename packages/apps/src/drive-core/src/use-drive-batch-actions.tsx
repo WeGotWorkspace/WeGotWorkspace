@@ -96,6 +96,7 @@ type UseDriveBatchActionsArgs = {
   reloadStarredFromServer: () => void;
   view: ViewKey;
   viewType: ViewKey["type"];
+  fileById?: (id: string) => DriveFile | null;
 };
 
 export function useDriveBatchActions({
@@ -118,6 +119,7 @@ export function useDriveBatchActions({
   reloadStarredFromServer,
   view,
   viewType,
+  fileById,
 }: UseDriveBatchActionsArgs) {
   const { show, showError } = useAppToast();
   const clearSelectionForIds = useCallback(
@@ -321,7 +323,9 @@ export function useDriveBatchActions({
 
   const batchStar = useCallback(() => {
     if (selectedIds.length === 0) return;
-    const rows = files.filter((file) => selectedIds.includes(file.id));
+    const rows = selectedIds
+      .map((id) => (fileById ? fileById(id) : files.find((file) => file.id === id)) ?? null)
+      .filter((file): file is DriveFile => file !== null);
     if (rows.length === 0) return;
 
     const nextValue = !selectedIds.every((id) => starred[id]);
@@ -368,6 +372,7 @@ export function useDriveBatchActions({
     });
   }, [
     currentUsername,
+    fileById,
     files,
     groupRootNames,
     operations,

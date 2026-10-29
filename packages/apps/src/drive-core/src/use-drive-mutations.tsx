@@ -136,6 +136,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     reloadStarredFromServer,
     view,
     viewType: view.type,
+    fileById,
   });
 
   const toggleStar = (id: string) => {

@@ -122,6 +122,7 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
   const active = activeId
     ? ((liveSearchResults?.find((f) => f.id === activeId) ??
         files.find((f) => f.id === activeId) ??
+        visibleItems.find((f) => f.id === activeId) ??
         null) as DriveFile | null)
     : null;
 
