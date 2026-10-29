@@ -7,6 +7,7 @@ import {
   openNotesTab,
   openUser,
   OWNER,
+  setTabOffline,
   sleep,
   TEAMMATE,
   warmUpApp,
@@ -71,10 +72,11 @@ test("a view-only sharee stars a shared note, online and offline", async ({ brow
 
     // Offline unstar, then reconnect.
     await openNote(tab, title);
-    await setOffline(tab, true);
+    await setTabOffline(tab, true);
     await tab.getByRole("button", { name: "Star", exact: true }).click();
-    await sleep(1_000);
-    await setOffline(tab, false);
+    await sleep(4_000); // past the 2.5 s undo delay, so the save lands in the outbox
+    expect(await starredIds(TEAMMATE)).toContain(uid);
+    await setTabOffline(tab, false);
     await expect.poll(() => starredIds(TEAMMATE), { timeout: 60_000 }).not.toContain(uid);
 
     await tab.reload();
@@ -87,8 +89,3 @@ test("a view-only sharee stars a shared note, online and offline", async ({ brow
     await api(OWNER, "DELETE", `/notes/items/${uid}`);
   }
 });
-
-async function setOffline(tab: Tab, offline: boolean) {
-  const { setTabOffline } = await import("./helpers/notes-matrix");
-  await setTabOffline(tab, offline);
-}
