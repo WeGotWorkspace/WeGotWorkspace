@@ -189,16 +189,27 @@ export function passComment({ sha, runUrl }) {
 }
 
 /**
- * What to do on GitHub. A pass is reported once: not again while the latest
- * comment on the issue is already a pass comment.
+ * The body of the latest comment this guard wrote, or null. Comments without
+ * a marker (people replying on the issue) are skipped.
  *
- * @param {{ failed: boolean, openIssue: number | null, lastCommentBody?: string | null }} input
+ * @param {Array<string | null | undefined>} bodies comment bodies, oldest first
+ * @returns {string | null}
+ */
+export function lastGuardComment(bodies) {
+  return bodies.findLast((body) => body?.includes(FAIL_MARKER) || body?.includes(PASS_MARKER)) ?? null;
+}
+
+/**
+ * What to do on GitHub. A pass is reported once: not again while the latest
+ * guard comment on the issue is already a pass comment.
+ *
+ * @param {{ failed: boolean, openIssue: number | null, lastGuardCommentBody?: string | null }} input
  * @returns {"create" | "comment-failure" | "comment-pass" | "none"}
  */
-export function decideAction({ failed, openIssue, lastCommentBody = null }) {
+export function decideAction({ failed, openIssue, lastGuardCommentBody = null }) {
   if (failed) return openIssue === null ? "create" : "comment-failure";
   if (openIssue === null) return "none";
-  return lastCommentBody?.includes(PASS_MARKER) ? "none" : "comment-pass";
+  return lastGuardCommentBody?.includes(PASS_MARKER) ? "none" : "comment-pass";
 }
 
 /**
@@ -256,15 +267,19 @@ function gh(args, input) {
   });
 }
 
+// Search narrows the list; pickOpenIssue still requires the exact title.
 function findOpenIssue() {
-  const issues = JSON.parse(gh(["issue", "list", "--state", "open", "--limit", "1000", "--json", "number,title"]));
+  const search = `in:title "${ISSUE_TITLE}"`;
+  const issues = JSON.parse(
+    gh(["issue", "list", "--state", "open", "--search", search, "--limit", "100", "--json", "number,title"]),
+  );
   return pickOpenIssue(issues);
 }
 
 /** @param {number} number */
-function lastCommentBody(number) {
+function guardCommentBody(number) {
   const { comments } = JSON.parse(gh(["issue", "view", String(number), "--json", "comments"]));
-  return comments.at(-1)?.body ?? null;
+  return lastGuardComment(comments.map((comment) => comment.body));
 }
 
 function runContext(env = process.env) {
@@ -297,8 +312,8 @@ function report(argv) {
   const context = { results, ...runContext() };
 
   const openIssue = options.openIssue !== undefined ? options.openIssue : findOpenIssue();
-  const lastComment = !failed && openIssue !== null && options.openIssue === undefined ? lastCommentBody(openIssue) : null;
-  const action = decideAction({ failed, openIssue, lastCommentBody: lastComment });
+  const guardComment = !failed && openIssue !== null && options.openIssue === undefined ? guardCommentBody(openIssue) : null;
+  const action = decideAction({ failed, openIssue, lastGuardCommentBody: guardComment });
 
   const body =
     action === "create"

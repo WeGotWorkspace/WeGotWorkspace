@@ -32,6 +32,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The checks need no git credentials; keep the token out of .git/config.
+          persist-credentials: false
 
       - uses: shivammathur/setup-php@v2
         with:

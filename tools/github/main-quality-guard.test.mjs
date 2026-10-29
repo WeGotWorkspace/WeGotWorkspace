@@ -16,6 +16,7 @@ import {
   failureExcerpt,
   issueBody,
   issueNumberFromUrl,
+  lastGuardComment,
   passComment,
   pickOpenIssue,
   runChecks,
@@ -103,13 +104,43 @@ test("decideAction opens, comments, or stays quiet", () => {
   assert.equal(decideAction({ failed: true, openIssue: null }), "create");
   assert.equal(decideAction({ failed: true, openIssue: 7 }), "comment-failure");
   assert.equal(decideAction({ failed: false, openIssue: null }), "none");
-  assert.equal(decideAction({ failed: false, openIssue: 7, lastCommentBody: null }), "comment-pass");
-  assert.equal(decideAction({ failed: false, openIssue: 7, lastCommentBody: `${FAIL_MARKER}\nstill` }), "comment-pass");
+  assert.equal(decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: null }), "comment-pass");
   assert.equal(
-    decideAction({ failed: false, openIssue: 7, lastCommentBody: passComment(context) }),
+    decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: `${FAIL_MARKER}\nstill` }),
+    "comment-pass",
+  );
+  assert.equal(
+    decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: passComment(context) }),
     "none",
   );
   assert.ok(passComment(context).startsWith(PASS_MARKER));
+});
+
+const humanReply = "Confirmed, fixed in #1777.";
+
+test("lastGuardComment skips comments without a marker", () => {
+  assert.equal(lastGuardComment([]), null);
+  assert.equal(lastGuardComment([humanReply, null]), null);
+  const fail = failureComment({ results: [duplicateFailure], ...context });
+  const pass = passComment(context);
+  assert.equal(lastGuardComment([fail, pass, humanReply]), pass);
+  assert.equal(lastGuardComment([pass, fail, humanReply]), fail);
+});
+
+test("a pass comment followed by a human reply does not post the pass comment again", () => {
+  const bodies = [failureComment({ results: [duplicateFailure], ...context }), passComment(context), humanReply];
+  assert.equal(decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: lastGuardComment(bodies) }), "none");
+});
+
+test("a fail comment followed by a human reply still counts as failing", () => {
+  const bodies = [failureComment({ results: [duplicateFailure], ...context }), humanReply];
+  const lastGuard = lastGuardComment(bodies);
+  // Still failing: comment on the open issue, never open a second one.
+  assert.equal(decideAction({ failed: true, openIssue: 7, lastGuardCommentBody: lastGuard }), "comment-failure");
+  // Green again: post the pass comment once.
+  assert.equal(decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: lastGuard }), "comment-pass");
+  const afterPass = lastGuardComment([...bodies, passComment(context), humanReply]);
+  assert.equal(decideAction({ failed: false, openIssue: 7, lastGuardCommentBody: afterPass }), "none");
 });
 
 test("pickOpenIssue takes the oldest exact title match", () => {
@@ -178,4 +209,5 @@ test("the workflow runs on pushes to main, reports even after a failure, and onl
   assert.equal((workflow.match(/GH_TOKEN:/g) ?? []).length, 1);
   assert.ok(workflow.indexOf("GH_TOKEN:") > workflow.indexOf("main-quality-guard.mjs run"));
   assert.doesNotMatch(workflow, /secrets\./);
+  assert.match(workflow, /actions\/checkout@v7\n {8}with:\n(?: {10}#.*\n)* {10}persist-credentials: false\n/);
 });
