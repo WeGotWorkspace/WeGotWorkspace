@@ -3,7 +3,7 @@
 // - A note body saves with PUT /notes/items/{uid} (collab room = VJOURNAL UID);
 //   y-indexeddb is a UID-keyed crash buffer. Fields (archive, tags) use PATCH + If-Match.
 // - List pending = metadata outbox OR unsaved/collab-pending body.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   appendToActiveNoteBody,
   archiveNoteTokenOnServer,
