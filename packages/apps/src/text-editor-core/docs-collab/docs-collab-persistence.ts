@@ -2,6 +2,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
 import { isDocsCollabEditablePath } from "@/docs-core/src/docs-collab-text-files";
 import { normalizeOfflinePath } from "@/lib/offline/core/offline-path";
+import { readDocsNodeIdForPath } from "@/lib/offline/docs/docs-node-paths";
 import { readCachedDriveNodeId } from "@/lib/offline/drive/drive-directory-offline-store";
 import { readOfflineDocsUsername, readOfflineDriveUsername } from "@/lib/offline/offline-session";
 import { setCollabRoomPendingServerSave } from "./docs-collab-pending-registry";
@@ -134,7 +135,11 @@ async function withRawIndexedDbPersistence<T>(
 async function cachedNodeIdForRoom(roomKey: string): Promise<string | undefined> {
   const username = readOfflineDriveUsername() ?? readOfflineDocsUsername();
   if (!username || !roomKey) return undefined;
-  return readCachedDriveNodeId(username, roomKey);
+  // Docs records the id it opened (#1751) for files the Drive crawl has not reached.
+  return (
+    (await readCachedDriveNodeId(username, roomKey)) ??
+    (await readDocsNodeIdForPath(username, roomKey))
+  );
 }
 
 export type DocsCollabDatabaseChoice = {

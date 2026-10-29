@@ -6,6 +6,11 @@ import {
 import { WgwRequestError } from "@/lib/api/wgw/request-error";
 import { getConnectivitySnapshot } from "@/lib/offline/core/browser-online";
 import {
+  readDocsNodeIdForPath,
+  readDocsPathForNodeId,
+  recordDocsNodePath,
+} from "@/lib/offline/docs/docs-node-paths";
+import {
   readCachedDriveNodeId,
   readCachedDrivePathForNodeId,
 } from "@/lib/offline/drive/drive-directory-offline-store";
@@ -15,7 +20,8 @@ import {
  *
  * Network first: the server knows where a file lives now, and a cached
  * path → id row can be stale once another file took the old path. The offline
- * Drive cache answers only when the request cannot reach the server.
+ * caches answer only when the request cannot reach the server. Every server
+ * answer is recorded, so the same link opens offline later.
  */
 export type DocsLocatorDeps = {
   fetchLocation: (
@@ -24,6 +30,7 @@ export type DocsLocatorDeps = {
   ) => Promise<DriveFileNodeLocation>;
   readCachedPath: (nodeId: string) => Promise<string | undefined>;
   readCachedNodeId: (path: string) => Promise<string | undefined>;
+  recordLocation: (nodeId: string, path: string) => Promise<void>;
   isOnline: () => boolean;
 };
 
@@ -34,10 +41,19 @@ export type DocsLocateResult =
 export function createDocsLocatorDeps(username: string | null | undefined): DocsLocatorDeps {
   return {
     fetchLocation: fetchDriveFileNodeLocation,
-    readCachedPath: (nodeId) =>
-      username ? readCachedDrivePathForNodeId(username, nodeId) : Promise.resolve(undefined),
-    readCachedNodeId: (path) =>
-      username ? readCachedDriveNodeId(username, path) : Promise.resolve(undefined),
+    // Docs' own record comes straight from the server; the Drive crawl may be older.
+    readCachedPath: async (nodeId) =>
+      username
+        ? ((await readDocsPathForNodeId(username, nodeId)) ??
+          (await readCachedDrivePathForNodeId(username, nodeId)))
+        : undefined,
+    readCachedNodeId: async (path) =>
+      username
+        ? ((await readCachedDriveNodeId(username, path)) ??
+          (await readDocsNodeIdForPath(username, path)))
+        : undefined,
+    recordLocation: (nodeId, path) =>
+      username ? recordDocsNodePath(username, nodeId, path) : Promise.resolve(),
     isOnline: getConnectivitySnapshot,
   };
 }
@@ -58,6 +74,8 @@ async function fromServer(
   if (!deps.isOnline()) return null;
   try {
     const location = await deps.fetchLocation(query, { signal });
+    // Before the editor opens: its local database is chosen by this id.
+    await deps.recordLocation(location.id, location.path).catch(() => {});
     return { kind: "found", id: location.id, path: location.path };
   } catch (error) {
     if (isAbort(error)) throw error;

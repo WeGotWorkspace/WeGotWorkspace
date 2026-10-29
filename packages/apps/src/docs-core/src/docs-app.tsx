@@ -63,6 +63,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     document: routeDocument,
     followPath,
     retry: retryRouteDocument,
+    relocate: relocateRouteDocument,
   } = useDocsRouteDocument({
     search: routeSearch,
     canResolve: wgwLiveApiEnabled() && !isGuestSession,
@@ -70,6 +71,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
     refreshKey: editorInboundKey,
   });
   const filePath = routeDocument.status === "ready" ? routeDocument.path : null;
+  const fileNodeId = routeDocument.status === "ready" ? routeDocument.nodeId : undefined;
   const onDocumentRoute = routeDocument.status !== "home";
   useDriveFileNodeInbound(onDocumentRoute ? offlineUsername : undefined, editorInboundKey);
   useOnReconnect(
@@ -187,7 +189,7 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
   const collabUrls = useMemo(() => {
     if (!showCollab || !filePath) return undefined;
     const { room, signalUrl, collabApiBaseUrl, collabRtcUrl, documentUrl, yjsUrl } =
-      buildDocsCollabUrls(filePath);
+      buildDocsCollabUrls(filePath, fileNodeId);
     return {
       signalUrl,
       collabApiBaseUrl,
@@ -200,9 +202,9 @@ export function DocsApp({ apiSource }: DocsAppProps = {}) {
         showError(docsLabels.accessLostTitle, { description: docsLabels.accessLostMessage });
       },
       // A save to the old path after a rename elsewhere: look up where the id lives now.
-      onDocumentGone: retryRouteDocument,
+      onDocumentGone: relocateRouteDocument,
     };
-  }, [collabAuthToken, filePath, retryRouteDocument, showCollab, showError]);
+  }, [collabAuthToken, fileNodeId, filePath, relocateRouteDocument, showCollab, showError]);
   const pendingCollabSync = useDocsCollabPendingSync(showCollab ? collabUrls?.room : null);
   const collabWire = useMemo(() => createWgwDocsCollabWire(), []);
 

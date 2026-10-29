@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   docsApiPathFromSearch,
@@ -17,7 +17,7 @@ import {
 
 export type DocsRouteDocument =
   | { status: "home" }
-  | { status: "resolving"; nodeId: string }
+  | { status: "resolving"; nodeId?: string }
   | { status: "ready"; path: string; nodeId?: string }
   | { status: "not-found"; nodeId: string; offline: boolean };
 
@@ -38,8 +38,10 @@ type Options = {
 /**
  * Route search → the Doc to open (#1751). `?id=` resolves to the current path,
  * and is re-checked on `refreshKey` and when the tab is shown again, so a rename
- * elsewhere moves the editor to the new path. `?file=` opens at once and is
- * replaced by `?id=` once the id is known.
+ * elsewhere moves the editor to the new path. `?file=` waits for its id and is
+ * replaced by `?id=`: the editor's local copy is keyed by id, so opening on the
+ * path first would leave typed text behind after a rename. Without an id
+ * (offline, unknown file) it opens by path.
  */
 export function useDocsRouteDocument({ search, canResolve, username, refreshKey, deps }: Options) {
   const navigate = useNavigate();
@@ -47,6 +49,8 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
   const id = search.id;
   const filePath = id ? null : docsApiPathFromSearch(search.file);
   const [idState, setIdState] = useState<IdState | null>(null);
+  /** A `?file=` link whose id could not be found: open it by path. */
+  const [pathOnly, setPathOnly] = useState<string | null>(null);
   const [recheck, setRecheck] = useState(0);
 
   useEffect(() => {
@@ -91,7 +95,11 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
     const controller = new AbortController();
     void locateDocsByPath(filePath, locator, controller.signal)
       .then((result) => {
-        if (controller.signal.aborted || result.kind !== "found") return;
+        if (controller.signal.aborted) return;
+        if (result.kind !== "found") {
+          setPathOnly(filePath);
+          return;
+        }
         rememberDocsLocation(result.id, result.path);
         void navigate({ to: "/docs", search: docsSearchFromNodeId(result.id), replace: true });
       })
@@ -114,9 +122,26 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
 
   const retry = useCallback(() => setRecheck((n) => n + 1), []);
 
+  const openPathRef = useRef<string | null>(null);
+  /**
+   * A save to the open path was refused as gone. `true` when the id lives
+   * elsewhere now and the editor moves there; `false` when it is really gone.
+   */
+  const relocate = useCallback(async (): Promise<boolean> => {
+    if (!id || !canResolve) return false;
+    const result = await locateDocsById(id, locator).catch(() => null);
+    if (result?.kind !== "found" || result.path === openPathRef.current) return false;
+    rememberDocsLocation(id, result.path);
+    setIdState({ id, status: "ready", path: result.path });
+    return true;
+  }, [canResolve, id, locator]);
+
   let routeDocument: DocsRouteDocument;
   if (!id) {
-    routeDocument = filePath ? { status: "ready", path: filePath } : { status: "home" };
+    if (!filePath) routeDocument = { status: "home" };
+    else if (!canResolve || pathOnly === filePath)
+      routeDocument = { status: "ready", path: filePath };
+    else routeDocument = { status: "resolving" };
   } else if (idState?.id === id) {
     routeDocument =
       idState.status === "ready"
@@ -129,5 +154,10 @@ export function useDocsRouteDocument({ search, canResolve, username, refreshKey,
       : { status: "resolving", nodeId: id };
   }
 
-  return { document: routeDocument, followPath, retry };
+  const openPath = routeDocument.status === "ready" ? routeDocument.path : null;
+  useEffect(() => {
+    openPathRef.current = openPath;
+  }, [openPath]);
+
+  return { document: routeDocument, followPath, retry, relocate };
 }

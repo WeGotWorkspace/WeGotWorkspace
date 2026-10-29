@@ -1,12 +1,25 @@
+@import "../../styles.css" reference;
+
 /* `/docs?id=` before the Doc opens (#1751). Sits outside `.docs-workspace`. */
 .docs-route-status {
   @apply mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-2 px-6 text-center;
   color: var(--workspace-foreground);
 }
 
+/* Most lookups answer at once: only show the notice when one is slow. */
 .docs-route-status--loading {
   @apply text-sm;
   color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+  animation: docs-route-status-appear 0s linear 400ms both;
+}
+
+@keyframes docs-route-status-appear {
+  from {
+    visibility: hidden;
+  }
+  to {
+    visibility: visible;
+  }
 }
 
 .docs-route-status__title {
