@@ -64,6 +64,27 @@ final class CollabJoinAuthorizationTest extends WgwDatabaseTestCase
             ->assertJsonPath('error', 'forbidden');
     }
 
+    public function test_link_guest_session_does_not_join_collaboration_on_its_own_link(): void
+    {
+        $publicToken = (string) $this->withBearer($this->userBearerToken())->postJson('/api/v1/files/shares', [
+            'path' => '/users/bob/workspace',
+            'kind' => 'public',
+            'defaultAccess' => 'view',
+        ])->assertOk()->json('data.publicToken');
+        $guestToken = (string) $this->postJson('/api/v1/files/share-sessions', [
+            'token' => $publicToken,
+        ])->assertOk()->json('access_token');
+
+        // Link guests stay on the read-only Docs shell: no live collaboration.
+        $this->joinRoom($guestToken, RoomTestHelper::fileRoomId(self::DOC_PATH), 'Visitor')
+            ->assertUnauthorized()
+            ->assertJsonPath('error', 'auth_required');
+        // The link itself keeps working for the guest.
+        $this->withBearer($guestToken)
+            ->getJson('/api/v1/files/children?path=/users/bob/workspace')
+            ->assertOk();
+    }
+
     public function test_join_allowed_for_own_home_path(): void
     {
         $this->joinRoom($this->userBearerToken(), RoomTestHelper::fileRoomId(self::DOC_PATH), 'Bob')

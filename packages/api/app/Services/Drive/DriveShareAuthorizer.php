@@ -19,6 +19,7 @@ final class DriveShareAuthorizer
         private DriveSharePathScope $scope,
         private CollabDocFormats $collabDocFormats,
         private FileNodeIndexService $fileNodes,
+        private DriveShareOwnerReach $ownerReach,
     ) {}
 
     /**
@@ -313,7 +314,7 @@ final class DriveShareAuthorizer
 
         /** @var DriveShare $share */
         $share = $session->share;
-        if ($share->revoked_at !== null) {
+        if ($share->revoked_at !== null || ! $this->ownerReach->ownerReachesShare($share)) {
             $this->deny();
         }
         if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {
