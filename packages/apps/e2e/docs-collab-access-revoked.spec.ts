@@ -1,19 +1,29 @@
 // Docs collab: a member loses read access to a shared Doc while editing.
-// The collaboration save answers 404 (final "gone" state), so the editor offers
-// "Keep local copy" and a reload still shows the local text.
+// The member sees one "no longer available" state (no "Access lost" toast),
+// keeps the local copy, and sees the same state again after a reload.
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import {
-  docsUrlForFile,
-  expectPendingDotHidden,
-  myDriveDocSearchPath,
-  seedDocAtPath,
-} from "./helpers/docs-live";
+import { docsUrlForFile, myDriveDocSearchPath, seedDocAtPath } from "./helpers/docs-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const APP = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 const PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 
+const GONE_HEADING = "This document is no longer available";
+const ACCESS_LOST_TITLE = "Access lost";
+const ACCESS_LOST_MESSAGE =
+  "You no longer have access to this document. Your local copy is still on this device.";
+
 test.use({ storageState: { cookies: [], origins: [] } });
+
+async function expectGoneWithoutAccessLost(page: Page): Promise<void> {
+  await expect(page.getByRole("heading", { name: GONE_HEADING })).toBeVisible({
+    timeout: 45_000,
+  });
+  // The room poll is refused within about a second; give its message time to show.
+  await page.waitForTimeout(3_000);
+  await expect(page.getByText(ACCESS_LOST_TITLE, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(ACCESS_LOST_MESSAGE)).toHaveCount(0);
+}
 
 async function openAs(
   browser: Browser,
@@ -71,8 +81,20 @@ test.describe("Docs collab access revoked (live app)", () => {
       await expect(editor).toBeVisible({ timeout: 30_000 });
       await editor.click();
       await editor.press("End");
-      await editor.pressSequentially("carol first", { delay: 20 });
-      await expectPendingDotHidden(member.page);
+      await editor.pressSequentially("member first", { delay: 20 });
+      // The first save must reach the server before the share is revoked.
+      await expect
+        .poll(
+          async () => {
+            const content = await owner.page.request.get(
+              `${API}/api/v1/files/content?path=${encodeURIComponent(apiPath)}`,
+              { headers },
+            );
+            return content.ok() && (await content.text()).includes("member first");
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(true);
 
       const revoked = await owner.page.request.delete(`${API}/api/v1/files/shares/${shareId}`, {
         headers,
@@ -81,18 +103,15 @@ test.describe("Docs collab access revoked (live app)", () => {
 
       await editor.click();
       await editor.press("End");
-      await editor.pressSequentially(" carol second", { delay: 20 });
+      await editor.pressSequentially(" member second", { delay: 20 });
 
-      await expect(
-        member.page.getByRole("heading", { name: "This document is no longer available" }),
-      ).toBeVisible({
-        timeout: 45_000,
-      });
+      await expectGoneWithoutAccessLost(member.page);
       await member.page.getByRole("button", { name: "Keep local copy" }).click();
-      await expect(editor).toContainText("carol second");
+      await expect(editor).toContainText("member second");
 
       await member.page.reload();
-      await expect(member.page.locator(".ProseMirror")).toContainText("carol second", {
+      await expectGoneWithoutAccessLost(member.page);
+      await expect(member.page.locator(".ProseMirror")).toContainText("member second", {
         timeout: 30_000,
       });
     } finally {
