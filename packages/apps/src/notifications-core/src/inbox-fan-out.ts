@@ -1,9 +1,4 @@
 import { crossTabTopic, type CrossTabTopic } from "@/lib/offline/core/cross-tab-topic";
-import {
-  browserWebLocks,
-  runWhileLeader,
-  type WebLocks,
-} from "@/lib/jmap-client/push/web-locks-leader";
 import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
 
 export type InboxPayload = NotificationInboxList;
@@ -22,57 +17,18 @@ export function isInboxMessage(value: unknown): value is InboxMessage {
   );
 }
 
-const LEADER_LOCK = "wgw-notifications/inbox-leader";
 const CHANNEL = "wgw-notifications-inbox";
 
-export type InboxFanOutOptions = {
-  /** `null` when the browser has no Web Locks: every tab then fetches for itself. */
-  locks: WebLocks | null;
-  topic: CrossTabTopic<InboxMessage>;
-};
-
 /**
- * One tab per browser fetches the inbox when a `Notification` push arrives and
- * shares the rows with the other tabs, so a push costs one GET, not one per
- * tab. The leader holds a Web Lock; when it closes, the next tab takes over.
+ * Shares the inbox one tab fetched with the other tabs, so a push costs one
+ * GET per browser, not one per tab. Which tab fetches is decided by the push
+ * hub (`hub.leading`, see use-notifications-inbox-push.ts).
  */
 export class InboxFanOut {
-  readonly #locks: WebLocks | null;
   readonly #topic: CrossTabTopic<InboxMessage>;
-  #starts = 0;
-  #leave: (() => void) | null = null;
-  #leading = false;
 
-  constructor(options: InboxFanOutOptions) {
-    this.#locks = options.locks;
+  constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
-  }
-
-  /** Whether this tab fetches on push. Always true without Web Locks. */
-  get leading(): boolean {
-    return this.#locks === null || this.#leading;
-  }
-
-  /** Join the leader queue while a provider is mounted. Counted; returns stop. */
-  start(): () => void {
-    this.#starts += 1;
-    if (this.#starts === 1 && this.#locks) {
-      this.#leave = runWhileLeader(this.#locks, LEADER_LOCK, () => {
-        this.#leading = true;
-        return () => {
-          this.#leading = false;
-        };
-      });
-    }
-    let stopped = false;
-    return () => {
-      if (stopped) return;
-      stopped = true;
-      this.#starts -= 1;
-      if (this.#starts > 0) return;
-      this.#leave?.();
-      this.#leave = null;
-    };
   }
 
   /** Rows another tab fetched. */
@@ -93,9 +49,6 @@ let shared: InboxFanOut | null = null;
 
 /** The browser's inbox fan-out for this tab. */
 export function defaultInboxFanOut(): InboxFanOut {
-  shared ??= new InboxFanOut({
-    locks: browserWebLocks(),
-    topic: crossTabTopic<InboxMessage>(CHANNEL, isInboxMessage),
-  });
+  shared ??= new InboxFanOut({ topic: crossTabTopic<InboxMessage>(CHANNEL, isInboxMessage) });
   return shared;
 }
