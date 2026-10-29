@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -47,7 +53,11 @@ const settings = { jscpdVersion: "4.3.0" };
 
 test("scopes are the apps TypeScript tree and the API PHP tree", () => {
   assert.deepEqual(
-    DUPLICATE_SCOPES.map((scope) => [scope.root, [...scope.extensions].sort(), scope.formats]),
+    DUPLICATE_SCOPES.map((scope) => [
+      scope.root,
+      [...scope.extensions].sort(),
+      scope.formats,
+    ]),
     [
       [apps, [".ts", ".tsx"], ["typescript", "tsx"]],
       [api, [".php"], ["php"]],
@@ -124,7 +134,10 @@ test("listScopeFiles fails when the scope root is missing", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "dup-ratchet-missing-"));
   try {
     const scope = DUPLICATE_SCOPES.find((entry) => entry.root === api);
-    assert.throws(() => listScopeFiles(scope, dir), /scope root missing: packages\/api\/app/);
+    assert.throws(
+      () => listScopeFiles(scope, dir),
+      /scope root missing: packages\/api\/app/,
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -149,11 +162,17 @@ test("jscpd arguments pin every option that changes the totals", () => {
   assert.equal(value("--reporters"), "json");
   assert.equal(value("--output"), "/tmp/out");
   assert.equal(value("--config"), "/tmp/out/config.json");
-  assert.ok(args.includes("--no-gitignore"), "gitignore must not change the scanned set");
+  assert.ok(
+    args.includes("--no-gitignore"),
+    "gitignore must not change the scanned set",
+  );
   assert.ok(args.includes("--noSymlinks"));
   assert.ok(args.includes("--absolute"));
   assert.equal(args[0], "/tmp/mirror/packages/api/app");
-  assert.ok(!args.includes("--ignore"), "the mirror holds exactly the listed files");
+  assert.ok(
+    !args.includes("--ignore"),
+    "the mirror holds exactly the listed files",
+  );
 });
 
 test("summarizeReport counts only the scope's formats and orders blocks", () => {
@@ -172,8 +191,16 @@ test("summarizeReport counts only the scope's formats and orders blocks", () => 
         format: "javascript",
         lines: 281,
         tokens: 900,
-        firstFile: { name: "/repo/packages/apps/src/a.tsx", start: 126, end: 406 },
-        secondFile: { name: "/repo/packages/apps/src/b.tsx", start: 89, end: 225 },
+        firstFile: {
+          name: "/repo/packages/apps/src/a.tsx",
+          start: 126,
+          end: 406,
+        },
+        secondFile: {
+          name: "/repo/packages/apps/src/b.tsx",
+          start: 89,
+          end: 225,
+        },
       },
       {
         format: "typescript",
@@ -187,12 +214,20 @@ test("summarizeReport counts only the scope's formats and orders blocks", () => 
         lines: 19,
         tokens: 120,
         firstFile: { name: "/repo/packages/apps/src/C.tsx", start: 1, end: 19 },
-        secondFile: { name: "/repo/packages/apps/src/D.tsx", start: 5, end: 23 },
+        secondFile: {
+          name: "/repo/packages/apps/src/D.tsx",
+          start: 5,
+          end: 23,
+        },
       },
     ],
   };
   const summary = summarizeReport(report, base, ["typescript", "tsx"]);
-  assert.equal(summary.clones, 2, "the embedded javascript stream of TSX does not count");
+  assert.equal(
+    summary.clones,
+    2,
+    "the embedded javascript stream of TSX does not count",
+  );
   assert.equal(summary.duplicatedLines, 31);
   assert.equal(summary.blocks.length, 2);
   assert.deepEqual(summary.blocks[0], {
@@ -201,7 +236,11 @@ test("summarizeReport counts only the scope's formats and orders blocks", () => 
     first: { path: "packages/apps/src/C.tsx", start: 1, end: 19 },
     second: { path: "packages/apps/src/D.tsx", start: 5, end: 23 },
   });
-  assert.deepEqual(summary.blocks[1].first, { path: "packages/apps/src/A.ts", start: 3, end: 14 });
+  assert.deepEqual(summary.blocks[1].first, {
+    path: "packages/apps/src/A.ts",
+    start: 3,
+    end: 14,
+  });
   assert.deepEqual(summary.blocks[1].second, {
     path: "packages/apps/src/B.ts",
     start: 40,
@@ -210,9 +249,11 @@ test("summarizeReport counts only the scope's formats and orders blocks", () => 
 });
 
 test("summarizeReport counts zero for a scope format with no sources", () => {
-  const summary = summarizeReport({ statistics: { formats: {} }, duplicates: [] }, "/repo", [
-    "php",
-  ]);
+  const summary = summarizeReport(
+    { statistics: { formats: {} }, duplicates: [] },
+    "/repo",
+    ["php"],
+  );
   assert.deepEqual(summary, { clones: 0, duplicatedLines: 0, blocks: [] });
 });
 
@@ -225,8 +266,14 @@ test("mirrorFiles copies the listed files under their repo paths", () => {
     writeFileSync(path.join(repo, api, "Services", "A.php"), "<?php\n");
     writeFileSync(path.join(repo, api, "Skipped.php"), "<?php\n");
     mirrorFiles([`${api}/Services/A.php`], repo, mirror);
-    assert.equal(readFileSync(path.join(mirror, api, "Services", "A.php"), "utf8"), "<?php\n");
-    assert.throws(() => readFileSync(path.join(mirror, api, "Skipped.php")), /ENOENT/);
+    assert.equal(
+      readFileSync(path.join(mirror, api, "Services", "A.php"), "utf8"),
+      "<?php\n",
+    );
+    assert.throws(
+      () => readFileSync(path.join(mirror, api, "Skipped.php")),
+      /ENOENT/,
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -236,7 +283,10 @@ test("mirrorFiles fails instead of letting jscpd skip an oversized source", () =
   const dir = mkdtempSync(path.join(os.tmpdir(), "dup-ratchet-limit-"));
   try {
     mkdirSync(path.join(dir, apps), { recursive: true });
-    writeFileSync(path.join(dir, apps, "huge.ts"), "x;\n".repeat(MAX_SOURCE_LINES + 1));
+    writeFileSync(
+      path.join(dir, apps, "huge.ts"),
+      "x;\n".repeat(MAX_SOURCE_LINES + 1),
+    );
     assert.throws(
       () => mirrorFiles([`${apps}/huge.ts`], dir, path.join(dir, "mirror")),
       /huge\.ts: 20001 lines .* over the duplicate scan limit/,
@@ -253,7 +303,12 @@ test("largestBlocks orders by lines, then by location, and keeps the top n", () 
     first: { path: file, start: 1, end: lines },
     second: { path: `${file}.copy`, start: 1, end: lines },
   });
-  const blocks = [block(10, "b"), block(30, "z"), block(10, "a"), block(20, "c")];
+  const blocks = [
+    block(10, "b"),
+    block(30, "z"),
+    block(10, "a"),
+    block(20, "c"),
+  ];
   assert.deepEqual(
     largestBlocks(blocks, 3).map((entry) => [entry.lines, entry.first.path]),
     [
@@ -279,7 +334,9 @@ test("evaluate fails when duplicated lines grow", () => {
     baseline([101, 1755], [330, 5390]),
     settings,
   );
-  assert.deepEqual(errors, [`${apps}: duplicated lines grew from 1755 to 1767`]);
+  assert.deepEqual(errors, [
+    `${apps}: duplicated lines grew from 1755 to 1767`,
+  ]);
 });
 
 test("evaluate fails when the clone count grows", () => {
@@ -291,16 +348,27 @@ test("evaluate fails when the clone count grows", () => {
   assert.deepEqual(errors, [`${api}: clones grew from 330 to 331`]);
 });
 
-test("evaluate fails when a total drops and the baseline was not lowered", () => {
-  const { errors } = evaluate(
+test("evaluate passes with a notice when a total drops below the baseline", () => {
+  const { errors, notices } = evaluate(
     measured([100, 1740], [330, 5390]),
     baseline([101, 1755], [330, 5390]),
     settings,
   );
-  assert.deepEqual(errors, [
-    `${apps}: clones dropped from 101 to 100; run pnpm duplicate-code:update and commit the baseline`,
-    `${apps}: duplicated lines dropped from 1755 to 1740; run pnpm duplicate-code:update and commit the baseline`,
+  assert.deepEqual(errors, []);
+  assert.deepEqual(notices, [
+    `${apps}: clones dropped from 101 to 100; pnpm duplicate-code:update can lower the baseline`,
+    `${apps}: duplicated lines dropped from 1755 to 1740; pnpm duplicate-code:update can lower the baseline`,
   ]);
+});
+
+test("evaluate still fails on growth in one scope while the other drops", () => {
+  const { errors, notices } = evaluate(
+    measured([100, 1740], [331, 5390]),
+    baseline([101, 1755], [330, 5390]),
+    settings,
+  );
+  assert.deepEqual(errors, [`${api}: clones grew from 330 to 331`]);
+  assert.equal(notices.length, 2);
 });
 
 test("evaluate fails when the installed jscpd differs from the baseline", () => {
@@ -312,20 +380,28 @@ test("evaluate fails when the installed jscpd differs from the baseline", () => 
     },
   );
   assert.equal(errors.length, 1);
-  assert.match(errors[0], /jscpd 5\.5\.0 is installed but the baseline was measured with 4\.3\.0/);
+  assert.match(
+    errors[0],
+    /jscpd 5\.5\.0 is installed but the baseline was measured with 4\.3\.0/,
+  );
 });
 
 test("evaluate fails when a scope is missing from the baseline or the measurement", () => {
   const rows = baseline([101, 1755], [330, 5390]);
   delete rows.scopes[api];
-  const { errors } = evaluate(measured([101, 1755], [330, 5390]), rows, settings);
+  const { errors } = evaluate(
+    measured([101, 1755], [330, 5390]),
+    rows,
+    settings,
+  );
   assert.deepEqual(errors, [`${api}: scope has no baseline entry`]);
 
   const extra = baseline([101, 1755], [330, 5390]);
   extra.scopes["packages/other"] = { clones: 1, duplicatedLines: 10 };
-  assert.deepEqual(evaluate(measured([101, 1755], [330, 5390]), extra, settings).errors, [
-    "packages/other: baseline entry is not a scanned scope",
-  ]);
+  assert.deepEqual(
+    evaluate(measured([101, 1755], [330, 5390]), extra, settings).errors,
+    ["packages/other: baseline entry is not a scanned scope"],
+  );
 });
 
 test("nextBaseline lowers totals that dropped and keeps the rest", () => {
@@ -368,9 +444,15 @@ test("parseBaseline rejects a malformed file and formatBaseline round-trips", ()
   const text = formatBaseline(rows);
   assert.ok(text.endsWith("}\n"));
   assert.deepEqual(parseBaseline(text), rows);
-  assert.ok(text.indexOf(api) < text.indexOf(apps), "scopes are written in sorted order");
+  assert.ok(
+    text.indexOf(api) < text.indexOf(apps),
+    "scopes are written in sorted order",
+  );
 
-  assert.throws(() => parseBaseline("{}"), /baseline: jscpd must be a version string/);
+  assert.throws(
+    () => parseBaseline("{}"),
+    /baseline: jscpd must be a version string/,
+  );
   assert.throws(
     () => parseBaseline(JSON.stringify({ ...rows, minTokens: "70" })),
     /baseline: minTokens must be a positive integer/,
@@ -378,7 +460,10 @@ test("parseBaseline rejects a malformed file and formatBaseline round-trips", ()
   assert.throws(
     () =>
       parseBaseline(
-        JSON.stringify({ ...rows, scopes: { [apps]: { clones: 1, duplicatedLines: -1 } } }),
+        JSON.stringify({
+          ...rows,
+          scopes: { [apps]: { clones: 1, duplicatedLines: -1 } },
+        }),
       ),
     /baseline: packages\/apps\/src duplicatedLines must be a non-negative integer/,
   );
@@ -391,7 +476,8 @@ test("measureScopes finds a block copied between two files, ignoring .gitignore"
     mkdirSync(root, { recursive: true });
     const block = Array.from(
       { length: 14 },
-      (_, i) => `  const value${i} = compute(input, ${i}, "label-${i}") + offset * ${i};`,
+      (_, i) =>
+        `  const value${i} = compute(input, ${i}, "label-${i}") + offset * ${i};`,
     ).join("\n");
     const file = (name) =>
       `export function ${name}(input: number, offset: number) {\n${block}\n  return 0;\n}\n`;
@@ -399,14 +485,27 @@ test("measureScopes finds a block copied between two files, ignoring .gitignore"
     writeFileSync(path.join(root, "two.ts"), file("two"));
     writeFileSync(path.join(root, "two.test.ts"), file("three"));
     mkdirSync(path.join(dir, api), { recursive: true });
-    writeFileSync(path.join(dir, api, "Only.php"), "<?php\n\nfinal class Only {}\n");
+    writeFileSync(
+      path.join(dir, api, "Only.php"),
+      "<?php\n\nfinal class Only {}\n",
+    );
     writeFileSync(path.join(dir, ".gitignore"), "two.ts\n");
-    writeFileSync(path.join(dir, ".jscpd.json"), JSON.stringify({ minTokens: 5000 }));
+    writeFileSync(
+      path.join(dir, ".jscpd.json"),
+      JSON.stringify({ minTokens: 5000 }),
+    );
 
-    const result = await measureScopes({ baseDir: dir, minTokens: 70, minLines: 10 });
+    const result = await measureScopes({
+      baseDir: dir,
+      minTokens: 70,
+      minLines: 10,
+    });
     assert.equal(result[apps].files, 2, "two.test.ts is excluded");
     assert.equal(result[apps].clones, 1);
-    assert.ok(result[apps].duplicatedLines >= 14, `got ${result[apps].duplicatedLines}`);
+    assert.ok(
+      result[apps].duplicatedLines >= 14,
+      `got ${result[apps].duplicatedLines}`,
+    );
     assert.deepEqual(
       [result[apps].blocks[0].first.path, result[apps].blocks[0].second.path],
       [`${apps}/demo/one.ts`, `${apps}/demo/two.ts`],
