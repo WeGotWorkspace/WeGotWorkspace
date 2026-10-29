@@ -7,6 +7,7 @@ namespace App\Services\Contacts;
 use App\Dav\Server\WgwCardBackend;
 use App\Exceptions\ApiHttpException;
 use App\Models\Addressbook;
+use Illuminate\Support\Facades\DB;
 use Sabre\CardDAV\Plugin as CardDAVPlugin;
 use Sabre\DAV\PropPatch;
 
@@ -53,46 +54,48 @@ final class AddressBookRepository
      */
     public function update(string $username, string $addressBookId, array $payload): array
     {
-        $this->collectionAccess->restoreWhenSubscribing($username, $addressBookId, $payload);
-        $listing = $this->requireListing($username, $addressBookId);
+        return DB::connection('wgw')->transaction(function () use ($username, $addressBookId, $payload): array {
+            $this->collectionAccess->restoreWhenSubscribing($username, $addressBookId, $payload);
+            $listing = $this->requireListing($username, $addressBookId);
 
-        if (array_key_exists('name', $payload)) {
-            throw new ApiHttpException(403, 'Address book names cannot be changed.', 'forbidden');
-        }
-
-        if ($listing->isSharee) {
-            $this->assertShareePatchAllowed($payload);
-            if (($payload['isSubscribed'] ?? null) === false) {
-                $this->collectionAccess->dismissIfSharee($username, $listing);
+            if (array_key_exists('name', $payload)) {
+                throw new ApiHttpException(403, 'Address book names cannot be changed.', 'forbidden');
             }
 
-            return $this->mapListing($listing);
-        }
+            if ($listing->isSharee) {
+                $this->assertShareePatchAllowed($payload);
+                if (($payload['isSubscribed'] ?? null) === false) {
+                    $this->collectionAccess->dismissIfSharee($username, $listing);
+                }
 
-        if (array_key_exists('shareWith', $payload)) {
-            if (! $this->shareInvites->canShare($listing)) {
-                throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
+                return $this->mapListing($listing);
             }
-            $this->shareInvites->apply($listing->book, $payload['shareWith']);
-        }
 
-        $mutations = [];
-        if (array_key_exists('description', $payload)) {
-            $description = $payload['description'];
-            $mutations['{'.CardDAVPlugin::NS_CARDDAV.'}addressbook-description'] = is_string($description)
-                ? $description
-                : null;
-        }
+            if (array_key_exists('shareWith', $payload)) {
+                if (! $this->shareInvites->canShare($listing)) {
+                    throw new ApiHttpException(403, 'Only collection administrators can change sharing.', 'forbidden');
+                }
+                $this->shareInvites->apply($listing->book, $payload['shareWith']);
+            }
 
-        if ($mutations !== []) {
-            $propPatch = new PropPatch($mutations);
-            $this->cardBackend()->updateAddressBook((string) $listing->book->id, $propPatch);
-            $propPatch->commit();
-        }
+            $mutations = [];
+            if (array_key_exists('description', $payload)) {
+                $description = $payload['description'];
+                $mutations['{'.CardDAVPlugin::NS_CARDDAV.'}addressbook-description'] = is_string($description)
+                    ? $description
+                    : null;
+            }
 
-        $listing->book->refresh();
+            if ($mutations !== []) {
+                $propPatch = new PropPatch($mutations);
+                $this->cardBackend()->updateAddressBook((string) $listing->book->id, $propPatch);
+                $propPatch->commit();
+            }
 
-        return $this->mapListing($this->requireListing($username, $addressBookId));
+            $listing->book->refresh();
+
+            return $this->mapListing($this->requireListing($username, $addressBookId));
+        });
     }
 
     /**

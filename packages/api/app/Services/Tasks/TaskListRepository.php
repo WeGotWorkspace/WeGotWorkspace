@@ -142,41 +142,43 @@ final class TaskListRepository
      */
     public function update(string $username, string $taskListId, array $payload): array
     {
-        $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::TaskList, $taskListId, $payload);
-        $resolved = $this->resolveWritableTaskList($username, $taskListId);
-        if ($resolved === null) {
-            throw new ApiHttpException(404, 'Task list not found.', 'not_found');
-        }
-        [$instance, $groupSlug] = $resolved;
+        return DB::connection('wgw')->transaction(function () use ($username, $taskListId, $payload): array {
+            $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::TaskList, $taskListId, $payload);
+            $resolved = $this->resolveWritableTaskList($username, $taskListId);
+            if ($resolved === null) {
+                throw new ApiHttpException(404, 'Task list not found.', 'not_found');
+            }
+            [$instance, $groupSlug] = $resolved;
 
-        $this->collectionAccess->assertShareePatchAllowed(
-            $instance,
-            $payload,
-            ['description', 'shareWith', 'groupSlug'],
-            'Sharees can only change their own list name and color.',
-        );
+            $this->collectionAccess->assertShareePatchAllowed(
+                $instance,
+                $payload,
+                ['description', 'shareWith', 'groupSlug'],
+                'Sharees can only change their own list name and color.',
+            );
 
-        $mutations = $this->collectionAccess->propertyMutations($payload);
+            $mutations = $this->collectionAccess->propertyMutations($payload);
 
-        if ($mutations !== []) {
-            $propPatch = new PropPatch($mutations);
-            $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
-            $propPatch->commit();
-        }
+            if ($mutations !== []) {
+                $propPatch = new PropPatch($mutations);
+                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $propPatch->commit();
+            }
 
-        if (array_key_exists('shareWith', $payload)) {
-            $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
-        }
+            if (array_key_exists('shareWith', $payload)) {
+                $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
+            }
 
-        if (array_key_exists('groupSlug', $payload)) {
-            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
-        }
-        $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
+            if (array_key_exists('groupSlug', $payload)) {
+                $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+            }
+            $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
-        $instance->refresh();
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            $instance->refresh();
+            $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapTaskList($username, $instance, $groupSlug);
+            return $this->mapTaskList($username, $instance, $groupSlug);
+        });
     }
 
     /**

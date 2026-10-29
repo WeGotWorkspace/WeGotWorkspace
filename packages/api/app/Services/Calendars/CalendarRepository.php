@@ -151,45 +151,47 @@ final class CalendarRepository
      * @return array<string, mixed> */
     public function update(string $username, string $calendarId, array $payload): array
     {
-        $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::EventCalendar, $calendarId, $payload);
-        $resolved = $this->resolveWritableCalendar($username, $calendarId);
-        if ($resolved === null) {
-            throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
-        }
-        [$instance, $groupSlug] = $resolved;
+        return DB::connection('wgw')->transaction(function () use ($username, $calendarId, $payload): array {
+            $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::EventCalendar, $calendarId, $payload);
+            $resolved = $this->resolveWritableCalendar($username, $calendarId);
+            if ($resolved === null) {
+                throw new ApiHttpException(404, 'Calendar not found.', 'not_found');
+            }
+            [$instance, $groupSlug] = $resolved;
 
-        $this->collectionAccess->assertShareePatchAllowed(
-            $instance,
-            $payload,
-            ['description', 'timeZone', 'shareWith', 'groupSlug'],
-            'Sharees can only change their own calendar name and color.',
-        );
+            $this->collectionAccess->assertShareePatchAllowed(
+                $instance,
+                $payload,
+                ['description', 'timeZone', 'shareWith', 'groupSlug'],
+                'Sharees can only change their own calendar name and color.',
+            );
 
-        $mutations = $this->collectionAccess->propertyMutations($payload);
-        if (array_key_exists('timeZone', $payload)) {
-            $timeZone = $payload['timeZone'];
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-timezone'] = is_string($timeZone) && trim($timeZone) !== '' ? trim($timeZone) : null;
-        }
+            $mutations = $this->collectionAccess->propertyMutations($payload);
+            if (array_key_exists('timeZone', $payload)) {
+                $timeZone = $payload['timeZone'];
+                $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-timezone'] = is_string($timeZone) && trim($timeZone) !== '' ? trim($timeZone) : null;
+            }
 
-        if ($mutations !== []) {
-            $propPatch = new PropPatch($mutations);
-            $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
-            $propPatch->commit();
-        }
+            if ($mutations !== []) {
+                $propPatch = new PropPatch($mutations);
+                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $propPatch->commit();
+            }
 
-        if (array_key_exists('shareWith', $payload)) {
-            $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
-        }
+            if (array_key_exists('shareWith', $payload)) {
+                $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
+            }
 
-        if (array_key_exists('groupSlug', $payload)) {
-            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
-        }
-        $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
+            if (array_key_exists('groupSlug', $payload)) {
+                $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+            }
+            $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
 
-        $instance->refresh();
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            $instance->refresh();
+            $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
 
-        return $this->mapCalendar($username, $instance, $groupSlug);
+            return $this->mapCalendar($username, $instance, $groupSlug);
+        });
     }
 
     /** @param array<string, mixed> $options
@@ -272,7 +274,14 @@ final class CalendarRepository
         $previous = $this->parseInstancesState($since);
 
         if ($since === null || $since === '' || $since === '0') {
-            return ['oldState' => '0', 'newState' => $currentState, 'hasMoreChanges' => false, 'created' => $this->apiIdsForInstances($instances), 'updated' => [], 'destroyed' => []];
+            return [
+                'oldState' => '0',
+                'newState' => $currentState,
+                'hasMoreChanges' => false,
+                'created' => $this->apiIdsForInstances($instances),
+                'updated' => [],
+                'destroyed' => [],
+            ];
         }
 
         if ($since === $currentState) {

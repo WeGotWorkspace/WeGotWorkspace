@@ -152,6 +152,9 @@ final class AddressBookCollectionAccess
      */
     public function restoreWhenSubscribing(string $username, string $addressBookId, array $payload): void
     {
+        if (array_key_exists('isSubscribed', $payload) && ! is_bool($payload['isSubscribed'])) {
+            throw new ApiHttpException(400, 'isSubscribed must be a boolean.', 'invalidProperties', ['isSubscribed']);
+        }
         $bookId = AddressBookCollectionUris::parseSharedApiId($addressBookId);
         if ($bookId === null || ($payload['isSubscribed'] ?? null) !== true) {
             return;
