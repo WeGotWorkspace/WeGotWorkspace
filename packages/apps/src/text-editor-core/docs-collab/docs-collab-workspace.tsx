@@ -209,6 +209,8 @@ function DocsCollabWorkspaceInner({
     return {
       ...urls,
       onDocumentGone: () => {
+        // The host may know the document only moved (Docs re-resolves its id, #1751).
+        urls.onDocumentGone?.();
         reportDocumentGoneRef.current();
       },
     };

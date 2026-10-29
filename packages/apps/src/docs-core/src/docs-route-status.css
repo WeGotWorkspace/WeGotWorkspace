@@ -1,0 +1,23 @@
+/* `/docs?id=` before the Doc opens (#1751). Sits outside `.docs-workspace`. */
+.docs-route-status {
+  @apply mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-2 px-6 text-center;
+  color: var(--workspace-foreground);
+}
+
+.docs-route-status--loading {
+  @apply text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+}
+
+.docs-route-status__title {
+  @apply text-base font-medium;
+}
+
+.docs-route-status__description {
+  @apply text-sm;
+  color: color-mix(in oklch, var(--workspace-foreground) 72%, transparent);
+}
+
+.docs-route-status__actions {
+  @apply mt-2 flex flex-wrap justify-center gap-2;
+}
