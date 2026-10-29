@@ -60,6 +60,7 @@ export function DriveMainPane({
     setDropUploadActive,
     handleUpload,
     uploadEnabled,
+    structureEnabled,
     breadcrumbs,
     selectView,
     visibleItems,
@@ -95,8 +96,8 @@ export function DriveMainPane({
 
   const showFolderListingBusy =
     view.type === "folder" && !searchQuery.trim() && (folderListingPending || listLoading);
-  // A failed listing is not an empty folder.
-  const showFolderListingError =
+  // A failed load with no rows to show must not read as an empty folder.
+  const showFolderListingFailed =
     view.type === "folder" &&
     !searchQuery.trim() &&
     folderListingError?.path === view.path &&
@@ -134,6 +135,7 @@ export function DriveMainPane({
   };
 
   const fileCanManageStructure = (file: DriveFile) =>
+    structureEnabled &&
     resolveDriveFileCanManageStructure(file.mayManageStructure, {
       isActive: file.id === active?.id,
       activeMayManageStructure,
@@ -239,17 +241,17 @@ export function DriveMainPane({
         <div ref={scrollRef} className="drive-main-pane__scroll collection-state-host">
           {showFolderListingBusy ? (
             <CollectionState variant="loading">{labels.folderListingLoading}</CollectionState>
-          ) : showFolderListingError ? (
+          ) : showFolderListingFailed ? (
             <CollectionState icon={<CloudAlert className="size-12" />}>
-              <div className="drive-main-pane__listing-error" role="alert">
-                <p>{labels.folderListingFailed}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label={labels.folderListingRetry}
-                  onClick={retryFolderListing}
-                />
-              </div>
+              <p role="alert">{labels.folderListingFailed}</p>
+              <Button
+                className="drive-main-pane__retry"
+                variant="secondary"
+                size="sm"
+                onClick={retryFolderListing}
+              >
+                {labels.folderListingRetry}
+              </Button>
             </CollectionState>
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>

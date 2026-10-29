@@ -94,17 +94,17 @@ describe("useDriveFolderListingSync", () => {
     const { hook, showError } = setup({ changeDir });
     await flush();
 
-    expect(hook.result.current.listingError).toEqual({
+    expect(hook.result.current.folderListingError).toEqual({
       path: FOLDER,
       message: "GET failed (429)",
     });
-    expect(showError).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledTimes(1);
     expect(changeDir).toHaveBeenCalledTimes(1);
 
     await advance(FOLDER_LISTING_RETRY_DELAYS_MS[0]);
 
     expect(changeDir).toHaveBeenCalledTimes(2);
-    expect(hook.result.current.listingError).toBeNull();
+    expect(hook.result.current.folderListingError).toBeNull();
   });
 
   it("does not retry a listing the server refused for good", async () => {
@@ -112,7 +112,7 @@ describe("useDriveFolderListingSync", () => {
     const { hook } = setup({ changeDir });
     await flush();
 
-    expect(hook.result.current.listingError?.path).toBe(FOLDER);
+    expect(hook.result.current.folderListingError?.path).toBe(FOLDER);
     await advance(60_000);
     expect(changeDir).toHaveBeenCalledTimes(1);
   });
@@ -129,19 +129,22 @@ describe("useDriveFolderListingSync", () => {
     await advance(120_000);
     expect(changeDir).toHaveBeenCalledTimes(attempts);
 
-    act(() => hook.result.current.retryListing());
+    act(() => hook.result.current.retryFolderListing());
     await flush();
     expect(changeDir).toHaveBeenCalledTimes(attempts + 1);
   });
 
-  it("keeps cached rows on screen and only toasts when a listing fails", async () => {
+  it("toasts once per failure streak, not on every automatic retry", async () => {
     const changeDir = vi.fn().mockRejectedValue(statusError(429));
     const readCachedDirectory = vi.fn().mockResolvedValue(listing([ROW]));
-    const { hook, showError } = setup({ changeDir, readCachedDirectory });
+    const { showError, setFiles } = setup({ changeDir, readCachedDirectory });
     await flush();
     await flush();
+    await advance(FOLDER_LISTING_RETRY_DELAYS_MS[0]);
+    await advance(FOLDER_LISTING_RETRY_DELAYS_MS[1]);
 
-    expect(hook.result.current.listingError).toBeNull();
+    expect(changeDir).toHaveBeenCalledTimes(3);
+    expect(setFiles).toHaveBeenCalled();
     expect(showError).toHaveBeenCalledTimes(1);
   });
 
@@ -153,12 +156,12 @@ describe("useDriveFolderListingSync", () => {
     );
     const { hook, setFiles } = setup({ changeDir, readCachedDirectory });
     await flush();
-    expect(hook.result.current.listingError?.path).toBe(FOLDER);
+    expect(hook.result.current.folderListingError?.path).toBe(FOLDER);
 
     resolveCache(listing([ROW]));
     await flush();
 
     expect(setFiles).toHaveBeenCalled();
-    expect(hook.result.current.listingError).toBeNull();
+    expect(hook.result.current.folderListingError).toBeNull();
   });
 });

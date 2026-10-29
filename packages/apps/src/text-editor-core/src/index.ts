@@ -53,9 +53,8 @@ export {
   getDocsTrackChangeGroups,
   getTrackChangeIdFromTarget,
   escapeTrackChangeIdForSelector,
+  getSessionTrackChangeIds,
   scrollTrackChangeIntoView,
-  toTrackChangesAuthor,
-  trackChangesAuthorIdFromName,
   type DocsTrackChangeGroup,
   type TextEditorCollabUser,
 } from "@/text-editor-core/src/text-editor-track-changes";

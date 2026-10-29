@@ -3863,6 +3863,7 @@
           "Files"
         ],
         "summary": "Create a Docs comment or suggestion thread",
+        "description": "Idempotent: a create with an id that already exists on this document returns that thread. A document has one suggestion thread per changeId, so a create for a changeId that already has one returns the existing thread, with its own id, even when the request carries another id (for example after the document moved).",
         "security": [
           {
             "bearerAuth": []

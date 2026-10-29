@@ -16,6 +16,7 @@ import {
   goOnline,
   installRoomEventsChaos,
   joinMeetRoom,
+  meetLobby,
   openUsers,
   shareWithViewer,
   uploadMarkdown,
@@ -334,7 +335,7 @@ test.describe("meet", () => {
       await joinMeetRoom(host.page, room);
       await waitForInCall(host.page);
       await joinMeetRoom(member.page, room);
-      await expect(host.page.getByRole("button", { name: /waiting to join/ })).toBeVisible();
+      await expect(meetLobby(host.page)).toBeVisible();
       chaos.dropNext(3);
       await admitFirstKnocker(host.page);
       await expect.poll(() => chaos.dropped()).toBe(3);

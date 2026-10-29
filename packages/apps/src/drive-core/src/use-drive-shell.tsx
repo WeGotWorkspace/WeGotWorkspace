@@ -204,20 +204,19 @@ export function useDriveShell({
     operations,
   ]);
 
-  const { listingError: folderListingError, retryListing: retryFolderListing } =
-    useDriveFolderListingSync({
-      operations,
-      folderViewPath,
-      listLoading,
-      currentUsername,
-      groupRootNamesRef,
-      syncedFolderPathRef,
-      pendingFolderRefetchRef,
-      setFiles,
-      setHydratedFolderPath,
-      commitView,
-      showError,
-    });
+  const { folderListingError, retryFolderListing } = useDriveFolderListingSync({
+    operations,
+    folderViewPath,
+    listLoading,
+    currentUsername,
+    groupRootNamesRef,
+    syncedFolderPathRef,
+    pendingFolderRefetchRef,
+    setFiles,
+    setHydratedFolderPath,
+    commitView,
+    showError,
+  });
 
   const selectView = useCallback(
     (v: ViewKey) => {

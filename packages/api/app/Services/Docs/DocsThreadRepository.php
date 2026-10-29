@@ -97,12 +97,16 @@ final class DocsThreadRepository
             'anchorOccurrence' => is_int($payload['anchorOccurrence'] ?? null) ? $payload['anchorOccurrence'] : null,
         ], new DateTimeImmutable('now', new DateTimeZone('UTC')));
 
-        $created = $this->insertOnce($instance, $uid, $ics, 'A thread with this id already exists.', [
+        // One root per change: after a move the client derives another id for it.
+        $existingRoot = $kind === DocsThreadJournalConverter::KIND_SUGGESTION ? fn (): ?string => $this->suggestionRootUid($instance, $path, (string) $changeId) : null;
+        $existingUid = $this->insertOnce($instance, $uid, $ics, 'A thread with this id already exists.', [
             'doc_path' => $path,
             'kind' => $kind,
             'parent_uid' => null,
             'change_id' => $changeId,
-        ]);
+        ], $existingRoot);
+        $created = $existingUid === null;
+        $uid = $existingUid ?? $uid;
         if ($created) {
             if (trim($body) !== '') {
                 $mentions = DocsThreadActivityNotify::mentionUsernamesFromBody($body);
@@ -155,7 +159,7 @@ final class DocsThreadRepository
             'kind' => DocsThreadIndex::KIND_REPLY,
             'parent_uid' => $rootUid,
             'change_id' => null,
-        ]);
+        ]) === null;
         if ($created) {
             $kind = (string) ($root['kind'] ?? DocsThreadJournalConverter::KIND_COMMENT);
             $participants = $this->threadParticipantUsernames($instance, $path, $rootUid);
@@ -227,7 +231,7 @@ final class DocsThreadRepository
             ? $payload['changeId']
             : null;
         $rootUid = $changeId !== null
-            ? $this->rootUidForChangeId($instance, $path, $changeId)
+            ? ($this->suggestionRootUid($instance, $path, $changeId) ?? throw new ApiHttpException(404, 'Thread not found.', 'not_found'))
             : DocsThreadJournalConverter::normalizeUlid($threadId);
         $root = $this->requireRootOnPath($instance, $path, $rootUid);
         if (strtolower(trim((string) ($root['authorId'] ?? ''))) !== strtolower(trim($principal['username']))
@@ -413,19 +417,18 @@ final class DocsThreadRepository
         return $message;
     }
 
-    private function rootUidForChangeId(CalendarInstance $instance, string $path, string $changeId): string
+    /** The suggestion root (never a comment) for $changeId on $path, archived or not. Locks the rows it reads. */
+    private function suggestionRootUid(CalendarInstance $instance, string $path, string $changeId): ?string
     {
-        $row = DocsThreadIndex::query()
-            ->where('calendarid', (int) $instance->calendarid)
-            ->where('doc_path', $path)
-            ->where('change_id', $changeId)
+        $uid = DocsThreadIndex::query()
+            ->where(['calendarid' => (int) $instance->calendarid, 'doc_path' => $path, 'change_id' => $changeId])
+            ->where('kind', DocsThreadJournalConverter::KIND_SUGGESTION)
             ->whereNull('parent_uid')
-            ->first();
-        if ($row === null) {
-            throw new ApiHttpException(404, 'Thread not found.', 'not_found');
-        }
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->value('uid');
 
-        return (string) $row->uid;
+        return $uid === null ? null : (string) $uid;
     }
 
     /**
@@ -671,31 +674,34 @@ final class DocsThreadRepository
 
     /**
      * All or nothing: the UID checks, the VJOURNAL and its index row commit
-     * together. False when this pool already has the UID (a replayed create).
+     * together. Null when it stored the thread, else the UID already there:
+     * this one in this pool (a replay) or the root $existingRoot finds.
      * Callers fire events only after this returns, so after the commit.
      *
      * @param  array{doc_path: string, kind: string, parent_uid: string|null, change_id: string|null}  $index
      */
-    private function insertOnce(CalendarInstance $instance, string $uid, string $ics, string $conflict, array $index): bool
+    private function insertOnce(CalendarInstance $instance, string $uid, string $ics, string $conflict, array $index, ?\Closure $existingRoot = null): ?string
     {
         $calendarId = (int) $instance->calendarid;
         try {
-            return DB::connection('wgw')->transaction(function () use ($instance, $calendarId, $uid, $ics, $conflict, $index): bool {
+            return DB::connection('wgw')->transaction(function () use ($instance, $calendarId, $uid, $ics, $conflict, $index, $existingRoot): ?string {
                 // Concurrent creates of a new UID can deadlock on MySQL; the retry
-                // (attempts: 3) then sees the winner's row and replays as false.
+                // (attempts: 3) then sees the winner's row and replays.
                 $this->uidGuard->assertAvailable($uid, $conflict, $calendarId);
-                if ($this->findObjectByUid($calendarId, $uid) !== null) {
-                    return false;
+                $existing = $this->findObjectByUid($calendarId, $uid) !== null ? $uid : $existingRoot?->__invoke();
+                if ($existing !== null) {
+                    return $existing;
                 }
                 $this->calBackend()->createCalendarObject([$calendarId, (int) $instance->id], $uid.'.ics', $ics);
                 DocsThreadIndex::query()->create(['calendarid' => $calendarId, 'uid' => $uid, ...$index]);
 
-                return true;
+                return null;
             }, 3);
         } catch (QueryException|PDOException $exception) {
             // A duplicate in this pool means a concurrent create already stored the thread: replay.
-            if ($this->findObjectByUid($calendarId, $uid) !== null) {
-                return false;
+            $existing = $this->findObjectByUid($calendarId, $uid) !== null ? $uid : $existingRoot?->__invoke();
+            if ($existing !== null) {
+                return $existing;
             }
             VJournalUidGuard::throwIfUniqueViolation($exception, $conflict);
             throw $exception;

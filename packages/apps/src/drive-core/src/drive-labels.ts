@@ -22,7 +22,8 @@ export const driveLabels = {
   listColumnOffline: "Offline",
   emptyFolder: "This folder is empty",
   folderListingLoading: "Loading folder…",
-  folderListingFailed: "This folder could not be loaded.",
+  /** Folder view when the live listing failed and no rows are shown — never "empty". */
+  folderListingFailed: "This folder could not be loaded",
   folderListingRetry: "Try again",
   dropUploadHint: "Drop files to upload to",
   newButton: "New",

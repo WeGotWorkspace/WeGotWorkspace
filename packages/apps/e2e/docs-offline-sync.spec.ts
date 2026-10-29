@@ -5,6 +5,7 @@ import {
   clearDocsOfflineStore,
   currentEditorText,
   docTokenOnServer,
+  E2E_GROUP_ROOT,
   docsHomeRow,
   docsUrlForFile,
   expectEditorContains,
@@ -45,7 +46,7 @@ test.describe("Docs offline sync (live app)", () => {
 
   test("Group/shared .md: offline edit shows pending dot and syncs", async ({ page }) => {
     const token = `e2e-md-group-${Date.now()}`;
-    const apiPath = `/groups/Engineering/e2e-shared-${Date.now()}.md`;
+    const apiPath = `${E2E_GROUP_ROOT}/e2e-shared-${Date.now()}.md`;
 
     await prepareGroupDocForOfflineSync(page, apiPath);
 
@@ -95,7 +96,7 @@ test.describe("Docs offline sync (live app)", () => {
   test("two contexts: offline user reconnect merges with online edits", async ({ browser }) => {
     const onlineToken = `e2e-ctx-online-${Date.now()}`;
     const offlineToken = `e2e-ctx-offline-${Date.now()}`;
-    const apiPath = `/groups/Engineering/e2e-merge-${Date.now()}.md`;
+    const apiPath = `${E2E_GROUP_ROOT}/e2e-merge-${Date.now()}.md`;
     const authFile = "e2e/.auth/admin.json";
     const contextA = await browser.newContext({ storageState: authFile });
     const contextB = await browser.newContext({ storageState: authFile });
@@ -165,12 +166,12 @@ test.describe("Docs offline sync (live app)", () => {
 
     await loginToDocs(page);
     await clearDocsOfflineStore(page);
-    await seedDocAtPath(page, apiPath, "# Auto-sync seed\n");
+    await seedDocAtPath(apiPath, "# Auto-sync seed\n");
     await gotoDocsHome(page);
     await waitForDocsBodySynced(page, fileName, apiPath);
 
     await page.context().setOffline(true);
-    await docsHomeRow(page, fileName).click();
+    await docsHomeRow(page, fileName).dblclick();
     await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
     await expectOfflineIndicator(page);
 
@@ -185,16 +186,16 @@ test.describe("Docs offline sync (live app)", () => {
   test("Group auto-sync: never-opened doc opens offline, edits, reconnects", async ({ page }) => {
     const token = `e2e-auto-group-${Date.now()}`;
     const fileName = `e2e-auto-group-${Date.now()}.md`;
-    const apiPath = `/groups/Engineering/${fileName}`;
+    const apiPath = `${E2E_GROUP_ROOT}/${fileName}`;
 
     await loginToDocs(page);
     await clearDocsOfflineStore(page);
-    await seedDocAtPath(page, apiPath, "# Group auto-sync seed\n");
+    await seedDocAtPath(apiPath, "# Group auto-sync seed\n");
     await gotoDocsHome(page);
     await waitForDocsBodySynced(page, fileName, apiPath);
 
     await page.context().setOffline(true);
-    await docsHomeRow(page, fileName).click();
+    await docsHomeRow(page, fileName).dblclick();
     await expect(page.locator(".ProseMirror")).toBeVisible({ timeout: 30_000 });
     await expectOfflineIndicator(page);
 
@@ -225,7 +226,7 @@ test.describe("Docs offline sync (live app)", () => {
   test("Group .md: open doc caches offline, edit reconnect persists", async ({ page }) => {
     const token = `e2e-pin-group-${Date.now()}`;
     const fileName = `e2e-pin-group-${Date.now()}.md`;
-    const apiPath = `/groups/Engineering/${fileName}`;
+    const apiPath = `${E2E_GROUP_ROOT}/${fileName}`;
 
     await prepareGroupDocForOfflineSync(page, apiPath);
 
@@ -267,7 +268,7 @@ test.describe("Docs offline sync (live app)", () => {
       timeout: 30_000,
     });
     await expect(page.getByRole("button", { name: "Keep mine" })).toBeVisible();
-    await expect(page).toHaveURL(new RegExp(encodeURIComponent(apiPath)));
+    await expect(page).toHaveURL(new RegExp(encodeURIComponent(apiPath.replace(/^\/+/, ""))));
   });
 
   test("stale navigator.onLine: blocked API/probe then restore triggers sync", async ({ page }) => {
