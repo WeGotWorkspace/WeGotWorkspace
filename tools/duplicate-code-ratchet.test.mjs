@@ -291,16 +291,27 @@ test("evaluate fails when the clone count grows", () => {
   assert.deepEqual(errors, [`${api}: clones grew from 330 to 331`]);
 });
 
-test("evaluate fails when a total drops and the baseline was not lowered", () => {
-  const { errors } = evaluate(
+test("evaluate passes with a notice when a total drops below the baseline", () => {
+  const { errors, notices } = evaluate(
     measured([100, 1740], [330, 5390]),
     baseline([101, 1755], [330, 5390]),
     settings,
   );
-  assert.deepEqual(errors, [
-    `${apps}: clones dropped from 101 to 100; run pnpm duplicate-code:update and commit the baseline`,
-    `${apps}: duplicated lines dropped from 1755 to 1740; run pnpm duplicate-code:update and commit the baseline`,
+  assert.deepEqual(errors, []);
+  assert.deepEqual(notices, [
+    `${apps}: clones dropped from 101 to 100; pnpm duplicate-code:update can lower the baseline`,
+    `${apps}: duplicated lines dropped from 1755 to 1740; pnpm duplicate-code:update can lower the baseline`,
   ]);
+});
+
+test("evaluate still fails on growth in one scope while the other drops", () => {
+  const { errors, notices } = evaluate(
+    measured([100, 1740], [331, 5390]),
+    baseline([101, 1755], [330, 5390]),
+    settings,
+  );
+  assert.deepEqual(errors, [`${api}: clones grew from 330 to 331`]);
+  assert.equal(notices.length, 2);
 });
 
 test("evaluate fails when the installed jscpd differs from the baseline", () => {

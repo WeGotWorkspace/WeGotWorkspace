@@ -1,5 +1,5 @@
 import { createRef } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Note } from "@/lib/models/note";
 import { NotesListPanel } from "@/notes-core/src/notes-list-panel";
@@ -32,6 +32,7 @@ function ListHarness({
   listLoading = false,
   listRefreshing = false,
   onRefreshList,
+  onEditTag,
   slot = "list",
 }: {
   notes: Note[];
@@ -43,6 +44,7 @@ function ListHarness({
   listLoading?: boolean;
   listRefreshing?: boolean;
   onRefreshList?: () => void;
+  onEditTag?: () => void;
   slot?: "list" | "header" | "both";
 }) {
   const panel = NotesListPanel({
@@ -55,6 +57,7 @@ function ListHarness({
     listLoading,
     listRefreshing,
     onRefreshList,
+    onEditTag,
     visibleNotes: notes,
     notebookCollections,
     searchQuery: "",
@@ -125,6 +128,36 @@ describe("NotesListPanel header chrome", () => {
     expect(screen.queryByRole("button", { name: defaultNotesLabels.edit })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultNotesLabels.remove })).toBeNull();
     expect(screen.queryByRole("button", { name: defaultNotesLabels.deleteNotebook })).toBeNull();
+  });
+
+  it("shows Edit tag directly left of refresh on a tag view", async () => {
+    const onEditTag = vi.fn();
+    render(
+      <ListHarness
+        notes={[baseNote]}
+        view="tag:focus"
+        viewLabel="#focus"
+        onRefreshList={() => {}}
+        onEditTag={onEditTag}
+        slot="header"
+      />,
+    );
+    const edit = screen.getByRole("button", { name: defaultNotesLabels.editTag });
+    const refresh = screen.getByRole("button", { name: defaultNotesLabels.refreshList });
+    expect(edit.compareDocumentPosition(refresh) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(edit.parentElement?.querySelector("button")).toBe(edit);
+
+    fireEvent.click(edit);
+    expect(onEditTag).toHaveBeenCalledTimes(1);
+
+    fireEvent.pointerMove(edit, { pointerType: "mouse" });
+    expect((await screen.findByRole("tooltip")).textContent).toBe(defaultNotesLabels.editTag);
+  });
+
+  it("hides Edit tag when the view has no tag to edit", () => {
+    render(<ListHarness notes={[baseNote]} onRefreshList={() => {}} slot="header" />);
+    expect(screen.queryByRole("button", { name: defaultNotesLabels.editTag })).toBeNull();
+    expect(screen.getByRole("button", { name: defaultNotesLabels.refreshList })).toBeTruthy();
   });
 });
 
