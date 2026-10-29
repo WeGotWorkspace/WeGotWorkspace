@@ -182,8 +182,7 @@ final class PrincipalSignalingService
                 $this->rooms->assertMayJoin($room, $username);
             } catch (PrincipalResponseException $denied) {
                 // Leaving without access only ends the caller's own presence.
-                $this->assertOwnPeerOr($denied, $room, $peerId, $ownerMarker);
-                $this->store->leaveOwnedPeers($room, $ownerMarker);
+                $this->store->leaveOwnPeerOr($room, $peerId, $ownerMarker, $denied);
 
                 return ['ok' => true];
             }
@@ -207,19 +206,6 @@ final class PrincipalSignalingService
             $this->rooms->assertMayJoin($room, $username);
         } catch (PrincipalResponseException $denied) {
             $this->store->leaveOwnedPeers($room, $ownerMarker);
-            throw $denied;
-        }
-    }
-
-    /**
-     * A caller without room access may still remove their own peer. Any other
-     * peer id, live or unknown, gets the same refusal as the room itself.
-     */
-    private function assertOwnPeerOr(PrincipalResponseException $denied, string $room, string $peerId, string $ownerMarker): void
-    {
-        try {
-            $this->store->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
-        } catch (RtcSignalingException) {
             throw $denied;
         }
     }

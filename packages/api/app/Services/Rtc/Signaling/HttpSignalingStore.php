@@ -525,6 +525,20 @@ final class HttpSignalingStore
         }
     }
 
+    /**
+     * Leave for a caller who no longer has access to the room. Only their own
+     * peer counts; any other peer id, live or unknown, gets the room refusal.
+     */
+    public function leaveOwnPeerOr(string $room, string $peerId, string $ownerMarker, \Throwable $refusal): void
+    {
+        try {
+            $this->assertPeerOwnedByActor($room, $peerId, $ownerMarker);
+        } catch (RtcSignalingException) {
+            throw $refusal;
+        }
+        $this->leaveOwnedPeers($room, $ownerMarker);
+    }
+
     public function cleanPeer(mixed $peer): string
     {
         if (! is_string($peer) || preg_match($this->policy->peerIdPattern, $peer) !== 1) {

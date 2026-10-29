@@ -239,8 +239,7 @@ final class DocCollabSignalingService
                 $this->joinAuthorizer->assertMayJoin($room, $principal);
             } catch (CollabResponseException $denied) {
                 // Leaving without access only ends the caller's own presence.
-                $this->assertOwnPeerOr($denied, $roomKey, $peerId, $ownerMarker);
-                $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
+                $this->store->leaveOwnPeerOr($roomKey, $peerId, $ownerMarker, $denied);
 
                 return ['ok' => true];
             }
@@ -266,19 +265,6 @@ final class DocCollabSignalingService
             $this->joinAuthorizer->assertMayJoin($room, $principal);
         } catch (CollabResponseException $denied) {
             $this->store->leaveOwnedPeers($roomKey, $ownerMarker);
-            throw $denied;
-        }
-    }
-
-    /**
-     * A caller without document access may still remove their own peer. Any
-     * other peer id, live or unknown, gets the same refusal as the room itself.
-     */
-    private function assertOwnPeerOr(CollabResponseException $denied, string $roomKey, string $peerId, string $ownerMarker): void
-    {
-        try {
-            $this->store->assertPeerOwnedByActor($roomKey, $peerId, $ownerMarker);
-        } catch (RtcSignalingException) {
             throw $denied;
         }
     }
