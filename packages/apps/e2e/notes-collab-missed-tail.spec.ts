@@ -1,10 +1,18 @@
-// A collaborator in another browser must not miss the tail of a note (live app and API, #1737).
+// A collaborator in another browser who misses updates still converges (live app and API, #1737).
 //
 // Admin types in a second tab (A2) of a note that tab A1 and a teammate's
-// browser (B) also have open. The repair has to bring B, and A1, to the same
-// text without a reload. Ten seconds is under the 30-second channel resync, so
-// that resync cannot hide a missing repair.
+// browser (B) also have open. B drops every inbound Yjs update while A2
+// types, so only the mesh repair can bring B to the same text: the state
+// vector check for missed inserts, the delete-set step 2 for missed deletes.
+// Ten seconds is well past the 1.5-second quiet check, and nothing else on a
+// WebRTC link resyncs a peer that is already connected.
 import { expect, test, type Page } from "@playwright/test";
+import {
+  droppedSyncUpdates,
+  installSyncUpdateDrop,
+  startDroppingSyncUpdates,
+  stopDroppingSyncUpdates,
+} from "./helpers/rtc-sync-update-drop";
 import {
   api,
   ensureTeamNotebook,
@@ -36,7 +44,9 @@ async function openNote(page: Page, path: string): Promise<void> {
   await page.locator(".ProseMirror").first().waitFor({ timeout: 60_000 });
 }
 
-test("a peer in another browser shows the tail typed in a second tab", async ({ browser }) => {
+test("a peer in another browser that drops updates converges without a reload", async ({
+  browser,
+}) => {
   test.setTimeout(240_000);
   await warmUpApp(browser);
   await ensureTeamNotebook();
@@ -53,6 +63,7 @@ test("a peer in another browser shows the tail typed in a second tab", async ({ 
 
   const adminContext = await openUser(browser, OWNER);
   const memberContext = await openUser(browser, TEAMMATE);
+  await installSyncUpdateDrop(memberContext);
   try {
     const a1 = await openNotesTab(adminContext, OWNER, "A1", events);
     await openNote(a1, path);
@@ -67,27 +78,48 @@ test("a peer in another browser shows the tail typed in a second tab", async ({ 
     const body = a2.locator(".ProseMirror").first();
     await body.click();
     await a2.keyboard.press("ControlOrMeta+End");
+
+    // The live link works: B gets a sentence while nothing is dropped.
+    await body.pressSequentially(" Warm-up sentence.", { delay: 15 });
+    const warm = await editorText(a2);
+    await expect
+      .poll(() => editorText(b), { message: "B gets updates over the live link", timeout: 30_000 })
+      .toBe(warm);
+
+    // B misses every update for the next three sentences.
+    await startDroppingSyncUpdates(b);
     const sentences = ["First added sentence.", "Second added sentence.", "Third added sentence."];
     for (const sentence of sentences) {
       await body.pressSequentially(` ${sentence}`, { delay: 15 });
     }
     const typed = await editorText(a2);
     expect(typed).toContain(sentences[2]!);
-
-    await expect
-      .poll(() => editorText(b), { message: "B shows A2's text", timeout: 10_000 })
-      .toBe(typed);
     await expect
       .poll(() => editorText(a1), { message: "A1 shows A2's text", timeout: 10_000 })
       .toBe(typed);
+    await expect
+      .poll(() => droppedSyncUpdates(b), { message: "B dropped A2's updates", timeout: 10_000 })
+      .toBeGreaterThan(0);
+    // Updates are still dropped, so only the repair can bring B up to date.
+    await expect
+      .poll(() => editorText(b), { message: "B repaired the missed inserts", timeout: 10_000 })
+      .toBe(typed);
 
-    // Deleting the tail moves no state vector, so only the delete set repairs it.
+    // A deletion does not move the state vector; only the delete set repairs it.
+    const droppedBefore = await droppedSyncUpdates(b);
     for (let i = 0; i < 12; i += 1) await a2.keyboard.press("Backspace");
     const trimmed = await editorText(a2);
     expect(trimmed.length).toBeLessThan(typed.length);
     await expect
-      .poll(() => editorText(b), { message: "B shows A2's text after deleting", timeout: 10_000 })
+      .poll(() => editorText(a1), { message: "A1 shows the deletion", timeout: 10_000 })
       .toBe(trimmed);
+    await expect
+      .poll(() => droppedSyncUpdates(b), { message: "B dropped the deletion", timeout: 10_000 })
+      .toBeGreaterThan(droppedBefore);
+    await expect
+      .poll(() => editorText(b), { message: "B repaired the missed deletion", timeout: 10_000 })
+      .toBe(trimmed);
+    await stopDroppingSyncUpdates(b);
   } finally {
     for (const event of events)
       test.info().annotations.push({ type: "page error", description: event });
