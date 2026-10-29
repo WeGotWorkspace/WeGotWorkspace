@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { rtcLog } from "@/lib/rtc/log";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
@@ -8,7 +8,17 @@ import {
   resetPrincipalLinkRegistryForTests,
 } from "@/lib/rtc/session/principal-link-registry";
 import { encodeYjsHttpPayload } from "./docs-collab-http-wire";
-import { handleSyncMessage, SYNC_STEP_1, SYNC_STEP_2, SYNC_UPDATE } from "./docs-collab-mesh-sync";
+import {
+  encodeUpdateBroadcast,
+  handleSyncMessage,
+  SYNC_STEP_1,
+  SYNC_STEP_2,
+  SYNC_UPDATE,
+} from "./docs-collab-mesh-sync";
+import {
+  MESH_STATE_CHECK_MAX_DELAY_MS,
+  MESH_STATE_CHECK_QUIET_MS,
+} from "./docs-collab-mesh-state-check";
 import type { DocsCollabMeshMessage } from "./docs-collab-types";
 import { DocsRtcSession, parsePeerHintPeers, tagOf } from "./docs-rtc-session";
 
@@ -883,6 +893,102 @@ describe("DocsRtcSession data-channel debug tags", () => {
       "update-not-sent",
       expect.objectContaining({ reason: "reader" }),
     );
+  });
+});
+
+/**
+ * #1737: a peer that misses our last update gets nothing that shows the gap.
+ * Once our updates go quiet, the session sends its state vector so that peer
+ * notices it is behind and pulls the rest.
+ */
+describe("DocsRtcSession state check after updates", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+    resetPrincipalLinkRegistryForTests();
+    captured.bindingOptions = null;
+    captured.meshOptions = null;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function editorSession(doc: Y.Doc): DocsRtcSession {
+    const session = new DocsRtcSession({
+      apiBase: "/api/v1/rooms",
+      room: "docs/state-check.md",
+      rtcSettings: DEFAULT_RTC_SETTINGS,
+      getYDoc: () => doc,
+    });
+    captured.meshOptions?.onPollData?.({
+      peers: [{ id: "me", name: "Self", user: "admin", access: "write" }],
+      messages: [],
+    });
+    captured.mesh.broadcastJson.mockClear();
+    return session;
+  }
+
+  function stateVectorBroadcasts(): Uint8Array[] {
+    return captured.mesh.broadcastJson.mock.calls
+      .map((call) => (call as unknown[])[1])
+      .filter(
+        (bytes): bytes is Uint8Array => bytes instanceof Uint8Array && bytes[0] === SYNC_STEP_1,
+      );
+  }
+
+  it("sends its state vector once its updates go quiet", () => {
+    const doc = new Y.Doc();
+    doc.getText("t").insert(0, "hello");
+    const session = editorSession(doc);
+
+    session.broadcast({ type: "sync", u: encodeUpdateBroadcast(Y.encodeStateAsUpdate(doc)) });
+    vi.advanceTimersByTime(MESH_STATE_CHECK_QUIET_MS - 1);
+    expect(stateVectorBroadcasts()).toHaveLength(0);
+
+    vi.advanceTimersByTime(1);
+    const sent = stateVectorBroadcasts();
+    expect(sent).toHaveLength(1);
+    const peer = new Y.Doc();
+    const reply = handleSyncMessage(sent[0]!, peer);
+    expect(reply).not.toBeNull();
+    handleSyncMessage(reply!.u, doc);
+    expect(doc.getText("t").toString()).toBe("hello");
+  });
+
+  it("still checks during long typing, at most once per max delay", () => {
+    const doc = new Y.Doc();
+    const session = editorSession(doc);
+
+    for (let elapsed = 0; elapsed < MESH_STATE_CHECK_MAX_DELAY_MS; elapsed += 200) {
+      session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 0, 0) });
+      vi.advanceTimersByTime(200);
+    }
+
+    expect(stateVectorBroadcasts()).toHaveLength(1);
+  });
+
+  it("does not check after a state request, a state answer or presence", () => {
+    const doc = new Y.Doc();
+    const session = editorSession(doc);
+
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_STEP_1, 0) });
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_STEP_2, 0, 0) });
+    session.broadcast({ type: "awareness", u: Uint8Array.of(0) });
+    vi.advanceTimersByTime(MESH_STATE_CHECK_MAX_DELAY_MS);
+
+    expect(captured.mesh.broadcastJson).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops checking once the session leaves", async () => {
+    const doc = new Y.Doc();
+    const session = editorSession(doc);
+
+    session.broadcast({ type: "sync", u: Uint8Array.of(SYNC_UPDATE, 0, 0) });
+    await session.leave();
+    vi.advanceTimersByTime(MESH_STATE_CHECK_MAX_DELAY_MS);
+
+    expect(stateVectorBroadcasts()).toHaveLength(0);
   });
 });
 
