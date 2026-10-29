@@ -11,6 +11,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Collection;
+use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -162,12 +163,24 @@ final class CalendarCollectionAccess
     }
 
     /**
-     * The instance a lookup by id may return: null when it is an inbound share
-     * the user dismissed, so a dismissed share answers like a missing one.
+     * Lookup by id: the user's own collection first, then the groups they may
+     * use. A dismissed inbound share answers like a missing collection.
+     *
+     * @param  callable(string): ?CalendarInstance  $findIn  the instance with the id under a principal uri
      */
-    public function unlessDismissed(string $username, CalendarInstance $instance): ?CalendarInstance
+    public function findReachable(string $username, callable $findIn): ?CalendarInstance
     {
-        return $this->withoutDismissed($username, new Collection([$instance]))->first();
+        $instance = $findIn($this->principalUri($username));
+        foreach ($instance === null ? $this->groups->allowedGroupSlugs($username) : [] as $slug) {
+            $instance = $findIn(AdminConstants::GROUP_PREFIX.$slug);
+            if ($instance !== null) {
+                break;
+            }
+        }
+
+        return $instance === null
+            ? null
+            : $this->withoutDismissed($username, new Collection([$instance]))->first();
     }
 
     /**
@@ -223,6 +236,35 @@ final class CalendarCollectionAccess
         if ($this->requestedSubscription($payload) === false) {
             $this->dismissIfSharee($username, $instance);
         }
+    }
+
+    /**
+     * DAV property changes for the name, description and color a collection
+     * patch may carry. Callers add their own kind-specific properties.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, ?string>
+     */
+    public function propertyMutations(array $payload): array
+    {
+        $mutations = [];
+        if (array_key_exists('name', $payload)) {
+            $name = trim((string) $payload['name']);
+            if ($name === '') {
+                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
+            }
+            $mutations['{DAV:}displayname'] = $name;
+        }
+        if (array_key_exists('description', $payload)) {
+            $description = $payload['description'];
+            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($description) ? $description : null;
+        }
+        if (array_key_exists('color', $payload)) {
+            $color = $payload['color'];
+            $mutations['{http://apple.com/ns/ical/}calendar-color'] = is_string($color) && trim($color) !== '' ? trim($color) : null;
+        }
+
+        return $mutations;
     }
 
     /**

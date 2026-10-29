@@ -166,22 +166,7 @@ final class CalendarRepository
             'Sharees can only change their own calendar name and color.',
         );
 
-        $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
-            }
-            $mutations['{DAV:}displayname'] = $name;
-        }
-        if (array_key_exists('description', $payload)) {
-            $description = $payload['description'];
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($description) ? $description : null;
-        }
-        if (array_key_exists('color', $payload)) {
-            $color = $payload['color'];
-            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
-        }
+        $mutations = $this->collectionAccess->propertyMutations($payload);
         if (array_key_exists('timeZone', $payload)) {
             $timeZone = $payload['timeZone'];
             $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-timezone'] = is_string($timeZone) && trim($timeZone) !== '' ? trim($timeZone) : null;
@@ -366,19 +351,10 @@ final class CalendarRepository
             return $this->ensureGroupCalendarInstance($groupSlug);
         }
 
-        $owned = $this->findCalendarInstance($this->principalUri($username), $calendarId);
-        if ($owned !== null) {
-            return $this->collectionAccess->unlessDismissed($username, $owned);
-        }
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findCalendarInstance(AdminConstants::GROUP_PREFIX.$slug, $calendarId);
-            if ($instance !== null) {
-                return $this->collectionAccess->unlessDismissed($username, $instance);
-            }
-        }
-
-        return null;
+        return $this->collectionAccess->findReachable(
+            $username,
+            fn (string $principalUri): ?CalendarInstance => $this->findCalendarInstance($principalUri, $calendarId),
+        );
     }
 
     public function apiIdForInstance(CalendarInstance $instance): string

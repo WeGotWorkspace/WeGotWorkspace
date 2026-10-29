@@ -159,21 +159,7 @@ final class NotebookRepository
             'Sharees can only change their own notebook name and color.',
         );
 
-        $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
-            }
-            $mutations['{DAV:}displayname'] = $name;
-        }
-        if (array_key_exists('description', $payload)) {
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($payload['description']) ? $payload['description'] : null;
-        }
-        if (array_key_exists('color', $payload)) {
-            $color = $payload['color'];
-            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
-        }
+        $mutations = $this->collectionAccess->propertyMutations($payload);
 
         if ($mutations !== []) {
             $propPatch = new PropPatch($mutations);
@@ -286,15 +272,6 @@ final class NotebookRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    private function findOwnedNotebook(string $username, string $notebookId): ?CalendarInstance
-    {
-        if (CalendarCollectionUris::parseGroupNotebookApiId($notebookId) !== null) {
-            return null;
-        }
-
-        return $this->findNotebookInstance($this->principalUri($username), $notebookId);
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -326,19 +303,10 @@ final class NotebookRepository
             return $this->ensureGroupNotebookInstance($groupSlug);
         }
 
-        $owned = $this->findOwnedNotebook($username, $notebookId);
-        if ($owned !== null) {
-            return $this->collectionAccess->unlessDismissed($username, $owned);
-        }
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findNotebookInstance(AdminConstants::GROUP_PREFIX.$slug, $notebookId);
-            if ($instance !== null) {
-                return $this->collectionAccess->unlessDismissed($username, $instance);
-            }
-        }
-
-        return null;
+        return $this->collectionAccess->findReachable(
+            $username,
+            fn (string $principalUri): ?CalendarInstance => $this->findNotebookInstance($principalUri, $notebookId),
+        );
     }
 
     public function findAccessibleInstanceForCalendar(string $username, int $calendarId): ?CalendarInstance

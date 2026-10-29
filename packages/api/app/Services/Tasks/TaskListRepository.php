@@ -156,21 +156,7 @@ final class TaskListRepository
             'Sharees can only change their own list name and color.',
         );
 
-        $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
-            }
-            $mutations['{DAV:}displayname'] = $name;
-        }
-        if (array_key_exists('description', $payload)) {
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($payload['description']) ? $payload['description'] : null;
-        }
-        if (array_key_exists('color', $payload)) {
-            $color = $payload['color'];
-            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
-        }
+        $mutations = $this->collectionAccess->propertyMutations($payload);
 
         if ($mutations !== []) {
             $propPatch = new PropPatch($mutations);
@@ -268,15 +254,6 @@ final class TaskListRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    private function findOwnedTaskList(string $username, string $taskListId): ?CalendarInstance
-    {
-        if (CalendarCollectionUris::parseGroupTaskListApiId($taskListId) !== null) {
-            return null;
-        }
-
-        return $this->findTaskListInstance($this->principalUri($username), $taskListId);
-    }
-
     public function findAccessibleTaskList(string $username, string $taskListId): ?CalendarInstance
     {
         $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId);
@@ -288,19 +265,10 @@ final class TaskListRepository
             return $this->ensureGroupTaskListInstance($groupSlug);
         }
 
-        $owned = $this->findOwnedTaskList($username, $taskListId);
-        if ($owned !== null) {
-            return $this->collectionAccess->unlessDismissed($username, $owned);
-        }
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findTaskListInstance(AdminConstants::GROUP_PREFIX.$slug, $taskListId);
-            if ($instance !== null) {
-                return $this->collectionAccess->unlessDismissed($username, $instance);
-            }
-        }
-
-        return null;
+        return $this->collectionAccess->findReachable(
+            $username,
+            fn (string $principalUri): ?CalendarInstance => $this->findTaskListInstance($principalUri, $taskListId),
+        );
     }
 
     public function apiIdForInstance(CalendarInstance $instance): string
