@@ -80,6 +80,8 @@ export class JmapPushHub {
   #active = false;
   #stopRunning: (() => void) | null = null;
   #eventSource: EventSourceLike | null = null;
+  /** The stream's status while this tab leads, re-sent to tabs that join later. */
+  #leaderStatus = false;
 
   constructor(options: JmapPushHubOptions) {
     this.#options = options;
@@ -162,6 +164,7 @@ export class JmapPushHub {
   #lead(locks: WebLocks): () => void {
     const { tabId } = this.#options;
     this.#publish({ v: 1, kind: "roll-call" }, { otherTabsOnly: true });
+    this.#leaderStatus = false;
     this.#publish({ v: 1, kind: "status", connected: false });
 
     const eventSource = this.#options.createEventSource({
@@ -174,7 +177,10 @@ export class JmapPushHub {
         const visible = await heldLockSuffixes(locks, VISIBLE_LOCK).catch(() => null);
         return visible !== null && visible.size === 0;
       },
-      onStatus: (connected) => this.#publish({ v: 1, kind: "status", connected }),
+      onStatus: (connected) => {
+        this.#leaderStatus = connected;
+        this.#publish({ v: 1, kind: "status", connected });
+      },
     });
     this.#eventSource = eventSource;
 
@@ -208,6 +214,13 @@ export class JmapPushHub {
         break;
       case "tab":
         this.#confirmations.setTab(message.tabId, message);
+        // A tab that just joined has not heard the status the leader sent before it.
+        if (this.#eventSource && message.tabId !== this.#options.tabId) {
+          this.#publish(
+            { v: 1, kind: "status", connected: this.#leaderStatus },
+            { otherTabsOnly: true },
+          );
+        }
         break;
       case "bye":
         this.#confirmations.removeTab(message.tabId);
