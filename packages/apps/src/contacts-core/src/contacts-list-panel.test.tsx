@@ -65,12 +65,16 @@ function ListHarness({
   listRefreshing = false,
   onRefreshList,
   slot = "both",
+  downloadTotal,
+  selectedIds = [],
 }: {
   visibleCards: ContactCard[];
   listLoading?: boolean;
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   slot?: "list" | "header" | "both";
+  downloadTotal?: number;
+  selectedIds?: string[];
 }) {
   // ContactsListPanel uses hooks; call it only while a React component is rendering.
   const panel = ContactsListPanel({
@@ -80,8 +84,8 @@ function ListHarness({
     viewLabel: "All contacts",
     view: "all",
     selectedGroupId: null,
-    selectedIds: [],
-    selectionMode: false,
+    selectedIds,
+    selectionMode: selectedIds.length > 1,
     listLoading,
     listRefreshing,
     visibleCards,
@@ -98,6 +102,7 @@ function ListHarness({
     onSwipeRemoveFromGroup: vi.fn(),
     selectionBar: null,
     onRefreshList,
+    downloadTotal,
   });
   if (slot === "list") return <>{panel.listContent}</>;
   if (slot === "header") return <>{panel.header}</>;
@@ -187,6 +192,45 @@ describe("ContactsListPanel refresh vs initial load", () => {
     );
     expect(screen.getByText(defaultContactsLabels.listLoading)).toBeTruthy();
     expect(screen.queryByText("Jane Doe")).toBeNull();
+  });
+});
+
+describe("ContactsListPanel header count", () => {
+  function headerCount(): string | null | undefined {
+    return document.querySelector(".view-header__title-count")?.textContent;
+  }
+
+  it("counts the cards still downloading, not only the rows loaded so far", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} downloadTotal={1000} slot="header" />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(1000)");
+    expect(screen.getByLabelText(defaultContactsLabels.listContacts(1000))).toBeTruthy();
+  });
+
+  it("shows the visible rows once nothing is downloading", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} slot="header" />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(2)");
+  });
+
+  it("keeps the selected count while cards are still downloading", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness
+          visibleCards={[personCard, orgCard]}
+          selectedIds={[personCard.id, orgCard.id]}
+          downloadTotal={1000}
+          slot="header"
+        />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(2)");
   });
 });
 

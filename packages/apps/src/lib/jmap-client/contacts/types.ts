@@ -34,11 +34,16 @@ export type JmapContactCard = {
   [key: string]: unknown;
 };
 
+/** RFC 9553 card kinds; the server's `kind` filter accepts these. */
+export type JmapContactCardKind =
+  "individual" | "group" | "org" | "location" | "device" | "application";
+
 /**
- * ContactCard/query FilterCondition — only the filters the envelope already
- * accepts (`inAddressBook`, `uid`). Do not add `kind` or other RFC keys here.
+ * ContactCard/query FilterCondition — only the filters the envelope accepts
+ * (`inAddressBook`, `uid`, `kind`). Other RFC 9610 keys get `unsupportedFilter`.
  */
 export type JmapContactCardFilterCondition = {
   inAddressBook?: JmapId;
   uid?: string;
+  kind?: JmapContactCardKind;
 };
