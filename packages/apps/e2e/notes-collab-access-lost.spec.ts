@@ -55,7 +55,9 @@ test("a member removed from the group loses the open live note", async ({ browse
 
     const refused = member.waitForResponse(
       (response) =>
-        response.status() === 403 && response.url().includes("/api/v1/") && !!response.request(),
+        response.status() === 403 &&
+        response.url().includes("/api/v1/rooms/") &&
+        new URL(response.url()).pathname.endsWith("/events"),
       { timeout: 60_000 },
     );
     const removed = await api(OWNER, "DELETE", `/admin/groups/${TEAM_SLUG}/members/${TEAMMATE}`);
