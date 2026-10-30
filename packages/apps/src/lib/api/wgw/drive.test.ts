@@ -498,6 +498,20 @@ describe("createWgwDriveOperations FileNode cutover", () => {
     );
   });
 
+  it("resolves a starred share root whose parent the caller cannot list", async () => {
+    const ops = createWgwDriveOperations("/users/bob");
+    const entries = await ops.listEntriesByPaths([
+      "/users/alice/workspace",
+      "/users/alice/workspace/plan.md",
+      "/users/carol/secret.md",
+    ]);
+
+    expect(entries.map((entry) => [entry.path, entry.nodeId])).toEqual([
+      ["/users/alice/workspace", SHARE_ROOT_ID],
+      ["/users/alice/workspace/plan.md", SHARE_CHILD_ID],
+    ]);
+  });
+
   it("rejects an unknown foreign path", async () => {
     const ops = createWgwDriveOperations("/users/bob");
     await expect(ops.listDirectory("/users/carol/secret")).rejects.toMatchObject({

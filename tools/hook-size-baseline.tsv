@@ -6,8 +6,8 @@ packages/apps/src/drive-core/src/use-drive-access-controller.ts#useDriveAccessCo
 packages/apps/src/drive-core/src/use-drive-batch-actions.tsx#useDriveBatchActions	339	0	grandfathered
 packages/apps/src/drive-core/src/use-drive-controller.tsx#useDriveController	205	3	grandfathered
 packages/apps/src/drive-core/src/use-drive-grid-previews.ts#useDriveGridPreviews	319	6	grandfathered
-packages/apps/src/drive-core/src/use-drive-list.tsx#useDriveList	216	1	grandfathered
-packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	553	2	grandfathered
+packages/apps/src/drive-core/src/use-drive-list.tsx#useDriveList	212	1	grandfathered
+packages/apps/src/drive-core/src/use-drive-mutations.tsx#useDriveMutations	549	2	grandfathered
 packages/apps/src/drive-core/src/use-drive-shell.tsx#useDriveShell	377	8	grandfathered
 packages/apps/src/installer-core/src/use-installer-controller.ts#useInstallerController	216	1	grandfathered
 packages/apps/src/meet-core/src/use-meet-call-session.ts#useMeetCallSession	326	5	grandfathered
@@ -16,9 +16,9 @@ packages/apps/src/meet-core/src/use-meet-chat-call.ts#useMeetChatCall	219	0	gran
 packages/apps/src/meet-core/src/use-meet-local-media.ts#useMeetLocalMedia	386	2	grandfathered
 packages/apps/src/meet-core/src/use-meet-mutations.ts#useMeetMutations	385	3	grandfathered
 packages/apps/src/notes-core/src/use-notes-api.ts#useNotesAPI	250	3	grandfathered
-packages/apps/src/notes-core/src/use-notes-batch-actions.tsx#useNotesBatchActions	212	0	grandfathered
+packages/apps/src/notes-core/src/use-notes-batch-actions.tsx#useNotesBatchActions	210	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-list.tsx#useNotesList	231	5	grandfathered
-packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	745	2	grandfathered
+packages/apps/src/notes-core/src/use-notes-mutations.tsx#useNotesMutations	739	2	grandfathered
 packages/apps/src/notes-core/src/use-notes-notebook-mutations.tsx#useNotesNotebookMutations	231	0	grandfathered
 packages/apps/src/notes-core/src/use-notes-shell.tsx#useNotesShell	185	6	grandfathered
 packages/apps/src/share-ui/use-share-mutations.ts#useShareMutations	217	0	grandfathered

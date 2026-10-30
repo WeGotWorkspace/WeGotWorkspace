@@ -119,11 +119,11 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     lastTouchTapRef.current = null;
   }, [viewResetKey]);
 
-  const active = activeId
-    ? ((liveSearchResults?.find((f) => f.id === activeId) ??
-        files.find((f) => f.id === activeId) ??
-        null) as DriveFile | null)
-    : null;
+  // Shared with me and Starred list items that are not in the current folder.
+  const fileById = (id: string) =>
+    [...(liveSearchResults ?? []), ...files, ...visibleItems].find((f) => f.id === id) ?? null;
+
+  const active = activeId ? fileById(activeId) : null;
 
   const detailPreviewFile = active && (detailOpen || viewMode === "list") ? active : null;
 
@@ -198,10 +198,6 @@ export function useDriveList({ shell, onOpenDocsFile }: UseDriveListArgs) {
     },
     [isTouch, listHandleSelect, openFile, selectionMode, visibleItems],
   );
-
-  const fileById = (id: string) =>
-    (liveSearchResults?.find((file) => file.id === id) ?? files.find((file) => file.id === id)) ||
-    null;
 
   const dropZoneProps = sidebarDropZoneProps;
 

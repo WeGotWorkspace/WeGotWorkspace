@@ -136,6 +136,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     reloadStarredFromServer,
     view,
     viewType: view.type,
+    fileById,
   });
 
   const toggleStar = (id: string) => {
@@ -144,28 +145,23 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     const beforeStarred = !!starred[id];
     const nextValue = !beforeStarred;
     setStarred((s) => ({ ...s, [id]: nextValue }));
+    const icon = nextValue ? (
+      <Star className="size-4" fill="currentColor" />
+    ) : (
+      <StarOff className="size-4" />
+    );
     if (!operations) {
-      show(nextValue ? "Starred" : "Unstarred", {
-        icon: nextValue ? (
-          <Star className="size-4" fill="currentColor" />
-        ) : (
-          <StarOff className="size-4" />
-        ),
-      });
+      show(nextValue ? "Starred" : "Unstarred", { icon });
       return;
     }
     const apiPath = resolveDriveFileApiPath(target, currentUsername, groupRootNames);
     queueMutation({
       key: `drive:star:${id}`,
       toastMessage: nextValue ? "Starred" : "Unstarred",
-      icon: nextValue ? (
-        <Star className="size-4" fill="currentColor" />
-      ) : (
-        <StarOff className="size-4" />
-      ),
+      icon,
       execute: async (signal) => {
         await operations.setStar({ path: apiPath, starred: nextValue }, { signal });
-        if (view.type === "starred") reloadStarredFromServer();
+        reloadStarredFromServer(); // Starred spans folders: refresh from any view.
       },
       undo: () => {
         setStarred((s) => ({ ...s, [id]: beforeStarred }));
