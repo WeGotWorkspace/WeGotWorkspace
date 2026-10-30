@@ -316,6 +316,57 @@ describe("JmapContactsClient contract batches", () => {
     expect(got.books.state).toBe("books-1");
   });
 
+  it("hands each page and the ids still to fetch to awaited callbacks, query first", async () => {
+    const ids = ["card-1", "card-2", "card-3"];
+    const events: string[] = [];
+    const { contacts } = await makeClient(
+      (calls) =>
+        calls.map(([name, args, id]) => {
+          if (name === "ContactCard/query") {
+            return methodResponse(name, { accountId: ACCOUNT, ids }, id);
+          }
+          const pageIds = (args.ids as string[] | null) ?? [];
+          if (name === "ContactCard/get" && pageIds.length > 0) events.push(`get ${pageIds}`);
+          return methodResponse(
+            name,
+            {
+              accountId: ACCOUNT,
+              state: "1:",
+              list: pageIds.map((cardId) => ({ id: cardId })),
+              notFound: [],
+            },
+            id,
+          );
+        }),
+      { maxObjectsInGet: 2, maxCallsInRequest: 8 },
+    );
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
+
+    await contacts.getAddressBooksAndCards(ACCOUNT, {
+      onQuery: async ({ queryIds }) => {
+        await settle();
+        events.push(`query ${queryIds}`);
+      },
+      onPage: async ({ page, remainingIds }) => {
+        await settle();
+        events.push(`saved ${page.list.map((card) => card.id)} left ${remainingIds}`);
+      },
+    });
+    await contacts.getContactCardPages(ACCOUNT, ["card-9"], ({ page, remainingIds }) => {
+      events.push(`resume ${page.list.map((card) => card.id)} left ${remainingIds.length}`);
+    });
+
+    expect(events).toEqual([
+      "query card-1,card-2,card-3",
+      "get card-1,card-2",
+      "saved card-1,card-2 left card-3",
+      "get card-3",
+      "saved card-3 left ",
+      "get card-9",
+      "resume card-9 left 0",
+    ]);
+  });
+
   it("query+get uses the #ids ResultReference", async () => {
     const { contacts, recorded } = await makeClient((calls) => {
       const queryId = calls[0]?.[2] ?? "c1";
