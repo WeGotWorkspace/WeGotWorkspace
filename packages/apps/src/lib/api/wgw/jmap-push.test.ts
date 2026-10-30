@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const wgwFetch = vi.fn();
 const guest = vi.fn(() => false);
+const apiBase = vi.fn(() => "/api/v1");
 
 vi.mock("@/lib/api/wgw/http", () => ({
-  wgwApiBaseUrl: () => "/api/v1",
+  wgwApiBaseUrl: () => apiBase(),
   wgwFetch: (path: string, init: RequestInit) => wgwFetch(path, init),
   wgwIsGuestSession: () => guest(),
   wgwLiveApiEnabled: () => false,
@@ -22,6 +23,16 @@ describe("eventSourcePath", () => {
       eventSourcePath(
         "https://suite.example/api/v1/jmap/events/{types}/{closeafter}/{ping}",
         "https://suite.example",
+      ),
+    ).toBe("/jmap/events/*/state/0");
+  });
+
+  it("also strips an absolute API base, which wgwFetch adds again", () => {
+    apiBase.mockReturnValueOnce("https://suite.example/api/v1");
+    expect(
+      eventSourcePath(
+        "https://suite.example/api/v1/jmap/events/{types}/{closeafter}/{ping}",
+        "https://app.example",
       ),
     ).toBe("/jmap/events/*/state/0");
   });
