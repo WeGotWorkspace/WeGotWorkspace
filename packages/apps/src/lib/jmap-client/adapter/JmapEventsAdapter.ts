@@ -1,10 +1,10 @@
 import { type CalendarAccounts, type CalendarsMap } from "@/lib/calendar-engine";
 import { type DateRange, JmapCalendarsClient } from "../calendars/JmapCalendarsClient.js";
 import type { JmapCalendar, JmapCalendarEvent } from "../calendars/types.js";
-import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import type { JmapId } from "../core/types.js";
 import { jmapCalendarToInternal } from "../mapping/calendar.js";
+import { JmapInboundAdapter } from "./JmapInboundAdapter.js";
 
 const CALENDAR_TYPE = "Calendar";
 const CALENDAR_EVENT_TYPE = "CalendarEvent";
@@ -30,7 +30,7 @@ export type JmapEventsAdapterOptions = {
  * EventsAPI working set — this class does not apply optimistic writes or
  * expose an event map for rendering.
  */
-export class JmapEventsAdapter {
+export class JmapEventsAdapter extends JmapInboundAdapter {
   #calendars: JmapCalendarsClient;
   #options: JmapEventsAdapterOptions;
   #accountId: JmapId | null = null;
@@ -40,13 +40,22 @@ export class JmapEventsAdapter {
   #visibleCalendarIds: string[] | undefined;
   #selectedCalendarId: string | undefined;
 
-  #pollTimer: ReturnType<typeof setInterval> | undefined;
-  #pollInFlight = false;
   #lastRange: DateRange | undefined;
 
   constructor(options: JmapEventsAdapterOptions) {
+    super();
     this.#options = options;
     this.#calendars = new JmapCalendarsClient(options.client);
+  }
+
+  protected readonly pushTypes = [CALENDAR_TYPE, CALENDAR_EVENT_TYPE];
+
+  protected get jmapClient(): JmapClient {
+    return this.#options.client;
+  }
+
+  protected reportSyncError(error: unknown): void {
+    this.#options.onSyncError?.(error);
   }
 
   get accountId(): JmapId {
@@ -88,69 +97,43 @@ export class JmapEventsAdapter {
     this.#notify();
   }
 
-  /** Pulls remote changes since the last known states and forwards them inbound. */
-  async sync(): Promise<void> {
+  protected async pullChanges(): Promise<void> {
     const client = this.#options.client;
-    try {
-      const calendarState = client.getState(this.accountId, CALENDAR_TYPE);
-      if (calendarState) {
-        const changes = await this.#calendars.calendarChanges(this.accountId, calendarState);
-        const changedIds = [...changes.created, ...changes.updated];
-        if (changedIds.length) {
-          const fetched = await this.#calendars.getCalendars(this.accountId, changedIds);
-          for (const calendar of fetched.list) {
-            this.#calendarsMap.set(
-              calendar.id,
-              jmapCalendarToInternal(calendar, { accountId: this.accountId }),
-            );
-            this.#options.onRemoteCalendar?.(calendar);
-          }
-        }
-        for (const id of changes.destroyed) {
-          this.#calendarsMap.delete(id);
-          this.#options.onRemoteCalendarDestroyed?.(id);
+    const calendarState = client.getState(this.accountId, CALENDAR_TYPE);
+    if (calendarState) {
+      const changes = await this.#calendars.calendarChanges(this.accountId, calendarState);
+      const changedIds = [...changes.created, ...changes.updated];
+      if (changedIds.length) {
+        const fetched = await this.#calendars.getCalendars(this.accountId, changedIds);
+        for (const calendar of fetched.list) {
+          this.#calendarsMap.set(
+            calendar.id,
+            jmapCalendarToInternal(calendar, { accountId: this.accountId }),
+          );
+          this.#options.onRemoteCalendar?.(calendar);
         }
       }
-
-      const eventState = client.getState(this.accountId, CALENDAR_EVENT_TYPE);
-      if (eventState) {
-        const changes = await this.#calendars.calendarEventChanges(this.accountId, eventState);
-        const changedIds = [...changes.created, ...changes.updated];
-        if (changedIds.length) {
-          const fetched = await this.#calendars.getCalendarEvents(this.accountId, changedIds);
-          for (const jmapEvent of fetched.list) {
-            this.#options.onRemoteEvent?.(jmapEvent);
-          }
-        }
-        for (const id of changes.destroyed) {
-          this.#options.onRemoteEventDestroyed?.(id);
-        }
+      for (const id of changes.destroyed) {
+        this.#calendarsMap.delete(id);
+        this.#options.onRemoteCalendarDestroyed?.(id);
       }
-      this.#notify();
-    } catch (error) {
-      if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
-        await this.#refetchAll();
-        return;
-      }
-      this.#options.onSyncError?.(error);
     }
-  }
 
-  startPolling(intervalMs: number): void {
-    this.stopPolling();
-    this.#pollTimer = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      if (this.#pollInFlight) return;
-      this.#pollInFlight = true;
-      void this.sync().finally(() => {
-        this.#pollInFlight = false;
-      });
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.#pollTimer !== undefined) clearInterval(this.#pollTimer);
-    this.#pollTimer = undefined;
+    const eventState = client.getState(this.accountId, CALENDAR_EVENT_TYPE);
+    if (eventState) {
+      const changes = await this.#calendars.calendarEventChanges(this.accountId, eventState);
+      const changedIds = [...changes.created, ...changes.updated];
+      if (changedIds.length) {
+        const fetched = await this.#calendars.getCalendarEvents(this.accountId, changedIds);
+        for (const jmapEvent of fetched.list) {
+          this.#options.onRemoteEvent?.(jmapEvent);
+        }
+      }
+      for (const id of changes.destroyed) {
+        this.#options.onRemoteEventDestroyed?.(id);
+      }
+    }
+    this.#notify();
   }
 
   // ---- calendar list (inbound bookkeeping; not the grid paint source) ----
@@ -198,7 +181,7 @@ export class JmapEventsAdapter {
     this.#options.onChange?.();
   }
 
-  async #refetchAll(): Promise<void> {
+  protected async refetchAll(): Promise<void> {
     await this.refreshCalendars();
     if (this.#lastRange) await this.loadRange(this.#lastRange);
   }
