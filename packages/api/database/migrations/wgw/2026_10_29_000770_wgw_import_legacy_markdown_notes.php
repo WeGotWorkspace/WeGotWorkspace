@@ -7,6 +7,7 @@ use App\Services\Notes\LegacyNoteImportLedger;
 use App\Services\Notes\NotesFileMigrator;
 use App\Services\Update\UpdateStateStore;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -28,6 +29,13 @@ return new class extends WgwMigration
             });
         }
         if (! $this->wgwHasTable('users') || ! $this->wgwHasTable('calendarobjects')) {
+            return;
+        }
+        // A fresh install runs this before its first user exists, while the
+        // disks still point at the default data directory inside the document
+        // root. There is nothing to import then, and touching the files disk
+        // would create that directory (#1803).
+        if (! DB::connection('wgw')->table('users')->exists()) {
             return;
         }
 

@@ -2320,6 +2320,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Unknown directory, or a path the caller may not list. A `..` segment is not found too. The answer is the same for all of these. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -2382,7 +2391,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description No read access to the path */
+                /** @description A share-link guest: live collaboration is for signed-in users */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2391,7 +2400,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Unknown path */
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2430,7 +2439,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description No write access to the path */
+                /** @description The caller can read the document but may not edit it, or is a share-link guest */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2439,7 +2448,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Unknown path */
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2521,6 +2530,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -2654,6 +2672,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         /**
@@ -2677,6 +2704,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -4098,6 +4134,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description `share_unavailable`: no public link has this token. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `share_unavailable`: the link was revoked by its owner, or it is past `expiresAt`. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Too many requests */
                 429: {
                     headers: {
@@ -4287,6 +4341,24 @@ export interface paths {
                         "application/json": components["schemas"]["DriveShareDataResponse"];
                     };
                 };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -4310,6 +4382,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDeletedResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -4339,6 +4429,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDataResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Share conflict */
@@ -4388,6 +4496,24 @@ export interface paths {
                         "application/json": components["schemas"]["DriveShareInviteDataResponse"];
                     };
                 };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Guest already has access on this share */
                 409: {
                     headers: {
@@ -4435,6 +4561,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDeletedResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share or invite, or a share the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -6776,6 +6920,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
@@ -6816,6 +6961,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
@@ -6849,6 +6995,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
                 409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };

@@ -53,7 +53,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         $memberToken = $this->carolBearerToken();
 
         $children = $this->withBearer($memberToken)->getJson('/api/v1/files/children?path='.self::SHARE_ROOT);
-        $mayRead ? $children->assertOk() : $children->assertStatus(400);
+        $mayRead ? $children->assertOk() : $children->assertNotFound();
 
         $this->withBearer($memberToken)
             ->post('/api/v1/files/content?path='.self::SHARE_ROOT, [
@@ -244,7 +244,7 @@ final class DriveShareAccessMatrixTest extends WgwDatabaseTestCase
         ])->assertOk()->json('access_token');
 
         $this->withBearer($guestToken)->getJson('/api/v1/files/children?path=/users/bob')
-            ->assertStatus(400);
+            ->assertStatus(404);
 
         $download = $this->withBearer($guestToken)->get('/api/v1/files/content?path='.urlencode($vcfPath));
         $download->assertOk();
