@@ -88,6 +88,8 @@ export class EventSourceTransport implements PushTransport {
   #wakeQueued = false;
   #wait: Wait | null = null;
   #resolveWait: (() => void) | null = null;
+  /** End of a `429` wait; going offline and back does not shorten it. */
+  #rateLimitedUntil = 0;
 
   constructor(options: EventSourceTransportOptions) {
     this.#options = options;
@@ -138,6 +140,11 @@ export class EventSourceTransport implements PushTransport {
         await this.#sleep(Number.POSITIVE_INFINITY, "offline");
         continue;
       }
+      const limited = this.#rateLimitedUntil - Date.now();
+      if (limited > 0) {
+        await this.#sleep(limited, "rate-limit");
+        continue;
+      }
       const outcome = await this.#once(sink);
       if (!this.#running) return;
       await this.#sleep(...(await this.#delayAfter(outcome)));
@@ -173,14 +180,11 @@ export class EventSourceTransport implements PushTransport {
   }
 
   async #read(response: Response, sink: PushSink): Promise<Outcome> {
-    if (response.status === 429) {
-      return { kind: "rate-limited", waitMs: retryAfterMs(response.headers.get("Retry-After")) };
-    }
-    if (response.status === 401) return { kind: "unauthorized" };
-    if (response.status >= 500 && response.status !== 501) return { kind: "failed" };
-    const type = response.headers.get("Content-Type") ?? "";
-    if (!response.ok || !type.toLowerCase().startsWith("text/event-stream")) {
-      return { kind: "unavailable" };
+    const outcome = unreadOutcome(response);
+    if (outcome) {
+      // An unread body keeps the connection checked out; free it for the next request.
+      await response.body?.cancel().catch(() => undefined);
+      return outcome;
     }
     await readSseResponse(response, {
       onRetry: (ms) => {
@@ -222,7 +226,9 @@ export class EventSourceTransport implements PushTransport {
       case "rate-limited": {
         const backoff = this.#fail();
         this.#report(false);
-        return [Math.max(outcome.waitMs ?? 0, backoff), "rate-limit"];
+        const delay = Math.max(outcome.waitMs ?? 0, backoff);
+        this.#rateLimitedUntil = Date.now() + delay;
+        return [delay, "rate-limit"];
       }
       case "unauthorized":
         await this.#options.refreshAuth?.().catch(() => undefined);
@@ -273,6 +279,20 @@ export class EventSourceTransport implements PushTransport {
     if (!this.#wait) return;
     if (!this.#running || !online || this.#wait.kind !== "rate-limit") this.#endWait();
   }
+}
+
+/** The outcome of a response that is not an event stream to read, or null when it is one. */
+function unreadOutcome(response: Response): Outcome | null {
+  if (response.status === 429) {
+    return { kind: "rate-limited", waitMs: retryAfterMs(response.headers.get("Retry-After")) };
+  }
+  if (response.status === 401) return { kind: "unauthorized" };
+  if (response.status >= 500 && response.status !== 501) return { kind: "failed" };
+  const type = response.headers.get("Content-Type") ?? "";
+  if (!response.ok || !type.toLowerCase().startsWith("text/event-stream")) {
+    return { kind: "unavailable" };
+  }
+  return null;
 }
 
 /** `Retry-After` in seconds or as an HTTP date. */

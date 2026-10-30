@@ -29,7 +29,8 @@ export function eventSourcePath(template: string, origin: string): string {
     .replace("{ping}", "0");
   const url = new URL(expanded, origin);
   const path = url.pathname + url.search;
-  const base = wgwApiBaseUrl();
+  // The base is a path (`/api/v1`) or an absolute URL; compare its path part.
+  const base = new URL(wgwApiBaseUrl(), origin).pathname.replace(/\/$/, "");
   return path.startsWith(`${base}/`) ? path.slice(base.length) : path;
 }
 

@@ -12,6 +12,8 @@ import { syncIfStale } from "./sync-if-stale.js";
 export abstract class JmapInboundAdapter {
   #pollTimer: ReturnType<typeof setInterval> | undefined;
   #pollInFlight = false;
+  /** The round in flight; the next one starts after it stored its state. */
+  #tail: Promise<unknown> = Promise.resolve();
 
   /** The JMAP types this adapter syncs. */
   protected abstract readonly pushTypes: readonly string[];
@@ -61,8 +63,18 @@ export abstract class JmapInboundAdapter {
     this.#pollTimer = undefined;
   }
 
-  /** One `/changes` round; true when it succeeded. */
-  async #syncOnce(): Promise<boolean> {
+  /**
+   * One `/changes` round; true when it succeeded. Rounds run one after the
+   * other: each stores its cursor, so a round that started first and ended
+   * last would rewind it.
+   */
+  #syncOnce(): Promise<boolean> {
+    const round = this.#tail.then(() => this.#syncRound());
+    this.#tail = round.catch(() => undefined);
+    return round;
+  }
+
+  async #syncRound(): Promise<boolean> {
     try {
       await this.pullChanges();
       return true;
