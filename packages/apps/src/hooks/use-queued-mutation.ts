@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
+import { onPageExit } from "@/lib/page-exit";
 
 /** Arguments for a single deferred API write (undo + `AbortSignal` while pending). */
 export type DeferredApiWriteArgs = {
@@ -18,6 +19,8 @@ export type DeferredApiWriteArgs = {
 type PendingMutation = {
   key: string;
   timer: ReturnType<typeof setTimeout> | null;
+  /** Unsubscribes the page-exit flush while the write waits for its delay. */
+  releasePageExit: (() => void) | null;
   toastId: string | number;
   controller: AbortController | null;
   started: boolean;
@@ -31,10 +34,23 @@ type UseQueuedMutationOptions = {
   onMutationError: () => void;
 };
 
+/** Stops a write that has not started yet from starting on its timer or on page exit. */
+function cancelPendingStart(entry: PendingMutation): void {
+  if (entry.timer) clearTimeout(entry.timer);
+  entry.timer = null;
+  entry.releasePageExit?.();
+  entry.releasePageExit = null;
+}
+
 /**
  * Queues **deferred** API writes: shows a Callout toast with **Undo**, waits `delayMs`,
  * then runs `execute(AbortSignal)`. Undo clears the timer, aborts the in-flight request
  * if already started, rolls back via `undo`, and shows `undoToastMessage`.
+ *
+ * A write the UI shows as done is always sent (#1794): when the page is reloaded, closed
+ * or left, pending writes start right away (with `keepalive`, see `wgwFetch`). Pending
+ * writes and their toasts outlive the hook, so leaving the list inside the app neither
+ * drops the write nor takes away Undo.
  *
  * Pair with {@link runQueuedBatchAction} for batch helpers, or call `queueMutation` directly.
  */
@@ -58,7 +74,7 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
   const undoPending = useCallback(
     (entry: PendingMutation, { showToast }: { showToast: boolean }) => {
       if (!pendingByKeyRef.current.has(entry.key)) return false;
-      if (entry.timer) clearTimeout(entry.timer);
+      cancelPendingStart(entry);
       entry.cancelledByUndo = true;
       if (entry.controller) entry.controller.abort();
       dismiss(entry.toastId);
@@ -83,7 +99,7 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
     }: DeferredApiWriteArgs) => {
       const existing = pendingByKeyRef.current.get(key);
       if (existing) {
-        if (existing.timer) clearTimeout(existing.timer);
+        cancelPendingStart(existing);
         dismiss(existing.toastId);
         removePending(key);
       }
@@ -91,6 +107,7 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
       const entry: PendingMutation = {
         key,
         timer: null,
+        releasePageExit: null,
         toastId: "",
         controller: null,
         started: false,
@@ -102,8 +119,9 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
       const undoWindowMs = delayMs + 3500;
 
       const startExecute = () => {
+        if (entry.started || entry.cancelledByUndo) return;
+        cancelPendingStart(entry);
         entry.started = true;
-        entry.timer = null;
         entry.controller = new AbortController();
         void execute(entry.controller!.signal)
           .catch((error: unknown) => {
@@ -129,6 +147,7 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
         startExecute();
       } else {
         entry.timer = setTimeout(startExecute, delayMs);
+        entry.releasePageExit = onPageExit(startExecute);
       }
 
       entry.toastId =
@@ -156,19 +175,6 @@ export function useQueuedMutation({ delayMs = 2500, onMutationError }: UseQueued
     if (!latest) return false;
     return undoPending(latest, { showToast: true });
   }, [undoPending]);
-
-  useEffect(
-    () => () => {
-      for (const pending of pendingByKeyRef.current.values()) {
-        if (pending.timer) clearTimeout(pending.timer);
-        if (pending.controller) pending.controller.abort();
-        dismiss(pending.toastId);
-      }
-      pendingByKeyRef.current.clear();
-      orderRef.current = [];
-    },
-    [dismiss],
-  );
 
   return { queueMutation, undoLatest };
 }
