@@ -69,6 +69,24 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
         $this->assertTrue($disk->fileExists('users/bob/.notes/Drafts/.welcome.md.yjs'), 'Unsaved collaborative edits stay on disk.');
     }
 
+    public function test_imported_notes_are_found_in_search_without_a_reindex(): void
+    {
+        $this->putLegacyNotes();
+
+        $this->runMigration();
+
+        $titles = collect($this->withBearer($this->issueBearerTokenFor('bob'))
+            ->getJson('/api/v1/search/results?q=Welcome')
+            ->assertOk()
+            ->json('data.results'))->pluck('title');
+        $this->assertContains('Welcome', $titles);
+        $this->assertSame(0, DB::connection('wgw')->table('search_documents')
+            ->where('source_type', 'caldav')
+            ->where('title', 'Welcome')
+            ->whereNull('collection_id')
+            ->count(), 'Imported notes are linked to their notebook.');
+    }
+
     public function test_running_the_import_again_does_not_duplicate_notes(): void
     {
         $this->putLegacyNotes();
