@@ -33,6 +33,7 @@ Move the inbound half of offline sync (pull what changed on the server and fold 
    - `bases`: the `ifInState` of each queued write.
    - `fields`: which fields the queued writes own, or "all".
    - `deleting`: a delete is queued.
+   - `queued`: the id has any outbox row, including a `stateMismatch` one (what `listOutboxNoteIds` returns today). It differs from `blocksToken`: a remote destroy of a `stateMismatch` row is still skipped, but does not hold the token.
    - `blocksToken`: the id has an outbox row whose `lastError` is not `stateMismatch`. That includes a fresh row and a permanent 403/404, exactly as `listNoteIdsBlockingSyncToken` does today. It is not `isRetryableOutboxRow`, which is false for a row with no retries yet.
    - The outbox row, not only the cache flag, is what keeps a queued delete from being brought back.
 2. **Conflict only when the server moved.**
@@ -41,7 +42,7 @@ Move the inbound half of offline sync (pull what changed on the server and fold 
    - Whether a remote destroy of a queued id is reported stays with the binding. Tasks does not report it when the queued write is a delete. Notes reports any destroy of an id still in its outbox (`ingestRemoteNoteDestroyed`). Neither changes.
 3. **Per-field merge.** A binding can name the fields its queued writes own (Notes). The engine adopts every other field from the remote copy. A binding without field ownership (Tasks) skips the whole item.
 4. **Full list with removal.**
-   - After a full list of a scope, every cached item of that scope missing from the list is removed. This is the item collection only: Notes' notebook fallback (`syncNotebooks`) upserts the listed notebooks and prunes none, and stays as it is.
+   - After a full list of a scope, every cached item of that scope missing from the list is removed. This is the item collection only: Notes' REST notebook fallback (`syncNotebooks`) upserts the listed notebooks and prunes none. The JMAP snapshot (`reconcileNotesSnapshot`) does remove notebooks missing from it. Both stay as they are.
    - The exceptions are items with a pending write and items still waiting for their create (`createPending`).
    - Scopes are de-duplicated across one run, so an item that moved between two scopes in the same poll is upserted, not destroyed.
 5. **Token handling.**

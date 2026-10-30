@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { collabErrorStatus } from "@/text-editor-core/docs-collab/docs-collab-utils";
 import {
   HttpSignalingClient,
+  HttpSignalingError,
   isUnchangedPollResponse,
   type HttpSignalingFetch,
 } from "@/lib/rtc/signaling/http-client";
@@ -40,6 +42,33 @@ describe("HttpSignalingClient", () => {
       expect(poll.peers).toHaveLength(1);
     }
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the HTTP status on a refused poll so a lost room reads as 403", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: "forbidden",
+            message: "You do not have access to this document.",
+          }),
+          { status: 403 },
+        ),
+    );
+    const client = new HttpSignalingClient({
+      channel: "collab",
+      apiBase: "/api/v1/rooms",
+      fetchImpl,
+      getAuth: () => ({ bearerToken: "token-1" }),
+    });
+
+    const error = await client
+      .poll({ room: "room-a", peerId: "p1", since: 0 })
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(HttpSignalingError);
+    expect((error as HttpSignalingError).message).toBe("forbidden");
+    expect(collabErrorStatus(error)).toBe(403);
   });
 
   it("sends the roster signature and maps 204 to an unchanged poll response", async () => {
