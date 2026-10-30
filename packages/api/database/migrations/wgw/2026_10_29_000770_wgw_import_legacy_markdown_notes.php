@@ -31,17 +31,21 @@ return new class extends WgwMigration
             return;
         }
 
-        // A failure here must not block the migrations after it: the files
-        // stay on disk and the command can import them later.
+        // The in-app updater reaches this file without a raised time limit.
+        @set_time_limit(0);
+        // A file that fails is skipped with a notice inside the import and
+        // tried again by the next run. Anything that escapes is not about one
+        // file (the database, the data directory), so the migration stays
+        // pending and a later request retries it; the import is idempotent.
         try {
             $result = app(NotesFileMigrator::class)->migrate(discardYjs: false);
         } catch (Throwable $e) {
             Log::error('Could not import the Markdown notes from before v0.1.97.', ['exception' => $e]);
             $this->appendUpdateLog('Importing Markdown notes from before v0.1.97 failed: '.$e->getMessage());
 
-            return;
+            throw $e;
         }
-        if ($result['mapped'] === 0) {
+        if ($result['mapped'] === 0 && $result['notices'] === []) {
             return;
         }
         $this->appendUpdateLog(sprintf(

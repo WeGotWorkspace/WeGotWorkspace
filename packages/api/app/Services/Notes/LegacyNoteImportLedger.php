@@ -34,19 +34,20 @@ final class LegacyNoteImportLedger
         return Uuid::uuid5(self::UID_NAMESPACE, $virtualPath)->toString();
     }
 
-    /** UID of the note this file was imported as, or null when it never was. */
-    public function importedUid(string $virtualPath): ?string
+    /** UID of the note this file was recorded as, or null. */
+    public function recordedUid(string $virtualPath): ?string
     {
-        if ($this->hasTable()) {
-            $uid = LegacyNoteImport::query()->whereKey(hash('sha256', $virtualPath))->value('note_uid');
-            if (is_string($uid) && $uid !== '') {
-                return $uid;
-            }
+        if (! $this->hasTable()) {
+            return null;
         }
-        // A run that stopped between creating the note and recording it.
-        $uid = $this->uidFor($virtualPath);
+        $uid = LegacyNoteImport::query()->whereKey(hash('sha256', $virtualPath))->value('note_uid');
 
-        return CalendarObject::query()->where('uid', $uid)->exists() ? $uid : null;
+        return is_string($uid) && $uid !== '' ? $uid : null;
+    }
+
+    public function noteExists(string $uid): bool
+    {
+        return CalendarObject::query()->where('uid', $uid)->exists();
     }
 
     public function record(string $virtualPath, string $uid): void
@@ -69,6 +70,9 @@ final class LegacyNoteImportLedger
      */
     public function claimEarlierImport(int $calendarId, string $title, string $body): ?string
     {
+        if (trim($title) === '' && trim($body) === '') {
+            return null; // Two blank notes say nothing about each other.
+        }
         $key = $this->contentKey($title, $body);
         $this->unclaimed[$calendarId] ??= $this->unclaimedNotes($calendarId);
         if (($this->unclaimed[$calendarId][$key] ?? []) === []) {

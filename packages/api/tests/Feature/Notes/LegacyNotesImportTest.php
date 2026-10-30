@@ -15,6 +15,8 @@ use App\Services\Notes\NoteRepository;
 use App\Storage\WgwStorage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\NotesTestFixtures;
 use Tests\Support\SeedsWgwIdentity;
 use Tests\Support\WgwDatabaseTestCase;
@@ -207,6 +209,27 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
 
         $this->assertSame(0, Artisan::call('wgw:notes:migrate-files', ['--discard-yjs' => true]));
         $this->assertFalse($disk->fileExists('users/bob/.notes/Drafts/.welcome.md.yjs'));
+    }
+
+    public function test_the_update_log_names_notes_that_were_shared_in_drive(): void
+    {
+        $this->putLegacyNotes();
+        DB::connection('wgw')->table('drive_shares')->insert([
+            'id' => (string) Str::uuid(),
+            'path' => '/users/bob/.notes/Drafts',
+            'owner_username' => 'bob',
+            'kind' => 'people',
+            'default_access' => 'view',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->runMigration();
+
+        $this->assertStringContainsString(
+            'shared in Drive as /users/bob/.notes/Drafts; the imported note is not shared: /users/bob/.notes/Drafts/welcome.md',
+            $this->updateLog(),
+        );
     }
 
     private function putLegacyNotes(): void
