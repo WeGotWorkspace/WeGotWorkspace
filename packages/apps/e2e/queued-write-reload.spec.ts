@@ -9,7 +9,7 @@ import { E2E_USERNAME } from "./helpers/notes-live";
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const RUN = Date.now().toString(36);
 
-/** Longer than the 2.5 s undo delay. */
+/** The 2.5 s undo delay. */
 const UNDO_DELAY_MS = 2_500;
 
 async function seedAndStar(page: Page, name: string): Promise<void> {
