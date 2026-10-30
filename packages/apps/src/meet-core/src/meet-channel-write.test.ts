@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { canDeleteMeetChannel } from "@/meet-core/src/meet-channel-write";
+import {
+  canChangeMeetChannelOwner,
+  canDeleteMeetChannel,
+} from "@/meet-core/src/meet-channel-write";
+
+describe("canChangeMeetChannelOwner", () => {
+  it("allows owners and locks sharees", () => {
+    expect(canChangeMeetChannelOwner({ isSharee: false, scope: "personal" })).toBe(true);
+    expect(canChangeMeetChannelOwner({ isSharee: true, scope: "personal" })).toBe(false);
+    expect(canChangeMeetChannelOwner()).toBe(false);
+  });
+
+  it("locks a group channel for members without the delete right", () => {
+    expect(canChangeMeetChannelOwner({ scope: "group", myRights: { mayDelete: false } })).toBe(
+      false,
+    );
+    expect(canChangeMeetChannelOwner({ scope: "group", myRights: { mayDelete: true } })).toBe(true);
+    expect(canChangeMeetChannelOwner({ scope: "personal", myRights: { mayDelete: false } })).toBe(
+      true,
+    );
+  });
+});
 
 describe("canDeleteMeetChannel", () => {
   it("allows ordinary owned channels", () => {

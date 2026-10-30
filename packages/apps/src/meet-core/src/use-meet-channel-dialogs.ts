@@ -6,7 +6,10 @@ import {
   type MeetUpcomingMeeting,
 } from "@/meet-core/src/meet-calendar-meeting";
 import type { MeetChannelDialogState } from "@/meet-core/src/meet-channel-dialog";
-import { canDeleteMeetChannel } from "@/meet-core/src/meet-channel-write";
+import {
+  canChangeMeetChannelOwner,
+  canDeleteMeetChannel,
+} from "@/meet-core/src/meet-channel-write";
 import type { MeetChannel, MeetChannelKind, MeetChatOperations } from "@/meet-core/src/meet-types";
 import type { MeetCalendarSlice } from "@/meet-core/src/meet-workspace-props";
 
@@ -83,7 +86,7 @@ export function useMeetChannelDialogs({
       mayShare: channel.myRights?.mayShare !== false && !channel.isSharee,
       isSharee: channel.isSharee,
       shareWith: channel.shareWith,
-      canChangeOwner: !channel.isSharee,
+      canChangeOwner: canChangeMeetChannelOwner(channel),
       guestRoomCode: channel.guestRoomCode,
       mayDelete: canDeleteMeetChannel(channel) && Boolean(operations?.deleteChannel),
     });

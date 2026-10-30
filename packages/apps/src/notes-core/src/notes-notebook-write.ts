@@ -68,11 +68,13 @@ export function canDeleteNotebook(notebook?: NotebookWriteInfo): boolean {
 
 /**
  * Move Owner between personal and group (same options as create).
- * Default, provisioned group, and inbound sharees stay locked.
+ * Default, provisioned group, and inbound sharees stay locked. Moving a group
+ * notebook out of its group needs the delete right (`myRights.mayDelete`).
  */
 export function canChangeNotebookOwner(notebook?: NotebookWriteInfo): boolean {
   if (!notebook) return false;
   if (notebook.isSharee === true) return false;
   if (isDefaultNotebook(notebook)) return false;
+  if (notebook.scope === "group" && notebook.myRights?.mayDelete === false) return false;
   return !isProvisionedGroupNotebook(notebook);
 }
