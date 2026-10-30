@@ -6,6 +6,13 @@ export const E2E_PASSWORD = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 /** The e2e user's own notebook (the dev install creates it). */
 export const E2E_NOTEBOOK_ID = "notes-general";
 
+/**
+ * A notebook other than the default one: the admin's group notebook, which
+ * every dev install has. On a seeded account the first listed note is often
+ * outside the default notebook too.
+ */
+export const E2E_OTHER_NOTEBOOK_ID = "group-administrators";
+
 type ServerNoteRow = {
   id: string;
   etag?: string;
@@ -135,7 +142,11 @@ export async function markActiveNoteWithToken(page: Page, token: string): Promis
 }
 
 /** Create an isolated note for destructive e2e flows (avoids wiping shared seed notes). */
-export async function seedNoteWithToken(page: Page, token: string): Promise<void> {
+export async function seedNoteWithToken(
+  page: Page,
+  token: string,
+  notebookId: string = E2E_NOTEBOOK_ID,
+): Promise<void> {
   await page.evaluate(
     async ({ bodyToken, notebookId }) => {
       const accessToken = localStorage.getItem("wgw.api.access_token");
@@ -157,10 +168,18 @@ export async function seedNoteWithToken(page: Page, token: string): Promise<void
         throw new Error(`Seed note failed (${response.status}): ${await response.text()}`);
       }
     },
-    { bodyToken: token, notebookId: E2E_NOTEBOOK_ID },
+    { bodyToken: token, notebookId },
   );
   await page.getByRole("button", { name: "Refresh notes" }).click();
   await waitForNotesListReady(page);
+}
+
+/** Open a note made with {@link seedNoteWithToken} from the list. */
+export async function openSeededNote(page: Page, token: string): Promise<void> {
+  const item = page.locator(".list-item__button").filter({ hasText: `E2E ${token}` });
+  await expect(item).toBeVisible({ timeout: 15_000 });
+  await item.click();
+  await expect(page.locator(".ProseMirror")).toContainText(token, { timeout: 15_000 });
 }
 
 /** Notes in the e2e notebook as the server has them (archived ones included). */
