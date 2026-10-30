@@ -312,6 +312,32 @@ describe("notification inbox on push", () => {
     expect(probe.inbox?.unreadCount).toBe(2);
   });
 
+  it("an older share that arrives while the push fetch runs does not replace the fetched rows", async () => {
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(listCalls()).toBe(1));
+    const pushGet = deferred<{ list: (typeof row)[]; unreadCount: number }>();
+    vi.mocked(listNotifications).mockReturnValueOnce(pushGet.promise);
+    const inOther = tabs.other!.waitFor("10", INBOX_SHARE_WAIT_MS);
+
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "10" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    await waitFor(() => expect(listCalls()).toBe(2));
+    tabs.other!.share({ list: [], unreadCount: 0 }, "9");
+    await settle();
+    await act(async () => {
+      pushGet.resolve({ list: [row], unreadCount: 1 });
+      await listener;
+    });
+    expect(confirmed).toBe(true);
+    expect(probe.inbox?.items).toEqual([row]);
+    await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
+  });
+
   it('compares inbox markers as numbers: "9" after "10" leaves the rows alone', async () => {
     hub.state.leading = false;
     render(

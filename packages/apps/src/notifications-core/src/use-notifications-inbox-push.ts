@@ -62,12 +62,16 @@ export function useNotificationsInboxPush(options: {
     if (!state) return true;
     const fanOut = defaultInboxFanOut();
     const fetchAndShare = async () => {
+      // Record the state first, so a share for a lower marker that arrives
+      // during the GET is ignored and cannot drop it.
+      noteState(state);
       const payload = await latest.current.fetchForPush();
+      // A newer marker was applied meanwhile: its rows are already shown.
+      if (newestState.current !== state) return true;
       if (!payload) {
         fanOut.shareFailed(state);
         return false;
       }
-      noteState(state);
       fanOut.share(payload, state);
       return true;
     };
