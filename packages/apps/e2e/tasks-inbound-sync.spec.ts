@@ -4,7 +4,7 @@
 //
 // The changes are made through the REST API as the same user, which is what
 // tab B, a phone or a CalDAV client does from tab A's point of view.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const USER = process.env.WGW_E2E_USERNAME ?? "admin";
