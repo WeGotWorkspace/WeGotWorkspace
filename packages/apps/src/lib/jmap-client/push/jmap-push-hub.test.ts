@@ -24,6 +24,8 @@ type FakeEventSource = {
   sink: PushSink | null;
   stopped: boolean;
   reconnectNow: ReturnType<typeof vi.fn<(reason: string) => void>>;
+  /** What `lastEventId()` answered the moment the stream was created. */
+  firstId: Promise<string | null>;
 };
 
 function visibility(initial = true) {
@@ -61,9 +63,11 @@ function browser() {
         const stream: FakeEventSource = {
           ctx,
           sink: null,
+          firstId: Promise.resolve(null),
           stopped: false,
           reconnectNow: vi.fn<(reason: string) => void>(),
         };
+        stream.firstId = ctx.lastEventId();
         streams.push(stream);
         return {
           start(sink) {
@@ -196,6 +200,23 @@ describe("JmapPushHub", () => {
       expect(next).toHaveLength(1);
       expect(b.locks.holder("wgw-jmap-push/leader")).toBe("c");
       expect(await next[0]!.ctx.lastEventId()).toBe(`v1;Note=${H2}`);
+    });
+
+    it("a new leader never claims a type that a live tab it has not heard from failed to sync", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      cleanup.push(a.hub.subscribe(["Note"], async () => false));
+      await settle();
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["ChatMessage"], async () => true));
+      await settle();
+      b.live()[0]!.sink!.deliver(change({ Note: "n1" }), `v1;Note=${H1}`);
+      await settle();
+
+      a.view.set(false);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect((await b.streams[1]!.firstId) ?? "").not.toContain(`Note=${H1}`);
     });
 
     it("a new leader without a copy sends no id", async () => {

@@ -32,6 +32,23 @@ describe("PushConfirmations", () => {
     expect(store.lastEventId(null)).toBe(`v1;Note=${B}`);
   });
 
+  it("sends no id while a live tab has no entry", () => {
+    const store = new PushConfirmations();
+    store.noteLatest({ Note: A });
+    store.setTab("t1", { types: ["Note"], confirmed: { Note: A } });
+    expect(store.lastEventId(new Set(["t1"]))).toBe(`v1;Note=${A}`);
+    expect(store.lastEventId(new Set(["t1", "t2"]))).toBeNull();
+  });
+
+  it("forgets other tabs on keepOnly", () => {
+    const store = new PushConfirmations();
+    store.noteLatest({ Note: A });
+    store.setTab("t1", { types: ["Note"], confirmed: {} });
+    store.setTab("t2", { types: ["Chat"], confirmed: {} });
+    store.keepOnly("t2");
+    expect(store.lastEventId(new Set(["t2"]))).toBe(`v1;Note=${A}`);
+  });
+
   it("leaves out a subscribed type that no sync confirmed yet", () => {
     const store = new PushConfirmations();
     store.noteLatest({ Note: A, Calendar: C });
