@@ -2,7 +2,8 @@
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StateChangeListener } from "@/lib/jmap-client/push/state-change-subscription";
-import type { InboxPayload } from "./inbox-fan-out";
+import { FakeCrossTabBus } from "@/lib/jmap-client/push/mock/fake-cross-tab-bus";
+import { InboxFanOut, type InboxMessage } from "./inbox-fan-out";
 
 const hub = vi.hoisted(() => {
   const state = {
@@ -35,19 +36,11 @@ const hub = vi.hoisted(() => {
   };
 });
 
-const fanOut = vi.hoisted(() => {
-  const shared = new Set<(payload: InboxPayload) => void>();
-  return {
-    shared,
-    value: {
-      onShared(listener: (payload: InboxPayload) => void) {
-        shared.add(listener);
-        return () => shared.delete(listener);
-      },
-      share: vi.fn(),
-    },
-  };
-});
+/** This tab's fan-out and another tab's, on one fake BroadcastChannel. */
+const tabs = vi.hoisted(() => ({
+  here: null as InboxFanOut | null,
+  other: null as InboxFanOut | null,
+}));
 
 vi.mock("@/lib/api/wgw/http", () => ({
   wgwHasAuthenticatedSession: vi.fn(() => true),
@@ -64,10 +57,11 @@ vi.mock("@/notifications-core/src/ensure-push-subscription", () => ({
 vi.mock("@/lib/api/wgw/jmap-push", () => ({ defaultJmapPushHub: () => hub.value }));
 vi.mock("@/notifications-core/src/inbox-fan-out", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./inbox-fan-out")>()),
-  defaultInboxFanOut: () => fanOut.value,
+  defaultInboxFanOut: () => tabs.here!,
 }));
 
 import { ackLocalNotification, listNotifications } from "@/lib/api/wgw/notifications";
+import { INBOX_SHARE_WAIT_MS } from "@/notifications-core/src/use-notifications-inbox-push";
 import {
   NOTIFICATIONS_INBOX_POLL_MS,
   NOTIFICATIONS_INBOX_PUSH_POLL_MS,
@@ -112,6 +106,18 @@ function setPushConnected(connected: boolean): void {
 
 const listCalls = () => vi.mocked(listNotifications).mock.calls.length;
 
+/** Let cross-tab messages (one task each) and React effects run. */
+const settle = () =>
+  act(async () => {
+    for (let i = 0; i < 4; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => (resolve = done));
+  return { promise, resolve };
+}
+
 describe("notification inbox on push", () => {
   beforeEach(() => {
     probe.inbox = null;
@@ -119,7 +125,9 @@ describe("notification inbox on push", () => {
     hub.state.listeners.length = 0;
     hub.state.statusListeners.clear();
     hub.state.leading = true;
-    fanOut.value.share.mockReset();
+    const bus = new FakeCrossTabBus<InboxMessage>();
+    tabs.here = new InboxFanOut({ topic: bus.topic() });
+    tabs.other = new InboxFanOut({ topic: bus.topic() });
     vi.mocked(listNotifications).mockReset();
     vi.mocked(ackLocalNotification).mockReset();
     vi.mocked(listNotifications).mockResolvedValue({ list: [], unreadCount: 0 });
@@ -147,6 +155,7 @@ describe("notification inbox on push", () => {
     );
     await waitFor(() => expect(listCalls()).toBe(1));
     vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
+    const inOther = tabs.other!.waitFor("7", INBOX_SHARE_WAIT_MS);
 
     let confirmed: unknown;
     await act(async () => {
@@ -154,26 +163,52 @@ describe("notification inbox on push", () => {
     });
     expect(confirmed).toBe(true);
     expect(listCalls()).toBe(2);
-    expect(fanOut.value.share).toHaveBeenCalledTimes(1);
-    expect(fanOut.value.share).toHaveBeenCalledWith({ list: [row], unreadCount: 1 });
+    await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
     expect(probe.inbox?.items).toEqual([row]);
     expect(ackLocalNotification).toHaveBeenCalledTimes(1);
     expect(ackLocalNotification).toHaveBeenCalledWith("n1");
   });
 
-  it("a failed fetch is not confirmed, so the server sends the change again", async () => {
+  it("a failed fetch is not confirmed, and the other tabs hear that it failed", async () => {
     render(<NotificationsProvider />);
     await waitFor(() => expect(listCalls()).toBe(1));
     vi.mocked(listNotifications).mockRejectedValue(new TypeError("Failed to fetch"));
+    const inOther = tabs.other!.waitFor("7", INBOX_SHARE_WAIT_MS);
     let confirmed: unknown;
     await act(async () => {
       confirmed = await notificationListener()({ Notification: "7" }, "member");
     });
     expect(confirmed).toBe(false);
-    expect(fanOut.value.share).not.toHaveBeenCalled();
+    await expect(inOther).resolves.toBeNull();
   });
 
-  it("a tab that does not hold the stream fetches nothing on push and shows the rows the leader shared", async () => {
+  it("a refresh started while the push fetch runs does not cancel it", async () => {
+    render(<NotificationsProvider />);
+    await waitFor(() => expect(listCalls()).toBe(1));
+    const pushGet = deferred<{ list: (typeof row)[]; unreadCount: number }>();
+    vi.mocked(listNotifications)
+      .mockReturnValueOnce(pushGet.promise)
+      .mockResolvedValue({ list: [row], unreadCount: 1 });
+    const inOther = tabs.other!.waitFor("7", INBOX_SHARE_WAIT_MS);
+
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "7" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    await waitFor(() => expect(listCalls()).toBe(2));
+    // The tab becomes visible again: its own refresh starts and would abort the push GET.
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await waitFor(() => expect(listCalls()).toBe(3));
+    await act(async () => {
+      pushGet.resolve({ list: [row], unreadCount: 1 });
+      await listener;
+    });
+    expect(confirmed).toBe(true);
+    await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
+  });
+
+  it("a tab that does not hold the stream fetches nothing and confirms only once it has the shared rows", async () => {
     hub.state.leading = false;
     render(
       <NotificationsProvider>
@@ -182,25 +217,55 @@ describe("notification inbox on push", () => {
     );
     await waitFor(() => expect(listCalls()).toBe(1));
 
-    let confirmed: unknown;
-    await act(async () => {
-      confirmed = await notificationListener()({ Notification: "7" }, "member");
-    });
-    expect(confirmed).toBe(true);
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "7" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    await settle();
+    expect(confirmed).toBe("pending");
     expect(listCalls()).toBe(1);
 
-    act(() => {
-      for (const listener of fanOut.shared) listener({ list: [row], unreadCount: 1 });
-    });
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "7");
+    await settle();
+    expect(confirmed).toBe(true);
     expect(probe.inbox?.items).toEqual([row]);
     expect(probe.inbox?.unreadCount).toBe(1);
     await waitFor(() => expect(ackLocalNotification).toHaveBeenCalledWith("n1"));
 
-    act(() => {
-      for (const listener of fanOut.shared) listener({ list: [row], unreadCount: 1 });
-    });
-    await Promise.resolve();
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "8");
+    await settle();
     expect(ackLocalNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("a tab that does not hold the stream does not confirm when the fetching tab failed", async () => {
+    hub.state.leading = false;
+    render(<NotificationsProvider />);
+    await waitFor(() => expect(listCalls()).toBe(1));
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "7" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    tabs.other!.shareFailed("7");
+    await settle();
+    expect(confirmed).toBe(false);
+  });
+
+  it("a tab that does not hold the stream gives up when nothing is shared (the fetching tab went away)", async () => {
+    hub.state.leading = false;
+    vi.useFakeTimers();
+    render(<NotificationsProvider />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "7" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INBOX_SHARE_WAIT_MS - 1);
+    });
+    expect(confirmed).toBe("pending");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(confirmed).toBe(false);
   });
 
   it("a hidden tab shows shared rows but does not ack them", async () => {
@@ -212,11 +277,9 @@ describe("notification inbox on push", () => {
       </NotificationsProvider>,
     );
     await waitFor(() => expect(listCalls()).toBe(1));
-    act(() => {
-      for (const listener of fanOut.shared) listener({ list: [row], unreadCount: 1 });
-    });
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "7");
+    await settle();
     expect(probe.inbox?.items).toEqual([row]);
-    await Promise.resolve();
     expect(ackLocalNotification).not.toHaveBeenCalled();
   });
 
