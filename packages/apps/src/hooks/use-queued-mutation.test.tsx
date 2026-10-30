@@ -67,8 +67,19 @@ async function withSignedInFetch(run: (fetchMock: FetchMock) => Promise<void>) {
 
 function firePageExit(type: "pagehide" | "beforeunload") {
   act(() => {
-    window.dispatchEvent(new Event(type));
+    window.dispatchEvent(new Event(type, { cancelable: true }));
   });
+}
+
+/** Runs `run` while a leave prompt (like Meet's) cancels `beforeunload`. */
+function withLeavePrompt(run: () => void) {
+  const prompt = (event: Event) => event.preventDefault();
+  window.addEventListener("beforeunload", prompt);
+  try {
+    run();
+  } finally {
+    window.removeEventListener("beforeunload", prompt);
+  }
 }
 
 beforeEach(() => {
@@ -103,6 +114,50 @@ describe("useQueuedMutation when the page is left", () => {
     firePageExit("beforeunload");
 
     expect(args.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the write and its Undo when a leave prompt cancels beforeunload", () => {
+    const { result } = renderQueue();
+    const args = queueArgs();
+
+    withLeavePrompt(() => {
+      act(() => result.current.queueMutation(args));
+      firePageExit("beforeunload");
+    });
+    expect(args.execute).not.toHaveBeenCalled();
+
+    act(() => {
+      lastToastUndo()();
+    });
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS * 2);
+    });
+
+    expect(args.execute).not.toHaveBeenCalled();
+    expect(args.undo).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends without keepalive after the user stays on a leave prompt", async () => {
+    await withSignedInFetch(async (fetchMock) => {
+      const { result } = renderHook(() =>
+        useQueuedMutation({ delayMs: 50, onMutationError: vi.fn() }),
+      );
+      withLeavePrompt(() => {
+        act(() =>
+          result.current.queueMutation(
+            queueArgs({
+              execute: async (signal) => {
+                await wgwFetch("/files/star?path=a.txt", { method: "DELETE", signal });
+              },
+            }),
+          ),
+        );
+        firePageExit("beforeunload");
+      });
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(fetchMock.mock.calls[0]?.[1]?.keepalive).toBeFalsy();
+    });
   });
 
   it("sends the write once when beforeunload, pagehide and the timer all fire", () => {

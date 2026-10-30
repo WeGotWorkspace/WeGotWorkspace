@@ -1,24 +1,34 @@
 /**
  * Page exit signal for writes the UI already shows as done (#1794).
  *
- * `beforeunload` fires first and leaves this page running while the next one loads, so a
- * write started there still has time for async work before its request. `pagehide` is the
- * last point where script runs (and the only one on some mobile browsers). Listeners run on
- * both events and must be idempotent.
+ * Listeners run on `beforeunload`, unless another handler cancelled it to ask the user
+ * whether to leave (the Meet leave prompt): then they wait for `pagehide`, so a user who
+ * stays keeps Undo. `beforeunload` comes first and leaves this page running while the next
+ * one loads, so a write that reads IndexedDB before its request still gets it out on a
+ * reload. `pagehide` is the fallback and the last point where script runs. Listeners must
+ * be idempotent.
  *
  * The window listeners are only attached while at least one listener is registered:
- * a standing `beforeunload` listener can keep a page out of the back/forward cache.
+ * a standing `beforeunload` listener can keep a page out of the back/forward cache. The
+ * `beforeunload` listener is attached again on each registration so it runs after a leave
+ * prompt that was already in place and can see that prompt's cancel.
  */
 type PageExitListener = () => void;
 
 const listeners = new Set<PageExitListener>();
 let exiting = false;
-let attached = false;
 let pageshowAttached = false;
 
-function handleExit(): void {
+function runExit(): void {
   exiting = true;
   for (const listener of [...listeners]) listener();
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent): void {
+  // A legacy prompt sets `returnValue` to a message instead of calling `preventDefault()`.
+  const legacyPrompt = typeof event.returnValue === "string" && event.returnValue !== "";
+  if (event.defaultPrevented || legacyPrompt) return;
+  runExit();
 }
 
 function handlePageShow(): void {
@@ -26,10 +36,10 @@ function handlePageShow(): void {
 }
 
 function attach(): void {
-  if (attached || typeof window === "undefined") return;
-  attached = true;
-  window.addEventListener("beforeunload", handleExit);
-  window.addEventListener("pagehide", handleExit);
+  if (typeof window === "undefined") return;
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  window.addEventListener("pagehide", runExit);
   if (!pageshowAttached) {
     pageshowAttached = true;
     window.addEventListener("pageshow", handlePageShow);
@@ -37,10 +47,9 @@ function attach(): void {
 }
 
 function detach(): void {
-  if (!attached || typeof window === "undefined") return;
-  attached = false;
-  window.removeEventListener("beforeunload", handleExit);
-  window.removeEventListener("pagehide", handleExit);
+  if (typeof window === "undefined") return;
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+  window.removeEventListener("pagehide", runExit);
 }
 
 /** Calls `listener` when the page is reloaded, closed or left. Returns the unsubscribe. */
@@ -54,8 +63,8 @@ export function onPageExit(listener: PageExitListener): () => void {
 }
 
 /**
- * True from `beforeunload` or `pagehide` until the page is shown again. It stays set when
- * another `beforeunload` handler keeps the page open, which only costs a keepalive flag.
+ * True once the listeners ran, until the page is shown again. A leave prompt that was
+ * cancelled never sets it, so later requests do not get `keepalive`.
  */
 export function pageIsExiting(): boolean {
   return exiting;

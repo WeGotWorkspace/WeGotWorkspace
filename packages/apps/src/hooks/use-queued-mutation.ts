@@ -48,9 +48,10 @@ function cancelPendingStart(entry: PendingMutation): void {
  * if already started, rolls back via `undo`, and shows `undoToastMessage`.
  *
  * A write the UI shows as done is always sent (#1794): when the page is reloaded, closed
- * or left, pending writes start right away (with `keepalive`, see `wgwFetch`). Pending
+ * or left, pending writes start right away (see `onPageExit`), with `keepalive`. Pending
  * writes and their toasts outlive the hook, so leaving the list inside the app neither
- * drops the write nor takes away Undo.
+ * drops the write nor takes away Undo. Limit: on page exit only the requests an `execute`
+ * starts before its first network response go out; later steps die with the page.
  *
  * Pair with {@link runQueuedBatchAction} for batch helpers, or call `queueMutation` directly.
  */
