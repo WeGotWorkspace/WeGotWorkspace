@@ -21,11 +21,7 @@ import {
   type OfflineCalendarEventRow,
 } from "@/lib/offline/calendars/calendars-schema";
 import { coalesceCalendarEventPatches } from "@/lib/offline/calendars/calendars-patch-merge";
-import {
-  isRecurringMaster,
-  rangeQueryCoversEvent,
-  type CalendarUtcRange,
-} from "@/lib/calendar-load-window";
+import { rangeQueryCoversEvent, type CalendarUtcRange } from "@/lib/calendar-load-window";
 
 export {
   enqueueOutboxMutation,
@@ -150,18 +146,19 @@ export async function writeCalendarBootstrapToCache(
 }
 
 /**
- * Merge one on-demand period into the cache (#1675): upsert what the server
- * returned and drop single events in that period it no longer has. Rows with
- * a pending or just-written local change stay.
- */
-/**
  * The period query returns a series only when it occurs in that period, so an
- * omitted recurring master says nothing; `/changes` and the bootstrap settle it.
+ * omitted master is gone only when it has an occurrence inside the period;
+ * one with none there says nothing and stays.
  */
 function isMissingFromRange(event: JmapCalendarEvent, range: CalendarUtcRange): boolean {
-  return !isRecurringMaster(event) && rangeQueryCoversEvent(event, range);
+  return rangeQueryCoversEvent(event, range);
 }
 
+/**
+ * Merge one on-demand period into the cache (#1675): upsert what the server
+ * returned and drop events in that period it no longer has. Rows with
+ * a pending or just-written local change stay.
+ */
 export async function mergeCalendarRangeIntoCache(
   username: string,
   range: CalendarUtcRange,

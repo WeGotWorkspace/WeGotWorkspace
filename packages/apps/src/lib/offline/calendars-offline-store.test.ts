@@ -246,6 +246,17 @@ describe("calendars offline store: periods outside the bootstrap window (#1675)"
     expect(cachedIds).not.toContain("ev-far-gone");
   });
 
+  it("drops a weekly series that a far-week merge omits while it occurs that week", async () => {
+    await mergeCalendarRangeIntoCache(username, farWeek, [
+      recurring("ev-weekly", "2033-01-11T09:00:00", { frequency: "weekly" }),
+    ]);
+    expect(await ids()).toContain("ev-weekly");
+
+    await mergeCalendarRangeIntoCache(username, farWeek, []);
+
+    expect(await ids()).not.toContain("ev-weekly");
+  });
+
   it("keeps a count-only series that ended before the window on a live write", async () => {
     await mergeCalendarRangeIntoCache(username, farWeek, [
       recurring("ev-old-series", "2020-01-08T09:00:00", { frequency: "weekly", count: 10 }),
