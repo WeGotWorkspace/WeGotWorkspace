@@ -67,7 +67,8 @@ export type DocsCollabUrls = {
   documentFormat?: TextEditorContentFormat;
   onPersistForbidden?: () => void;
   /**
-   * The server answered 404. Retrying the save stops. The local copy stays.
+   * The server answered 404: the document was deleted, or this account lost read
+   * access. Retrying the save stops. The local copy stays.
    */
   onDocumentGone?: () => void;
   /**
