@@ -13,7 +13,7 @@ Draws from the Pioneer programme's sync-correctness work (#1565 stays in that mi
 ## Non-goals
 
 - Outbox executor unification and the `lib/offline/` folder moves (#1565 checklist items, own chunks after this plan)
-- Drive and Docs inbound (path-keyed tree crawl)
+- Drive and Docs inbound for now (path-keyed tree crawl). Their move onto the engine stays on #1565 with its own binding design.
 - Any visible change in Notes or Tasks
 
 ## What exists
