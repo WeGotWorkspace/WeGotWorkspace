@@ -8,6 +8,7 @@ use App\Models\CalendarObject;
 use App\Models\DriveStarredItem;
 use App\Models\NoteStar;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
+use App\Services\Notes\LegacyNoteImportLedger;
 use App\Services\Notes\NotebookRepository;
 use App\Services\Notes\NoteMarkdownCodec;
 use App\Services\Notes\NoteRepository;
@@ -139,6 +140,75 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
         $this->assertSame($before + 2, $this->journalCount(), 'Only the two notes not imported before are added.');
     }
 
+    public function test_a_file_that_cannot_be_read_does_not_stop_the_others(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('root can read a file without permissions.');
+        }
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/.notes/Drafts/a-broken.md', (new NoteMarkdownCodec)->serialize('Broken', [], 'x'));
+        chmod($disk->path('users/bob/.notes/Drafts/a-broken.md'), 0);
+        $this->putLegacyNotes();
+
+        try {
+            $this->runMigration();
+        } finally {
+            chmod($disk->path('users/bob/.notes/Drafts/a-broken.md'), 0644);
+        }
+
+        $this->assertSame(3, $this->journalCount() - $this->journalCountBefore);
+        $this->assertNotNull($this->notesIn('Drafts')->firstWhere('title', 'Welcome'));
+        $this->assertStringContainsString('import failed /users/bob/.notes/Drafts/a-broken.md', $this->updateLog());
+    }
+
+    public function test_a_symbolic_link_under_notes_is_skipped_and_the_rest_imported(): void
+    {
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/elsewhere.md', (new NoteMarkdownCodec)->serialize('Linked', [], 'x'));
+        $this->putLegacyNotes();
+        symlink($disk->path('users/bob/elsewhere.md'), $disk->path('users/bob/.notes/Drafts').'/a-link.md');
+
+        $this->runMigration();
+
+        $this->assertSame(3, $this->journalCount() - $this->journalCountBefore);
+        $this->assertStringContainsString('/users/bob/.notes/Drafts/a-link.md', $this->updateLog());
+    }
+
+    /**
+     * A run cut off between creating a note and recording it: the next run
+     * records it and still copies its Drive star.
+     */
+    public function test_an_interrupted_run_keeps_the_star(): void
+    {
+        $this->putLegacyNotes();
+        $drafts = app(NotebookRepository::class)->findOrCreateNamed('bob', 'Drafts');
+        app(NoteRepository::class)->create('bob', [
+            'uid' => app(LegacyNoteImportLedger::class)->uidFor('/users/bob/.notes/Drafts/welcome.md'),
+            'notebookId' => $drafts['id'],
+            'title' => 'Welcome',
+            'body' => 'Hello body',
+            'categories' => ['focus'],
+        ], allowStoredTags: true);
+
+        $this->runMigration();
+
+        $welcome = $this->notesIn('Drafts')->where('title', 'Welcome');
+        $this->assertCount(1, $welcome);
+        $this->assertTrue($welcome->first()['starred']);
+    }
+
+    public function test_the_command_keeps_collaborative_edit_sidecars_unless_asked(): void
+    {
+        $this->putLegacyNotes();
+        $disk = app(WgwStorage::class)->files();
+
+        $this->assertSame(0, Artisan::call('wgw:notes:migrate-files'));
+        $this->assertTrue($disk->fileExists('users/bob/.notes/Drafts/.welcome.md.yjs'));
+
+        $this->assertSame(0, Artisan::call('wgw:notes:migrate-files', ['--discard-yjs' => true]));
+        $this->assertFalse($disk->fileExists('users/bob/.notes/Drafts/.welcome.md.yjs'));
+    }
+
     private function putLegacyNotes(): void
     {
         $codec = new NoteMarkdownCodec;
@@ -159,6 +229,11 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
     {
         $migration = require database_path(self::MIGRATION);
         $migration->up();
+    }
+
+    private function updateLog(): string
+    {
+        return (string) app(WgwStorage::class)->data()->get('updates/process.log');
     }
 
     private function journalCount(): int
