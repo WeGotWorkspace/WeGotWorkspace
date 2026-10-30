@@ -23,6 +23,25 @@ async function expectGoneWithoutAccessLost(page: Page): Promise<void> {
   await page.waitForTimeout(3_000);
   await expect(page.getByText(ACCESS_LOST_TITLE, { exact: true })).toHaveCount(0);
   await expect(page.getByText(ACCESS_LOST_MESSAGE)).toHaveCount(0);
+  // A toast can come and go before the dialog shows, so also check the watcher.
+  expect(await page.evaluate(() => (window as AccessLostWatch).__wgwAccessLostSeen)).toBe(false);
+}
+
+type AccessLostWatch = Window & { __wgwAccessLostSeen?: boolean };
+
+/** Records whether "Access lost" was ever added to the page, also briefly. */
+async function watchForAccessLost(context: BrowserContext): Promise<void> {
+  await context.addInitScript((needle) => {
+    const page = window as AccessLostWatch;
+    page.__wgwAccessLostSeen = false;
+    new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.textContent?.includes(needle)) page.__wgwAccessLostSeen = true;
+        }
+      }
+    }).observe(document, { childList: true, subtree: true });
+  }, ACCESS_LOST_TITLE);
 }
 
 async function openAs(
@@ -76,6 +95,7 @@ test.describe("Docs collab access revoked (live app)", () => {
       expect(created.ok(), await created.text()).toBeTruthy();
       const shareId = ((await created.json()) as { data: { id: string } }).data.id;
 
+      await watchForAccessLost(member.context);
       await member.page.goto(docsUrlForFile(apiPath));
       const editor = member.page.locator(".ProseMirror");
       await expect(editor).toBeVisible({ timeout: 30_000 });
