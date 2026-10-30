@@ -328,6 +328,49 @@ describe("notification inbox on push", () => {
     expect(probe.inbox?.items).toEqual([row]);
   });
 
+  // A tab that lost the stream may still finish its GET for the previous state and share it.
+  it("in the stream tab, a share for the previous state during the fetch neither shows nor gets shared", async () => {
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(listCalls()).toBe(1));
+    const newer = { ...row, id: "n2" };
+    const pushGet = deferred<{ list: (typeof row)[]; unreadCount: number }>();
+    vi.mocked(listNotifications).mockReturnValueOnce(pushGet.promise);
+    const inOther = tabs.other!.waitFor("10", INBOX_SHARE_WAIT_MS);
+
+    const listener = notificationListener()({ Notification: "10" }, "member");
+    await waitFor(() => expect(listCalls()).toBe(2));
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "9");
+    await settle();
+    let confirmed: unknown;
+    await act(async () => {
+      pushGet.resolve({ list: [newer, row], unreadCount: 2 });
+      confirmed = await listener;
+    });
+    expect(confirmed).toBe(true);
+    expect(probe.inbox?.items).toEqual([newer, row]);
+    await expect(inOther).resolves.toEqual({ list: [newer, row], unreadCount: 2 });
+  });
+
+  it("a push for a state older than the rows already shown confirms without a fetch", async () => {
+    render(<NotificationsProvider />);
+    await waitFor(() => expect(listCalls()).toBe(1));
+    vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
+    await act(async () => {
+      await notificationListener()({ Notification: "10" }, "member");
+    });
+    expect(listCalls()).toBe(2);
+    let confirmed: unknown;
+    await act(async () => {
+      confirmed = await notificationListener()({ Notification: "9" }, "member");
+    });
+    expect(confirmed).toBe(true);
+    expect(listCalls()).toBe(2);
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
