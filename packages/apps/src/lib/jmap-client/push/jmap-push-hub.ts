@@ -132,6 +132,7 @@ export class JmapPushHub {
     this.#active = true;
     const { locks, tabId, topic, visibility } = this.#options;
     if (!locks) return;
+    this.#confirmations.keepOnly(tabId);
     const cleanups: Array<() => void> = [];
     cleanups.push(topic.subscribe((message) => this.#onMessage(message)));
     cleanups.push(holdWebLock(locks, `${TAB_LOCK}${tabId}`));

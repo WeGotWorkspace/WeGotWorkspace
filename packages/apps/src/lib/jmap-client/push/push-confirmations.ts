@@ -30,13 +30,21 @@ export class PushConfirmations {
     this.#tabs.delete(tabId);
   }
 
+  /** Forget every tab but one: a hub that was stopped missed their updates. */
+  keepOnly(tabId: string): void {
+    for (const id of [...this.#tabs.keys()]) if (id !== tabId) this.#tabs.delete(id);
+  }
+
   /**
    * Per type: the hash every live subscribed tab confirmed, or the newest hash
    * when no live tab subscribes (that app syncs when it opens). A type the
    * tabs disagree on, or one a subscribed tab has not confirmed, is left out.
-   * `liveTabIds` null means every known tab counts as live.
+   * `liveTabIds` null means every known tab counts as live. A live tab with no
+   * entry may hold a failed sync this tab never heard of, so no id is sent and
+   * the server re-sends every type.
    */
   lastEventId(liveTabIds: ReadonlySet<string> | null): string | null {
+    if (liveTabIds) for (const tabId of liveTabIds) if (!this.#tabs.has(tabId)) return null;
     const tabs = [...this.#tabs]
       .filter(([tabId]) => liveTabIds === null || liveTabIds.has(tabId))
       .map(([, tab]) => tab);

@@ -195,6 +195,46 @@ describe("EventSourceTransport", () => {
       stop();
     });
 
+    it("keeps the Retry-After wait when the browser goes offline and back during it", async () => {
+      const { transport, fetch, sink, net } = setup();
+      fetch.mockResolvedValueOnce(
+        new Response("", { status: 429, headers: { "Retry-After": "30" } }),
+      );
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(5_000);
+      net.set(false);
+      await vi.advanceTimersByTimeAsync(5_000);
+      net.set(true);
+      await vi.advanceTimersByTimeAsync(19_999);
+      expect(at(fetch)).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(at(fetch)).toBe(2);
+      stop();
+    });
+
+    it("cancels the body of a response it does not read", async () => {
+      const { transport, fetch, sink } = setup();
+      const cancelled: number[] = [];
+      const unread = (status: number, type = "text/plain") =>
+        new Response(
+          new ReadableStream({
+            cancel: () => {
+              cancelled.push(status);
+            },
+          }),
+          { status, headers: { "Content-Type": type } },
+        );
+      fetch
+        .mockResolvedValueOnce(unread(429))
+        .mockResolvedValueOnce(unread(401))
+        .mockResolvedValueOnce(unread(503))
+        .mockResolvedValueOnce(unread(200, "text/html"));
+      const stop = transport.start(sink);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(cancelled).toEqual([429, 401, 503, 200]);
+      stop();
+    });
+
     it("on 429 without Retry-After backs off", async () => {
       const { transport, fetch, sink } = setup();
       fetch.mockResolvedValueOnce(new Response("", { status: 429 }));

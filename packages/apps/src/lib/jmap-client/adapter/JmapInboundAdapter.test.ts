@@ -60,6 +60,30 @@ describe("JmapInboundAdapter", () => {
     expect(adapter.errors).toEqual([failure]);
   });
 
+  // Both rounds store their cursor: one that started first and ends last would rewind it.
+  it("runs a push sync after the poll round in flight, never beside it", async () => {
+    const adapter = new TestAdapter();
+    let finish!: () => void;
+    adapter.pull.mockImplementationOnce(() => new Promise<void>((resolve) => (finish = resolve)));
+    const poll = adapter.sync();
+    const push = adapter.syncIfStale({ Note: "n2" });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(adapter.pull).toHaveBeenCalledTimes(1);
+    finish();
+    await poll;
+    await expect(push).resolves.toBe(true);
+    expect(adapter.pull).toHaveBeenCalledTimes(2);
+  });
+
+  it("a failed round does not stop the next one", async () => {
+    const adapter = new TestAdapter();
+    adapter.pull.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const first = adapter.syncIfStale({ Note: "n2" });
+    const second = adapter.syncIfStale({ Note: "n2" });
+    await expect(first).resolves.toBe(false);
+    await expect(second).resolves.toBe(true);
+  });
+
   // #1792: a full re-list the server refuses (requestTooLarge) must not escape sync().
   it("reports a failed refetch instead of throwing, and does not confirm the push", async () => {
     const adapter = new TestAdapter();

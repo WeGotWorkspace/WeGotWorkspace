@@ -110,7 +110,7 @@ The `notifications` table has no change column, and `supersede` rewrites rows in
 - about 60/min per browser: 20/min of regular reconnects plus up to 30/min of check-now reconnects, with margin;
 - a per-account ceiling (for example 300/min), so a client that rotates browser ids cannot escape the limit.
 
-A `429` carries `Retry-After`. The client waits that long and treats push as down meanwhile, so the app polls return to their normal interval. A full bucket never ends in silence.
+A `429` carries `Retry-After`. The client waits that long and treats push as down meanwhile, so the app polls return to their normal interval. A full bucket never ends in silence. Going offline and back during that wait does not end it early.
 
 ### Cost and measurement
 
@@ -162,7 +162,7 @@ Only the server transport calls `deliver`. Every other transport can only `wake`
 
 ### The id is built from confirmed hashes
 
-The event id is a list of independent per-type hashes, so the hub does not resend the id it last received. It keeps, per type, the hash from the id that came with the last StateChange whose sync every subscribed app reported as successful (Notes and the Docs home can both subscribe to one type). A type no open app subscribes to counts as confirmed: the app syncs when it opens. On every reconnect the hub sends `Last-Event-ID` rebuilt from those confirmed hashes. A sync that failed (network, a `401` in the middle of a refresh) left its type at the old hash, so the server sends that type again on the next reconnect. There is no pending list, no retry timer and no state to hand over.
+The event id is a list of independent per-type hashes, so the hub does not resend the id it last received. It keeps, per type, the hash from the id that came with the last StateChange whose sync every subscribed app reported as successful (Notes and the Docs home can both subscribe to one type). A type no open app subscribes to counts as confirmed: the app syncs when it opens. On every reconnect the hub sends `Last-Event-ID` rebuilt from those confirmed hashes. A sync that failed (network, a `401` in the middle of a refresh) left its type at the old hash, so the server sends that type again on the next reconnect. There is no pending list, no retry timer and no state to hand over. A tab learns what another tab subscribes to only from that tab's own messages, so while a live tab (one that holds its tab lock) has no entry in this tab's copy, for example right after a new leader asks the others to report, the hub sends no `Last-Event-ID` and the server sends every type. A hub that stopped and starts again drops the other tabs' entries first, because it missed their updates.
 
 Hashes cannot be ordered, so the hub never runs two syncs of the same type at once: one sync in flight per type, and a newer push only replaces the hash that waits for the next sync. Otherwise an older sync that fails after a newer one succeeded would roll back a confirmed hash.
 
