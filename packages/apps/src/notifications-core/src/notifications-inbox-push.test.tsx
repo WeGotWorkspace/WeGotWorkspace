@@ -312,6 +312,22 @@ describe("notification inbox on push", () => {
     expect(probe.inbox?.unreadCount).toBe(2);
   });
 
+  it('compares inbox markers as numbers: "9" after "10" leaves the rows alone', async () => {
+    hub.state.leading = false;
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(listCalls()).toBe(1));
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "10");
+    await settle();
+    expect(probe.inbox?.items).toEqual([row]);
+    tabs.other!.share({ list: [], unreadCount: 0 }, "9");
+    await settle();
+    expect(probe.inbox?.items).toEqual([row]);
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
