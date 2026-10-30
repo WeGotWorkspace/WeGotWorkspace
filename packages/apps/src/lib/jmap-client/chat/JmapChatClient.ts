@@ -1,3 +1,4 @@
+import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CHAT_CAPABILITY, CORE_CAPABILITY } from "../core/types.js";
 import type { ChangesResponse, GetResponse, JmapId, JmapState } from "../core/types.js";
@@ -57,12 +58,22 @@ export class JmapChatClient {
     accountId: JmapId,
     ids?: JmapId[] | null,
   ): Promise<GetResponse<JmapChatMessage>> {
-    const response = await this.client.call<GetResponse<JmapChatMessage>>(
-      "ChatMessage/get",
-      { accountId, ids: ids ?? null },
-      CHAT_USING,
-    );
-    this.client.setState(accountId, MESSAGE_TYPE, response.state);
+    // `ids` longer than the server's `maxObjectsInGet` go in several requests.
+    const getPage = (pageIds: JmapId[] | null) =>
+      this.client.call<GetResponse<JmapChatMessage>>(
+        "ChatMessage/get",
+        { accountId, ids: pageIds },
+        CHAT_USING,
+      );
+    const hadState = this.client.getState(accountId, MESSAGE_TYPE) !== undefined;
+    const response = ids
+      ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
+      : await getPage(null);
+    // The get state is the full current token. With explicit ids and a stored
+    // token, that token may be a partial `/changes` resume cursor: keep it.
+    if (!ids || !hadState) {
+      this.client.setState(accountId, MESSAGE_TYPE, response.state);
+    }
     return response;
   }
 
