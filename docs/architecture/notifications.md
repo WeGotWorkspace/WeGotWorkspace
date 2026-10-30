@@ -112,6 +112,7 @@ Time from a notifying write (a DM to the user, sent over REST) to the row in the
 |-------|---------------------|
 | Two tabs, by hand, nine DMs | 0.2–2.7 s, median 1.3 s |
 | `e2e/notifications-inbox-push.spec.ts`, two tabs, five runs | 2.4 s; 2.9 s after the stream tab reloads |
+| Same spec, one run by the review loop on a CI runner | 2.6–3.0 s, the other tab within 30 ms of the stream tab |
 
 Before #1668 the bell waited for its 15 s poll. Now the spread follows the stream's 3 s `retry`: the worst case is about one retry plus one request. The spec's numbers barely vary because it sends at the same point in that cycle. Each DM caused one inbox `GET` and one `local-ack` for the whole browser.
 

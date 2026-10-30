@@ -103,7 +103,8 @@ async function notifyAdmin(
   const latency = Date.now() - sentAt;
   // The ack follows the row in the tab that claimed it; give it a moment.
   await expect.poll(() => counter.acks().length, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
-  await tabs[0]!.waitForTimeout(1_000);
+  // A stray second fetch would come with the next stream request (3 s retry).
+  await tabs[0]!.waitForTimeout(3_000);
   expect(counter.gets(), "inbox GETs across both tabs").toHaveLength(1);
   expect(counter.acks(), "local-acks across both tabs").toHaveLength(1);
   return latency;
