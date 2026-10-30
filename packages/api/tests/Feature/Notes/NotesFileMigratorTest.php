@@ -48,7 +48,7 @@ final class NotesFileMigratorTest extends WgwDatabaseTestCase
             'created_at' => time(),
         ]);
 
-        $exit = Artisan::call('wgw:notes:migrate-files');
+        $exit = Artisan::call('wgw:notes:migrate-files', ['--discard-yjs' => true]);
         $this->assertSame(0, $exit);
 
         $welcome = $this->asBob()->getJson('/api/v1/notes/items')->assertStatus(400);

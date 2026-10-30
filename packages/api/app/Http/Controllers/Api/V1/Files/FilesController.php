@@ -7,6 +7,9 @@ namespace App\Http\Controllers\Api\V1\Files;
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Services\Collab\CollabExternalWrite;
+use App\Services\Collab\CollabJoinAuthorizer;
+use App\Services\Collab\CollabResponseException;
+use App\Services\Collab\CollabRoomPolicy;
 use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveForbiddenException;
@@ -25,6 +28,8 @@ final class FilesController
         private DriveService $drive,
         private RoomIdCodec $roomIds,
         private DocCollabDocumentService $collabDocuments,
+        private CollabRoomPolicy $collabRooms,
+        private CollabJoinAuthorizer $collabJoins,
     ) {}
 
     public function context(Request $request): JsonResponse
@@ -296,9 +301,19 @@ final class FilesController
         ]);
     }
 
+    /**
+     * The room id is handed out only to a caller who may join the room: the
+     * same room check and read check as the join itself. Anything else is a
+     * plain 404, the same answer as for a path that does not exist.
+     */
     public function resolveRoom(Request $request): JsonResponse
     {
         $path = $this->requirePath($request);
+        try {
+            $this->collabJoins->assertMayJoin($this->collabRooms->cleanRoom($path), $this->principal($request));
+        } catch (CollabResponseException) {
+            throw new ApiHttpException(404, 'File not found.', 'not_found');
+        }
 
         return response()->json([
             'roomId' => $this->roomIds->encodeFilePath($path),

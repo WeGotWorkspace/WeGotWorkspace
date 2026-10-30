@@ -13779,6 +13779,7 @@
                     "Files"
                 ],
                 "summary": "Resolve file collab room",
+                "description": "Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -13797,9 +13798,29 @@
                 "responses": {
                     "200": {
                         "description": "Room"
+                    },
+                    "400": {
+                        "description": "Missing path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown path, or a path the caller may not read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "guest"
+                "x-wgw-access": "user"
             }
         },
         "/files/star": {
