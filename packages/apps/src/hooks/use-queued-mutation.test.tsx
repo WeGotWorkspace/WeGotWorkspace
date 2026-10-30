@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppToastShowOptions } from "@/hooks/use-app-toast";
 import { useQueuedMutation, type DeferredApiWriteArgs } from "@/hooks/use-queued-mutation";
 import { resetWgwSessionStateForTests, wgwFetch } from "@/lib/api/wgw/http";
+import { pageIsExiting } from "@/lib/page-exit";
 
 const toast = vi.hoisted(() => ({
   show: vi.fn((_title: string, _options?: unknown) => "toast-1" as string | number),
@@ -95,14 +96,18 @@ describe("useQueuedMutation when the page is left", () => {
     expect(args.execute).toHaveBeenCalledTimes(1);
   });
 
-  it("sends a pending write right away on beforeunload", () => {
+  it("keeps a pending write and its Undo when beforeunload is cancelled", () => {
     const { result } = renderQueue();
     const args = queueArgs();
 
     act(() => result.current.queueMutation(args));
     firePageExit("beforeunload");
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
 
-    expect(args.execute).toHaveBeenCalledTimes(1);
+    expect(args.execute).not.toHaveBeenCalled();
+    expect(pageIsExiting()).toBe(false);
   });
 
   it("sends the write once when beforeunload, pagehide and the timer all fire", () => {
