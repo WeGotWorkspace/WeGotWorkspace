@@ -219,6 +219,32 @@ describe("JmapPushHub", () => {
       expect((await b.streams[1]!.firstId) ?? "").not.toContain(`Note=${H1}`);
     });
 
+    it("a restarted hub forgets what it heard from other tabs before it stopped", async () => {
+      const b = browser();
+      const a = b.tab("a");
+      const c = b.tab("c");
+      cleanup.push(a.hub.subscribe(["Note"], async () => true));
+      const leaveC = c.hub.subscribe(["ChatMessage"], async () => true);
+      await settle();
+      b.live()[0]!.sink!.deliver(change({ Note: "n1" }), `v1;Calendar=${HC};Note=${H1}`);
+      await settle();
+
+      // While c is stopped, tab a starts on Calendar; c never hears that.
+      leaveC();
+      await settle();
+      cleanup.push(a.hub.subscribe(["Calendar"], async () => false));
+      await settle();
+      cleanup.push(c.hub.subscribe(["ChatMessage"], async () => true));
+      a.view.set(false);
+      await settle();
+
+      expect(b.locks.holder(LEADER)).toBe("c");
+      // A stale copy would claim Calendar=HC for nobody and skip tab a's Calendar.
+      expect(await b.live()[0]!.firstId).toBeNull();
+      // Tab a answered the roll-call: Calendar is left out until it confirms.
+      expect(await b.live()[0]!.ctx.lastEventId()).toBe(`v1;Note=${H1}`);
+    });
+
     it("a new leader without a copy sends no id", async () => {
       const b = browser();
       const a = b.tab("a");
