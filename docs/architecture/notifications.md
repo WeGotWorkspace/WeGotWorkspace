@@ -104,6 +104,21 @@ The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATION
 6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change.
 7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace.
 
+### Measured (#1668)
+
+Time from a notifying write (a DM to the user, sent over REST) to the row in the bell, push only, on a local dev install (Vite dev server, PHP built-in server, Chromium):
+
+| Setup | DM sent → row shown |
+|-------|---------------------|
+| Two tabs, by hand, nine DMs | 0.2–2.7 s, median 1.3 s |
+| `e2e/notifications-inbox-push.spec.ts`, two tabs, five runs | 2.4 s; 2.9 s after the stream tab reloads |
+
+Before #1668 the bell waited for its 15 s poll. Now the spread follows the stream's 3 s `retry`: the worst case is about one retry plus one request. The spec's numbers barely vary because it sends at the same point in that cycle. Each DM caused one inbox `GET` and one `local-ack` for the whole browser.
+
+**With `check-now`:** not measured. The mesh `check-now` (#1662) is not built yet; measure again when it lands.
+
+**Local-ack grace:** stays at 20 s. While push is connected a visible tab acks within about 3 s, so 5–10 s would do. But while push is down (rate-limited, `501`, offline) the ack waits for the 15 s poll, and the server cannot tell which case a browser is in, so a shorter grace would send phone pushes for news already on screen. Revisit once push uptime is measured: either poll faster while push is down, or give a shorter grace only to a user whose browser made an event-source request in the last few seconds.
+
 ## The mesh as messenger
 
 The principal presence mesh already carries chat acceleration (`meet-core/src/meet-mesh-sot.ts`):
