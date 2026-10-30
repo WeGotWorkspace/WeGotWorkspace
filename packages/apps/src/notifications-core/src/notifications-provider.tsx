@@ -80,8 +80,15 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
   const seededRef = useRef(false);
   const soundMutedRef = useRef(soundMuted);
   soundMutedRef.current = soundMuted;
-  /** Abort in-flight GETs so a slow poll cannot overwrite a newer hint refresh. */
+  /** Abort in-flight refreshes; a newer one replaces them. */
   const refreshAbortRef = useRef<AbortController | null>(null);
+  /**
+   * Every inbox GET gets a number; a response is shown only when no GET that
+   * started later was shown first, so a slow poll cannot overwrite newer rows.
+   */
+  const fetchSeqRef = useRef(0);
+  const shownSeqRef = useRef(0);
+  const shownRef = useRef<NotificationInboxList | null>(null);
   const hintRetryTimersRef = useRef<number[]>([]);
   const signedIn = signedInMember();
   const trackUnreadForLocalAck = useNotificationsLocalAck();
@@ -110,38 +117,65 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     [trackUnreadForLocalAck],
   );
 
-  /** Fetch and show the unread inbox. Resolves the rows, or null when the fetch failed. */
-  const refresh = useCallback(async (): Promise<NotificationInboxList | null> => {
-    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) {
-      setItems([]);
-      setUnreadCount(0);
-      return null;
-    }
-    refreshAbortRef.current?.abort();
-    const abort = new AbortController();
-    refreshAbortRef.current = abort;
-    try {
-      // Bell tray is unread-only; mark-as-read removes rows from the next list.
-      const payload = await listNotifications({ unread: true, signal: abort.signal });
-      if (abort.signal.aborted) return null;
-      applyPayload(payload);
-      return payload;
-    } catch {
-      // Stay silent — tray is best-effort.
-      return null;
-    }
-  }, [applyPayload]);
-
-  /** Rows the leading tab fetched on push: newer than any poll still in flight here. */
-  const applyShared = useCallback(
-    (payload: NotificationInboxList) => {
-      refreshAbortRef.current?.abort();
+  const show = useCallback(
+    (seq: number, payload: NotificationInboxList) => {
+      if (seq <= shownSeqRef.current) return;
+      shownSeqRef.current = seq;
+      shownRef.current = payload;
       applyPayload(payload);
     },
     [applyPayload],
   );
 
-  const pushConnected = useNotificationsInboxPush({ signedIn, refresh, apply: applyShared });
+  /** Poll, hint and visibility refetch: fetch and show the unread inbox. */
+  const refresh = useCallback(async (): Promise<void> => {
+    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) {
+      setItems([]);
+      setUnreadCount(0);
+      return;
+    }
+    refreshAbortRef.current?.abort();
+    const abort = new AbortController();
+    refreshAbortRef.current = abort;
+    const seq = ++fetchSeqRef.current;
+    try {
+      // Bell tray is unread-only; mark-as-read removes rows from the next list.
+      const payload = await listNotifications({ unread: true, signal: abort.signal });
+      if (!abort.signal.aborted) show(seq, payload);
+    } catch {
+      // Stay silent — tray is best-effort.
+    }
+  }, [show]);
+
+  /**
+   * The fetch for a pushed state. Not aborted by a refresh that starts
+   * meanwhile. Resolves the newest rows shown after it (its own, or those of
+   * a GET that started later), or null when it failed.
+   */
+  const fetchForPush = useCallback(async (): Promise<NotificationInboxList | null> => {
+    if (!wgwHasAuthenticatedSession() || wgwIsGuestSession()) return null;
+    const seq = ++fetchSeqRef.current;
+    try {
+      const payload = await listNotifications({ unread: true });
+      show(seq, payload);
+      return shownRef.current ?? payload;
+    } catch {
+      return null;
+    }
+  }, [show]);
+
+  /** Rows the stream tab fetched on push: newer than any GET still in flight here. */
+  const applyShared = useCallback(
+    (payload: NotificationInboxList) => {
+      refreshAbortRef.current?.abort();
+      shownSeqRef.current = fetchSeqRef.current;
+      shownRef.current = payload;
+      applyPayload(payload);
+    },
+    [applyPayload],
+  );
+
+  const pushConnected = useNotificationsInboxPush({ signedIn, fetchForPush, apply: applyShared });
   const pollMs = pushConnected ? NOTIFICATIONS_INBOX_PUSH_POLL_MS : NOTIFICATIONS_INBOX_POLL_MS;
 
   const refreshFromNotifyHint = useCallback(() => {

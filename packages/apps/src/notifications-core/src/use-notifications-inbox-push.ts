@@ -1,25 +1,37 @@
 import { useEffect, useRef } from "react";
 import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
-import { defaultInboxFanOut, type InboxPayload } from "@/notifications-core/src/inbox-fan-out";
+import { defaultInboxFanOut } from "@/notifications-core/src/inbox-fan-out";
+import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
 
 const PUSH_TYPES = ["Notification"] as const;
 const NO_TYPES: readonly string[] = [];
 
 /**
- * Inbox on push (docs/architecture/jmap-push.md): when the server pushes a new
- * `Notification` state, the tab that holds the push stream fetches once and
- * shares the rows; the other tabs show what it shared. That tab is visible
- * whenever any tab is, so a paused background tab never delays the bell.
+ * How long a tab that does not hold the push stream waits for the rows the
+ * stream tab fetched. After that it does not confirm, so the server sends the
+ * change again (the stream tab may have closed mid-fetch).
+ */
+export const INBOX_SHARE_WAIT_MS = 10_000;
+
+/**
+ * Inbox on push (docs/architecture/notifications.md, "Active news on the
+ * client"): when the server pushes a new `Notification` state, the tab that
+ * holds the push stream fetches once and shares the rows with that state; the
+ * other tabs wait for them. That tab is visible whenever any tab is, so a
+ * paused background tab never delays the bell.
+ *
+ * A tab confirms the push only once it has the rows. A failed fetch (or no
+ * share in time) leaves it unconfirmed, so the server sends it again.
  * Returns whether push is connected, so the caller can slow its fallback poll.
  *
- * `refresh` resolves the fetched inbox, or `null` when the fetch failed, so the
- * push is not confirmed and the server sends it again.
+ * `fetchForPush` resolves the newest inbox this tab has after its fetch, or
+ * `null` when the fetch failed; a refresh started meanwhile must not cancel it.
  */
 export function useNotificationsInboxPush(options: {
   signedIn: boolean;
-  refresh: () => Promise<InboxPayload | null>;
-  apply: (payload: InboxPayload) => void;
+  fetchForPush: () => Promise<NotificationInboxList | null>;
+  apply: (payload: NotificationInboxList) => void;
 }): boolean {
   const { signedIn } = options;
   const latest = useRef(options);
@@ -32,13 +44,21 @@ export function useNotificationsInboxPush(options: {
     return defaultInboxFanOut().onShared((payload) => latest.current.apply(payload));
   }, [signedIn]);
 
-  useJmapStateChange(signedIn ? PUSH_TYPES : NO_TYPES, async () => {
-    // The tab that holds the stream fetches and shares the rows.
-    if (!defaultJmapPushHub()?.leading) return true;
-    const payload = await latest.current.refresh();
-    if (!payload) return false;
-    defaultInboxFanOut().share(payload);
-    return true;
+  useJmapStateChange(signedIn ? PUSH_TYPES : NO_TYPES, async (states) => {
+    const state = states.Notification;
+    if (!state) return true;
+    const fanOut = defaultInboxFanOut();
+    if (defaultJmapPushHub()?.leading) {
+      const payload = await latest.current.fetchForPush();
+      if (!payload) {
+        fanOut.shareFailed(state);
+        return false;
+      }
+      fanOut.share(payload, state);
+      return true;
+    }
+    // The rows arrive through `onShared` above; confirm once they are here.
+    return (await fanOut.waitFor(state, INBOX_SHARE_WAIT_MS)) !== null;
   });
 
   return useJmapPushConnected();

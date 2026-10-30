@@ -1,16 +1,25 @@
 import { crossTabTopic, type CrossTabTopic } from "@/lib/offline/core/cross-tab-topic";
 import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
 
-export type InboxPayload = NotificationInboxList;
-
-/** The inbox the leading tab fetched, sent to the other tabs. */
-export type InboxMessage = { v: 1; kind: "inbox" } & InboxPayload;
+/**
+ * Sent by the tab that fetched the inbox for a pushed `Notification` state:
+ * the rows it got, or that the fetch failed. `state` is the pushed state the
+ * fetch answered, so a waiting tab knows the rows are new enough.
+ */
+export type InboxMessage =
+  | ({ v: 1; kind: "inbox"; state: string } & NotificationInboxList)
+  | { v: 1; kind: "inbox-failed"; state: string };
 
 export function isInboxMessage(value: unknown): value is InboxMessage {
   if (!value || typeof value !== "object") return false;
-  const message = value as Partial<InboxMessage>;
+  const message = value as {
+    v?: unknown;
+    kind?: unknown;
+    state?: unknown;
+  } & Partial<NotificationInboxList>;
+  if (message.v !== 1 || typeof message.state !== "string") return false;
+  if (message.kind === "inbox-failed") return true;
   return (
-    message.v === 1 &&
     message.kind === "inbox" &&
     Array.isArray(message.list) &&
     typeof message.unreadCount === "number"
@@ -22,26 +31,65 @@ const CHANNEL = "wgw-notifications-inbox";
 /**
  * Shares the inbox one tab fetched with the other tabs, so a push costs one
  * GET per browser, not one per tab. Which tab fetches is decided by the push
- * hub (`hub.leading`, see use-notifications-inbox-push.ts).
+ * hub (`hub.leading`, see use-notifications-inbox-push.ts); the others wait
+ * for its rows before they confirm the push.
  */
 export class InboxFanOut {
   readonly #topic: CrossTabTopic<InboxMessage>;
+  /** The newest message from another tab, for a tab that starts waiting after it arrived. */
+  #last: InboxMessage | null = null;
+  #waiters = new Set<(message: InboxMessage) => void>();
 
   constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
+    this.#topic.subscribe((message) => {
+      this.#last = message;
+      for (const waiter of [...this.#waiters]) waiter(message);
+    });
   }
 
   /** Rows another tab fetched. */
-  onShared(listener: (payload: InboxPayload) => void): () => void {
-    return this.#topic.subscribe(({ list, unreadCount }) => listener({ list, unreadCount }));
+  onShared(listener: (payload: NotificationInboxList) => void): () => void {
+    return this.#topic.subscribe((message) => {
+      if (message.kind === "inbox") {
+        listener({ list: message.list, unreadCount: message.unreadCount });
+      }
+    });
   }
 
-  /** Send the rows this tab fetched to the other tabs. */
-  share(payload: InboxPayload): void {
+  /** Send the rows this tab fetched for `state` to the other tabs. */
+  share(payload: NotificationInboxList, state: string): void {
     this.#topic.publish(
-      { v: 1, kind: "inbox", list: payload.list, unreadCount: payload.unreadCount },
+      { v: 1, kind: "inbox", state, list: payload.list, unreadCount: payload.unreadCount },
       { otherTabsOnly: true },
     );
+  }
+
+  /** Tell the waiting tabs this tab's fetch for `state` failed. */
+  shareFailed(state: string): void {
+    this.#topic.publish({ v: 1, kind: "inbox-failed", state }, { otherTabsOnly: true });
+  }
+
+  /**
+   * The rows another tab shares for `state`, or null when its fetch failed or
+   * nothing came within `timeoutMs` (that tab closed or crashed mid-fetch).
+   */
+  waitFor(state: string, timeoutMs: number): Promise<NotificationInboxList | null> {
+    const answer = (message: InboxMessage) =>
+      message.kind === "inbox" ? { list: message.list, unreadCount: message.unreadCount } : null;
+    if (this.#last?.state === state) return Promise.resolve(answer(this.#last));
+    return new Promise((resolve) => {
+      const done = (value: NotificationInboxList | null) => {
+        clearTimeout(timer);
+        this.#waiters.delete(waiter);
+        resolve(value);
+      };
+      const waiter = (message: InboxMessage) => {
+        if (message.state === state) done(answer(message));
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+      this.#waiters.add(waiter);
+    });
   }
 }
 
