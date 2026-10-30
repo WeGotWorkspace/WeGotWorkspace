@@ -252,6 +252,13 @@ Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJourna
         $result['movedObjects'],
         $result['skipped'],
     ));
+    $repair = $stripper->repairStranded();
+    $this->info(sprintf(
+        'Moved %d stranded journal object(s) from %d calendar(s) without VJOURNAL; left %d in place (uid already in the notebook).',
+        $repair['movedObjects'],
+        $repair['repaired'],
+        $repair['collisions'],
+    ));
 
     return Command::SUCCESS;
 })->purpose('Strip VJOURNAL from event calendars and move stray journals into notes-general (idempotent)');
