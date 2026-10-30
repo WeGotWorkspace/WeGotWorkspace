@@ -27,6 +27,25 @@ export function isInboxMessage(value: unknown): value is InboxMessage {
 }
 
 const CHANNEL = "wgw-notifications-inbox";
+/** Messages kept for a tab that starts waiting after they arrived. */
+const RECENT_LIMIT = 16;
+const COUNTER = /^\d+$/;
+
+/**
+ * True when `state` is older than `than`. `Notification` states are the
+ * server's per-user inbox counter (`NotificationInboxMarkers`: "0", "1", …),
+ * so they compare as integers; a state of any other shape has no order.
+ */
+export function isOlderInboxState(state: string, than: string): boolean {
+  return COUNTER.test(state) && COUNTER.test(than) && Number(state) < Number(than);
+}
+
+/** True when rows fetched for `have` include everything `want` changed. */
+function covers(have: string, want: string): boolean {
+  return (
+    have === want || (COUNTER.test(have) && COUNTER.test(want) && !isOlderInboxState(have, want))
+  );
+}
 
 /**
  * Shares the inbox one tab fetched with the other tabs, so a push costs one
@@ -36,23 +55,26 @@ const CHANNEL = "wgw-notifications-inbox";
  */
 export class InboxFanOut {
   readonly #topic: CrossTabTopic<InboxMessage>;
-  /** The newest message from another tab, for a tab that starts waiting after it arrived. */
-  #last: InboxMessage | null = null;
+  /** Recent rows from other tabs, for a tab that starts waiting after they arrived. */
+  #recent: Array<InboxMessage & { kind: "inbox" }> = [];
   #waiters = new Set<(message: InboxMessage) => void>();
 
   constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
     this.#topic.subscribe((message) => {
-      this.#last = message;
+      if (message.kind === "inbox") {
+        this.#recent.push(message);
+        if (this.#recent.length > RECENT_LIMIT) this.#recent.shift();
+      }
       for (const waiter of [...this.#waiters]) waiter(message);
     });
   }
 
-  /** Rows another tab fetched. */
-  onShared(listener: (payload: NotificationInboxList) => void): () => void {
+  /** Rows another tab fetched, with the pushed state they answer. */
+  onShared(listener: (payload: NotificationInboxList, state: string) => void): () => void {
     return this.#topic.subscribe((message) => {
       if (message.kind === "inbox") {
-        listener({ list: message.list, unreadCount: message.unreadCount });
+        listener({ list: message.list, unreadCount: message.unreadCount }, message.state);
       }
     });
   }
@@ -71,13 +93,16 @@ export class InboxFanOut {
   }
 
   /**
-   * The rows another tab shares for `state`, or null when its fetch failed or
-   * nothing came within `timeoutMs` (that tab closed or crashed mid-fetch).
+   * The rows another tab shares for `state` (or a newer state), or null when
+   * its fetch for `state` failed during the wait or nothing came within
+   * `timeoutMs` (that tab closed or crashed mid-fetch). A failure from before
+   * the wait was an earlier attempt and does not count.
    */
   waitFor(state: string, timeoutMs: number): Promise<NotificationInboxList | null> {
     const answer = (message: InboxMessage) =>
       message.kind === "inbox" ? { list: message.list, unreadCount: message.unreadCount } : null;
-    if (this.#last?.state === state) return Promise.resolve(answer(this.#last));
+    const cached = [...this.#recent].reverse().find((message) => covers(message.state, state));
+    if (cached) return Promise.resolve(answer(cached));
     return new Promise((resolve) => {
       const done = (value: NotificationInboxList | null) => {
         clearTimeout(timer);
@@ -85,7 +110,9 @@ export class InboxFanOut {
         resolve(value);
       };
       const waiter = (message: InboxMessage) => {
-        if (message.state === state) done(answer(message));
+        if (message.kind === "inbox" ? covers(message.state, state) : message.state === state) {
+          done(answer(message));
+        }
       };
       const timer = setTimeout(() => done(null), timeoutMs);
       this.#waiters.add(waiter);

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { defaultJmapPushHub } from "@/lib/api/wgw/jmap-push";
 import { useJmapPushConnected, useJmapStateChange } from "@/lib/api/wgw/use-jmap-state-change";
-import { defaultInboxFanOut } from "@/notifications-core/src/inbox-fan-out";
+import { defaultInboxFanOut, isOlderInboxState } from "@/notifications-core/src/inbox-fan-out";
 import type { NotificationInboxList } from "@/notifications-core/src/notifications-types";
 
 const PUSH_TYPES = ["Notification"] as const;
@@ -40,9 +40,21 @@ export function useNotificationsInboxPush(options: {
     latest.current = options;
   });
 
+  /** The newest pushed state whose rows this tab has. A share for an older one came late. */
+  const newestState = useRef<string | null>(null);
+  const noteState = (state: string): boolean => {
+    const newest = newestState.current;
+    if (newest !== null && isOlderInboxState(state, newest)) return false;
+    newestState.current = state;
+    return true;
+  };
+
   useEffect(() => {
     if (!signedIn) return;
-    return defaultInboxFanOut().onShared((payload) => latest.current.apply(payload));
+    newestState.current = null;
+    return defaultInboxFanOut().onShared((payload, state) => {
+      if (noteState(state)) latest.current.apply(payload);
+    });
   }, [signedIn]);
 
   useJmapStateChange(signedIn ? PUSH_TYPES : NO_TYPES, async (states) => {
@@ -55,6 +67,7 @@ export function useNotificationsInboxPush(options: {
         fanOut.shareFailed(state);
         return false;
       }
+      noteState(state);
       fanOut.share(payload, state);
       return true;
     };

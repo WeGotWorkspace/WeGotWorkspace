@@ -18,9 +18,12 @@ export type LocalAckClaims = {
  */
 export function createLocalAckClaims(locks: WebLocks | null): LocalAckClaims {
   const held = new Map<string, () => void>();
+  /** Bumped by `releaseAll`: a claim granted after it (the hook unmounted) is given back. */
+  let generation = 0;
   return {
     async claim(id) {
       if (!locks || held.has(id)) return true;
+      const started = generation;
       let release: () => void = () => undefined;
       const hold = new Promise<void>((resolve) => {
         release = resolve;
@@ -33,6 +36,10 @@ export function createLocalAckClaims(locks: WebLocks | null): LocalAckClaims {
           })
           .catch(() => resolve(false));
       });
+      if (granted && started !== generation) {
+        release();
+        return false;
+      }
       if (granted) held.set(id, release);
       return granted;
     },
@@ -41,6 +48,7 @@ export function createLocalAckClaims(locks: WebLocks | null): LocalAckClaims {
       held.delete(id);
     },
     releaseAll() {
+      generation += 1;
       for (const release of held.values()) release();
       held.clear();
     },
