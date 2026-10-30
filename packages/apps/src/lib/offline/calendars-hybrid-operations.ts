@@ -458,13 +458,15 @@ export function createHybridCalendarOperations(username: string): CalendarAPIOpe
 }
 
 export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstrap> {
-  let bootstrap = await fetchCalendarLiveBootstrap();
+  // The live snapshot only covers this window; events loaded for other periods
+  // stay. One window for the fetch and the writes, also across midnight.
+  const window = calendarBootstrapWindow();
+  const liveWindow = { window };
+  let bootstrap = await fetchCalendarLiveBootstrap(window);
   const username = bootstrap.session.user.username;
   if (!username) {
     throw new Error("Calendar bootstrap missing username");
   }
-  // The live snapshot only covers this window; events loaded for other periods stay.
-  const liveWindow = { window: calendarBootstrapWindow() };
   // Write first so pendingSync rows survive a live snapshot that raced ahead of
   // flush; then drain the outbox and return the merged cache (not the raw live
   // payload, which would revert optimistic patches in the UI).
@@ -473,7 +475,7 @@ export async function fetchCalendarHybridBootstrap(): Promise<CalendarAppBootstr
     await runnerFor(username).flush();
     const refreshed = await refreshStaleCalendarSubscriptionsLive().catch(() => false);
     if (refreshed) {
-      bootstrap = await fetchCalendarLiveBootstrap();
+      bootstrap = await fetchCalendarLiveBootstrap(window);
       await writeCalendarBootstrapToCache(username, bootstrap, liveWindow);
       await runnerFor(username).flush();
     }

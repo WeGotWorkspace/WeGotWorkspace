@@ -146,18 +146,14 @@ export async function writeCalendarBootstrapToCache(
 }
 
 /**
- * The period query returns a series only when it occurs in that period, so an
- * omitted master is gone only when it has an occurrence inside the period;
- * one with none there says nothing and stays.
- */
-function isMissingFromRange(event: JmapCalendarEvent, range: CalendarUtcRange): boolean {
-  return rangeQueryCoversEvent(event, range);
-}
-
-/**
  * Merge one on-demand period into the cache (#1675): upsert what the server
- * returned and drop events in that period it no longer has. Rows with
- * a pending or just-written local change stay.
+ * returned and drop cached events the query covers but no longer returned.
+ * The query returns a series when one of its occurrences falls in the
+ * period, so an omitted master with an occurrence there is gone on the
+ * server; one with no occurrence there stays. This is the only place a
+ * series deleted while the client was closed, which never occurs in the
+ * bootstrap window, is removed. Rows with a pending or just-written local
+ * change stay.
  */
 export async function mergeCalendarRangeIntoCache(
   username: string,
@@ -176,7 +172,7 @@ export async function mergeCalendarRangeIntoCache(
           !row.pendingSync &&
           row.locallyWritten !== true &&
           !incomingIds.has(row.id) &&
-          isMissingFromRange(parseEventRow(row), range),
+          rangeQueryCoversEvent(parseEventRow(row), range),
       )
       .map((row) => row.id);
     if (goneIds.length > 0) {

@@ -105,11 +105,12 @@ export async function fetchCalendarEventsInRangeLive(
 export async function fetchCalendarBootstrapForClient(
   client: JmapClient,
   session: CalendarAppBootstrap["session"],
+  window: CalendarUtcRange = calendarBootstrapWindow(),
 ): Promise<CalendarAppBootstrap> {
   const { calendars, accountId } = await connectedCalendars(client);
 
   const calendarGet = await calendars.getCalendars(accountId);
-  const events = await calendars.getCalendarEventsInRange(accountId, calendarBootstrapWindow());
+  const events = await calendars.getCalendarEventsInRange(accountId, window);
 
   return {
     session,
@@ -134,8 +135,11 @@ async function loadCalendarDirectoryGroups(): Promise<CalendarDirectoryGroup[]> 
   }
 }
 
-export async function fetchCalendarLiveBootstrap(): Promise<CalendarAppBootstrap> {
-  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal());
+/** `window` defaults to today's bootstrap window; pass the one the cache write uses. */
+export async function fetchCalendarLiveBootstrap(
+  window?: CalendarUtcRange,
+): Promise<CalendarAppBootstrap> {
+  return fetchCalendarBootstrapForClient(calendarJmapClient(), await wgwFetchPrincipal(), window);
 }
 
 export async function createCalendarEventLive(

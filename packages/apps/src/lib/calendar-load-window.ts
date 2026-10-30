@@ -82,7 +82,7 @@ function eventLengthMs(event: JmapCalendarEvent, startMs: number): number {
   return 0;
 }
 
-export function isRecurringMaster(event: JmapCalendarEvent): boolean {
+function isRecurringMaster(event: JmapCalendarEvent): boolean {
   return (
     (event.recurrenceRules?.length ?? 0) > 0 ||
     Object.keys(event.recurrenceOverrides ?? {}).length > 0
