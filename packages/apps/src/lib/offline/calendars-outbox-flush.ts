@@ -20,6 +20,7 @@ import {
   type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
@@ -67,6 +68,11 @@ function outboxConflictId(op: string, payload: Record<string, unknown>): string 
     return String(payload.notificationId ?? "");
   }
   return String(payload.eventId ?? "");
+}
+
+/** Whole-cache rewrites keep a period merged between their read and write (#1675). */
+function cacheWindow() {
+  return { window: calendarBootstrapWindow() };
 }
 
 export async function flushCalendarsOutbox(username: string): Promise<CalendarOutboxFlushResult> {
@@ -122,16 +128,20 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const created = await createCalendarLive(draft);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: [
-                ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
-                created,
-              ],
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: [
+                  ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
+                  created,
+                ],
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "calendarUpdate") {
         const calendarId = String(payload.calendarId ?? "");
@@ -139,31 +149,39 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const updated = await patchCalendarLive(calendarId, patch);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: latest.data.calendars.map((calendar) =>
-                calendar.id === calendarId ? updated : calendar,
-              ),
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: latest.data.calendars.map((calendar) =>
+                  calendar.id === calendarId ? updated : calendar,
+                ),
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "calendarDelete") {
         const calendarId = String(payload.calendarId ?? "");
         await deleteCalendarLive(calendarId);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
-              events: latest.data.events.filter(
-                (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
-              ),
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
+                events: latest.data.events.filter(
+                  (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
+                ),
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "respond-scheduling") {
         await respondCalendarSchedulingNotification(

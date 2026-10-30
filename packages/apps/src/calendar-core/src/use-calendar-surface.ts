@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { EventsAPIContextValue } from "@/lib/calendar-elements/context/EventsAPIContext";
 import { JmapEventsAdapter, type JmapClient } from "@/lib/jmap-client";
