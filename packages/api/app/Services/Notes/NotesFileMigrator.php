@@ -32,7 +32,7 @@ final class NotesFileMigrator
     /**
      * Each file is imported on its own: a file that fails is skipped with a
      * notice and the next one is tried. A skipped file is not recorded, so
-     * the next run (the command, or a later update) tries it again.
+     * the next run of `wgw:notes:migrate-files` tries it again.
      *
      * @return array{
      *   mapped: int,
@@ -101,6 +101,7 @@ final class NotesFileMigrator
         if ($this->ledger->noteExists($uid)) {
             // A run that stopped between creating the note and recording it.
             $result['starred'] += $this->copyStars($virtualPath, $uid, $stars);
+            $this->noteShares($virtualPath, $shares, $result['notices']);
             $this->ledger->record($virtualPath, $uid);
             $result['alreadyImported']++;
 
@@ -161,11 +162,20 @@ final class NotesFileMigrator
         ], allowStoredTags: true);
         $noteUid = is_string($note['id'] ?? null) ? (string) $note['id'] : $uid;
         $result['starred'] += $this->copyStars($virtualPath, $noteUid, $stars);
+        $this->noteShares($virtualPath, $shares, $result['notices']);
         $this->ledger->record($virtualPath, $noteUid);
         $result['imported']++;
+    }
+
+    /**
+     * @param  list<string>  $shares
+     * @param  list<string>  $notices
+     */
+    private function noteShares(string $virtualPath, array $shares, array &$notices): void
+    {
         foreach ($shares as $shared) {
             if ($virtualPath === $shared || str_starts_with($virtualPath, $shared.'/')) {
-                $result['notices'][] = sprintf('shared in Drive as %s; the imported note is not shared: %s', $shared, $virtualPath);
+                $notices[] = sprintf('shared in Drive as %s; the imported note is not shared: %s', $shared, $virtualPath);
             }
         }
     }
@@ -239,16 +249,18 @@ final class NotesFileMigrator
         if ($objectId === null) {
             return 0;
         }
+        $created = 0;
         foreach ($usernames as $username) {
-            NoteStar::query()->firstOrCreate([
+            $star = NoteStar::query()->firstOrCreate([
                 'username' => $username,
                 'calendar_object_id' => (int) $objectId,
             ], [
                 'note_uid' => $uid,
             ]);
+            $created += $star->wasRecentlyCreated ? 1 : 0;
         }
 
-        return count($usernames);
+        return $created;
     }
 
     /**

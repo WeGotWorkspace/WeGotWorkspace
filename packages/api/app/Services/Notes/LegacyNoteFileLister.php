@@ -11,9 +11,13 @@ use DirectoryIterator;
  * Lists the files under every personal and group `.notes` tree (v0.1.96 and
  * older), and only there: walking the whole Drive would make the update slow.
  *
- * It walks the local disk itself because Flysystem's listing throws on the
- * first symbolic link or unreadable folder, which would stop the import for
- * every note. Those entries are skipped with a notice instead (#1773).
+ * It walks the local disk itself, one directory at a time, because
+ * Flysystem's listing throws on the first symbolic link or unreadable
+ * folder, which would stop the import for every note. A link or a folder
+ * that cannot be opened is skipped with a notice that names it, and its
+ * siblings are still listed (#1773). The update does not retry those notes on
+ * its own; the update log tells the admin to run `wgw:notes:migrate-files`
+ * once the folder is readable.
  */
 final class LegacyNoteFileLister
 {
@@ -43,32 +47,38 @@ final class LegacyNoteFileLister
     }
 
     /**
-     * One directory at a time, so a folder that cannot be opened is reported
-     * and the walk goes on with its siblings.
+     * One directory at a time, so a folder that cannot be opened is named
+     * and skipped while its siblings are still listed.
      *
      * @param  list<string>  $notices
      * @return list<string>
      */
     private function walk(string $root, string $dir, array &$notices): array
     {
-        $files = [];
         try {
             $entries = new DirectoryIterator($dir);
-            foreach ($entries as $entry) {
-                if ($entry->isDot()) {
-                    continue;
-                }
-                $path = $entry->getPathname();
-                if ($entry->isLink()) {
-                    $notices[] = 'skipped symbolic link: '.$this->virtual($root, $path);
-                } elseif ($entry->isDir()) {
-                    array_push($files, ...$this->walk($root, $path, $notices));
-                } elseif ($entry->isFile()) {
-                    $files[] = substr($path, strlen($root) + 1);
-                }
-            }
         } catch (\Throwable $e) {
             $notices[] = 'could not list '.$this->virtual($root, $dir).': '.$e->getMessage();
+
+            return [];
+        }
+        $files = [];
+        $subdirs = [];
+        foreach ($entries as $entry) {
+            if ($entry->isDot()) {
+                continue;
+            }
+            $path = $entry->getPathname();
+            if ($entry->isLink()) {
+                $notices[] = 'skipped symbolic link: '.$this->virtual($root, $path);
+            } elseif ($entry->isDir()) {
+                $subdirs[] = $path;
+            } elseif ($entry->isFile()) {
+                $files[] = substr($path, strlen($root) + 1);
+            }
+        }
+        foreach ($subdirs as $subdir) {
+            array_push($files, ...$this->walk($root, $subdir, $notices));
         }
 
         return $files;

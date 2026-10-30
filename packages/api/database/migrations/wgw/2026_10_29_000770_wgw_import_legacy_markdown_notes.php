@@ -57,12 +57,31 @@ return new class extends WgwMigration
         foreach ($result['notices'] as $notice) {
             $this->appendUpdateLog('Notes import: '.$notice);
         }
+        if ($result['skipped'] > 0 || $this->hasListingNotice($result['notices'])) {
+            // Recorded as run, so a file that can never be read does not hold
+            // every later migration; the command picks the rest up.
+            $this->appendUpdateLog('Some Markdown notes were not imported (see above). Once they are readable, run `php artisan wgw:notes:migrate-files` to import them.');
+        }
     }
 
     public function down(): void
     {
         // Data migration — imported notes stay. The ledger stays so a rerun
         // does not import them twice.
+    }
+
+    /**
+     * @param  list<string>  $notices
+     */
+    private function hasListingNotice(array $notices): bool
+    {
+        foreach ($notices as $notice) {
+            if (str_starts_with($notice, 'could not list ') || str_starts_with($notice, 'skipped symbolic link: ')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function appendUpdateLog(string $message): void

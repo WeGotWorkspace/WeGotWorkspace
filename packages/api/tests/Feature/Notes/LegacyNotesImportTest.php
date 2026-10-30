@@ -184,6 +184,7 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
         $this->assertNotNull($this->notesIn('Alpha')->firstWhere('title', 'First'));
         $this->assertNull(CalendarObject::query()->where('componenttype', 'VJOURNAL')->where('calendardata', 'like', '%Second%')->first());
         $this->assertStringContainsString('could not list /users/bob/.notes/Zeta', $this->updateLog());
+        $this->assertStringContainsString('run `php artisan wgw:notes:migrate-files`', $this->updateLog());
     }
 
     public function test_a_symbolic_link_under_notes_is_skipped_and_the_rest_imported(): void
