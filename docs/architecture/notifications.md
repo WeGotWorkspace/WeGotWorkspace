@@ -94,15 +94,31 @@ That push reaches every device of the recipient, also one where the app is open.
 
 ## Active news on the client
 
-Today the inbox polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) and re-fetches on a mesh `notify-hint`. In this design:
+The inbox re-fetches on a mesh `notify-hint` and polls every 15 s (`NOTIFICATIONS_INBOX_POLL_MS`) while push is down. Steps 2, 3 and 7 below are built (#1668, `notifications-core/src/use-notifications-inbox-push.ts`); the toast (steps 4–6) and `check-now` are not yet. In this design:
 
 1. The server exposes a per-user `Notification` state in the event source. The `notifications` table has no change marker today, and `supersede` rewrites rows in place. So it gets one: an `updated_at` (or a per-principal sequence) that create, supersede, clear and read all touch.
-2. When the `Notification` state changes, the hub fetches the inbox once and fans the new rows out to every tab. `notify-hint` becomes a generic mesh "check now".
-3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely.
+2. When the `Notification` state changes, one tab fetches the inbox once and fans the new rows out to every tab. That tab is the one that holds the push stream (`hub.leading`), which is visible whenever any tab is, so a paused background tab never delays the bell. The others skip the fetch and show the rows it shares on a `crossTabTopic` (`inbox-fan-out.ts`), tagged with the pushed state they answer. A tab confirms the push only once it has those rows: the stream tab after its fetch, another tab after the share for that state arrives. A failed fetch is shared as failed and not confirmed, and a tab that hears nothing within 10 s (`INBOX_SHARE_WAIT_MS`: the stream tab closed mid-fetch) does not confirm either, so the server sends the change again. A poll or visibility refresh that starts meanwhile does not cancel the push fetch. `Notification` states are the server's per-user inbox counter, so a share for an older state that arrives late is ignored (the stream tab claims its state before it fetches, so this also holds while its GET runs), and rows for a newer state also answer a wait for an older one. `notify-hint` becomes a generic mesh "check now".
+3. **Local-ack** follows #1605: only a visible window, or one in a Meet call, acks a delivery, so VAPID skips it. Receiving through push instead of a poll makes that ack earlier, which only makes a duplicate Web Push less likely. Two visible tabs never both ack a row: a tab first takes the Web Lock `wgw-notifications/local-ack/<id>` without waiting (`local-ack-claims.ts`) and holds it while the row is unread; a tab that does not get it skips the row, and tries again on its next refresh if the holder's ack failed or the holder closed.
 4. **One tab shows the toast:** the most recently focused visible tab, elected through the hub. Every tab reports its focus, visibility and current route to the hub. If no tab is visible, no tab shows anything itself and nothing is acked: the Web Push service worker is the only OS notification path (#1605).
 5. The toast uses the existing toast primitive (`ui/sonner.tsx`, `AppToastCallout`) in a notification style. It names the app and the actor, acts on click through the item's `navigate`, and marks the row read on that click. It is `role="status"`, never takes focus, and follows reduced motion.
 6. **No toast for what you are looking at.** If the item's `navigate` points at the screen the toast tab already shows (a comment on the Doc you have open), the item goes to the popover without a toast. The open app already shows the change.
-7. The 15 s poll stays as the fallback and slows down while push is connected.
+7. The 15 s poll stays as the fallback and slows to 60 s (`NOTIFICATIONS_INBOX_PUSH_POLL_MS`) while push is connected. When push is down it returns to 15 s, below the 20 s local-ack grace.
+
+### Measured (#1668)
+
+Time from a notifying write (a DM to the user, sent over REST) to the row in the bell, push only, on a local dev install (Vite dev server, PHP built-in server, Chromium):
+
+| Setup | DM sent → row shown |
+|-------|---------------------|
+| Two tabs, by hand, nine DMs | 0.2–2.7 s, median 1.3 s |
+| `e2e/notifications-inbox-push.spec.ts`, two tabs, five runs | 2.4 s; 2.9 s after the stream tab reloads |
+| Same spec, one run by the review loop on a CI runner | 2.6–3.0 s, the other tab within 30 ms of the stream tab |
+
+Before #1668 the bell waited for its 15 s poll. Now the spread follows the stream's 3 s `retry`: the worst case is about one retry plus one request. The spec's numbers barely vary because it sends at the same point in that cycle. Each DM caused one inbox `GET` and one `local-ack` for the whole browser.
+
+**With `check-now`:** not measured. The mesh `check-now` (#1662) is not built yet; measure again when it lands.
+
+**Local-ack grace:** stays at 20 s. While push is connected a visible tab acks within about 3 s, so 5–10 s would do. But while push is down (rate-limited, `501`, offline) the ack waits for the 15 s poll, and the server cannot tell which case a browser is in, so a shorter grace would send phone pushes for news already on screen. Revisit once push uptime is measured: either poll faster while push is down, or give a shorter grace only to a user whose browser made an event-source request in the last few seconds.
 
 ## The mesh as messenger
 
