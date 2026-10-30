@@ -163,6 +163,29 @@ final class LegacyNotesImportTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('import failed /users/bob/.notes/Drafts/a-broken.md', $this->updateLog());
     }
 
+    public function test_a_notebook_folder_that_cannot_be_listed_is_reported_and_the_others_imported(): void
+    {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('root can list a folder without permissions.');
+        }
+        $codec = new NoteMarkdownCodec;
+        $disk = app(WgwStorage::class)->files();
+        $disk->put('users/bob/.notes/Alpha/first.md', $codec->serialize('First', [], 'one'));
+        $disk->put('users/bob/.notes/Zeta/second.md', $codec->serialize('Second', [], 'two'));
+        $zeta = $disk->path('users/bob/.notes/Zeta');
+        chmod($zeta, 0);
+
+        try {
+            $this->runMigration();
+        } finally {
+            chmod($zeta, 0755);
+        }
+
+        $this->assertNotNull($this->notesIn('Alpha')->firstWhere('title', 'First'));
+        $this->assertNull(CalendarObject::query()->where('componenttype', 'VJOURNAL')->where('calendardata', 'like', '%Second%')->first());
+        $this->assertStringContainsString('could not list /users/bob/.notes/Zeta', $this->updateLog());
+    }
+
     public function test_a_symbolic_link_under_notes_is_skipped_and_the_rest_imported(): void
     {
         $disk = app(WgwStorage::class)->files();

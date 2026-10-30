@@ -5,10 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notes;
 
 use App\Storage\WgwStorage;
-use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
+use DirectoryIterator;
 
 /**
  * Lists the files under every personal and group `.notes` tree (v0.1.96 and
@@ -46,6 +43,9 @@ final class LegacyNoteFileLister
     }
 
     /**
+     * One directory at a time, so a folder that cannot be opened is reported
+     * and the walk goes on with its siblings.
+     *
      * @param  list<string>  $notices
      * @return list<string>
      */
@@ -53,16 +53,16 @@ final class LegacyNoteFileLister
     {
         $files = [];
         try {
-            $entries = new RecursiveIteratorIterator(
-                new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
-                RecursiveIteratorIterator::SELF_FIRST,
-                RecursiveIteratorIterator::CATCH_GET_CHILD,
-            );
-            /** @var SplFileInfo $entry */
+            $entries = new DirectoryIterator($dir);
             foreach ($entries as $entry) {
+                if ($entry->isDot()) {
+                    continue;
+                }
                 $path = $entry->getPathname();
                 if ($entry->isLink()) {
                     $notices[] = 'skipped symbolic link: '.$this->virtual($root, $path);
+                } elseif ($entry->isDir()) {
+                    array_push($files, ...$this->walk($root, $path, $notices));
                 } elseif ($entry->isFile()) {
                     $files[] = substr($path, strlen($root) + 1);
                 }
