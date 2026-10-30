@@ -387,7 +387,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -509,7 +510,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
           },
           "shareWith": {
             "oneOf": [
@@ -855,7 +857,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -2152,6 +2155,10 @@
               "string",
               "null"
             ]
+          },
+          "isSubscribed": {
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -4170,6 +4177,7 @@
           "Files"
         ],
         "summary": "Resolve file collab room",
+        "description": "Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.",
         "security": [
           {
             "bearerAuth": []
@@ -4188,9 +4196,29 @@
         "responses": {
           "200": {
             "description": "Room"
+          },
+          "400": {
+            "description": "Missing path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "x-wgw-access": "guest"
+        "x-wgw-access": "user"
       }
     },
     "/files/share-sessions": {

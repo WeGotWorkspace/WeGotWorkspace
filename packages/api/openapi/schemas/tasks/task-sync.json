@@ -20,7 +20,10 @@
       "name": { "type": "string", "minLength": 1, "maxLength": 255 },
       "description": { "type": ["string", "null"] },
       "color": { "type": ["string", "null"] },
-      "isSubscribed": { "type": "boolean" },
+      "isSubscribed": {
+        "type": "boolean",
+        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
+      },
       "groupSlug": {
         "type": ["string", "null"],
         "description": "Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`."

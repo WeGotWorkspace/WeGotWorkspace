@@ -142,53 +142,43 @@ final class TaskListRepository
      */
     public function update(string $username, string $taskListId, array $payload): array
     {
-        $resolved = $this->resolveWritableTaskList($username, $taskListId);
-        if ($resolved === null) {
-            throw new ApiHttpException(404, 'Task list not found.', 'not_found');
-        }
-        [$instance, $groupSlug] = $resolved;
-
-        $this->collectionAccess->assertShareePatchAllowed(
-            $instance,
-            $payload,
-            ['description', 'shareWith', 'groupSlug'],
-            'Sharees can only change their own list name and color.',
-        );
-
-        $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
+        return DB::connection('wgw')->transaction(function () use ($username, $taskListId, $payload): array {
+            $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::TaskList, $taskListId, $payload);
+            $resolved = $this->resolveWritableTaskList($username, $taskListId);
+            if ($resolved === null) {
+                throw new ApiHttpException(404, 'Task list not found.', 'not_found');
             }
-            $mutations['{DAV:}displayname'] = $name;
-        }
-        if (array_key_exists('description', $payload)) {
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($payload['description']) ? $payload['description'] : null;
-        }
-        if (array_key_exists('color', $payload)) {
-            $color = $payload['color'];
-            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
-        }
+            [$instance, $groupSlug] = $resolved;
 
-        if ($mutations !== []) {
-            $propPatch = new PropPatch($mutations);
-            $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
-            $propPatch->commit();
-        }
+            $this->collectionAccess->assertShareePatchAllowed(
+                $instance,
+                $payload,
+                ['description', 'shareWith', 'groupSlug'],
+                'Sharees can only change their own list name and color.',
+            );
 
-        if (array_key_exists('shareWith', $payload)) {
-            $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
-        }
+            $mutations = $this->collectionAccess->propertyMutations($payload);
 
-        if (array_key_exists('groupSlug', $payload)) {
-            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
-        }
+            if ($mutations !== []) {
+                $propPatch = new PropPatch($mutations);
+                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $propPatch->commit();
+            }
 
-        $instance->refresh();
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            if (array_key_exists('shareWith', $payload)) {
+                $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
+            }
 
-        return $this->mapTaskList($username, $instance, $groupSlug);
+            if (array_key_exists('groupSlug', $payload)) {
+                $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+            }
+            $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
+
+            $instance->refresh();
+            $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+
+            return $this->mapTaskList($username, $instance, $groupSlug);
+        });
     }
 
     /**
@@ -266,15 +256,6 @@ final class TaskListRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    public function findOwnedTaskList(string $username, string $taskListId): ?CalendarInstance
-    {
-        if (CalendarCollectionUris::parseGroupTaskListApiId($taskListId) !== null) {
-            return null;
-        }
-
-        return $this->findTaskListInstance($this->principalUri($username), $taskListId);
-    }
-
     public function findAccessibleTaskList(string $username, string $taskListId): ?CalendarInstance
     {
         $groupSlug = CalendarCollectionUris::parseGroupTaskListApiId($taskListId);
@@ -286,19 +267,10 @@ final class TaskListRepository
             return $this->ensureGroupTaskListInstance($groupSlug);
         }
 
-        $owned = $this->findOwnedTaskList($username, $taskListId);
-        if ($owned !== null) {
-            return $owned;
-        }
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findTaskListInstance(AdminConstants::GROUP_PREFIX.$slug, $taskListId);
-            if ($instance !== null) {
-                return $instance;
-            }
-        }
-
-        return null;
+        return $this->collectionAccess->findReachable(
+            $username,
+            fn (string $principalUri): ?CalendarInstance => $this->findTaskListInstance($principalUri, $taskListId),
+        );
     }
 
     public function apiIdForInstance(CalendarInstance $instance): string

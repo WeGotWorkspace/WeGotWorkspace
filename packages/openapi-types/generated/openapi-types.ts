@@ -2575,7 +2575,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolve file collab room */
+        /**
+         * Resolve file collab room
+         * @description Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.
+         */
         post: {
             parameters: {
                 query: {
@@ -2593,6 +2596,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Missing path */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path, or a path the caller may not read */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -9322,7 +9343,7 @@ export interface components {
             /** @description Rejected — names are server-set from the principal display name. */
             name?: string;
             description?: string | null;
-            /** @description Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals). */
+            /** @description Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored. */
             isSubscribed?: boolean;
             /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
             shareWith?: {
@@ -9904,6 +9925,7 @@ export interface components {
             description?: string | null;
             timeZone?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only` (Calendar/set: `forbidden`). */
             groupSlug?: string | null;
@@ -9937,6 +9959,7 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
@@ -10756,6 +10779,7 @@ export interface components {
             categories?: string[];
             /** @enum {string|null} */
             status?: "FINAL" | "CANCELLED" | null;
+            /** @description Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative. */
             uid?: string;
         };
         NotePatch: {
@@ -10801,6 +10825,8 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
+            isSubscribed?: boolean;
             /** @description Move the notebook between personal (null) and a group principal (slug). Omit to leave owner unchanged. Moving a group collection out of its group (to personal or to another group) needs the same right as deleting it: only an instance admin; anyone else gets 403 `group_delete_admin_only`. */
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
@@ -10855,7 +10881,7 @@ export interface components {
             color?: string | null;
             topic?: string | null;
             groupSlug?: string | null;
-            /** @description Optional client-suggested channel id (uri slug). */
+            /** @description Optional client-suggested channel id: chat- followed by a ULID or UUID (any other shape is a 400). Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix. */
             id?: components["schemas"]["JmapId"];
             /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
             guestRoomCode?: string | null;
@@ -10917,7 +10943,7 @@ export interface components {
             hasMore: boolean;
         };
         ChatMessageCreate: {
-            /** @description Client-generated ULID — message id and idempotency key; retries with the same id return the existing message. */
+            /** @description Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative. */
             id: string;
             body: string;
             /** @description Thread parent message id. */

@@ -11,6 +11,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Drive\DriveGroupResolver;
 use Illuminate\Database\Eloquent\Collection;
+use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
 /**
@@ -151,7 +152,11 @@ final class CalendarCollectionAccess
         );
     }
 
-    /** Hide an inbound share. Returns true when the instance was a sharee. */
+    /**
+     * Leave an inbound share: it drops out of listings and out of every lookup
+     * by id until restored. The owner's grant stays. Returns true when the
+     * instance was a sharee.
+     */
     public function dismissIfSharee(string $username, CalendarInstance $instance): bool
     {
         if (! $this->shareInvites->isSharee($instance)) {
@@ -168,6 +173,126 @@ final class CalendarCollectionAccess
         if (! $this->mayDeleteGroupOwned($username, $instance)) {
             throw new ApiHttpException(403, $message, 'group_delete_admin_only');
         }
+    }
+
+    /**
+     * Lookup by id: the user's own collection first, then the groups they may
+     * use. A dismissed inbound share answers like a missing collection.
+     *
+     * @param  callable(string): ?CalendarInstance  $findIn  the instance with the id under a principal uri
+     */
+    public function findReachable(string $username, callable $findIn): ?CalendarInstance
+    {
+        $instance = $findIn($this->principalUri($username));
+        foreach ($instance === null ? $this->groups->allowedGroupSlugs($username) : [] as $slug) {
+            $instance = $findIn(AdminConstants::GROUP_PREFIX.$slug);
+            if ($instance !== null) {
+                break;
+            }
+        }
+
+        return $instance === null
+            ? null
+            : $this->withoutDismissed($username, new Collection([$instance]))->first();
+    }
+
+    /**
+     * Drops inbound shares the user dismissed, for item lookups that collect
+     * candidate instances themselves.
+     *
+     * @param  Collection<int, CalendarInstance>  $instances
+     * @return Collection<int, CalendarInstance>
+     */
+    public function withoutDismissed(string $username, Collection $instances): Collection
+    {
+        return $this->shareVisibility->rejectDismissedSharees($username, $instances);
+    }
+
+    /**
+     * A collection patch with `isSubscribed: true` restores a dismissed inbound
+     * share before the patch looks the collection up, so the rest of the patch
+     * applies to it. The sharee instance only exists while the owner's grant
+     * does, so a revoked share cannot come back this way.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function restoreWhenSubscribing(string $username, CollectionKind $kind, string $apiId, array $payload): void
+    {
+        if ($this->requestedSubscription($payload) !== true) {
+            return;
+        }
+
+        $principalUris = [$this->principalUri($username)];
+        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
+            $principalUris[] = AdminConstants::GROUP_PREFIX.$slug;
+        }
+        $instances = CalendarInstance::query()
+            ->whereIn('principaluri', $principalUris)
+            ->where('uri', $apiId)
+            ->whereHas('calendar', fn ($query) => $query->ofKind($kind))
+            ->get();
+        foreach ($instances as $instance) {
+            if ($this->shareInvites->isSharee($instance)) {
+                $this->shareVisibility->restore($username, (int) $instance->calendarid);
+            }
+        }
+    }
+
+    /**
+     * A collection patch with `isSubscribed: false` dismisses an inbound share,
+     * like a delete does. Owners and group members have nothing to dismiss.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function dismissWhenUnsubscribing(string $username, CalendarInstance $instance, array $payload): void
+    {
+        if ($this->requestedSubscription($payload) === false) {
+            $this->dismissIfSharee($username, $instance);
+        }
+    }
+
+    /**
+     * DAV property changes for the name, description and color a collection
+     * patch may carry. Callers add their own kind-specific properties.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, ?string>
+     */
+    public function propertyMutations(array $payload): array
+    {
+        $mutations = [];
+        if (array_key_exists('name', $payload)) {
+            $name = trim((string) $payload['name']);
+            if ($name === '') {
+                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
+            }
+            $mutations['{DAV:}displayname'] = $name;
+        }
+        if (array_key_exists('description', $payload)) {
+            $description = $payload['description'];
+            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($description) ? $description : null;
+        }
+        if (array_key_exists('color', $payload)) {
+            $color = $payload['color'];
+            $mutations['{http://apple.com/ns/ical/}calendar-color'] = is_string($color) && trim($color) !== '' ? trim($color) : null;
+        }
+
+        return $mutations;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function requestedSubscription(array $payload): ?bool
+    {
+        if (! array_key_exists('isSubscribed', $payload)) {
+            return null;
+        }
+        if (! is_bool($payload['isSubscribed'])) {
+            throw new ApiHttpException(400, 'isSubscribed must be a boolean.', 'invalidProperties', ['isSubscribed']);
+        }
+
+        return $payload['isSubscribed'];
     }
 
     /**

@@ -18,6 +18,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use PDOException;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
 
@@ -168,11 +169,7 @@ final class ChatMessageRepository
         if ($existing !== null) {
             return ['message' => $this->presentSingle($existing, $instance), 'created' => false];
         }
-        // A ULID that already lives in a DIFFERENT VJOURNAL collection is a
-        // client bug (or an attempt to probe foreign ids) — refuse.
-        if (CalendarObject::query()->where('uid', $uid)->where('componenttype', 'VJOURNAL')->exists()) {
-            throw new ApiHttpException(409, 'A message with this id already exists.', 'alreadyExists');
-        }
+        $uid = $this->uidForNewMessage($username, $uid);
 
         $parentId = null;
         if (is_string($payload['parentId'] ?? null) && $payload['parentId'] !== '') {
@@ -372,6 +369,28 @@ final class ChatMessageRepository
         }
 
         return $instance;
+    }
+
+    /**
+     * Message ids stay unique across every VJOURNAL: edits, deletes and
+     * reactions find a message by id alone. An id a message the caller can
+     * see already has is a 409. An id only objects out of the caller's reach
+     * use is not kept: the message gets a fresh ULID, and the response
+     * carries it, so the answer never depends on what the caller cannot see.
+     */
+    private function uidForNewMessage(string $username, string $uid): string
+    {
+        $calendarIds = CalendarObject::query()
+            ->where('uid', $uid)
+            ->where('componenttype', 'VJOURNAL')
+            ->pluck('calendarid');
+        foreach ($calendarIds as $calendarId) {
+            if ($this->channels->findAccessibleInstanceForCalendar($username, (int) $calendarId) !== null) {
+                throw new ApiHttpException(409, 'A message with this id already exists.', 'alreadyExists');
+            }
+        }
+
+        return $calendarIds->isEmpty() ? $uid : (string) Str::ulid();
     }
 
     /**

@@ -145,53 +145,43 @@ final class NotebookRepository
      */
     public function update(string $username, string $notebookId, array $payload): array
     {
-        $resolved = $this->resolveWritableNotebook($username, $notebookId);
-        if ($resolved === null) {
-            throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
-        }
-        [$instance, $groupSlug] = $resolved;
-
-        $this->collectionAccess->assertShareePatchAllowed(
-            $instance,
-            $payload,
-            ['description', 'shareWith', 'groupSlug'],
-            'Sharees can only change their own notebook name and color.',
-        );
-
-        $mutations = [];
-        if (array_key_exists('name', $payload)) {
-            $name = trim((string) $payload['name']);
-            if ($name === '') {
-                throw new ApiHttpException(400, 'name must not be empty.', 'invalidProperties');
+        return DB::connection('wgw')->transaction(function () use ($username, $notebookId, $payload): array {
+            $this->collectionAccess->restoreWhenSubscribing($username, CollectionKind::Notebook, $notebookId, $payload);
+            $resolved = $this->resolveWritableNotebook($username, $notebookId);
+            if ($resolved === null) {
+                throw new ApiHttpException(404, 'Notebook not found.', 'not_found');
             }
-            $mutations['{DAV:}displayname'] = $name;
-        }
-        if (array_key_exists('description', $payload)) {
-            $mutations['{'.CalDAVPlugin::NS_CALDAV.'}calendar-description'] = is_string($payload['description']) ? $payload['description'] : null;
-        }
-        if (array_key_exists('color', $payload)) {
-            $color = $payload['color'];
-            $mutations[self::CALENDAR_COLOR_PROPERTY] = is_string($color) && trim($color) !== '' ? trim($color) : null;
-        }
+            [$instance, $groupSlug] = $resolved;
 
-        if ($mutations !== []) {
-            $propPatch = new PropPatch($mutations);
-            $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
-            $propPatch->commit();
-        }
+            $this->collectionAccess->assertShareePatchAllowed(
+                $instance,
+                $payload,
+                ['description', 'shareWith', 'groupSlug'],
+                'Sharees can only change their own notebook name and color.',
+            );
 
-        if (array_key_exists('shareWith', $payload)) {
-            $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
-        }
+            $mutations = $this->collectionAccess->propertyMutations($payload);
 
-        if (array_key_exists('groupSlug', $payload)) {
-            $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
-        }
+            if ($mutations !== []) {
+                $propPatch = new PropPatch($mutations);
+                $this->calBackend()->updateCalendar($this->calBackendCalendarId($instance), $propPatch);
+                $propPatch->commit();
+            }
 
-        $instance->refresh();
-        $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+            if (array_key_exists('shareWith', $payload)) {
+                $this->notifyCollectionShare($username, $instance, $groupSlug, $payload['shareWith']);
+            }
 
-        return $this->mapNotebook($username, $instance, $groupSlug);
+            if (array_key_exists('groupSlug', $payload)) {
+                $this->transferOwner($username, $instance, $groupSlug, $payload['groupSlug']);
+            }
+            $this->collectionAccess->dismissWhenUnsubscribing($username, $instance, $payload);
+
+            $instance->refresh();
+            $groupSlug = $this->groupSlugFromPrincipalUri((string) $instance->principaluri);
+
+            return $this->mapNotebook($username, $instance, $groupSlug);
+        });
     }
 
     /**
@@ -284,15 +274,6 @@ final class NotebookRepository
         return ['oldState' => $since, 'newState' => $currentState, 'created' => $created, 'updated' => $updated, 'destroyed' => $destroyed];
     }
 
-    public function findOwnedNotebook(string $username, string $notebookId): ?CalendarInstance
-    {
-        if (CalendarCollectionUris::parseGroupNotebookApiId($notebookId) !== null) {
-            return null;
-        }
-
-        return $this->findNotebookInstance($this->principalUri($username), $notebookId);
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -324,19 +305,10 @@ final class NotebookRepository
             return $this->ensureGroupNotebookInstance($groupSlug);
         }
 
-        $owned = $this->findOwnedNotebook($username, $notebookId);
-        if ($owned !== null) {
-            return $owned;
-        }
-
-        foreach ($this->groups->allowedGroupSlugs($username) as $slug) {
-            $instance = $this->findNotebookInstance(AdminConstants::GROUP_PREFIX.$slug, $notebookId);
-            if ($instance !== null) {
-                return $instance;
-            }
-        }
-
-        return null;
+        return $this->collectionAccess->findReachable(
+            $username,
+            fn (string $principalUri): ?CalendarInstance => $this->findNotebookInstance($principalUri, $notebookId),
+        );
     }
 
     public function findAccessibleInstanceForCalendar(string $username, int $calendarId): ?CalendarInstance

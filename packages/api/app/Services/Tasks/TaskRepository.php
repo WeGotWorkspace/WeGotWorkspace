@@ -12,6 +12,7 @@ use App\Models\CalendarObject;
 use App\Models\GroupMember;
 use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionAccess;
+use App\Services\Calendars\CollectionKind;
 use App\Services\Drive\DriveGroupResolver;
 use App\Services\Notify\TaskStatusChangedNotify;
 use App\Services\Search\BestEffortSearchIndexSync;
@@ -539,15 +540,27 @@ final class TaskRepository
             return null;
         }
 
-        $object = CalendarObject::query()->find((int) $rows->first()->id);
+        $objectId = (int) $rows->first()->id;
+        $object = CalendarObject::query()->find($objectId);
         if ($object === null) {
             return null;
         }
 
-        $instances = CalendarInstance::query()
-            ->whereIn('id', $rows->pluck('instance_id')->all())
-            ->get();
-        $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
+        // Resolve through the instance the task list overview shows. When it has
+        // none for this list, take the strongest instance of this object's own
+        // list. A dismissed share is skipped either way.
+        $calendarId = (int) $object->calendarid;
+        $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
+            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
+            ?? $this->collectionAccess->withoutDismissed(
+                $username,
+                $this->collectionAccess->preferHighestAccessPerCalendar(
+                    CalendarInstance::query()
+                        ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
+                        ->orderBy('id')
+                        ->get(),
+                ),
+            )->first();
         if ($instance === null) {
             return null;
         }
