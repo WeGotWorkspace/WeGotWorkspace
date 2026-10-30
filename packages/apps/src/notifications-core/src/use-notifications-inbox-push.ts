@@ -22,7 +22,8 @@ export const INBOX_SHARE_WAIT_MS = 10_000;
  * paused background tab never delays the bell.
  *
  * A tab confirms the push only once it has the rows. A failed fetch (or no
- * share in time) leaves it unconfirmed, so the server sends it again.
+ * share in time) leaves it unconfirmed, so the server sends it again; a tab
+ * that took over the stream while it waited fetches the rows itself.
  * Returns whether push is connected, so the caller can slow its fallback poll.
  *
  * `fetchForPush` resolves the newest inbox this tab has after its fetch, or
@@ -48,7 +49,7 @@ export function useNotificationsInboxPush(options: {
     const state = states.Notification;
     if (!state) return true;
     const fanOut = defaultInboxFanOut();
-    if (defaultJmapPushHub()?.leading) {
+    const fetchAndShare = async () => {
       const payload = await latest.current.fetchForPush();
       if (!payload) {
         fanOut.shareFailed(state);
@@ -56,9 +57,12 @@ export function useNotificationsInboxPush(options: {
       }
       fanOut.share(payload, state);
       return true;
-    }
+    };
+    if (defaultJmapPushHub()?.leading) return fetchAndShare();
     // The rows arrive through `onShared` above; confirm once they are here.
-    return (await fanOut.waitFor(state, INBOX_SHARE_WAIT_MS)) !== null;
+    if ((await fanOut.waitFor(state, INBOX_SHARE_WAIT_MS)) !== null) return true;
+    // The stream may have moved to this tab while it waited.
+    return defaultJmapPushHub()?.leading ? fetchAndShare() : false;
   });
 
   return useJmapPushConnected();
