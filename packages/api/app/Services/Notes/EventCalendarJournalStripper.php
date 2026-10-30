@@ -11,6 +11,7 @@ use App\Services\Admin\AdminConstants;
 use App\Services\Calendars\CalendarCollectionUris;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
@@ -71,30 +72,7 @@ final class EventCalendarJournalStripper
             return ['stripped' => false, 'movedObjects' => 0];
         }
 
-        $ownerInstance = CalendarInstance::query()
-            ->where('calendarid', $calendar->id)
-            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
-            ->orderBy('id')
-            ->first()
-            ?? CalendarInstance::query()
-                ->where('calendarid', $calendar->id)
-                ->orderBy('id')
-                ->first();
-
-        $movedObjects = 0;
-        if ($ownerInstance !== null) {
-            $principalUri = (string) $ownerInstance->principaluri;
-            $notebookUri = $this->ensureNotebookForPrincipal($principalUri);
-
-            $notebook = CalendarInstance::query()
-                ->where('principaluri', $principalUri)
-                ->where('uri', $notebookUri)
-                ->first();
-
-            if ($notebook !== null) {
-                $movedObjects = $this->moveJournals((int) $calendar->id, $ownerInstance, $notebook);
-            }
-        }
+        $movedObjects = $this->moveToOwnerNotebook($calendar, skipUidCollisions: false)['moved'];
 
         $kept = array_values(array_filter(
             array_map('trim', explode(',', (string) $calendar->components)),
@@ -106,8 +84,90 @@ final class EventCalendarJournalStripper
         return ['stripped' => true, 'movedObjects' => $movedObjects];
     }
 
-    private function moveJournals(int $sourceCalendarId, CalendarInstance $source, CalendarInstance $notebook): int
+    /**
+     * Moves VJOURNAL objects out of calendars that no longer accept them.
+     * Before #1772 an update left the default calendar VEVENT-only before
+     * {@see stripAll()} ran, so its notes stayed there, out of Notes' sight
+     * (#1779). A UID the notebook already holds is logged and left in place:
+     * this runs inside a migration, where a throw blocks every later one.
+     *
+     * @return array{scanned: int, repaired: int, movedObjects: int, collisions: int}
+     */
+    public function repairStranded(): array
     {
+        $result = ['scanned' => 0, 'repaired' => 0, 'movedObjects' => 0, 'collisions' => 0];
+        if (! Schema::connection('wgw')->hasTable('calendars') || ! Schema::connection('wgw')->hasTable('calendarobjects')) {
+            return $result;
+        }
+
+        $calendarIds = CalendarObject::query()
+            ->where('componenttype', 'VJOURNAL')
+            ->distinct()
+            ->pluck('calendarid');
+
+        Calendar::query()
+            ->whereIn('id', $calendarIds)
+            ->orderBy('id')
+            ->get()
+            ->each(function (Calendar $calendar) use (&$result): void {
+                // An empty set is Sabre's "anything goes"; a set with
+                // VJOURNAL is a notebook or left to stripAll().
+                if (trim((string) $calendar->components) === '' || $calendar->supportsVjournal()) {
+                    return;
+                }
+                $result['scanned']++;
+                $moved = $this->moveToOwnerNotebook($calendar, skipUidCollisions: true);
+                $result['movedObjects'] += $moved['moved'];
+                $result['collisions'] += $moved['collisions'];
+                if ($moved['moved'] > 0) {
+                    $result['repaired']++;
+                }
+            });
+
+        return $result;
+    }
+
+    /**
+     * The owner (sharee-owner instance first) decides the target notebook.
+     *
+     * @return array{moved: int, collisions: int}
+     */
+    private function moveToOwnerNotebook(Calendar $calendar, bool $skipUidCollisions): array
+    {
+        $ownerInstance = CalendarInstance::query()
+            ->where('calendarid', $calendar->id)
+            ->where('access', SharingPlugin::ACCESS_SHAREDOWNER)
+            ->orderBy('id')
+            ->first()
+            ?? CalendarInstance::query()
+                ->where('calendarid', $calendar->id)
+                ->orderBy('id')
+                ->first();
+        if ($ownerInstance === null) {
+            return ['moved' => 0, 'collisions' => 0];
+        }
+
+        $principalUri = (string) $ownerInstance->principaluri;
+        $notebook = CalendarInstance::query()
+            ->where('principaluri', $principalUri)
+            ->where('uri', $this->ensureNotebookForPrincipal($principalUri))
+            ->first();
+        if ($notebook === null) {
+            return ['moved' => 0, 'collisions' => 0];
+        }
+
+        return $this->moveJournals((int) $calendar->id, $ownerInstance, $notebook, $skipUidCollisions);
+    }
+
+    /**
+     * @return array{moved: int, collisions: int}
+     */
+    private function moveJournals(
+        int $sourceCalendarId,
+        CalendarInstance $source,
+        CalendarInstance $notebook,
+        bool $skipUidCollisions,
+    ): array {
         $caldav = new CalPDO(DB::connection('wgw')->getPdo());
         $sourceId = [(int) $source->calendarid, (int) $source->id];
         $targetId = [(int) $notebook->calendarid, (int) $notebook->id];
@@ -125,6 +185,7 @@ final class EventCalendarJournalStripper
             });
 
         $moved = 0;
+        $collisions = 0;
         CalendarObject::query()
             ->where('calendarid', $sourceCalendarId)
             ->where('componenttype', 'VJOURNAL')
@@ -137,9 +198,21 @@ final class EventCalendarJournalStripper
                 &$existingUris,
                 &$existingUids,
                 &$moved,
+                &$collisions,
+                $skipUidCollisions,
             ): void {
                 $objectUri = (string) $object->uri;
                 $sourceUid = trim((string) $object->uid);
+                if ($sourceUid !== '' && isset($existingUids[$sourceUid]) && $skipUidCollisions) {
+                    Log::warning('Left a note in its calendar: its uid is already in the notebook.', [
+                        'uid' => $sourceUid,
+                        'calendarId' => $sourceId[0],
+                        'notebookCalendarId' => $targetId[0],
+                    ]);
+                    $collisions++;
+
+                    return;
+                }
                 if ($sourceUid !== '' && isset($existingUids[$sourceUid])) {
                     throw new RuntimeException(sprintf(
                         'Cannot strip VJOURNAL: uid %s already exists in notebook calendar %s.',
@@ -166,7 +239,7 @@ final class EventCalendarJournalStripper
                 $moved++;
             });
 
-        return $moved;
+        return ['moved' => $moved, 'collisions' => $collisions];
     }
 
     private function ensureNotebookForPrincipal(string $principalUri): string
