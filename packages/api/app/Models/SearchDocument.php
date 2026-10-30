@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $source_subtype
  * @property string $source_key
  * @property string|null $owner_username
+ * @property int|null $collection_id
+ * @property int|null $object_id
  * @property string|null $group_slug
  * @property string|null $title
  * @property string|null $extension
@@ -43,6 +45,8 @@ final class SearchDocument extends Model
         'source_subtype',
         'source_key',
         'owner_username',
+        'collection_id',
+        'object_id',
         'group_slug',
         'title',
         'extension',

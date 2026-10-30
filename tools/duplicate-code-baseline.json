@@ -5,7 +5,7 @@
   "scopes": {
     "packages/api/app": {
       "clones": 143,
-      "duplicatedLines": 2840
+      "duplicatedLines": 2825
     },
     "packages/apps/src": {
       "clones": 89,
