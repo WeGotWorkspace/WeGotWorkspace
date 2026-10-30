@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import type { CalendarEventsMap } from "@/lib/calendar-engine";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
 import {

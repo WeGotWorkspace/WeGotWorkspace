@@ -1,7 +1,7 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it } from "vitest";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { calendarBootstrapWindow } from "@/lib/api/wgw/calendar";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import {
   occurrencesInRange,
   rangeToPlainDateTimeStrings,
