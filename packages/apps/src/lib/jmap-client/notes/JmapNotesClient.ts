@@ -1,3 +1,4 @@
+import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { JmapSetItemError } from "../core/errors.js";
 import { CORE_CAPABILITY, NOTES_CAPABILITY } from "../core/types.js";
@@ -60,12 +61,13 @@ export class JmapNotesClient {
     return response;
   }
 
+  /** `ids` longer than the server's `maxObjectsInGet` are fetched in several requests. */
   async getNotes(accountId: JmapId, ids?: JmapId[] | null): Promise<GetResponse<JmapNote>> {
-    const response = await this.client.call<GetResponse<JmapNote>>(
-      "Note/get",
-      { accountId, ids: ids ?? null },
-      NOTES_USING,
-    );
+    const getPage = (pageIds: JmapId[] | null) =>
+      this.client.call<GetResponse<JmapNote>>("Note/get", { accountId, ids: pageIds }, NOTES_USING);
+    const response = ids
+      ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
+      : await getPage(null);
     this.client.setState(accountId, NOTE_TYPE, response.state);
     return response;
   }

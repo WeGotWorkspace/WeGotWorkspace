@@ -5,6 +5,7 @@ import {
   deleteOpenEvent,
   dragCreateOnWeekGrid,
   createOfflineWeekEvent,
+  deleteCalendarEventsByTitleViaApi,
   dumpEventCardHitTarget,
   eventCardByTitle,
   expectCalendarOffline,
@@ -18,9 +19,19 @@ import {
 } from "./helpers/calendar-live";
 
 test.describe("Calendar offline week event (live app)", () => {
+  // The week loads from the API now (#1675): leftovers from earlier runs would
+  // crowd it, so every event a test creates is deleted afterwards.
+  const createdTitles: string[] = [];
+  test.afterEach(async () => {
+    for (const title of createdTitles.splice(0)) {
+      await deleteCalendarEventsByTitleViaApi(title);
+    }
+  });
+
   test("offline-created week card is selectable and draggable", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const title = `e2e-off-week-${Date.now()}`;
+    createdTitles.push(title);
 
     await openCalendarWeek(page, CALENDAR_WEEK_DATE);
     await page.context().setOffline(true);
@@ -107,6 +118,7 @@ test.describe("Calendar offline week event (live app)", () => {
   test("offline create stays in the DOM through reconnect", async ({ page }) => {
     test.setTimeout(90_000);
     const title = `e2e-off-reconnect-${Date.now()}`;
+    createdTitles.push(title);
 
     await openCalendarWeek(page, CALENDAR_WEEK_DATE);
     await page.context().setOffline(true);
@@ -132,7 +144,9 @@ test.describe("Calendar offline week event (live app)", () => {
   }) => {
     test.setTimeout(90_000);
     const keepTitle = `e2e-off-keep-${Date.now()}`;
+    createdTitles.push(keepTitle);
     const dropTitle = `e2e-off-drop-${Date.now()}`;
+    createdTitles.push(dropTitle);
 
     await openCalendarWeek(page, CALENDAR_WEEK_DATE);
     await page.context().setOffline(true);
@@ -164,6 +178,7 @@ test.describe("Calendar offline week event (live app)", () => {
   test("offline week resize keeps the new duration (does not snap back)", async ({ page }) => {
     test.setTimeout(90_000);
     const title = `e2e-off-resize-${Date.now()}`;
+    createdTitles.push(title);
 
     await openCalendarWeek(page, CALENDAR_WEEK_DATE);
     await page.context().setOffline(true);
@@ -202,6 +217,7 @@ test.describe("Calendar offline week event (live app)", () => {
   test("online week resize keeps the new duration (does not snap back)", async ({ page }) => {
     test.setTimeout(90_000);
     const title = `e2e-on-resize-${Date.now()}`;
+    createdTitles.push(title);
 
     await openCalendarWeek(page, CALENDAR_WEEK_DATE);
     await expectCalendarOnline(page);

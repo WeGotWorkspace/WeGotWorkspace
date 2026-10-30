@@ -2593,7 +2593,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolve file collab room */
+        /**
+         * Resolve file collab room
+         * @description Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.
+         */
         post: {
             parameters: {
                 query: {
@@ -2611,6 +2614,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Missing path */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path, or a path the caller may not read */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -10905,6 +10926,7 @@ export interface components {
             categories?: string[];
             /** @enum {string|null} */
             status?: "FINAL" | "CANCELLED" | null;
+            /** @description Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative. */
             uid?: string;
         };
         NotePatch: {
@@ -11005,7 +11027,7 @@ export interface components {
             color?: string | null;
             topic?: string | null;
             groupSlug?: string | null;
-            /** @description Optional client-suggested channel id (uri slug). */
+            /** @description Optional client-suggested channel id: chat- followed by a ULID or UUID (any other shape is a 400). Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix. */
             id?: components["schemas"]["JmapId"];
             /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
             guestRoomCode?: string | null;
@@ -11067,7 +11089,7 @@ export interface components {
             hasMore: boolean;
         };
         ChatMessageCreate: {
-            /** @description Client-generated ULID — message id and idempotency key; retries with the same id return the existing message. */
+            /** @description Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative. */
             id: string;
             body: string;
             /** @description Thread parent message id. */

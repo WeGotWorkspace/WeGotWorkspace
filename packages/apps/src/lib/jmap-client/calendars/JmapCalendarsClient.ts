@@ -1,3 +1,4 @@
+import { getInChunks, maxObjectsInGet } from "../core/get-chunks.js";
 import { JmapSetItemError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import type {
@@ -91,11 +92,16 @@ export class JmapCalendarsClient {
     ids?: JmapId[] | null,
     properties?: string[] | null,
   ): Promise<GetResponse<JmapCalendarEvent>> {
-    const response = await this.client.call<GetResponse<JmapCalendarEvent>>("CalendarEvent/get", {
-      accountId,
-      ids: ids ?? null,
-      ...(properties !== undefined ? { properties } : {}),
-    });
+    // `ids` longer than the server's `maxObjectsInGet` go in several requests.
+    const getPage = (pageIds: JmapId[] | null) =>
+      this.client.call<GetResponse<JmapCalendarEvent>>("CalendarEvent/get", {
+        accountId,
+        ids: pageIds,
+        ...(properties !== undefined ? { properties } : {}),
+      });
+    const response = ids
+      ? await getInChunks(ids, maxObjectsInGet(this.client.session), getPage)
+      : await getPage(null);
     this.client.setState(accountId, CALENDAR_EVENT_TYPE, response.state);
     return response;
   }
