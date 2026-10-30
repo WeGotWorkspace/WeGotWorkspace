@@ -57,12 +57,40 @@ final class NotesClientUidCreateTest extends WgwDatabaseTestCase
         $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
     }
 
-    public function test_a_uid_used_by_another_user_is_a_conflict(): void
+    public function test_a_uid_only_a_note_out_of_reach_has_is_replaced_by_a_fresh_one(): void
     {
         $uid = (string) Str::uuid();
         $this->create('alice', $uid, 'Private')->assertCreated();
 
-        $this->create('bob', $uid)->assertStatus(409)->assertJsonPath('code', 'alreadyExists');
+        // Bob cannot see alice's note: his create answers like any other
+        // create, under a UID of its own.
+        $created = $this->create('bob', $uid, 'Mine')->assertCreated()->assertJsonPath('title', 'Mine');
+        $id = (string) $created->json('id');
+        $this->assertNotSame($uid, $id);
+        $this->assertTrue(Str::isUuid($id));
+        $this->assertStringNotContainsString('Private', (string) $created->getContent());
+
+        $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
+        $this->asUser('alice')->getJson('/api/v1/notes/items/'.$uid)->assertOk()->assertJsonPath('title', 'Private');
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$uid)->assertNotFound();
+        $this->asUser('bob')->getJson('/api/v1/notes/items/'.$id)->assertOk()->assertJsonPath('title', 'Mine');
+    }
+
+    public function test_a_uid_of_a_note_shared_with_the_caller_is_a_conflict(): void
+    {
+        $uid = (string) Str::uuid();
+        $this->create('alice', $uid, 'Shared')->assertCreated();
+        $this->asUser('alice')->patchJson('/api/v1/notes/notebooks/'.CalendarCollectionUris::NOTE_GENERAL, [
+            'shareWith' => ['bob' => ['mayReadItems' => true]],
+        ])->assertOk();
+        $bobNotebook = (string) $this->asUser('bob')
+            ->postJson('/api/v1/notes/notebooks', ['name' => 'Own'])
+            ->assertCreated()
+            ->json('id');
+
+        $this->create('bob', $uid, 'Mine', $bobNotebook)
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'alreadyExists');
         $this->assertSame(1, CalendarObject::query()->where('uid', $uid)->count());
     }
 
