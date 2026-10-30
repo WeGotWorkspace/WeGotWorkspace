@@ -47,6 +47,42 @@ final class WgwSchemaMigrator
         return count($repository->getRan());
     }
 
+    /**
+     * Migrations on disk that the repository has not run. Empty when the
+     * repository table does not exist yet: that is a fresh or pre-migrator
+     * install, not an update that stopped halfway.
+     *
+     * @return list<string>
+     */
+    public function pendingMigrations(): array
+    {
+        $migrator = $this->migrator();
+        $migrator->setConnection('wgw');
+        $repository = $migrator->getRepository();
+        if (! $repository->repositoryExists()) {
+            return [];
+        }
+
+        $files = array_keys($migrator->getMigrationFiles([$this->migrationsPath()]));
+
+        return array_values(array_diff($files, $repository->getRan()));
+    }
+
+    /**
+     * Hash of the migration file names on disk. It changes whenever an update
+     * adds or removes a migration, without touching the database.
+     */
+    public function migrationSetSignature(): string
+    {
+        $names = array_map(
+            static fn (string $path): string => basename($path, '.php'),
+            glob($this->migrationsPath().'/*.php') ?: [],
+        );
+        sort($names);
+
+        return hash('sha256', implode("\n", $names));
+    }
+
     public function migrationsPath(): string
     {
         return database_path('migrations/wgw');
