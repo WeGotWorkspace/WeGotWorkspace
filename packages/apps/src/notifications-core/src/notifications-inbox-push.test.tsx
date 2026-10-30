@@ -268,6 +268,33 @@ describe("notification inbox on push", () => {
     expect(confirmed).toBe(false);
   });
 
+  it("a tab that took over the stream while it waited fetches and shares the rows itself", async () => {
+    hub.state.leading = false;
+    vi.useFakeTimers();
+    render(<NotificationsProvider />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(listCalls()).toBe(1);
+    vi.mocked(listNotifications).mockResolvedValue({ list: [row], unreadCount: 1 });
+    const inOther = tabs.other!.waitFor("7", INBOX_SHARE_WAIT_MS * 2);
+
+    let confirmed: unknown = "pending";
+    const listener = notificationListener()({ Notification: "7" }, "member");
+    void Promise.resolve(listener).then((value) => (confirmed = value));
+    hub.state.leading = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INBOX_SHARE_WAIT_MS);
+    });
+    expect(confirmed).toBe(true);
+    expect(listCalls()).toBe(2);
+    // The fake channel delivers on a timer too (fake timers clamp it to a few ms).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
