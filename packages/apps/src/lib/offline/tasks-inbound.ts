@@ -1,4 +1,10 @@
 import type { Task, TaskList } from "@/tasks-core/src/tasks-types";
+import {
+  listRemovedIds,
+  readPendingWrites,
+  serverMovedSince,
+  type PendingWrite,
+} from "@/lib/offline/core/inbound-sync";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { TASKS_DOMAIN } from "@/lib/offline/tasks/tasks-schema";
 import { taskEtag } from "@/lib/offline/tasks/tasks-patch-merge";
@@ -17,12 +23,7 @@ import { reportTasksSyncConflicts } from "@/lib/offline/tasks-sync-conflicts";
 
 const LIST_OPS = new Set(["listCreate", "listUpdate", "listDelete"]);
 
-type PendingTaskWrite = {
-  /** Server etag the first queued write was based on (its If-Match), when known. */
-  baseEtag?: string;
-  /** A local delete is queued: the user wants the task gone too. */
-  deleting: boolean;
-};
+type PendingTaskWrite = PendingWrite;
 
 /** Local writes that inbound must not overwrite. */
 export type TasksPendingWrites = {
@@ -33,38 +34,36 @@ export type TasksPendingWrites = {
 };
 
 /**
- * Queued outbox rows plus `pendingSync` cache rows. A queued delete has no
- * cache row any more, so the outbox is what keeps it from coming back.
+ * Queued outbox rows plus `pendingSync` cache rows, through the shared inbound
+ * engine. A queued delete has no cache row any more, so the outbox is what keeps
+ * it from coming back.
  */
 export async function readTasksPendingWrites(username: string): Promise<TasksPendingWrites> {
-  const tasks = new Map<string, PendingTaskWrite>();
-  const lists = new Set<string>();
-  const deletingLists = new Set<string>();
-  for (const row of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
-    if (LIST_OPS.has(row.op)) {
-      const listId = tasksOutboxTaskListId(row);
-      if (listId) lists.add(listId);
-      if (listId && row.op === "listDelete") deletingLists.add(listId);
-      continue;
-    }
-    const taskId = tasksOutboxTaskId(row);
-    if (!taskId) continue;
-    const previous = tasks.get(taskId);
-    tasks.set(taskId, {
-      baseEtag: previous?.baseEtag ?? row.ifInState,
-      deleting: (previous?.deleting ?? false) || row.op === "delete",
-    });
-  }
-  for (const taskId of await listPendingTaskIds(username)) {
-    if (!tasks.has(taskId)) tasks.set(taskId, { deleting: false });
-  }
-  return { tasks, lists, deletingLists };
+  const rows = await listOutboxMutationsForDomain(username, TASKS_DOMAIN);
+  const tasks = readPendingWrites(
+    rows,
+    (row) => ({
+      id: LIST_OPS.has(row.op) ? null : tasksOutboxTaskId(row),
+      deleting: row.op === "delete",
+    }),
+    await listPendingTaskIds(username),
+  );
+  const lists = readPendingWrites(rows, (row) => ({
+    id: LIST_OPS.has(row.op) ? tasksOutboxTaskListId(row) : null,
+    deleting: row.op === "listDelete",
+  }));
+  const deletingLists = new Set(
+    [...lists].filter(([, write]) => write.deleting).map(([listId]) => listId),
+  );
+  return { tasks, lists: new Set(lists.keys()), deletingLists };
 }
 
-/** A queued write is a conflict only when the server moved since it was queued. */
-function serverMovedSince(write: PendingTaskWrite, remote: Task): boolean {
-  const remoteEtag = taskEtag(remote);
-  return write.baseEtag !== undefined && remoteEtag !== undefined && remoteEtag !== write.baseEtag;
+/**
+ * A queued write is a conflict only when the server moved since it was queued.
+ * Tasks compares against the first queued base, and an unknown base is not moved.
+ */
+function serverMovedSinceQueued(write: PendingTaskWrite, remote: Task): boolean {
+  return serverMovedSince(write.bases.slice(0, 1), taskEtag(remote), "not-moved");
 }
 
 function report(conflicts: string[]): void {
@@ -81,7 +80,7 @@ async function ingestTask(
   if (!task.id || pending.deletingLists.has(task.taskListId)) return "skipped-pending";
   const write = pending.tasks.get(task.id);
   if (write) {
-    if (serverMovedSince(write, task)) conflicts.push(task.id);
+    if (serverMovedSinceQueued(write, task)) conflicts.push(task.id);
     return "skipped-pending";
   }
   await upsertTaskInCache(username, task, false);
@@ -182,9 +181,9 @@ export async function reconcileTaskListResync(
     if (task.id) remoteIds.add(task.id);
     await ingestTask(username, task, writes, conflicts);
   }
-  for (const cached of await listCachedTasksForList(username, taskListId)) {
-    if (remoteIds.has(cached.id) || writes.tasks.has(cached.id)) continue;
-    await removeTaskFromCache(username, cached.id);
+  const cachedTasks = await listCachedTasksForList(username, taskListId);
+  for (const id of listRemovedIds(cachedTasks, remoteIds, (task) => writes.tasks.has(task.id))) {
+    await removeTaskFromCache(username, id);
   }
   report(conflicts);
 }
@@ -210,13 +209,17 @@ export async function reconcileTasksSnapshot(
   for (const task of tasks) {
     await ingestTask(username, task, writes, conflicts);
   }
-  for (const task of cached?.data.tasks ?? []) {
-    if (!task.id || remoteTaskIds.has(task.id) || writes.tasks.has(task.id)) continue;
-    await removeTaskFromCache(username, task.id);
+  const cachedTasks = (cached?.data.tasks ?? []).filter((task) => task.id);
+  for (const id of listRemovedIds(cachedTasks, remoteTaskIds, (task) =>
+    writes.tasks.has(task.id),
+  )) {
+    await removeTaskFromCache(username, id);
   }
-  for (const list of cached?.data.taskLists ?? []) {
-    if (!list.id || remoteListIds.has(list.id) || writes.lists.has(list.id)) continue;
-    await removeTaskListFromCache(username, list.id);
+  const cachedLists = (cached?.data.taskLists ?? []).filter((list) => list.id);
+  for (const id of listRemovedIds(cachedLists, remoteListIds, (list) =>
+    writes.lists.has(list.id),
+  )) {
+    await removeTaskListFromCache(username, id);
   }
   report(conflicts);
 }
