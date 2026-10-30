@@ -62,13 +62,17 @@ export function useNotificationsInboxPush(options: {
     if (!state) return true;
     const fanOut = defaultInboxFanOut();
     const fetchAndShare = async () => {
+      // Claim this state before the GET, so a late share for an older one is
+      // ignored while it runs. Rows for a newer state already cover this one.
+      if (!noteState(state)) return true;
       const payload = await latest.current.fetchForPush();
+      const stillNewest = newestState.current === state;
       if (!payload) {
+        if (!stillNewest) return true;
         fanOut.shareFailed(state);
         return false;
       }
-      noteState(state);
-      fanOut.share(payload, state);
+      if (stillNewest) fanOut.share(payload, state);
       return true;
     };
     if (defaultJmapPushHub()?.leading) return fetchAndShare();
