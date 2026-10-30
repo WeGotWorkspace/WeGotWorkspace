@@ -622,17 +622,20 @@ final class CalendarEventMutationSupport
 
         // The caller can reach one calendar through several instances (own,
         // group, direct share). Resolve through the instance the calendar list
-        // shows; a dismissed share is not listed, so fall back to the one with
-        // the most rights to keep it reachable by id.
+        // shows. When the list has none for this calendar, take the one with
+        // the most rights. A dismissed share is skipped either way.
         $calendarId = (int) $object->calendarid;
         $instance = $this->calendars->accessibleVeventInstances($username)
             ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
-            ?? $this->collectionAccess->preferHighestAccessPerCalendar(
-                CalendarInstance::query()
-                    ->where('calendarid', $calendarId)
-                    ->whereIn('principaluri', $principalUris)
-                    ->orderBy('id')
-                    ->get(),
+            ?? $this->collectionAccess->withoutDismissed(
+                $username,
+                $this->collectionAccess->preferHighestAccessPerCalendar(
+                    CalendarInstance::query()
+                        ->where('calendarid', $calendarId)
+                        ->whereIn('principaluri', $principalUris)
+                        ->orderBy('id')
+                        ->get(),
+                ),
             )->first();
 
         if ($instance === null) {

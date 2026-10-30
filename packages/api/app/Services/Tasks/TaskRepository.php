@@ -546,19 +546,21 @@ final class TaskRepository
             return null;
         }
 
-        // Resolve through the instance the task-list list shows; a dismissed
-        // share is not listed, so fall back to the strongest instance of this
-        // object's own list.
+        // Resolve through the instance the task list overview shows. When it has
+        // none for this list, take the strongest instance of this object's own
+        // list. A dismissed share is skipped either way.
         $calendarId = (int) $object->calendarid;
         $instance = $this->collectionAccess->accessibleInstances($username, CollectionKind::TaskList)
-            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId);
-        if ($instance === null) {
-            $instances = CalendarInstance::query()
-                ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
-                ->orderBy('id')
-                ->get();
-            $instance = $this->collectionAccess->preferHighestAccessPerCalendar($instances)->first();
-        }
+            ->first(fn (CalendarInstance $listed): bool => (int) $listed->calendarid === $calendarId)
+            ?? $this->collectionAccess->withoutDismissed(
+                $username,
+                $this->collectionAccess->preferHighestAccessPerCalendar(
+                    CalendarInstance::query()
+                        ->whereIn('id', $rows->where('id', $objectId)->pluck('instance_id')->all())
+                        ->orderBy('id')
+                        ->get(),
+                ),
+            )->first();
         if ($instance === null) {
             return null;
         }
