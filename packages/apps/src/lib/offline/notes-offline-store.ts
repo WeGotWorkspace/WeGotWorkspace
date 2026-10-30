@@ -574,7 +574,6 @@ export async function writeSyncToken(
   await db.meta.put({ key: metaKeyForNotebookState(notebook), value: token });
 }
 
-/** Note ids with any outbox row, including a non-retryable `stateMismatch`. */
 /**
  * The note version each queued note write started from (its If-Match), per
  * note. Inbound sync compares it with the server's version: the same version
@@ -603,6 +602,7 @@ export async function hasQueuedNoteUpsert(username: string, noteId: string): Pro
   );
 }
 
+/** Note ids with any outbox row, including a non-retryable `stateMismatch`. */
 export async function listOutboxNoteIds(username: string): Promise<Set<string>> {
   return new Set((await readQueuedNoteWrites(username)).keys());
 }
