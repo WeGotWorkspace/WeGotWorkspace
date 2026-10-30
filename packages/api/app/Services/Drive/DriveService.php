@@ -250,13 +250,7 @@ final class DriveService
     {
         $this->assertFilesEnabled();
 
-        return $this->stars->listPaths($principal['username'], function (string $path) use ($principal): bool {
-            try {
-                return $this->authorizer->effectiveRights($path, $principal)['mayView'];
-            } catch (\InvalidArgumentException) {
-                return false;
-            }
-        });
+        return $this->stars->listPaths($principal['username'], fn (string $path): bool => $this->authorizer->mayView($path, $principal));
     }
 
     /**
