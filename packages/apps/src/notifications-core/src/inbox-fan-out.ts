@@ -4,13 +4,17 @@ import type { NotificationInboxList } from "@/notifications-core/src/notificatio
 export type InboxPayload = NotificationInboxList;
 
 /** The inbox the leading tab fetched, sent to the other tabs. */
-export type InboxMessage = { v: 1; kind: "inbox" } & InboxPayload;
+export type InboxMessage =
+  | ({ v: 1; kind: "inbox" } & InboxPayload)
+  /** The leading tab's fetch failed, so waiting tabs must not confirm the push. */
+  | { v: 1; kind: "inbox-failed" };
 
 export function isInboxMessage(value: unknown): value is InboxMessage {
   if (!value || typeof value !== "object") return false;
-  const message = value as Partial<InboxMessage>;
+  const message = value as { v?: unknown; kind?: unknown; list?: unknown; unreadCount?: unknown };
+  if (message.v !== 1) return false;
+  if (message.kind === "inbox-failed") return true;
   return (
-    message.v === 1 &&
     message.kind === "inbox" &&
     Array.isArray(message.list) &&
     typeof message.unreadCount === "number"
@@ -33,7 +37,23 @@ export class InboxFanOut {
 
   /** Rows another tab fetched. */
   onShared(listener: (payload: InboxPayload) => void): () => void {
-    return this.#topic.subscribe(({ list, unreadCount }) => listener({ list, unreadCount }));
+    return this.#topic.subscribe((message) => {
+      if (message.kind === "inbox") {
+        listener({ list: message.list, unreadCount: message.unreadCount });
+      }
+    });
+  }
+
+  /** The leading tab could not fetch the inbox. */
+  onFailed(listener: () => void): () => void {
+    return this.#topic.subscribe((message) => {
+      if (message.kind === "inbox-failed") listener();
+    });
+  }
+
+  /** Tell the other tabs the fetch failed. */
+  shareFailure(): void {
+    this.#topic.publish({ v: 1, kind: "inbox-failed" }, { otherTabsOnly: true });
   }
 
   /** Send the rows this tab fetched to the other tabs. */
