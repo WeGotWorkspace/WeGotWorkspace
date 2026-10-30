@@ -30,6 +30,19 @@ describe("createLocalAckClaims", () => {
     await expect(a.claim("n2")).resolves.toBe(true);
   });
 
+  it("a claim granted after releaseAll (the hook unmounted) gives the lock straight back", async () => {
+    const locks = new FakeWebLocks();
+    const a = createLocalAckClaims(locks.client("a"));
+    const c = createLocalAckClaims(locks.client("c"));
+    const pending = a.claim("n1");
+    a.releaseAll();
+    await expect(pending).resolves.toBe(false);
+    await tick();
+    await expect(c.claim("n1")).resolves.toBe(true);
+    // The claim set still works after a remount.
+    await expect(a.claim("n2")).resolves.toBe(true);
+  });
+
   it("a crashed tab's claims return to the others", async () => {
     const locks = new FakeWebLocks();
     const a = createLocalAckClaims(locks.client("a"));

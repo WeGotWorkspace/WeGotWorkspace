@@ -42,7 +42,7 @@ describe("InboxFanOut", () => {
     a.share(payload, "7");
     await tick();
     expect(inA).not.toHaveBeenCalled();
-    expect(inC).toHaveBeenCalledWith(payload);
+    expect(inC).toHaveBeenCalledWith(payload, "7");
 
     for (const stop of stops) stop();
     a.share(payload, "8");
@@ -64,6 +64,35 @@ describe("InboxFanOut", () => {
     a.share(payload, "7");
     await tick();
     await expect(c.waitFor("7", 10_000)).resolves.toEqual(payload);
+  });
+
+  // Notification states are the server's per-user inbox counter: "8" holds everything "7" did.
+  it("waitFor resolves on the rows of a newer state too", async () => {
+    const { a, c } = twoTabs();
+    const waiting = c.waitFor("7", 10_000);
+    a.share(payload, "8");
+    await expect(waiting).resolves.toEqual(payload);
+  });
+
+  it("an older share arriving late does not hide the newer one from waitFor", async () => {
+    const { a, c } = twoTabs();
+    a.share(payload, "8");
+    a.share({ list: [], unreadCount: 0 }, "7");
+    await tick();
+    await expect(c.waitFor("8", 10_000)).resolves.toEqual(payload);
+  });
+
+  it("a failure from an earlier attempt does not end a new wait; one during the wait does", async () => {
+    const { a, c } = twoTabs();
+    a.shareFailed("7");
+    await tick();
+    let result: unknown = "pending";
+    const waiting = c.waitFor("7", 10_000);
+    void waiting.then((value) => (result = value));
+    await tick();
+    expect(result).toBe("pending");
+    a.shareFailed("7");
+    await expect(waiting).resolves.toBeNull();
   });
 
   it("waitFor resolves null when the fetching tab reports a failed fetch for that state", async () => {

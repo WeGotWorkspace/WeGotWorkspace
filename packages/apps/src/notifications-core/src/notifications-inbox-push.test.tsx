@@ -295,6 +295,23 @@ describe("notification inbox on push", () => {
     await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
   });
 
+  it("ignores a share for an older inbox state that arrives after a newer one", async () => {
+    hub.state.leading = false;
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(listCalls()).toBe(1));
+    const newer = { ...row, id: "n2" };
+    tabs.other!.share({ list: [newer, row], unreadCount: 2 }, "8");
+    await settle();
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "7");
+    await settle();
+    expect(probe.inbox?.items).toEqual([newer, row]);
+    expect(probe.inbox?.unreadCount).toBe(2);
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
