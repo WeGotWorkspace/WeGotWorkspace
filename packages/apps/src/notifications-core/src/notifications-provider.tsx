@@ -117,6 +117,8 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
     [trackUnreadForLocalAck],
   );
 
+  const highestSharedMarkerRef = useRef<bigint | null>(null);
+
   const show = useCallback(
     (seq: number, payload: NotificationInboxList) => {
       if (seq <= shownSeqRef.current) return;
@@ -166,7 +168,14 @@ function useNotificationsInboxController(): NotificationsInboxValue | null {
 
   /** Rows the stream tab fetched on push: newer than any GET still in flight here. */
   const applyShared = useCallback(
-    (payload: NotificationInboxList) => {
+    (payload: NotificationInboxList, state: string) => {
+      // Markers are decimal strings; an older share must not replace newer rows.
+      const marker = /^\d+$/.test(state) ? BigInt(state) : null;
+      if (marker !== null) {
+        const highest = highestSharedMarkerRef.current;
+        if (highest !== null && marker < highest) return;
+        highestSharedMarkerRef.current = marker;
+      }
       refreshAbortRef.current?.abort();
       shownSeqRef.current = fetchSeqRef.current;
       shownRef.current = payload;

@@ -32,7 +32,7 @@ export const INBOX_SHARE_WAIT_MS = 10_000;
 export function useNotificationsInboxPush(options: {
   signedIn: boolean;
   fetchForPush: () => Promise<NotificationInboxList | null>;
-  apply: (payload: NotificationInboxList) => void;
+  apply: (payload: NotificationInboxList, state: string) => void;
 }): boolean {
   const { signedIn } = options;
   const latest = useRef(options);
@@ -42,7 +42,7 @@ export function useNotificationsInboxPush(options: {
 
   useEffect(() => {
     if (!signedIn) return;
-    return defaultInboxFanOut().onShared((payload) => latest.current.apply(payload));
+    return defaultInboxFanOut().onShared((payload, state) => latest.current.apply(payload, state));
   }, [signedIn]);
 
   useJmapStateChange(signedIn ? PUSH_TYPES : NO_TYPES, async (states) => {

@@ -42,12 +42,34 @@ describe("InboxFanOut", () => {
     a.share(payload, "7");
     await tick();
     expect(inA).not.toHaveBeenCalled();
-    expect(inC).toHaveBeenCalledWith(payload);
+    expect(inC).toHaveBeenCalledWith(payload, "7");
 
     for (const stop of stops) stop();
     a.share(payload, "8");
     await tick();
     expect(inC).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the latest message per state, so an older share does not erase a newer one", async () => {
+    const { a, c } = twoTabs();
+    a.share(payload, "2");
+    a.share({ list: [], unreadCount: 0 }, "1");
+    await tick();
+    await expect(c.waitFor("2", 10_000)).resolves.toEqual(payload);
+  });
+
+  it("does not answer a waitFor from a cached failure, but a failure during the wait does", async () => {
+    const { a, c } = twoTabs();
+    a.shareFailed("3");
+    await tick();
+    vi.useFakeTimers();
+    const waiting = c.waitFor("3", 10_000);
+    let settled = false;
+    void waiting.then(() => (settled = true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(waiting).resolves.toBeNull();
   });
 
   it("waitFor resolves the rows shared for that state and ignores other states", async () => {

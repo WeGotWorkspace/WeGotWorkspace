@@ -26,6 +26,7 @@ export function isInboxMessage(value: unknown): value is InboxMessage {
   );
 }
 
+const LAST_STATES_KEPT = 8;
 const CHANNEL = "wgw-notifications-inbox";
 
 /**
@@ -36,23 +37,27 @@ const CHANNEL = "wgw-notifications-inbox";
  */
 export class InboxFanOut {
   readonly #topic: CrossTabTopic<InboxMessage>;
-  /** The newest message from another tab, for a tab that starts waiting after it arrived. */
-  #last: InboxMessage | null = null;
+  /** The newest message per state from other tabs, for a tab that starts waiting after one arrived. */
+  #last = new Map<string, InboxMessage>();
   #waiters = new Set<(message: InboxMessage) => void>();
 
   constructor(options: { topic: CrossTabTopic<InboxMessage> }) {
     this.#topic = options.topic;
     this.#topic.subscribe((message) => {
-      this.#last = message;
+      this.#last.delete(message.state);
+      this.#last.set(message.state, message);
+      if (this.#last.size > LAST_STATES_KEPT) {
+        this.#last.delete(this.#last.keys().next().value as string);
+      }
       for (const waiter of [...this.#waiters]) waiter(message);
     });
   }
 
   /** Rows another tab fetched. */
-  onShared(listener: (payload: NotificationInboxList) => void): () => void {
+  onShared(listener: (payload: NotificationInboxList, state: string) => void): () => void {
     return this.#topic.subscribe((message) => {
       if (message.kind === "inbox") {
-        listener({ list: message.list, unreadCount: message.unreadCount });
+        listener({ list: message.list, unreadCount: message.unreadCount }, message.state);
       }
     });
   }
@@ -77,7 +82,9 @@ export class InboxFanOut {
   waitFor(state: string, timeoutMs: number): Promise<NotificationInboxList | null> {
     const answer = (message: InboxMessage) =>
       message.kind === "inbox" ? { list: message.list, unreadCount: message.unreadCount } : null;
-    if (this.#last?.state === state) return Promise.resolve(answer(this.#last));
+    // A cached failure is the previous attempt, so only a cached success answers at once.
+    const cached = this.#last.get(state);
+    if (cached?.kind === "inbox") return Promise.resolve(answer(cached));
     return new Promise((resolve) => {
       const done = (value: NotificationInboxList | null) => {
         clearTimeout(timer);

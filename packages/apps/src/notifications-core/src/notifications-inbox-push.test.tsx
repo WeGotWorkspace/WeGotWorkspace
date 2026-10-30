@@ -295,6 +295,22 @@ describe("notification inbox on push", () => {
     await expect(inOther).resolves.toEqual({ list: [row], unreadCount: 1 });
   });
 
+  it("an older shared inbox marker does not replace rows of a higher one", async () => {
+    hub.state.leading = false;
+    render(
+      <NotificationsProvider>
+        <Probe />
+      </NotificationsProvider>,
+    );
+    await waitFor(() => expect(listCalls()).toBe(1));
+    tabs.other!.share({ list: [row], unreadCount: 1 }, "10");
+    await settle();
+    expect(probe.inbox?.items).toEqual([row]);
+    tabs.other!.share({ list: [], unreadCount: 0 }, "9");
+    await settle();
+    expect(probe.inbox?.items).toEqual([row]);
+  });
+
   it("a hidden tab shows shared rows but does not ack them", async () => {
     hub.state.leading = false;
     setVisibility("hidden");
