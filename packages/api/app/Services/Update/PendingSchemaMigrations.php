@@ -60,7 +60,7 @@ final class PendingSchemaMigrations
      */
     public function applyIfPending(): bool
     {
-        if (! $this->hasPersistentDatabase()) {
+        if (! $this->hasPersistentDatabase() || ! $this->installFinished()) {
             return true;
         }
 
@@ -134,6 +134,17 @@ final class PendingSchemaMigrations
         $this->writeMarker(['signature' => $signature, 'status' => 'current']);
         $this->updates->appendLog('Pending database migrations finished.');
         Log::warning('Applied database migrations an update left pending.', ['migrations' => $pending]);
+    }
+
+    /**
+     * Before the install the data directory is still the default one inside
+     * the document root, and reading the marker or taking the lock would
+     * create it there (#1803). The `.installed` file keeps this to one stat
+     * per request; the full check only runs when that file is missing.
+     */
+    private function installFinished(): bool
+    {
+        return is_file($this->paths->lockFile()) || $this->paths->runtimeInstallReady();
     }
 
     private function hasPersistentDatabase(): bool
