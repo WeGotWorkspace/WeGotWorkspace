@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Services\Notes;
 
 use App\Models\CalendarObject;
+use App\Models\DriveShare;
 use App\Models\DriveStarredItem;
 use App\Models\GroupMember;
 use App\Models\NoteStar;
 use App\Models\Principal;
 use App\Services\Notes\Conversion\NoteJournalConverter;
-use App\Services\Search\SearchIndexerService;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Str;
 
 /**
- * One-way import of Drive `.notes/*.md` files into VJOURNAL notebooks.
+ * One-way import of Drive `.notes/*.md` files (v0.1.96 and older) into
+ * VJOURNAL notebooks. Safe to run again: {@see LegacyNoteImportLedger} skips
+ * files that already became a note. The source files stay on disk.
  */
 final class NotesFileMigrator
 {
@@ -24,13 +25,19 @@ final class NotesFileMigrator
         private readonly NoteMarkdownCodec $codec,
         private readonly NotebookRepository $notebooks,
         private readonly NoteRepository $notes,
-        private readonly SearchIndexerService $search,
+        private readonly LegacyNoteImportLedger $ledger,
+        private readonly LegacyNoteFileLister $files,
     ) {}
 
     /**
+     * Each file is imported on its own: a file that fails is skipped with a
+     * notice and the next one is tried. A skipped file is not recorded, so
+     * the next run of `wgw:notes:migrate-files` tries it again.
+     *
      * @return array{
      *   mapped: int,
      *   imported: int,
+     *   alreadyImported: int,
      *   starred: int,
      *   skipped: int,
      *   discardedYjs: int,
@@ -38,95 +45,139 @@ final class NotesFileMigrator
      *   notices: list<string>
      * }
      */
-    public function migrate(): array
+    public function migrate(bool $discardYjs = false): array
     {
-        $disk = $this->storage->files();
-        $pathToUid = $this->buildPathUidMap(array_values($disk->allFiles()));
-        $imported = 0;
-        $skipped = 0;
-        $starred = 0;
-        $images = 0;
-        $discardedYjs = 0;
-        $notices = [];
+        $result = [
+            'mapped' => 0,
+            'imported' => 0,
+            'alreadyImported' => 0,
+            'starred' => 0,
+            'skipped' => 0,
+            'discardedYjs' => 0,
+            'images' => 0,
+            'notices' => [],
+        ];
+        $files = $this->files->list($result['notices']);
+        $pathToUid = $this->buildPathUidMap($files);
+        $result['mapped'] = count($pathToUid);
+        $stars = $this->driveStarsByPath();
+        $shares = $this->sharedPaths();
 
         foreach ($pathToUid as $virtualPath => $uid) {
-            $key = ltrim($virtualPath, '/');
-            if (! $disk->fileExists($key)) {
-                $skipped++;
-                $notices[] = 'missing file: '.$virtualPath;
-
-                continue;
-            }
-            $markdown = (string) $disk->get($key);
-            $parsed = $this->parseNotePath($virtualPath);
-            if ($parsed === null) {
-                $skipped++;
-                $notices[] = 'unparsed path: '.$virtualPath;
-
-                continue;
-            }
-
-            $fallback = pathinfo($parsed['filename'], PATHINFO_FILENAME);
-            [$title, $tags, $body] = $this->codec->parse($markdown, $fallback);
-            if ($this->codec->isPlaceholderTitle($title, $fallback)) {
-                $title = '';
-            }
-            if (strlen($body) > NoteJournalConverter::MAX_MARKDOWN_BYTES) {
-                $skipped++;
-                $notices[] = 'over-limit skipped: '.$virtualPath;
-
-                continue;
-            }
-
-            $imageCount = $this->countMarkdownImages($body);
-            if ($imageCount > 0) {
-                $images += $imageCount;
-                $notices[] = sprintf('images=%d uid=%s path=%s', $imageCount, $uid, $virtualPath);
-            }
-
-            $username = $parsed['scope'] === 'group' ? $this->groupOwnerUsername($parsed['owner']) : $parsed['owner'];
-            if ($username === null) {
-                $skipped++;
-                $notices[] = 'no owner for: '.$virtualPath;
-
-                continue;
-            }
-
-            $notebookName = $parsed['notebook'] !== '' ? $parsed['notebook'] : 'General';
-            $groupSlug = $parsed['scope'] === 'group' ? $parsed['owner'] : null;
-            $notebook = $this->notebooks->findOrCreateNamed($username, $notebookName, $groupSlug);
-
             try {
-                $created = $this->notes->create($username, [
-                    'notebookId' => $notebook['id'],
-                    'title' => $title !== '' ? $title : null,
-                    'body' => $body,
-                    'categories' => $tags,
-                    'status' => $parsed['archived'] ? 'CANCELLED' : null,
-                ], allowStoredTags: true);
-                $pathToUid[$virtualPath] = is_string($created['id'] ?? null)
-                    ? (string) $created['id']
-                    : $uid;
-                $imported++;
+                $this->importFile($virtualPath, $uid, $stars, $shares, $result);
             } catch (\Throwable $exception) {
-                $skipped++;
-                $notices[] = 'import failed '.$virtualPath.': '.$exception->getMessage();
+                $result['skipped']++;
+                $result['notices'][] = 'import failed '.$virtualPath.': '.$exception->getMessage();
             }
         }
 
-        $starred = $this->backfillStars($pathToUid, $notices);
-        $discardedYjs = $this->discardYjsSidecars(array_values($disk->allFiles()));
-        $this->reindexImported(array_values($pathToUid));
+        if ($discardYjs) {
+            $result['discardedYjs'] = $this->discardYjsSidecars($files);
+        } else {
+            foreach ($this->yjsSidecars($files) as $sidecar) {
+                $result['notices'][] = 'collaborative edits not imported, kept on disk: /'.$sidecar;
+            }
+        }
 
-        return [
-            'mapped' => count($pathToUid),
-            'imported' => $imported,
-            'starred' => $starred,
-            'skipped' => $skipped,
-            'discardedYjs' => $discardedYjs,
-            'images' => $images,
-            'notices' => $notices,
-        ];
+        return $result;
+    }
+
+    /**
+     * Stars are copied right before the path is recorded, so a run that stops
+     * halfway loses none. A recorded path is left alone: an unstar sticks.
+     *
+     * @param  array<string, list<string>>  $stars
+     * @param  list<string>  $shares
+     * @param  array{mapped: int, imported: int, alreadyImported: int, starred: int, skipped: int, discardedYjs: int, images: int, notices: list<string>}  $result
+     */
+    private function importFile(string $virtualPath, string $uid, array $stars, array $shares, array &$result): void
+    {
+        if ($this->ledger->recordedUid($virtualPath) !== null) {
+            $result['alreadyImported']++;
+
+            return;
+        }
+        if ($this->ledger->noteExists($uid)) {
+            // A run that stopped between creating the note and recording it.
+            $result['starred'] += $this->copyStars($virtualPath, $uid, $stars);
+            $this->noteShares($virtualPath, $shares, $result['notices']);
+            $this->ledger->record($virtualPath, $uid);
+            $result['alreadyImported']++;
+
+            return;
+        }
+
+        $parsed = $this->parseNotePath($virtualPath);
+        if ($parsed === null) {
+            $result['skipped']++;
+            $result['notices'][] = 'unparsed path: '.$virtualPath;
+
+            return;
+        }
+        $markdown = (string) $this->storage->files()->get(ltrim($virtualPath, '/'));
+        $fallback = pathinfo($parsed['filename'], PATHINFO_FILENAME);
+        [$title, $tags, $body] = $this->codec->parse($markdown, $fallback);
+        if ($this->codec->isPlaceholderTitle($title, $fallback)) {
+            $title = '';
+        }
+        if (strlen($body) > NoteJournalConverter::MAX_MARKDOWN_BYTES) {
+            $result['skipped']++;
+            $result['notices'][] = 'over-limit skipped: '.$virtualPath;
+
+            return;
+        }
+        $imageCount = $this->countMarkdownImages($body);
+        if ($imageCount > 0) {
+            $result['images'] += $imageCount;
+            $result['notices'][] = sprintf('images=%d uid=%s path=%s', $imageCount, $uid, $virtualPath);
+        }
+
+        $username = $parsed['scope'] === 'group' ? $this->groupOwnerUsername($parsed['owner']) : $parsed['owner'];
+        if ($username === null) {
+            $result['skipped']++;
+            $result['notices'][] = 'no owner for: '.$virtualPath;
+
+            return;
+        }
+
+        $groupSlug = $parsed['scope'] === 'group' ? $parsed['owner'] : null;
+        $notebook = $this->notebooks->findOrCreateNamed($username, $parsed['notebook'], $groupSlug);
+        $calendarId = $this->notebooks->findAccessibleNotebook($username, (string) $notebook['id'])?->calendarid;
+        $earlier = $calendarId !== null ? $this->ledger->claimEarlierImport((int) $calendarId, $title, $body) : null;
+        if ($earlier !== null) {
+            $this->ledger->record($virtualPath, $earlier);
+            $result['alreadyImported']++;
+
+            return;
+        }
+
+        $note = $this->notes->create($username, [
+            'uid' => $uid,
+            'notebookId' => $notebook['id'],
+            'title' => $title !== '' ? $title : null,
+            'body' => $body,
+            'categories' => $tags,
+            'status' => $parsed['archived'] ? 'CANCELLED' : null,
+        ], allowStoredTags: true);
+        $noteUid = is_string($note['id'] ?? null) ? (string) $note['id'] : $uid;
+        $result['starred'] += $this->copyStars($virtualPath, $noteUid, $stars);
+        $this->noteShares($virtualPath, $shares, $result['notices']);
+        $this->ledger->record($virtualPath, $noteUid);
+        $result['imported']++;
+    }
+
+    /**
+     * @param  list<string>  $shares
+     * @param  list<string>  $notices
+     */
+    private function noteShares(string $virtualPath, array $shares, array &$notices): void
+    {
+        foreach ($shares as $shared) {
+            if ($virtualPath === $shared || str_starts_with($virtualPath, $shared.'/')) {
+                $notices[] = sprintf('shared in Drive as %s; the imported note is not shared: %s', $shared, $virtualPath);
+            }
+        }
     }
 
     /**
@@ -149,7 +200,7 @@ final class NotesFileMigrator
             if (str_starts_with(basename($key), '._')) {
                 continue;
             }
-            $map['/'.$key] = (string) Str::uuid();
+            $map['/'.$key] = $this->ledger->uidFor('/'.$key);
         }
 
         return $map;
@@ -186,39 +237,62 @@ final class NotesFileMigrator
     }
 
     /**
-     * @param  array<string, string>  $pathToUid
-     * @param  list<string>  $notices
+     * @param  array<string, list<string>>  $stars
      */
-    private function backfillStars(array $pathToUid, array &$notices): int
+    private function copyStars(string $virtualPath, string $uid, array $stars): int
     {
-        $count = 0;
-        foreach (DriveStarredItem::query()->get() as $row) {
-            $path = (string) $row->path;
-            $normalized = str_starts_with($path, '/') ? $path : '/'.$path;
-            $uid = $pathToUid[$normalized] ?? null;
-            if ($uid === null) {
-                if (str_contains($normalized, '/.notes/')) {
-                    $notices[] = 'star skip (path not in map): '.$normalized;
-                }
-
-                continue;
-            }
-            $object = CalendarObject::query()->where('uid', $uid)->first();
-            if ($object === null) {
-                $notices[] = 'star skip (object missing): '.$uid;
-
-                continue;
-            }
-            NoteStar::query()->firstOrCreate([
-                'username' => (string) $row->username,
-                'calendar_object_id' => (int) $object->id,
+        $usernames = $stars[$virtualPath] ?? [];
+        if ($usernames === []) {
+            return 0;
+        }
+        $objectId = CalendarObject::query()->where('uid', $uid)->value('id');
+        if ($objectId === null) {
+            return 0;
+        }
+        $created = 0;
+        foreach ($usernames as $username) {
+            $star = NoteStar::query()->firstOrCreate([
+                'username' => $username,
+                'calendar_object_id' => (int) $objectId,
             ], [
                 'note_uid' => $uid,
             ]);
-            $count++;
+            $created += $star->wasRecentlyCreated ? 1 : 0;
         }
 
-        return $count;
+        return $created;
+    }
+
+    /**
+     * @return array<string, list<string>> virtual path → usernames who starred it
+     */
+    private function driveStarsByPath(): array
+    {
+        $stars = [];
+        foreach (DriveStarredItem::query()->where('path', 'like', '%/.notes/%')->get(['username', 'path']) as $row) {
+            $path = '/'.ltrim((string) $row->path, '/');
+            $stars[$path][] = (string) $row->username;
+        }
+
+        return $stars;
+    }
+
+    /**
+     * Drive shares on a `.notes` file or folder do not carry over to Notes
+     * (#668); the update log names the notes they covered.
+     *
+     * @return list<string>
+     */
+    private function sharedPaths(): array
+    {
+        $paths = DriveShare::query()
+            ->whereNull('revoked_at')
+            ->where('path', 'like', '%/.notes%')
+            ->pluck('path')
+            ->map(fn ($path): string => rtrim('/'.ltrim((string) $path, '/'), '/'))
+            ->all();
+
+        return array_values(array_unique($paths));
     }
 
     /**
@@ -228,14 +302,7 @@ final class NotesFileMigrator
     {
         $disk = $this->storage->files();
         $discarded = 0;
-        foreach ($files as $key) {
-            $key = ltrim(str_replace('\\', '/', (string) $key), '/');
-            if (! preg_match('#(?:^|/)\\.[^/]+\\.md\\.yjs$#', $key) && ! str_ends_with($key, '.md.yjs')) {
-                continue;
-            }
-            if (! str_contains($key, '/.notes/')) {
-                continue;
-            }
+        foreach ($this->yjsSidecars($files) as $key) {
             if ($disk->fileExists($key)) {
                 $disk->delete($key);
                 $discarded++;
@@ -246,24 +313,20 @@ final class NotesFileMigrator
     }
 
     /**
-     * @param  list<string>  $uids
+     * @param  list<string>  $files
+     * @return list<string>
      */
-    private function reindexImported(array $uids): void
+    private function yjsSidecars(array $files): array
     {
-        foreach ($uids as $uid) {
-            $object = CalendarObject::query()->where('uid', $uid)->first();
-            if ($object === null) {
-                continue;
+        $sidecars = [];
+        foreach ($files as $key) {
+            $key = ltrim(str_replace('\\', '/', (string) $key), '/');
+            if (str_ends_with($key, '.md.yjs') && str_contains($key, '/.notes/')) {
+                $sidecars[] = $key;
             }
-            $instance = $object->calendar?->instances()->first();
-            if ($instance === null) {
-                continue;
-            }
-            $principal = (string) $instance->principaluri;
-            $home = str_starts_with($principal, 'principals/') ? substr($principal, strlen('principals/')) : $principal;
-            $path = 'calendars/'.$home.'/'.$instance->uri.'/'.$object->uri;
-            $this->search->indexCalendarObjectFromPath($path);
         }
+
+        return $sidecars;
     }
 
     private function groupOwnerUsername(string $groupSlug): ?string

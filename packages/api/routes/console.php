@@ -225,12 +225,13 @@ Artisan::command('wgw:contacts:provision-address-books', function (AddressBookPr
     return Command::SUCCESS;
 })->purpose('Provision one address book per user and group principal (idempotent)');
 
-Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
-    $result = $migrator->migrate();
+Artisan::command('wgw:notes:migrate-files {--discard-yjs : Delete .md.yjs collaborative-edit sidecars (kept by default)}', function (NotesFileMigrator $migrator): int {
+    $result = $migrator->migrate(discardYjs: (bool) $this->option('discard-yjs'));
     $this->info(sprintf(
-        'Mapped %d path(s); imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
+        'Mapped %d path(s); imported %d; already imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
         $result['mapped'],
         $result['imported'],
+        $result['alreadyImported'],
         $result['starred'],
         $result['skipped'],
         $result['discardedYjs'],
@@ -241,7 +242,7 @@ Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrato
     }
 
     return Command::SUCCESS;
-})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks');
+})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks (idempotent; the update runs it too)');
 
 Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJournalStripper $stripper): int {
     $result = $stripper->stripAll();
