@@ -21,6 +21,25 @@ function pagedEditor(page: Page) {
   return page.locator(".ProseMirror.rm-with-pagination");
 }
 
+/** Click a paragraph and wait until the editor has the caret there (it lags the click a frame). */
+async function caretAtEndOf(page: Page, text: string): Promise<void> {
+  await page.locator(".ProseMirror p", { hasText: text }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        // Tiptap puts the editor on its root element.
+        const root = document.querySelector(".ProseMirror") as
+          | (HTMLElement & {
+              editor?: { state: { selection: { $from: { parent: { textContent: string } } } } };
+            })
+          | null;
+        return root?.editor?.state.selection.$from.parent.textContent ?? null;
+      }),
+    )
+    .toBe(text);
+  await page.keyboard.press("End");
+}
+
 async function pageWidth(page: Page): Promise<number> {
   return pagedEditor(page).evaluate((element) => Math.round(element.getBoundingClientRect().width));
 }
@@ -53,8 +72,7 @@ test.describe("Docs pages and page break (live app)", () => {
       await expect.poll(() => pageWidth(tabB)).toBe(A5_WIDTH_PX);
 
       // Tab A: page break after the first paragraph, then text after it.
-      await tabA.locator(".ProseMirror p", { hasText: "First paragraph." }).click();
-      await tabA.keyboard.press("End");
+      await caretAtEndOf(tabA, "First paragraph.");
       await tabA.keyboard.press("Enter");
       await tabA.keyboard.type("/page");
       await expect(tabA.getByText("Start a new page")).toBeVisible();
@@ -68,7 +86,7 @@ test.describe("Docs pages and page break (live app)", () => {
       await breakThenToken(tabA);
       await breakThenToken(tabB);
 
-      await waitForDocSaved(tabA, apiPath, `<!-- pagebreak -->\n\n${token}`);
+      await waitForDocSaved(tabA, apiPath, `<!-- pagebreak -->\n\n${token}\n\nSecond paragraph.`);
       expect(await tabA.evaluate(() => localStorage.getItem("wgw.ui.docs.pageSetup"))).toContain(
         '"format":"a5"',
       );

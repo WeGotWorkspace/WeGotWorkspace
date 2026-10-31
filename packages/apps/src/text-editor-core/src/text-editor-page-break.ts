@@ -73,6 +73,20 @@ export const PageBreak = Node.create({
           // Only between top-level blocks: inside a list item, quote or table cell the
           // break would not paginate and would be serialized inside that block.
           if (selection.$from.depth !== (isNodeSelection(selection) ? 0 : 1)) return false;
+          const { $from } = selection;
+          if (selection.empty && $from.parent.isTextblock && $from.parent.content.size === 0) {
+            // On an empty line (Enter, then /Page break): the break goes before it and the
+            // caret stays on it, so typing starts the new page.
+            const at = $from.before();
+            return chain()
+              .insertContentAt(at, { type: this.name }, { updateSelection: false })
+              .command(({ tr, dispatch }) => {
+                if (dispatch)
+                  tr.setSelection(TextSelection.create(tr.doc, at + 2)).scrollIntoView();
+                return true;
+              })
+              .run();
+          }
           const currentChain = chain();
           if (isNodeSelection(selection)) {
             currentChain.insertContentAt(selection.$to.pos, { type: this.name });
@@ -85,14 +99,15 @@ export const PageBreak = Node.create({
               const { $to } = tr.selection;
               if ($to.nodeAfter?.isTextblock) {
                 tr.setSelection(TextSelection.create(tr.doc, $to.pos + 1));
-              } else if ($to.nodeAfter?.isBlock) {
-                tr.setSelection(NodeSelection.create(tr.doc, $to.pos));
-              } else if (!$to.nodeAfter) {
+              } else {
+                // Before a list, table, image or the end: start a new paragraph. Selecting
+                // that block instead would let the next keystroke replace it.
                 const paragraph = tr.doc.type.schema.nodes.paragraph?.create();
                 if (paragraph) {
-                  const posAfter = $to.end();
-                  tr.insert(posAfter, paragraph);
-                  tr.setSelection(TextSelection.create(tr.doc, posAfter + 1));
+                  tr.insert($to.pos, paragraph);
+                  tr.setSelection(TextSelection.create(tr.doc, $to.pos + 1));
+                } else if ($to.nodeAfter?.isBlock) {
+                  tr.setSelection(NodeSelection.create(tr.doc, $to.pos));
                 }
               }
               tr.scrollIntoView();

@@ -81,11 +81,35 @@ describe("setPageBreak", () => {
     );
   });
 
+  it("on an empty line puts the break before it and keeps the caret there", () => {
+    const editor = markdownEditor("First.\n\nSecond.");
+    editor.commands.setTextSelection(7);
+    editor.commands.splitBlock();
+    expect(editor.commands.setPageBreak()).toBe(true);
+    editor.commands.insertContent("New page");
+    expect(getTextEditorContent(editor, "markdown")).toBe(
+      "First.\n\n<!-- pagebreak -->\n\nNew page\n\nSecond.",
+    );
+  });
+
   it("adds an empty paragraph after a break at the end", () => {
     const editor = markdownEditor("Only.");
     editor.commands.setTextSelection(6);
     editor.commands.setPageBreak();
     expect(blockTypes(editor)).toEqual(["paragraph", "pageBreak", "paragraph"]);
+  });
+
+  it.each([
+    ["a list", "Intro.\n\n- one\n- two", "- one\n- two"],
+    ["a table", "Intro.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |", "| 1 | 2 |"],
+  ])("keeps %s that follows the break; typing goes into a new paragraph", (_, markdown, kept) => {
+    const editor = markdownEditor(markdown);
+    editor.commands.setTextSelection(7);
+    editor.commands.setPageBreak();
+    editor.commands.insertContent("After");
+    const content = getTextEditorContent(editor, "markdown");
+    expect(content).toContain("Intro.\n\n<!-- pagebreak -->\n\nAfter\n\n");
+    expect(content).toContain(kept);
   });
 
   it.each([
