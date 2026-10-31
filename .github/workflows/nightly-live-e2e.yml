@@ -122,16 +122,23 @@ jobs:
           path: coturn.log
           if-no-files-found: ignore
 
-  notes-sync-matrix:
-    # One runner needs about 90 minutes for the 110 cases, so they run in shards.
+  sync-matrix:
+    # The Notes matrix needs about 90 minutes on one runner for its 110 cases,
+    # the Tasks matrix about 40 minutes for its 100, so each runs in shards.
     # Each shard boots its own PHP, Vite, and SQLite, so the shards share nothing.
-    name: Notes sync matrix (${{ matrix.shard }}/4)
+    name: ${{ matrix.app }} sync matrix (${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        include:
+          - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 1 }
+          - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 2 }
+          - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 3 }
+          - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 4 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 2, shard: 1 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 2, shard: 2 }
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
@@ -195,16 +202,16 @@ jobs:
       - name: Bootstrap local dev install
         run: php packages/api/artisan wgw:dev-install
 
-      - name: Run the Notes sync matrix
+      - name: Run the ${{ matrix.app }} sync matrix
         working-directory: packages/apps
-        run: pnpm exec playwright test --config playwright.matrix.config.mjs --shard=${{ matrix.shard }}/4
+        run: pnpm exec playwright test --config playwright.matrix.config.mjs ${{ matrix.spec }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
 
       # Also on a timeout (a cancel), so a slow run still leaves its traces.
       - name: Upload Playwright artifacts
         if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
-          name: notes-sync-matrix-artifacts-${{ matrix.shard }}
+          name: ${{ matrix.spec }}-artifacts-${{ matrix.shard }}
           path: |
             packages/apps/playwright-report/
             packages/apps/test-results/
@@ -212,7 +219,7 @@ jobs:
 
   notify-failure:
     name: Notify on failure
-    needs: [live-specs, notes-sync-matrix]
+    needs: [live-specs, sync-matrix]
     if: failure() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -233,7 +240,7 @@ jobs:
               "",
               `Run: ${runUrl}`,
               "",
-              "Download the `live-e2e-artifacts` or `notes-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
+              "Download the `live-e2e-artifacts`, `notes-sync-matrix-artifacts-<shard>` or `tasks-sync-matrix-artifacts-<shard>` artifact from that run for the HTML report and traces.",
             ].join("\n");
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
@@ -259,7 +266,7 @@ jobs:
 
   notify-recovery:
     name: Close failure issue on success
-    needs: [live-specs, notes-sync-matrix]
+    needs: [live-specs, sync-matrix]
     if: success() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
