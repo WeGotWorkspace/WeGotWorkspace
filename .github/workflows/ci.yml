@@ -353,6 +353,73 @@ jobs:
           WGW_UPGRADE_DOCKER_CACHE: gha
         run: bash tools/e2e-upgrade.sh
 
+  # Fresh install of a release ZIP from this revision: the zip-sqlite cell of
+  # tools/e2e-install-matrix.sh, which the Edge build also runs after a merge.
+  # It fails when the install leaves wgw-content in the web root (#1803).
+  # Builds an unsigned ZIP and serves it with PHP's built-in server: no
+  # Docker, no signing key, nothing published. Pull requests and the merge
+  # queue only; on pushes to main edge.yml runs the same cell.
+  install-zip-sqlite:
+    name: install-zip-sqlite${{ needs.gate.outputs.run != 'true' && ' (waits for the review loop)' || '' }}
+    needs: gate
+    if: needs.gate.outputs.run == 'true' && github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_sqlite, simplexml, zip
+          coverage: none
+
+      - uses: pnpm/action-setup@v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Cache Composer vendor
+        uses: actions/cache@v6
+        with:
+          path: packages/api/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('packages/api/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install JS workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Install backend Composer dependencies
+        run: composer --working-dir packages/api install --no-interaction --prefer-dist
+
+      - name: Build (Turbo JS, then Composer prune and sync)
+        run: pnpm run build
+
+      - name: Build unsigned release ZIP
+        run: node tools/build-wegotworkspace-release.mjs
+
+      - name: Install Playwright
+        run: pnpm --filter @wgw/api-e2e exec playwright install chromium --with-deps
+
+      - name: Fresh ZIP install (SQLite)
+        env:
+          CHANNEL: zip
+          DB: sqlite
+        run: bash tools/e2e-install-matrix.sh
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-install-zip-sqlite
+          path: tools/api-e2e/test-results
+          retention-days: 3
+          if-no-files-found: ignore
+
   chromatic:
     needs: gate
     if: >-
