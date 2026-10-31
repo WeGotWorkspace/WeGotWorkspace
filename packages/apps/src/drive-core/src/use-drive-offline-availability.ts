@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import {
+  isEligibleForAutoContentSync,
   readOfflineDeviceContentSettings,
   subscribeOfflineDeviceContentSettings,
+  type OfflineDeviceContentSettings,
 } from "@/lib/offline/core/offline-device-settings";
 import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { driveOutboxApiPath } from "@/lib/offline/drive/drive-outbox-flush";
@@ -28,6 +30,36 @@ function parseFileSizeBytes(file: DriveFile): number | null {
   if (file.size?.includes("GB")) return Math.round(kb * 1024 * 1024 * 1024);
   if (file.size?.includes("KB")) return Math.round(kb * 1024);
   return Math.round(kb);
+}
+
+export type DriveRowOfflineState = "available" | "syncing" | "too-large" | "none";
+
+/**
+ * Offline state of one row. A running background sync only marks the files it
+ * will copy itself: not yet on the device and within the automatic size limit.
+ * Folders, files above the limit and files already stored keep their own state.
+ */
+export function driveRowOfflineState(input: {
+  hasLocal: boolean;
+  isFolder: boolean;
+  sizeBytes: number | null;
+  syncRunning: boolean;
+  online: boolean;
+  settings: OfflineDeviceContentSettings;
+}): DriveRowOfflineState {
+  if (input.hasLocal) return "available";
+  if (input.isFolder) return "none";
+  const { settings, sizeBytes } = input;
+  if (input.syncRunning && isEligibleForAutoContentSync(sizeBytes, settings)) return "syncing";
+  if (
+    input.online &&
+    settings.contentSyncEnabled &&
+    sizeBytes != null &&
+    sizeBytes > settings.maxFileSizeBytes
+  ) {
+    return "too-large";
+  }
+  return "none";
 }
 
 export function useDriveOfflineAvailability(
@@ -97,11 +129,7 @@ export function useDriveOfflineAvailability(
       const pinned = new Set<string>();
       const pending = new Set<string>();
 
-      if (metadataProgress.running || contentProgress.running) {
-        for (const file of files) {
-          pending.add(file.id);
-        }
-      }
+      const syncRunning = metadataProgress.running || contentProgress.running;
 
       await Promise.all(
         files.map(async (file) => {
@@ -112,15 +140,17 @@ export function useDriveOfflineAvailability(
             pending.add(file.id);
           }
 
-          const hasLocal = await hasOfflineFileContent(username, apiPath);
-          if (hasLocal) {
-            available.add(file.id);
-          } else if (online && settings.contentSyncEnabled) {
-            const sizeBytes = parseFileSizeBytes(file);
-            if (sizeBytes != null && sizeBytes > settings.maxFileSizeBytes) {
-              pinned.add(file.id);
-            }
-          }
+          const state = driveRowOfflineState({
+            hasLocal: await hasOfflineFileContent(username, apiPath),
+            isFolder: file.kind === "folder",
+            sizeBytes: parseFileSizeBytes(file),
+            syncRunning,
+            online,
+            settings,
+          });
+          if (state === "available") available.add(file.id);
+          else if (state === "syncing") pending.add(file.id);
+          else if (state === "too-large") pinned.add(file.id);
         }),
       );
 
