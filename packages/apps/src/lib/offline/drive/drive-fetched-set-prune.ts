@@ -25,6 +25,7 @@ import {
   type OfflineDriveEntryRow,
 } from "@/lib/offline/drive/drive-schema";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
+import { uploadPlaceholderProtectedPaths } from "@/lib/offline/drive/upload/drive-upload-placeholders";
 import {
   collabIndexedDbHasPendingServerSave,
   DOCS_COLLAB_IDENTITY_DB_VERSION,
@@ -60,7 +61,9 @@ type DriveEntries = EntityTable<OfflineDriveEntryRow, "id">;
  * different folder.
  *
  * A cached row with an open Docs or Drive outbox mutation for that path is
- * left in place, including the path a rename or trash will land on. A removed
+ * left in place, including the path a rename or trash will land on. So is the
+ * placeholder of a file still in the upload queue: placeholders live only in
+ * this cache, so no listing (and no full resync) ever returns them. A removed
  * directory also drops nested rows, except descendants that are unsaved,
  * covered by an open outbox row, or blocked on collab-database delete. Those
  * rows keep their ancestor directories up to the pruned folder so the file
@@ -94,7 +97,7 @@ export async function pruneDriveEntriesMissingFromFetch(
   const missing = rows.filter((row) => !fetchedIds.has(row.id));
   if (missing.length === 0) return { removedPaths, keptUnsavedPaths };
 
-  const protectedPaths = await openOutboxProtectedPaths(username);
+  const protectedPaths = await prunerProtectedPaths(username);
   let databaseNames: ReadonlySet<string> | null | undefined;
   const namesForPendingSave = async (): Promise<ReadonlySet<string> | null> => {
     if (databaseNames === undefined) databaseNames = await listExistingIndexedDatabaseNames();
@@ -167,7 +170,7 @@ async function dropMissingRow(
   protectedPaths: ReadonlySet<string>,
   buckets: PruneBuckets,
 ): Promise<void> {
-  if (isCoveredByOpenOutbox(row.id, protectedPaths)) return;
+  if (isProtectedFromPrune(row.id, protectedPaths)) return;
   if (await documentHasPendingServerSave(row, table, databaseNames)) {
     buckets.keptUnsavedPaths.push(row.id);
     return;
@@ -190,7 +193,7 @@ async function dropMissingDirectory(
   const descendants = await table.where("id").startsWith(`${row.id}/`).toArray();
   const keepIds = new Set<string>();
   for (const descendant of descendants) {
-    if (isCoveredByOpenOutbox(descendant.id, protectedPaths)) {
+    if (isProtectedFromPrune(descendant.id, protectedPaths)) {
       keepWithAncestors(keepIds, descendant.id, row.id);
       continue;
     }
@@ -366,9 +369,10 @@ function deleteIndexedDatabase(databaseName: string): Promise<boolean> {
   });
 }
 
-async function openOutboxProtectedPaths(username: string): Promise<Set<string>> {
+/** Open outbox paths plus placeholders of files still in the upload queue. */
+async function prunerProtectedPaths(username: string): Promise<Set<string>> {
   const rows = await listOutboxMutations(username);
-  const paths = new Set<string>();
+  const paths = await uploadPlaceholderProtectedPaths(username);
   for (const row of rows) {
     const listed =
       row.domain === DRIVE_DOMAIN
@@ -384,8 +388,8 @@ async function openOutboxProtectedPaths(username: string): Promise<Set<string>> 
   return paths;
 }
 
-/** True when `id` or one of its ancestor directories is an open outbox path. */
-function isCoveredByOpenOutbox(id: string, protectedPaths: ReadonlySet<string>): boolean {
+/** True when `id` or one of its ancestors is an open outbox path or a live upload placeholder. */
+function isProtectedFromPrune(id: string, protectedPaths: ReadonlySet<string>): boolean {
   let current = id;
   while (current.length > 0) {
     if (protectedPaths.has(current)) return true;

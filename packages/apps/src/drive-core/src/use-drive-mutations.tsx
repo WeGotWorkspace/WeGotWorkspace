@@ -15,6 +15,11 @@ import { driveFileFromEntry } from "@/drive-core/src/drive-file-utils";
 import type { DriveUploadProgress } from "@/drive-core/src/drive-types";
 import { useDriveBatchActions } from "@/drive-core/src/use-drive-batch-actions";
 import { useDriveSelectionBar } from "@/drive-core/src/use-drive-selection-bar";
+import {
+  driveUploadProgressView,
+  queuePickedDriveUploads,
+  type DriveUploadProgressView,
+} from "@/drive-core/src/drive-upload-listing";
 import type { DriveListState } from "@/drive-core/src/use-drive-list";
 import type { DriveShellState } from "@/drive-core/src/use-drive-shell";
 import { wgwIsGuestSession } from "@/lib/api/wgw/http";
@@ -97,12 +102,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
   const [markdownDialogSubmitting, setMarkdownDialogSubmitting] = useState(false);
   const [markdownDialogError, setMarkdownDialogError] = useState<string | null>(null);
   const [dropUploadActive, setDropUploadActive] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    label: string;
-    percent: number;
-    detail: string;
-    done: boolean;
-  } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<DriveUploadProgressView | null>(null);
   const uploadProgressResetTimerRef = useRef<number | null>(null);
   // Guests get the upload queue later (Epic #1499); until then they see no
   // upload, no drop target and no new Markdown file (Docs saves guest files
@@ -276,16 +276,14 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     if (!uploadEnabled || !fileList || fileList.length === 0) return;
     const selected = Array.from(fileList);
     const targetParent = view.type === "folder" ? view.path : "My Drive";
-    const showProgress = (progress: DriveUploadProgress) => {
-      const totalBytes = Math.max(1, progress.totalBytes);
-      const percent = Math.min(100, Math.round((progress.uploadedBytes / totalBytes) * 100));
-      const fileLabel =
-        progress.currentFileName.trim() !== ""
-          ? `Uploading ${progress.currentFileName}`
-          : "Uploading files";
-      const detail = `${formatBytesCompact(progress.uploadedBytes)} / ${formatBytesCompact(progress.totalBytes)} · ${progress.filesCompleted}/${progress.filesTotal} files`;
-      setUploadProgress({ label: fileLabel, percent, detail, done: false });
-    };
+    const cwd = apiPathFromUiPath(targetParent, currentUsername, groupRootNames);
+    if (queuePickedDriveUploads(operations, { cwd, files: selected }, showError)) {
+      // Placeholders appear through the queue subscription; nothing says "Uploaded" yet.
+      if (view.type !== "folder") commitView({ type: "folder", path: targetParent });
+      return;
+    }
+    const showProgress = (progress: DriveUploadProgress) =>
+      setUploadProgress(driveUploadProgressView(progress));
     if (uploadProgressResetTimerRef.current !== null) {
       window.clearTimeout(uploadProgressResetTimerRef.current);
       uploadProgressResetTimerRef.current = null;
@@ -302,15 +300,7 @@ export function useDriveMutations({ shell, list, onOpenDocsFile }: UseDriveMutat
     if (operations) {
       void operations
         .checkUploadReady()
-        .then(() =>
-          operations.uploadFiles(
-            {
-              cwd: apiPathFromUiPath(targetParent, currentUsername, groupRootNames),
-              files: selected,
-            },
-            { onProgress: showProgress },
-          ),
-        )
+        .then(() => operations.uploadFiles({ cwd, files: selected }, { onProgress: showProgress }))
         .then((nextData) => {
           setFiles(
             nextData.directory.files.map((entry) => driveFileFromEntry(entry, currentUsername)),

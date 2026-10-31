@@ -395,3 +395,47 @@ describe("useDriveShell folder listing sync", () => {
     unmount();
   });
 });
+
+describe("useDriveShell upload placeholders", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("merges queued placeholders into the boot listing without a queue event", async () => {
+    const placeholder = {
+      ...directoryEntry("queued.txt"),
+      path: `${MY_DRIVE_CWD}/\u0000upload:u1`,
+      upload: { id: "u1", batchId: "b1", status: "queued" as const },
+    };
+    const operations: DriveAPIOperations = {
+      ...createOperations(vi.fn()),
+      readCachedDirectory: vi.fn().mockResolvedValue({
+        ...driveData(["old.txt"]),
+        directory: { location: MY_DRIVE_CWD, files: [directoryEntry("old.txt"), placeholder] },
+      }),
+      subscribeUploadQueue: () => () => {},
+    };
+    // Boot data from the cached bootstrap: the server listing, without placeholders.
+    const bootstrap = driveData(["old.txt"]);
+    const { result } = renderHook(() => useDriveShell({ data: bootstrap, session, operations }));
+
+    await waitFor(() =>
+      expect(result.current.files.map((file) => [file.title, file.upload?.status])).toEqual([
+        ["old.txt", undefined],
+        ["queued.txt", "queued"],
+      ]),
+    );
+  });
+});

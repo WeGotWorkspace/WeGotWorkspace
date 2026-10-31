@@ -66,6 +66,17 @@ import {
   syncDriveInboundFromFileNodes,
 } from "@/lib/offline/drive/drive-inbound-sync";
 import { listKeptUnsavedDocumentPaths } from "@/lib/offline/drive/drive-fetched-set-prune";
+import { findUploadPlaceholder } from "@/lib/offline/drive/upload/drive-upload-placeholders";
+import { enqueueDriveUploadBatch } from "@/lib/offline/drive/upload/drive-upload-store";
+
+async function queuePlaceholder(folderPath: string): Promise<string> {
+  const { itemIds } = await enqueueDriveUploadBatch(username, {
+    folderPath,
+    targetFolder: { kind: "server", id: "fn-dir" },
+    files: [new File(["x"], "upload.pdf", { type: "application/pdf" })],
+  });
+  return itemIds[0]!;
+}
 
 const username = "ada";
 
@@ -217,6 +228,8 @@ describe("syncDriveInboundFromFileNodes", () => {
     syncDriveMetadataTree.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await driveEntriesTable(db).clear();
+    await db.table("drive_upload_items").clear();
+    await db.table("drive_upload_batches").clear();
     await db.table("docs_availability").clear();
     await db.meta.clear();
     getFileNodes.mockImplementation(async (_accountId: string, ids: string[]) => ({
@@ -376,6 +389,54 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(await readDriveEntryFromCache(username, "/users/ada/folder/a.md")).toBeNull();
     expect(await readCachedDriveNodeId(username, "/users/ada/notes")).toBe("fn-dir");
     expect(await readCachedDriveNodeId(username, "/users/ada/notes/a.md")).toBe("fn-child");
+  });
+
+  it("moves an upload placeholder with its folder on a remote rename", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/folder", "fn-dir", "dir"));
+    const itemId = await queuePlaceholder("/users/ada/folder");
+    installCatalog(
+      new Map([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-dir", node("fn-dir", "fn-home", "notes", "directory")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-dir"], newState: "6" }));
+
+    await syncDriveInboundFromFileNodes(username);
+
+    const placeholder = await findUploadPlaceholder(username, itemId);
+    expect(placeholder?.parentPath).toBe("users/ada/notes");
+    expect(placeholder?.uploadId).toBe(itemId);
+  });
+
+  it("keeps a placeholder with its folder when the folder move is blocked", async () => {
+    await upsertDriveEntry(username, entry("/users/ada", "fn-home", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/folder", "fn-dir", "dir"));
+    await upsertDriveEntry(username, entry("/users/ada/taken.md", "fn-occupant"));
+    await seedPendingSave("/users/ada/taken.md", true);
+    const itemId = await queuePlaceholder("/users/ada/folder");
+    installCatalog(
+      new Map([
+        ["fn-home", node("fn-home", null, "ada", "directory")],
+        ["fn-dir", node("fn-dir", "fn-home", "taken.md", "directory")],
+      ]),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ updated: ["fn-dir"], newState: "8" }));
+
+    const blocked = await syncDriveInboundFromFileNodes(username);
+
+    expect(blocked.keptUnsavedPaths).toEqual(["users/ada/taken.md"]);
+    const stayed = await findUploadPlaceholder(username, itemId);
+    expect(stayed?.parentPath).toBe("users/ada/folder");
+    expect(await readCachedDriveNodeId(username, "/users/ada/folder")).toBe("fn-dir");
+
+    await seedPendingSave("/users/ada/taken.md", false);
+    await syncDriveInboundFromFileNodes(username);
+
+    const moved = await findUploadPlaceholder(username, itemId);
+    expect(moved?.parentPath).toBe("users/ada/taken.md");
+    expect(await readCachedDriveNodeId(username, "/users/ada/taken.md")).toBe("fn-dir");
   });
 
   it("falls back to the full crawl when changes cannot be calculated and then stores that state", async () => {
