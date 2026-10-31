@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
-  DOCS_PAGE_SETUP_STORAGE_KEY,
   parseDocsPageSetupPrefs,
+  readDocsPageSetupRaw,
   resolveDocsPageSetup,
   subscribeDocsPageSetup,
   writeDocsPageSetupPrefs,
@@ -9,15 +9,6 @@ import {
 } from "@/lib/docs-page-setup";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { TextEditorPageSetup } from "@/lib/page-format";
-
-/** Raw stored string: a stable snapshot for `useSyncExternalStore`. */
-function readRawPageSetup(): string | null {
-  try {
-    return window.localStorage.getItem(DOCS_PAGE_SETUP_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
 
 export type DocsPageSetupState = {
   pageSetup: TextEditorPageSetup;
@@ -29,7 +20,7 @@ export type DocsPageSetupState = {
  * get the continuous sheet: a page does not fit (the menu is hidden there too).
  */
 export function useDocsPageSetup(): DocsPageSetupState {
-  const raw = useSyncExternalStore(subscribeDocsPageSetup, readRawPageSetup, () => null);
+  const raw = useSyncExternalStore(subscribeDocsPageSetup, readDocsPageSetupRaw, () => null);
   const isMobile = useIsMobile();
   const pageSetup = useMemo(() => {
     const resolved = resolveDocsPageSetup(parseDocsPageSetupPrefs(raw));

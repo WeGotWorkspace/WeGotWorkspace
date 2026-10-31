@@ -39,26 +39,44 @@ export function parseDocsPageSetupPrefs(raw: string | null): DocsPageSetupPrefs 
   }
 }
 
-export function readDocsPageSetupPrefs(): DocsPageSetupPrefs {
-  if (!hasWindowStorage()) return {};
+/**
+ * The last choice this tab could not save (private mode, full storage), so the tab still
+ * follows it. Cleared by the next saved write or a change from another tab.
+ */
+let unsavedRaw: string | undefined;
+
+/** Raw stored JSON (or this tab's unsaved choice): a stable `useSyncExternalStore` snapshot. */
+export function readDocsPageSetupRaw(): string | null {
+  if (unsavedRaw !== undefined) return unsavedRaw;
+  if (!hasWindowStorage()) return null;
   try {
-    return parseDocsPageSetupPrefs(window.localStorage.getItem(DOCS_PAGE_SETUP_STORAGE_KEY));
+    return window.localStorage.getItem(DOCS_PAGE_SETUP_STORAGE_KEY);
   } catch {
-    return {};
+    return null;
   }
 }
 
-/** Saves the merged prefs. Returns false when storage is missing or the write throws. */
+export function readDocsPageSetupPrefs(): DocsPageSetupPrefs {
+  return parseDocsPageSetupPrefs(readDocsPageSetupRaw());
+}
+
+/**
+ * Saves the merged prefs and tells open editors. Returns false when storage is missing
+ * or the write throws; this tab then keeps the choice in memory.
+ */
 export function writeDocsPageSetupPrefs(change: DocsPageSetupPrefs): boolean {
-  if (!hasWindowStorage()) return false;
+  if (typeof window === "undefined") return false;
+  const next = JSON.stringify({ ...readDocsPageSetupPrefs(), ...change });
   let saved = false;
   try {
-    const next = { ...readDocsPageSetupPrefs(), ...change };
-    window.localStorage.setItem(DOCS_PAGE_SETUP_STORAGE_KEY, JSON.stringify(next));
-    saved = true;
+    if (hasWindowStorage()) {
+      window.localStorage.setItem(DOCS_PAGE_SETUP_STORAGE_KEY, next);
+      saved = true;
+    }
   } catch {
-    // Private mode can reject the write; open editors still follow the change below.
+    // Private mode can reject the write.
   }
+  unsavedRaw = saved ? undefined : next;
   window.dispatchEvent(new Event(CHANGE_EVENT));
   return saved;
 }
@@ -84,7 +102,9 @@ export function resolveDocsPageSetup(
 export function subscribeDocsPageSetup(listener: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   const onStorage = (event: StorageEvent) => {
-    if (event.key === DOCS_PAGE_SETUP_STORAGE_KEY || event.key === null) listener();
+    if (event.key !== DOCS_PAGE_SETUP_STORAGE_KEY && event.key !== null) return;
+    unsavedRaw = undefined;
+    listener();
   };
   window.addEventListener(CHANGE_EVENT, listener);
   window.addEventListener("storage", onStorage);

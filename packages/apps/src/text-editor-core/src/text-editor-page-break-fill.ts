@@ -169,7 +169,15 @@ export function createPageBreakFillPlugin(options: PageBreakFillOptions): Plugin
         update(updatedView, previousState) {
           // A new paper size or pages on/off counts as a fresh start, like an edit.
           const nextGeometry = JSON.stringify([options.isEnabled(), options.fallback()]);
-          if (updatedView.state.doc !== previousState.doc || nextGeometry !== geometry) passes = 0;
+          const docChanged = updatedView.state.doc !== previousState.doc;
+          const geometryChanged = nextGeometry !== geometry;
+          // Moving the caret changes no layout: skip the measuring pass.
+          const selectionOnly =
+            !docChanged &&
+            !geometryChanged &&
+            !updatedView.state.selection.eq(previousState.selection);
+          if (selectionOnly) return;
+          if (docChanged || geometryChanged) passes = 0;
           geometry = nextGeometry;
           const breaksChanged = layoutPageBreaks(updatedView.dom, options);
           const stale = options.isEnabled() && contentPageCountIsStale(updatedView.dom);

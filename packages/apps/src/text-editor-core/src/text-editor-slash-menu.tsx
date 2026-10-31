@@ -71,8 +71,10 @@ export function TextEditorSlashMenu({
     return subscribeEditorLayoutUpdates(editor.view.dom, syncSlashMenu);
   }, [editor, open, syncSlashMenu]);
 
-  const filtered = slashCommands({ onInsertImage, pageBreak }).filter((c) =>
-    (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()),
+  const filtered = slashCommands({ onInsertImage, pageBreak }).filter(
+    (c) =>
+      (c.title + " " + c.keywords).toLowerCase().includes(query.toLowerCase()) &&
+      (!editor || !c.isAvailable || c.isAvailable(editor)),
   );
 
   useEffect(() => {

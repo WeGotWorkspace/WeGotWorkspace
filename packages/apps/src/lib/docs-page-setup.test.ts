@@ -10,6 +10,7 @@ import {
 } from "@/lib/docs-page-setup";
 
 afterEach(() => {
+  writeDocsPageSetupPrefs({}); // a saved write drops any unsaved in-memory choice
   window.localStorage.clear();
 });
 
@@ -82,6 +83,24 @@ describe("writeDocsPageSetupPrefs", () => {
     expect(writeDocsPageSetupPrefs({ layout: "continuous" })).toBe(false);
     expect(listener).toHaveBeenCalledTimes(1);
     setItem.mockRestore();
+    unsubscribe();
+  });
+
+  it("keeps a rejected choice in this tab until a saved write or another tab's change", () => {
+    window.localStorage.setItem(DOCS_PAGE_SETUP_STORAGE_KEY, JSON.stringify({ format: "a4" }));
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError");
+    });
+    writeDocsPageSetupPrefs({ format: "a5" });
+    writeDocsPageSetupPrefs({ orientation: "landscape" });
+    setItem.mockRestore();
+    expect(readDocsPageSetupPrefs()).toEqual({ format: "a5", orientation: "landscape" });
+    expect(window.localStorage.getItem(DOCS_PAGE_SETUP_STORAGE_KEY)).toBe('{"format":"a4"}');
+
+    const unsubscribe = subscribeDocsPageSetup(() => {});
+    window.localStorage.setItem(DOCS_PAGE_SETUP_STORAGE_KEY, JSON.stringify({ format: "legal" }));
+    window.dispatchEvent(new StorageEvent("storage", { key: DOCS_PAGE_SETUP_STORAGE_KEY }));
+    expect(readDocsPageSetupPrefs()).toEqual({ format: "legal" });
     unsubscribe();
   });
 });

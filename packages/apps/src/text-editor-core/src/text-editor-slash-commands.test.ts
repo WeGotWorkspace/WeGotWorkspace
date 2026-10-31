@@ -11,6 +11,16 @@ describe("slashCommands", () => {
     expect(page?.keywords).toEqual(expect.stringContaining("new page"));
   });
 
+  it("asks the editor whether a break fits at the caret", () => {
+    const page = slashCommands({ pageBreak: true }).find((c) => c.title === "Page break");
+    const editorWith = (fits: boolean) =>
+      ({ can: () => ({ setPageBreak: () => fits }) }) as unknown as Parameters<
+        NonNullable<NonNullable<typeof page>["isAvailable"]>
+      >[0];
+    expect(page?.isAvailable?.(editorWith(true))).toBe(true);
+    expect(page?.isAvailable?.(editorWith(false))).toBe(false);
+  });
+
   it("leaves Page break out otherwise (Notes)", () => {
     expect(titles({})).not.toContain("Page break");
     expect(titles({ onInsertImage: vi.fn() })).not.toContain("Page break");

@@ -87,6 +87,24 @@ describe("setPageBreak", () => {
     editor.commands.setPageBreak();
     expect(blockTypes(editor)).toEqual(["paragraph", "pageBreak", "paragraph"]);
   });
+
+  it.each([
+    ["a list item", "- one\n- two", "one"],
+    ["a quote", "> quoted", "quoted"],
+    ["a table cell", "| A | B |\n| --- | --- |\n| 1 | 2 |", "2"],
+  ])("refuses a break inside %s and leaves the Markdown unchanged", (_, markdown, text) => {
+    const editor = markdownEditor(markdown);
+    const before = getTextEditorContent(editor, "markdown");
+    let caret = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (caret < 0 && node.isText && node.text === text) caret = pos + text.length;
+    });
+    editor.commands.setTextSelection(caret);
+    expect(editor.can().setPageBreak()).toBe(false);
+    expect(editor.commands.setPageBreak()).toBe(false);
+    expect(getTextEditorContent(editor, "markdown")).toBe(before);
+    expect(blockTypes(editor)).not.toContain("pageBreak");
+  });
 });
 
 describe("page break in collaboration", () => {

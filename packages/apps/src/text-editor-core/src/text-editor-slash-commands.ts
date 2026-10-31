@@ -22,6 +22,8 @@ export type SlashCommand = {
   icon: ComponentType<{ className?: string }>;
   keywords: string;
   run: (editor: Editor) => void;
+  /** Hide the item where its command cannot run (default: always offered). */
+  isAvailable?: (editor: Editor) => boolean;
 };
 
 function getSlashRange(editor: Editor) {
@@ -123,6 +125,8 @@ const PAGE_BREAK_COMMAND: SlashCommand = {
   desc: "Start a new page",
   icon: SeparatorHorizontal,
   keywords: "page break new page",
+  // Breaks only go between top-level blocks, not in lists, quotes or tables.
+  isAvailable: (e) => e.can().setPageBreak(),
   run: (e) => e.chain().focus().deleteRange(getSlashRange(e)).setPageBreak().run(),
 };
 

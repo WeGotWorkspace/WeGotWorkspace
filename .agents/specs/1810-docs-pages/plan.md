@@ -53,7 +53,7 @@ None — every choice is made. UI points for the product lead are listed in the 
 - Markdown without breaks is unchanged by a round trip, and a break round-trips byte-identical. A wrong serializer rewrites every saved Doc. Proof: `path: packages/apps/src/text-editor-core/src/text-editor-page-break.test.ts` assertion `round-trips a page break byte-identical`.
 - Notes builds no pagination and offers no page break. A wrong option leaks pages into Notes. Proof: `path: packages/apps/src/text-editor-core/src/text-editor-pagination.test.ts` assertion `adds pagination only when a page setup is passed`; `path: packages/apps/src/text-editor-core/src/text-editor-slash-commands.test.ts`.
 - The default paper size follows the locale region. A wrong lookup gives US users A4. Proof: `path: packages/apps/src/lib/page-format.test.ts`.
-- A stored preference survives bad JSON and unknown values. Proof: `path: packages/apps/src/docs-core/src/docs-page-setup.test.ts`.
+- A stored preference survives bad JSON and unknown values. Proof: `path: packages/apps/src/lib/docs-page-setup.test.ts`.
 - A page break lands on the next page end. Proof: `path: packages/apps/src/text-editor-core/src/text-editor-page-break-fill.test.ts`.
 
 ## Chunks
@@ -61,8 +61,8 @@ None — every choice is made. UI points for the product lead are listed in the 
 ### Chunk A: page format and preference
 - **Skill:** apps-ui
 - **Inputs:** `path: packages/apps/src/calendar-core/src/use-calendar-display-prefs.test.tsx:21`
-- **Done when:** `src/lib/page-format.ts`, `docs-core/src/docs-page-setup.ts`, `use-docs-page-setup.ts` exist with tests.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/page-format.test.ts src/docs-core/src/docs-page-setup.test.ts`
+- **Done when:** `src/lib/page-format.ts`, `src/lib/docs-page-setup.ts`, `use-docs-page-setup.ts` exist with tests.
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/page-format.test.ts src/lib/docs-page-setup.test.ts`
 - **Parallel with:** B
 
 ### Chunk B: page break node

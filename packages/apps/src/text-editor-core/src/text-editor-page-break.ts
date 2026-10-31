@@ -41,7 +41,7 @@ export function replacePageBreakComments(root: HTMLElement): void {
 /**
  * Forced page break: a block atom stored as `<!-- pagebreak -->`. On screen a thin dashed
  * line; in print `break-after: page`. With pages on, the fill plugin in
- * `text-editor-pagination.ts` stretches it to the end of its page.
+ * `text-editor-page-break-fill.ts` stretches it to the end of its page.
  *
  * It is in the shared schema (like `DocsImage`) so every helper editor that saves a Doc
  * keeps it; only the Docs slash menu offers it.
@@ -70,6 +70,9 @@ export const PageBreak = Node.create({
         ({ chain, state }) => {
           if (!canInsertNode(state, state.schema.nodes[this.name])) return false;
           const { selection } = state;
+          // Only between top-level blocks: inside a list item, quote or table cell the
+          // break would not paginate and would be serialized inside that block.
+          if (selection.$from.depth !== (isNodeSelection(selection) ? 0 : 1)) return false;
           const currentChain = chain();
           if (isNodeSelection(selection)) {
             currentChain.insertContentAt(selection.$to.pos, { type: this.name });
