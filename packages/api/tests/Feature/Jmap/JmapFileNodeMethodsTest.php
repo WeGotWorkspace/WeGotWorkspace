@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Dav\Server\FileNodeIndexPlugin;
 use App\Models\JmapFileNode;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
@@ -517,7 +518,7 @@ final class JmapFileNodeMethodsTest extends WgwDatabaseTestCase
         $this->assertNull($index->liveByKey($archivedKey));
         $this->assertNull($index->liveByKey($groupKey));
 
-        $result = $index->reindexAll();
+        $result = app(FileNodeReindexer::class)->reindexAll();
 
         $this->assertGreaterThanOrEqual(3, $result['indexed']);
         $this->assertNotNull($index->liveByKey('users/bob/.notes'));

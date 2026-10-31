@@ -21,9 +21,10 @@ use Illuminate\Support\Str;
  * change sequence and tombstones powering FileNode/changes. Maintained
  * best-effort from both write paths (DriveService and the DAV
  * FileNodeIndexPlugin) and reconciled lazily on reads plus via the
- * wgw:jmap:filenodes-reindex command — out-of-band writes are expected,
- * not fatal (an out-of-band rename is indistinguishable from delete+create
- * and changes the node id; documented deviation).
+ * wgw:jmap:filenodes-reindex command ({@see FileNodeReindexer}) —
+ * out-of-band writes are expected, not fatal (an out-of-band rename is
+ * indistinguishable from delete+create and changes the node id; documented
+ * deviation).
  *
  * Every seq bump also touches the Drive root markers of the key
  * ({@see FileNodeRootMarkers}); each public write is one marker batch, so a
@@ -113,6 +114,12 @@ final class FileNodeIndexService
     private function isHiddenKey(string $key): bool
     {
         return ! StorageKeyClass::classify($key)->isFileIndexed();
+    }
+
+    /** A key the index keeps a node for: rooted under users/ or groups/ and not hidden. */
+    public function isIndexableKey(string $key): bool
+    {
+        return ! $this->isHiddenKey($key) && $this->isRootedKey($key);
     }
 
     private function syncSearch(string $key, bool $deleted = false): void
@@ -619,100 +626,6 @@ final class FileNodeIndexService
                 $this->recordDelete((string) $child->storage_key);
             }
         }
-    }
-
-    /**
-     * How often the optional progress callback runs during the mint walk.
-     * Often enough that a caller's phase timestamp stays inside the reindex
-     * stale window, without a state write per key.
-     */
-    private const REINDEX_PROGRESS_STRIDE = 100;
-
-    /**
-     * Full-tree backfill/reconcile (the reindexAll pattern). Existing keys
-     * keep their node ids; new keys are minted; vanished keys tombstoned.
-     * Also prunes tombstones older than the retention window.
-     *
-     * `$progress` is `function (int $done, int $total): void`. SearchReindexRunner
-     * uses it to refresh the phase and to cancel between batches. A throw
-     * aborts the walk.
-     *
-     * @param  callable(int, int): void|null  $progress
-     * @return array{indexed: int, tombstoned: int, pruned: int}
-     */
-    public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
-    {
-        return $this->markers->batch(fn (): array => $this->reindexTree($tombstoneRetentionDays, $progress));
-    }
-
-    /**
-     * @param  callable(int, int): void|null  $progress
-     * @return array{indexed: int, tombstoned: int, pruned: int}
-     */
-    private function reindexTree(int $tombstoneRetentionDays, ?callable $progress): array
-    {
-        $disk = $this->storage->files();
-        $directoryKeys = $disk->allDirectories();
-        $fileKeys = $disk->allFiles();
-        $total = count($directoryKeys) + count($fileKeys);
-        $indexed = 0;
-        $seen = [];
-        $done = 0;
-
-        foreach ($directoryKeys as $key) {
-            $done++;
-            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
-                $seen[$key] = true;
-                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                    $indexed++;
-                }
-            }
-            $this->reportReindexProgress($progress, $done, $total, $done === count($directoryKeys));
-        }
-        foreach ($fileKeys as $key) {
-            $done++;
-            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
-                $seen[$key] = true;
-                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                    $indexed++;
-                }
-            }
-            $this->reportReindexProgress($progress, $done, $total, $done === $total);
-        }
-
-        $tombstoned = 0;
-        JmapFileNode::query()->whereNull('deleted_at')->orderBy('id')
-            ->chunk(500, function ($rows) use ($seen, $disk, &$tombstoned): void {
-                foreach ($rows as $row) {
-                    $key = (string) $row->storage_key;
-                    if (isset($seen[$key])) {
-                        continue;
-                    }
-                    if ($disk->directoryExists($key) || $disk->fileExists($key)) {
-                        continue;
-                    }
-                    $this->recordDelete($key);
-                    $tombstoned++;
-                }
-            });
-
-        $pruned = $this->pruneTombstones($tombstoneRetentionDays);
-
-        return ['indexed' => $indexed, 'tombstoned' => $tombstoned, 'pruned' => $pruned];
-    }
-
-    /**
-     * @param  callable(int, int): void|null  $progress
-     */
-    private function reportReindexProgress(?callable $progress, int $done, int $total, bool $boundary): void
-    {
-        if ($progress === null || $total === 0) {
-            return;
-        }
-        if (! $boundary && $done % self::REINDEX_PROGRESS_STRIDE !== 0) {
-            return;
-        }
-        $progress($done, $total);
     }
 
     public function pruneTombstones(int $retentionDays): int

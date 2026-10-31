@@ -6,7 +6,7 @@ namespace Tests\Feature\Search;
 
 use App\Exceptions\ApiHttpException;
 use App\Models\Principal;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Search\SearchIndexerService;
 use App\Services\Search\UnifiedSearchService;
 use App\Storage\WgwStorage;
@@ -301,7 +301,7 @@ final class UnifiedSearchEndpointsTest extends WgwDatabaseTestCase
      */
     private function reindexAll(): void
     {
-        app(FileNodeIndexService::class)->reindexAll();
+        app(FileNodeReindexer::class)->reindexAll();
         app(SearchIndexerService::class)->reindexAllFromFileNodes();
     }
 

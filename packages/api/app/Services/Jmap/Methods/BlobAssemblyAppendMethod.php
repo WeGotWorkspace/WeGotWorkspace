@@ -7,6 +7,7 @@ namespace App\Services\Jmap\Methods;
 use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\JmapCapabilities;
 use App\Services\Jmap\JmapMethodException;
+use App\Services\Jmap\Methods\Concerns\RequiresAssemblyId;
 
 /**
  * BlobAssembly/append (WGW extension, #1500): `{accountId, id, parts:
@@ -16,6 +17,8 @@ use App\Services\Jmap\JmapMethodException;
  */
 final class BlobAssemblyAppendMethod implements JmapMethodInterface
 {
+    use RequiresAssemblyId;
+
     public function __construct(private readonly BlobAssemblyService $assemblies) {}
 
     public function name(): string
@@ -35,10 +38,7 @@ final class BlobAssemblyAppendMethod implements JmapMethodInterface
 
     public function handle(string $username, array $args): array
     {
-        $id = $args['id'] ?? null;
-        if (! is_string($id) || $id === '') {
-            throw new JmapMethodException('invalidArguments', 'id is required.');
-        }
+        $id = $this->assemblyId($args);
         $rawParts = $args['parts'] ?? null;
         if (! is_array($rawParts) || ! array_is_list($rawParts)) {
             throw new JmapMethodException('invalidArguments', 'parts must be an array of {index, blobId}.');

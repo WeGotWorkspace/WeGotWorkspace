@@ -6,7 +6,7 @@ namespace App\Services\Jmap\Methods;
 
 use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\JmapCapabilities;
-use App\Services\Jmap\JmapMethodException;
+use App\Services\Jmap\Methods\Concerns\RequiresAssemblyId;
 
 /**
  * BlobAssembly/finish (WGW extension, #1500): `{accountId, id}`. Terminal
@@ -16,6 +16,8 @@ use App\Services\Jmap\JmapMethodException;
  */
 final class BlobAssemblyFinishMethod implements JmapMethodInterface
 {
+    use RequiresAssemblyId;
+
     public function __construct(private readonly BlobAssemblyService $assemblies) {}
 
     public function name(): string
@@ -35,10 +37,7 @@ final class BlobAssemblyFinishMethod implements JmapMethodInterface
 
     public function handle(string $username, array $args): array
     {
-        $id = $args['id'] ?? null;
-        if (! is_string($id) || $id === '') {
-            throw new JmapMethodException('invalidArguments', 'id is required.');
-        }
+        $id = $this->assemblyId($args);
 
         return ['accountId' => $username] + $this->assemblies->finish($username, $id);
     }

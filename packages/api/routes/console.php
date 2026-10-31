@@ -18,7 +18,7 @@ use App\Services\Installer\ProductionInstallBootstrap;
 use App\Services\Installer\WgwConfigMigrator;
 use App\Services\Installer\WgwSchemaMigrator;
 use App\Services\Jmap\Blobs\JmapBlobMaintenance;
-use App\Services\Jmap\FileNodes\FileNodeIndexService as JmapFileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Meet\MeetReservationService;
 use App\Services\Notes\EventCalendarJournalStripper;
 use App\Services\Notes\NotesFileMigrator;
@@ -428,8 +428,8 @@ Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', f
     return Command::SUCCESS;
 })->purpose('Shared local-dev seeder: calendars, notes, and contacts (pass app names to limit; --force recreates)');
 
-Artisan::command('wgw:jmap:filenodes-reindex', function (JmapFileNodeIndexService $index): int {
-    $result = $index->reindexAll();
+Artisan::command('wgw:jmap:filenodes-reindex', function (FileNodeReindexer $reindexer): int {
+    $result = $reindexer->reindexAll();
     $this->info(sprintf(
         'Indexed %d new node(s); tombstoned %d vanished node(s); pruned %d stale tombstone(s).',
         $result['indexed'],
