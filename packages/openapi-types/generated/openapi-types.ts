@@ -2320,6 +2320,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Unknown directory, or a path the caller may not list. A `..` segment is not found too. The answer is the same for all of these. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -2382,7 +2391,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description No read access to the path */
+                /** @description A share-link guest: live collaboration is for signed-in users */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2391,7 +2400,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Unknown path */
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2430,7 +2439,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description No write access to the path */
+                /** @description The caller can read the document but may not edit it, or is a share-link guest */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2439,7 +2448,7 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
-                /** @description Unknown path */
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -2522,6 +2531,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -2575,7 +2593,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Resolve file collab room */
+        /**
+         * Resolve file collab room
+         * @description Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.
+         */
         post: {
             parameters: {
                 query: {
@@ -2593,6 +2614,24 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Missing path */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown path, or a path the caller may not read */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -2630,6 +2669,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         /** Unstar path */
@@ -2650,6 +2698,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description Unknown path, or a path the caller may not read. The answer is the same for both. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
                 };
             };
         };
@@ -4068,6 +4125,24 @@ export interface paths {
                         "application/json": components["schemas"]["Error"];
                     };
                 };
+                /** @description `share_unavailable`: no public link has this token. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description `share_unavailable`: the link was revoked by its owner, or it is past `expiresAt`. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Too many requests */
                 429: {
                     headers: {
@@ -4257,6 +4332,24 @@ export interface paths {
                         "application/json": components["schemas"]["DriveShareDataResponse"];
                     };
                 };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
         };
         put?: never;
@@ -4280,6 +4373,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDeletedResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -4309,6 +4420,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDataResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
                 /** @description Share conflict */
@@ -4358,6 +4487,24 @@ export interface paths {
                         "application/json": components["schemas"]["DriveShareInviteDataResponse"];
                     };
                 };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share, or one the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
                 /** @description Guest already has access on this share */
                 409: {
                     headers: {
@@ -4405,6 +4552,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DriveShareDeletedResponse"];
+                    };
+                };
+                /** @description The caller holds a grant on this share but does not own it. Only the owner manages a share. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unknown share or invite, or a share the caller neither owns nor holds a grant on. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -6746,6 +6911,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
@@ -6786,6 +6952,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
             };
         };
         put?: never;
@@ -6819,6 +6986,7 @@ export interface paths {
                 };
                 400: components["responses"]["JmapBadRequest"];
                 403: components["responses"]["JmapForbidden"];
+                404: components["responses"]["JmapNotFound"];
                 409: components["responses"]["JmapConflict"];
                 413: components["responses"]["JmapPayloadTooLarge"];
             };
@@ -9322,7 +9490,7 @@ export interface components {
             /** @description Rejected — names are server-set from the principal display name. */
             name?: string;
             description?: string | null;
-            /** @description Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals). */
+            /** @description Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored. */
             isSubscribed?: boolean;
             /** @description Allowed when myRights.mayShare. Principals are username or groups/{slug}. Null grant revokes. */
             shareWith?: {
@@ -9904,6 +10072,7 @@ export interface components {
             description?: string | null;
             timeZone?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as Calendar/set create. */
             groupSlug?: string | null;
@@ -9937,6 +10106,7 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
             isSubscribed?: boolean;
             /** @description Move the collection between personal (null) and a group principal (slug). Omit to leave owner unchanged. Same membership rules as TaskList create. */
             groupSlug?: string | null;
@@ -10756,6 +10926,7 @@ export interface components {
             categories?: string[];
             /** @enum {string|null} */
             status?: "FINAL" | "CANCELLED" | null;
+            /** @description Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative. */
             uid?: string;
         };
         NotePatch: {
@@ -10801,6 +10972,8 @@ export interface components {
             name?: string;
             description?: string | null;
             color?: string | null;
+            /** @description false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns. */
+            isSubscribed?: boolean;
             groupSlug?: string | null;
             /** @description Patch share grants. Keys are JMAP ids; a null grant revokes that principal. */
             shareWith?: {
@@ -10854,7 +11027,7 @@ export interface components {
             color?: string | null;
             topic?: string | null;
             groupSlug?: string | null;
-            /** @description Optional client-suggested channel id (uri slug). */
+            /** @description Optional client-suggested channel id: chat- followed by a ULID or UUID (any other shape is a 400). Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix. */
             id?: components["schemas"]["JmapId"];
             /** @description Meeting kind only: persist the reserved ad-hoc room code shown at create time. Never rewritten to the collection slug. */
             guestRoomCode?: string | null;
@@ -10916,7 +11089,7 @@ export interface components {
             hasMore: boolean;
         };
         ChatMessageCreate: {
-            /** @description Client-generated ULID — message id and idempotency key; retries with the same id return the existing message. */
+            /** @description Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative. */
             id: string;
             body: string;
             /** @description Thread parent message id. */

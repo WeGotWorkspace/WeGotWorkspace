@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Database\Migrations\CalendarCollectionMetaTable;
 use App\Database\Migrations\WgwMigration;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Docs\DocsThreadCollectionUris;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 
@@ -17,17 +17,9 @@ return new class extends WgwMigration
             return;
         }
 
-        if (! $this->wgwHasTable('calendar_collection_meta')) {
-            $this->wgw()->create('calendar_collection_meta', function (Blueprint $table): void {
-                $table->unsignedInteger('calendarid')->primary();
-                $table->string('kind', 32);
-                $table->index('kind');
-                $table->foreign('calendarid')
-                    ->references('id')
-                    ->on('calendars')
-                    ->onDelete('cascade');
-            });
-        }
+        // 2026_07_07_000125 may have created it already. The backfill below
+        // keeps the rows the provisioning migrations wrote since then.
+        CalendarCollectionMetaTable::ensure($this->wgw());
 
         $connection = DB::connection('wgw');
 

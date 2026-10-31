@@ -73,15 +73,30 @@ export class JmapFileNodesClient {
     this.client = client;
   }
 
+  /**
+   * `FileNode/get`. An id list longer than the server's `maxObjectsInGet` is
+   * fetched in chunks, so callers can pass any number of ids.
+   */
   async getFileNodes(
     accountId: JmapId,
     ids?: JmapId[] | null,
     options: { signal?: AbortSignal } = {},
   ): Promise<GetResponse<JmapFileNode>> {
+    if (ids && ids.length > this.#maxObjectsInGet()) {
+      return this.#getFileNodesInChunks(accountId, ids, options.signal);
+    }
+    return this.#getFileNodesOnce(accountId, ids ?? null, options.signal);
+  }
+
+  async #getFileNodesOnce(
+    accountId: JmapId,
+    ids: JmapId[] | null,
+    signal?: AbortSignal,
+  ): Promise<GetResponse<JmapFileNode>> {
     const response = await this.client.call<GetResponse<JmapFileNode>>(
       "FileNode/get",
-      { accountId, ids: ids ?? null },
-      { using: FILENODE_USING, signal: options.signal },
+      { accountId, ids },
+      { using: FILENODE_USING, signal },
     );
     this.client.setState(accountId, FILE_NODE_TYPE, response.state);
     return response;
@@ -191,7 +206,7 @@ export class JmapFileNodesClient {
     const notFound: JmapId[] = [];
     let last: GetResponse<JmapFileNode> | null = null;
     for (let index = 0; index < ids.length; index += chunkSize) {
-      last = await this.getFileNodes(accountId, ids.slice(index, index + chunkSize), { signal });
+      last = await this.#getFileNodesOnce(accountId, ids.slice(index, index + chunkSize), signal);
       list.push(...last.list);
       notFound.push(...(last.notFound ?? []));
     }

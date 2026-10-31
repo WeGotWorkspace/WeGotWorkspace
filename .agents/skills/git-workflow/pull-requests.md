@@ -75,6 +75,8 @@ Fix failing checks before expecting merge.
 
 `main` uses a **merge queue**. Required checks run again on a temporary `merge_group` branch that already contains `main` and any pull requests ahead in the queue. Do not update a branch onto `main` by hand just to make it mergeable.
 
+A merge that skips the queue, such as a merge from a private fork, skips these checks. [`main-quality-guard.yml`](../../../.github/workflows/main-quality-guard.yml) runs the repo-wide ratchets and the fast PHP static checks on every push to `main`, and on a failure opens or comments on the issue titled `main fails a quality check after a push`.
+
 **Default: merge commit, via the queue.** Preserve branch commits on `main` — feature work is split into small, auditable Conventional Commits; squashing collapses that history.
 
 Only when the user asks to land the PR:

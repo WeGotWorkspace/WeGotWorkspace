@@ -24,7 +24,26 @@ const DEFAULT_MAX_OBJECTS_IN_GET = 500;
  */
 export const CONTACT_CARD_GET_MAX_IDS_PER_REQUEST = 40;
 
+/**
+ * Ids not fetched yet that are not groups. Undefined when the group ids are
+ * unknown (the server rejected the kind filter).
+ */
+export function countPendingContacts(
+  remainingIds: readonly JmapId[],
+  groupIds: readonly JmapId[] | null,
+): number | undefined {
+  if (!groupIds) return undefined;
+  const groups = new Set(groupIds);
+  return remainingIds.filter((id) => !groups.has(id)).length;
+}
+
 export const CONTACTS_USING = [CORE_CAPABILITY, CONTACTS_CAPABILITY];
+
+/** One ContactCard/get request: its response and the ids not requested yet. */
+export type ContactCardPage = {
+  page: GetResponse<JmapContactCard>;
+  remainingIds: JmapId[];
+};
 
 function assertSetSucceeded<T>(response: SetResponse<T>): void {
   const notCreated = Object.entries(response.notCreated ?? {});
@@ -100,6 +119,19 @@ export class JmapContactsClient {
     const resolvedIds =
       ids === undefined || ids === null ? (await this.queryContactCards(accountId)).ids : ids;
     return this.#getContactCardsByIds(accountId, resolvedIds, properties);
+  }
+
+  /**
+   * ContactCard/get for known ids, one {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST}
+   * page per request. `onPage` is awaited before the next request, so a caller
+   * can save each page before the next one is asked for.
+   */
+  async getContactCardPages(
+    accountId: JmapId,
+    ids: JmapId[],
+    onPage: (page: ContactCardPage) => void | Promise<void>,
+  ): Promise<void> {
+    await this.#getContactCardsByIds(accountId, ids, undefined, (_all, page) => onPage(page));
   }
 
   async contactCardChanges(accountId: JmapId, sinceState: JmapState, maxChanges?: number) {
@@ -207,8 +239,9 @@ export class JmapContactsClient {
   }
 
   /**
-   * Initial sync: AddressBook/get plus ContactCard/query and an empty
-   * ContactCard/get (state at query time), then ContactCard/get in
+   * Initial sync: AddressBook/get plus ContactCard/query, a kind=group
+   * ContactCard/query (so the list can count contacts before they load) and
+   * an empty ContactCard/get (state at query time), then ContactCard/get in
    * {@link CONTACT_CARD_GET_MAX_IDS_PER_REQUEST} pages (one HTTP request
    * each). A get-all (`ids: null`) is rejected once the account has more
    * cards than maxObjectsInGet.
@@ -216,11 +249,26 @@ export class JmapContactsClient {
   async getAddressBooksAndCards(
     accountId: JmapId,
     options?: {
-      /** Fired after each card page so the list can paint before the last page. */
-      onPage?: (snapshot: {
+      /** Awaited after the query batch, before the first card page. */
+      onQuery?: (start: {
         books: GetResponse<JmapAddressBook>;
-        cards: GetResponse<JmapContactCard>;
-      }) => void;
+        queryIds: JmapId[];
+        contactCardStateAtQuery: JmapState;
+        /** Group card ids from a kind=group query; null when the server rejects the filter. */
+        groupIds: JmapId[] | null;
+      }) => void | Promise<void>;
+      /** Awaited after each card page so the list can paint before the last page. */
+      onPage?: (
+        snapshot: {
+          books: GetResponse<JmapAddressBook>;
+          cards: GetResponse<JmapContactCard>;
+          /**
+           * Non-group cards the download has not fetched yet. Undefined when
+           * the server rejects the kind filter, so groups cannot be told apart.
+           */
+          pendingContactCount?: number;
+        } & ContactCardPage,
+      ) => void | Promise<void>;
     },
   ): Promise<{
     books: GetResponse<JmapAddressBook>;
@@ -230,11 +278,17 @@ export class JmapContactsClient {
   }> {
     const booksCallId = this.client.nextCallId();
     const queryCallId = this.client.nextCallId();
+    const groupsCallId = this.client.nextCallId();
     const cardStateCallId = this.client.nextCallId();
     const response = await this.client.request(
       [
         ["AddressBook/get", { accountId, ids: null }, booksCallId],
         ["ContactCard/query", { accountId }, queryCallId],
+        [
+          "ContactCard/query",
+          { accountId, filter: { kind: "group" } satisfies JmapContactCardFilterCondition },
+          groupsCallId,
+        ],
         // Empty get: state at query time, before later page gets advance it.
         ["ContactCard/get", { accountId, ids: [] }, cardStateCallId],
       ],
@@ -261,9 +315,23 @@ export class JmapContactsClient {
     ).state;
     this.client.setState(accountId, CONTACT_CARD_TYPE, contactCardStateAtQuery);
     const queryIds = (queryInvocation[1] as QueryResponse).ids ?? [];
-    const cards = await this.#getContactCardsByIds(accountId, queryIds, undefined, (partial) => {
-      options?.onPage?.({ books, cards: partial });
-    });
+    const groupsInvocation = response.methodResponses.find(
+      ([name, , id]) => id === groupsCallId && name === "ContactCard/query",
+    );
+    const groupIds = groupsInvocation ? ((groupsInvocation[1] as QueryResponse).ids ?? []) : null;
+    await options?.onQuery?.({ books, queryIds, contactCardStateAtQuery, groupIds });
+    const cards = await this.#getContactCardsByIds(
+      accountId,
+      queryIds,
+      undefined,
+      (partial, page) =>
+        options?.onPage?.({
+          books,
+          cards: partial,
+          ...page,
+          pendingContactCount: countPendingContacts(page.remainingIds, groupIds),
+        }),
+    );
     return { books, cards, contactCardStateAtQuery };
   }
 
@@ -282,12 +350,12 @@ export class JmapContactsClient {
     accountId: JmapId,
     ids: JmapId[],
     properties?: string[] | null,
-    onPage?: (cards: GetResponse<JmapContactCard>) => void,
+    onPage?: (cards: GetResponse<JmapContactCard>, page: ContactCardPage) => void | Promise<void>,
   ): Promise<GetResponse<JmapContactCard>> {
     const pageSize = Math.min(this.#maxObjectsInGet(), CONTACT_CARD_GET_MAX_IDS_PER_REQUEST);
     if (ids.length <= pageSize) {
       const page = await this.#getContactCardsPage(accountId, ids, properties);
-      onPage?.(page);
+      await onPage?.(page, { page, remainingIds: [] });
       return page;
     }
     const list: JmapContactCard[] = [];
@@ -301,12 +369,15 @@ export class JmapContactsClient {
       state = page.state;
       list.push(...page.list);
       notFound.push(...(page.notFound ?? []));
-      onPage?.({
-        accountId: responseAccountId,
-        state,
-        list: list.slice(),
-        notFound: notFound.slice(),
-      });
+      await onPage?.(
+        {
+          accountId: responseAccountId,
+          state,
+          list: list.slice(),
+          notFound: notFound.slice(),
+        },
+        { page, remainingIds: ids.slice(index + pageSize) },
+      );
     }
     this.client.setState(accountId, CONTACT_CARD_TYPE, state);
     return { accountId: responseAccountId, state, list, notFound };

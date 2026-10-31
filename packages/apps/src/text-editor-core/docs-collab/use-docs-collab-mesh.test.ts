@@ -5,6 +5,7 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as Y from "yjs";
 import type { RtcSettings } from "@/lib/rtc/types";
 import { DEFAULT_RTC_SETTINGS } from "@/lib/rtc/types";
+import { DOC_STATUS_DOCUMENT_GONE } from "./docs-collab-status";
 import { DEFAULT_DOCS_COLLAB_URLS, type DocsCollabTabSyncApi } from "./docs-collab-types";
 import {
   encodeSyncStep1,
@@ -87,6 +88,7 @@ describe("useDocsCollabMesh repair after a dropped update", () => {
         urls: { ...DEFAULT_DOCS_COLLAB_URLS, room: "notes/shared" },
         markDocReady: () => undefined,
         trySeedFromFile: () => undefined,
+        setDocStatus: () => undefined,
       });
       return { refs, mesh };
     });
@@ -155,6 +157,7 @@ describe("useDocsCollabMesh joinMesh", () => {
         urls: { ...DEFAULT_DOCS_COLLAB_URLS, room: "docs/claim-race.md" },
         markDocReady: () => undefined,
         trySeedFromFile: () => undefined,
+        setDocStatus: () => undefined,
       });
       return { refs, mesh };
     });
@@ -175,5 +178,54 @@ describe("useDocsCollabMesh joinMesh", () => {
     await expect(joining).resolves.toBeNull();
     expect(created.sessions).toBe(0);
     expect(refs.meshRef.current).toBeNull();
+  });
+});
+
+describe("useDocsCollabMesh refused room poll", () => {
+  function renderMesh(urls: Partial<typeof DEFAULT_DOCS_COLLAB_URLS>) {
+    const statuses: string[] = [];
+    const { result } = renderHook(() => {
+      const refs = useDocsCollabSessionRefs(DEFAULT_DOCS_COLLAB_WIRE, undefined);
+      const mesh = useDocsCollabMesh({
+        refs,
+        room: "docs/revoked.md",
+        urls: { ...DEFAULT_DOCS_COLLAB_URLS, room: "docs/revoked.md", ...urls },
+        markDocReady: () => undefined,
+        trySeedFromFile: () => undefined,
+        setDocStatus: (status) => statuses.push(status),
+      });
+      return { refs, mesh };
+    });
+    return { ...result.current, statuses };
+  }
+
+  it("shows one 'no longer available' state and stops saving when the host has it", () => {
+    const onDocumentGone = vi.fn();
+    const onPersistForbidden = vi.fn();
+    const { refs, mesh, statuses } = renderMesh({ onDocumentGone, onPersistForbidden });
+
+    act(() => {
+      mesh.handleMeshMessage({ type: "forbidden" });
+      mesh.handleMeshMessage({ type: "forbidden" });
+    });
+
+    expect(onDocumentGone).toHaveBeenCalledTimes(1);
+    expect(onPersistForbidden).not.toHaveBeenCalled();
+    expect(statuses).toEqual([DOC_STATUS_DOCUMENT_GONE]);
+    expect(refs.saveTerminalKindRef.current).toBe("gone");
+    expect(refs.nextSaveAttemptAtRef.current).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("keeps the access-lost signal for a host without that state", () => {
+    const onPersistForbidden = vi.fn();
+    const { refs, mesh, statuses } = renderMesh({ onPersistForbidden });
+
+    act(() => {
+      mesh.handleMeshMessage({ type: "forbidden" });
+    });
+
+    expect(onPersistForbidden).toHaveBeenCalledTimes(1);
+    expect(statuses).toEqual([]);
+    expect(refs.saveTerminalKindRef.current).toBeNull();
   });
 });

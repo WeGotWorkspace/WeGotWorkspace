@@ -110,7 +110,7 @@ IndexedDB may still hold the session (`pendingServerSave`). Do not throw that bu
 
 **Why:** The document of record is VJOURNAL `DESCRIPTION`, not a `.yjs` file.
 
-**Who picks the UID:** The app does, when the note is made (a UUID). The note keeps that id from the first keystroke, so an offline create needs no temporary id and no remap. `POST /notes/items` uses a `uid` only when it is a UUID; anything else is ignored and the server mints one. A UID another note already has is a 409. A repeated create with the same `uid` by the same caller returns the existing note (200), so a retry or a second tab never makes a second note.
+**Who picks the UID:** The app does, when the note is made (a UUID). The note keeps that id from the first keystroke, so an offline create needs no temporary id and no remap. `POST /notes/items` uses a `uid` only when it is a UUID; anything else is ignored and the server mints one. A UID of a note the caller can see is a 409. A UID that only notes out of the caller's reach use is replaced by a fresh one, like a non-UUID value, so the answer never depends on notes the caller cannot see; the response `id` is authoritative and UIDs stay unique across every VJOURNAL. A repeated create with the same `uid` by the same caller returns the existing note (200), so a retry or a second tab never makes a second note.
 
 **Title UX:** Editable `SUMMARY` field. Auto-fill once from first heading or first non-empty line; user edit sticks. Title/tags/move = REST PATCH + `If-Match` **without** opening a room. PATCH must not clobber `DESCRIPTION` (read-modify-write ICS or field-level replace).
 

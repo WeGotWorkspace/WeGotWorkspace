@@ -88,7 +88,7 @@ final class FilesTrashTest extends WgwDatabaseTestCase
         $this->assertSearchDocumentMissing('users/bob/.Trash/old.md');
 
         $this->withBearer($token)->get('/api/v1/files/content?path=/users/bob/.Trash/old.md')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
 
         $listing = $this->withBearer($token)->getJson('/api/v1/files/children?path=/users/bob/.Trash');

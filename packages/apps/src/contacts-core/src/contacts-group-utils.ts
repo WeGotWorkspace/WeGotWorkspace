@@ -428,6 +428,27 @@ export function contactsGroupViewKey(groupCardId: string): string {
   return `group:${groupCardId}`;
 }
 
+/**
+ * All Contacts' count while a cold download runs: the contacts in this
+ * snapshot plus those still on their way. It counts `snapshotCards` (the
+ * bootstrap's cards), not the list rows, which catch up a render later.
+ * Only All Contacts with every address book shown and no search takes every
+ * contact, so only there the total is known before the cards arrive. Undefined
+ * elsewhere, when no download runs, or when groups cannot be told apart: the
+ * header then counts the rows on screen.
+ */
+export function contactsDownloadTotal(
+  view: string,
+  searchQuery: string,
+  hiddenBookIds: ReadonlySet<string>,
+  snapshotCards: ContactCard[],
+  pendingContactCount: number | undefined,
+): number | undefined {
+  if (pendingContactCount === undefined) return undefined;
+  if (view !== "all" || hiddenBookIds.size > 0 || searchQuery.trim()) return undefined;
+  return filterCardsByView(snapshotCards, view).length + pendingContactCount;
+}
+
 /** Hide cards whose every address book is unchecked in the sidebar (All Contacts). */
 export function filterCardsByHiddenAddressBooks(
   cards: ContactCard[],

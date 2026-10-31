@@ -44,6 +44,7 @@ Before handoff, run [developer/done-checklist.md](skills/developer/done-checklis
 | **pre-commit** (Husky) | Every commit | lint-staged: Prettier + ESLint on staged `@wgw/apps`; Pint on staged API PHP | Staged files only |
 | **pre-push** (Husky) | Every push | Local apps done gate when `packages/apps/**` changed (no unit/jsdom Vitest); else `@wgw/apps` typecheck | Commits being pushed vs remote tip |
 | **CI** (`apps-quality`, `api-quality`, `apps-e2e`) | PR / push to `main` | `pnpm run ci:quality:apps` / `ci:quality:api` on **checkout HEAD**. Apps job sets `APPS_DONE_GATE_FULL=1` (unit + pooled jsdom). `apps-e2e` runs mock-tier Playwright against a Storybook build | Branch tip only — not every commit in PR history |
+| **Main guard** (`main-quality-guard.yml`) | Push to `main` | File-size, hook-size, duplicate-code, agent-docs and API-types checks, greenfield guard, Pint, PHPStan. A failure opens or comments on one `type:bug` issue; it never blocks the push | `main` tip, including merges that skipped the merge queue |
 
 **CI validates the PR tip only.** Intermediate commits on a feature branch may fail the full done gate until a later fix-forward commit; that is expected. Do not add per-commit CI gates. Retroactive `pnpm test:apps-done-gate` at old SHAs is for bisect/debug, not merge blocking.
 

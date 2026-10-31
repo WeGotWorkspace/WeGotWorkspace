@@ -33,6 +33,7 @@ export {
   CONTACTS_USING,
   CONTACT_CARD_GET_MAX_IDS_PER_REQUEST,
   JmapContactsClient,
+  countPendingContacts,
 } from "./contacts/JmapContactsClient.js";
 export type {
   JmapAddressBook,
