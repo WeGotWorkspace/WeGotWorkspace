@@ -6,7 +6,12 @@ import type { MenuItemProps } from "@/menu-item/src/menu-item";
 import { cn } from "@/lib/utils";
 import { buildDriveFileActions } from "@/drive-core/src/drive-file-action-builders";
 import { DriveFileItemActionsMenu } from "@/drive-core/src/drive-file-actions";
-import { DriveOfflinePinButton } from "@/drive-core/src/drive-offline-pin-button";
+import {
+  DriveOfflineBadge,
+  DriveOfflinePinButton,
+  type DriveOfflineBadgeLabels,
+} from "@/drive-core/src/drive-offline-pin-button";
+import { DriveUploadStatus } from "@/drive-core/src/drive-upload-status";
 import { FilePreview } from "@/file-preview/src/file-preview";
 import type { FilePreviewPayload } from "@/lib/file-preview/file-preview-types";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
@@ -16,11 +21,6 @@ import { driveFolderUiPath } from "@/drive-core/src/drive-item-path";
 import { SHARED_WITH_ME_UI_ROOT } from "@/drive-core/src/drive-path-utils";
 import "@/drive-core/src/drive-browser.css";
 import "@/file-preview/src/file-preview.css";
-
-type DriveOfflineBadgeLabels = {
-  offlineAvailable: string;
-  offlinePendingSync: string;
-};
 
 /** Share for inbound Shared with me / “Shared by …”; HardDrive for personal + group drives. */
 function isSharedByLocation(file: DriveFile): boolean {
@@ -146,7 +146,8 @@ function DriveFileOfflinePinCell({
   canPinOffline: boolean;
   onMakeOfflineAvailable?: (file: DriveFile) => void;
 }) {
-  if (!offlineEnabled || file.kind === "folder") return null;
+  // An upload placeholder has nothing on the server to keep offline yet.
+  if (!offlineEnabled || file.kind === "folder" || file.upload) return null;
 
   return (
     <DriveOfflinePinButton
@@ -156,32 +157,6 @@ function DriveFileOfflinePinCell({
       isPinning={isPinning}
       canPin={canPinOffline}
       onPin={onMakeOfflineAvailable ? () => onMakeOfflineAvailable(file) : undefined}
-    />
-  );
-}
-
-function DriveOfflineBadge({
-  pinned,
-  pending,
-  labels,
-}: {
-  pinned: boolean;
-  pending: boolean;
-  labels?: DriveOfflineBadgeLabels;
-}) {
-  if (!pinned && !pending) return null;
-  const label = pending
-    ? (labels?.offlinePendingSync ?? "Pending sync")
-    : (labels?.offlineAvailable ?? "Available offline");
-  return (
-    <span
-      className={cn(
-        "drive-offline-badge",
-        pending && "drive-offline-badge--pending",
-        pinned && !pending && "drive-offline-badge--pinned",
-      )}
-      aria-label={label}
-      title={label}
     />
   );
 }
@@ -663,6 +638,7 @@ function FileTile({
             <span className="drive-file-tile__title">{file.title}</span>
             <DriveShareIndicators file={file} labels={labels} />
           </div>
+          <DriveUploadStatus upload={file.upload} />
           {showLocation && file.location ? <DriveLocationLabel file={file} /> : null}
         </div>
         <div className="drive-file-tile__actions flex shrink-0 items-center">
@@ -759,7 +735,13 @@ function DriveFileItemActions({
       onShare,
     },
   );
-  const merged = extraActions?.length ? [...actions, ...extraActions] : actions;
+  // A placeholder is not on the server yet: only its own actions (cancel, remove) apply.
+  const merged = file.upload
+    ? (extraActions ?? [])
+    : extraActions?.length
+      ? [...actions, ...extraActions]
+      : actions;
+  if (merged.length === 0) return null;
   return <DriveFileItemActionsMenu actions={merged} disabled={disabled} />;
 }
 
@@ -964,6 +946,7 @@ export function DriveListView({
                     <div className="flex min-w-0 flex-1 items-center gap-1.5">
                       <span className="min-w-0 truncate font-medium">{f.title}</span>
                       <DriveShareIndicators file={f} labels={labels} />
+                      <DriveUploadStatus upload={f.upload} />
                       {starred[f.id] ? (
                         <Star
                           className="size-3 shrink-0 drive-list-folder-icon"

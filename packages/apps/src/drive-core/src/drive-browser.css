@@ -490,3 +490,13 @@
 .drive-workspace .drive-list-file-icon {
   color: var(--workspace-accent);
 }
+
+/* Upload placeholder status (grid tile footer and list name cell). */
+.drive-workspace .drive-upload-status {
+  @apply min-w-0 shrink-0 truncate text-xs;
+  color: color-mix(in oklab, var(--workspace-foreground) 68%, transparent);
+}
+
+.drive-workspace .drive-upload-status--failed {
+  color: var(--color-error);
+}

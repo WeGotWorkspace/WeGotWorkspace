@@ -52,6 +52,16 @@ import {
 } from "@/lib/offline/drive/drive-offline-read";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
+import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
+import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
+import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
+import {
+  cancelDriveUploadBatch,
+  enqueueDriveUploadBatch,
+  releaseDriveUploadBatch,
+  removeDriveUploadItem,
+} from "@/lib/offline/drive/upload/drive-upload-store";
+import { resolveDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target";
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
@@ -163,7 +173,7 @@ export function createHybridDriveOperations(
           await writeDriveBootstrapToCache(username, nextBootstrap);
           rememberOfflineDriveUsername(username);
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -183,7 +193,7 @@ export function createHybridDriveOperations(
             await writeDriveBootstrapToCache(username, cachedBootstrap);
           }
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -203,7 +213,7 @@ export function createHybridDriveOperations(
         try {
           const data = await live.listDirectory(target, opts);
           await refreshDriveDirectoryCache(username, data.cwd, opts?.signal);
-          return data;
+          return withUploadPlaceholders(username, data);
         } catch (error) {
           rethrowUnlessOfflineQueue(error, opts?.signal);
         }
@@ -283,6 +293,21 @@ export function createHybridDriveOperations(
       }
       return offlineQueuedDriveData(username, cwd);
     },
+    enqueueUploads: async (input) => {
+      const folderPath = normalizeApiVirtualPath(input.cwd);
+      const targetFolder = await resolveDriveUploadTarget(username, folderPath);
+      const batch = await enqueueDriveUploadBatch(username, {
+        folderPath,
+        targetFolder,
+        files: input.files,
+      });
+      startDriveUploader(username);
+      return { batchId: batch.batchId };
+    },
+    releaseUploadBatch: (batchId, answers) => releaseDriveUploadBatch(username, batchId, answers),
+    cancelUploadBatch: (batchId) => cancelDriveUploadBatch(username, batchId),
+    removeQueuedUpload: (itemId) => removeDriveUploadItem(username, itemId),
+    subscribeUploadQueue: (listener) => onDriveUploadQueueChanged(username, listener),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);
       if (readBrowserOnline()) {

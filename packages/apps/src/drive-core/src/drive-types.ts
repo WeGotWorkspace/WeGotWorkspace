@@ -158,4 +158,23 @@ export type DriveAPIOperations = {
     input: DriveUnifiedSearchDownloadInput,
     opts?: { signal?: AbortSignal },
   ) => Promise<void>;
+  /**
+   * Signed-in Drive with the offline layer: store picked files on the device
+   * as one batch waiting for the batch dialog (placeholders show at once).
+   * Without it, the upload action falls back to `uploadFiles`.
+   */
+  enqueueUploads?: (input: { cwd: string; files: File[] }) => Promise<{ batchId: string }>;
+  /** Hand a queued batch to the background uploader with the dialog's answers. */
+  releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
+  /** *Cancel* in the batch dialog: drop the batch, its placeholders, and its files. */
+  cancelUploadBatch?: (batchId: string) => Promise<void>;
+  /** Drop one `queued` or `failed` file with its placeholder. False while it is uploading. */
+  removeQueuedUpload?: (itemId: string) => Promise<boolean>;
+  /** Called after every upload queue change in any tab. Returns an unsubscribe. */
+  subscribeUploadQueue?: (listener: () => void) => () => void;
+};
+
+export type DriveUploadBatchAnswers = {
+  /** For files the device offline rule would not keep on its own. */
+  keepOffline: "remove" | "keep";
 };
