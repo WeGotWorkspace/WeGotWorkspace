@@ -24,3 +24,12 @@ export const Default: Story = {
     ...createAdminAppBootstrap(),
   },
 };
+
+/** The whole admin area opened over http: the notice sits above every pane. */
+export const NotSecure: Story = {
+  name: "Not secure (http)",
+  args: {
+    ...createAdminAppBootstrap(),
+    secureContext: false,
+  },
+};
