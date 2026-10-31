@@ -303,6 +303,8 @@ export function createHybridDriveOperations(
         folderPath,
         targetFolder,
         files: input.files,
+        // The caller releases the batch next (see `queueDriveUploadBatch`).
+        notify: false,
       });
       startDriveUploader(username);
       return { batchId: batch.batchId, itemIds: batch.itemIds };

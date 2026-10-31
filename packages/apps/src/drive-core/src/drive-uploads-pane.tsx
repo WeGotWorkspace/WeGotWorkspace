@@ -32,9 +32,11 @@ type LastFolder = { path: string; label: string };
 export function DriveUploadsPane({ files, searchActive, onOpenFolder }: DriveUploadsPaneProps) {
   const model = useDriveUploadQueueContext();
   const lastFolder = useLastUploadFolder(files);
-  const queueEmpty = !model || model.snapshot.items.length === 0;
 
-  if (queueEmpty) {
+  // No model yet means the first queue read is still pending, not an empty queue.
+  if (!model) return null;
+
+  if (model.snapshot.items.length === 0) {
     return (
       <CollectionState icon={<CircleCheck className="size-12" />}>
         <p>{driveLabels.uploadsAllDone}</p>

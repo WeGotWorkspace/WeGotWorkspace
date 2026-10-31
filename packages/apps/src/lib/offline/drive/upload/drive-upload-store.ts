@@ -50,6 +50,12 @@ export type EnqueueDriveUploadsInput = {
   folderPath: string;
   targetFolder: DriveUploadTargetFolder;
   files: readonly File[];
+  /**
+   * Tell the queue watchers about the new batch. Off for a caller that releases
+   * the batch right away: the release notifies, so no read sees the batch as
+   * `awaiting_input` ("Waiting for your answer") when no dialog is open.
+   */
+  notify?: boolean;
 };
 
 export type EnqueuedDriveUploadBatch = {
@@ -86,7 +92,7 @@ export async function enqueueDriveUploadBatch(
     await storeItem(username, db, input.folderPath, item, file);
     itemIds.push(item.id);
   }
-  notifyDriveUploadQueueChanged(username);
+  if (input.notify !== false) notifyDriveUploadQueueChanged(username);
   return { batchId: batch.id, itemIds };
 }
 
@@ -223,7 +229,7 @@ async function requeueFailedItems(username: string, itemIds: readonly string[]):
     for (const itemId of itemIds) {
       const item = await items.get(itemId);
       if (!item || !canRetryDriveUpload(item)) continue;
-      const { error: _error, retryAt: _retryAt, ...rest } = item;
+      const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
       await items.put({ ...rest, status: "queued", bytesDone: 0, transientFailures: 0 });
       await setUploadPlaceholderStatus(username, itemId, "queued");
       count += 1;

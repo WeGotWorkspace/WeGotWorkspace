@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
+import { driveLabels } from "@/drive-core/src/drive-labels";
+import type { ViewKey } from "@/drive-core/src/drive-models";
+import { useDriveSidebarModel } from "@/drive-core/src/use-drive-sidebar-model";
+import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { driveFilesFromUploadQueue } from "@/drive-core/src/drive-upload-files";
 import {
@@ -135,6 +139,32 @@ function UploadsViewHarness({ allDone = false }: { allDone?: boolean }) {
   );
 }
 
+/** The Drive sidebar's primary items, with the Uploads entry and its badge. */
+function SidebarHarness({
+  uploads,
+  view = { type: "folder", path: "My Drive" },
+}: {
+  uploads: { count: number; failed: number };
+  view?: ViewKey;
+}) {
+  const { primarySidebarItems } = useDriveSidebarModel({
+    labels: driveLabels,
+    view,
+    uploads,
+    sidebarGroupRoots: [],
+    selectView: STORY_NOOP,
+    sidebarDropZoneProps: () => ({}),
+    commitMoveToFolder: STORY_NOOP,
+  });
+  return (
+    <DriveStoryScope className="min-h-dvh bg-background p-6 text-foreground">
+      <nav aria-label="Drive" className="w-64">
+        <SidebarSection items={primarySidebarItems} />
+      </nav>
+    </DriveStoryScope>
+  );
+}
+
 async function expectRings(canvasElement: HTMLElement, count: number) {
   const canvas = within(canvasElement);
   const rings = await canvas.findAllByRole("progressbar");
@@ -215,6 +245,38 @@ export const ListViewOffline: Story = {
   },
 };
 
+export const ListViewOfflineDark: Story = {
+  name: "List: waiting for a connection (dark)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <FolderHarness viewMode="list" state="paused_offline" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect((await canvas.findAllByText(/Waiting for a connection/)).length).toBe(2);
+  },
+};
+
+export const GridViewOffline: Story = {
+  name: "Grid: waiting for a connection",
+  tags: ["vitest-ci"],
+  render: () => <FolderHarness viewMode="grid" state="paused_offline" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect((await canvas.findAllByText(/Waiting for a connection/)).length).toBe(2);
+  },
+};
+
+export const GridViewOfflineDark: Story = {
+  name: "Grid: waiting for a connection (dark)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <FolderHarness viewMode="grid" state="paused_offline" />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect((await canvas.findAllByText(/Waiting for a connection/)).length).toBe(2);
+  },
+};
+
 export const GridView: Story = {
   name: "Grid: placeholders in every state",
   tags: ["vitest-ci"],
@@ -274,5 +336,71 @@ export const UploadsAllDoneDark: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("All uploads are done")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsCount: Story = {
+  name: "Sidebar: Uploads count",
+  tags: ["vitest-ci"],
+
+  render: () => <SidebarHarness uploads={{ count: 3, failed: 0 }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("3 files")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsFailed: Story = {
+  name: "Sidebar: Uploads error badge",
+  tags: ["vitest-ci"],
+
+  render: () => <SidebarHarness uploads={{ count: 3, failed: 1 }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("3 files, 1 failed")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsSelected: Story = {
+  name: "Sidebar: Uploads selected",
+  tags: ["vitest-ci"],
+
+  render: () => <SidebarHarness uploads={{ count: 2, failed: 0 }} view={{ type: "uploads" }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("2 files")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsCountDark: Story = {
+  name: "Sidebar: Uploads count (dark)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <SidebarHarness uploads={{ count: 3, failed: 0 }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("3 files")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsFailedDark: Story = {
+  name: "Sidebar: Uploads error badge (dark)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <SidebarHarness uploads={{ count: 3, failed: 1 }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("3 files, 1 failed")).toBeInTheDocument();
+  },
+};
+
+export const SidebarUploadsSelectedDark: Story = {
+  name: "Sidebar: Uploads selected (dark)",
+  tags: ["vitest-ci"],
+  decorators: [withDarkTheme],
+  render: () => <SidebarHarness uploads={{ count: 2, failed: 0 }} view={{ type: "uploads" }} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("2 files")).toBeInTheDocument();
   },
 };
