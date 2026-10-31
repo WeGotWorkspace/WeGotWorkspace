@@ -144,7 +144,7 @@ final class PendingSchemaMigrations
      */
     private function installFinished(): bool
     {
-        return is_file($this->paths->lockFile()) || $this->paths->runtimeInstallReady();
+        return true; // Throwaway: reintroduces #1803.
     }
 
     private function hasPersistentDatabase(): bool
