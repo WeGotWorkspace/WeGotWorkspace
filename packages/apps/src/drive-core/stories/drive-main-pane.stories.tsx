@@ -1,10 +1,11 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { DRIVE_DOCS_EDITOR_STORY_FILES } from "@/drive-core/src/drive-docs-story-files";
 import { DriveMainPane } from "@/drive-core/src/drive-main-pane";
 import { getDriveStoryFilesInMyDrive } from "@/drive-core/stories/drive-pane-stories.fixtures";
 import { useDrivePaneStoryController } from "@/drive-core/stories/drive-pane-stories.harness";
+import { DarkThemeRoot } from "@/drive-core/stories/drive-story-dark-theme";
 import { DriveStoryScope } from "@/drive-core/stories/drive-story-scope";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 
@@ -122,20 +123,6 @@ export const ListViewSelectionMode: Story = {
     await expect(canvasElement.querySelector(".drive-list-row__checkbox")).toBeTruthy();
   },
 };
-
-/** Dark tokens live on `:root[data-theme="dark"]`, so the story flips <html>. */
-function DarkThemeRoot({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    const root = document.documentElement;
-    const previous = root.dataset.theme;
-    root.dataset.theme = "dark";
-    return () => {
-      if (previous === undefined) delete root.dataset.theme;
-      else root.dataset.theme = previous;
-    };
-  }, []);
-  return children;
-}
 
 /** The accent fill is light in the dark theme; the checkmark must stay dark on it. */
 export const ListViewSelectionModeDark: Story = {

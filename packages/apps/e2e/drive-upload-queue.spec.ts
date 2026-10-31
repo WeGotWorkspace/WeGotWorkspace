@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_USERNAME, expectOfflineIndicator } from "./helpers/notes-live";
 
-const WAITING = "Waiting to upload";
+const WAITING = "Waiting for a connection";
 
 async function openMyDrive(page: Page): Promise<void> {
   await page.goto("/drive");
@@ -9,6 +9,8 @@ async function openMyDrive(page: Page): Promise<void> {
   await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
   // Wait until the folder listing has painted before going offline.
   await expect(page.getByText("Loading folder…")).toHaveCount(0, { timeout: 30_000 });
+  // The folder listing is written to the offline cache just after it paints.
+  await page.waitForTimeout(3_000);
 }
 
 function uploadInput(page: Page) {
@@ -39,6 +41,15 @@ async function goOfflineKeepingShell(page: Page): Promise<void> {
     window.dispatchEvent(new Event("offline"));
   });
   await expectOfflineIndicator(page);
+}
+
+/** Flip a further tab of the same context to offline, after `goOfflineKeepingShell`. */
+async function markOffline(page: Page, offline: boolean): Promise<void> {
+  await page.evaluate((value) => {
+    if (value) sessionStorage.setItem("e2e-offline", "1");
+    else sessionStorage.removeItem("e2e-offline");
+    window.dispatchEvent(new Event(value ? "offline" : "online"));
+  }, offline);
 }
 
 async function goOnlineAgain(page: Page): Promise<void> {
@@ -145,16 +156,56 @@ test.describe("Drive upload queue (live app)", () => {
     await openMyDrive(other);
 
     // Offline keeps the placeholder on screen long enough to assert it.
-    await page.context().setOffline(true);
-    await expectOfflineIndicator(page);
+    await goOfflineKeepingShell(page);
+    await markOffline(other, true);
     await pickFile(page, name);
     await expect(other.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(status(other, WAITING)).toHaveCount(1);
 
-    await page.context().setOffline(false);
+    await goOnlineAgain(page);
+    await markOffline(other, false);
     await expect(status(other, WAITING)).toHaveCount(0, { timeout: 60_000 });
     await expect(other.getByText(name, { exact: true })).toBeVisible();
     await expect(status(page, WAITING)).toHaveCount(0, { timeout: 60_000 });
+    await expectOnServerOnce(page, name);
+  });
+
+  test("a second tab lists the queued file in the Uploads view and links to the folder when done", async ({
+    page,
+  }) => {
+    const name = uniqueName("uploads-view");
+    await openMyDrive(page);
+    const other = await page.context().newPage();
+    await openMyDrive(other);
+
+    // Both tabs report offline: the second tab's status comes from its own connectivity.
+    await goOfflineKeepingShell(page);
+    await markOffline(other, true);
+    await pickFile(page, name);
+    await expect(page.getByText("Added 1 file to uploads")).toBeVisible();
+    await expect(page.getByText("Uploaded 1 file")).toHaveCount(0);
+
+    await expect(other.getByRole("progressbar", { name: `Upload of ${name}` })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(status(other, WAITING)).toHaveCount(1);
+
+    const uploadsEntry = other.locator(".menu-item", { hasText: "Uploads" });
+    await expect(uploadsEntry).toContainText("1");
+    await uploadsEntry.click();
+    const row = other.locator(".drive-uploads__row", { hasText: name });
+    await expect(row).toBeVisible();
+    await expect(row.getByRole("button", { name: "Uploading to Personal" })).toBeVisible();
+    await expect(row.getByRole("button", { name: `Remove ${name}` })).toBeVisible();
+
+    await goOnlineAgain(page);
+    await markOffline(other, false);
+    await expect(other.getByText("All uploads are done")).toBeVisible({ timeout: 60_000 });
+    await other.getByRole("button", { name: "Go to Personal" }).click();
+    await expect(other.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(other.locator(".menu-item", { hasText: "Uploads" })).toHaveCount(0);
+
+    await expect(page.getByText("Uploaded 1 file")).toBeVisible({ timeout: 60_000 });
     await expectOnServerOnce(page, name);
   });
 
@@ -164,8 +215,7 @@ test.describe("Drive upload queue (live app)", () => {
     const name = uniqueName("cancel");
     await openMyDrive(page);
 
-    await page.context().setOffline(true);
-    await expectOfflineIndicator(page);
+    await goOfflineKeepingShell(page);
     await pickFile(page, name);
     await expect(status(page, WAITING)).toHaveCount(1);
 
@@ -173,11 +223,10 @@ test.describe("Drive upload queue (live app)", () => {
       .getByText(name, { exact: true })
       .locator("xpath=ancestor::*[.//button[@aria-label='More actions']][1]");
     await tile.getByRole("button", { name: "More actions" }).click();
-    await page.getByRole("menuitem", { name: /Cancel upload/ }).click();
+    await page.getByRole("menuitem", { name: "Remove" }).click();
     await expect(page.getByText(name, { exact: true })).toHaveCount(0);
 
-    await page.context().setOffline(false);
-    await expect(page.locator('[data-connectivity="online"]')).toBeVisible({ timeout: 30_000 });
+    await goOnlineAgain(page);
     // Give a stray upload time to arrive before asserting it did not.
     await page.waitForTimeout(5_000);
     expect(await serverNames(page)).not.toContain(name);

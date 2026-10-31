@@ -60,7 +60,10 @@ import {
   enqueueDriveUploadBatch,
   releaseDriveUploadBatch,
   removeDriveUploadItem,
+  retryAllFailedDriveUploads,
+  retryDriveUploadItem,
 } from "@/lib/offline/drive/upload/drive-upload-store";
+import { sharedDriveUploadQueueWatch } from "@/lib/offline/drive/upload/drive-upload-queue-watch";
 import { resolveDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target";
 import {
   rememberOfflineDriveUsername,
@@ -300,14 +303,19 @@ export function createHybridDriveOperations(
         folderPath,
         targetFolder,
         files: input.files,
+        // The caller releases the batch next (see `queueDriveUploadBatch`).
+        notify: false,
       });
       startDriveUploader(username);
-      return { batchId: batch.batchId };
+      return { batchId: batch.batchId, itemIds: batch.itemIds };
     },
     releaseUploadBatch: (batchId, answers) => releaseDriveUploadBatch(username, batchId, answers),
     cancelUploadBatch: (batchId) => cancelDriveUploadBatch(username, batchId),
     removeQueuedUpload: (itemId) => removeDriveUploadItem(username, itemId),
+    retryQueuedUpload: (itemId) => retryDriveUploadItem(username, itemId),
+    retryAllFailedUploads: () => retryAllFailedDriveUploads(username),
     subscribeUploadQueue: (listener) => onDriveUploadQueueChanged(username, listener),
+    watchUploadQueue: sharedDriveUploadQueueWatch(username),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);
       if (readBrowserOnline()) {

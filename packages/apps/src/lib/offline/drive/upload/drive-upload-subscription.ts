@@ -1,6 +1,7 @@
 import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import {
+  canRetryDriveUpload,
   readDriveUploadQueueRows,
   type DriveUploadQueueRows,
 } from "@/lib/offline/drive/upload/drive-upload-store";
@@ -26,6 +27,13 @@ export type DriveUploadItemView = {
   bytesTotal: number;
   /** False for a direct upload that will not survive going offline or a reload. */
   localCopy: boolean;
+  createdAt: number;
+  /** Cache path of the target folder (where the placeholder sits), when known here. */
+  folderPath?: string;
+  /** The server is putting the parts together (#1519). */
+  phase?: "assembling";
+  /** False for `no_local_copy` and `quota`: the file has to be added again. */
+  canRetry: boolean;
   error?: DriveUploadItemError;
 };
 
@@ -68,6 +76,10 @@ export function buildDriveUploadQueueSnapshot(
       bytesDone: item.bytesDone,
       bytesTotal: item.size,
       localCopy: item.localCopy,
+      createdAt: item.createdAt,
+      ...(rows.folderPaths?.has(item.id) ? { folderPath: rows.folderPaths.get(item.id) } : {}),
+      ...(item.phase ? { phase: item.phase } : {}),
+      canRetry: canRetryDriveUpload(item),
       ...(item.error ? { error: item.error } : {}),
     })),
     batches: rows.batches.map((batch) => ({

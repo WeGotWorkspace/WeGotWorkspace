@@ -50,6 +50,12 @@ export type EnqueueDriveUploadsInput = {
   folderPath: string;
   targetFolder: DriveUploadTargetFolder;
   files: readonly File[];
+  /**
+   * Tell the queue watchers about the new batch. Off for a caller that releases
+   * the batch right away: the release notifies, so no read sees the batch as
+   * `awaiting_input` ("Waiting for your answer") when no dialog is open.
+   */
+  notify?: boolean;
 };
 
 export type EnqueuedDriveUploadBatch = {
@@ -86,7 +92,7 @@ export async function enqueueDriveUploadBatch(
     await storeItem(username, db, input.folderPath, item, file);
     itemIds.push(item.id);
   }
-  notifyDriveUploadQueueChanged(username);
+  if (input.notify !== false) notifyDriveUploadQueueChanged(username);
   return { batchId: batch.id, itemIds };
 }
 
@@ -191,6 +197,49 @@ export async function removeDriveUploadItem(username: string, itemId: string): P
   return removed;
 }
 
+/**
+ * Whether *Retry* can work for a failed item. The bytes of a `no_local_copy`
+ * item are gone, and a `quota` item never reached the device: both have to be
+ * added again.
+ */
+export function canRetryDriveUpload(item: Pick<OfflineDriveUploadItemRow, "status" | "error">) {
+  if (item.status !== "failed") return false;
+  return item.error?.code !== "no_local_copy" && item.error?.code !== "quota";
+}
+
+/**
+ * *Retry* on a failed item: back to `queued` with a clean slate, so the
+ * uploader picks it up again. False when the item is gone or cannot be retried.
+ */
+export async function retryDriveUploadItem(username: string, itemId: string): Promise<boolean> {
+  const retried = await requeueFailedItems(username, [itemId]);
+  return retried > 0;
+}
+
+/** *Retry all failed* in the Uploads view. Returns how many items went back to the queue. */
+export async function retryAllFailedDriveUploads(username: string): Promise<number> {
+  const failedIds = await tables(username).items.where("status").equals("failed").primaryKeys();
+  return requeueFailedItems(username, failedIds);
+}
+
+async function requeueFailedItems(username: string, itemIds: readonly string[]): Promise<number> {
+  const { db, items, entries } = tables(username);
+  const retried = await db.transaction("rw", items, entries, async () => {
+    let count = 0;
+    for (const itemId of itemIds) {
+      const item = await items.get(itemId);
+      if (!item || !canRetryDriveUpload(item)) continue;
+      const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
+      await items.put({ ...rest, status: "queued", bytesDone: 0, transientFailures: 0 });
+      await setUploadPlaceholderStatus(username, itemId, "queued");
+      count += 1;
+    }
+    return count;
+  });
+  if (retried > 0) notifyDriveUploadQueueChanged(username);
+  return retried;
+}
+
 /** Inside a transaction over batches, items, blobs, and entries. */
 export async function dropItemRows(
   username: string,
@@ -246,14 +295,20 @@ export async function dismissDriveUploadBatchNotices(
 export type DriveUploadQueueRows = {
   batches: OfflineDriveUploadBatchRow[];
   items: OfflineDriveUploadItemRow[];
+  /** Cache path of the folder each item's placeholder sits in, by item id. */
+  folderPaths?: ReadonlyMap<string, string>;
 };
 
 export async function readDriveUploadQueueRows(username: string): Promise<DriveUploadQueueRows> {
-  const { db, batches, items } = tables(username);
-  return db.transaction("r", batches, items, async () => ({
-    batches: await batches.orderBy("createdAt").toArray(),
-    items: await items.orderBy("createdAt").toArray(),
-  }));
+  const { db, batches, items, entries } = tables(username);
+  return db.transaction("r", batches, items, entries, async () => {
+    const placeholders = await entries.where("uploadId").above("").toArray();
+    return {
+      batches: await batches.orderBy("createdAt").toArray(),
+      items: await items.orderBy("createdAt").toArray(),
+      folderPaths: new Map(placeholders.map((row) => [row.uploadId!, row.parentPath])),
+    };
+  });
 }
 
 /** For the sign-out and leave warnings. */
