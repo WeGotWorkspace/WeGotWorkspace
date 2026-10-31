@@ -711,15 +711,6 @@
             "AdminMailSettings": {
                 "type": "object",
                 "properties": {
-                    "imapHost": {
-                        "type": "string"
-                    },
-                    "imapPort": {
-                        "type": "integer"
-                    },
-                    "imapSecurity": {
-                        "type": "string"
-                    },
                     "smtpHost": {
                         "type": "string"
                     },
@@ -731,9 +722,6 @@
                     }
                 },
                 "required": [
-                    "imapHost",
-                    "imapPort",
-                    "imapSecurity",
                     "smtpHost",
                     "smtpPort",
                     "smtpSecurity"
@@ -1366,52 +1354,6 @@
                     "$ref": "#/components/schemas/SettingsUserGroup"
                 }
             },
-            "SettingsUserMail": {
-                "type": "object",
-                "properties": {
-                    "imapUsername": {
-                        "type": "string"
-                    },
-                    "imapHasPassword": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "imapUsername",
-                    "imapHasPassword"
-                ]
-            },
-            "SettingsUserMailServer": {
-                "type": "object",
-                "properties": {
-                    "imapHost": {
-                        "type": "string"
-                    },
-                    "imapPort": {
-                        "type": "integer"
-                    },
-                    "imapSecurity": {
-                        "type": "string"
-                    },
-                    "smtpHost": {
-                        "type": "string"
-                    },
-                    "smtpPort": {
-                        "type": "integer"
-                    },
-                    "smtpSecurity": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "imapHost",
-                    "imapPort",
-                    "imapSecurity",
-                    "smtpHost",
-                    "smtpPort",
-                    "smtpSecurity"
-                ]
-            },
             "SettingsStateResponse": {
                 "type": "object",
                 "properties": {
@@ -1420,12 +1362,6 @@
                     },
                     "groups": {
                         "$ref": "#/components/schemas/SettingsUserGroupList"
-                    },
-                    "mail": {
-                        "$ref": "#/components/schemas/SettingsUserMail"
-                    },
-                    "mailServer": {
-                        "$ref": "#/components/schemas/SettingsUserMailServer"
                     },
                     "logoutUrl": {
                         "type": "string"
@@ -1438,8 +1374,6 @@
                 "required": [
                     "user",
                     "groups",
-                    "mail",
-                    "mailServer",
                     "logoutUrl",
                     "mcpEnabled"
                 ]
@@ -1465,587 +1399,6 @@
                 "example": {
                     "displayName": "Alice Example",
                     "email": "alice@example.test"
-                }
-            },
-            "SettingsMailRequest": {
-                "type": "object",
-                "properties": {
-                    "imapUsername": {
-                        "type": "string"
-                    },
-                    "imapPassword": {
-                        "type": "string"
-                    }
-                },
-                "example": {
-                    "imapUsername": "alice@example.test",
-                    "imapPassword": "secret"
-                }
-            },
-            "MailStatusResponse": {
-                "type": "object",
-                "properties": {
-                    "extImap": {
-                        "type": "boolean"
-                    },
-                    "serversConfigured": {
-                        "type": "boolean"
-                    },
-                    "accountConfigured": {
-                        "type": "boolean"
-                    },
-                    "configured": {
-                        "type": "boolean"
-                    },
-                    "ready": {
-                        "type": "boolean"
-                    }
-                }
-            },
-            "MailIdentity": {
-                "type": "object",
-                "properties": {
-                    "displayName": {
-                        "type": "string"
-                    },
-                    "emailAddress": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailServerEndpoint": {
-                "type": "object",
-                "properties": {
-                    "host": {
-                        "type": "string"
-                    },
-                    "port": {
-                        "type": "integer"
-                    },
-                    "security": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailServerSettings": {
-                "type": "object",
-                "properties": {
-                    "imap": {
-                        "$ref": "#/components/schemas/MailServerEndpoint"
-                    },
-                    "smtp": {
-                        "$ref": "#/components/schemas/MailServerEndpoint"
-                    }
-                }
-            },
-            "MailAccountConfig": {
-                "type": "object",
-                "properties": {
-                    "imapUsername": {
-                        "type": "string"
-                    },
-                    "imapHasPassword": {
-                        "type": "boolean"
-                    }
-                }
-            },
-            "MailPublicConfig": {
-                "type": "object",
-                "properties": {
-                    "identity": {
-                        "$ref": "#/components/schemas/MailIdentity"
-                    },
-                    "servers": {
-                        "$ref": "#/components/schemas/MailServerSettings"
-                    },
-                    "account": {
-                        "$ref": "#/components/schemas/MailAccountConfig"
-                    }
-                }
-            },
-            "MailConfigResponse": {
-                "type": "object",
-                "properties": {
-                    "ok": {
-                        "type": "boolean"
-                    },
-                    "config": {
-                        "$ref": "#/components/schemas/MailPublicConfig"
-                    }
-                }
-            },
-            "MailAddress": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "email": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailAttachmentSummary": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "size": {
-                        "type": "integer"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "part": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailAddressList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailAddress"
-                }
-            },
-            "MailAttachmentSummaryList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailAttachmentSummary"
-                }
-            },
-            "MailAttachmentListItem": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "attachments": {
-                        "$ref": "#/components/schemas/MailAttachmentSummaryList"
-                    }
-                }
-            },
-            "MailAttachmentList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailAttachmentListItem"
-                }
-            },
-            "MailFolder": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "parentId": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "system": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "virtual": {
-                        "type": "boolean"
-                    },
-                    "unread": {
-                        "type": "integer"
-                    }
-                }
-            },
-            "MailFolderList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailFolder"
-                }
-            },
-            "MailFoldersResponse": {
-                "type": "object",
-                "properties": {
-                    "folders": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailFolder"
-                        }
-                    }
-                }
-            },
-            "MailMessageListItem": {
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "folderId": {
-                        "type": "string"
-                    },
-                    "mailbox": {
-                        "type": "string"
-                    },
-                    "from": {
-                        "$ref": "#/components/schemas/MailAddress"
-                    },
-                    "to": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailAddress"
-                        }
-                    },
-                    "cc": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailAddress"
-                        }
-                    },
-                    "subject": {
-                        "type": "string"
-                    },
-                    "preview": {
-                        "type": "string"
-                    },
-                    "body": {
-                        "type": "string"
-                    },
-                    "date": {
-                        "type": "string"
-                    },
-                    "read": {
-                        "type": "boolean"
-                    },
-                    "starred": {
-                        "type": "boolean"
-                    },
-                    "attachments": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailAttachmentSummary"
-                        }
-                    }
-                }
-            },
-            "MailMessageList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailMessageListItem"
-                }
-            },
-            "MailMessageDetail": {
-                "type": "object",
-                "allOf": [
-                    {
-                        "$ref": "#/components/schemas/MailMessageListItem"
-                    },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "bodyHtml": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
-                            }
-                        }
-                    }
-                ]
-            },
-            "MailMessagesResponse": {
-                "type": "object",
-                "properties": {
-                    "messages": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailMessageListItem"
-                        }
-                    },
-                    "hasMore": {
-                        "type": "boolean"
-                    }
-                }
-            },
-            "MailAttachmentsResponse": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/MailAttachmentListItem"
-                        }
-                    }
-                }
-            },
-            "MailMessageResponse": {
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "$ref": "#/components/schemas/MailMessageDetail"
-                    }
-                }
-            },
-            "MailFolderMutationResponse": {
-                "type": "object",
-                "properties": {
-                    "ok": {
-                        "type": "boolean"
-                    },
-                    "mailbox": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailAttachmentReport": {
-                "type": "object",
-                "properties": {
-                    "attached": {
-                        "type": "integer"
-                    },
-                    "skipped": {
-                        "type": "integer"
-                    },
-                    "totalBytes": {
-                        "type": "integer"
-                    }
-                }
-            },
-            "MailSendResponse": {
-                "type": "object",
-                "properties": {
-                    "ok": {
-                        "type": "boolean"
-                    },
-                    "attachment_report": {
-                        "$ref": "#/components/schemas/MailAttachmentReport"
-                    },
-                    "sent_copy_failed": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailDraftResponse": {
-                "type": "object",
-                "properties": {
-                    "ok": {
-                        "type": "boolean"
-                    },
-                    "attachment_report": {
-                        "$ref": "#/components/schemas/MailAttachmentReport"
-                    }
-                }
-            },
-            "MailConfigPutImapInput": {
-                "type": "object",
-                "properties": {
-                    "username": {
-                        "type": "string"
-                    },
-                    "password": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailConfigPutRequest": {
-                "type": "object",
-                "properties": {
-                    "imap": {
-                        "$ref": "#/components/schemas/MailConfigPutImapInput"
-                    }
-                },
-                "example": {
-                    "imap": {
-                        "username": "alice@example.test",
-                        "password": "secret"
-                    }
-                }
-            },
-            "MailFolderCreateRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "parentMailbox": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "name"
-                ],
-                "example": {
-                    "name": "Projects",
-                    "parentMailbox": "INBOX"
-                }
-            },
-            "MailFolderMoveRequest": {
-                "type": "object",
-                "properties": {
-                    "folder": {
-                        "type": "string"
-                    },
-                    "parentMailbox": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "folder"
-                ],
-                "example": {
-                    "folder": "UHJvamVjdHM",
-                    "parentMailbox": "SU5CT1g"
-                }
-            },
-            "MailFolderDeleteRequest": {
-                "type": "object",
-                "properties": {
-                    "folder": {
-                        "type": "string"
-                    }
-                },
-                "required": [
-                    "folder"
-                ],
-                "example": {
-                    "folder": "UHJvamVjdHM"
-                }
-            },
-            "MailMessagePatchRequest": {
-                "type": "object",
-                "properties": {
-                    "folder": {
-                        "type": "string"
-                    },
-                    "uid": {
-                        "type": "integer"
-                    },
-                    "read": {
-                        "type": "boolean"
-                    },
-                    "starred": {
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "folder",
-                    "uid"
-                ],
-                "example": {
-                    "folder": "SU5CT1g",
-                    "uid": 42,
-                    "read": true,
-                    "starred": false
-                }
-            },
-            "MailMoveRequest": {
-                "type": "object",
-                "properties": {
-                    "fromFolder": {
-                        "type": "string"
-                    },
-                    "toFolder": {
-                        "type": "string"
-                    },
-                    "uid": {
-                        "type": "integer"
-                    }
-                },
-                "required": [
-                    "fromFolder",
-                    "toFolder",
-                    "uid"
-                ],
-                "example": {
-                    "fromFolder": "SU5CT1g",
-                    "toFolder": "trash",
-                    "uid": 42
-                }
-            },
-            "MailComposeAttachmentUpload": {
-                "type": "object",
-                "properties": {
-                    "filename": {
-                        "type": "string"
-                    },
-                    "mimeType": {
-                        "type": "string"
-                    },
-                    "contentBase64": {
-                        "type": "string"
-                    }
-                }
-            },
-            "MailComposeAttachmentUploadList": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/MailComposeAttachmentUpload"
-                }
-            },
-            "MailSendRequest": {
-                "type": "object",
-                "properties": {
-                    "to": {
-                        "type": "string"
-                    },
-                    "subject": {
-                        "type": "string"
-                    },
-                    "body": {
-                        "type": "string"
-                    },
-                    "cc": {
-                        "type": "string"
-                    },
-                    "bcc": {
-                        "type": "string"
-                    },
-                    "attachments": {
-                        "$ref": "#/components/schemas/MailComposeAttachmentUploadList"
-                    }
-                },
-                "required": [
-                    "to"
-                ],
-                "example": {
-                    "to": "bob@example.test",
-                    "subject": "Hello",
-                    "body": "Hi Bob"
-                }
-            },
-            "MailDraftRequest": {
-                "type": "object",
-                "properties": {
-                    "to": {
-                        "type": "string"
-                    },
-                    "subject": {
-                        "type": "string"
-                    },
-                    "body": {
-                        "type": "string"
-                    },
-                    "cc": {
-                        "type": "string"
-                    },
-                    "bcc": {
-                        "type": "string"
-                    },
-                    "attachments": {
-                        "$ref": "#/components/schemas/MailComposeAttachmentUploadList"
-                    }
-                },
-                "example": {
-                    "subject": "Draft subject",
-                    "body": "Draft body"
                 }
             },
             "DriveGetDirRequest": {
@@ -5287,7 +4640,7 @@
                     },
                     "isSubscribed": {
                         "type": "boolean",
-                        "description": "Sharees: false dismisses the inbound share for this user only (addressbook_share_dismissals)."
+                        "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
                     },
                     "shareWith": {
                         "oneOf": [
@@ -7289,7 +6642,8 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
@@ -7434,7 +6788,8 @@
                         ]
                     },
                     "isSubscribed": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
@@ -7585,7 +6940,7 @@
                     },
                     "code": {
                         "type": "string",
-                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex)."
+                        "description": "Stable API error code when the failure is a payload guard rejection (e.g. payload_too_large, payload_too_complex), or alreadyExists when the address book already holds a card with this vCard UID (the existing card is not changed)."
                     }
                 },
                 "additionalProperties": false
@@ -10315,7 +9670,8 @@
                         ]
                     },
                     "uid": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Optional client-chosen UUID for the note id. Kept when free. A UID of a note the caller can see is a 409 (a retry into the same notebook returns that note). Any other taken UID, or a value that is not a UUID, is replaced by a server-minted UUID: the response id is authoritative."
                     }
                 }
             },
@@ -10510,6 +9866,10 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "isSubscribed": {
+                        "type": "boolean",
+                        "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
                     },
                     "groupSlug": {
                         "type": [
@@ -10719,7 +10079,7 @@
                     },
                     "id": {
                         "$ref": "#/components/schemas/JmapId",
-                        "description": "Optional client-suggested channel id (uri slug)."
+                        "description": "Optional client-suggested channel id: chat- followed by a ULID or UUID (any other shape is a 400). Kept when free. An id of a channel the caller can see is a 409; any other taken id is replaced by a server-minted one: the response id is authoritative. Without it, the id is the slug of the initial name plus a short random suffix."
                     },
                     "guestRoomCode": {
                         "type": [
@@ -10974,7 +10334,7 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+                        "description": "Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative."
                     },
                     "body": {
                         "type": "string",
@@ -12231,7 +11591,6 @@
                     "code": {
                         "type": "string",
                         "enum": [
-                            "production_settings_applied",
                             "app_debug_on",
                             "app_env_not_production",
                             "app_url_local",
@@ -12779,396 +12138,6 @@
                 "x-wgw-access": "user"
             }
         },
-        "/settings/mail": {
-            "put": {
-                "tags": [
-                    "Settings"
-                ],
-                "summary": "Update personal mail credentials for current user",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated settings state",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SettingsStateResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/status": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Mail runtime status",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Mail status"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/folders": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List mail folders",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Mail folder tree"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Create mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder created"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Move mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder moved"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Delete mail folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Folder deleted"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List messages in a folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message list"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Send message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Sent"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/attachments": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List attachment metadata for messages",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment metadata",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailAttachmentsResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mail/message": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Get a single message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message payload",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailMessageResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Patch read/starred flags on a message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message updated",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/OkResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailMessagePatchRequest"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Permanently delete a message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message deleted"
-                    }
-                }
-            }
-        },
-        "/mail/message/attachment": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Download a message attachment",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment stream",
-                        "content": {
-                            "application/octet-stream": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/BinaryPayload"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mail/move": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Move message to another folder",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "fromFolder",
-                                    "toFolder",
-                                    "uid"
-                                ],
-                                "properties": {
-                                    "fromFolder": {
-                                        "type": "string"
-                                    },
-                                    "toFolder": {
-                                        "type": "string"
-                                    },
-                                    "uid": {
-                                        "type": "integer"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Message moved"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/send": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Send an email",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message sent",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailSendResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailSendRequest"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/mail/draft": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Save a message draft",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Draft saved",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MailDraftResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/MailDraftRequest"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/drive/user": {
             "get": {
                 "tags": [
@@ -13597,6 +12566,7 @@
                     "Notes"
                 ],
                 "summary": "Create a note",
+                "description": "Send `uid` (a UUID the client picked) to make the create idempotent; a `uid` that is not a UUID is ignored. If that note already exists in a notebook the caller can write, it is returned with 200 instead of a second note. A UID held by any other note is a 409. Without `uid` the server mints one.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -13614,6 +12584,16 @@
                     }
                 },
                 "responses": {
+                    "200": {
+                        "description": "The note a repeated create with the same `uid` already made",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Note"
+                                }
+                            }
+                        }
+                    },
                     "201": {
                         "description": "Created note",
                         "content": {
@@ -14501,6 +13481,16 @@
                 "responses": {
                     "200": {
                         "description": "Listing"
+                    },
+                    "404": {
+                        "description": "Unknown directory, or a path the caller may not list. A `..` segment is not found too. The answer is the same for all of these.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "guest"
@@ -14538,6 +13528,18 @@
                         }
                     },
                     {
+                        "name": "fallback",
+                        "in": "query",
+                        "required": false,
+                        "description": "Only with `format=yjs`. `markdown`: when there is no Yjs sidecar, answer 200 with the markdown and `X-Wgw-Collab-Fallback: markdown` instead of 204, so a client needs one request per document. Without it, no sidecar is still 204.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "markdown"
+                            ]
+                        }
+                    },
+                    {
                         "name": "If-None-Match",
                         "in": "header",
                         "required": false,
@@ -14562,14 +13564,23 @@
                                 "schema": {
                                     "type": "string"
                                 }
+                            },
+                            "X-Wgw-Collab-Fallback": {
+                                "description": "Present with value `markdown` on `?format=yjs&fallback=markdown` when there is no Yjs sidecar. The body is then the markdown (`text/markdown`) and the ETag is the markdown tag, not a sidecar tag.",
+                                "schema": {
+                                    "type": "string"
+                                }
                             }
                         }
+                    },
+                    "204": {
+                        "description": "`?format=yjs` without `fallback=markdown`: there is no Yjs sidecar. No body and no entity tag."
                     },
                     "304": {
                         "description": "Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag."
                     },
                     "403": {
-                        "description": "No read access to the path",
+                        "description": "A share-link guest: live collaboration is for signed-in users",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14579,7 +13590,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown path",
+                        "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14651,7 +13662,7 @@
                         }
                     },
                     "403": {
-                        "description": "No write access to the path",
+                        "description": "The caller can read the document but may not edit it, or is a share-link guest",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14661,7 +13672,7 @@
                         }
                     },
                     "404": {
-                        "description": "Unknown path",
+                        "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14804,6 +13815,16 @@
                             }
                         }
                     },
+                    "404": {
+                        "description": "Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "416": {
                         "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
                         "headers": {
@@ -14844,6 +13865,7 @@
                     "Files"
                 ],
                 "summary": "Resolve file collab room",
+                "description": "Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -14862,9 +13884,29 @@
                 "responses": {
                     "200": {
                         "description": "Room"
+                    },
+                    "400": {
+                        "description": "Missing path",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown path, or a path the caller may not read",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "guest"
+                "x-wgw-access": "user"
             }
         },
         "/files/star": {
@@ -14891,6 +13933,16 @@
                 "responses": {
                     "200": {
                         "description": "Starred"
+                    },
+                    "404": {
+                        "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -14918,6 +13970,16 @@
                 "responses": {
                     "200": {
                         "description": "Unstarred"
+                    },
+                    "404": {
+                        "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -14942,151 +14004,13 @@
                 "x-wgw-access": "user"
             }
         },
-        "/mail/drafts": {
-            "post": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Save draft",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Saved"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Get message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "patch": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Patch message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            },
-            "delete": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Delete message",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}/attachments": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "List attachments",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "messageId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachments"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
-        "/mail/messages/{messageId}/attachments/{attachmentId}": {
-            "get": {
-                "tags": [
-                    "Mail"
-                ],
-                "summary": "Download attachment",
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "messageId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "attachmentId",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Attachment"
-                    }
-                },
-                "x-wgw-access": "user"
-            }
-        },
         "/meetings/rooms": {
             "post": {
                 "tags": [
                     "Meetings"
                 ],
                 "summary": "Reserve a meeting room",
-                "description": "Idempotent on room id. Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. Omit or null expiresAt means no expiry. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).",
+                "description": "Idempotent on room id for a caller who holds the reservation (createdBy, the ownerPrincipal user, or a member of the ownerPrincipal group; the same check as PATCH, so a write share on a group calendar is not enough). Inserts ownerPrincipal and createdBy (authenticated actor). Existing rows keep ownerPrincipal and createdBy. A code reserved by someone else answers 403 and that reservation is unchanged. Omit or null expiresAt means no expiry; a supplied expiresAt must be in the future. ownerPrincipal must be u:{authenticated user} or a groups/{slug} whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share).",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15117,7 +14041,10 @@
                         "description": "Authentication required"
                     },
                     "403": {
-                        "description": "ownerPrincipal is not the authenticated user or a group calendar they can write"
+                        "description": "ownerPrincipal is not the authenticated user or a group calendar they can write, the room code is reserved by someone else, or the caller is a guest"
+                    },
+                    "422": {
+                        "description": "expiresAt is not in the future"
                     }
                 },
                 "x-wgw-access": "user"
@@ -15217,7 +14144,7 @@
                         "description": "Authentication required"
                     },
                     "403": {
-                        "description": "Not createdBy or an ownerPrincipal member"
+                        "description": "Not createdBy or an ownerPrincipal member, or the caller is a guest"
                     },
                     "404": {
                         "description": "Not reserved"
@@ -16604,6 +15531,26 @@
                             }
                         }
                     },
+                    "404": {
+                        "description": "`share_unavailable`: no public link has this token.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "410": {
+                        "description": "`share_unavailable`: the link was revoked by its owner, or it is past `expiresAt`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "429": {
                         "description": "Too many requests",
                         "content": {
@@ -16795,6 +15742,26 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -16837,6 +15804,26 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DriveShareDataResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
                                 }
                             }
                         }
@@ -16885,6 +15872,26 @@
                                 }
                             }
                         }
+                    },
+                    "403": {
+                        "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     }
                 },
                 "x-wgw-access": "user"
@@ -16929,6 +15936,26 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DriveShareInviteDataResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
                                 }
                             }
                         }
@@ -16985,6 +16012,26 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/DriveShareDeletedResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown share or invite, or a share the caller neither owns nor holds a grant on.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
                                 }
                             }
                         }
@@ -17488,8 +16535,8 @@
                 "tags": [
                     "JMAP"
                 ],
-                "summary": "JMAP event source / push (not implemented)",
-                "description": "Structurally required by the Session resource (RFC 8620 §7.3) but push is a non-goal; the shipped client polls. Returns 501.",
+                "summary": "JMAP event source (short-burst push)",
+                "description": "RFC 8620 §7.3 event source, short-burst only (#1660). The response always ends at once: when a state differs from `Last-Event-ID` it holds one `state` event (a StateChange with only the differing types), its `id` and `retry`; otherwise only `retry: <WGW_JMAP_PUSH_RETRY_MS>` (default 3000). The `id` is `v1;Type=<128-bit hex hash>;…`, one independent hash per type, so a client can rebuild it from the per-type hashes it confirmed. A missing, unknown or malformed `Last-Event-ID` sends every requested type. States are the ones `Foo/get` returns (`Task` and `TaskList` use the REST task list state; `Notification` is the per-principal inbox marker). For `FileNode` the value is the global sequence `FileNode/changes` expects, sent only when the hash over the user's Drive root markers changed. Types of a disabled app are left out. Own rate limit: about 60 requests a minute per user and `X-WGW-Browser-Id`, with a ceiling of about 300 a minute per account; this route does not spend the shared API budget.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -17501,33 +16548,103 @@
                         "name": "types",
                         "in": "path",
                         "required": true,
+                        "description": "`*` or a comma-separated list of type names: Note, Notebook, CalendarEvent, Calendar, ContactCard, AddressBook, ChatMessage, ChatChannel, FileNode, Task, TaskList, Notification. Unknown names are ignored.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "maxLength": 512,
+                            "pattern": "^(\\*|[A-Za-z]+(,[A-Za-z]+)*)$"
                         }
                     },
                     {
                         "name": "closeafter",
                         "in": "path",
                         "required": true,
+                        "description": "Accepted for RFC compatibility; every response closes after one block.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                                "state",
+                                "no"
+                            ]
                         }
                     },
                     {
                         "name": "ping",
                         "in": "path",
                         "required": true,
+                        "description": "Seconds; accepted for RFC compatibility. No ping is sent because the response ends at once.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "pattern": "^[0-9]{1,6}$"
+                        }
+                    },
+                    {
+                        "name": "Last-Event-ID",
+                        "in": "header",
+                        "required": false,
+                        "description": "The id of a previous `state` event, or one the client rebuilt from per-type hashes it confirmed.",
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 2048
+                        }
+                    },
+                    {
+                        "name": "X-WGW-Browser-Id",
+                        "in": "header",
+                        "required": false,
+                        "description": "The browser id the client sends for presence (32 lower-case hex). Keys the per-browser rate limit; a missing or malformed id shares one bucket.",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{32}$"
                         }
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "Event stream that ends at once: `event: state`, `id`, `retry` and `data` (StateChange JSON), or only `retry`.",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string"
+                                },
+                                "example": "event: state\nid: v1;Note=0f4c…;Notification=9a1b…\nretry: 3000\ndata: {\"@type\":\"StateChange\",\"changed\":{\"bob\":{\"Note\":\"2:inbox:12,work:7\",\"Notification\":\"5\"}}}\n\n"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Malformed types, closeafter or ping",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid bearer token",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
+                    },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
                     },
-                    "501": {
-                        "description": "Not implemented",
+                    "429": {
+                        "description": "Rate limited (per browser or per account). Wait `Retry-After` seconds and fall back to polling meanwhile.",
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the bucket allows a request again.",
+                                "schema": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18178,6 +17295,7 @@
                     "Calendars"
                 ],
                 "summary": "Get published ICS / webcal feed URLs for a calendar",
+                "description": "A feed belongs to the calendar, not to the member who published it. Every principal who may publish the calendar (the owner of a personal calendar, every member of the owning group) sees the same feed. 404 when the calendar has no feed.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18218,7 +17336,7 @@
                     "Calendars"
                 ],
                 "summary": "Publish a calendar as an ICS / webcal feed",
-                "description": "Creates a hashed-token public feed for an owned personal calendar, or returns the existing URLs. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.",
+                "description": "Creates a hashed-token public feed for a calendar the caller may publish (an owned personal calendar, or a calendar of a group the caller is in), or returns the calendar's existing feed, whoever published it. A calendar has at most one feed; publishing again does not rotate the URL. An optional mode of full or busy is stored on the feed; sending mode again updates it. Subscription calendars cannot be published.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18282,6 +17400,7 @@
                     "Calendars"
                 ],
                 "summary": "Revoke a published ICS / webcal feed",
+                "description": "Any principal who may publish the calendar revokes its feed, whoever published it. The feed also ends when the calendar is deleted.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -18320,7 +17439,7 @@
                     "Calendars"
                 ],
                 "summary": "Download a public ICS / webcal feed",
-                "description": "Unauthenticated VCALENDAR of the published collection. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens are 404.",
+                "description": "Unauthenticated VCALENDAR of the calendar the token was issued for, and only that calendar. An optional .ics suffix on the token is accepted. Rate-limited. Unknown or revoked tokens, and tokens of a deleted calendar, are 404.",
                 "parameters": [
                     {
                         "name": "token",
@@ -18867,7 +17986,7 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     },
                     "409": {
-                        "description": "`external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse.",
+                        "description": "`external_write` — SUMMARY or DESCRIPTION changed outside the app since the state was written, and the request did not name that content in `X-Wgw-External-Write`. Nothing is written. A tag, move, or archive alone does not refuse. `note_archived` — the note is archived (STATUS:CANCELLED). Nothing is written; restore the note first. Both codes are in `error` and `code`.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -18946,7 +18065,14 @@
                         "$ref": "#/components/responses/JmapNotFound"
                     },
                     "409": {
-                        "$ref": "#/components/responses/JmapConflict"
+                        "description": "`alreadyExists` — a move would put the note in a notebook that already holds its UID. `note_archived` — the note is archived (STATUS:CANCELLED) and the patch carries `title`, `body`, `categories`, `categoriesAdd`, `categoriesRemove`, `notebookId`, or `yjs`. Nothing is written. A patch with only `status` (restore, or archive again) is accepted. The code is in `error` and `code`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Error"
+                                }
+                            }
+                        }
                     },
                     "412": {
                         "$ref": "#/components/responses/JmapPreconditionFailed"
@@ -19895,6 +19021,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
                     }
                 }
             }
@@ -19937,6 +19066,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
                     }
                 }
             },
@@ -19945,6 +19077,7 @@
                     "Files"
                 ],
                 "summary": "Create a Docs comment or suggestion thread",
+                "description": "Idempotent: a create with an id that already exists on this document returns that thread. A document has one suggestion thread per changeId, so a create for a changeId that already has one returns the existing thread, with its own id, even when the request carries another id (for example after the document moved).",
                 "security": [
                     {
                         "bearerAuth": []
@@ -19987,6 +19120,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/JmapNotFound"
                     },
                     "409": {
                         "$ref": "#/components/responses/JmapConflict"
@@ -20275,7 +19411,7 @@
                 "tags": [
                     "Notifications"
                 ],
-                "summary": "Ack local Notification API delivery (skip VAPID fallback)",
+                "summary": "Ack local delivery: a visible window or a Meet call showed the row (skip VAPID push)",
                 "security": [
                     {
                         "bearerAuth": []
@@ -20554,7 +19690,7 @@
                         }
                     },
                     "409": {
-                        "description": "Environment file is not writable"
+                        "description": "packages/api/.env was not written: it is missing or read-only, its folder is read-only, or the config is cached. The error names the cause and the APP_URL line to add by hand."
                     },
                     "422": {
                         "description": "Address is not http or https, or includes user info, a query, or a path other than the install base"
@@ -20640,7 +19776,7 @@
                         }
                     },
                     "409": {
-                        "description": "Docker install, an update is running, or the environment file is not writable"
+                        "description": "Docker install, or an update is running"
                     },
                     "422": {
                         "description": "Channel is not stable, beta, or edge"

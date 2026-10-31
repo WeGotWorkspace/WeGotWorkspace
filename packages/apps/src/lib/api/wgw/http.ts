@@ -1,5 +1,4 @@
-import type { WorkspaceSession } from "@/lib/workspace/workspace-session";
-import { workspaceUserInitials } from "@/lib/workspace/workspace-session";
+import { type WorkspaceSession, workspaceUserInitials } from "@/lib/workspace/workspace-session";
 import { activeWgwApiRuntime } from "@/lib/api/wgw/wgw-api-runtime";
 import { withAuthRefreshLock } from "@/lib/api/wgw/auth-refresh-lock";
 import { decodeJwtExp, decodeJwtPayload } from "@/lib/api/wgw/jwt-exp";
@@ -8,7 +7,9 @@ import { appendRefreshFailure, appendSessionCleared } from "@/lib/api/wgw/sessio
 import { isFetchNetworkError, readBrowserOnline } from "@/lib/offline/core/browser-online";
 import * as offlineWipe from "@/lib/offline/core/offline-wipe";
 import { tunnelMutatingHttpMethod } from "@/lib/api/wgw/http-method-tunnel";
+import { fetchKeepaliveOnPageExit } from "@/lib/api/wgw/page-exit-keepalive";
 import { WgwSessionRenewalError } from "@/lib/api/wgw/session-renewal-error";
+import { WgwRequestError } from "@/lib/api/wgw/request-error";
 
 export { WgwSessionRenewalError };
 
@@ -747,14 +748,13 @@ export async function wgwFetch(path: string, init: RequestInit = {}): Promise<Re
     throw new Error("Missing auth session. Sign in to continue.");
   }
   const requestInit = tunnelMutatingHttpMethod(init);
-  const base = wgwApiBaseUrl();
   const p = path.startsWith("/") ? path : `/${path}`;
-  const url = `${base}${p}`;
+  const url = `${wgwApiBaseUrl()}${p}`;
 
   const doOnce = (token: string) => {
     const headers = new Headers(requestInit.headers);
     headers.set("Authorization", `Bearer ${token}`);
-    return fetch(url, { ...requestInit, headers });
+    return fetchKeepaliveOnPageExit(url, { ...requestInit, headers });
   };
 
   const token = accessToken!;
@@ -872,7 +872,7 @@ export async function wgwFetchPrincipal(): Promise<WorkspaceSession> {
   }
 
   const res = await wgwFetch("/me");
-  if (!res.ok) throw new Error(`GET /me failed (${res.status})`);
+  if (!res.ok) throw new WgwRequestError(`GET /me failed (${res.status})`, res.status);
   const j = (await wgwReadJson(res)) as Record<string, unknown>;
   const meUsername = typeof j.username === "string" ? j.username : "User";
 

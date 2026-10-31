@@ -15,9 +15,10 @@ Domain skills override when more specific ([api/layers.md](../api/layers.md), [a
 ## When reviewing
 
 1. Run the [smells.md](smells.md) checklist on the diff.
-2. For **new or changed hooks**, apply the React hooks section — structural violations are **merge blockers** per [code-review/SKILL.md](../code-review/SKILL.md), not deferred nits.
-3. Prefer fixing small issues in files you already touch (Boy Scout Rule).
-4. Do not block feature delivery on unrelated refactors — file issues for out-of-scope debt. **Exception:** god-hooks and unreadable collab structure in the current diff must be split or documented before handoff.
+2. For **new or changed hooks**, apply the React hooks section — the body-length and effect-count limits are a CI merge blocker (`pnpm check:hook-size`); unrelated concerns and state + ref duplication are review prompts ([code-review/SKILL.md](../code-review/SKILL.md)).
+3. Copied blocks are blocked in CI by the duplicate-code ratchet and the DAV backend allowlist test. [smells.md](smells.md) (Duplication) says what each blocks and how to lower the baseline.
+4. Prefer fixing small issues in files you already touch (Boy Scout Rule).
+5. Do not block feature delivery on unrelated refactors — file issues for out-of-scope debt. **Exception:** god-hooks and unreadable collab structure in the current diff must be split or documented before handoff.
 
 ## Optional depth
 

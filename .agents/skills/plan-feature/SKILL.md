@@ -15,8 +15,8 @@ Goal (product, optional) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 | Step | File | Action |
 |------|------|--------|
-| 0 | Goal | If work delivers a user outcome, ensure a parent `type:goal` exists ([docs/product/](../../../docs/product/)). Goals are **context only** — never `Source:`. |
-| 1 | `spec.md` | `gh issue view <N>` on the **Task or Epic** → technical translation; header `Source: #<N> (body-hash: xxxxxxxx)`; optional `Goal: #M` (not hashed) |
+| 0 | Goal | If work delivers a user outcome, ensure a parent Goal exists in [WeGotWorkspace/Product](https://github.com/WeGotWorkspace/Product) ([docs/product/](../../../docs/product/)). Goals are **context only** — never `Source:`. |
+| 1 | `spec.md` | `gh issue view <N>` on the **Task or Epic** → technical translation; header `Source: #<N> (body-hash: xxxxxxxx)`; optional `Goal: WeGotWorkspace/Product#M` (not hashed) |
 | 2 | `plan.md` | Chunk split using template below |
 | 3 | `tasks.md` | Engineering rows per chunk (id, owner, paths, verify) — **not** issue `- [ ]` checklist |
 
@@ -28,7 +28,7 @@ Goal (product, optional) → Epic/Task (AC) → spec.md → plan.md → tasks.md
 
 **Folder name:** `<issue-number>-<slug>` where `<issue-number>` is the **Task/Epic** (e.g. `.agents/specs/134-drive-share/`). Without issue: `.agents/specs/000-ad-hoc-slug/` with `Source: ad-hoc`.
 
-**When required:** `feat/` branches — see [specs/README.md](../../specs/README.md). `fix/` / `chore/` / `docs/` — optional.
+**When required:** `feat/` branches, and feature design on any branch (`docs/` included): a design note or a new `docs/architecture/*.md` for an Epic ships with its spec folder in the same PR — see [specs/README.md](../../specs/README.md). Other `fix/` / `chore/` / `docs/` work — optional.
 
 **Language:** `spec.md`, `plan.md`, `tasks.md`, and the delivery issue are **English** even if the user prompt is Dutch — [english-only.md](../developer/english-only.md).
 
@@ -39,11 +39,11 @@ Skeletons: [specs/_template/](../../specs/_template/). On scope change: update t
 If the delivery issue does not exist yet, file it before writing `spec.md`. Short checklist: [developer/issue-filing.md](../developer/issue-filing.md). **English** title and body — [english-only.md](../developer/english-only.md).
 
 1. Classify: Goal | Epic | Task | Chore | Bug
-2. Goal → product language; GitHub issue type **Feature** and `type:goal`; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
+2. Goal → filed in WeGotWorkspace/Product; product language; `area:*` labels, no kind label and no GitHub issue type; Product Project at Status **Identified** (or **Adopted** if already committing); **no milestone**; never sole `fixes #` / `Source:`
 3. Epic → GitHub issue type **Task** and `type:epic`; required parent Goal; not on Product Project; milestone OK for release packing
 4. Task → GitHub issue type **Task** and `type:task`; parent Epic or Goal; implementable `- [ ]` AC; not on Product Project; milestone OK
 5. Chore → GitHub issue type **Task** and `type:chore`; no Goal required. Bug → `bug-report.yml` (GitHub issue type **Bug**); not on Product Project. Do not replace an existing Bug type.
-6. Prefer templates `goal.yml` / `epic.yml` / `task.yml` / `chore.yml` / `bug-report.yml` under `.github/ISSUE_TEMPLATE/` (or `gh issue create --template`); specialized `dast-finding.yml`
+6. Prefer templates `epic.yml` / `task.yml` / `chore.yml` / `bug-report.yml` under `.github/ISSUE_TEMPLATE/` (or `gh issue create --template`); specialized `dast-finding.yml`. Goals use `goal.yml` in WeGotWorkspace/Product (`gh issue create -R WeGotWorkspace/Product --template goal.yml`)
 7. `feat/` closes Task/Epic; `spec.md` `Source:` from that issue — not Goal
 
 ## When to plan

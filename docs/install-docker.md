@@ -211,6 +211,8 @@ WGW_INSTALL_ADMIN_EMAIL=admin@example.com
 WGW_INSTALL_ADMIN_PASSWORD=your-long-password
 ```
 
+Only the one-shot migrator receives `WGW_INSTALL_ADMIN_PASSWORD`. The `web` and `scheduler` containers keep running, so Compose does not pass them the password; they get the other `WGW_INSTALL_*` values for the first-run screens. Keep the password in this Compose `.env`, not in `api.env`, which every container reads. Remove it from `.env` after the first install: a later start finds the `.installed` lock and skips `wgw:install`.
+
 ## What persists
 
 Named volumes (survive `docker compose down` and image updates):
@@ -232,7 +234,7 @@ Each `docker compose up` runs a **one-shot migrator** before the web container s
    - Seeds [wgw-install-seed-config.sh](../docker/install/wgw-install-seed-config.sh) into the `wgw-install-config` volume (`api.env` with `WGW_INSTALL_*` pre-install keys).
    - **Fresh install** (no `wgw-content/.installed`): runs headless `wgw:install` when `WGW_INSTALL_HEADLESS=1` and env is complete; otherwise skips schema migration — the web first-run installer runs initial setup.
    - **Existing install**: runs `php artisan wgw:schema-migrate` (same as ZIP in-place updates).
-2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `key:generate` when needed, starts Apache. The runtime image is Apache mod_php (`docker/install/Dockerfile.runtime`, `docker/apache/Dockerfile`). Password reset delivery runs after the response via Laravel `defer()`; mod_php has no `fastcgi_finish_request` or `litespeed_finish_request`, so that falls back to flushing the body, and output compression on that path can make the timing difference visible again. LiteSpeed and PHP-FPM finish the request.
+2. **Web** entrypoint ([docker-entrypoint.sh](../docker/install/docker-entrypoint.sh)): symlinks `api.env` → `packages/api/.env`, ensures permissions, runs `artisan wgw:ensure-app-key`, which generates `APP_KEY` only when it is empty (an existing key is never replaced, so restarts keep refresh tokens, share links and other encrypted data valid), starts Apache. The runtime image is Apache mod_php (`docker/install/Dockerfile.runtime`, `docker/apache/Dockerfile`). Password reset delivery runs after the response via Laravel `defer()`; mod_php has no `fastcgi_finish_request` or `litespeed_finish_request`, so that falls back to flushing the body, and output compression on that path can make the timing difference visible again. LiteSpeed and PHP-FPM finish the request.
 3. **Scheduler** sidecar: loops `php artisan schedule:run` every 60 seconds (due Calendar/Task alarms and VAPID fallback). This is the Docker equivalent of host cron — **not** a `queue:work` daemon.
 
 Failed migrations block the web service from starting, preventing a half-upgraded state.

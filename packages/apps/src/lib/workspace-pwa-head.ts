@@ -13,8 +13,7 @@ import {
  */
 export const WORKSPACE_PWA_ICON_CACHE_VERSION = pwaIconCacheVersion.version;
 
-/** Mail stays an app id for icons and mail-core. The live shell does not install its PWA. */
-export type WorkspacePwaAppKey = Exclude<WorkspaceAppId, "mail"> | "home";
+export type WorkspacePwaAppKey = WorkspaceAppId | "home";
 
 type WorkspacePwaMeta = {
   title: string;
@@ -68,7 +67,7 @@ const WORKSPACE_PWA_META: Record<WorkspacePwaAppKey, WorkspacePwaMeta> = {
   },
   settings: {
     title: "Settings",
-    description: "Manage your account, memberships, and mail.",
+    description: "Manage your account and memberships.",
     appTitle: "Settings",
     manifest: "/manifests/settings.webmanifest",
   },

@@ -38,6 +38,16 @@ return [
         'download_ticket_idle_minutes' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_IDLE_MINUTES', 30),
         'download_ticket_lifetime_hours' => (int) env('WGW_JMAP_DOWNLOAD_TICKET_LIFETIME_HOURS', 24),
     ],
+    /**
+     * JMAP event source (RFC 8620 §7.3, #1660), short-burst only: every
+     * response ends at once. `retry_ms` is the reconnect interval sent to the
+     * client; raise it on a slow host. `server_timing` adds a `Server-Timing`
+     * header with the time per state source (for load tests, off by default).
+     */
+    'jmap_push' => [
+        'retry_ms' => (int) env('WGW_JMAP_PUSH_RETRY_MS', 3000),
+        'server_timing' => (bool) env('WGW_JMAP_PUSH_SERVER_TIMING', false),
+    ],
     /** Install channel: `docker` (image pull + setup.sh) or `zip` / unset (Admin web updater). */
     'install_channel' => env('WGW_INSTALL_CHANNEL'),
     /** Extra Host names, comma-separated, trusted in addition to the APP_URL host. */
@@ -92,28 +102,6 @@ return [
         'subject' => env('WGW_VAPID_SUBJECT', 'mailto:noreply@example.com'),
         'public_key' => env('WGW_VAPID_PUBLIC_KEY'),
         'private_key' => env('WGW_VAPID_PRIVATE_KEY'),
-    ],
-
-    'mail' => [
-        /** Set {@code WGW_MAIL_SMTP_VERIFY_TLS=false} for local/dev SMTP with self-signed certs. */
-        'smtp_verify_tls' => filter_var(env('WGW_MAIL_SMTP_VERIFY_TLS', true), FILTER_VALIDATE_BOOL),
-        /**
-         * Unsupported in v0.9. Test-only switch for mailbox REST and MCP mail tools.
-         * Default off: those routes are absent from OpenAPI and the UI does not mount them.
-         * A cached config or route file ignores this env (see WithMailClientEnabled).
-         */
-        'client_enabled' => filter_var(env('WGW_MAIL_CLIENT_ENABLED', false), FILTER_VALIDATE_BOOL),
-    ],
-
-    'plugins' => [
-        /**
-         * Unsupported in v0.9 (beta). Installable UI plugins: registry, ZIP install,
-         * activation, and plugin HTML/asset serving under the manifest appTile.route.
-         * Default off: those routes are absent from OpenAPI, the front controller does not
-         * match plugin paths, and the UI does not mount a Plugins pane.
-         * A cached config or route file ignores this env (see WithPluginsEnabled).
-         */
-        'enabled' => filter_var(env('WGW_PLUGINS_ENABLED', false), FILTER_VALIDATE_BOOL),
     ],
 
     /**

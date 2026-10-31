@@ -137,14 +137,15 @@ EOF
   local base="http://127.0.0.1:${DOCKER_PORT}"
   wait_health "$base" || fail "Docker: health check failed after fresh install"
 
-  if ! curl -fsS "${base}/api/v1/installer/state" | grep -q '"installed":true'; then
-    info "Docker route: headless install not completed by migrator — running wgw:install in web container"
-    docker compose -f "${ROOT}/docker/install/docker-compose.yml" \
-      --env-file "$DOCKER_ENV" \
-      -p "$DOCKER_PROJECT" \
-      exec -T web php /var/www/html/packages/api/artisan wgw:install --no-interaction
-    wait_health "$base" || fail "Docker: health check failed after wgw:install"
-  fi
+  # Only the migrator has WGW_INSTALL_ADMIN_PASSWORD, so web cannot retry wgw:install.
+  curl -fsS "${base}/api/v1/installer/state" | grep -q '"installed":true' \
+    || fail "Docker: migrator did not complete the headless install"
+  docker compose -f "${ROOT}/docker/install/docker-compose.yml" \
+    --env-file "$DOCKER_ENV" \
+    -p "$DOCKER_PROJECT" \
+    exec -T web sh -c '[ -z "${WGW_INSTALL_ADMIN_PASSWORD+x}" ]' \
+    || fail "Docker: web container still has WGW_INSTALL_ADMIN_PASSWORD"
+  pass "Docker: migrator installed headless; web has no admin password"
 
   local vol="${DOCKER_PROJECT}_wgw-install-config"
   docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c \
@@ -170,12 +171,23 @@ PHP'
   docker run --rm -v "${vol}:/vol" alpine:3.20 sh -c \
     "sed -i '/^WGW_DB_/d;/^WGW_DATA_DIR=/d' /vol/api.env"
 
+  # Hash only; never print the key itself.
+  local key_hash_cmd='grep -Eq "^APP_KEY=.+" /vol/api.env && grep "^APP_KEY=" /vol/api.env | sha256sum | cut -d" " -f1'
+  local key_hash_before key_hash_after
+  key_hash_before="$(docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c "$key_hash_cmd")" \
+    || fail "Docker: APP_KEY missing or empty on config volume"
+
   docker compose -f "${ROOT}/docker/install/docker-compose.yml" \
     --env-file "$DOCKER_ENV" \
     -p "$DOCKER_PROJECT" \
     restart web
   sleep 3
   wait_health "$base" || fail "Docker: health failed after legacy inject + restart"
+
+  key_hash_after="$(docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c "$key_hash_cmd")" \
+    || fail "Docker: APP_KEY missing or empty after restart"
+  [ "$key_hash_before" = "$key_hash_after" ] || fail "Docker: APP_KEY changed on restart"
+  pass "Docker restart kept APP_KEY"
 
   docker run --rm -v "${vol}:/vol:ro" alpine:3.20 sh -c \
     '! test -f /vol/wgw-config.php && grep -q WGW_DB_CONNECTION /vol/api.env' \

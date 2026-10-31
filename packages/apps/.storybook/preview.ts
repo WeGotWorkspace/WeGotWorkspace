@@ -85,7 +85,6 @@ const preview: Preview = {
           component: renderStory,
         }),
         createRoute({ getParentRoute: () => rootRoute, path: "notes", component: renderStory }),
-        createRoute({ getParentRoute: () => rootRoute, path: "mail", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "calendar", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "contacts", component: renderStory }),
         createRoute({ getParentRoute: () => rootRoute, path: "tasks", component: renderStory }),

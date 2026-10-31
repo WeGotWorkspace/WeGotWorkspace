@@ -329,7 +329,7 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         $this->assertStringNotContainsString(' calendar ', ' '.$created->json('scope').' ');
     }
 
-    public function test_authorization_server_metadata_lists_split_mail_scopes(): void
+    public function test_authorization_server_metadata_lists_split_scopes_without_retired_mail(): void
     {
         $response = $this->getJson('/.well-known/oauth-authorization-server')->assertOk();
         $scopes = $response->json('scopes_supported');
@@ -337,8 +337,8 @@ final class CimdResolverTest extends WgwDatabaseTestCase
         foreach (McpScopes::ids() as $scope) {
             $this->assertContains($scope, $scopes);
         }
-        $this->assertContains('mail.read', $scopes);
-        $this->assertContains('mail.send', $scopes);
+        $this->assertNotContains('mail.read', $scopes);
+        $this->assertNotContains('mail.send', $scopes);
         $this->assertContains('calendar.read', $scopes);
         $this->assertContains('calendar.write', $scopes);
         $this->assertContains('notes.read', $scopes);

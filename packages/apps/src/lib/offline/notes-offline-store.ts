@@ -1,3 +1,4 @@
+import { announceNoteDropped } from "@/lib/offline/notes/notes-dropped-events";
 import type { NotesAppBootstrap } from "@/lib/api/mock/notes-bootstrap";
 import type { Note } from "@/lib/models/note";
 import { noteAfterNotebookMove } from "@/notes-core/src/notes-note-utils";
@@ -10,23 +11,20 @@ import {
 } from "@/lib/offline/core/offline-db";
 import { enqueueCoalescedOutboxUpdate } from "@/lib/offline/core/outbox-coalescing";
 import {
+  isRetryableOutboxRow,
   isSyncNoticeOutboxRow,
   listOutboxMutationsForDomain,
   removeOutboxMutation,
 } from "@/lib/offline/core/outbox-store";
+import { readPendingWrites, type PendingWrite } from "@/lib/offline/core/inbound-sync";
 import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import {
-  isLocalTempNoteId,
   NOTES_DOMAIN,
   notesNotebooksTable,
   notesNotesTable,
   type OfflineNotebookRow,
   type OfflineNoteRow,
 } from "@/lib/offline/notes/notes-schema";
-import {
-  adoptedNoteIdFor,
-  readAndPruneAdoptedNoteIds,
-} from "@/lib/offline/notes/notes-adopted-ids";
 import {
   hasTagDelta,
   mergeNoteTagDeltas,
@@ -95,7 +93,8 @@ const NOTE_PENDING_FIELDS: readonly NotePendingField[] = [
 export type NotesUpsertPayload = {
   noteId: string;
   metadata: NoteUpsertMetadata;
-  tempNoteId?: string;
+  /** The note is not on the server yet: flush POSTs it with its (client-chosen) UID. */
+  create?: boolean;
   /** Real changes in this write. Unioned when two upserts coalesce. */
   fields?: NotePendingField[];
   /**
@@ -304,13 +303,12 @@ function pendingRowOverServer(row: OfflineNoteRow, server: Note | undefined): Of
 
 /**
  * Replace the cached bootstrap in one transaction, so a write that lands in
- * between cannot be cleared or put back. Adopted `local-*` ids are dropped:
- * nothing would ever sync them, and their server note is already cached.
+ * between cannot be cleared or put back.
  *
  * `takenAt` is when the snapshot was taken (epoch ms): when a live fetch was
- * sent, or when the cache was read. An adopted server note the snapshot lacks
- * is kept only when it was adopted at or after `takenAt`; the snapshot then
- * predates the create. Otherwise the snapshot wins: the note was deleted.
+ * sent, or when the cache was read. A row the cache got after `takenAt` is
+ * newer than the snapshot (a note created meanwhile), so it is kept even
+ * when the snapshot lacks it. An older row the snapshot lacks was deleted.
  */
 export async function writeNotesBootstrapToCache(
   username: string,
@@ -326,16 +324,11 @@ export async function writeNotesBootstrapToCache(
   );
   rememberOfflineNotesUsername(username);
   await db.transaction("rw", [notes, books, db.meta], async () => {
-    const adopted = await readAndPruneAdoptedNoteIds(db);
-    const pendingRows = await notes
-      .filter((row) => row.pendingSync && !adopted.has(row.id))
-      .toArray();
     const snapshotIds = new Set(bootstrap.data.notes.map((note) => note.id));
-    const newerThanSnapshot = [...adopted.values()]
-      .filter(({ serverId, at }) => at >= takenAt && !snapshotIds.has(serverId))
-      .map(({ serverId }) => serverId);
-    // A pending server row (an early title) is not in adoptedRows; pendingRows keeps it.
-    const adoptedRows = await notes.bulkGet([...new Set(newerThanSnapshot)]);
+    const pendingRows = await notes.filter((row) => row.pendingSync).toArray();
+    const newerRows = await notes
+      .filter((row) => !row.pendingSync && row.updatedAt > takenAt && !snapshotIds.has(row.id))
+      .toArray();
     await db.meta.put({ key: META_SESSION, value: JSON.stringify(bootstrap.session) });
     await writeCachedCollections(db, collections);
     if (bootstrap.data.groups !== undefined) {
@@ -346,13 +339,9 @@ export async function writeNotesBootstrapToCache(
       collections.map((collection) => ({ id: collection.id, data: JSON.stringify(collection) })),
     );
     await notes.clear();
-    const serverNotes = bootstrap.data.notes
-      .filter((note) => !adopted.has(note.id))
-      .map((note) => enrichNote(note));
+    const serverNotes = bootstrap.data.notes.map((note) => enrichNote(note));
     await notes.bulkPut(serverNotes.map((note) => noteRow(note, false)));
-    await notes.bulkPut(
-      adoptedRows.filter((row): row is OfflineNoteRow => row != null && !row.pendingSync),
-    );
+    await notes.bulkPut(newerRows);
     const serverById = new Map(serverNotes.map((note) => [note.id, note]));
     await notes.bulkPut(
       pendingRows.map((row) => pendingRowOverServer(row, serverById.get(row.id))),
@@ -360,22 +349,13 @@ export async function writeNotesBootstrapToCache(
   });
 }
 
-/** Skips a `local-*` id the server already adopted, so the temp row stays deleted. */
 export async function upsertNoteInCache(
   username: string,
   note: Note,
   pendingSync = false,
 ): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
-  const notes = notesNotesTable(db);
-  if (!isLocalTempNoteId(note.id)) {
-    await notes.put(noteRow(note, pendingSync));
-    return;
-  }
-  await db.transaction("rw", [notes, db.meta], async () => {
-    if (await adoptedNoteIdFor(db, note.id)) return;
-    await notes.put(noteRow(note, pendingSync));
-  });
+  await notesNotesTable(db).put(noteRow(note, pendingSync));
 }
 
 /** One cached note, or null when the id is absent or the row is unreadable. */
@@ -387,20 +367,17 @@ export async function getNoteFromCache(username: string, noteId: string): Promis
 /**
  * Update the Dexie list-preview body without touching metadata `pendingSync`.
  * Body is owned by the collab document — this must not stamp unsynced metadata.
- * Does not insert a missing row so remapped `local-*` ids stay deleted, and
- * drops a stale `local-*` row the server already adopted.
+ * Does not insert a missing row, so a deleted note stays deleted.
  */
 export async function upsertNoteBodyPreviewInCache(username: string, note: Note): Promise<void> {
   const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
   const table = notesNotesTable(db);
-  await db.transaction("rw", [table, db.meta], async () => {
+  await db.transaction("rw", [table], async () => {
     const existing = await table.get(note.id);
     if (!existing) return;
-    if (isLocalTempNoteId(note.id) && (await adoptedNoteIdFor(db, note.id))) {
-      await table.delete(note.id);
-      return;
-    }
-    await table.put(noteRow(note, existing.pendingSync));
+    // A preview touch is not a newer note: keep its time, or a bootstrap
+    // would keep a note the server deleted meanwhile.
+    await table.put({ ...noteRow(note, existing.pendingSync), updatedAt: existing.updatedAt });
   });
 }
 
@@ -512,7 +489,10 @@ export async function removeNotebookFromCache(
         continue;
       }
       if (moveNotesTo) {
-        await notes.put(noteRow(noteAfterNotebookMove(note, moveNotesTo), row.pendingSync));
+        await notes.put({
+          ...noteRow(noteAfterNotebookMove(note, moveNotesTo), row.pendingSync),
+          updatedAt: row.updatedAt,
+        });
         continue;
       }
       if (keepPending && row.pendingSync) continue;
@@ -546,8 +526,10 @@ export async function dropLocalNoteAfterServerGone(
   username: string,
   noteId: string,
 ): Promise<void> {
+  const title = (await getNoteFromCache(username, noteId))?.title?.trim() || "Untitled";
   await removeOutboxMutationsForNote(username, noteId);
   await removeNoteFromCache(username, noteId);
+  announceNoteDropped({ username, noteId, title });
 }
 
 export async function listFailedNotesOutbox(username: string): Promise<OfflineOutboxRow[]> {
@@ -572,27 +554,8 @@ function isNotePendingField(value: unknown): value is NotePendingField {
 export async function listPendingNoteFields(
   username: string,
 ): Promise<Map<string, Set<NotePendingField>>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const out = new Map<string, Set<NotePendingField>>();
-  for (const row of rows) {
-    let payload: { noteId?: unknown; fields?: unknown } | null = null;
-    try {
-      payload = JSON.parse(row.payload) as { noteId?: unknown; fields?: unknown };
-    } catch {
-      continue;
-    }
-    const noteId = typeof payload?.noteId === "string" ? payload.noteId : null;
-    if (!noteId) continue;
-    const fields = out.get(noteId) ?? new Set<NotePendingField>();
-    if (row.op === "archive" || row.op === "restore") fields.add("archived");
-    if (row.op === "delete") fields.add("delete");
-    if (Array.isArray(payload?.fields)) {
-      for (const field of payload.fields) {
-        if (isNotePendingField(field)) fields.add(field);
-      }
-    }
-    out.set(noteId, fields);
-  }
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) out.set(noteId, write.fields);
   return out;
 }
 
@@ -611,15 +574,37 @@ export async function writeSyncToken(
   await db.meta.put({ key: metaKeyForNotebookState(notebook), value: token });
 }
 
+/**
+ * The note version each queued note write started from (its If-Match), per
+ * note. Inbound sync compares it with the server's version: the same version
+ * means the server has not seen the change yet, which is not a conflict.
+ */
+export async function listPendingNoteBases(username: string): Promise<Map<string, string[]>> {
+  const bases = new Map<string, string[]>();
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) {
+    if (write.bases.length > 0) bases.set(noteId, write.bases);
+  }
+  return bases;
+}
+
+/**
+ * True when an upsert of this note is queued and will still be sent: not a
+ * conflict or a permanent failure waiting for a person. A new edit then merges
+ * into it instead of racing it.
+ */
+export async function hasQueuedNoteUpsert(username: string, noteId: string): Promise<boolean> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  return rows.some(
+    (row) =>
+      row.op === "upsert" &&
+      notesOutboxNoteId(row) === noteId &&
+      (!row.lastError || isRetryableOutboxRow(row)),
+  );
+}
+
 /** Note ids with any outbox row, including a non-retryable `stateMismatch`. */
 export async function listOutboxNoteIds(username: string): Promise<Set<string>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
-  const ids = new Set<string>();
-  for (const row of rows) {
-    const noteId = notesOutboxNoteId(row);
-    if (noteId) ids.add(noteId);
-  }
-  return ids;
+  return new Set((await readQueuedNoteWrites(username)).keys());
 }
 
 /**
@@ -627,25 +612,44 @@ export async function listOutboxNoteIds(username: string): Promise<Set<string>> 
  * queued but must not pin a notebook sync token until `cannotCalculateChanges`.
  */
 export async function listNoteIdsBlockingSyncToken(username: string): Promise<Set<string>> {
-  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
   const blocking = new Set<string>();
-  for (const row of rows) {
-    if (row.lastError === "stateMismatch") continue;
-    const noteId = notesOutboxNoteId(row);
-    if (noteId) blocking.add(noteId);
+  for (const [noteId, write] of await readQueuedNoteWrites(username)) {
+    if (write.blocksToken) blocking.add(noteId);
   }
   return blocking;
 }
 
-/** Note id targeted by an outbox row (upsert/delete `noteId`, or create `tempNoteId`). */
+/** Queued Notes outbox writes per note id, read through the shared inbound engine. */
+async function readQueuedNoteWrites(
+  username: string,
+): Promise<Map<string, PendingWrite<NotePendingField>>> {
+  const rows = await listOutboxMutationsForDomain(username, NOTES_DOMAIN);
+  return readPendingWrites(rows, (row) => ({
+    id: notesOutboxNoteId(row),
+    fields: notePendingFieldsOfRow(row),
+  }));
+}
+
+/** Fields the outbox recorded at enqueue time. Key presence is not a change. */
+function notePendingFieldsOfRow(row: OfflineOutboxRow): NotePendingField[] {
+  const fields: NotePendingField[] = [];
+  if (row.op === "archive" || row.op === "restore") fields.push("archived");
+  if (row.op === "delete") fields.push("delete");
+  try {
+    const payload = JSON.parse(row.payload) as { fields?: unknown };
+    if (Array.isArray(payload?.fields)) fields.push(...payload.fields.filter(isNotePendingField));
+  } catch {
+    // ignore malformed payloads
+  }
+  return fields;
+}
+
+/** Note id targeted by an outbox row. */
 export function notesOutboxNoteId(row: OfflineOutboxRow): string | null {
   if (row.domain !== NOTES_DOMAIN) return null;
   try {
-    const payload = JSON.parse(row.payload) as {
-      noteId?: string;
-      tempNoteId?: string;
-    };
-    return payload.noteId ?? payload.tempNoteId ?? null;
+    const payload = JSON.parse(row.payload) as { noteId?: string };
+    return payload.noteId ?? null;
   } catch {
     return null;
   }
@@ -665,7 +669,7 @@ export async function removeOutboxMutationsForNote(
     if (row.op !== "upsert") continue;
     try {
       const payload = JSON.parse(row.payload) as NotesUpsertPayload;
-      if (payload.noteId === noteId || payload.tempNoteId === noteId) {
+      if (payload.noteId === noteId) {
         await removeOutboxMutation(username, row.id);
       }
     } catch {
@@ -708,7 +712,7 @@ function mergeNoteUpsertPayloads(
   return {
     noteId: incoming.noteId,
     metadata,
-    tempNoteId: incoming.tempNoteId ?? existing.tempNoteId,
+    ...(existing.create || incoming.create ? { create: true } : {}),
     ...(fields.length > 0 ? { fields } : {}),
     ...(patchNotebook !== undefined ? { patchNotebook } : {}),
   };
@@ -743,7 +747,7 @@ export async function enqueueCoalescedNoteUpdate(
   noteId: string,
   note: Note,
   baseUpdatedAt: string | undefined,
-  tempNoteId?: string,
+  create?: boolean,
   tagDelta?: NoteTagDelta,
   selection?: NoteMetadataSelection,
 ): Promise<void> {
@@ -759,7 +763,7 @@ export async function enqueueCoalescedNoteUpdate(
     patch: {
       noteId,
       metadata,
-      tempNoteId,
+      ...(create ? { create: true } : {}),
       ...(fields.length > 0 ? { fields } : {}),
       ...(selection ? { patchNotebook: selection.includeNotebook === true } : {}),
     },

@@ -35,7 +35,7 @@ final class MeetMeetingRoomCodeBackfillTest extends WgwDatabaseTestCase
             ])
             ->assertCreated()
             ->json('id');
-        $this->assertSame('chat-standup', $slugId);
+        $this->assertMatchesRegularExpression('/^chat-standup-[0-9a-z]{6}$/', $slugId);
 
         $calendarId = (int) CalendarInstance::query()->where('uri', $slugId)->value('calendarid');
         ChatChannelMeta::query()->where('calendarid', $calendarId)->update([

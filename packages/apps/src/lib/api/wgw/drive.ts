@@ -1,5 +1,4 @@
 import {
-  wgwErrorMessageFromBody,
   wgwFetch,
   wgwFetchPrincipal,
   wgwGuestSharePath,
@@ -16,8 +15,6 @@ import type {
 import type {
   DriveAPIOperations,
   DriveAppBootstrap,
-  DriveMutationOpts,
-  DriveUploadProgress,
   DriveUIData,
 } from "@/drive-core/src/drive-types";
 
@@ -56,16 +53,9 @@ export async function setDriveFileStar(
   if (!res.ok) throw new Error(`DELETE /files/star failed (${res.status})`);
 }
 
-function uploadIdentifier(file: File): string {
-  const raw = `${file.name}-${file.size}-${file.lastModified}`;
-  return raw.replace(/[^0-9A-Za-z_]/g, "_");
-}
-
 function isVisibleDriveEntry(entry: WgwDriveDirectoryEntry): boolean {
   return !entry.name.trim().startsWith(".");
 }
-
-const DRIVE_UPLOAD_CHUNK_SIZE = 1 * 1024 * 1024; // Stay below stricter upload_max_filesize defaults.
 
 async function fetchListing(dir: string, opts?: { signal?: AbortSignal }) {
   const res = await wgwFetch(`/files/children?${pathQuery(dir)}`, { signal: opts?.signal });
@@ -223,37 +213,6 @@ async function postJson(path: string, body: object, opts?: { signal?: AbortSigna
   throw new Error(`POST ${path} failed (${res.status})`);
 }
 
-async function patchJson(path: string, body: object, opts?: DriveMutationOpts) {
-  const res = await wgwFetch(path, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: opts?.signal,
-  });
-  if (!res.ok) {
-    const detail = wgwErrorMessageFromBody(await res.text(), res.status, res.statusText);
-    throw new Error(`PATCH ${path} failed (${res.status}): ${detail}`);
-  }
-}
-
-async function deleteJson(path: string, body: object, opts?: { signal?: AbortSignal }) {
-  const res = await wgwFetch(path, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: opts?.signal,
-  });
-  if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status})`);
-}
-
-function emptyState(cwd: string): DriveUIData {
-  return {
-    user: { username: "", name: "", role: "user", roots: [] },
-    cwd,
-    directory: { location: cwd, files: [] },
-  };
-}
-
 function createSharedDriveOperations(): Pick<
   DriveAPIOperations,
   "search" | "listStars" | "setStar" | "downloadUnifiedSearchRecord"
@@ -282,6 +241,22 @@ function createSharedDriveOperations(): Pick<
     },
   };
 }
+
+/**
+ * Guests cannot upload yet: they will use the same upload queue and JMAP path
+ * as signed-in users (Epic #1499). Until then the Drive UI offers no upload
+ * to guests, and these operations refuse before any request is sent.
+ */
+export const GUEST_UPLOAD_UNAVAILABLE = "Uploading is not available for guests yet.";
+
+/**
+ * Guests have no write path for folders and files yet: JMAP `FileNode/set`
+ * is for signed-in users only (#1712). Until then the Drive UI offers no new
+ * folder, new file, rename, move or delete to guests, and these operations
+ * refuse before any request is sent.
+ */
+export const GUEST_STRUCTURE_UNAVAILABLE =
+  "Changing folders and files is not available for guests yet.";
 
 /**
  * Guests list over REST `/files/children`, which has no FileNode id.
@@ -318,50 +293,17 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
     async listAllDirectoryEntries(at, opts) {
       return fetchAllDirectoryEntries(normalizePath(at), opts);
     },
-    async createFolder(input, opts) {
-      const parent = normalizePath(input.cwd);
-      const name = input.name.trim();
-      await postJson(`/files/directories?${pathQuery(parent)}`, { name }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async createFolder() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async createFile(input, opts) {
-      const parent = normalizePath(input.cwd);
-      const name = input.name.trim();
-      await postJson(`/files/directories?${pathQuery(parent)}`, { name, type: "file" }, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async createFile() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async renameItem(input, opts) {
-      const fromPath = input.from.includes("/")
-        ? normalizePath(input.from)
-        : (() => {
-            const parent = normalizePath(input.destination);
-            return parent === "/" ? `/${input.from}` : `${parent}/${input.from}`;
-          })();
-      const destination = normalizePath(input.destination);
-      const body: { name: string; destination?: string } = { name: input.to };
-      if (destination !== parentAndName(fromPath).destination) {
-        body.destination = destination;
-      }
-      await patchJson(`/files?${pathQuery(fromPath)}`, body, opts);
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async renameItem() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
-    async deleteItems(paths, opts) {
-      const normalized = paths.map((path) => normalizePath(path));
-      if (normalized.length === 1) {
-        await wgwFetch(`/files?${pathQuery(normalized[0]!)}`, {
-          method: "DELETE",
-          signal: opts?.signal,
-        }).then((res) => {
-          if (!res.ok) throw new Error(`DELETE /files?path= failed (${res.status})`);
-        });
-      } else {
-        await deleteJson("/files", { paths: normalized }, opts);
-      }
-      if (opts?.refreshState === false) return emptyState(cwd);
-      return fetchGuestState(cwd, opts);
+    async deleteItems() {
+      throw new Error(GUEST_STRUCTURE_UNAVAILABLE);
     },
     async downloadFile(path, opts) {
       const res = await wgwFetch(`/files/content?${pathQuery(path)}`, { signal: opts?.signal });
@@ -374,9 +316,8 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
       if (!res.ok) throw new Error(`GET /files/content failed (${res.status})`);
       return res.blob();
     },
-    async checkUploadReady(opts) {
-      const res = await wgwFetch("/files/content", { method: "HEAD", signal: opts?.signal });
-      if (!res.ok) throw new Error(`HEAD /files/content failed (${res.status})`);
+    async checkUploadReady() {
+      throw new Error(GUEST_UPLOAD_UNAVAILABLE);
     },
     async listEntriesByPaths(paths, opts) {
       const normalized = Array.from(
@@ -410,62 +351,8 @@ function createGuestWgwDriveOperations(initialCwd: string): DriveAPIOperations {
         .map((path) => entriesByPath.get(path))
         .filter((entry): entry is WgwDriveDirectoryEntry => !!entry);
     },
-    async uploadFiles(input, opts) {
-      const targetCwd = normalizePath(input.cwd);
-      const totalBytes = input.files.reduce((sum, file) => sum + file.size, 0);
-      const allChunks = input.files.reduce(
-        (sum, file) => sum + Math.max(1, Math.ceil(file.size / DRIVE_UPLOAD_CHUNK_SIZE)),
-        0,
-      );
-      let uploadedBytes = 0;
-      let uploadedChunks = 0;
-      let filesCompleted = 0;
-      const filesTotal = input.files.length;
-      const publishProgress = (currentFileName: string) => {
-        if (!opts?.onProgress) return;
-        const progress: DriveUploadProgress = {
-          uploadedBytes,
-          totalBytes,
-          uploadedChunks,
-          totalChunks: allChunks,
-          currentFileName,
-          filesCompleted,
-          filesTotal,
-        };
-        opts.onProgress(progress);
-      };
-      publishProgress(input.files[0]?.name ?? "");
-      for (const file of input.files) {
-        const fileChunks = Math.max(1, Math.ceil(file.size / DRIVE_UPLOAD_CHUNK_SIZE));
-        const identifier = uploadIdentifier(file);
-        for (let chunkIndex = 0; chunkIndex < fileChunks; chunkIndex += 1) {
-          const start = chunkIndex * DRIVE_UPLOAD_CHUNK_SIZE;
-          const end = Math.min(file.size, start + DRIVE_UPLOAD_CHUNK_SIZE);
-          const chunkBlob = file.slice(start, end);
-
-          const form = new FormData();
-          form.append("file", chunkBlob, file.name);
-          form.append("resumableFilename", file.name);
-          form.append("resumableIdentifier", identifier);
-          form.append("resumableChunkNumber", String(chunkIndex + 1));
-          form.append("resumableTotalChunks", String(fileChunks));
-
-          const res = await wgwFetch(`/files/content?${pathQuery(targetCwd)}`, {
-            method: "POST",
-            body: form,
-            signal: opts?.signal,
-          });
-          if (!res.ok) throw new Error(`POST /files/content failed (${res.status})`);
-          uploadedChunks += 1;
-          uploadedBytes += chunkBlob.size;
-          publishProgress(file.name);
-        }
-        filesCompleted += 1;
-        publishProgress(file.name);
-      }
-      const state = await fetchGuestState(targetCwd, opts);
-      cwd = normalizePath(state.cwd);
-      return state;
+    async uploadFiles() {
+      throw new Error(GUEST_UPLOAD_UNAVAILABLE);
     },
   };
 }
@@ -488,6 +375,16 @@ function triggerBrowserDownload(blob: Blob, filename: string): void {
 function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperations {
   let cwd = normalizePath(initialCwd);
   const shared = createSharedDriveOperations();
+  // The signed-in user does not change while these operations live: one
+  // `GET /files/context` for every blob read, not one per preview.
+  let userRequest: Promise<WgwDriveUserData> | null = null;
+  const driveUser = (): Promise<WgwDriveUserData> => {
+    userRequest ??= fetchDriveUser().catch((error: unknown) => {
+      userRequest = null;
+      throw error;
+    });
+    return userRequest;
+  };
 
   return {
     ...shared,
@@ -535,7 +432,7 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
     },
     async downloadFile(path, opts) {
       const session = await driveJmapSession();
-      const user = await fetchDriveUser(opts);
+      const user = await driveUser();
       const blob = await downloadFileNodeBlob(
         session,
         normalizePath(path),
@@ -546,7 +443,7 @@ function createSignedInWgwDriveOperations(initialCwd: string): DriveAPIOperation
     },
     async readFileBlob(path, opts) {
       const session = await driveJmapSession();
-      const user = await fetchDriveUser(opts);
+      const user = await driveUser();
       return downloadFileNodeBlob(session, normalizePath(path), user.username, opts?.signal);
     },
     async checkUploadReady() {

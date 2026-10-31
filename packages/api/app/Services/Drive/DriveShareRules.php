@@ -19,7 +19,7 @@ final class DriveShareRules
     public function __construct(
         private StoragePaths $paths,
         private DriveSharePathScope $scope,
-        private DriveGroupResolver $groups,
+        private DriveShareOwnerReach $ownerReach,
         private CollabDocFormats $collabDocFormats,
         private WgwStorage $storage,
     ) {}
@@ -84,19 +84,7 @@ final class DriveShareRules
 
     public function principalOwnsSharePath(string $username, string $path): bool
     {
-        $segments = explode('/', ltrim($path, '/'));
-        $root = $segments[0];
-        if ($root === 'users' && strcasecmp((string) ($segments[1] ?? ''), $username) === 0) {
-            return true;
-        }
-        if ($root === 'groups') {
-            $group = (string) ($segments[1] ?? '');
-            if ($group !== '' && in_array($group, $this->groups->allowedGroupSlugs($username), true)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->ownerReach->principalReachesPath($username, $path);
     }
 
     public function assertSharePathOwnedBy(string $username, string $path): void

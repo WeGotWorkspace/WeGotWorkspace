@@ -67,14 +67,24 @@ export type DocsCollabUrls = {
   documentFormat?: TextEditorContentFormat;
   onPersistForbidden?: () => void;
   /**
-   * The server answered 404. Retrying the save stops. The local copy stays.
+   * The server answered 404: the document was deleted, or this account lost read
+   * access. Retrying the save stops. The local copy stays.
    */
   onDocumentGone?: () => void;
+  /**
+   * The server answered 409 `note_archived` (#1535). Retrying stops and the
+   * save is no longer pending: archive wins over the unsaved edit.
+   */
+  onPersistArchived?: () => void;
   /**
    * The stored state is not an ancestor of the journal, and this client has
    * unsaved work. Nothing is written until the person chooses.
    */
-  onExternalWrite?: (detail: { markdown: string; title: string | null }) => void;
+  onExternalWrite?: (detail: {
+    markdown: string;
+    title: string | null;
+    serverState: Uint8Array;
+  }) => void;
   /** Called with the markdown the server accepted. */
   onPersistSuccess?: (markdown: string) => void;
 };
@@ -91,8 +101,8 @@ export const DEFAULT_DOCS_COLLAB_URLS: DocsCollabUrls = {
 export type DocsCollabSession = {
   ydoc: Y.Doc;
   awareness: awarenessProtocol.Awareness;
-  /** `id` is a stable per-name author id used by track-changes (suggestion mode). */
-  user: { name: string; color: string; id: string };
+  /** Caret label and colour for peers (awareness only, never stored in the document). */
+  user: { name: string; color: string };
 };
 
 export type UseDocsCollabOptions = {
@@ -110,7 +120,7 @@ export type UseDocsCollabOptions = {
 };
 
 /** Why a save stopped for good. `forbidden` lifts on reconnect; the others stay. */
-export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large";
+export type DocsCollabSaveTerminalKind = "gone" | "forbidden" | "too-large" | "archived";
 
 export type DocsCollabSessionRefs = {
   meshRef: MutableRefObject<DocsRtcSession | null>;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contacts;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Events\EventDispatch;
 use App\Exceptions\ApiHttpException;
 use App\Http\Support\OptimisticConcurrency;
@@ -15,10 +16,10 @@ use App\Services\Contacts\Conversion\VCardJsContactConverter;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Services\VObject\VObjectPayloadGuard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 final class ContactCardRepository
 {
@@ -40,16 +41,10 @@ final class ContactCardRepository
         $book = $this->books->requireAccessibleBook($username, $addressBookId);
         $bookApiId = $this->books->viewerApiId($username, $book);
 
-        $cards = Card::query()
-            ->where('addressbookid', (int) $book->id)
-            ->orderBy('uri')
-            ->get();
+        $cards = $this->cardsInBook((int) $book->id, $uid)->get();
 
         $list = [];
         foreach ($cards as $card) {
-            if ($uid !== null && $this->extractUid($card) !== $uid) {
-                continue;
-            }
             try {
                 $list[] = $this->mapper->toContactCard($card, $bookApiId, $username);
             } catch (ApiHttpException $e) {
@@ -78,26 +73,16 @@ final class ContactCardRepository
 
         $uidFilter = isset($filter['uid']) && is_string($filter['uid']) ? $filter['uid'] : null;
 
-        $cards = Card::query()
-            ->where('addressbookid', (int) $book->id)
-            ->orderBy('uri')
-            ->get();
+        $uris = $this->cardsInBook((int) $book->id, $uidFilter)->pluck('uri');
 
         $ids = [];
-        $total = 0;
-        foreach ($cards as $card) {
-            if ($uidFilter !== null && $this->extractUid($card) !== $uidFilter) {
-                continue;
-            }
-            $total++;
-            if ($limit === null || count($ids) < $limit) {
-                $ids[] = ContactCardMapper::cardIdFromUri((string) $card->uri);
-            }
+        foreach ($limit === null ? $uris : $uris->take($limit) as $uri) {
+            $ids[] = ContactCardMapper::cardIdFromUri((string) $uri);
         }
 
         return [
             'ids' => $ids,
-            'total' => $total,
+            'total' => $uris->count(),
         ];
     }
 
@@ -189,9 +174,9 @@ final class ContactCardRepository
             try {
                 $card = $this->vcardConverter->cardFromVCard($chunk);
                 if (ContactCardVcfImportSupport::isGroupCard($card)) {
-                    $groups[] = $card;
+                    $groups[$index] = $card;
                 } else {
-                    $individuals[] = $card;
+                    $individuals[$index] = $card;
                 }
             } catch (ApiHttpException $e) {
                 $entry = ['index' => $index, 'message' => $e->getMessage()];
@@ -207,15 +192,17 @@ final class ContactCardRepository
         $created = [];
         $bookApiId = $this->books->viewerApiId($username, $book);
 
-        foreach ([...$individuals, ...$groups] as $card) {
+        foreach ($individuals + $groups as $index => $card) {
             try {
                 $payload = ContactCardVcfImportSupport::createPayload($card, $bookApiId);
                 $created[] = $this->create($username, $payload);
+            } catch (ApiHttpException $e) {
+                // A UID already in the book: report it, keep the existing card.
+                $errors[] = $e->errorCode() === 'alreadyExists'
+                    ? ['index' => $index, 'message' => $e->getMessage(), 'code' => 'alreadyExists']
+                    : ['index' => $index, 'message' => 'Could not import contact.'];
             } catch (\Throwable) {
-                $errors[] = [
-                    'index' => count($created) + count($errors),
-                    'message' => 'Could not import contact.',
-                ];
+                $errors[] = ['index' => $index, 'message' => 'Could not import contact.'];
             }
         }
 
@@ -247,7 +234,7 @@ final class ContactCardRepository
         $cardUri = $this->allocateCardUri((int) $book->id, $cardPayload);
         $vcard = $this->mapper->toVCard($username, $cardPayload);
 
-        $this->cardBackend()->createCard((int) $book->id, $cardUri, $vcard);
+        ContactCardUidGuard::write(fn () => $this->cardBackend()->createCard((int) $book->id, $cardUri, $vcard));
         $davPath = $this->cardDavPathFor($book, $cardUri);
         $this->searchIndexSync->sync(
             'contacts',
@@ -295,7 +282,7 @@ final class ContactCardRepository
 
         $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
         $addressBookId = (int) $card->addressbookid;
-        $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
+        ContactCardUidGuard::write(fn () => $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard));
         $davPath = $this->cardDavPathFor($book, $cardUri);
         $this->searchIndexSync->sync(
             'contacts',
@@ -377,7 +364,7 @@ final class ContactCardRepository
         $cardPayload['addressBookIds'] = [$bookApiId => true];
         $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
         $addressBookId = (int) $card->addressbookid;
-        $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard);
+        ContactCardUidGuard::write(fn () => $this->cardBackend()->updateCard($addressBookId, $cardUri, $vcard));
         $davPath = $this->cardDavPathFor($book, $cardUri);
         $this->searchIndexSync->sync(
             'contacts',
@@ -503,7 +490,7 @@ final class ContactCardRepository
         }
 
         $vcard = $this->mapper->updatedVCard($username, $card, $cardPayload, $this->normalizeCardPayload($existingContact, $existingContact));
-        DB::connection('wgw')->transaction(function () use (
+        ContactCardUidGuard::write(fn () => DB::connection('wgw')->transaction(function () use (
             $username,
             $sourceBook,
             $existingContact,
@@ -515,7 +502,7 @@ final class ContactCardRepository
             $this->dropSourceBookGroupMemberships($username, $sourceBook, $existingContact, $cardUri);
             $this->cardBackend()->createCard($destId, $cardUri, $vcard);
             $this->cardBackend()->deleteCard($sourceId, $cardUri);
-        });
+        }));
 
         $oldPath = $this->cardDavPathFor($sourceBook, $cardUri);
         $newPath = $this->cardDavPathFor($destinationBook, $cardUri);
@@ -735,6 +722,7 @@ final class ContactCardRepository
         ];
     }
 
+    /** @phpstan-impure Reads the row as it is now; writes happen in between. */
     private function findCardInBook(int $addressBookId, string $cardUri): ?Card
     {
         return Card::query()
@@ -765,34 +753,41 @@ final class ContactCardRepository
         );
     }
 
-    private function cardBackend(): CardPDO
+    private function cardBackend(): WgwCardBackend
     {
-        return new CardPDO(DB::connection('wgw')->getPdo());
+        return WgwCardBackend::fromConnection();
     }
 
     /**
+     * Sabre logs a change to the book itself (rename, description) with an
+     * empty uri. That row moves the book's state but is not a card, so it is
+     * dropped here, like the calendar and notes change feeds do.
+     *
      * @param  list<string>  $uris
      * @return list<string>
      */
     private function mapChangeUris(array $uris): array
     {
-        return array_map(
-            fn (string $uri): string => ContactCardMapper::cardIdFromUri($uri),
-            $uris,
-        );
+        $ids = [];
+        foreach ($uris as $uri) {
+            if ($uri !== '') {
+                $ids[] = ContactCardMapper::cardIdFromUri($uri);
+            }
+        }
+
+        return $ids;
     }
 
-    private function extractUid(Card $card): ?string
+    /**
+     * Cards of one book in URI order, optionally only the one holding a UID.
+     *
+     * @return Builder<Card>
+     */
+    private function cardsInBook(int $addressBookId, ?string $uid): Builder
     {
-        $raw = $card->carddata;
-        if (! is_string($raw) || $raw === '') {
-            return null;
-        }
-
-        if (preg_match('/^UID(?:;[^:]*)?:(.+)$/mi', $raw, $matches) !== 1) {
-            return null;
-        }
-
-        return trim($matches[1]);
+        return Card::query()
+            ->where('addressbookid', $addressBookId)
+            ->when($uid !== null, fn (Builder $query) => $query->where('uid', CardUid::normalize((string) $uid) ?? ''))
+            ->orderBy('uri');
     }
 }

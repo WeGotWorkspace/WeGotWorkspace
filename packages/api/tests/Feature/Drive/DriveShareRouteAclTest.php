@@ -50,7 +50,7 @@ final class DriveShareRouteAclTest extends WgwDatabaseTestCase
         ]);
 
         $response = $this->withBearer($foreignGuestToken)->json($method, $uri, $body ?? []);
-        $response->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+        $response->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
     }
 }

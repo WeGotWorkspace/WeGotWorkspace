@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
+use App\Services\Admin\AdminConstants;
+use App\Services\Calendars\CalendarShareVisibility;
 use App\Services\Calendars\CollectionKind;
 use App\Services\Chat\ChatCollectionUris;
 use App\Services\Docs\DocsThreadCollectionUris;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\DAV\Exception\Conflict;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
 
 /**
@@ -31,6 +35,9 @@ use Sabre\VObject\Recur\MaxInstancesExceededException;
  * reactions, tombstones) and would render as broken journal entries in an
  * external client. Notes stay DAV-visible by design — a note is semantically a
  * real journal entry and external rendering is coherent, tolerated interop.
+ *
+ * Inbound shares the user dismissed are dropped the same way, so a dismissed
+ * share is gone over DAV as it is over REST and JMAP until it is restored.
  *
  * RESERVED_URI_PREFIXES is a separate concern from hiding: it stops a DAV
  * client minting a shadow collection at a uri REST would misread.
@@ -129,12 +136,31 @@ final class WgwCalendarBackend extends CalPDO
             }
         }
 
-        return array_values(array_filter($calendars, static function (array $calendar) use ($hidden): bool {
+        $dismissed = array_flip($this->dismissedShareCalendarIds($principalUri));
+
+        return array_values(array_filter($calendars, static function (array $calendar) use ($hidden, $dismissed): bool {
             $id = $calendar['id'] ?? null;
             $calendarId = is_array($id) ? (int) ($id[0] ?? 0) : (int) $id;
+            $access = (int) ($calendar['share-access'] ?? SharingPlugin::ACCESS_SHAREDOWNER);
+            $isSharee = $access === SharingPlugin::ACCESS_READ || $access === SharingPlugin::ACCESS_READWRITE;
 
-            return ! array_key_exists($calendarId, $hidden);
+            return ! array_key_exists($calendarId, $hidden)
+                && ! ($isSharee && array_key_exists($calendarId, $dismissed));
         }));
+    }
+
+    /**
+     * Dismissals are per user, so only a user's own calendar home has them.
+     *
+     * @return list<int>
+     */
+    private function dismissedShareCalendarIds(string $principalUri): array
+    {
+        if (! str_starts_with($principalUri, 'principals/') || str_starts_with($principalUri, AdminConstants::GROUP_PREFIX)) {
+            return [];
+        }
+
+        return (new CalendarShareVisibility)->dismissedCalendarIds(substr($principalUri, strlen('principals/')));
     }
 
     /**
@@ -196,6 +222,67 @@ final class WgwCalendarBackend extends CalPDO
         if ($owner !== null && $owner !== $kind) {
             throw new Forbidden('This collection URI prefix belongs to '.$owner->value.'.');
         }
+    }
+
+    /**
+     * @param  mixed  $calendarId
+     * @param  string  $objectUri
+     * @param  string  $calendarData
+     */
+    public function createCalendarObject($calendarId, $objectUri, $calendarData)
+    {
+        $this->assertNoteUidFree($calendarId, $calendarData);
+
+        return parent::createCalendarObject($calendarId, $objectUri, $calendarData);
+    }
+
+    /**
+     * @param  mixed  $calendarId
+     * @param  string  $objectUri
+     * @param  string  $calendarData
+     */
+    public function updateCalendarObject($calendarId, $objectUri, $calendarData)
+    {
+        $this->assertNoteUidFree($calendarId, $calendarData);
+
+        return parent::updateCalendarObject($calendarId, $objectUri, $calendarData);
+    }
+
+    /**
+     * A note's UID is its collab room key, and room access means "may read a
+     * note with this UID". The schema only keeps a UID unique per notebook, so
+     * a note written into another notebook with someone else's UID would let
+     * its writer into their room. Keep note UIDs unique across all notebooks
+     * on every write path, CalDAV included.
+     */
+    private function assertNoteUidFree(mixed $calendarId, string $calendarData): void
+    {
+        $id = is_array($calendarId) ? (int) ($calendarId[0] ?? 0) : (int) $calendarId;
+        if (! str_contains($calendarData, 'VJOURNAL') || ! $this->isNotebook($id)) {
+            return;
+        }
+        $data = $this->getDenormalizedData($calendarData);
+        if ($data['componentType'] !== 'VJOURNAL' || ($data['uid'] ?? '') === '') {
+            return;
+        }
+        $taken = DB::connection('wgw')->table('calendarobjects')
+            ->join('calendar_collection_meta', 'calendar_collection_meta.calendarid', '=', 'calendarobjects.calendarid')
+            ->where('calendar_collection_meta.kind', CollectionKind::Notebook->value)
+            ->where('calendarobjects.componenttype', 'VJOURNAL')
+            ->where('calendarobjects.uid', (string) $data['uid'])
+            ->where('calendarobjects.calendarid', '!=', $id)
+            ->exists();
+        if ($taken) {
+            throw new Conflict('A note with this UID already exists.');
+        }
+    }
+
+    private function isNotebook(int $calendarId): bool
+    {
+        return DB::connection('wgw')->table('calendar_collection_meta')
+            ->where('calendarid', $calendarId)
+            ->where('kind', CollectionKind::Notebook->value)
+            ->exists();
     }
 
     /**

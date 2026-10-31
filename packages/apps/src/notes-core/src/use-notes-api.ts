@@ -39,6 +39,7 @@ import { useOfflineReconnectFlush } from "@/lib/offline/use-offline-reconnect-fl
 import { defaultNotesLabels } from "@/notes-core/src/notes-labels";
 import type { NotesNotebookCollection, NotesUIData } from "@/notes-core/src/notes-types";
 import { createDefaultNotesApiSource, type NotesApiSource } from "./notes-api-source";
+import { uploadPendingNoteBodies } from "./notes-pending-bodies";
 
 /** Live JMAP inbound poll (REST `/changes` is reconnect / mock-tier fallback). */
 const ONLINE_CHANGES_POLL_MS = 10_000;
@@ -134,8 +135,13 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
   const applyInboundRefresh = useCallback(async () => {
     if (!offlineUsername) return;
     const notebookIds = (data?.data.notebookCollections ?? []).map((item) => item.id);
-    await syncNotesInboundFromRest(offlineUsername, notebookIds);
-    await patchFromCache();
+    try {
+      await syncNotesInboundFromRest(offlineUsername, notebookIds);
+    } finally {
+      // Another tab may have written the shared cache (an archive, a create).
+      // Show it even when this tab cannot reach the server to sync.
+      await patchFromCache();
+    }
   }, [data?.data.notebookCollections, offlineUsername, patchFromCache]);
 
   const refreshList = useCallback(() => {
@@ -161,6 +167,7 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     flush: async () => {
       if (!offlineUsername) return;
       await getNotesSyncRunner(offlineUsername).flush();
+      await uploadPendingNoteBodies(offlineUsername);
       await applyInboundRefresh();
       notifyNotesBootstrapUpdated(offlineUsername);
     },
@@ -171,11 +178,23 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     return subscribeNotesBootstrapUpdated(offlineUsername, () => {
       if (crossTabRefreshInFlightRef.current || reconnectSyncing || listRefreshing) return;
       crossTabRefreshInFlightRef.current = true;
-      void applyInboundRefresh().finally(() => {
-        crossTabRefreshInFlightRef.current = false;
-      });
+      // Offline, only the shared cache can have changed: no /changes call.
+      // Online, a failed sync is fine; applyInboundRefresh still re-reads it.
+      const refresh = online ? applyInboundRefresh() : patchFromCache();
+      void refresh
+        .catch(() => undefined)
+        .finally(() => {
+          crossTabRefreshInFlightRef.current = false;
+        });
     });
-  }, [applyInboundRefresh, listRefreshing, offlineUsername, reconnectSyncing]);
+  }, [
+    applyInboundRefresh,
+    listRefreshing,
+    offlineUsername,
+    online,
+    patchFromCache,
+    reconnectSyncing,
+  ]);
 
   const notebookCollectionsRef = useRef(data?.data.notebookCollections ?? []);
   notebookCollectionsRef.current = data?.data.notebookCollections ?? [];
@@ -299,8 +318,10 @@ export function useNotesAPI(source?: NotesApiSource, options?: UseNotesAPIOption
     successVersion,
     bootstrapRevision,
     syncing: reconnectSyncing,
-    listLoading: phase === "loading" || reconnectSyncing,
-    listRefreshing,
+    // First paint only. A reconnect keeps the cached list on screen and shows
+    // the header refresh icon instead (#1532), same split as Contacts.
+    listLoading: phase === "loading",
+    listRefreshing: listRefreshing || reconnectSyncing,
     refreshList,
     session: data?.session ?? mockWorkspaceSession,
     data: data?.data ?? placeholderData,

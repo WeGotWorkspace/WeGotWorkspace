@@ -7,7 +7,6 @@ namespace App\Services\Jmap\FileNodes;
 use App\Events\EventDispatch;
 use App\Models\JmapFileNode;
 use App\Services\Drive\DocAttachmentPaths;
-use App\Services\Drive\DocAttachmentsService;
 use App\Services\Drive\DriveShareAuthorizer;
 use App\Services\Drive\DriveStarService;
 use App\Services\Jmap\Blobs\JmapBlobService;
@@ -81,10 +80,10 @@ final class FileNodeSetService
         private readonly WgwStorage $storage,
         private readonly NoteMarkdownCodec $codec,
         private readonly StoragePaths $paths,
-        private readonly DocAttachmentsService $docAttachments,
         private readonly DriveStarService $stars,
         private readonly DriveShareAuthorizer $authorizer,
         private readonly FileNodeRelocator $relocator,
+        private readonly FileNodeRootMarkers $markers,
         private readonly FileNodeBlobAttacher $attacher,
         private readonly FileNodeVersionCheck $versionCheck,
         private readonly EventDispatch $eventDispatch = new EventDispatch([]),
@@ -109,41 +108,45 @@ final class FileNodeSetService
         $this->destroyed = [];
         $this->blobReferences = $this->countBlobReferences([...array_values($create), ...array_values($update)]);
 
-        $principal = $this->accounts->principalFor($username);
-        $roots = $this->accounts->rootsFor($username);
-        $this->accounts->ensureAccountIndexed($username);
+        // One marker batch for the whole call: a batch move or upload bumps
+        // each Drive root once ({@see FileNodeRootMarkers}).
+        $this->markers->batch(function () use ($username, $create, $update, $destroy, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively): void {
+            $principal = $this->accounts->principalFor($username);
+            $roots = $this->accounts->rootsFor($username);
+            $this->accounts->ensureAccountIndexed($username);
 
-        // Destroys first, deepest-first, so replace/create can reuse names
-        // and "all children destroyed in the same operation" holds (§3.2.3).
-        $this->applyDestroys($destroy, $principal, $roots, $onDestroyRemoveChildren);
+            // Destroys first, deepest-first, so replace/create can reuse names
+            // and "all children destroyed in the same operation" holds (§3.2.3).
+            $this->applyDestroys($destroy, $principal, $roots, $onDestroyRemoveChildren);
 
-        foreach ($create as $creationId => $payload) {
-            $creationId = (string) $creationId;
-            if (! is_array($payload)) {
-                $this->notCreated[$creationId] = $this->invalidProperties('FileNode create entry must be an object.');
+            foreach ($create as $creationId => $payload) {
+                $creationId = (string) $creationId;
+                if (! is_array($payload)) {
+                    $this->notCreated[$creationId] = $this->invalidProperties('FileNode create entry must be an object.');
 
-                continue;
+                    continue;
+                }
+                try {
+                    $this->created[$creationId] = $this->applyCreate($username, $payload, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
+                } catch (FileNodeSetError $e) {
+                    $this->notCreated[$creationId] = $e->shape;
+                }
             }
-            try {
-                $this->created[$creationId] = $this->applyCreate($username, $payload, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
-            } catch (FileNodeSetError $e) {
-                $this->notCreated[$creationId] = $e->shape;
-            }
-        }
 
-        foreach ($update as $nodeId => $patch) {
-            $nodeId = (string) $nodeId;
-            if (! is_array($patch)) {
-                $this->notUpdated[$nodeId] = $this->invalidProperties('FileNode update entry must be an object.');
+            foreach ($update as $nodeId => $patch) {
+                $nodeId = (string) $nodeId;
+                if (! is_array($patch)) {
+                    $this->notUpdated[$nodeId] = $this->invalidProperties('FileNode update entry must be an object.');
 
-                continue;
+                    continue;
+                }
+                try {
+                    $this->updated[$nodeId] = $this->applyUpdate($username, $nodeId, $patch, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
+                } catch (FileNodeSetError $e) {
+                    $this->notUpdated[$nodeId] = $e->shape;
+                }
             }
-            try {
-                $this->updated[$nodeId] = $this->applyUpdate($username, $nodeId, $patch, $principal, $roots, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively);
-            } catch (FileNodeSetError $e) {
-                $this->notUpdated[$nodeId] = $e->shape;
-            }
-        }
+        });
 
         return [
             'created' => $this->created,
@@ -212,15 +215,11 @@ final class FileNodeSetService
         }
 
         $disk = $this->storage->files();
-        $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
         if ($node->is_dir) {
             $disk->deleteDirectory($key);
         } elseif ($disk->fileExists($key)) {
             $disk->delete($key);
         }
-        $this->index->recordDeleteWithSidecar($key);
-        $this->stars->deletePathPrefix($key);
-        $this->docAttachments->destroyDocsBestEffort($docIds);
         $this->relocator->afterHardDelete($key);
     }
 
@@ -282,7 +281,7 @@ final class FileNodeSetService
             throw new FileNodeSetError($this->invalidProperties('Directory nodes must not carry a blobId.', ['blobId']));
         }
 
-        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload);
+        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload, incomingIsFile: $nodeType === 'file');
         $key = $parent->storage_key.'/'.$name;
         $disk = $this->storage->files();
 
@@ -442,6 +441,8 @@ final class FileNodeSetService
                 }
                 $remaining = ($this->blobReferences[$blobId] ?? 1) - 1;
                 $this->blobReferences[$blobId] = max(0, $remaining);
+                // #1517: an outside write to a Docs document, detected on the next yjs read.
+                $this->index->recordBeforeContentWrite($key);
 
                 return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize)['sha256'];
             }
@@ -458,6 +459,7 @@ final class FileNodeSetService
                 $blobContents = $blob['contents'];
             }
             $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
+            $this->index->recordBeforeContentWrite($key);
             $this->storage->files()->put($key, $contents);
 
             return hash('sha256', $contents);
@@ -529,6 +531,7 @@ final class FileNodeSetService
         array $principal,
         array $payload,
         ?string $ignoreNodeId = null,
+        bool $incomingIsFile = false,
     ): string {
         $existing = $this->findSibling($parent, $name, $compareCaseInsensitively, $ignoreNodeId);
         if ($existing === null) {
@@ -537,8 +540,7 @@ final class FileNodeSetService
 
         switch ($onExists) {
             case 'replace':
-                $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
-                $this->destroyed[] = (string) $existing->node_id;
+                $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                 return $name;
             case 'rename':
@@ -558,8 +560,7 @@ final class FileNodeSetService
                 } catch (\Throwable) {
                 }
                 if ($incomingTs !== false && $incomingTs > $existingTs) {
-                    $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
-                    $this->destroyed[] = (string) $existing->node_id;
+                    $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                     return $name;
                 }
@@ -575,6 +576,23 @@ final class FileNodeSetService
                     'existingId' => (string) $existing->node_id,
                 ]);
         }
+    }
+
+    /**
+     * #1517: a file created over a file at the same key keeps the Docs state
+     * there, so the new bytes are detected as an outside write.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    private function replaceSibling(JmapFileNode $existing, string $newKey, bool $incomingIsFile, array $principal, bool $onDestroyRemoveChildren): void
+    {
+        $destroy = fn () => $this->destroyNode($existing, $principal, $onDestroyRemoveChildren);
+        if ($incomingIsFile && ! $existing->is_dir && (string) $existing->storage_key === $newKey) {
+            $this->index->replaceKeepingDocsState($newKey, $destroy);
+        } else {
+            $destroy();
+        }
+        $this->destroyed[] = (string) $existing->node_id;
     }
 
     private function findSibling(JmapFileNode $parent, string $name, bool $caseInsensitive, ?string $ignoreNodeId): ?JmapFileNode

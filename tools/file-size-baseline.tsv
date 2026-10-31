@@ -1,9 +1,6 @@
-packages/api/app/Services/Calendars/CalendarRepository.php	878	grandfathered
-packages/api/app/Services/Chat/ChatChannelRepository.php	917	grandfathered
+packages/api/app/Services/Calendars/CalendarRepository.php	854	grandfathered
+packages/api/app/Services/Chat/ChatChannelRepository.php	894	grandfathered
 packages/api/app/Services/Contacts/Conversion/JsContactToVCardConverter.php	916	grandfathered
-packages/api/app/Services/Docs/DocsThreadRepository.php	851	grandfathered
-packages/api/app/Services/Drive/DriveService.php	864	grandfathered
-packages/api/app/Services/Mail/MailImapClient.php	1022	grandfathered
 packages/apps/src/calendar-core/src/calendar-workspace.tsx	1368	grandfathered
 packages/apps/src/calendar-core/src/use-calendar-controller.ts	1489	grandfathered
 packages/apps/src/contacts-core/src/contacts-edit-utils.ts	884	grandfathered
@@ -15,5 +12,4 @@ packages/apps/src/lib/calendar-elements/CalendarViewBase/CalendarViewBase.ts	835
 packages/apps/src/lib/calendar-elements/EventCalendar/EventCalendar.ts	914	grandfathered
 packages/apps/src/lib/calendar-elements/TimeLine/TimeLine.ts	2318	grandfathered
 packages/apps/src/lib/calendar-elements/controllers/TimedEventInteractionController.ts	1145	grandfathered
-packages/apps/src/notes-core/src/use-notes-mutations.tsx	884	grandfathered
 packages/apps/src/wegotworkspace/src/wegotworkspace-routes.tsx	852	grandfathered

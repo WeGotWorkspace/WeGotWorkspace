@@ -53,6 +53,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
             'docs_thread_index',
             'notifications',
             'notification_deliveries',
+            'notification_markers',
+            'jmap_file_node_root_markers',
             'push_subscriptions',
             'rtc_relay_events',
         ] as $table) {
@@ -71,6 +73,8 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token_hash'));
         $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'calendarid'));
+        $this->assertFalse(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'owner_username'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('oauth_clients', 'cimd_url'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('mcp_audit_events', 'outcome'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('users', 'enabled'));
@@ -85,5 +89,19 @@ final class WgwSchemaParityTest extends WgwDatabaseTestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'caps'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('meet_peers', 'net'));
         $this->assertFalse(Schema::connection('wgw')->hasTable('rtc_session_metrics'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('cards', 'uid'));
+    }
+
+    /** #1609: one UID per address book, and one URI per address book on MySQL too. */
+    public function test_cards_have_unique_uid_and_uri_per_address_book(): void
+    {
+        $unique = collect(Schema::connection('wgw')->getIndexes('cards'))
+            ->filter(static fn (array $index): bool => (bool) $index['unique'])
+            ->map(static fn (array $index): array => $index['columns'])
+            ->values()
+            ->all();
+
+        $this->assertContains(['addressbookid', 'uid'], $unique);
+        $this->assertContains(['addressbookid', 'uri'], $unique);
     }
 }

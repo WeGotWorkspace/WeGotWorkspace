@@ -9,12 +9,14 @@ import { JmapSetItemError } from "@/lib/jmap-client";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
 import { pullAddressBookChanges, syncAllContactBooks } from "@/lib/api/wgw/contacts-sync";
 import type { ContactsAppBootstrap } from "@/lib/api/mock/contacts-bootstrap";
-import { CONTACTS_DOMAIN } from "@/lib/offline/contacts/contacts-schema";
+import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import { CONTACTS_DOMAIN, contactsCardsTable } from "@/lib/offline/contacts/contacts-schema";
 import {
   listOutboxMutations,
   markOutboxError,
   readCachedAddressBooks,
   readContactsBootstrapFromCache,
+  readContactsColdDownload,
   removeOutboxMutation,
   removeContactCardFromCache,
   upsertAddressBookInCache,
@@ -37,12 +39,16 @@ export type OutboxFlushResult = {
 
 export async function flushContactsOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readContactsBootstrapFromCache(username);
-  if (!cached) {
+  // An unfinished first download has no sync tokens yet: the pull below would
+  // start from "0:" and download every card again. Wait until it is finished.
+  if (!cached || (await readContactsColdDownload(username))) {
     return { stateMismatches: [], bootstrap: null };
   }
 
   const rows = await listOutboxMutations(username);
   const stateMismatches: string[] = [];
+  // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
+  const resends = new Map<string, number>();
 
   for (const row of rows) {
     if (row.domain !== CONTACTS_DOMAIN) continue;
@@ -84,7 +90,14 @@ export async function flushContactsOutbox(username: string): Promise<OutboxFlush
           continue;
         }
         const card = await getCard(cardId);
-        await upsertContactCardInCache(username, card, false);
+        // A patch merged in while this one was sent is owed on the new state.
+        const settlement = await settleSentOutboxMutation(username, row, {
+          rebase: (current) => ({ ...current, ifInState: response.updated[cardId] }),
+          cacheTables: (db) => [contactsCardsTable(db)],
+          onRemoved: () => upsertContactCardInCache(username, card, false),
+        });
+        sendChangedRowAgain(rows, resends, settlement);
+        continue;
       } else if (row.op === "delete") {
         const cardId = String(payload.cardId ?? "");
         const destroy = row.ifInState ? { [cardId]: { ifInState: row.ifInState } } : [cardId];

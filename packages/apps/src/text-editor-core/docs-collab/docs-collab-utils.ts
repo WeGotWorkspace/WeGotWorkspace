@@ -37,16 +37,41 @@ export function colorForName(name: string): string {
 }
 
 /**
+ * Black or white, whichever contrasts more with a `#rgb` / `#rrggbb` color
+ * (alpha ignored). Name tags in a collaborator color use it for their text.
+ */
+export function readableTextColorOn(hex: string): "#000000" | "#ffffff" {
+  const background = relativeLuminance(hex);
+  const onBlack = (background + 0.05) / 0.05;
+  const onWhite = 1.05 / (background + 0.05);
+  return onBlack >= onWhite ? "#000000" : "#ffffff";
+}
+
+function relativeLuminance(hex: string): number {
+  const digits = hex.replace(/^#/, "");
+  const short = digits.length <= 4;
+  const channels = [0, 1, 2].map((index) => {
+    const pair = short ? digits[index]!.repeat(2) : digits.slice(index * 2, index * 2 + 2);
+    const value = (parseInt(pair, 16) || 0) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+}
+
+/**
  * Carries the HTTP status alongside the message. The server reports a refused
  * save as `precondition_failed`, which leaves no status in the parsed message.
  */
 export class CollabHttpError extends Error {
   readonly status: number;
+  /** From `Retry-After` on a 429, so background sync can wait that long. */
+  readonly retryAfterMs: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfterMs: number | null = null) {
     super(message);
     this.name = "CollabHttpError";
     this.status = status;
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -67,7 +92,7 @@ export function isCollabPreconditionFailed(error: unknown): boolean {
   return /precondition failed/i.test(message);
 }
 
-/** 404 — the document is gone. Stop retrying and keep the local copy. */
+/** 404 — the document was deleted or is out of reach. Stop retrying and keep the local copy. */
 export function isCollabDocumentGoneError(error: unknown): boolean {
   return collabErrorStatus(error) === 404;
 }
@@ -83,9 +108,19 @@ export function isExternalWriteRefusal(error: unknown): boolean {
   return /external_write/.test(message);
 }
 
+/**
+ * 409 `note_archived` — the note was archived and takes no changes until it
+ * is restored (#1535). Reloading does not resolve it; archive wins.
+ */
+export function isArchivedRefusal(error: unknown): boolean {
+  if (collabErrorStatus(error) !== 409) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return /note_archived/.test(message);
+}
+
 /** 409 / 412 / 428 — the stored document moved on; reload, merge, and save again. */
 export function isServerDivergenceError(error: unknown): boolean {
-  if (isExternalWriteRefusal(error)) return false;
+  if (isExternalWriteRefusal(error) || isArchivedRefusal(error)) return false;
   const status = collabErrorStatus(error);
   if (status === 409 || status === 412 || status === 428) return true;
   const message = error instanceof Error ? error.message : String(error);

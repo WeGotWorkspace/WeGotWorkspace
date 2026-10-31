@@ -1,6 +1,6 @@
 # Reserved Meet rooms + calendar ICS-write hook
 
-Architecture lock for Goal [#525](https://github.com/WeGotWorkspace/wegotworkspace/issues/525) Chunk **M** (reservation persistence) and the shared ICS-write hook in Chunk **A**. Review this note **before** implementing M. Do not implement named reusable rooms ([#579](https://github.com/WeGotWorkspace/wegotworkspace/issues/579)).
+Architecture lock for Goal [Product#36](https://github.com/WeGotWorkspace/Product/issues/36) Chunk **M** (reservation persistence) and the shared ICS-write hook in Chunk **A**. Review this note **before** implementing M. Do not implement named reusable rooms ([Product#76](https://github.com/WeGotWorkspace/Product/issues/76)).
 
 Related: [`packages/api/docs/meet-signaling.md`](../../packages/api/docs/meet-signaling.md) (today’s in-call signaling). Conversion matrix write-set vs Microsoft read-only lands in Chunk A.
 
@@ -8,7 +8,7 @@ Related: [`packages/api/docs/meet-signaling.md`](../../packages/api/docs/meet-si
 
 Meet rooms today exist only while someone is joinable in-call. Guest knock on an empty room is `404 room_not_active` / “This meeting is not active…”. Calendar cannot attach a stable join URL until a reservation row exists with a principal owner.
 
-Chunk M is the missing **stable room identity** that deferred #525 on 2026-08-24. Calendar glue (conference fields, form, Join) is Chunks A and B.
+Chunk M is the missing **stable room identity** that deferred Product#36 on 2026-08-24. Calendar glue (conference fields, form, Join) is Chunks A and B.
 
 ## Reservation row
 
@@ -52,7 +52,7 @@ Sweeper deletes **never-activated** rows only when `expiresAt` is **non-null and
 | 4 | Recurrence-scope change **after** a successful reserve | Same PATCH as Remove (`now + 30 days`), then clear the staged code. |
 | 5 | Ad-hoc / draft finite clock elapses | Same sweeper as (1): start+30d or draft+30d rows that were never activated. |
 
-Active / recently-active rooms keep today’s **peer-prune** (peers, not the reservation row). No public delete-room API. Named reusable rooms (#579) stay out.
+Active / recently-active rooms keep today’s **peer-prune** (peers, not the reservation row). No public delete-room API. Named reusable rooms (Product#76) stay out.
 
 PATCH `expiresAt` is callable by `createdBy` **or** an `ownerPrincipal` member. Calendar write service may call POST/PATCH **internally** (not only the browser).
 
@@ -80,6 +80,7 @@ If inbound `CONFERENCE` / `URL` / `X-GOOGLE-CONFERENCE` is a guest/join URL whos
 - **On insert:** `createdBy` = the authenticated DAV/JMAP actor who performed the write (same identity as iMIP `ORGANIZER` / DAV ACL — not left null, even when `ownerPrincipal` is a group).
 - **If a row already exists:** keep `createdBy` / `ownerPrincipal` (do not steal).
 - **Always** apply the event/scope clock to `expiresAt` — on insert **and** as an **upgrade** of an existing row. A blur-draft `now+30d` that then persists on Save **must** become DTEND+7, occurrence-end+7, or series/this-and-future `null`. Leaving the draft clock after the event exists is the same premature-sweep bug as a stale reschedule clock.
+- The clock is set as given only when the writer holds the row: same `ownerPrincipal`, its `createdBy`, or an owner-principal member. For anyone else (a pasted link to someone else's room) the clock may only move to a later finite time: never earlier, so a foreign event cannot get the room swept, and never to `null`, so only a holder can make it never expire.
 
 Incomplete or non-WGW hrefs never reserve. Read-only GET / conversion without persist does **not** POST.
 
@@ -95,7 +96,7 @@ Path must be `/meet`, `/meet/guest`, or `/meet/join` (`/meet?room=` is canonical
 
 ### `POST /meetings/rooms`
 
-Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. `ownerPrincipal` must be `u:{authenticated user}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share). Membership-only is not required. Otherwise **403**. Idempotent on room id: already reserved → keep owner / `createdBy`, and when the calendar hook is the caller, overwrite `expiresAt` with the event/scope clock.
+Accepts `room` + `ownerPrincipal` (+ optional `expiresAt`; omit/null = no expiry). Records `createdBy` from the authenticated actor. `ownerPrincipal` must be `u:{authenticated user}` or a `groups/{slug}` whose calendar the caller can write (same CalDAV/JMAP ACL as event create — membership or a write share). Membership-only is not required. Otherwise **403**. Idempotent on room id for a caller who holds the row (the same check as PATCH: `createdBy`, the `u:` owner, or a member of the owner group; a write share on a group calendar is not enough): keep owner / `createdBy` and apply the supplied `expiresAt`. A code someone else holds answers **403** and their row is unchanged. A supplied `expiresAt` must be in the future (**422** otherwise). The route requires the `user` role, so a guest link session gets **403**.
 
 ### `GET /meetings/rooms/{id}`
 
@@ -136,7 +137,7 @@ Write from `links`: ICS `URL`, RFC 7986 `CONFERENCE`, `X-GOOGLE-CONFERENCE`. **N
 
 ## Out of scope
 
-- Goal #579 named reusable rooms / stable studio links
+- Goal [Product#76](https://github.com/WeGotWorkspace/Product/issues/76) named reusable rooms / stable studio links
 - Auto-Meet on every event
 - Zoom / Teams APIs
 - Changing calendar iMIP `ORGANIZER` to the group

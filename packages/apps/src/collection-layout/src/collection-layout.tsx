@@ -68,19 +68,17 @@ export function CollectionListWorkspace({
     <CollectionListPane>
       <CollectionHeader>{header}</CollectionHeader>
 
-      {dropZone ? (
-        <div
-          className="collection-list-drop-zone relative flex min-h-0 flex-1 flex-col"
-          onDragOver={dropZone.onDragOver}
-          onDragLeave={dropZone.onDragLeave}
-          onDrop={dropZone.onDrop}
-        >
-          {dropZone.active ? dropZone.overlay : null}
-          {listBody}
-        </div>
-      ) : (
-        listBody
-      )}
+      {/* One wrapper either way: the drop zone turns on after a cold first load,
+          and a new wrapper would remount the scroller and reset its position. */}
+      <div
+        className={`collection-list-body${dropZone ? " collection-list-drop-zone" : ""}`}
+        onDragOver={dropZone?.onDragOver}
+        onDragLeave={dropZone?.onDragLeave}
+        onDrop={dropZone?.onDrop}
+      >
+        {dropZone?.active ? dropZone.overlay : null}
+        {listBody}
+      </div>
     </CollectionListPane>
   );
 }

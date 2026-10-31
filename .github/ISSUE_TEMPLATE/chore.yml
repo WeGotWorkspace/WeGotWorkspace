@@ -1,5 +1,5 @@
 name: "[Maintainers only] Chore"
-description: Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report.
+description: "Maintainers only — eng chore, debt, or tracker. Externals: use Discussions or Bug report."
 type: Task
 labels:
   - type:chore
@@ -16,10 +16,25 @@ body:
         **Write the entire issue in English**, even if the conversation that produced it was in another language.
 
   - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: >
+        For the product lead, in plain English (B1), no code or file names.
+        Three short lines: what changes, who notices, and what happens if we wait.
+        See .agents/skills/developer/plain-language.md.
+      value: |
+        **What:**
+        **Who notices:**
+        **If we wait:**
+    validations:
+      required: true
+
+  - type: textarea
     id: what
     attributes:
       label: What
-      description: What needs doing and why (brief).
+      description: What needs doing and why, in technical terms for a developer.
     validations:
       required: true
 

@@ -19,6 +19,7 @@ final class DriveShareAuthorizer
         private DriveSharePathScope $scope,
         private CollabDocFormats $collabDocFormats,
         private FileNodeIndexService $fileNodes,
+        private DriveShareOwnerReach $ownerReach,
     ) {}
 
     /**
@@ -161,6 +162,9 @@ final class DriveShareAuthorizer
     {
         $context = $this->resolvePathContext($listingDir, $principal);
         $dir = $this->scope->normalize($listingDir);
+        $entryRights = in_array($dir, ['/users', '/groups'], true)
+            ? fn (string $path): array => $this->rightsOrNone($path, $principal)
+            : null;
         // Drive roots themselves are not shareable, but owners may still share children listed under them.
         $mayShareInListing = $context['rights']['mayShare']
             || ($context['access'] === DriveShareAccess::FULL && $this->scope->isTopLevelDrive($dir));
@@ -174,7 +178,21 @@ final class DriveShareAuthorizer
             $this->scope,
             $this->collabDocFormats,
             $this->paths,
+            $entryRights,
         );
+    }
+
+    /**
+     * @param  array{username: string, role: string}  $principal
+     * @return array{mayView: bool, mayComment: bool, mayReview: bool, mayEditContent: bool, mayManageStructure: bool, mayShare: bool}
+     */
+    private function rightsOrNone(string $virtualPath, array $principal): array
+    {
+        try {
+            return $this->effectiveRights($virtualPath, $principal);
+        } catch (\InvalidArgumentException) {
+            return DriveShareAccess::none();
+        }
     }
 
     /**
@@ -200,6 +218,14 @@ final class DriveShareAuthorizer
 
         if ($role !== 'guest') {
             $groupSlugs = $this->groups->allowedGroupSlugs($username);
+            if (in_array($path, ['/', '/users', '/groups'], true)) {
+                // The drive roots are a directory to browse: nobody writes or shares there.
+                return [
+                    'scopeRoot' => null,
+                    'access' => DriveShareAccess::VIEW,
+                    'rights' => DriveShareAccess::rightsFor(DriveShareAccess::VIEW, false),
+                ];
+            }
             if ($this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
                 $mayShare = ! $this->scope->isTopLevelDrive($path);
                 $isNotePath = $this->paths->isNotePath($path);
@@ -288,7 +314,7 @@ final class DriveShareAuthorizer
 
         /** @var DriveShare $share */
         $share = $session->share;
-        if ($share->revoked_at !== null) {
+        if ($share->revoked_at !== null || ! $this->ownerReach->ownerReachesShare($share)) {
             $this->deny();
         }
         if ($share->expires_at !== null && $share->expires_at->lessThanOrEqualTo($now)) {
@@ -352,6 +378,6 @@ final class DriveShareAuthorizer
 
     private function deny(): never
     {
-        throw new \InvalidArgumentException('Access denied for this path.');
+        throw new DriveAccessDeniedException;
     }
 }

@@ -1,9 +1,8 @@
-import { Eye, Pencil, StickyNote, Tag as TagIcon } from "lucide-react";
+import { Eye, StickyNote, Tag as TagIcon } from "lucide-react";
 import type { NotesWorkspaceProps } from "@/notes-core/src/notes-workspace-props";
 import "react-swipeable-list/dist/styles.css";
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -21,7 +20,6 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CollectionState } from "@/collection-state/src/collection-state";
 import { SidebarSection } from "@/sidebar-section/src/sidebar-section";
 import { Tag } from "@/tag/src/tag";
-import { IconButton } from "@/button/src/button";
 import { NotesChangeNotebookDialog } from "@/notes-core/src/notes-change-notebook-dialog";
 import { NotesRenameTagDialog } from "@/notes-core/src/notes-rename-tag-dialog";
 import { NoteDetailView } from "@/note-detail-view/src/note-detail-view";
@@ -63,13 +61,9 @@ import {
 import type { ListDropZoneProps } from "@/hooks/use-sidebar-list-drag";
 import type { NotesNotebookCollection } from "@/notes-core/src/notes-types";
 import { getNotesSyncRunner } from "@/lib/offline/notes-hybrid-operations";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
 import { resolveNotesOfflineUsername } from "@/lib/offline/offline-session";
-import { wgwLiveApiEnabled } from "@/lib/api/wgw/http";
 import { searchCollectionSharePrincipals } from "@/lib/api/wgw/calendar";
-import type { NoteCollabConfig } from "@/note-detail-view/src/note-text-editor-body";
-import { buildNoteCollabUrls } from "@/notes-core/src/note-collab-path";
-import { createWgwNotesCollabWire } from "@/notes-core/src/notes-collab-wgw-wire";
+import { useNoteBodyCollab } from "@/notes-core/src/use-note-body-collab";
 import { notesNotebookDialogLabelsFrom } from "@/notes-core/src/notes-labels";
 import { NotesNewMenu } from "@/notes-core/src/notes-new-menu";
 import {
@@ -269,6 +263,7 @@ export function NotesWorkspace({
     sharedNotebooks: sharedNotebookRows,
     tagSidebarTags,
     showTagsSection,
+    selectedTag,
   } = useNotesSidebarModel({
     labels: L,
     view,
@@ -280,11 +275,9 @@ export function NotesWorkspace({
     sidebarDropZoneProps,
     moveToNotebook,
     assignTagToNotes,
-    onRenameTag: openRenameTagDialog,
   });
 
   const online = useSyncExternalStore(subscribeBrowserOnline, getConnectivitySnapshot, () => true);
-  const [accessLost, setAccessLost] = useState(false);
 
   const activeNotebook = useMemo(() => {
     if (!active) return null;
@@ -314,6 +307,16 @@ export function NotesWorkspace({
     [openCreateNotebookDialog],
   );
 
+  const offlineUsername = resolveNotesOfflineUsername(session.user.username);
+  // Archived: read-only until restored (#1535). Restore and delete stay.
+  const noteArchived = !!active && !!archived[active.id];
+  const { noteBodyCollab, accessLost } = useNoteBodyCollab({
+    active,
+    archived: noteArchived,
+    username: session.user.username,
+    displayName: session.user.displayName,
+    offlineUsername,
+  });
   const noteEditable = resolveNotesEditorEditable(
     active?.myRights ??
       (activeNotebook?.myRights
@@ -321,75 +324,18 @@ export function NotesWorkspace({
         : null),
     false,
   );
-  const noteReadOnly = !noteEditable || accessLost;
+  const shareReadOnly = !noteEditable || accessLost;
+  const noteReadOnly = shareReadOnly || noteArchived;
   const noteCanArchive = active ? noteAllowsStructureManage(active) : true;
   const activeShowsTags = active ? noteShowsTags(active) : true;
-  const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, noteEditable) : false;
+  const activeAllowsTagAssignment = active ? noteAllowsTagAssignment(active, !noteReadOnly) : false;
 
-  const offlineUsername = resolveNotesOfflineUsername(session.user.username);
   const pendingNoteIds = useNotesPendingSync(offlineUsername, bootstrapRevision);
   const failedSyncCount = useNotesFailedSync(
     offlineUsername,
     bootstrapRevision,
     syncConflictNoteIds,
   );
-  const [noteCollabUrls, setNoteCollabUrls] = useState<NoteCollabConfig["urls"] | undefined>(
-    undefined,
-  );
-
-  const activeNoteId = active?.id;
-
-  useEffect(() => {
-    if (!wgwLiveApiEnabled() || !activeNoteId) {
-      setNoteCollabUrls(undefined);
-      return;
-    }
-    const username = session.user.username;
-    if (!username) {
-      setNoteCollabUrls(undefined);
-      return;
-    }
-    if (isLocalTempNoteId(activeNoteId)) {
-      setNoteCollabUrls(undefined);
-      return;
-    }
-    setAccessLost(false);
-    let cancelled = false;
-    void buildNoteCollabUrls(activeNoteId, {
-      onPersistForbidden: () => {
-        setAccessLost(true);
-        setNoteCollabUrls(undefined);
-      },
-    })
-      .then((urls) => {
-        if (!cancelled) {
-          setNoteCollabUrls(urls);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setNoteCollabUrls(undefined);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeNoteId, session.user.username]);
-
-  // Body lives in the Docs Yjs collab document keyed by the note's virtual path;
-  // only enabled against the live API (mock/Storybook uses the solo editor).
-  const notesCollabWire = useMemo(() => createWgwNotesCollabWire(), []);
-  const noteBodyCollab = useMemo<NoteCollabConfig | undefined>(() => {
-    if (!wgwLiveApiEnabled() || !active || !noteCollabUrls) return undefined;
-    const username = session.user.username;
-    if (!username) return undefined;
-    return {
-      userName: session.user.displayName || username,
-      urls: noteCollabUrls,
-      wire: notesCollabWire,
-    };
-  }, [active, noteCollabUrls, notesCollabWire, session.user.displayName, session.user.username]);
 
   // Empty detail = no multi-select and no selected note. Do not use `!!active`
   // alone: cmd/ctrl-deselect and view selection-reset clear selectedIds while
@@ -522,8 +468,8 @@ export function NotesWorkspace({
             {showTagsSection ? (
               <SidebarSection title={L.sectionTags} className="notes-sidebar-tags">
                 {tagSidebarTags.map(
-                  ({ tag, selected, onSelect, onRename, isDropTarget, ...dropHandlers }) => (
-                    <li key={tag} className="notes-sidebar-tags__row" {...dropHandlers}>
+                  ({ tag, selected, onSelect, isDropTarget, ...dropHandlers }) => (
+                    <li key={tag} className="notes-sidebar-tags__row">
                       <button
                         type="button"
                         {...sidebarSelectMarker}
@@ -534,17 +480,10 @@ export function NotesWorkspace({
                         )}
                         onClick={onSelect}
                         aria-pressed={selected}
+                        {...dropHandlers}
                       >
                         <Tag label={tag} icon={<TagIcon className="size-3.5" />} size="md" />
                       </button>
-                      <IconButton
-                        label={L.renameTagActionFor(tag)}
-                        icon={<Pencil className="size-3.5" aria-hidden />}
-                        size="xs"
-                        variant="ghost"
-                        className="notes-sidebar-tags__edit"
-                        onClick={onRename}
-                      />
                     </li>
                   ),
                 )}
@@ -580,6 +519,7 @@ export function NotesWorkspace({
             toggleArchive,
             selectionBar,
             onRefreshList,
+            onEditTag: selectedTag ? () => openRenameTagDialog(selectedTag) : undefined,
             pendingNoteIds,
             notebookCollections,
           })
@@ -602,7 +542,7 @@ export function NotesWorkspace({
               toggleStar={toggleStar}
               toggleArchive={toggleArchive}
               notebookColor={activeNotebook?.color}
-              readOnly={noteReadOnly}
+              readOnly={shareReadOnly}
               canArchive={noteCanArchive}
             />
           ) : c.detailOpenMobile ? (

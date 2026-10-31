@@ -369,46 +369,51 @@ final class DocCollabDocumentService
         return CollabSidecarPaths::sidecarVirtualPath($this->paths, $documentVirtualPath);
     }
 
+    /** Signed-in readers only. A path the caller may not read is not found. */
     private function resolveReadablePath(Request $request, mixed $room): string
+    {
+        return $this->readableDocument($request, $room)['path'];
+    }
+
+    /** As {@see resolveReadablePath()}, and a reader without edit rights is forbidden. */
+    private function resolveWritablePath(Request $request, mixed $room): string
+    {
+        $document = $this->readableDocument($request, $room);
+        // View-only member grants may load the document/Yjs snapshot read-only. Comment and
+        // suggestion discussion persists via REST `/files/threads` (mayComment), not this PUT.
+        if (! $document['mayEditContent']) {
+            $this->fail('forbidden', 403);
+        }
+
+        return $document['path'];
+    }
+
+    /**
+     * @return array{path: string, mayEditContent: bool}
+     */
+    private function readableDocument(Request $request, mixed $room): array
     {
         $this->assertFilesEnabled();
         $principal = $this->actors->requirePrincipal($request);
-        $virtual = $this->paths->normalizeVirtualPath($this->rooms->cleanDocumentPath($room));
-        try {
-            $this->authorizer->assertMayRead($virtual, $principal);
-            $rights = $this->authorizer->effectiveRights($virtual, $principal);
-        } catch (\InvalidArgumentException) {
-            $this->fail('forbidden', 403);
-        }
         // Public share guests stay on the non-collab Docs shell; collab mesh is members-only.
         if ($principal['role'] === 'guest') {
             $this->fail('forbidden', 403);
         }
-        // View-only member grants may load the document/Yjs snapshot read-only; writes stay gated
-        // by resolveWritablePath (mayEditContent). Comment/suggestion discussion persists via
-        // REST `/files/threads` (mayComment), not this PUT.
-        if (! $rights['mayView']) {
-            $this->fail('forbidden', 403);
+        // A `..` segment never resolves to another path: it is not found, like any path outside reach.
+        if (is_string($room) && $this->paths->hasParentSegment($room)) {
+            $this->fail('not_found', 404);
         }
-
-        return $virtual;
-    }
-
-    private function resolveWritablePath(Request $request, mixed $room): string
-    {
-        $this->assertFilesEnabled();
-        $principal = $this->actors->requirePrincipal($request);
         $virtual = $this->paths->normalizeVirtualPath($this->rooms->cleanDocumentPath($room));
         try {
             $rights = $this->authorizer->effectiveRights($virtual, $principal);
         } catch (\InvalidArgumentException) {
-            $this->fail('forbidden', 403);
+            $this->fail('not_found', 404);
         }
-        if (! $rights['mayEditContent']) {
-            $this->fail('forbidden', 403);
+        if (! $rights['mayView']) {
+            $this->fail('not_found', 404);
         }
 
-        return $virtual;
+        return ['path' => $virtual, 'mayEditContent' => $rights['mayEditContent']];
     }
 
     private function assertFilesEnabled(): void

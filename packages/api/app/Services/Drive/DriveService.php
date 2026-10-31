@@ -9,7 +9,6 @@ use App\Http\Support\RangeResponder;
 use App\Models\Principal;
 use App\Services\Auth\AdminRoleResolver;
 use App\Services\Collab\CollabSidecarPaths;
-use App\Services\Docs\DocsThreadRepository;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Services\Jmap\FileNodes\FileNodeRelocator;
 use App\Storage\StoragePaths;
@@ -17,7 +16,6 @@ use App\Storage\WgwStorage;
 use App\Support\WgwSettings;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,10 +31,9 @@ final class DriveService
         private DriveStarService $stars,
         private AdminRoleResolver $adminRoles,
         private FileNodeIndexService $fileNodes,
-        private DocsThreadRepository $docsThreads,
-        private DocAttachmentsService $docAttachments,
         private DriveTrashNames $trashNames,
         private FileNodeRelocator $relocator,
+        private DrivePathBookkeeping $pathBookkeeping,
         private RangeResponder $ranges,
         private EventDispatch $eventDispatch = new EventDispatch([]),
     ) {}
@@ -47,15 +44,6 @@ final class DriveService
             $operation();
         } catch (\Throwable $e) {
             Log::warning('file_node_index_sync_failed', ['error' => $e->getMessage()]);
-        }
-    }
-
-    private function syncDocsThreads(callable $operation): void
-    {
-        try {
-            $operation();
-        } catch (\Throwable $e) {
-            Log::warning('docs_thread_path_sync_failed', ['error' => $e->getMessage()]);
         }
     }
 
@@ -93,7 +81,10 @@ final class DriveService
         $dir = $this->paths->normalizeVirtualPath($dir);
         $listingContext = $this->authorizer->listingRightsContext($principal, $dir);
         if (! $listingContext->rightsFor($dir)['mayView']) {
-            throw new \InvalidArgumentException('Access denied for this path.');
+            throw new DriveAccessDeniedException;
+        }
+        if (! $this->paths->isProvisionedDirectory($dir) && ! $this->disk()->directoryExists($this->paths->virtualToStorageKey($dir))) {
+            throw new DriveNotFoundException('Directory not found.');
         }
         $this->session->setCwd($dir);
 
@@ -218,11 +209,7 @@ final class DriveService
         if (! $disk->move($fromKey, $toKey)) {
             throw new \RuntimeException('Rename failed.');
         }
-        $this->shares->rewritePathPrefix($fromPath, $toPath);
-        $this->stars->rewritePathPrefix($fromPath, $toPath);
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordMoveWithSidecar($fromKey, $toKey));
-        $this->syncDocsThreads(fn () => $this->docsThreads->retargetPath($fromPath, $toPath));
-        $this->docAttachments->relocateAfterMoveBestEffort($fromKey, $toKey);
+        $this->pathBookkeeping->afterMove($fromKey, $toKey);
 
         return 'Renamed';
     }
@@ -245,18 +232,12 @@ final class DriveService
             if ($node !== null && $this->relocator->trashIfGrantee($node, $principal)) {
                 continue;
             }
-            $docIds = $this->docAttachments->docNodeIdsForDestroyKey($key);
-            if ($disk->directoryExists($key) || $disk->exists($key)) {
-                if ($disk->directoryExists($key)) {
-                    $disk->deleteDirectory($key);
-                } else {
-                    $disk->delete($key);
-                }
-                $this->syncFileNodeIndex(fn () => $this->fileNodes->recordDeleteWithSidecar($key));
-                $this->syncDocsThreads(fn () => $this->docsThreads->dropPath($path));
-                $this->stars->deletePathPrefix($path);
+            if ($disk->directoryExists($key)) {
+                $disk->deleteDirectory($key);
+            } elseif ($disk->exists($key)) {
+                $disk->delete($key);
             }
-            $this->docAttachments->destroyDocsBestEffort($docIds);
+            $this->pathBookkeeping->afterDelete($key);
         }
 
         return 'Deleted';
@@ -279,7 +260,7 @@ final class DriveService
         $groupSlugs = $this->groups->allowedGroupSlugs($username);
         $path = $this->paths->normalizeVirtualPath($path);
         if (! $this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
-            throw new \InvalidArgumentException('Access denied for this path.');
+            throw new DriveAccessDeniedException;
         }
         $this->stars->setStarred($username, $path, $starred);
 
@@ -298,7 +279,7 @@ final class DriveService
         $disk = $this->disk();
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $disk->fileExists($key)) {
-            throw new \InvalidArgumentException('File not found.');
+            throw new DriveNotFoundException('File not found.');
         }
     }
 
@@ -439,8 +420,9 @@ final class DriveService
         $virtual = $this->paths->normalizeVirtualPath('/'.ltrim((string) $node->storage_key, '/'));
         try {
             $this->authorizer->assertMayRead($virtual, $principal);
-        } catch (\InvalidArgumentException $e) {
-            throw new DriveForbiddenException($e->getMessage(), 0, $e);
+        } catch (\InvalidArgumentException) {
+            // Same answer as an unknown id: the status must not tell that the node exists.
+            throw new \RuntimeException('File not found.');
         }
         $key = $this->paths->virtualToStorageKey($virtual);
         if (! $this->disk()->fileExists($key)) {
@@ -464,64 +446,6 @@ final class DriveService
             'Content-Type' => $this->disk()->mimeType($key) ?: 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="'.$name.'"',
         ]);
-    }
-
-    /** @param array{username: string, role: string} $principal */
-    public function handleUpload(
-        array $principal,
-        UploadedFile $file,
-        string $filename,
-        string $identifier,
-        int $chunkNumber,
-        int $totalChunks,
-        ?string $cwd,
-    ): string {
-        $this->assertFilesEnabled();
-        $username = $principal['username'];
-        $groupSlugs = $this->groups->allowedGroupSlugs($username);
-        $filename = $this->validateItemName($filename);
-        $identifier = preg_replace('/[^0-9A-Za-z_]/', '_', $identifier) ?? '';
-        $chunkNumber = max(1, $chunkNumber);
-        $totalChunks = max(1, $totalChunks);
-
-        $parent = $this->resolveParentPath($cwd, $principal, $username, $groupSlugs);
-        $targetVirtual = $this->paths->normalizeVirtualPath($parent.'/'.$filename);
-        $disk = $this->disk();
-        $targetKey = $this->paths->virtualToStorageKey($targetVirtual);
-        if ($disk->fileExists($targetKey)) {
-            $this->authorizer->assertMayEditContent($targetVirtual, $principal);
-        } else {
-            $this->authorizer->assertMayManageStructure($targetVirtual, $principal);
-        }
-
-        if ($totalChunks <= 1) {
-            $contents = is_string($rawContents = $file->get()) ? $rawContents : throw new \RuntimeException('Failed to read upload.');
-            $disk->put($targetKey, $contents);
-            $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', $contents)));
-
-            return 'Stored';
-        }
-
-        $tempDisk = $this->storage->data();
-        $partKey = 'drive-upload-temp/'.hash('sha256', $identifier.'|'.$filename.'|'.$targetVirtual).'.part';
-        $chunk = is_string($rawChunk = $file->get()) ? $rawChunk : throw new \RuntimeException('Failed to read upload.');
-        if ($chunkNumber === 1) {
-            $tempDisk->put($partKey, $chunk);
-        } else {
-            $existing = is_string($existingRaw = ($tempDisk->exists($partKey) ? $tempDisk->get($partKey) : '')) ? $existingRaw : throw new \RuntimeException('Failed to read upload.');
-            $tempDisk->put($partKey, $existing.$chunk);
-        }
-
-        if ($chunkNumber < $totalChunks) {
-            return 'Uploaded';
-        }
-
-        $assembled = $tempDisk->get($partKey);
-        $disk->put($targetKey, is_string($assembled) ? $assembled : throw new \RuntimeException('Failed to read upload.'));
-        $tempDisk->delete($partKey);
-        $this->syncFileNodeIndex(fn () => $this->fileNodes->recordContentWrite($targetKey, hash('sha256', (string) $assembled)));
-
-        return 'Stored';
     }
 
     /**
@@ -772,7 +696,7 @@ final class DriveService
         ?DriveShareListingRightsContext $listingContext,
     ): bool {
         if ($listingContext !== null) {
-            return $listingContext->rightsFor($virtualPath)['mayView'];
+            return $listingContext->listsEveryEntry() || $listingContext->rightsFor($virtualPath)['mayView'];
         }
 
         try {

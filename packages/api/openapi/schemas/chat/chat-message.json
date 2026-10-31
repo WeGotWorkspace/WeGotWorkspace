@@ -133,7 +133,7 @@
     "properties": {
       "id": {
         "type": "string",
-        "description": "Client-generated ULID — message id and idempotency key; retries with the same id return the existing message."
+        "description": "Client-generated ULID — message id and idempotency key; retries with the same id into the same channel return the existing message. An id of a message the caller can see elsewhere is a 409; an id only objects out of the caller's reach use is replaced by a server-minted ULID: the response id is authoritative."
       },
       "body": {
         "type": "string",

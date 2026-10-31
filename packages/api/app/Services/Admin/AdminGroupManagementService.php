@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Dav\Server\WgwCardBackend;
 use App\Models\Addressbook;
 use App\Models\AddressBookShareDismissal;
 use App\Models\GroupMember;
@@ -12,13 +13,13 @@ use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Chat\ChatGroupDefaultChannelProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
 use App\Services\Contacts\AddressBookShareInvites;
+use App\Services\Drive\DriveShareRevoker;
 use App\Services\Drive\GroupFilesHomeProvisioner;
 use App\Services\Installer\InstallerSeeder;
 use App\Services\Settings\GroupDirectoryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
-use Sabre\CardDAV\Backend\PDO as CardPDO;
 
 final class AdminGroupManagementService
 {
@@ -30,6 +31,7 @@ final class AdminGroupManagementService
         private AddressBookProvisioner $addressBooks,
         private AddressBookShareInvites $addressBookShares,
         private GroupFilesHomeProvisioner $groupFiles,
+        private DriveShareRevoker $driveShares,
     ) {}
 
     public function create(string $slug, string $displayName): string
@@ -98,14 +100,22 @@ final class AdminGroupManagementService
         $this->deleteAddressBookShares($uri);
         $this->deleteDavCollections($uri);
 
-        GroupMember::query()
-            ->where('principal_id', $principal->id)
-            ->orWhere('member_id', $principal->id)
-            ->delete();
-
-        $principal->delete();
-
         $slug = basename(str_replace('\\', '/', $uri));
+
+        // Shares on the group's folder are revoked with the group, and grants to the group are
+        // removed, so a later group with the same slug starts without them, whoever joins it.
+        DB::connection('wgw')->transaction(function () use ($principal, $slug): void {
+            GroupMember::query()
+                ->where('principal_id', $principal->id)
+                ->orWhere('member_id', $principal->id)
+                ->delete();
+
+            $principal->delete();
+
+            $this->driveShares->revokeAllUnderPath('/groups/'.$slug);
+            $this->driveShares->removeGrantsToGroup($slug);
+        });
+
         $groupFiles = $this->groupFiles->pathForSlug($slug);
         if (is_dir($groupFiles)) {
             $this->deleteDirectory($groupFiles);
@@ -153,7 +163,7 @@ final class AdminGroupManagementService
         }
 
         if (Schema::connection('wgw')->hasTable('addressbooks')) {
-            $carddav = new CardPDO($pdo);
+            $carddav = new WgwCardBackend($pdo);
             foreach ($carddav->getAddressBooksForUser($principalUri) as $book) {
                 if (isset($book['id'])) {
                     $carddav->deleteAddressBook((int) $book['id']);

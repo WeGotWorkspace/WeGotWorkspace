@@ -4,6 +4,7 @@ import { noteTagsEqual } from "@/notes-core/src/notes-note-utils";
 import {
   getNoteFromCache,
   listOutboxNoteIds,
+  listPendingNoteBases,
   listPendingNoteFields,
   listPendingNoteIds,
   removeNoteFromCache,
@@ -13,6 +14,7 @@ import {
   readNotesBootstrapFromCache,
 } from "@/lib/offline/notes-offline-store";
 import { reportNotesSyncConflicts } from "@/lib/offline/notes-sync-conflicts";
+import { listRemovedIds, serverMovedSince } from "@/lib/offline/core/inbound-sync";
 
 async function pendingSet(username: string): Promise<Set<string>> {
   return new Set(await listPendingNoteIds(username));
@@ -21,7 +23,9 @@ async function pendingSet(username: string): Promise<Set<string>> {
 /**
  * Ingest a remote note into Dexie. Only the fields this note has queued in the
  * outbox are held back; everything else is adopted. A conflict is reported only
- * when the inbound change actually touches a queued field (#1351).
+ * when the inbound change touches a queued field (#1351) and the server's
+ * version moved since that write was queued: with the same version, the server
+ * simply has not seen the change yet (another tab queued it offline).
  */
 export async function ingestRemoteNote(
   username: string,
@@ -65,8 +69,19 @@ export async function ingestRemoteNote(
     if (note.notebookId !== local.notebookId) conflicting.push("notebook");
   }
   await upsertNoteInCache(username, merged, true);
-  if (conflicting.length > 0) reportNotesSyncConflicts([note.id]);
+  if (conflicting.length > 0 && (await serverMovedSinceQueued(username, note))) {
+    reportNotesSyncConflicts([note.id]);
+  }
   return "merged-pending";
+}
+
+/**
+ * True when the server's version differs from a version a queued write of this
+ * note started from. A write that recorded no version counts as moved, as before.
+ */
+async function serverMovedSinceQueued(username: string, note: Note): Promise<boolean> {
+  const bases = (await listPendingNoteBases(username)).get(note.id) ?? [];
+  return serverMovedSince(bases, note.etag, "moved");
 }
 
 /** Drop a remotely destroyed note unless a local pending write still owns the id. */
@@ -139,12 +154,16 @@ export async function reconcileNotesSnapshot(
   for (const note of notes) {
     await ingestRemoteNote(username, note);
   }
-  for (const note of cached?.data.notes ?? []) {
-    if (remoteNoteIds.has(note.id) || pending.has(note.id)) continue;
-    await removeNoteFromCache(username, note.id);
+  for (const id of listRemovedIds(cached?.data.notes ?? [], remoteNoteIds, (note) =>
+    pending.has(note.id),
+  )) {
+    await removeNoteFromCache(username, id);
   }
-  for (const notebook of cached?.data.notebookCollections ?? []) {
-    if (remoteNotebookIds.has(notebook.id)) continue;
-    await removeNotebookFromCache(username, notebook.id);
+  for (const id of listRemovedIds(
+    cached?.data.notebookCollections ?? [],
+    remoteNotebookIds,
+    () => false,
+  )) {
+    await removeNotebookFromCache(username, id);
   }
 }

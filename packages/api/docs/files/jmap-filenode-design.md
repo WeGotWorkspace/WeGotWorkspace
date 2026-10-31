@@ -45,7 +45,7 @@ Ancestor renames do **not** bump descendants (`parent_node_id` links by id), so 
 
 A new **`FileNodeIndexService`** owns all index mutations (`recordCreate`, `recordContentWrite`, `recordMove`, `recordDelete` — each bumping `change_seq`), invoked from:
 
-1. **REST:** `DriveService` mutation methods (`createItem`, `handleUpload`, `renameItem`, `deleteItems`), next to the existing search-sync calls.
+1. **REST:** `DriveService` mutation methods (`createItem`, `renameItem`, `deleteItems`), next to the existing search-sync calls. (`handleUpload` was removed in #1518.)
 2. **WebDAV:** a new **`FileNodeIndexPlugin`** modeled 1:1 on `SearchIndexPlugin` (`afterMethod:{PUT,PATCH,MKCOL,DELETE,MOVE,COPY}`). MOVE knows source + destination paths at the HTTP layer, so the plugin **re-keys the index subtree while keeping every `node_id`** — this is where rename-stability comes from on the DAV path.
 
 Rejected alternative — wrapping the Flysystem adapter: it would catch collab writes we deliberately do **not** index (decision 4; product Notes are CalDAV VJOURNAL and do not write this tree), misses `FlysystemFile::patch()` (raw `fopen`, bypasses `put()`), and loses MOVE semantics (adapter sees delete+create on some drivers). The two-call-site approach matches how search indexing already works and reuses its best-effort pattern (`BestEffortSearchIndexSync`): index failures log (`file_node_index_sync_failed`) and never fail the user's write.

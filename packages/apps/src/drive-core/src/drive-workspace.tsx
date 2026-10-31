@@ -215,6 +215,7 @@ export function DriveWorkspace({
     requestMoveItem,
     isUnderTrash,
     setConfirmDelete,
+    structureEnabled,
   } = controller;
 
   const handleDetailClose = useCallback(() => {
@@ -264,10 +265,13 @@ export function DriveWorkspace({
           !isTopLevelDriveApiPath(active.apiPath) &&
           activeMayShare === true
         }
-        canManageStructure={resolveDriveFileCanManageStructure(active.mayManageStructure, {
-          isActive: true,
-          activeMayManageStructure,
-        })}
+        canManageStructure={
+          structureEnabled &&
+          resolveDriveFileCanManageStructure(active.mayManageStructure, {
+            isActive: true,
+            activeMayManageStructure,
+          })
+        }
         onShare={
           shareEnabled && active.apiPath
             ? () => handleOpenShareForFile(active.apiPath!, active.title)
@@ -292,6 +296,7 @@ export function DriveWorkspace({
     shareEnabled,
     showError,
     starred,
+    structureEnabled,
     toggleStar,
   ]);
 
@@ -365,17 +370,19 @@ export function DriveWorkspace({
         shareOperations={shareOperations}
         shareDialog={shareDialog}
       />
-      <input
-        ref={controller.fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        aria-label={labels.uploadFiles}
-        onChange={(e) => {
-          controller.handleUpload(e.target.files);
-          e.target.value = "";
-        }}
-      />
+      {controller.uploadEnabled ? (
+        <input
+          ref={controller.fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          aria-label={labels.uploadFiles}
+          onChange={(e) => {
+            controller.handleUpload(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      ) : null}
     </TooltipProvider>
   );
 }
@@ -397,8 +404,16 @@ function DriveSidebar({
   primarySidebarItems: ReturnType<typeof useDriveSidebarModel>["primarySidebarItems"];
   groupSidebarItems: ReturnType<typeof useDriveSidebarModel>["groupSidebarItems"];
 }) {
-  const { labels, sidebarOpen, setSidebarOpen, createFolder, createMarkdown, fileInputRef } =
-    controller;
+  const {
+    labels,
+    sidebarOpen,
+    setSidebarOpen,
+    createFolder,
+    createMarkdown,
+    fileInputRef,
+    uploadEnabled,
+    structureEnabled,
+  } = controller;
 
   return (
     <AppSidebar
@@ -414,12 +429,15 @@ function DriveSidebar({
         />
       }
       primaryButton={
-        <DriveNewMenu
-          labels={labels}
-          onCreateFolder={createFolder}
-          onUploadFiles={() => fileInputRef.current?.click()}
-          onCreateMarkdown={onOpenDocsFile ? createMarkdown : undefined}
-        />
+        // New folder is the menu's main action; guests cannot create anything yet (#1712).
+        structureEnabled ? (
+          <DriveNewMenu
+            labels={labels}
+            onCreateFolder={createFolder}
+            onUploadFiles={uploadEnabled ? () => fileInputRef.current?.click() : undefined}
+            onCreateMarkdown={uploadEnabled && onOpenDocsFile ? createMarkdown : undefined}
+          />
+        ) : null
       }
     >
       <SidebarSection items={primarySidebarItems} />

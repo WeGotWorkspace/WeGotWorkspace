@@ -28,6 +28,7 @@ import {
   loadBootstrapInParallel,
 } from "./docs-collab-bootstrap";
 import { forgetSidecarEtag, rememberSidecarEtag } from "./docs-collab-etag";
+import { settleDocumentGone } from "./docs-collab-gone";
 import {
   canSeedFromFile,
   markSeedDoneAfterSnapshot,
@@ -35,7 +36,6 @@ import {
   shouldApplyImmediateSeed,
 } from "./docs-collab-seed";
 import {
-  DOC_STATUS_DOCUMENT_GONE,
   DOC_STATUS_LOADED_SHARED_DOCUMENT,
   DOC_STATUS_LOADING_DOCUMENT,
   DOC_STATUS_RESTORED_WORKING_VERSION,
@@ -53,7 +53,6 @@ import {
   MESH_ORIGIN,
   SERVER_ORIGIN,
 } from "./docs-collab-utils";
-import { trackChangesAuthorIdFromName } from "@/text-editor-core/src/text-editor-track-changes";
 import { PENDING_SERVER_SAVE_KEY } from "./pending-server-save-key";
 
 type MeshApi = Pick<
@@ -250,13 +249,23 @@ export function useDocsCollabJoin({
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
         refs.externalWriteHoldRef.current = true;
-        urls.onExternalWrite?.({ markdown: text.markdown, title: text.title });
+        urls.onExternalWrite?.({
+          markdown: text.markdown,
+          title: text.title,
+          serverState: snapshot.update,
+        });
         return false;
       }
       if (action === "rebuild") {
         const text = await loadCollabText(urls.documentUrl, authToken);
         refs.externalWriteSeenRef.current = text.etag ?? null;
-        replaceDocumentWithExternalText(ydoc, text.markdown, text.title, documentFormat);
+        replaceDocumentWithExternalText(
+          ydoc,
+          text.markdown,
+          text.title,
+          documentFormat,
+          snapshot.update,
+        );
         refs.markdownOverrideRef.current = text.markdown;
         refs.externalWriteHoldRef.current = false;
         refs.localDirtySinceLastSaveRef.current = true;
@@ -307,11 +316,7 @@ export function useDocsCollabJoin({
       // retries the sidecar once that backoff allows it. Markdown stays a
       // read-only preview and is not written into the Y.Doc.
       if (snapshot.kind === "failed" && isCollabDocumentGoneError(snapshot.error)) {
-        urls.onDocumentGone?.();
-        refs.saveTerminalKindRef.current = "gone";
-        refs.saveRetryMsRef.current = Number.POSITIVE_INFINITY;
-        refs.nextSaveAttemptAtRef.current = Number.POSITIVE_INFINITY;
-        setDocStatus(DOC_STATUS_DOCUMENT_GONE);
+        settleDocumentGone(refs, urls, setDocStatus);
         return;
       }
 
@@ -331,15 +336,28 @@ export function useDocsCollabJoin({
       if (snapshot.kind === "snapshot") {
         const pendingLocalWork =
           refs.pendingServerSaveRef.current || refs.localDirtySinceLastSaveRef.current;
-        const action = decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
+        // Without the text there is nothing to rebuild from or to ask about.
+        const action = load.markdownError
+          ? "adopt"
+          : decideExternalWrite(snapshot.externalWrite, pendingLocalWork);
         rememberSidecarEtag(room, snapshot.etag);
         if (action !== "adopt") refs.externalWriteSeenRef.current = loadedEtag;
         if (action === "prompt") {
           refs.externalWriteHoldRef.current = true;
-          urls.onExternalWrite?.({ markdown: load.markdown, title: loadedTitle });
+          urls.onExternalWrite?.({
+            markdown: load.markdown,
+            title: loadedTitle,
+            serverState: snapshot.update,
+          });
           settlement = "prompted";
         } else if (action === "rebuild") {
-          replaceDocumentWithExternalText(ydoc, load.markdown, loadedTitle, documentFormat);
+          replaceDocumentWithExternalText(
+            ydoc,
+            load.markdown,
+            loadedTitle,
+            documentFormat,
+            snapshot.update,
+          );
           refs.markdownOverrideRef.current = load.markdown;
           refs.externalWriteHoldRef.current = false;
           refs.seedDoneRef.current = true;
@@ -360,6 +378,8 @@ export function useDocsCollabJoin({
               snapshot.update,
               SERVER_ORIGIN,
               loaded?.ydoc === ydoc ? loaded.stateVector : new Map(),
+              // The shared local copy holds other tabs' unsaved typing (#1722).
+              { keepUnsavedEdits: true },
             );
           } else {
             Y.applyUpdate(ydoc, snapshot.update, SERVER_ORIGIN);
@@ -372,6 +392,9 @@ export function useDocsCollabJoin({
         }
       } else if (snapshot.kind === "absent") {
         rememberSidecarEtag(room, null);
+        // Edits made before the server answered (offline, on the cached text)
+        // are not on the server either, also when they emptied the document.
+        keptLocalEdits = refs.localDirtySinceLastSaveRef.current;
       }
 
       const hadSnapshot = snapshot.kind === "snapshot";
@@ -394,7 +417,13 @@ export function useDocsCollabJoin({
         refs.localDirtySinceLastSaveRef.current = false;
       }
 
-      if (settlement !== "prompted" && !refs.seedDoneRef.current && isYDocEmpty(ydoc)) {
+      // An empty document the person emptied is not one that never loaded.
+      if (
+        settlement !== "prompted" &&
+        !keptLocalEdits &&
+        !refs.seedDoneRef.current &&
+        isYDocEmpty(ydoc)
+      ) {
         const meshSession = refs.meshRef.current;
         if (shouldApplyImmediateSeed(meshSession, ydoc, refs.seedDoneRef.current, seed)) {
           applyContentSeedToYDoc(ydoc, seed, documentFormat);
@@ -491,7 +520,9 @@ export function useDocsCollabJoin({
     teardown();
 
     const online = getConnectivitySnapshot();
-    const allowServerRequests = online && roomServerAllowed(room);
+    // A room without a server id yet (offline-created note) is a local draft:
+    // the server has nothing to load, join, or save until the id is remapped.
+    const allowServerRequests = online && roomServerAllowed(room) && !urls.roomNotPersistent;
     refs.seedDoneRef.current = false;
     setDocStatus("");
 
@@ -543,7 +574,7 @@ export function useDocsCollabJoin({
 
     const awareness = new awarenessProtocol.Awareness(ydoc);
     refs.awarenessRef.current = awareness;
-    const user = { name, color: colorForName(name), id: trackChangesAuthorIdFromName(name) };
+    const user = { name, color: colorForName(name) };
     awareness.setLocalStateField("user", user);
 
     setSession({
@@ -597,7 +628,8 @@ export function useDocsCollabJoin({
         markDocReady();
       }
       setStatus("Editing offline");
-      setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
+      if (urls.roomNotPersistent && online) setDocStatus("");
+      else setDocStatus(online ? "Server unavailable, using local draft" : "Editing offline");
       void authTokenPromise.then((token) => {
         if (!isJoinGenerationCurrent(generation, refs.joinGenerationRef)) return;
         refs.authTokenRef.current = token;
@@ -639,6 +671,7 @@ export function useDocsCollabJoin({
     urls.authToken,
     urls.authTokenUrl,
     urls.authUser,
+    urls.roomNotPersistent,
     userName,
   ]);
 
@@ -649,13 +682,22 @@ export function useDocsCollabJoin({
     if (serverJoinStartedRef.current) return;
     if (refs.joinedRoomRef.current !== room) return;
     if (!getConnectivitySnapshot() || !roomServerAllowed(room)) return;
+    if (urls.roomNotPersistent) return;
     const name = userName.trim();
     if (!name) return;
     const generation = refs.joinGenerationRef.current;
     void finishAuthenticatedJoin(generation, name, token).catch((error) => {
       console.warn("[docs-collab] delayed auth join failed", error);
     });
-  }, [finishAuthenticatedJoin, joined, refs, room, urls.authToken, userName]);
+  }, [
+    finishAuthenticatedJoin,
+    joined,
+    refs,
+    room,
+    urls.authToken,
+    urls.roomNotPersistent,
+    userName,
+  ]);
 
   return {
     session,

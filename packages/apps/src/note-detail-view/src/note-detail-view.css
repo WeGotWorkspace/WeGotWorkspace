@@ -59,6 +59,11 @@
   @apply sr-only;
 }
 
+/* Positioning box for the remote title carets (`note-title-carets.css`). */
+.note-detail-view__title-field {
+  @apply relative;
+}
+
 /**
  * Document title — always `.text-title-lg` (`text-4xl` / 2.25rem) so it stays ≥ body h1 (1.875×16px).
  * Growing textarea: soft-wrap, no line-clamp / ellipsis. Exempted from the

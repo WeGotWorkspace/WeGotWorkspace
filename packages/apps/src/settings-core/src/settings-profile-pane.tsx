@@ -3,7 +3,7 @@ import { Input } from "@/ui/input";
 import { Card } from "@/card/src/card";
 import { settingsWorkspacePaneClasses } from "@/settings-core/src/settings-workspace.styles";
 import type { SettingsControllerState } from "@/settings-core/src/use-settings-controller";
-import { buttonVariants } from "@/ui/button";
+import { buttonVariants } from "@/button/src/button";
 import { Form } from "@/ui/form";
 import { FieldLabelRow } from "@/ui/field-label-row";
 import { FormSaveActionRow } from "@/ui/form-save-action-row";

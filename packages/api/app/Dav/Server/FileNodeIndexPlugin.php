@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dav\Server;
 
-use App\Services\Drive\DocAttachmentsService;
+use App\Services\Drive\DrivePathBookkeeping;
 use App\Services\Jmap\FileNodes\FileNodeIndexService;
 use App\Storage\Streams\HashingStreamFilter;
 use App\Storage\Streams\StreamDigest;
@@ -17,11 +17,12 @@ use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
 
 /**
- * Keeps the FileNode node-identity index (#450) in sync with WebDAV writes —
- * the SearchIndexPlugin pattern. MOVE re-keys the index subtree while
- * keeping every node id: this is where rename-stability comes from on the
- * DAV path. MOVE also takes the Yjs sidecar with the document; COPY does
- * not. Best-effort: index failures log and never fail the DAV request.
+ * The one WebDAV hook for Drive writes — the SearchIndexPlugin pattern.
+ * PUT, MKCOL and COPY (and PATCH, once served) update the FileNode index (#450).
+ * MOVE and DELETE hand off to DrivePathBookkeeping, the same service REST and
+ * JMAP use, so index and Yjs sidecars, attachments, stars, share paths and
+ * docs threads follow the file. COPY copies none of that. Best-effort:
+ * failures log and never fail the DAV request.
  *
  * content_sha256 is the true sha256 (#1500): a PUT body is hashed by a read
  * filter while Sabre streams it to storage (attached on beforeWriteContent
@@ -44,7 +45,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
 
     public function __construct(
         private readonly FileNodeIndexService $index,
-        private readonly DocAttachmentsService $attachments,
+        private readonly DrivePathBookkeeping $pathBookkeeping,
     ) {}
 
     public function initialize(Server $server): void
@@ -126,44 +127,28 @@ final class FileNodeIndexPlugin extends ServerPlugin
         }
 
         $method = strtoupper($request->getMethod());
-        $docIds = [];
-        $destKey = $method === 'MOVE' || $method === 'COPY' ? $this->destinationKey($request) : null;
+        $destDavPath = $method === 'MOVE' || $method === 'COPY' ? $this->destinationDavPath($request) : null;
+        $destKey = $destDavPath !== null ? $this->storageKey($destDavPath) : null;
         if ($method === 'DELETE') {
-            try {
-                $docIds = $this->attachments->docNodeIdsForDestroyKey($key);
-            } catch (\Throwable $e) {
-                Log::warning('doc_attachments_sidecar_failed', [
-                    'op' => 'enumerate',
-                    'method' => $method,
-                    'path' => $request->getPath(),
-                    'error' => $e->getMessage(),
-                ]);
+            $this->pathBookkeeping->afterDelete($key);
+
+            return;
+        }
+        if ($method === 'MOVE') {
+            if ($destKey !== null) {
+                $this->pathBookkeeping->afterMove($key, $destKey, $this->isSaveSwap($key, $destKey, $destDavPath));
             }
+
+            return;
         }
 
         try {
-            switch ($method) {
-                case 'DELETE':
-                    $this->index->recordDeleteWithSidecar($key);
-                    break;
-                case 'MOVE':
-                case 'COPY':
-                    if ($destKey === null) {
-                        break;
-                    }
-                    if ($method === 'MOVE') {
-                        $this->index->recordMoveWithSidecar($key, $destKey);
-                    } else {
-                        $this->index->recordCopy($key, $destKey);
-                    }
-                    break;
-                case 'MKCOL':
-                    $this->index->recordCreate($key);
-                    break;
-                default: // PUT (PATCH is not served; see the class doc)
-                    $this->index->recordContentWrite($key, $method === 'PUT' ? $this->writtenSha($key) : null);
-                    break;
-            }
+            match ($method) {
+                'COPY' => $destKey !== null ? $this->index->recordCopy($key, $destKey) : null,
+                'MKCOL' => $this->index->recordCreate($key),
+                // PUT (PATCH is not served; see the class doc)
+                default => $this->index->recordContentWrite($key, $method === 'PUT' ? $this->writtenSha($key) : null),
+            };
         } catch (\Throwable $e) {
             Log::warning('file_node_index_sync_failed', [
                 'method' => $request->getMethod(),
@@ -171,37 +156,65 @@ final class FileNodeIndexPlugin extends ServerPlugin
                 'error' => $e->getMessage(),
             ]);
         }
+    }
 
-        if ($method === 'DELETE') {
-            $this->attachments->destroyDocsBestEffort($docIds);
-
-            return;
+    /**
+     * Office and editor saves rename the document to or from a temporary
+     * name. A folder with such a name is a real move.
+     */
+    private function isSaveSwap(string $fromKey, string $toKey, string $destDavPath): bool
+    {
+        if (! $this->isSwapTempName($fromKey) && ! $this->isSwapTempName($toKey)) {
+            return false;
         }
-        if ($method === 'MOVE' && $destKey !== null) {
-            $this->attachments->relocateAfterMoveBestEffort($key, $destKey);
+
+        return ! $this->isCollection($destDavPath);
+    }
+
+    private function isSwapTempName(string $key): bool
+    {
+        $name = basename($key);
+        if ($name === '' || $name === '.' || $name === '..') {
+            return false;
+        }
+
+        return str_starts_with($name, '~')
+            || str_ends_with($name, '.tmp')
+            || str_starts_with($name, '.~lock.')
+            || str_ends_with($name, '~')
+            || str_starts_with($name, '.#');
+    }
+
+    /**
+     * A failed lookup counts as a file, so a missing destination cannot fail
+     * a MOVE that already finished.
+     */
+    private function isCollection(string $davPath): bool
+    {
+        try {
+            return $this->server?->tree->getNodeForPath($davPath) instanceof ICollection;
+        } catch (\Throwable) {
+            return false;
         }
     }
 
-    private function destinationKey(RequestInterface $request): ?string
+    private function destinationDavPath(RequestInterface $request): ?string
     {
         $destination = $request->getHeader('Destination');
         if (! is_string($destination) || $destination === '') {
             return null;
         }
-        $destPath = $destination;
         if ($this->server !== null) {
             try {
-                $destPath = trim((string) $this->server->calculateUri($destination), '/');
+                return trim((string) $this->server->calculateUri($destination), '/');
             } catch (\Throwable) {
                 return null;
             }
-        } else {
-            $parsed = parse_url($destination, PHP_URL_PATH);
-            $destPath = is_string($parsed) && $parsed !== '' ? $parsed : $destination;
-            $destPath = trim($destPath, '/');
         }
+        $parsed = parse_url($destination, PHP_URL_PATH);
+        $destPath = is_string($parsed) && $parsed !== '' ? $parsed : $destination;
 
-        return $this->storageKey($destPath);
+        return trim($destPath, '/');
     }
 
     /**

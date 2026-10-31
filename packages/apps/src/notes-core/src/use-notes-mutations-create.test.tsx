@@ -1,15 +1,11 @@
 import "fake-indexeddb/auto";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "@/lib/models/note";
 import type { NotesListState } from "./use-notes-list";
 import type { NotesShellState } from "./use-notes-shell";
 import { useNotesMutations } from "./use-notes-mutations";
-import {
-  getNoteFromCache,
-  upsertNoteInCache,
-  writeNotesBootstrapToCache,
-} from "@/lib/offline/notes-offline-store";
+import { writeNotesBootstrapToCache } from "@/lib/offline/notes-offline-store";
 import { readOfflineNotesUsername } from "@/lib/offline/offline-session";
 import {
   createHybridNotesOperations,
@@ -44,8 +40,10 @@ vi.mock("@/hooks/use-confirm-dialog", () => ({
   }),
 }));
 
+const connectivity = vi.hoisted(() => ({ online: true }));
+
 vi.mock("@/hooks/use-connectivity", () => ({
-  useConnectivity: () => ({ online: true }),
+  useConnectivity: () => ({ online: connectivity.online }),
 }));
 
 function buildShell(overrides: Partial<NotesShellState> = {}): NotesShellState {
@@ -108,6 +106,33 @@ function buildList(overrides: Partial<NotesListState> = {}): NotesListState {
 }
 
 describe("useNotesMutations createNote", () => {
+  afterEach(() => {
+    connectivity.online = true;
+  });
+
+  it("does not report a failure for a create queued while offline", async () => {
+    connectivity.online = false;
+    const showMutationError = vi.fn();
+    // Offline, the hybrid layer queues the create and hands back the temp note.
+    const upsertNote = vi.fn().mockImplementation(async (note: Note) => note);
+    const shell = buildShell({
+      showMutationError,
+      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
+    });
+    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
+
+    await act(async () => {
+      result.current.createNote();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(upsertNote).toHaveBeenCalled());
+    await act(async () => {
+      await upsertNote.mock.results[0]?.value;
+    });
+    expect(showMutationError).not.toHaveBeenCalled();
+  });
+
   it("uses setView (not selectView) and sets activeId before opening mobile detail", () => {
     const setView = vi.fn();
     const setNotes = vi.fn();
@@ -124,8 +149,12 @@ describe("useNotesMutations createNote", () => {
     });
 
     expect(setView).toHaveBeenCalledWith("all");
-    expect(setActiveId).toHaveBeenCalledWith(expect.stringMatching(/^local-/));
-    expect(selectSingle).toHaveBeenCalledWith(expect.stringMatching(/^local-/));
+    expect(setActiveId).toHaveBeenCalledWith(
+      expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    );
+    expect(selectSingle).toHaveBeenCalledWith(
+      expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    );
     expect(openMobileDetail).toHaveBeenCalledWith();
     expect(setNotes).toHaveBeenCalled();
   });
@@ -163,68 +192,10 @@ describe("useNotesMutations createNote", () => {
         scope: "group",
         groupSlug: "eng",
       }),
-      expect.objectContaining({ onCreated: expect.any(Function) }),
     );
   });
 
-  it("moves the open note to the server id before the post-create sync finishes", async () => {
-    const saved = { id: "ad0f28e6-0000-4000-8000-000000000001" } as Note;
-    const upsertNote = vi.fn(
-      (note: Note, opts?: { onCreated?: (created: Note) => void }): Promise<Note> => {
-        opts?.onCreated?.({ ...note, ...saved });
-        return new Promise<Note>(() => undefined);
-      },
-    );
-    const setActiveId = vi.fn();
-    const shell = buildShell({
-      operations: {
-        ...buildShell().operations,
-        upsertNote,
-      } as NotesShellState["operations"],
-    });
-
-    const { result } = renderHook(() =>
-      useNotesMutations({ shell, list: buildList({ setActiveId }) }),
-    );
-
-    await act(async () => {
-      result.current.createNote();
-    });
-
-    const remap = setActiveId.mock.calls
-      .map(([arg]) => arg)
-      .find((arg) => typeof arg === "function");
-    expect(remap?.(upsertNote.mock.calls[0]?.[0].id)).toBe(saved.id);
-  });
-
-  it("does not write the untitled create response over the cached server note", async () => {
-    const cacheUser = "create-cache-user";
-    vi.mocked(readOfflineNotesUsername).mockReturnValue(cacheUser);
-    const saved = { id: "ad0f28e6-0000-4000-8000-000000000002" } as Note;
-    const upsertNote = vi.fn(async (note: Note): Promise<Note> => {
-      const created = { ...note, ...saved };
-      // The adoption already cached the server note with the early title.
-      await upsertNoteInCache(cacheUser, { ...created, title: "Ha" }, true);
-      return created;
-    });
-    const shell = buildShell({
-      operations: { ...buildShell().operations, upsertNote } as NotesShellState["operations"],
-    });
-    const { result } = renderHook(() => useNotesMutations({ shell, list: buildList() }));
-
-    await act(async () => {
-      result.current.createNote();
-    });
-    await act(async () => {
-      await upsertNote.mock.results[0]?.value;
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect((await getNoteFromCache(cacheUser, saved.id))?.title).toBe("Ha");
-    vi.mocked(readOfflineNotesUsername).mockReturnValue(null);
-  });
-
-  it("is not created by another tab's healer before this create's POST", async () => {
+  it("is sent once when another tab loads Notes during the create", async () => {
     const raceUser = "create-race-user";
     vi.mocked(readOfflineNotesUsername).mockReturnValue(raceUser);
     const bootstrap = {
@@ -253,7 +224,7 @@ describe("useNotesMutations createNote", () => {
     const operations = {
       ...hybrid,
       upsertNote: async (note: Note, opts?: Parameters<typeof hybrid.upsertNote>[1]) => {
-        // Another tab loads Notes before this tab's create has reached its POST.
+        // Another tab loads Notes (and flushes the outbox) before this create is queued.
         await fetchNotesHybridBootstrap();
         postsByHealer = vi.mocked(createNoteItem).mock.calls.length;
         return hybrid.upsertNote(note, opts);
@@ -301,7 +272,6 @@ describe("useNotesMutations createNote", () => {
         notebook: "Drafts",
         notebookId: "drafts",
       }),
-      expect.objectContaining({ onCreated: expect.any(Function) }),
     );
   });
 });

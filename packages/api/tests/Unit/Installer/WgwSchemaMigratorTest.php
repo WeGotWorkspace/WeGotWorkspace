@@ -238,6 +238,7 @@ final class WgwSchemaMigratorTest extends TestCase
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_hash'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('api_refresh_tokens', 'successor_token'));
         $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'mode'));
+        $this->assertTrue(Schema::connection('wgw')->hasColumn('calendar_feed_tokens', 'calendarid'));
         // Format-at-edge notify facts; without this column NotifyListener inserts are
         // swallowed by EventDispatch and chat/docs/calendar inbox rows never appear.
         $this->assertTrue(Schema::connection('wgw')->hasColumn('notifications', 'data'));

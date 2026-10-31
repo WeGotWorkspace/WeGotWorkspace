@@ -20,8 +20,10 @@ import {
   type CalendarSchedulingRespondStatus,
 } from "@/lib/api/wgw/calendar-scheduling";
 import { JmapSetItemError } from "@/lib/jmap-client";
+import { calendarBootstrapWindow } from "@/lib/calendar-load-window";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
+import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import {
   listOutboxMutations,
   markOutboxError,
@@ -68,6 +70,11 @@ function outboxConflictId(op: string, payload: Record<string, unknown>): string 
   return String(payload.eventId ?? "");
 }
 
+/** Whole-cache rewrites keep a period merged between their read and write (#1675). */
+function cacheWindow() {
+  return { window: calendarBootstrapWindow() };
+}
+
 export async function flushCalendarsOutbox(username: string): Promise<CalendarOutboxFlushResult> {
   const cached = await readCalendarBootstrapFromCache(username);
   if (!cached) {
@@ -85,6 +92,8 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
   const schedulingConflicts: string[] = [];
   const tempToServerId = new Map<string, string>();
   const resolveEventId = (eventId: string) => tempToServerId.get(eventId) ?? eventId;
+  // Rows sent again in this flush (`sendChangedRowAgain` appends to `orderedRows`).
+  const resends = new Map<string, number>();
 
   for (const row of orderedRows) {
     try {
@@ -102,7 +111,13 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const eventId = resolveEventId(String(payload.eventId ?? ""));
         const patch = payload.patch as CalendarEventPatch;
         const event = await patchCalendarEventLive(eventId, patch);
-        await upsertCalendarEventInCache(username, event, false);
+        // A patch merged in while this one was sent stays queued.
+        const settlement = await settleSentOutboxMutation(username, row, {
+          cacheTables: (db) => [calendarsEventsTable(db)],
+          onRemoved: () => upsertCalendarEventInCache(username, event, false),
+        });
+        sendChangedRowAgain(orderedRows, resends, settlement);
+        continue;
       } else if (row.op === "delete") {
         const eventId = resolveEventId(String(payload.eventId ?? ""));
         await deleteCalendarEventLive(eventId);
@@ -113,16 +128,20 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const created = await createCalendarLive(draft);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: [
-                ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
-                created,
-              ],
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: [
+                  ...latest.data.calendars.filter((calendar) => calendar.id !== tempId),
+                  created,
+                ],
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "calendarUpdate") {
         const calendarId = String(payload.calendarId ?? "");
@@ -130,31 +149,39 @@ export async function flushCalendarsOutbox(username: string): Promise<CalendarOu
         const updated = await patchCalendarLive(calendarId, patch);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: latest.data.calendars.map((calendar) =>
-                calendar.id === calendarId ? updated : calendar,
-              ),
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: latest.data.calendars.map((calendar) =>
+                  calendar.id === calendarId ? updated : calendar,
+                ),
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "calendarDelete") {
         const calendarId = String(payload.calendarId ?? "");
         await deleteCalendarLive(calendarId);
         const latest = await readCalendarBootstrapFromCache(username);
         if (latest) {
-          await writeCalendarBootstrapToCache(username, {
-            ...latest,
-            data: {
-              ...latest.data,
-              calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
-              events: latest.data.events.filter(
-                (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
-              ),
+          await writeCalendarBootstrapToCache(
+            username,
+            {
+              ...latest,
+              data: {
+                ...latest.data,
+                calendars: latest.data.calendars.filter((calendar) => calendar.id !== calendarId),
+                events: latest.data.events.filter(
+                  (event) => Object.keys(event.calendarIds ?? {})[0] !== calendarId,
+                ),
+              },
             },
-          });
+            cacheWindow(),
+          );
         }
       } else if (row.op === "respond-scheduling") {
         await respondCalendarSchedulingNotification(

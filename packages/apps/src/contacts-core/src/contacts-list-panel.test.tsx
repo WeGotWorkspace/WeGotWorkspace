@@ -65,12 +65,16 @@ function ListHarness({
   listRefreshing = false,
   onRefreshList,
   slot = "both",
+  downloadTotal,
+  selectedIds = [],
 }: {
   visibleCards: ContactCard[];
   listLoading?: boolean;
   listRefreshing?: boolean;
   onRefreshList?: () => void;
   slot?: "list" | "header" | "both";
+  downloadTotal?: number;
+  selectedIds?: string[];
 }) {
   // ContactsListPanel uses hooks; call it only while a React component is rendering.
   const panel = ContactsListPanel({
@@ -80,8 +84,8 @@ function ListHarness({
     viewLabel: "All contacts",
     view: "all",
     selectedGroupId: null,
-    selectedIds: [],
-    selectionMode: false,
+    selectedIds,
+    selectionMode: selectedIds.length > 1,
     listLoading,
     listRefreshing,
     visibleCards,
@@ -98,6 +102,7 @@ function ListHarness({
     onSwipeRemoveFromGroup: vi.fn(),
     selectionBar: null,
     onRefreshList,
+    downloadTotal,
   });
   if (slot === "list") return <>{panel.listContent}</>;
   if (slot === "header") return <>{panel.header}</>;
@@ -187,6 +192,45 @@ describe("ContactsListPanel refresh vs initial load", () => {
     );
     expect(screen.getByText(defaultContactsLabels.listLoading)).toBeTruthy();
     expect(screen.queryByText("Jane Doe")).toBeNull();
+  });
+});
+
+describe("ContactsListPanel header count", () => {
+  function headerCount(): string | null | undefined {
+    return document.querySelector(".view-header__title-count")?.textContent;
+  }
+
+  it("counts the cards still downloading, not only the rows loaded so far", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} downloadTotal={1000} slot="header" />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(1000)");
+    expect(screen.getByLabelText(defaultContactsLabels.listContacts(1000))).toBeTruthy();
+  });
+
+  it("shows the visible rows once nothing is downloading", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness visibleCards={[personCard, orgCard]} slot="header" />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(2)");
+  });
+
+  it("keeps the selected count while cards are still downloading", () => {
+    render(
+      <TooltipProvider>
+        <ListHarness
+          visibleCards={[personCard, orgCard]}
+          selectedIds={[personCard.id, orgCard.id]}
+          downloadTotal={1000}
+          slot="header"
+        />
+      </TooltipProvider>,
+    );
+    expect(headerCount()).toBe("(2)");
   });
 });
 
@@ -290,12 +334,32 @@ function WindowHarness({
   cards,
   activeId,
   scrollerRef,
+  listLoading = false,
 }: {
   cards: ContactCard[];
   activeId: string;
   scrollerRef: (node: HTMLDivElement | null) => void;
+  listLoading?: boolean;
 }) {
-  const panel = ContactsListPanel({
+  const panel = WindowPanel({ cards, activeId, listLoading });
+  return (
+    <div ref={scrollerRef} className="contacts-list-scroller">
+      {panel.listContent}
+    </div>
+  );
+}
+
+/** Calls the panel hook; only use while a React component is rendering. */
+function WindowPanel({
+  cards,
+  activeId = "",
+  listLoading = false,
+}: {
+  cards: ContactCard[];
+  activeId?: string;
+  listLoading?: boolean;
+}) {
+  return ContactsListPanel({
     L: defaultContactsLabels,
     sidebarOpen: true,
     onToggleSidebar: vi.fn(),
@@ -304,7 +368,7 @@ function WindowHarness({
     selectedGroupId: null,
     selectedIds: [],
     selectionMode: false,
-    listLoading: false,
+    listLoading,
     visibleCards: cards,
     searchQuery: "",
     setSearchQuery: vi.fn(),
@@ -319,15 +383,19 @@ function WindowHarness({
     onSwipeRemoveFromGroup: vi.fn(),
     selectionBar: null,
   });
-  return (
-    <div ref={scrollerRef} className="contacts-list-scroller">
-      {panel.listContent}
-    </div>
-  );
 }
 
 describe("ContactsListPanel window", () => {
   const cards = Array.from({ length: 120 }, (_, index) => personAt(index));
+
+  /** Id of the first card row painted at `scrollTop`. */
+  function cardIdAt(scrollTop: number): string {
+    const rows = flattenContactListRows(cards);
+    const index = rows.findIndex((_, i) => contactListRowOffset(rows, i + 1) > scrollTop);
+    const row = rows[index];
+    if (row?.kind !== "card") throw new Error(`no card row at ${scrollTop}`);
+    return row.card.id;
+  }
 
   function mount(activeId: string) {
     const holder: { current: HTMLDivElement | null } = { current: null };
@@ -394,6 +462,77 @@ describe("ContactsListPanel window", () => {
     expect(scroller.scrollTop).toBe(contactListRowOffset(rows, index));
     expect(scrollIntoView).toHaveBeenCalled();
     scrollIntoView.mockRestore();
+  });
+
+  it("keeps windowing on scroll when rows arrive before the spinner clears", () => {
+    // First visit: cards land while the spinner still shows, so the list
+    // element mounts on a later render with the same row count.
+    const holder: { current: HTMLDivElement | null } = { current: null };
+    const scrollerRef = (node: HTMLDivElement | null) => {
+      holder.current = node;
+      if (!node) return;
+      Object.defineProperty(node, "clientHeight", { configurable: true, value: 400 });
+    };
+    const { rerender } = render(
+      <TooltipProvider>
+        <WindowHarness cards={cards} activeId="" scrollerRef={scrollerRef} listLoading />
+      </TooltipProvider>,
+    );
+    rerender(
+      <TooltipProvider>
+        <WindowHarness cards={cards} activeId="" scrollerRef={scrollerRef} />
+      </TooltipProvider>,
+    );
+    const scroller = holder.current;
+    if (!scroller) throw new Error("scroller missing");
+
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
+  });
+
+  it("keeps windowing on scroll when the scroller remounts with the same rows", () => {
+    // Live first visit: the import drop zone appears once the cold download
+    // unlocks, which wraps and remounts the scroller with an unchanged row count.
+    const clientHeight = vi
+      .spyOn(HTMLElement.prototype, "clientHeight", "get")
+      .mockReturnValue(400);
+    const dropZone = {
+      active: false,
+      overlay: null,
+      onDragOver: vi.fn(),
+      onDragLeave: vi.fn(),
+      onDrop: vi.fn(),
+    };
+    function Workspace({ withDropZone }: { withDropZone: boolean }) {
+      const panel = WindowPanel({ cards });
+      return <CollectionListWorkspace {...panel} dropZone={withDropZone ? dropZone : undefined} />;
+    }
+    const { container, rerender } = render(
+      <TooltipProvider>
+        <Workspace withDropZone={false} />
+      </TooltipProvider>,
+    );
+    rerender(
+      <TooltipProvider>
+        <Workspace withDropZone />
+      </TooltipProvider>,
+    );
+    const scroller = container.querySelector<HTMLElement>(
+      ".collection-list-drop-zone .notes-swipe-list",
+    );
+    if (!scroller) throw new Error("scroller missing");
+
+    act(() => {
+      scroller.scrollTop = 4000;
+      scroller.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(scroller.querySelector(`[data-list-item-id="${cardIdAt(4000)}"]`)).toBeTruthy();
+    clientHeight.mockRestore();
   });
 
   it("animates from the full visible id list, not the mounted window", () => {

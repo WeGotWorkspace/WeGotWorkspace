@@ -5,7 +5,14 @@
  * `playwright.relay.config.mjs` runs the local coturn relay tier.
  */
 export const liveTierSpecPattern =
-  /(?:notes-offline-sync|docs-offline-sync|docs-home-browse|docs-collab-solo-read|calendar-offline-week-event|meet-adhoc-two-users|meet-guest-chat)\.spec\.ts/;
+  /(?:notes-offline-sync|notes-create-lost-response|notes-save-in-flight|notes-new-tab-unsaved-text|notes-collab-missed-tail|tasks-inbound-sync|docs-offline-sync|docs-home-browse|docs-collab-solo-read|docs-collab-suggest-save|notes-collab-access-lost|docs-collab-external-write|docs-collab-access-revoked|calendar-offline-week-event|meet-adhoc-two-users|meet-guest-chat|meet-guest-video-mirror|drive-first-sync|queued-write-reload|contacts-first-open-count|contacts-first-download|drive-inbound-many-files|calendar-far-week-event)\.spec\.ts/;
+
+/**
+ * Notes sync matrix: every action × tab setup × connectivity case (about 110
+ * cases, about 90 minutes on one CI runner against Vite dev). Its own nightly
+ * job in four shards, so the live tier stays short.
+ */
+export const notesSyncMatrixSpecPattern = /notes-sync-matrix\.spec\.ts/;
 
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;

@@ -5,19 +5,15 @@ declare(strict_types=1);
 namespace Tests\Feature\Docs;
 
 use App\Models\Principal;
-use App\Services\Drive\DriveService;
 use App\Storage\WgwStorage;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\DocsTestFixtures;
-use Tests\Support\InteractsWithFileNodeJmap;
 use Tests\Support\WgwDatabaseTestCase;
 
 final class DocsAccessControlTest extends WgwDatabaseTestCase
 {
     use DocsTestFixtures;
-    use InteractsWithFileNodeJmap;
 
     protected function setUp(): void
     {
@@ -37,7 +33,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $bobToken = $this->userBearerToken();
 
         $response = $this->getDocContent($bobToken, '/users/carol/docs/secret.md');
-        $response->assertStatus(400);
+        $response->assertNotFound();
 
         $carolToken = $this->carolBearerToken();
         $this->getDocContent($carolToken, '/users/carol/docs/secret.md')
@@ -92,18 +88,21 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $this->seedDocFile('carol', 'admin-proof.md', 'stay private');
         $adminToken = $this->adminBearerToken();
 
-        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertStatus(400);
+        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertNotFound();
 
-        $this->expectException(\InvalidArgumentException::class);
-        app(DriveService::class)->handleUpload(
-            $this->drivePrincipal('alice'),
-            UploadedFile::fake()->createWithContent('hack.md', 'nope'),
-            'hack.md',
-            'admin-hack',
-            1,
-            1,
-            '/users/carol/docs',
-        );
+        $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
+        $carolDocsId = $this->fileNodeIdByName($carolNodes, 'docs');
+        $blobId = $this->uploadFileNodeBlob('nope', 'alice', $adminToken);
+
+        $this->fileNodeJmap([
+            ['FileNode/set', ['accountId' => 'alice', 'create' => [
+                'f0' => ['parentId' => $carolDocsId, 'name' => 'hack.md', 'blobId' => $blobId],
+            ]], 'c0'],
+        ], $adminToken)->assertOk()
+            ->assertJsonPath('methodResponses.0.1.created', [])
+            ->assertJsonPath('methodResponses.0.1.notCreated.f0.type', 'invalidProperties')
+            ->assertJsonPath('methodResponses.0.1.notCreated.f0.properties', ['parentId']);
+        $this->assertFalse(Storage::disk('wgw_files')->exists('users/carol/docs/hack.md'));
     }
 
     public function test_admin_does_not_bypass_group_collaboration_membership(): void
@@ -117,8 +116,8 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($adminToken)
             ->get('/api/v1/files/collaboration?path=/groups/other/plan.md')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_non_member_cannot_access_team_collaboration(): void
@@ -128,7 +127,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($carolToken)
             ->get('/api/v1/files/collaboration?path=/groups/team/team-only.md')
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_missing_path_on_content_returns_bad_request(): void
@@ -163,7 +162,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
 
         $this->getDocContent($token, '/users/bob/docs/missing.md')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
     }
 

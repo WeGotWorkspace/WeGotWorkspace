@@ -8,12 +8,6 @@
       "groups": {
         "$ref": "#/components/schemas/SettingsUserGroupList"
       },
-      "mail": {
-        "$ref": "#/components/schemas/SettingsUserMail"
-      },
-      "mailServer": {
-        "$ref": "#/components/schemas/SettingsUserMailServer"
-      },
       "logoutUrl": {
         "type": "string"
       },
@@ -25,8 +19,6 @@
     "required": [
       "user",
       "groups",
-      "mail",
-      "mailServer",
       "logoutUrl",
       "mcpEnabled"
     ]

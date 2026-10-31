@@ -25,6 +25,40 @@ vi.mock("@/lib/live/use-hybrid-bootstrap", () => ({
   }),
 }));
 
+const { order, mockFlush, mockSyncBodies, mockOnline } = vi.hoisted(() => {
+  const order: string[] = [];
+  return {
+    order,
+    mockFlush: vi.fn(async () => {
+      order.push("flush");
+    }),
+    mockSyncBodies: vi.fn(async () => {
+      order.push("sync");
+    }),
+    mockOnline: vi.fn(() => true),
+  };
+});
+
+vi.mock("@/lib/offline/offline-session", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/offline-session")>()),
+  resolveDocsOfflineUsername: (username?: string) => username,
+}));
+vi.mock("@/lib/offline/docs/docs-hybrid-operations", () => ({
+  getDocsSyncRunner: () => ({ flush: mockFlush }),
+}));
+vi.mock("@/docs-core/src/docs-pending-bodies", () => ({
+  uploadPendingDocBodies: vi.fn(async () => {
+    order.push("bodies");
+  }),
+}));
+vi.mock("@/lib/offline/docs/docs-body-sync", () => ({
+  syncDocsBodiesFromHomeListing: mockSyncBodies,
+}));
+vi.mock("@/lib/offline/core/browser-online", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/offline/core/browser-online")>()),
+  readBrowserOnline: () => mockOnline(),
+}));
+
 const mockNetworkOperations = {
   loadFile: vi.fn(),
   saveFile: vi.fn(),
@@ -36,6 +70,30 @@ describe("useDocsAPI", () => {
     mockLoadBootstrap.mockReset();
     mockHybridLoad.mockReset();
     mockLoadBootstrap.mockResolvedValue(bootstrap);
+    mockFlush.mockClear();
+    mockSyncBodies.mockClear();
+    mockOnline.mockReturnValue(true);
+    order.length = 0;
+  });
+
+  const source = (): DocsApiSource => ({
+    loadBootstrap: mockLoadBootstrap,
+    createNetworkOperations: () => mockNetworkOperations,
+    createOperations: () => undefined,
+  });
+
+  it("sends changes queued offline, then left bodies, on load on any Docs page, before syncing", async () => {
+    renderHook(() => useDocsAPI(source()));
+
+    await waitFor(() => expect(order).toEqual(["flush", "bodies", "sync"]));
+  });
+
+  it("keeps changes queued while the browser is offline", async () => {
+    mockOnline.mockReturnValue(false);
+    renderHook(() => useDocsAPI(source()));
+
+    await waitFor(() => expect(mockSyncBodies).toHaveBeenCalled());
+    expect(mockFlush).not.toHaveBeenCalled();
   });
 
   it("returns bootstrap data and network operations", async () => {

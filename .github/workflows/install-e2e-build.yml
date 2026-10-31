@@ -57,7 +57,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: ctype, dom, iconv, imap, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
+          extensions: ctype, dom, iconv, json, mbstring, pdo, pdo_mysql, pdo_sqlite, simplexml, zip
           coverage: none
 
       - uses: pnpm/action-setup@v6.1.0
@@ -195,13 +195,15 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ghcr.io/wegotworkspace/wegotworkspace-candidate:sha-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=amd64
+          cache-to: type=gha,mode=max,scope=amd64
 
+  # Native ARM runner (free for public repos). QEMU emulation took 22-36 min
+  # on cache misses; a native build takes a few minutes.
   arm64:
     if: inputs.build_arm64
     needs: assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     permissions:
       contents: read
@@ -210,8 +212,6 @@ jobs:
       digest: ${{ steps.push.outputs.digest }}
     steps:
       - uses: actions/checkout@v7
-
-      - uses: docker/setup-qemu-action@v4
 
       - uses: docker/setup-buildx-action@v4
 
@@ -247,5 +247,5 @@ jobs:
           push: true
           platforms: linux/arm64
           tags: ghcr.io/wegotworkspace/wegotworkspace-candidate:sha-${{ github.sha }}-arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64

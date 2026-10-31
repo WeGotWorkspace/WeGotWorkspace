@@ -25,7 +25,6 @@ const modules = [
   { name: "admin", title: "Admin Console - WeGotWorkspace" },
   { name: "drive", title: "Drive - WeGotWorkspace" },
   { name: "install", title: "WeGotWorkspace Installer" },
-  { name: "mail", title: "Mail - WeGotWorkspace" },
   { name: "contacts", title: "Contacts - WeGotWorkspace" },
   { name: "tasks", title: "Tasks - WeGotWorkspace" },
   { name: "calendar", title: "Calendar - WeGotWorkspace" },

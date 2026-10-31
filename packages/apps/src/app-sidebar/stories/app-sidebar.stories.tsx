@@ -70,7 +70,7 @@ const meta: Meta<typeof AppSidebarHarness> = {
   component: AppSidebarHarness,
   parameters: {
     layout: "fullscreen",
-    routerPath: "/mail",
+    routerPath: "/notes",
   },
 };
 

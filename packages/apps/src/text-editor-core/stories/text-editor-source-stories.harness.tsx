@@ -1,5 +1,5 @@
 import { useState, type ComponentProps } from "react";
-import { Button } from "@/ui/button";
+import { Button } from "@/button/src/button";
 import { TextEditor } from "@/text-editor-core/src/text-editor";
 
 /** Storybook-only harness: external source toggle (not part of TextEditor). */

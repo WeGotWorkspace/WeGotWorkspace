@@ -236,9 +236,6 @@ final class OpenApiContract
         if ($openApiPath === '/files' && $method === 'GET') {
             return 'search='.rawurlencode('test');
         }
-        if (str_starts_with($openApiPath, '/mail/messages') && $method === 'GET' && ! str_contains($openApiPath, '{')) {
-            return 'folder='.rawurlencode('INBOX').'&limit=1';
-        }
         if ($openApiPath === '/rooms/{roomId}/events' && $method === 'GET') {
             return 'peerId=peer-alpha';
         }

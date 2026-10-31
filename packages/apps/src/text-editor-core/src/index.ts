@@ -6,7 +6,6 @@ export {
   type TextEditorFormatBarGroup,
   TEXT_EDITOR_FORMAT_BAR_FULL,
   TEXT_EDITOR_FORMAT_BAR_GROUPS,
-  TEXT_EDITOR_FORMAT_BAR_MAIL,
   resolveTextEditorFormatBarConfig,
 } from "@/text-editor-core/src/text-editor-format-bar";
 export {
@@ -54,9 +53,8 @@ export {
   getDocsTrackChangeGroups,
   getTrackChangeIdFromTarget,
   escapeTrackChangeIdForSelector,
+  getSessionTrackChangeIds,
   scrollTrackChangeIntoView,
-  toTrackChangesAuthor,
-  trackChangesAuthorIdFromName,
   type DocsTrackChangeGroup,
   type TextEditorCollabUser,
 } from "@/text-editor-core/src/text-editor-track-changes";

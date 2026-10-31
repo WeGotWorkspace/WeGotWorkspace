@@ -5,12 +5,7 @@ import { useIsTouch } from "@/hooks/use-is-touch";
 import { useWorkspaceListController } from "@/hooks/use-workspace-list-controller";
 import type { Note } from "@/lib/models/note";
 import { afterViewTransition } from "@/lib/view-transition";
-import { isLocalTempNoteId } from "@/lib/offline/notes/notes-schema";
-import {
-  filterNotesByHiddenNotebooks,
-  filterVisibleNotes,
-  mergeCreatedNotePreservingLocalOptimistic,
-} from "./notes-note-utils";
+import { filterNotesByHiddenNotebooks, filterVisibleNotes } from "./notes-note-utils";
 import { sharedNotebookFilterKeys } from "./use-notes-sidebar-model";
 import type { NotesShellState } from "./use-notes-shell";
 
@@ -123,6 +118,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     ],
   );
 
+  const visibleIds = useMemo(() => visibleNotes.map((n) => n.id), [visibleNotes]);
+
   const {
     selectedIds,
     setSelectedIds,
@@ -142,7 +139,7 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
   } = useWorkspaceListController<Note>({
     items: notes,
     setItems: setNotes,
-    visibleIds: visibleNotes.map((n) => n.id),
+    visibleIds,
     activeId,
     setActiveId,
     initialId: initialNoteId,
@@ -203,13 +200,8 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
     }
   }, [selectSingle, setSelectedIds, setSelectionMode, view]);
 
-  const prevNotesRef = useRef(notes);
-
   useEffect(() => {
-    if (!activeId) {
-      prevNotesRef.current = notes;
-      return;
-    }
+    if (!activeId) return;
     // Prefer in-memory rows, but also trust the latest bootstrap payload.
     // Shell merges `data.notes` in an effect, so the first ready paint after
     // `listLoading` flips can still have empty local `notes` for one frame.
@@ -217,61 +209,17 @@ export function useNotesList({ shell, initialNoteId, onNoteChange }: UseNotesLis
       notes.some((note) => note.id === activeId) ||
       data.notes.some((note) => note.id === activeId)
     ) {
-      prevNotesRef.current = notes;
       return;
     }
-
     // Deep link / refresh: WorkspaceLiveAppShell mounts with empty placeholder
     // notes while hybrid IndexedDB + network bootstrap runs (`listLoading`).
     // Clearing activeId here would replace `/notes/all/:noteId` → `/all` before
     // local-first cache can hydrate the row.
-    if (listLoading) {
-      prevNotesRef.current = notes;
-      return;
-    }
-
-    const prevNotes = prevNotesRef.current;
-    const prevActive = prevNotes.find((note) => note.id === activeId);
-    let remappedId: string | undefined;
-
-    if (isLocalTempNoteId(activeId)) {
-      const prevIds = new Set(prevNotes.map((note) => note.id));
-      const added = notes.filter((note) => !prevIds.has(note.id));
-      if (added.length === 1) {
-        remappedId = added[0]?.id;
-      } else if (prevActive) {
-        remappedId = notes.find(
-          (note) =>
-            note.notebook === prevActive.notebook &&
-            note.date === prevActive.date &&
-            note.excerpt === prevActive.excerpt &&
-            note.body.join("\n\n") === prevActive.body.join("\n\n"),
-        )?.id;
-      }
-    }
-
-    if (remappedId) {
-      setActiveId(remappedId);
-      setSelectedIds((current) =>
-        current.map((rowId) => (rowId === activeId ? remappedId! : rowId)),
-      );
-      // Bootstrap/outbox remap drops the local-* row; copy optimistic tags onto
-      // the server id before the write-queue tag upsert lands.
-      if (prevActive) {
-        const from = prevActive;
-        setNotes((current) =>
-          current.map((note) =>
-            note.id === remappedId
-              ? mergeCreatedNotePreservingLocalOptimistic(note, { ...from, id: remappedId! })
-              : note,
-          ),
-        );
-      }
-    } else {
-      setActiveId("");
-    }
-    prevNotesRef.current = notes;
-  }, [activeId, data.notes, listLoading, notes, setNotes, setSelectedIds]);
+    if (listLoading) return;
+    // A note keeps its id for life (the app picks it), so a missing active
+    // note was deleted, not renamed.
+    setActiveId("");
+  }, [activeId, data.notes, listLoading, notes]);
 
   const active = activeId ? notes.find((n) => n.id === activeId) : undefined;
 
