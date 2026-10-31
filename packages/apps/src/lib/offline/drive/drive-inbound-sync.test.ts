@@ -3,8 +3,15 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
-import type { JmapFileNode } from "@/lib/jmap-client";
-import { JmapMethodError } from "@/lib/jmap-client";
+import type { JmapFileNode, JmapRequest, JmapSession } from "@/lib/jmap-client";
+import {
+  CORE_CAPABILITY,
+  FILENODE_CAPABILITY,
+  JmapClient,
+  JmapFileNodesClient,
+  JmapMethodError,
+  NOTES_CAPABILITY,
+} from "@/lib/jmap-client";
 import { offlineAccountKeyFromUsername, offlineDbForAccount } from "@/lib/offline/core/offline-db";
 import {
   readDocsAvailability,
@@ -154,6 +161,59 @@ function installCatalog(catalog: Map<string, JmapFileNode>): void {
     }),
     notFound: ids.filter((id) => !catalog.has(id)),
   }));
+}
+
+/**
+ * A real `JmapFileNodesClient` over a server stand-in that answers
+ * `FileNode/get` from `catalog` and, like the WGW server, rejects a get of more
+ * than 500 ids with `requestTooLarge`. The session omits `maxObjectsInGet`.
+ */
+async function fileNodesBehindServer(
+  catalog: Map<string, JmapFileNode>,
+): Promise<{ client: JmapFileNodesClient; getSizes: number[] }> {
+  const getSizes: number[] = [];
+  const session = {
+    capabilities: { [CORE_CAPABILITY]: {}, [NOTES_CAPABILITY]: {}, [FILENODE_CAPABILITY]: {} },
+    accounts: {},
+    primaryAccounts: { [FILENODE_CAPABILITY]: "ada" },
+    username: "ada",
+    apiUrl: "/jmap",
+    downloadUrl: "",
+    uploadUrl: "",
+    eventSourceUrl: "",
+    state: "1",
+  } satisfies JmapSession;
+  const jmap = new JmapClient({
+    sessionUrl: "/jmap/session",
+    fetch: async (input, init) => {
+      if (input === "/jmap/session") return new Response(JSON.stringify(session));
+      const body = JSON.parse(String(init?.body)) as JmapRequest;
+      const methodResponses = body.methodCalls.map(([name, args, id]) => {
+        const ids = (args.ids as string[] | null) ?? [];
+        getSizes.push(ids.length);
+        if (ids.length > 500) {
+          return [
+            "error",
+            { type: "requestTooLarge", description: "ids exceeds maxObjectsInGet." },
+            id,
+          ];
+        }
+        return [
+          name,
+          {
+            accountId: "ada",
+            state: "9",
+            list: ids.flatMap((nodeId) => catalog.get(nodeId) ?? []),
+            notFound: ids.filter((nodeId) => !catalog.has(nodeId)),
+          },
+          id,
+        ];
+      });
+      return new Response(JSON.stringify({ methodResponses, sessionState: "1" }));
+    },
+  });
+  await jmap.connect();
+  return { client: new JmapFileNodesClient(jmap), getSizes };
 }
 
 async function databaseNames(): Promise<string[]> {
@@ -511,5 +571,31 @@ describe("syncDriveInboundFromFileNodes", () => {
     expect(await readDriveEntryFromCache(username, "/users/ada/legacy.md")).not.toBeNull();
     expect(result.keptUnsavedPaths).toEqual([]);
     expect(await readDriveSyncToken(username)).toBe("9");
+  });
+
+  it("applies more than 500 changed ids in one sync and writes every row", async () => {
+    const files = Array.from({ length: 620 }, (_, index) =>
+      node(`fn-file-${index}`, "fn-home", `file-${index}.md`),
+    );
+    const catalog = new Map<string, JmapFileNode>([
+      ["fn-home", node("fn-home", null, "ada", "directory")],
+      ...files.map((file) => [file.id, file] as const),
+    ]);
+    const server = await fileNodesBehindServer(catalog);
+    getFileNodes.mockImplementation(
+      (accountId: string, ids: string[], options?: { signal?: AbortSignal }) =>
+        server.client.getFileNodes(accountId, ids, options),
+    );
+    fileNodeChanges.mockResolvedValue(changes({ created: [...catalog.keys()], newState: "10" }));
+
+    const result = await syncDriveInboundFromFileNodes(username);
+
+    expect(result.changed).toBe(true);
+    expect(server.getSizes.every((size) => size <= 500)).toBe(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const rows = await driveEntriesTable(db).where("nodeId").above("").toArray();
+    expect(rows).toHaveLength(catalog.size);
+    expect(await readCachedDriveNodeId(username, "/users/ada/file-619.md")).toBe("fn-file-619");
+    expect(await readDriveSyncToken(username)).toBe("10");
   });
 });

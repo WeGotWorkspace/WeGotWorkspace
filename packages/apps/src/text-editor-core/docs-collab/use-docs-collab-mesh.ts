@@ -17,6 +17,7 @@ import {
 } from "./docs-collab-mesh-hydration";
 import type { TabMeshStateSnapshot } from "./docs-collab-tab-sync";
 import { DEFAULT_DOCS_COLLAB_WIRE } from "./docs-collab-wire";
+import { settleRefusedRoomPoll } from "./docs-collab-gone";
 import { DocsRtcSession } from "./docs-rtc-session";
 import type {
   DocsCollabMeshMessage,
@@ -42,6 +43,7 @@ type UseDocsCollabMeshOptions = {
   urls: DocsCollabUrls;
   markDocReady: () => void;
   trySeedFromFile: () => void;
+  setDocStatus: (status: string) => void;
 };
 
 export function useDocsCollabMesh({
@@ -50,6 +52,7 @@ export function useDocsCollabMesh({
   urls,
   markDocReady,
   trySeedFromFile,
+  setDocStatus,
 }: UseDocsCollabMeshOptions) {
   const [peers, setPeers] = useState<DocsCollabMeshPeer[]>([]);
   const [connectingPeers, setConnectingPeers] = useState<DocsCollabMeshPeer[]>([]);
@@ -180,11 +183,9 @@ export function useDocsCollabMesh({
 
   const handleMeshMessage = useCallback(
     (msg: DocsCollabMeshMessage) => {
-      // Contract C2 revocation: the server refused the poll, so this account
-      // has lost read access. Leave rather than keep a stale live session.
       if (msg.type === "forbidden") {
         void leaveMeshAsFollower();
-        urls.onPersistForbidden?.();
+        settleRefusedRoomPoll(refs, urls, setDocStatus);
         return;
       }
 
@@ -234,6 +235,7 @@ export function useDocsCollabMesh({
       refreshMeshUi,
       sendAwarenessBroadcast,
       sendSyncStep1,
+      setDocStatus,
       trySeedFromFile,
       urls,
     ],

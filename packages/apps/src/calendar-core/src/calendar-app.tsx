@@ -13,7 +13,9 @@ import {
   applyPendingSyncToEngineEvents,
   useCalendarPendingSync,
 } from "@/calendar-core/src/use-calendar-pending-sync";
+import { useCalendarRangeLoad } from "@/calendar-core/src/use-calendar-range-load";
 import { useCalendarRouteSync } from "@/calendar-core/src/use-calendar-route-sync";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { useCalendarSurface } from "@/calendar-core/src/use-calendar-surface";
 import {
   openCalendarMeetHref,
@@ -88,9 +90,22 @@ export function CalendarApp({ apiSource }: CalendarAppProps = {}) {
     operations,
     offlineUsername,
     jmapClient,
+    loadEventsInRange,
     refreshBootstrap,
     reloadFromCache,
   } = useCalendarAPI(apiSource, { onSyncConflict: handleSyncConflict });
+  const { online } = useConnectivity();
+
+  // The route follows the view, so its view and date are the period on screen.
+  useCalendarRangeLoad({
+    view: initialView,
+    anchor: initialAnchor,
+    loadRange: loadEventsInRange,
+    enabled: phase === "ready" && online,
+    onLoaded: () => {
+      void reloadFromCache();
+    },
+  });
 
   const pendingEventIds = useCalendarPendingSync(offlineUsername, bootstrapRevision);
   const eventsRef = useRef(data.events);

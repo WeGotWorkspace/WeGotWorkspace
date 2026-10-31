@@ -9,6 +9,21 @@ import type {
   TurnCredentials,
 } from "@/lib/rtc/types";
 
+/**
+ * A refused signaling request. `status` is the HTTP status, so a caller can
+ * tell a lost room (403) from a peer the server no longer knows (404); the
+ * message stays the server's error code.
+ */
+export class HttpSignalingError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "HttpSignalingError";
+  }
+}
+
 export type HttpSignalingAuth = {
   bearerToken?: string;
   sessionKey?: string;
@@ -184,7 +199,10 @@ export class HttpSignalingClient {
       throw new Error(`Invalid signaling response (${res.status}): ${text.slice(0, 80)}`);
     }
     if (!res.ok) {
-      throw new Error(data.error || data.message || `${res.status} ${res.statusText}`);
+      throw new HttpSignalingError(
+        data.error || data.message || `${res.status} ${res.statusText}`,
+        res.status,
+      );
     }
     return data as T;
   }

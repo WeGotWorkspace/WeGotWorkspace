@@ -177,15 +177,15 @@ trait SharedWorkspaceFixture
     protected function assertRevoked(string $role): void
     {
         $this->listWorkspace($role)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->download(self::PLAN, $role)
-            ->assertStatus(400)
-            ->assertJsonPath('error', 'Access denied for this path.');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'Path not found.');
         $this->readCollab(self::PLAN, $role)
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
         $this->writeCollab(self::PLAN, $role, "after revoke\n")
-            ->assertForbidden();
+            ->assertNotFound();
     }
 }

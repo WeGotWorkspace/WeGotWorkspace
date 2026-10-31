@@ -83,6 +83,13 @@ async function renderInRouter(ui: ReactNode) {
   return render(<RouterProvider router={router} />);
 }
 
+/** Role query scoped to the sidebar, so jsdom only computes styles for its buttons. */
+function sidebarButton(container: HTMLElement, name: RegExp) {
+  return within(container.querySelector<HTMLElement>(".app-sidebar")!).getByRole("button", {
+    name,
+  });
+}
+
 async function renderWorkspace(
   props: Partial<ComponentProps<typeof MeetWorkspace>> = {},
   leaveCall = vi.fn(async () => undefined),
@@ -119,20 +126,18 @@ describe("MeetWorkspace in-channel call chrome", () => {
     installMatchMedia();
   });
 
-  // This case renders three workspace states. A named role query recomputes
-  // jsdom styles for every button on the ~700-node tree after each re-render
-  // (~100ms locally, several times that on CI), which pushed it past the 5s
-  // timeout. The call chrome is aria-labelled, so label lookups and a
-  // sidebar-scoped channel query keep the same assertions cheap.
+  // A named role query over the whole workspace recomputes jsdom styles for
+  // every button after each re-render (~100ms locally, several times that on
+  // CI), which pushed these cases toward the 5s timeout (#1490). The call
+  // chrome is aria-labelled, so label lookups and sidebar-scoped channel
+  // queries keep the same assertions cheap.
   it("hides joined chrome after switching to another channel and does not hang up", async () => {
     const { leaveCall, container } = await renderWorkspace();
-    const channelButton = (name: RegExp) =>
-      within(container.querySelector<HTMLElement>(".app-sidebar")!).getByRole("button", { name });
 
     expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
     expect(screen.getByLabelText(meetLabels.devices)).toBeInstanceOf(HTMLButtonElement);
 
-    fireEvent.click(channelButton(/^random/i));
+    fireEvent.click(sidebarButton(container, /^random/i));
 
     expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
     expect(screen.queryByLabelText(meetLabels.devices)).toBeNull();
@@ -140,39 +145,40 @@ describe("MeetWorkspace in-channel call chrome", () => {
     expect(screen.getByLabelText(meetLabels.meet)).toBeInstanceOf(HTMLButtonElement);
     expect(leaveCall).not.toHaveBeenCalled();
 
-    fireEvent.click(channelButton(/^design/i));
+    fireEvent.click(sidebarButton(container, /^design/i));
 
     expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
     expect(leaveCall).not.toHaveBeenCalled();
   });
 
   it("hides joined chrome after switching to a DM and does not hang up", async () => {
-    const { leaveCall } = await renderWorkspace();
+    const { leaveCall, container } = await renderWorkspace();
+    expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
 
-    fireEvent.click(screen.getByRole("button", { name: /Ada Lovelace/i }));
+    fireEvent.click(sidebarButton(container, /Ada Lovelace/i));
 
-    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
     expect(leaveCall).not.toHaveBeenCalled();
   });
 
   it("does not paint the live call's chrome on a different open conversation", async () => {
-    const { leaveCall } = await renderWorkspace({
+    const { leaveCall, container } = await renderWorkspace({
       initialChannelId: "channel-random",
       initialCallLayout: "side-by-side",
       routeChannelId: "channel-random",
       liveCallChannelId: "channel-design",
     });
 
-    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
-    expect(screen.queryByRole("button", { name: meetLabels.devices })).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.devices)).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
     expect(screen.getByRole("heading", { name: "#random" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /^design/i }));
+    fireEvent.click(sidebarButton(container, /^design/i));
 
-    expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
-    expect(screen.getByRole("button", { name: meetLabels.devices })).toBeTruthy();
+    expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
+    expect(screen.getByLabelText(meetLabels.devices)).toBeInstanceOf(HTMLButtonElement);
     expect(leaveCall).not.toHaveBeenCalled();
   });
 
@@ -213,11 +219,11 @@ describe("MeetWorkspace in-channel call chrome", () => {
     }
 
     await renderInRouter(<Routed />);
-    expect(screen.getByRole("button", { name: meetLabels.leave })).toBeTruthy();
+    expect(screen.getByLabelText(meetLabels.leave)).toBeInstanceOf(HTMLButtonElement);
 
-    fireEvent.click(screen.getByRole("button", { name: "go-random" }));
+    fireEvent.click(screen.getByText("go-random"));
 
-    expect(screen.queryByRole("button", { name: meetLabels.leave })).toBeNull();
+    expect(screen.queryByLabelText(meetLabels.leave)).toBeNull();
     expect(screen.queryByText(meetLabels.meetingStarted)).toBeNull();
     expect(leaveCall).not.toHaveBeenCalled();
   });

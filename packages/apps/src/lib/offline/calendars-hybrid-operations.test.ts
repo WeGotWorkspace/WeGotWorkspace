@@ -1,9 +1,10 @@
 import "fake-indexeddb/auto";
+import { Temporal } from "@js-temporal/polyfill";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CalendarAppBootstrap } from "@/lib/api/mock/calendar-bootstrap";
 import { mockWorkspaceSession } from "@/lib/api/mock/workspace-session-mock";
 import type { JmapCalendarEvent } from "@/lib/jmap-client";
-import { CALENDARS_DOMAIN } from "@/lib/offline/calendars/calendars-schema";
+import { CALENDARS_DOMAIN, calendarsEventsTable } from "@/lib/offline/calendars/calendars-schema";
 import {
   enqueueOutboxMutation,
   listOutboxMutations,
@@ -43,12 +44,14 @@ const {
   patchCalendarEventLive,
   patchCalendarLive,
   fetchCalendarLiveBootstrap,
+  fetchCalendarEventsInRangeLive,
   importEventsLive,
 } = vi.hoisted(() => ({
   createCalendarEventLive: vi.fn(),
   patchCalendarEventLive: vi.fn(),
   patchCalendarLive: vi.fn(),
   fetchCalendarLiveBootstrap: vi.fn(),
+  fetchCalendarEventsInRangeLive: vi.fn(),
   importEventsLive: vi.fn(),
   searchCalendarSharePrincipalsLive: vi.fn(),
 }));
@@ -61,6 +64,7 @@ vi.mock("@/lib/api/wgw/calendar", () => ({
   patchCalendarLive,
   deleteCalendarLive: vi.fn(),
   fetchCalendarLiveBootstrap,
+  fetchCalendarEventsInRangeLive,
   importEventsLive,
   searchCalendarSharePrincipalsLive: vi.fn(),
 }));
@@ -92,6 +96,7 @@ import {
   createHybridCalendarOperations,
   fetchCalendarHybridBootstrap,
   getCalendarsSyncRunner,
+  loadCalendarRangeHybrid,
 } from "@/lib/offline/calendars-hybrid-operations";
 
 async function enqueuePendingCreate(): Promise<void> {
@@ -328,5 +333,80 @@ describe("hybrid importEvents", () => {
     ).rejects.toThrow(/internet connection/);
     expect(importEventsLive).not.toHaveBeenCalled();
     await expect(listOutboxMutations(username)).resolves.toHaveLength(0);
+  });
+});
+
+describe("events outside the bootstrap window (#1675)", () => {
+  const today = Temporal.Now.plainDateISO();
+  const at = (id: string, date: Temporal.PlainDate, title: string): JmapCalendarEvent => ({
+    ...wireEvent(id, title),
+    start: `${date.toString()}T10:00:00`,
+  });
+  const inWindow = at("ev-now", today.add({ days: 7 }), "This week");
+  const farAhead = at("ev-far-ahead", today.add({ years: 9 }), "Nine years ahead");
+  const farBack = at("ev-far-back", today.subtract({ years: 2 }), "Two years back");
+  const liveBootstrap = { ...bootstrap, data: { ...bootstrap.data, events: [inWindow] } };
+  const cachedIds = async () =>
+    ((await readCalendarBootstrapFromCache(username))?.data.events ?? []).map((event) => event.id);
+  const weekAround = (date: Temporal.PlainDate) => ({
+    utcStart: new Date(`${date.subtract({ days: 7 }).toString()}T00:00:00Z`),
+    utcEnd: new Date(`${date.add({ days: 7 }).toString()}T00:00:00Z`),
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(readBrowserOnline).mockReturnValue(true);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    await db.outbox.clear();
+    await calendarsEventsTable(db).clear();
+    await writeCalendarBootstrapToCache(username, liveBootstrap);
+    fetchCalendarLiveBootstrap.mockResolvedValue(liveBootstrap);
+  });
+
+  it.each([
+    ["nine years ahead", farAhead],
+    ["two years back", farBack],
+  ])("keeps an event created online %s through later refreshes", async (_label, created) => {
+    createCalendarEventLive.mockResolvedValue(created);
+    const operations = createHybridCalendarOperations(username);
+    await operations.createEvent({
+      calendarId: "default",
+      title: created.title ?? "",
+      start: created.start,
+      duration: "PT30M",
+    });
+
+    await fetchCalendarHybridBootstrap();
+    const next = await fetchCalendarHybridBootstrap();
+
+    expect(next.data.events.map((event) => event.id)).toEqual(
+      expect.arrayContaining(["ev-now", created.id]),
+    );
+  });
+
+  it("loads a period outside the window into the cache when online", async () => {
+    const range = weekAround(today.add({ years: 9 }));
+    fetchCalendarEventsInRangeLive.mockResolvedValue([farAhead]);
+
+    await expect(loadCalendarRangeHybrid(username, range)).resolves.toBe(true);
+
+    expect(fetchCalendarEventsInRangeLive).toHaveBeenCalledWith(range);
+    expect(await cachedIds()).toEqual(expect.arrayContaining(["ev-now", "ev-far-ahead"]));
+    // A later live refresh of the window keeps it.
+    const next = await fetchCalendarHybridBootstrap();
+    expect(next.data.events.some((event) => event.id === "ev-far-ahead")).toBe(true);
+  });
+
+  it("keeps the cache and loads nothing while offline", async () => {
+    fetchCalendarEventsInRangeLive.mockResolvedValue([farBack]);
+    await loadCalendarRangeHybrid(username, weekAround(today.subtract({ years: 2 })));
+    vi.mocked(readBrowserOnline).mockReturnValue(false);
+
+    await expect(
+      loadCalendarRangeHybrid(username, weekAround(today.subtract({ years: 2 }))),
+    ).resolves.toBe(false);
+
+    expect(fetchCalendarEventsInRangeLive).toHaveBeenCalledTimes(1);
+    expect(await cachedIds()).toEqual(expect.arrayContaining(["ev-now", "ev-far-back"]));
   });
 });
