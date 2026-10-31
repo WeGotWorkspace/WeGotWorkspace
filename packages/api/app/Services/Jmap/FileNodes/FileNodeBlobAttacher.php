@@ -49,11 +49,15 @@ final class FileNodeBlobAttacher
     ) {}
 
     /**
+     * `$beforeWrite` runs once the blob is known and its size matches, right
+     * before the target's bytes change.
+     *
+     * @param  (callable(): mixed)|null  $beforeWrite
      * @return array{sha256: string, size: int}
      *
      * @throws FileNodeSetError
      */
-    public function attach(string $username, string $blobId, string $targetKey, bool $lastReference, ?int $expectedSize): array
+    public function attach(string $username, string $blobId, string $targetKey, bool $lastReference, ?int $expectedSize, ?callable $beforeWrite = null): array
     {
         $row = $this->blobs->find($username, $blobId);
         if ($row === null) {
@@ -61,6 +65,9 @@ final class FileNodeBlobAttacher
         }
         if ($expectedSize !== null && $expectedSize !== $row->size_bytes) {
             throw new FileNodeSetError(['type' => 'invalidProperties', 'description' => 'size does not match the blob.', 'properties' => ['size']]);
+        }
+        if ($beforeWrite !== null) {
+            $beforeWrite();
         }
 
         try {

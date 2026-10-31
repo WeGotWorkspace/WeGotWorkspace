@@ -441,10 +441,11 @@ final class FileNodeSetService
                 }
                 $remaining = ($this->blobReferences[$blobId] ?? 1) - 1;
                 $this->blobReferences[$blobId] = max(0, $remaining);
-                // #1517: an outside write to a Docs document, detected on the next yjs read.
-                $this->index->recordBeforeContentWrite($key);
+                // #1517: an outside write to a Docs document, detected on the
+                // next yjs read; recorded only once the blob checks passed.
+                $beforeWrite = fn () => $this->index->recordBeforeContentWrite($key);
 
-                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize)['sha256'];
+                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize, $beforeWrite)['sha256'];
             }
 
             $blobContents = null;
