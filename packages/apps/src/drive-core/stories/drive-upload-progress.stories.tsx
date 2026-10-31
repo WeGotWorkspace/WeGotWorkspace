@@ -342,7 +342,6 @@ export const UploadsAllDoneDark: Story = {
 export const SidebarUploadsCount: Story = {
   name: "Sidebar: Uploads count",
   tags: ["vitest-ci"],
-
   render: () => <SidebarHarness uploads={{ count: 3, failed: 0 }} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -353,7 +352,6 @@ export const SidebarUploadsCount: Story = {
 export const SidebarUploadsFailed: Story = {
   name: "Sidebar: Uploads error badge",
   tags: ["vitest-ci"],
-
   render: () => <SidebarHarness uploads={{ count: 3, failed: 1 }} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -364,7 +362,6 @@ export const SidebarUploadsFailed: Story = {
 export const SidebarUploadsSelected: Story = {
   name: "Sidebar: Uploads selected",
   tags: ["vitest-ci"],
-
   render: () => <SidebarHarness uploads={{ count: 2, failed: 0 }} view={{ type: "uploads" }} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
