@@ -58,8 +58,8 @@
 .sidebar-section
   .menu-item.menu-item--selected
   .menu-item__badge:has(> .drive-uploads-badge--error) {
-  background-color: var(--color-error);
-  color: #fff;
+  background-color: var(--color-destructive);
+  color: var(--color-destructive-foreground);
 }
 
 /* ----- Uploads view ----- */
