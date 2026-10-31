@@ -10,7 +10,6 @@ import { listOutboxMutationsForDomain } from "@/lib/offline/core/outbox-store";
 import { driveOutboxApiPath } from "@/lib/offline/drive/drive-outbox-flush";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import { readDriveContentSyncProgress } from "@/lib/offline/drive/drive-content-sync";
-import { readDriveMetadataSyncProgress } from "@/lib/offline/drive/drive-metadata-sync";
 import { hasOfflineFileContent } from "@/lib/offline/shared/content-availability";
 import type { DriveFile } from "@/drive-core/src/drive-models";
 import { normalizeDriveAvailabilityPath } from "@/lib/offline/drive/drive-availability-store";
@@ -112,15 +111,11 @@ export function useDriveOfflineAvailability(
     }
 
     let cancelled = false;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
     setIsResolving(true);
 
     void (async () => {
       const settings = readOfflineDeviceContentSettings();
-      const [metadataProgress, contentProgress] = await Promise.all([
-        readDriveMetadataSyncProgress(username),
-        readDriveContentSyncProgress(username),
-      ]);
+      const contentProgress = await readDriveContentSyncProgress(username);
       const outboxRows = await listOutboxMutationsForDomain(username, DRIVE_DOMAIN);
       const outboxPendingPaths = new Set<string>();
       for (const row of outboxRows) {
@@ -163,21 +158,33 @@ export function useDriveOfflineAvailability(
       setOfflinePinnedIds(pinned);
       setOfflinePendingSyncIds(pending);
       setIsResolving(false);
-
-      // Stored blobs do not change the file list, so re-evaluate while a sync
-      // runs; the pass after it ends clears the last spinners.
-      if (metadataProgress.running || contentProgress.running) {
-        pollTimer = setTimeout(() => {
-          setRefreshToken((value) => value + 1);
-        }, SYNC_POLL_INTERVAL_MS);
-      }
     })();
 
     return () => {
       cancelled = true;
-      if (pollTimer) clearTimeout(pollTimer);
     };
   }, [enabled, fileKeys, files, online, refreshToken, settingsVersion, username]);
+
+  // Stored blobs do not change the file list, so watch the content sync on a
+  // fixed interval. Sampling continues while both flags are false: the content
+  // flag is only set after the metadata crawl and the cache scan. A pass runs
+  // while content runs and once after it ends, which clears the last spinners.
+  useEffect(() => {
+    if (!enabled || !username || files.length === 0) return;
+    let cancelled = false;
+    let wasRunning = false;
+    const timer = setInterval(() => {
+      void readDriveContentSyncProgress(username).then(({ running }) => {
+        if (cancelled) return;
+        if (running || wasRunning) setRefreshToken((value) => value + 1);
+        wasRunning = running;
+      });
+    }, SYNC_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [enabled, files.length, username]);
 
   return {
     offlineAvailableIds,

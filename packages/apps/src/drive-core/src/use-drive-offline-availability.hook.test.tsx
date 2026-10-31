@@ -66,4 +66,32 @@ describe("useDriveOfflineAvailability while syncing", () => {
     });
     expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
   });
+
+  it("keeps sampling through the metadata-to-content gap", async () => {
+    mocks.metadataRunning = true;
+    const { result } = renderHook(() => useDriveOfflineAvailability(files, true, "u"));
+    await waitFor(() => expect(result.current.isResolving).toBe(false));
+    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+
+    // Gap: both flags false while the cache is scanned.
+    mocks.metadataRunning = false;
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+
+    mocks.contentRunning = true;
+    await waitFor(() => expect(result.current.offlinePendingSyncIds.has("a")).toBe(true), {
+      timeout: 4000,
+    });
+
+    mocks.stored.add("/a.md");
+    await waitFor(() => expect(result.current.offlineAvailableIds.has("a")).toBe(true), {
+      timeout: 4000,
+    });
+    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+
+    mocks.contentRunning = false;
+    await new Promise((resolve) => setTimeout(resolve, 3200));
+    expect(result.current.offlineAvailableIds.has("a")).toBe(true);
+    expect(result.current.offlinePendingSyncIds.has("a")).toBe(false);
+  }, 20000);
 });
