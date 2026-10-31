@@ -35,7 +35,7 @@ final class WgwApiRateLimiters
 
     public const SEARCH = 'wgw-search';
 
-    private const API_REQUESTS_PER_MINUTE = 600;
+    public const API_REQUESTS_PER_MINUTE = 600;
 
     /** Type-ahead with debounce stays under this. Each call scans document text. */
     private const SEARCH_REQUESTS_PER_MINUTE = 60;
@@ -49,6 +49,24 @@ final class WgwApiRateLimiters
             $request,
             self::API_REQUESTS_PER_MINUTE,
         ));
+    }
+
+    /**
+     * Clears one account's `wgw-api` bucket and returns what it had spent in
+     * the current window. Only for the local e2e tier (#1677), through
+     * `wgw:e2e-reset-api-budget`, which refuses outside a local checkout.
+     *
+     * The key mirrors `ThrottleRequests` for a named limiter:
+     * md5(limiter name . {@see key()}). `WgwApiBudgetResetTest` proves the
+     * two still match.
+     */
+    public static function resetAccountBudget(string $username): int
+    {
+        $key = md5(self::API.'user:'.$username);
+        $used = RateLimiter::attempts($key);
+        RateLimiter::clear($key);
+
+        return is_numeric($used) ? (int) $used : 0;
     }
 
     /**

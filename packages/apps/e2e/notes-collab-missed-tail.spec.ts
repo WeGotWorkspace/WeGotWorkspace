@@ -6,7 +6,7 @@
 // vector check for missed inserts, the delete-set step 2 for missed deletes.
 // Ten seconds is well past the 1.5-second quiet check, and nothing else on a
 // WebRTC link resyncs a peer that is already connected.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 import {
   droppedSyncUpdates,
   installSyncUpdateDrop,
