@@ -35,4 +35,4 @@ export {
   createBrandingStoryMeta,
   type CreateBrandingStoryMetaOptions,
 } from "./create-branding-story-meta";
-export { DarkThemeStoryRoot, withDarkTheme } from "./dark-theme-story";
+export { withDarkTheme } from "./dark-theme-story";
