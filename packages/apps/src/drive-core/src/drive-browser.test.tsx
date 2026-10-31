@@ -265,25 +265,43 @@ describe("upload placeholders", () => {
   it.each([
     ["grid", DriveGridView],
     ["list", DriveListView],
-  ] as const)("shows the status and only the placeholder's own actions in %s view", (_, View) => {
+  ] as const)(
+    "shows the ring in the offline slot, the status, and a menu in %s view",
+    (_, View) => {
+      render(
+        <div className="drive-workspace">
+          <View
+            {...baseBrowserProps({
+              items: [FAILED, QUEUED],
+              offlineEnabled: true,
+              canPinOffline: true,
+              onMakeOfflineAvailable: noop,
+              extraFileActions: () => [remove],
+            })}
+          />
+        </div>,
+      );
+
+      expect(screen.getByText("Upload failed · Too large to upload")).toBeTruthy();
+      expect(screen.getByText("Waiting to upload")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: driveLabels.offlineMakeAvailable })).toBeNull();
+      const ring = screen.getByRole("progressbar", { name: "Upload of waiting.txt" });
+      expect(ring.getAttribute("aria-valuetext")).toBe("Waiting to upload");
+      expect(ring.hasAttribute("aria-valuenow")).toBe(false);
+      expect(
+        screen.getByRole("img", { name: "huge.bin: Upload failed · Too large to upload" }),
+      ).toBeTruthy();
+      // Both get a menu: Remove, plus the server-only actions shown disabled.
+      expect(screen.getAllByRole("button", { name: "More actions" })).toHaveLength(2);
+    },
+  );
+
+  it("adds the ring column to a list without the offline column", () => {
     render(
       <div className="drive-workspace">
-        <View
-          {...baseBrowserProps({
-            items: [FAILED, QUEUED],
-            offlineEnabled: true,
-            canPinOffline: true,
-            onMakeOfflineAvailable: noop,
-            extraFileActions: (file) => (file.upload?.status === "failed" ? [remove] : []),
-          })}
-        />
+        <DriveListView {...baseBrowserProps({ items: [FILE, QUEUED], offlineEnabled: false })} />
       </div>,
     );
-
-    expect(screen.getByText("Upload failed · Too large to upload")).toBeTruthy();
-    expect(screen.getByText("Waiting to upload")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: driveLabels.offlineMakeAvailable })).toBeNull();
-    // Only the failed file has an action (Remove); the queued one gets no menu here.
-    expect(screen.getAllByRole("button", { name: "More actions" })).toHaveLength(1);
+    expect(screen.getByRole("progressbar", { name: "Upload of waiting.txt" })).toBeTruthy();
   });
 });

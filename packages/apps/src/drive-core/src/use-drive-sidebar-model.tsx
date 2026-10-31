@@ -5,10 +5,13 @@ import { FILES_BROWSER_SIDEBAR_PRIMARY_ORDER } from "@/drive-core/src/files-brow
 import type { ViewKey } from "@/drive-core/src/drive-models";
 import type { DriveUILabels } from "@/drive-core/src/drive-labels";
 import type { MenuItemProps } from "@/menu-item/src/menu-item";
+import { DriveUploadsBadge } from "@/drive-core/src/drive-uploads-badge";
 
 type UseDriveSidebarModelArgs = {
   labels: DriveUILabels;
   view: ViewKey;
+  /** Files in the upload queue, or null when this Drive has no queue. */
+  uploads?: { count: number; failed: number } | null;
   /** Group drive roots with display labels (path key + SST label). */
   sidebarGroupRoots: ReadonlyArray<{ path: string; label: string }>;
   selectView: (view: ViewKey) => void;
@@ -39,6 +42,7 @@ function isGroupView(view: ViewKey, groupPath: string) {
 export function useDriveSidebarModel({
   labels,
   view,
+  uploads = null,
   sidebarGroupRoots,
   selectView,
   sidebarDropZoneProps,
@@ -71,6 +75,17 @@ export function useDriveSidebarModel({
         onClick: () => selectView({ type: "starred" }),
         icon: <DriveViewIcon view={{ type: "starred" }} />,
       },
+      // Only while the queue has files or the view is open; failed files keep it.
+      uploads:
+        (uploads && uploads.count > 0) || view.type === "uploads"
+          ? {
+              label: labels.sidebarUploads,
+              selected: view.type === "uploads",
+              onClick: () => selectView({ type: "uploads" }),
+              icon: <DriveViewIcon view={{ type: "uploads" }} />,
+              badge: uploads && uploads.count > 0 ? <DriveUploadsBadge {...uploads} /> : null,
+            }
+          : null,
       trash: {
         label: labels.sidebarTrash,
         selected: isTrashView(view),
@@ -78,10 +93,10 @@ export function useDriveSidebarModel({
         icon: <DriveViewIcon view={{ type: "folder", path: "Trash" }} />,
         ...sidebarDropZoneProps("Trash", (ids) => commitMoveToFolder(ids, "Trash")),
       },
-    } satisfies Record<(typeof FILES_BROWSER_SIDEBAR_PRIMARY_ORDER)[number], MenuItemProps>;
+    } satisfies Record<(typeof FILES_BROWSER_SIDEBAR_PRIMARY_ORDER)[number], MenuItemProps | null>;
 
-    return FILES_BROWSER_SIDEBAR_PRIMARY_ORDER.map((id) => byId[id]);
-  }, [labels, commitMoveToFolder, selectView, sidebarDropZoneProps, view]);
+    return FILES_BROWSER_SIDEBAR_PRIMARY_ORDER.flatMap((id) => byId[id] ?? []);
+  }, [labels, commitMoveToFolder, selectView, sidebarDropZoneProps, uploads, view]);
 
   const groupSidebarItems = useMemo<MenuItemProps[]>(() => {
     const personal: MenuItemProps = {

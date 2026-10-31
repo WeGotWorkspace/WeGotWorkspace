@@ -16,6 +16,7 @@ import type {
   DriveShareUpdateRequest,
   DriveSharedWithMeEntry,
 } from "@wgw/openapi-types/drive-types";
+import type { DriveUploadQueueSnapshot } from "@/lib/offline/drive/upload/drive-upload-subscription";
 
 export type DriveUIData = {
   user: WgwDriveUserData;
@@ -103,6 +104,8 @@ export type DriveUnifiedSearchDownloadInput = {
   sourceKey: string;
 };
 
+export type { DriveUploadQueueSnapshot };
+
 export type DriveAPIOperations = {
   refreshState: (opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
   changeDir: (to: string, opts?: { signal?: AbortSignal }) => Promise<DriveUIData>;
@@ -163,15 +166,27 @@ export type DriveAPIOperations = {
    * as one batch waiting for the batch dialog (placeholders show at once).
    * Without it, the upload action falls back to `uploadFiles`.
    */
-  enqueueUploads?: (input: { cwd: string; files: File[] }) => Promise<{ batchId: string }>;
+  enqueueUploads?: (input: {
+    cwd: string;
+    files: File[];
+  }) => Promise<{ batchId: string; itemIds?: string[] }>;
   /** Hand a queued batch to the background uploader with the dialog's answers. */
   releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
   /** *Cancel* in the batch dialog: drop the batch, its placeholders, and its files. */
   cancelUploadBatch?: (batchId: string) => Promise<void>;
   /** Drop one `queued` or `failed` file with its placeholder. False while it is uploading. */
   removeQueuedUpload?: (itemId: string) => Promise<boolean>;
+  /** *Retry* on one failed file. False when it is gone or has to be added again. */
+  retryQueuedUpload?: (itemId: string) => Promise<boolean>;
+  /** *Retry all failed* in the Uploads view. Resolves to how many went back to the queue. */
+  retryAllFailedUploads?: () => Promise<number>;
   /** Called after every upload queue change in any tab. Returns an unsubscribe. */
   subscribeUploadQueue?: (listener: () => void) => () => void;
+  /**
+   * Every queued, uploading, and failed file across folders, in every open
+   * tab: called with the current snapshot, then after each change.
+   */
+  watchUploadQueue?: (listener: (snapshot: DriveUploadQueueSnapshot) => void) => () => void;
 };
 
 export type DriveUploadBatchAnswers = {

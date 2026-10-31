@@ -1,0 +1,87 @@
+@import "../styles.css" reference;
+
+/*
+ * Circular progress (ProgressRing). Context sets the colours:
+ * `--progress-ring-color` (arc) and `--progress-ring-track` (full circle).
+ */
+.progress-ring {
+  @apply relative inline-flex shrink-0 items-center justify-center;
+  width: var(--progress-ring-size, 1.125rem);
+  height: var(--progress-ring-size, 1.125rem);
+  color: var(--progress-ring-color, currentColor);
+}
+
+.progress-ring__svg {
+  @apply h-full w-full;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.progress-ring__track,
+.progress-ring__indicator {
+  fill: none;
+  stroke-width: 2;
+}
+
+.progress-ring__track {
+  stroke: var(--progress-ring-track, color-mix(in oklab, currentColor 22%, transparent));
+}
+
+.progress-ring__indicator {
+  stroke: currentColor;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 240ms ease-out;
+}
+
+/* Busy, amount unknown: a quarter arc that turns. */
+.progress-ring--spin .progress-ring__svg {
+  animation: progress-ring-spin 1s linear infinite;
+}
+
+.progress-ring--spin .progress-ring__indicator {
+  stroke-dashoffset: 33;
+}
+
+/* Waiting: dashed track, no arc. */
+.progress-ring--static .progress-ring__track {
+  stroke-dasharray: 2.5 2.5;
+  stroke: color-mix(in oklab, currentColor 70%, transparent);
+}
+
+.progress-ring--static .progress-ring__indicator {
+  display: none;
+}
+
+/* Nearly done (e.g. the server is putting the file together): full ring that breathes. */
+.progress-ring--pulse .progress-ring__indicator {
+  stroke-dashoffset: 0;
+  animation: progress-ring-pulse 1.4s ease-in-out infinite;
+}
+
+.progress-ring__glyph {
+  @apply absolute inset-0 flex items-center justify-center;
+}
+
+.progress-ring__glyph > svg {
+  width: 0.5625rem;
+  height: 0.5625rem;
+}
+
+@keyframes progress-ring-spin {
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+@keyframes progress-ring-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-ring--spin .progress-ring__svg,
+  .progress-ring--pulse .progress-ring__indicator {
+    animation: none;
+  }
+}

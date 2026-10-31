@@ -72,6 +72,11 @@ export type OfflineDriveUploadItemRow = {
    * reads that node back and finishes; it never uploads or creates again.
    */
   createdNodeId?: string;
+  /**
+   * Set by the chunked uploader (#1519) once every part is sent and the
+   * server is putting the file together. Unset during a whole-file upload.
+   */
+  phase?: "assembling";
   error?: DriveUploadItemError;
 };
 

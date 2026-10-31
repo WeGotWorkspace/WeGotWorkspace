@@ -33,6 +33,8 @@ export type ViewKey =
   | { type: "recent" }
   | { type: "starred" }
   | { type: "shared" }
+  /** Every queued, uploading, and failed file across folders (#1502). */
+  | { type: "uploads" }
   | { type: "access"; scopePath?: string };
 
 export const DOCS_EDITOR_EXTENSIONS = new Set(["md", "markdown", "txt"]);

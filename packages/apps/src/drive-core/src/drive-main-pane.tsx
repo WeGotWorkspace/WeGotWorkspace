@@ -18,8 +18,14 @@ import type { useDriveController } from "@/drive-core/src/use-drive-controller";
 import { isTopLevelDriveApiPath } from "@/drive-core/src/drive-path-utils";
 import { resolveDriveFileCanManageStructure } from "@/drive-core/src/drive-file-structure-rights";
 import { useDriveTilesInView } from "@/drive-core/src/use-drive-tiles-in-view";
+import { DriveUploadsPane } from "@/drive-core/src/drive-uploads-pane";
 
 type DriveController = ReturnType<typeof useDriveController>;
+
+const NO_PLACEHOLDER_DRAG = {
+  onDragStart: (event: React.DragEvent) => event.preventDefault(),
+  onDragEnd: () => {},
+};
 
 export type DriveMainPaneProps = {
   controller: DriveController;
@@ -122,6 +128,20 @@ export function DriveMainPane({
 
   const searchActive = Boolean(searchQuery.trim());
 
+  // Upload placeholders are not on the server yet: no selection, batch actions, or drag.
+  const placeholderIds = useMemo(
+    () => new Set(visibleItems.filter((file) => file.upload).map((file) => file.id)),
+    [visibleItems],
+  );
+  const selectUnlessPlaceholder = (id: string, event: React.MouseEvent) => {
+    if (!placeholderIds.has(id)) handleSelect(id, event);
+  };
+  const longPressUnlessPlaceholder = (id: string) => {
+    if (!placeholderIds.has(id)) enterSelectionFor(id);
+  };
+  const dragUnlessPlaceholder = (id: string) =>
+    placeholderIds.has(id) ? NO_PLACEHOLDER_DRAG : itemDragHandlers(id);
+
   const handleShare = (file: DriveFile) => {
     if (!file.apiPath || !onOpenShare) return;
     onOpenShare(file.apiPath, file.title);
@@ -153,11 +173,11 @@ export function DriveMainPane({
     showLocationColumn: true,
     locationColumnLabel: labels.listColumnLocation,
     isItemDragging,
-    itemDragHandlers,
+    itemDragHandlers: dragUnlessPlaceholder,
     folderDropZoneProps,
-    onSelect: handleSelect,
+    onSelect: selectUnlessPlaceholder,
     onOpen: openFileOverride ?? openFile,
-    onLongPress: enterSelectionFor,
+    onLongPress: longPressUnlessPlaceholder,
     onStar: toggleStar,
     onDownload: handleDownload,
     onRename: requestRenameItem,
@@ -253,6 +273,12 @@ export function DriveMainPane({
                 {labels.folderListingRetry}
               </Button>
             </CollectionState>
+          ) : view.type === "uploads" ? (
+            <DriveUploadsPane
+              files={visibleItems}
+              searchActive={searchActive}
+              onOpenFolder={(path) => selectView({ type: "folder", path })}
+            />
           ) : visibleItems.length === 0 ? (
             <CollectionState icon={<Cloud className="size-12" />}>
               {labels.emptyFolder}

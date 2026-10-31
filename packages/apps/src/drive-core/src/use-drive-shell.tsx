@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAppToast } from "@/hooks/use-app-toast";
-import { buildDriveFolderBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
+import { buildDriveViewBreadcrumbs } from "@/drive-core/src/drive-breadcrumbs";
 import {
   applyDriveGroupDisplayNames,
   buildDriveFolderPickerRootLabels,
@@ -332,25 +332,10 @@ export function useDriveShell({
     return hydratedFolderPath !== view.path;
   }, [currentUsername, hydratedFolderPath, listLoading, operations, view]);
 
-  const breadcrumbs = useMemo(() => {
-    if (view.type === "access") {
-      return [{ label: driveLabels.accessTitle, path: null as string | null }];
-    }
-    if (view.type !== "folder") {
-      return [
-        {
-          label:
-            view.type === "recent"
-              ? driveLabels.sidebarRecent
-              : view.type === "starred"
-                ? driveLabels.sidebarStarred
-                : driveLabels.sidebarSharedWithMe,
-          path: null as string | null,
-        },
-      ];
-    }
-    return buildDriveFolderBreadcrumbs(view.path, driveLabels, folderPickerRootLabels);
-  }, [folderPickerRootLabels, view]);
+  const breadcrumbs = useMemo(
+    () => buildDriveViewBreadcrumbs(view, driveLabels, folderPickerRootLabels),
+    [folderPickerRootLabels, view],
+  );
 
   const viewLabel = breadcrumbs[breadcrumbs.length - 1].label;
   const viewResetKey =

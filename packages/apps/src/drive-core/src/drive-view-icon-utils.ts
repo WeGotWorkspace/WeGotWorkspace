@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Clock, HardDrive, Share, Shield, Star, Trash2 } from "lucide-react";
+import { Clock, CloudUpload, HardDrive, Share, Shield, Star, Trash2 } from "lucide-react";
 import { isDriveSharedGroupPath } from "@/drive-core/src/drive-breadcrumbs";
 import type { ViewKey } from "@/drive-core/src/drive-models";
 
@@ -10,6 +10,7 @@ export const driveViewIcons = {
   sharedWithMe: Share,
   recent: Clock,
   starred: Star,
+  uploads: CloudUpload,
   trash: Trash2,
   groupDrive: HardDrive,
   access: Shield,
@@ -20,6 +21,7 @@ export function resolveDriveViewIcon(view: ViewKey): LucideIcon {
   if (view.type === "recent") return driveViewIcons.recent;
   if (view.type === "starred") return driveViewIcons.starred;
   if (view.type === "shared") return driveViewIcons.sharedWithMe;
+  if (view.type === "uploads") return driveViewIcons.uploads;
 
   if (view.path === "Trash" || view.path.startsWith("Trash/")) return driveViewIcons.trash;
   if (isDriveSharedGroupPath(view.path)) return driveViewIcons.groupDrive;
