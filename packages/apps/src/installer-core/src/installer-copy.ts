@@ -43,4 +43,17 @@ export const installerCopy = {
   serverLead: "This server is not ready yet. Fix the items below, then re-run the checks.",
   rerunChecks: "Re-run checks",
   rerunChecksBusy: "Checking...",
+  notSecureTitle: "Not secure.",
+  notSecureLead:
+    "This page is open over http://, so your browser turns off parts of your workspace.",
+  notSecureListLabel: "What will not work",
+  notSecureLosses: [
+    "Editing documents together live",
+    "Push notifications",
+    "Using it offline or installing it as an app",
+    "Uploading large files",
+  ],
+  notSecureFix:
+    "Serve this site over https:// and open the installer there. Most hosts offer a free certificate, for example from Let's Encrypt.",
+  notSecureContinue: "Continue without https",
 } as const;
