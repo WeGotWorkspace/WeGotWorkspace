@@ -32,6 +32,8 @@ function parseFileSizeBytes(file: DriveFile): number | null {
   return Math.round(kb);
 }
 
+const SYNC_POLL_INTERVAL_MS = 1500;
+
 export type DriveRowOfflineState = "available" | "syncing" | "too-large" | "none";
 
 /**
@@ -110,6 +112,7 @@ export function useDriveOfflineAvailability(
     }
 
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
     setIsResolving(true);
 
     void (async () => {
@@ -129,7 +132,8 @@ export function useDriveOfflineAvailability(
       const pinned = new Set<string>();
       const pending = new Set<string>();
 
-      const syncRunning = metadataProgress.running || contentProgress.running;
+      // Only the content sync copies file bodies; the metadata crawl writes listings.
+      const syncRunning = contentProgress.running;
 
       await Promise.all(
         files.map(async (file) => {
@@ -159,10 +163,19 @@ export function useDriveOfflineAvailability(
       setOfflinePinnedIds(pinned);
       setOfflinePendingSyncIds(pending);
       setIsResolving(false);
+
+      // Stored blobs do not change the file list, so re-evaluate while a sync
+      // runs; the pass after it ends clears the last spinners.
+      if (metadataProgress.running || contentProgress.running) {
+        pollTimer = setTimeout(() => {
+          setRefreshToken((value) => value + 1);
+        }, SYNC_POLL_INTERVAL_MS);
+      }
     })();
 
     return () => {
       cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
     };
   }, [enabled, fileKeys, files, online, refreshToken, settingsVersion, username]);
 
