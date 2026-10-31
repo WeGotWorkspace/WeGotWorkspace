@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   readDirectoryEntriesFromCache,
   upsertDriveEntry,
@@ -41,6 +41,17 @@ async function enqueue(files: File[]) {
 
 describe("drive upload store", () => {
   let restoreStorage: () => void = () => undefined;
+
+  // The sign-out wipe loads Dexie, the offline database and the upload runner
+  // on first use. Under a full parallel run that cold load alone can take
+  // most of the 5 s test budget, so load them once up front.
+  beforeAll(async () => {
+    await Promise.all([
+      import("dexie"),
+      import("@/lib/offline/core/offline-db"),
+      import("@/lib/offline/drive/upload/drive-upload-runner"),
+    ]);
+  }, 30_000);
 
   beforeEach(async () => {
     await clearUploadTestDb();
