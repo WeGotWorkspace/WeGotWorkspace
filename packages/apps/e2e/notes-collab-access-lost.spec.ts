@@ -4,7 +4,7 @@
 // "Connected editors". Admin then removes the teammate from the group. The
 // teammate's open tab gets a 403 from the signaling poll, shows "Access lost"
 // and leaves the mesh; admin's roster drops the teammate without a reload.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   api,
   ensureTeamNotebook,
