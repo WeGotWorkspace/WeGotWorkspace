@@ -623,6 +623,7 @@ const ACTIONS = {
         s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
       );
     },
+    calendar: (f) => [{ date: D1, spot: "timed", title: `N ${f.id}` }],
   },
   // The same with an all-day due.
   createMoveAllDay: {
@@ -639,6 +640,7 @@ const ACTIONS = {
         s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
       );
     },
+    calendar: (f) => [{ date: D1, spot: "all-day", title: `N ${f.id}` }],
   },
 } satisfies Record<string, ActionDef>;
 type Action = keyof typeof ACTIONS;
