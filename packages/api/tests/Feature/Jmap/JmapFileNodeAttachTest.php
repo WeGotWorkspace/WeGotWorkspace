@@ -316,6 +316,64 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
         $this->assertFalse($this->files()->exists('users/bob/renamed.bin'));
     }
 
+    private function failRenames(): void
+    {
+        // Same device, but the rename itself fails (EXDEV between bind mounts).
+        $this->app->instance(LocalDiskFiles::class, new class extends LocalDiskFiles
+        {
+            public function moveAcross(Filesystem $fromDisk, string $fromKey, Filesystem $toDisk, string $toKey): bool
+            {
+                return false;
+            }
+        });
+    }
+
+    public function test_a_failed_rename_then_a_refused_copy_leaves_the_replaced_file(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1]);
+        $this->failRenames();
+        $this->seedPrivateFile('bob', 'a.txt', 'old bytes');
+        $home = $this->homeId();
+        $bytes = random_bytes(2_500_000);
+        $blobId = $this->upload($bytes);
+        $create = ['onExists' => 'replace', 'create' => ['f' => ['parentId' => $home, 'name' => 'a.txt', 'blobId' => $blobId]]];
+
+        $first = $this->set($create);
+        $this->assertSame('attachInProgress', $first->json('methodResponses.0.1.notCreated.f.type'));
+        $this->assertSame('old bytes', $this->files()->get('users/bob/a.txt'));
+        $this->assertEmpty($first->json('methodResponses.0.1.destroyed'));
+
+        $created = null;
+        for ($i = 0; $i < 6 && $created === null; $i++) {
+            $created = $this->set($create)->json('methodResponses.0.1.created.f');
+        }
+        $this->assertNotNull($created);
+        $this->assertSame(hash('sha256', $bytes), hash('sha256', (string) $this->files()->get('users/bob/a.txt')));
+    }
+
+    public function test_a_failed_rename_then_a_refused_copy_keeps_the_expected_blob_id_retryable(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1]);
+        $this->failRenames();
+        $this->seedPrivateFile('bob', 'a.txt', 'old bytes');
+        $list = $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
+            'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => null], 'g']],
+        ])->json('methodResponses.0.1.list');
+        $node = collect($list)->firstWhere('name', 'a.txt');
+        $bytes = random_bytes(2_500_000);
+        $update = ['update' => [(string) $node['id'] => ['blobId' => $this->upload($bytes), 'expectedBlobId' => $node['blobId']]]];
+
+        $done = null;
+        for ($i = 0; $i < 6 && $done === null; $i++) {
+            $response = $this->set($update);
+            $this->assertNotSame('versionMismatch', $response->json('methodResponses.0.1.notUpdated.'.$node['id'].'.type'));
+            $done = $response->json('methodResponses.0.1.updated.'.$node['id']);
+        }
+        $this->assertNotNull($done);
+        $this->assertSame(hash('sha256', $bytes), hash('sha256', (string) $this->files()->get('users/bob/a.txt')));
+    }
+
     public function test_not_enough_free_space_is_over_quota(): void
     {
         $this->forceCopies();

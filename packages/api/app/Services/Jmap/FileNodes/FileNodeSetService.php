@@ -409,11 +409,13 @@ final class FileNodeSetService
         }
 
         $wantsContent = array_key_exists('blobId', $patch) || $note !== null;
-        $before = function () use ($guarded, $wantsContent, &$pending, &$relocate): void {
+        $claimed = false;
+        $before = function () use ($guarded, $wantsContent, &$pending, &$relocate, &$claimed): void {
             // Claim first: a concurrent writer with the same expectedBlobId
             // loses here, before it destroys or renames anything.
             if ($guarded !== null && $wantsContent) {
                 $this->versionCheck->claim($guarded);
+                $claimed = true;
             }
             if ($pending !== null) {
                 $pending();
@@ -442,7 +444,16 @@ final class FileNodeSetService
                     throw new FileNodeSetError($this->invalidProperties('blobId must be a non-empty id.', ['blobId']));
                 }
             }
-            $sha256 = $this->writeContent($username, $targetKey, $targetName, $note, $blobId, $patch['size'] ?? null, $before);
+            try {
+                $sha256 = $this->writeContent($username, $targetKey, $targetName, $note, $blobId, $patch['size'] ?? null, $before);
+            } catch (\Throwable $e) {
+                // A claimed write that failed leaves the node hash-pending:
+                // roll it back so a retry with the same expectedBlobId works.
+                if ($claimed && $guarded !== null) {
+                    $this->versionCheck->release($guarded);
+                }
+                throw $e;
+            }
             $node = $this->index->recordContentWrite($targetKey, $sha256) ?? $node;
             $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.(string) $node->storage_key);
             $shape = $this->mapper->toFileNode($node, $principal);

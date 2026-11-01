@@ -79,6 +79,14 @@ final class FileNodeVersionCheck
         throw $this->mismatch($fresh, $this->mapper->blobId($fresh));
     }
 
+    /**
+     * Rolls a claim back when the write failed before the content changed.
+     */
+    public function release(JmapFileNode $loaded): void
+    {
+        $this->index->releaseContentWrite($loaded);
+    }
+
     private function mismatch(JmapFileNode $node, string $current): FileNodeSetError
     {
         return new FileNodeSetError([

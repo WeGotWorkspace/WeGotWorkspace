@@ -343,6 +343,21 @@ final class FileNodeIndexService
     }
 
     /**
+     * Undoes claimContentWrite when the write failed before any byte
+     * changed: the node is no longer hash-pending, so a retry with the same
+     * expectedBlobId is not a versionMismatch.
+     */
+    public function releaseContentWrite(JmapFileNode $loaded): void
+    {
+        $seq = $this->nextSeq();
+        JmapFileNode::query()
+            ->where('node_id', (string) $loaded->node_id)
+            ->where('hash_pending', true)
+            ->update(['hash_pending' => false, 'change_seq' => $seq]);
+        JmapContentHashJob::query()->where('node_id', (string) $loaded->node_id)->delete();
+    }
+
+    /**
      * Stores the true hash a hash job computed for a hash-pending node and
      * bumps change_seq, so FileNode/changes tells clients the blobId moved
      * (once per discovered file).

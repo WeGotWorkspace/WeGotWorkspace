@@ -146,22 +146,34 @@ final class FileNodeBlobAttacher
             return false;
         }
 
-        if ($placing !== null) {
-            try {
-                $placing();
-            } catch (\Throwable $e) {
-                // Refused after all: hand the blob back untouched.
-                $this->restoreClaimed($claimed);
-                throw $e;
-            }
-        }
-        if ($this->local->moveAcross($data, $this->blobs->blobKey($username, $row->blob_id), $files, $targetKey)) {
-            return true;
-        }
-        // The rename failed after all: hand the blob back and copy instead.
-        $this->restoreClaimed($claimed);
+        // Get the bytes onto wgw_files first: the rename can still fail
+        // (EXDEV between bind mounts, permissions) and nothing may have been
+        // destroyed by then, so the copy fallback can still refuse safely.
+        $blobKey = $this->blobs->blobKey($username, $row->blob_id);
+        $stagingKey = $this->stagingKey($username);
+        if (! $this->local->moveAcross($data, $blobKey, $files, $stagingKey)) {
+            $this->restoreClaimed($claimed);
 
-        return false;
+            return false;
+        }
+        try {
+            if ($placing !== null) {
+                $placing();
+            }
+            if (! $files->move($stagingKey, $targetKey)) {
+                throw new \RuntimeException('Could not place the moved file.');
+            }
+        } catch (\Throwable $e) {
+            // Refused after all: hand the blob back untouched.
+            if (! $this->local->moveAcross($files, $stagingKey, $data, $blobKey)) {
+                $this->blobs->deleteQuietly($files, $stagingKey);
+            } else {
+                $this->restoreClaimed($claimed);
+            }
+            throw $e;
+        }
+
+        return true;
     }
 
     /**
