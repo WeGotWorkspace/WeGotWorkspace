@@ -87,6 +87,21 @@ export function taskDueIsDateOnly(
   return !/T\d{2}:\d{2}/.test(due);
 }
 
+/**
+ * Whether an edit sends `showWithoutTime`: whenever it sets a new due, or the
+ * all-day flag of the same due changes. The API stores a due without the flag
+ * as a time, so a date added to a task with no due would land at midnight (#1821).
+ */
+export function dueEditSendsShowWithoutTime(
+  task: Pick<Task, "due" | "showWithoutTime">,
+  nextDue: string | null,
+  nextShowWithoutTime: boolean | undefined,
+): boolean {
+  if (!nextDue) return false;
+  if (nextDue !== (task.due ?? null)) return true;
+  return nextShowWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime);
+}
+
 export function dueTimeInputValue(date: Date): string {
   return `${padDuePart(date.getHours())}:${padDuePart(date.getMinutes())}`;
 }
