@@ -124,7 +124,7 @@ jobs:
 
   sync-matrix:
     # The Notes matrix needs about 90 minutes on one runner for its 110 cases,
-    # the Tasks matrix about 40 minutes for its 100, so each runs in shards.
+    # the Tasks matrix about 65 minutes for its 152, so each runs in 4 shards.
     # Each shard boots its own PHP, Vite, and SQLite, so the shards share nothing.
     name: ${{ matrix.app }} sync matrix (${{ matrix.shard }}/${{ matrix.shards }})
     runs-on: ubuntu-latest
@@ -137,8 +137,10 @@ jobs:
           - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 2 }
           - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 3 }
           - { app: Notes, spec: notes-sync-matrix, shards: 4, shard: 4 }
-          - { app: Tasks, spec: tasks-sync-matrix, shards: 2, shard: 1 }
-          - { app: Tasks, spec: tasks-sync-matrix, shards: 2, shard: 2 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 1 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 2 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 3 }
+          - { app: Tasks, spec: tasks-sync-matrix, shards: 4, shard: 4 }
     env:
       WGW_DISABLE_LOGIN_THROTTLE: "1"
       WGW_PROXY_TARGET: http://127.0.0.1:9080
