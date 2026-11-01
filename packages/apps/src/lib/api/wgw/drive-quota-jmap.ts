@@ -1,5 +1,5 @@
 import type { DriveJmapSession } from "@/lib/api/wgw/drive-jmap";
-import { CORE_CAPABILITY, QUOTA_CAPABILITY } from "@/lib/jmap-client";
+import { CORE_CAPABILITY, FILENODE_CAPABILITY, QUOTA_CAPABILITY } from "@/lib/jmap-client";
 
 /** Prefix of a Drive quota id; the rest is the root's FileNode id (#1500). */
 export const DRIVE_QUOTA_ID_PREFIX = "dq-";
@@ -29,7 +29,8 @@ export async function fetchDriveQuotas(
   const response = await session.client.call<{ list?: unknown[] }>(
     "Quota/get",
     { accountId: session.accountId, ids: null },
-    { using: [CORE_CAPABILITY, QUOTA_CAPABILITY], signal },
+    // The server only lists Drive quotas when the request uses FileNode (RFC 9425 §4.1).
+    { using: [CORE_CAPABILITY, FILENODE_CAPABILITY, QUOTA_CAPABILITY], signal },
   );
   const quotas: DriveQuota[] = [];
   for (const raw of response.list ?? []) {

@@ -97,8 +97,10 @@ describe("drive upload space pre-check", () => {
       freeBytes: 500,
       fresh: true,
     });
+    // The server lists Drive quotas only when the request also uses FileNode.
     expect(server.callsNamed("Quota/get")[0]?.using).toEqual([
       "urn:ietf:params:jmap:core",
+      "urn:ietf:params:jmap:filenode",
       "urn:ietf:params:jmap:quota",
     ]);
   });

@@ -166,6 +166,8 @@ export class FakeDriveServer {
       case "BlobAssembly/finish":
         return this.assemblyFinish(args);
       case "Quota/get":
+        // Like the server (#1500): Drive quotas only when `using` names FileNode.
+        if (!options?.using?.includes("urn:ietf:params:jmap:filenode")) return { list: [] };
         return { list: this.quotas ?? [] };
       case "BlobAssembly/get": {
         const id = (args.ids as string[])[0]!;
