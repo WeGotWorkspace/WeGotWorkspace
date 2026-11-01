@@ -1,8 +1,8 @@
-import { JmapMethodError } from "../core/errors.js";
 import type { JmapClient } from "../core/JmapClient.js";
 import { CHAT_CAPABILITY, type ChangesResponse, type JmapId } from "../core/types.js";
 import { JmapChatClient } from "../chat/JmapChatClient.js";
 import type { JmapChatChannel, JmapChatMessage } from "../chat/types.js";
+import { JmapInboundAdapter } from "./JmapInboundAdapter.js";
 
 const CHANNEL_TYPE = "ChatChannel";
 const MESSAGE_TYPE = "ChatMessage";
@@ -33,16 +33,25 @@ type AccumulatedChanges = {
  * `JmapNotesAdapter`, with one deliberate difference: chat volume makes
  * `hasMoreChanges` real, so `/changes` is followed up until it clears.
  */
-export class JmapChatAdapter {
+export class JmapChatAdapter extends JmapInboundAdapter {
   #chat: JmapChatClient;
   #options: JmapChatAdapterOptions;
   #accountId: JmapId | null = null;
-  #pollTimer: ReturnType<typeof setInterval> | undefined;
-  #pollInFlight = false;
 
   constructor(options: JmapChatAdapterOptions) {
+    super();
     this.#options = options;
     this.#chat = new JmapChatClient(options.client);
+  }
+
+  protected readonly pushTypes = [CHANNEL_TYPE, MESSAGE_TYPE];
+
+  protected get jmapClient(): JmapClient {
+    return this.#options.client;
+  }
+
+  protected reportSyncError(error: unknown): void {
+    this.#options.onSyncError?.(error);
   }
 
   get accountId(): JmapId {
@@ -82,74 +91,49 @@ export class JmapChatAdapter {
     return accumulated;
   }
 
-  async sync(): Promise<void> {
-    try {
-      const channelChanges = await this.#drainChanges(
-        (sinceState) => this.#chat.channelChanges(this.accountId, sinceState),
-        CHANNEL_TYPE,
+  protected async pullChanges(): Promise<void> {
+    const channelChanges = await this.#drainChanges(
+      (sinceState) => this.#chat.channelChanges(this.accountId, sinceState),
+      CHANNEL_TYPE,
+    );
+    if (channelChanges) {
+      const changedIds = [...channelChanges.created, ...channelChanges.updated].filter(
+        (id) => !channelChanges.destroyed.has(id),
       );
-      if (channelChanges) {
-        const changedIds = [...channelChanges.created, ...channelChanges.updated].filter(
-          (id) => !channelChanges.destroyed.has(id),
-        );
-        if (changedIds.length) {
-          const fetched = await this.#chat.getChannels(this.accountId, changedIds);
-          for (const channel of fetched.list) {
-            this.#options.onRemoteChannel?.(channel);
-          }
-        }
-        for (const id of channelChanges.destroyed) {
-          this.#options.onRemoteChannelDestroyed?.(id);
+      if (changedIds.length) {
+        const fetched = await this.#chat.getChannels(this.accountId, changedIds);
+        for (const channel of fetched.list) {
+          this.#options.onRemoteChannel?.(channel);
         }
       }
+      for (const id of channelChanges.destroyed) {
+        this.#options.onRemoteChannelDestroyed?.(id);
+      }
+    }
 
-      const messageChanges = await this.#drainChanges(
-        (sinceState) => this.#chat.messageChanges(this.accountId, sinceState),
-        MESSAGE_TYPE,
+    const messageChanges = await this.#drainChanges(
+      (sinceState) => this.#chat.messageChanges(this.accountId, sinceState),
+      MESSAGE_TYPE,
+    );
+    if (messageChanges) {
+      const changedIds = [...messageChanges.created, ...messageChanges.updated].filter(
+        (id) => !messageChanges.destroyed.has(id),
       );
-      if (messageChanges) {
-        const changedIds = [...messageChanges.created, ...messageChanges.updated].filter(
-          (id) => !messageChanges.destroyed.has(id),
-        );
-        const dedupedIds = [...new Set(changedIds)];
-        if (dedupedIds.length) {
-          const fetched = await this.#chat.getMessages(this.accountId, dedupedIds);
-          for (const message of fetched.list) {
-            this.#options.onRemoteMessage?.(message);
-          }
-        }
-        for (const id of messageChanges.destroyed) {
-          this.#options.onRemoteMessageDestroyed?.(id);
+      const dedupedIds = [...new Set(changedIds)];
+      if (dedupedIds.length) {
+        const fetched = await this.#chat.getMessages(this.accountId, dedupedIds);
+        for (const message of fetched.list) {
+          this.#options.onRemoteMessage?.(message);
         }
       }
-    } catch (error) {
-      if (error instanceof JmapMethodError && error.errorType === "cannotCalculateChanges") {
-        await this.#refetchAll();
-        return;
+      for (const id of messageChanges.destroyed) {
+        this.#options.onRemoteMessageDestroyed?.(id);
       }
-      this.#options.onSyncError?.(error);
     }
   }
 
-  startPolling(intervalMs: number): void {
-    this.stopPolling();
-    this.#pollTimer = setInterval(() => {
-      if (typeof document !== "undefined" && document.hidden) return;
-      if (this.#pollInFlight) return;
-      this.#pollInFlight = true;
-      void this.sync().finally(() => {
-        this.#pollInFlight = false;
-      });
-    }, intervalMs);
-  }
-
-  stopPolling(): void {
-    if (this.#pollTimer !== undefined) clearInterval(this.#pollTimer);
-    this.#pollTimer = undefined;
-  }
-
   /** Full resync after `cannotCalculateChanges` (server pruned the change log). */
-  async #refetchAll(): Promise<void> {
+  protected async refetchAll(): Promise<void> {
     const channels = await this.#chat.getChannels(this.accountId);
     const messages = await this.#chat.getMessages(this.accountId);
     if (this.#options.onRefetchAll) {
