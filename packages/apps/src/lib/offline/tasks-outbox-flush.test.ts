@@ -273,4 +273,55 @@ describe("flushTasksOutbox", () => {
     expect(result.etagMismatches).toEqual([task.id]);
     expect(patchTask).not.toHaveBeenCalled();
   });
+
+  it("moves a task created offline with the due fields only the create answer has", async () => {
+    const tempId = "local-move";
+    // The optimistic row of an older app version had no due flags.
+    await upsertTaskInCache(
+      username,
+      { ...task, id: tempId, taskListId: "work", due: "2026-11-08T09:00:00" },
+      true,
+    );
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: tempId,
+        tempTaskId: tempId,
+        body: { title: task.title, taskListIds: { [task.taskListId]: true } },
+      }),
+    });
+    await enqueueOutboxMutation(username, {
+      id: "queued-move",
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId: tempId, taskListId: "work" }),
+      ifInState: `local-etag-${tempId}`,
+    });
+    const created = {
+      ...task,
+      id: "server-2",
+      due: "2026-11-08T09:00:00",
+      showWithoutTime: false,
+      timeZone: "Europe/Amsterdam",
+      etag: "e1",
+    };
+    createTask.mockResolvedValue(created);
+    putTask.mockResolvedValue({ ...created, taskListId: "work", etag: "e2" });
+
+    await flushTasksOutbox(username);
+
+    expect(putTask).toHaveBeenCalledWith(
+      "server-2",
+      expect.objectContaining({
+        taskListIds: { work: true },
+        due: "2026-11-08T09:00:00",
+        showWithoutTime: false,
+        timeZone: "Europe/Amsterdam",
+      }),
+      { ifMatch: "e1" },
+    );
+    expect(await listOutboxMutations(username)).toEqual([]);
+  });
 });

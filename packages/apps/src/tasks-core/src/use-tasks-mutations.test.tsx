@@ -180,4 +180,37 @@ describe("useTasksMutations rename and move in one save", () => {
       expect.objectContaining({ ifMatch: "after-move" }),
     );
   });
+
+  it("keeps a move that landed when the patch after it fails", async () => {
+    const task = bootstrap.data.tasks[2]!;
+    const otherList = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
+    mockOperations.moveTaskToList.mockResolvedValue({
+      ...task,
+      taskListId: otherList.id,
+      etag: "after-move",
+    });
+    mockOperations.patchTask.mockRejectedValue(new Error("refused"));
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    await act(async () => {
+      await result.current.saveEditedTask({
+        ...taskToFormValue(task, task.taskListId),
+        listId: otherList.id,
+        title: `${task.title} renamed`,
+      });
+    });
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    expect(result.current.editingTask).toMatchObject({
+      taskListId: otherList.id,
+      title: task.title,
+    });
+  });
 });

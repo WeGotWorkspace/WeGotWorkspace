@@ -60,8 +60,10 @@ function rowFollowingTask(row: OfflineOutboxRow, task: Task): OfflineOutboxRow {
  * A write for `localId` landed as `task`. The task's other queued writes now
  * start from that answer (its id and etag), so they are not sent to a
  * temporary id or refused as a conflict with this write. The cache takes the
- * answer only when nothing else is owed; otherwise it keeps the local copy,
- * under the server id and etag, until the last write lands.
+ * answer only when nothing else is owed; otherwise it keeps the local copy
+ * on top of the answer, under the server id and etag, until the last write
+ * lands. The answer underneath keeps fields the local copy never had (a
+ * queued move PUTs the whole task).
  */
 async function followLandedTaskWrite(
   username: string,

@@ -272,19 +272,22 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       setEditDialog(null);
       shell.show(L.toastTaskUpdated, { icon: <Check className="size-4" /> });
 
+      // A move that landed stays when the patch after it fails.
+      let rollback: Task = snapshot;
       try {
         // The patch starts from the version the move produced, not the one
         // this dialog opened on, or the server refuses it as a conflict (#1814).
         const moved = listChanged
           ? await operations.moveTaskToList(taskId, input.listId)
           : undefined;
+        if (moved) rollback = moved;
         if (hasPatch) {
           await patchTask(taskId, patch, {
             ifMatch: (moved as (Task & { etag?: string }) | undefined)?.etag,
           });
         }
       } catch {
-        setTasks((prev) => prev.map((item) => (item.id === taskId ? snapshot : item)));
+        setTasks((prev) => prev.map((item) => (item.id === taskId ? rollback : item)));
         showMutationError();
       }
     },
