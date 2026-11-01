@@ -13,7 +13,13 @@ vi.mock("@/lib/api/wgw/notes-vjournal", async (importOriginal) => {
   };
 });
 
-import { getNote, listNotebooks, patchNote } from "@/lib/api/wgw/notes-vjournal";
+import {
+  getNote,
+  listNotebooks,
+  patchNote,
+  starNote,
+  unstarNote,
+} from "@/lib/api/wgw/notes-vjournal";
 import { updateNoteItem } from "@/lib/api/wgw/notes";
 
 const notebooks = [
@@ -228,5 +234,37 @@ describe("updateNoteItem metadata conflict retry", () => {
     expect(patchNote).toHaveBeenCalledTimes(1);
     expect(vi.mocked(patchNote).mock.calls[0]?.[1]).toMatchObject({ categories: ["focus"] });
     expect(getNote).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateNoteItem star only", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(listNotebooks).mockResolvedValue(notebooks);
+    vi.mocked(getNote).mockResolvedValue(activeRow);
+    vi.mocked(patchNote).mockResolvedValue(activeRow);
+  });
+
+  it("stars without writing the note, so a view-only share can star", async () => {
+    const saved = await updateNoteItem("n-1", { id: "n-1", starred: true, etag: '"etag-1"' });
+
+    expect(starNote).toHaveBeenCalledWith("n-1", undefined);
+    expect(patchNote).not.toHaveBeenCalled();
+    expect(saved.starred).toBe(true);
+  });
+
+  it("unstars without writing the note", async () => {
+    const saved = await updateNoteItem("n-1", { id: "n-1", starred: false });
+
+    expect(unstarNote).toHaveBeenCalledWith("n-1", undefined);
+    expect(patchNote).not.toHaveBeenCalled();
+    expect(saved.starred).toBe(false);
+  });
+
+  it("still patches when a star travels with a metadata change", async () => {
+    await updateNoteItem("n-1", { id: "n-1", notebook: "General", starred: true });
+
+    expect(patchNote).toHaveBeenCalledTimes(1);
+    expect(starNote).toHaveBeenCalledWith("n-1", undefined);
   });
 });

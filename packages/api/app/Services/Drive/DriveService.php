@@ -241,25 +241,29 @@ final class DriveService
     }
 
     /**
-     * @param  list<string>  $groupSlugs
+     * The caller's stars on items they may still view. A star on an item they lost access to stays hidden.
+     *
+     * @param  array{username: string, role: string}  $principal
      * @return list<string>
      */
-    public function listStarredPaths(string $username, array $groupSlugs): array
+    public function listStarredPaths(array $principal): array
     {
         $this->assertFilesEnabled();
 
-        return $this->stars->listPaths($username, $groupSlugs);
+        return $this->stars->listPaths($principal['username'], fn (string $path): bool => $this->authorizer->mayView($path, $principal));
     }
 
-    public function updateStar(string $username, string $path, bool $starred): string
+    /**
+     * A star is per user, so anyone who may view the item may star or unstar it for themselves.
+     *
+     * @param  array{username: string, role: string}  $principal
+     */
+    public function updateStar(array $principal, string $path, bool $starred): string
     {
         $this->assertFilesEnabled();
-        $groupSlugs = $this->groups->allowedGroupSlugs($username);
         $path = $this->paths->normalizeVirtualPath($path);
-        if (! $this->paths->isPathAllowed($path, $username, $groupSlugs, false)) {
-            throw new DriveAccessDeniedException;
-        }
-        $this->stars->setStarred($username, $path, $starred);
+        $this->authorizer->assertMayRead($path, $principal);
+        $this->stars->setStarred($principal['username'], $path, $starred);
 
         return 'Updated';
     }

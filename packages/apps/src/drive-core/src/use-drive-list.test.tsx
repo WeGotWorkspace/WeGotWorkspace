@@ -166,6 +166,26 @@ describe("useDriveList openFile", () => {
     expect(selectView).toHaveBeenCalledWith({ type: "folder", path: "Users/bob/Client Deck" });
   });
 
+  it("finds an item from Shared with me that is not in the open folder", () => {
+    const sharedFile: DriveFile = {
+      ...MARKDOWN,
+      id: "/users/bob/plan.md",
+      title: "plan.md",
+      parent: "Shared with me",
+      apiPath: "/users/bob/plan.md",
+    };
+    const shell = {
+      ...createShell(),
+      view: { type: "shared" },
+      sharedItems: [sharedFile],
+      operations: {},
+    } as unknown as DriveShellState;
+    const { result } = renderHook(() => useDriveList({ shell }));
+
+    expect(result.current.fileById(sharedFile.id)).toBe(sharedFile);
+    expect(result.current.fileById("missing")).toBeNull();
+  });
+
   it("opens Docs editor for markdown files on double-click", () => {
     const onOpenDocsFile = vi.fn();
     const shell = createShell();

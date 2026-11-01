@@ -13,7 +13,6 @@ use App\Services\Collab\CollabRoomPolicy;
 use App\Services\Collab\DocCollabDocumentService;
 use App\Services\Collab\FramedPayload;
 use App\Services\Drive\DriveAccessDeniedException;
-use App\Services\Drive\DriveGroupResolver;
 use App\Services\Drive\DriveNotFoundException;
 use App\Services\Drive\DriveService;
 use App\Services\Rtc\RoomIdCodec;
@@ -29,7 +28,6 @@ final class FilesController
 
     public function __construct(
         private DriveService $drive,
-        private DriveGroupResolver $groups,
         private RoomIdCodec $roomIds,
         private DocCollabDocumentService $collabDocuments,
         private StoragePaths $paths,
@@ -264,7 +262,7 @@ final class FilesController
         $path = $this->requireDrivePath($request);
 
         return $this->jsonData(fn () => $this->drive->updateStar(
-            $this->username($request),
+            $this->principal($request),
             $path,
             true,
         ));
@@ -275,7 +273,7 @@ final class FilesController
         $path = $this->requireDrivePath($request);
 
         return $this->jsonData(fn () => $this->drive->updateStar(
-            $this->username($request),
+            $this->principal($request),
             $path,
             false,
         ));
@@ -283,11 +281,10 @@ final class FilesController
 
     public function starred(Request $request): JsonResponse
     {
-        $username = $this->principal($request)['username'];
-        $groupSlugs = $this->groups->allowedGroupSlugs($username);
+        $principal = $this->principal($request);
 
         return $this->jsonData(fn () => [
-            'paths' => $this->drive->listStarredPaths($username, $groupSlugs),
+            'paths' => $this->drive->listStarredPaths($principal),
         ]);
     }
 
@@ -384,11 +381,6 @@ final class FilesController
         }
 
         return trim($id);
-    }
-
-    private function username(Request $request): string
-    {
-        return $this->principal($request)['username'];
     }
 
     /**

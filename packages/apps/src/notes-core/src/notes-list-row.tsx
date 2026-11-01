@@ -10,7 +10,6 @@ import {
   noteListTitle,
   noteListLocationLabel,
   noteShowsSharedBadge,
-  noteShowsStarControls,
   noteShowsViewOnlyBadge,
 } from "@/notes-core/src/notes-note-utils";
 import { notebookDisplayColor, notebookDotColor } from "@/notes-core/src/notes-notebook-color";
@@ -97,7 +96,6 @@ export const NotesListRow = memo(function NotesListRow({
   onToggleStar,
   onToggleArchive,
 }: NotesListRowProps) {
-  const showStar = noteShowsStarControls(note);
   const showShared = noteShowsSharedBadge(note);
   const showViewOnly = noteShowsViewOnlyBadge(note);
   const canArchive = noteAllowsStructureManage(note);
@@ -148,15 +146,13 @@ export const NotesListRow = memo(function NotesListRow({
             <Share2 className="size-3 notes-list-panel__shared-icon" aria-hidden />
           </span>
         ) : null,
-        showStar ? (
-          <span
-            key="star"
-            className="notes-list-panel__star-pip"
-            data-active={starred ? "true" : "false"}
-          >
-            <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
-          </span>
-        ) : null,
+        <span
+          key="star"
+          className="notes-list-panel__star-pip"
+          data-active={starred ? "true" : "false"}
+        >
+          <Star className="size-3 notes-list-panel__star-icon" fill="currentColor" aria-hidden />
+        </span>,
       ].filter(Boolean)}
       isActive={false}
       isSelected={false}
@@ -165,16 +161,12 @@ export const NotesListRow = memo(function NotesListRow({
       isDragging={dragging}
       {...(isTouch
         ? {
-            ...(showStar
-              ? {
-                  swipeLeftAction: {
-                    icon: <Star className="size-5" fill={starred ? "currentColor" : "none"} />,
-                    color: "var(--color-emerald)",
-                    label: starred ? L.swipeUnstar : L.swipeStar,
-                    onActivate: () => onToggleStar(note.id),
-                  },
-                }
-              : {}),
+            swipeLeftAction: {
+              icon: <Star className="size-5" fill={starred ? "currentColor" : "none"} />,
+              color: "var(--color-emerald)",
+              label: starred ? L.swipeUnstar : L.swipeStar,
+              onActivate: () => onToggleStar(note.id),
+            },
             ...(canArchive
               ? {
                   swipeRightAction: {

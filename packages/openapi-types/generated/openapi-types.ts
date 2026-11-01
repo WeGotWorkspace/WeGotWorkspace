@@ -2650,7 +2650,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Star path */
+        /**
+         * Star path
+         * @description Stars the path for the caller only. Allowed on any path the caller may view, including items shared with them. Never changes the item or what other users see.
+         */
         post: {
             parameters: {
                 query: {
@@ -2680,7 +2683,10 @@ export interface paths {
                 };
             };
         };
-        /** Unstar path */
+        /**
+         * Unstar path
+         * @description Removes the caller's own star. Allowed on any path the caller may view.
+         */
         delete: {
             parameters: {
                 query: {
@@ -2722,7 +2728,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List starred paths */
+        /**
+         * List starred paths
+         * @description The caller's own stars, limited to paths the caller may still view. A star on an item the caller lost access to is hidden and shows again when access returns.
+         */
         get: {
             parameters: {
                 query?: never;
