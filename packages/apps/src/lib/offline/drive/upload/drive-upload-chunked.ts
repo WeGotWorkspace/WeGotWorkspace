@@ -127,7 +127,11 @@ class ChunkedUpload {
     for (;;) {
       const offset = partsEnd(this.state.parts);
       if (this.state.parts.length > 0 && offset >= this.size) return null;
-      const whole = this.state.parts.length === 0 && this.size <= this.state.partSize;
+      // Without crypto.subtle (http) a file within the server limit goes whole: it needs no join.
+      const wholeLimit = this.subtle
+        ? this.state.partSize
+        : Math.max(this.state.partSize, this.input.session.maxSizeUpload);
+      const whole = this.state.parts.length === 0 && this.size <= wholeLimit;
       if (!whole) await this.prepareJoin();
       const length = whole ? this.size : Math.min(this.state.partSize, this.size - offset);
       const part = this.input.blob.slice(offset, offset + length);

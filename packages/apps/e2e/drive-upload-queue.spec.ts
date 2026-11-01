@@ -69,8 +69,8 @@ function uniqueName(label: string): string {
   return `e2e-upload-${label}-${Date.now()}.txt`;
 }
 
-/** Names in My Drive on the server. Needs the page to be online. */
-async function serverNames(page: Page): Promise<string[]> {
+/** Files in My Drive on the server. Needs the page to be online. */
+async function serverFiles(page: Page): Promise<{ name: string; size?: number }[]> {
   return page.evaluate(async (username) => {
     const token = localStorage.getItem("wgw.api.access_token");
     const response = await fetch(
@@ -80,9 +80,15 @@ async function serverNames(page: Page): Promise<string[]> {
       },
     );
     if (!response.ok) throw new Error(`Listing failed (${response.status})`);
-    const payload = (await response.json()) as { data: { files: { name: string }[] } };
-    return payload.data.files.map((file) => file.name);
+    const payload = (await response.json()) as {
+      data: { files: { name: string; size?: number }[] };
+    };
+    return payload.data.files;
   }, E2E_USERNAME);
+}
+
+async function serverNames(page: Page): Promise<string[]> {
+  return (await serverFiles(page)).map((file) => file.name);
 }
 
 async function expectOnServerOnce(page: Page, name: string): Promise<void> {
@@ -145,6 +151,52 @@ test.describe("Drive upload queue (live app)", () => {
     await expect(page.locator(".drive-upload-status")).toHaveCount(0, { timeout: 60_000 });
     await expect(page.getByText(name, { exact: true })).toBeVisible();
     await expectOnServerOnce(page, name);
+  });
+
+  test("a reload in the middle of a multi-part upload resumes from the next part", async ({
+    page,
+  }) => {
+    const name = uniqueName("parts");
+    const partSize = 256 * 1024;
+    // Five parts: four full ones and a short tail.
+    const buffer = Buffer.alloc(4 * partSize + 100);
+    for (let i = 0; i < buffer.length; i += 1) buffer[i] = (i * 31 + (i >> 8)) & 0xff;
+    await openMyDrive(page);
+    await page.evaluate(
+      ([username, size]) => localStorage.setItem(`wgw-drive-part-size:${username}`, size),
+      [E2E_USERNAME, String(partSize)],
+    );
+    await page.reload();
+    await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
+
+    let seen = 0;
+    let acknowledged = 0;
+    page.on("response", (response) => {
+      if (response.url().includes("/jmap/upload") && response.request().method() === "POST") {
+        acknowledged += 1;
+      }
+    });
+    await page.route("**/jmap/upload**", (route) => {
+      seen += 1;
+      return seen <= 2 ? route.continue() : new Promise<void>(() => {});
+    });
+    await uploadInput(page).setInputFiles({ name, mimeType: "text/plain", buffer });
+    await expect.poll(() => acknowledged, { timeout: 60_000 }).toBe(2);
+    await expect.poll(() => seen, { timeout: 30_000 }).toBe(3);
+    await page.unroute("**/jmap/upload**");
+
+    let afterReload = 0;
+    await page.reload();
+    page.on("request", (request) => {
+      if (request.url().includes("/jmap/upload") && request.method() === "POST") afterReload += 1;
+    });
+    await expect(uploadInput(page)).toBeAttached({ timeout: 30_000 });
+    await expect(page.locator(".drive-upload-status")).toHaveCount(0, { timeout: 90_000 });
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await expectOnServerOnce(page, name);
+    expect(afterReload).toBe(3);
+    const stored = (await serverFiles(page)).find((file) => file.name === name);
+    expect(stored?.size).toBe(buffer.length);
   });
 
   test("a second tab shows the placeholder and then the file without a reload", async ({

@@ -35,6 +35,7 @@ import type { DriveUploadChunkState } from "@/lib/offline/drive/upload/drive-upl
 
 let server: FakeDriveServer;
 let saves: DriveUploadProgressUpdate[];
+let controller: AbortController;
 
 function send(file: File, state?: DriveUploadChunkState, username = "ada") {
   return sendDriveUploadBytes({
@@ -43,6 +44,7 @@ function send(file: File, state?: DriveUploadChunkState, username = "ada") {
     name: file.name,
     mimeType: file.type,
     blob: file,
+    signal: controller.signal,
     ...(state ? { state } : {}),
     save: async (update) => {
       saves.push(structuredClone(update));
@@ -63,10 +65,12 @@ describe("chunked upload", () => {
     server = new FakeDriveServer();
     fake.server = server;
     saves = [];
+    controller = new AbortController();
     vi.stubGlobal("localStorage", memoryLocalStorage());
   });
 
   afterEach(() => {
+    controller.abort();
     vi.unstubAllGlobals();
   });
 
@@ -79,7 +83,7 @@ describe("chunked upload", () => {
       { length: 900, declaredLength: "900", sha256: sha256(await fileBytes(file)) },
     ]);
     expect(server.calls).toEqual([]);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("sends a large file as parts in order, one at a time, each with length and sha256", async () => {
@@ -127,7 +131,7 @@ describe("chunked upload", () => {
     ).toEqual([[0, 1], [2, 3], [4]]);
     for (const call of server.calls) expect(call.using).toEqual(ASSEMBLY_USING);
     expect(server.callsNamed("Blob/upload")).toEqual([]);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("exposes an assembling phase with its own progress", async () => {
@@ -150,7 +154,7 @@ describe("chunked upload", () => {
     const joins = server.callsNamed("Blob/upload");
     expect(joins).toHaveLength(1);
     expect(joins[0]!.using).toEqual(BLOB_USING);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("fails the plain Blob/upload fallback as permanent instead of splitting it (maxDataSources)", async () => {
@@ -187,7 +191,7 @@ describe("chunked upload", () => {
     const lengths = server.uploads.map((upload) => upload.length);
     // 4× refused, 2× refused, 1× fits: the rest goes at the floor size.
     expect(lengths).toEqual([4 * floor, 2 * floor, floor, floor, floor, floor]);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
     expect(lastState().partSize).toBe(floor);
     expect(readRememberedPartSize("ada")).toBe(floor);
 
@@ -227,7 +231,7 @@ describe("chunked upload", () => {
       floor,
       floor,
     ]);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("sends smaller steps, not smaller parts, after a `limit` on an assembly step", async () => {
@@ -242,7 +246,7 @@ describe("chunked upload", () => {
       .callsNamed("BlobAssembly/append")
       .map((call) => (call.args.parts as unknown[]).length);
     expect(sizes).toEqual([5, 2, 2, 1]);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("fails as permanent when even one part per step is refused", async () => {
@@ -272,7 +276,7 @@ describe("chunked upload", () => {
       [2, 3],
     ]);
     // Not glued twice: the result is exactly the file.
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("never sends a part again once the server lists it as accepted", () => {
@@ -316,6 +320,14 @@ describe("chunked upload", () => {
       expect(server.calls).toEqual([]);
     });
 
+    it("sends a file between the step budget and maxSizeUpload whole, not as parts", async () => {
+      server.maxSizeUpload = 2_000;
+      server.stepBudgetBytes = 600;
+      const blobId = await send(patternedFile("mid.bin", 1_500));
+      expect(server.uploads).toEqual([{ length: 1_500, declaredLength: "1500" }]);
+      expect(blobId).toMatch(/^jb-/);
+    });
+
     it("still uploads a small file, with its length declared", async () => {
       const blobId = await send(patternedFile("small.bin", 500));
       expect(server.uploads).toEqual([{ length: 500, declaredLength: "500" }]);
@@ -343,7 +355,7 @@ describe("chunked upload", () => {
 
     expect(server.uploads.map((upload) => upload.length)).toEqual([200, 200, 200]);
     expect(server.callsNamed("BlobAssembly/set")).toHaveLength(1);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("retries a timed-out assembly step from the last finished step the server reports", async () => {
@@ -362,7 +374,7 @@ describe("chunked upload", () => {
       .map((call) => (call.args.parts as Array<{ index: number }>).map((p) => p.index));
     expect(steps).toEqual([[0, 1], [2, 3], [4]]);
     expect(server.callsNamed("BlobAssembly/get").length).toBeGreaterThan(0);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("re-uploads only the parts Blob/upload reports missing", async () => {
@@ -382,7 +394,7 @@ describe("chunked upload", () => {
 
     expect(server.uploads.map((upload) => upload.length)).toEqual([200, 200, 200, 200]);
     expect(server.callsNamed("Blob/upload")).toHaveLength(2);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("re-uploads only the parts an assembly step reports missing", async () => {
@@ -401,7 +413,7 @@ describe("chunked upload", () => {
     const blobId = await send(file);
 
     expect(server.uploads).toHaveLength(4);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 
   it("opens a new assembly when the stored one expired, and re-sends the parts it lost", async () => {
@@ -417,6 +429,6 @@ describe("chunked upload", () => {
     expect(server.callsNamed("BlobAssembly/set")).toHaveLength(2);
     // Parts 0 and 1 were consumed by the lost assembly: only they go again.
     expect(server.uploads).toHaveLength(5);
-    expect(server.bytesOf(blobId)).toEqual(await fileBytes(file));
+    expect(sha256(server.bytesOf(blobId)!)).toBe(sha256(await fileBytes(file)));
   });
 });
