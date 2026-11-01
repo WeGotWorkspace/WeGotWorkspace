@@ -251,6 +251,26 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
         $this->assertSame(0, JmapAttachStaging::query()->count());
     }
 
+    public function test_a_vanished_staging_file_restarts_the_copy_instead_of_filling_zeros(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1]);
+        $this->forceCopies();
+        $bytes = random_bytes(2_500_000);
+        $blobId = $this->upload($bytes);
+        $create = ['create' => ['f' => ['parentId' => $this->homeId(), 'name' => 'big.bin', 'blobId' => $blobId]]];
+        $this->set($create)->assertOk();
+        $this->files()->delete(JmapAttachStaging::query()->firstOrFail()->staging_key);
+
+        $created = null;
+        for ($i = 0; $i < 6 && $created === null; $i++) {
+            $created = $this->set($create)->json('methodResponses.0.1.created.f');
+        }
+
+        $this->assertNotNull($created);
+        $this->assertSame(hash('sha256', $bytes), hash('sha256', (string) $this->files()->get('users/bob/big.bin')));
+        $this->assertSame(0, JmapAttachStaging::query()->count());
+    }
+
     public function test_a_staged_copy_another_call_is_writing_answers_attach_in_progress_untouched(): void
     {
         config(['wgw.jmap.step_throughput_bytes' => 1]);

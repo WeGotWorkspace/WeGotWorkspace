@@ -450,6 +450,9 @@ final class BlobAssemblyService
             throw new JmapMethodException('blobNotFound', 'A part vanished while appending; upload it again.', ['notFound' => [$blobId]]);
         }
         try {
+            // Renew before the first byte: the lease may be nearly spent
+            // after a long rebuild step, and a lost lease must stop us here.
+            $this->renewLease($row, $lease);
             $renewedAt = time();
             $written = $this->local->append($disk, $this->fileKey($row), $source, $size, function (string $chunk) use ($context, $row, $lease, &$renewedAt): void {
                 hash_update($context, $chunk);
