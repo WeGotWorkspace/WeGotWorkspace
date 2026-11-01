@@ -14,6 +14,8 @@ type Waiter = {
 export class FakeWebLocks {
   #held = new Map<string, string>();
   #queues = new Map<string, Waiter[]>();
+  #deferredPrefixes = new Set<string>();
+  #deferred: Array<() => void> = [];
 
   client(clientId: string): WebLocks {
     return {
@@ -29,6 +31,18 @@ export class FakeWebLocks {
 
   holder(name: string): string | undefined {
     return this.#held.get(name);
+  }
+
+  /**
+   * Hold back grants of free locks whose name starts with `prefix` until the
+   * returned function runs, as a real browser grants a request a while later.
+   */
+  deferGrants(prefix: string): () => void {
+    this.#deferredPrefixes.add(prefix);
+    return () => {
+      this.#deferredPrefixes.delete(prefix);
+      for (const grant of this.#deferred.splice(0)) grant();
+    };
   }
 
   /** Drop every lock a tab holds, as the browser does when a tab crashes. */
@@ -55,7 +69,11 @@ export class FakeWebLocks {
           });
       };
       if (!this.#held.has(name)) {
-        grant();
+        if ([...this.#deferredPrefixes].some((prefix) => name.startsWith(prefix))) {
+          this.#deferred.push(() => (this.#held.has(name) ? undefined : grant()));
+        } else {
+          grant();
+        }
         return;
       }
       if (options.ifAvailable) {

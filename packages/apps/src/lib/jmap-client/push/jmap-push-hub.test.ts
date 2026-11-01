@@ -366,6 +366,25 @@ describe("JmapPushHub", () => {
       expect(b.live()).toHaveLength(1);
     });
 
+    // A browser grants the new tab's visible lock a while after its first
+    // message; the hidden leader must not depend on that lock to hand over.
+    it("a hidden leader hands over to a visible tab that joins before its visible lock is granted", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      const grantVisible = b.locks.deferGrants("wgw-jmap-push/visible/");
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      grantVisible();
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+    });
+
     it("a visible leader keeps the stream when another tab shows", async () => {
       const b = browser();
       const a = b.tab("a");
