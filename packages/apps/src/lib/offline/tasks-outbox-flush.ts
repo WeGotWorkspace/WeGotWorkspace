@@ -1,5 +1,6 @@
 import type { TasksAppBootstrap } from "@/lib/api/mock/tasks-bootstrap";
 import type {
+  Task,
   TaskCreate,
   TaskListCreate,
   TaskListPatch,
@@ -16,15 +17,23 @@ import {
   TasksRequestError,
 } from "@/lib/api/wgw/tasks";
 import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status";
-import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
+import {
+  getOutboxMutation,
+  rebaseQueuedEntityRows,
+  sendChangedRowAgain,
+  settleSentOutboxMutation,
+} from "@/lib/offline/core/outbox-store";
+import type { OfflineOutboxRow } from "@/lib/offline/core/types";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
+  getTaskFromCache,
   listOutboxMutations,
   markOutboxError,
   readTasksBootstrapFromCache,
   removeOutboxMutation,
   removeTaskFromCache,
   removeTaskListFromCache,
+  tasksOutboxTaskId,
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
@@ -40,6 +49,48 @@ function isEtagMismatch(error: unknown): boolean {
   return error instanceof TasksRequestError && error.status === 412;
 }
 
+/** A queued row for the task, pointed at the server's id and version of it. */
+function rowFollowingTask(row: OfflineOutboxRow, task: Task): OfflineOutboxRow {
+  const payload = JSON.parse(row.payload) as Record<string, unknown>;
+  const next = typeof payload.taskId === "string" ? { ...payload, taskId: task.id } : payload;
+  return { ...row, payload: JSON.stringify(next), ifInState: taskEtag(task) };
+}
+
+/**
+ * A write for `localId` landed as `task`. The task's other queued writes now
+ * start from that answer (its id and etag), so they are not sent to a
+ * temporary id or refused as a conflict with this write. The cache takes the
+ * answer only when nothing else is owed; otherwise it keeps the local copy,
+ * under the server id and etag, until the last write lands.
+ */
+async function followLandedTaskWrite(
+  username: string,
+  sentRowId: string,
+  localId: string,
+  task: Task,
+  stillQueued = false,
+): Promise<void> {
+  const rebased = await rebaseQueuedEntityRows(username, {
+    domain: TASKS_DOMAIN,
+    entityId: localId,
+    sentRowId,
+    entityIdFromRow: tasksOutboxTaskId,
+    rebase: (row) => rowFollowingTask(row, task),
+  });
+  if (stillQueued) return;
+  const local = rebased > 0 ? await getTaskFromCache(username, localId) : null;
+  if (localId !== task.id) await removeTaskFromCache(username, localId);
+  if (local) {
+    await upsertTaskInCache(
+      username,
+      { ...local, id: task.id, uid: task.uid, etag: taskEtag(task) } as Task,
+      true,
+    );
+  } else {
+    await upsertTaskInCache(username, task, false);
+  }
+}
+
 export async function flushTasksOutbox(username: string): Promise<OutboxFlushResult> {
   const cached = await readTasksBootstrapFromCache(username);
   if (!cached) {
@@ -51,39 +102,48 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
   // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
   const resends = new Map<string, number>();
 
-  for (const row of rows) {
-    if (row.domain !== TASKS_DOMAIN) continue;
+  // Tasks with a write that failed in this flush: their later writes wait, so
+  // they are not sent from a version or to an id that write never produced.
+  const held = new Set<string>();
+
+  for (const listed of rows) {
+    if (listed.domain !== TASKS_DOMAIN) continue;
+    // Re-read: an earlier row of the same task may have rebased this one.
+    const row = await getOutboxMutation(username, listed.id);
+    if (!row) continue;
+    const entityId = tasksOutboxTaskId(row);
+    if (entityId && held.has(entityId)) continue;
     try {
       const payload = JSON.parse(row.payload) as Record<string, unknown>;
       if (row.op === "create") {
         const body = payload.body as TaskCreate;
         const tempId = String(payload.tempTaskId ?? "");
         const task = await createTask(body);
-        if (tempId) await removeTaskFromCache(username, tempId);
-        await upsertTaskInCache(username, task, false);
+        await followLandedTaskWrite(username, row.id, tempId || task.id, task);
       } else if (row.op === "update") {
         const taskId = String(payload.taskId ?? "");
         const patch = payload.patch as TaskPatch;
         const task = await patchTask(taskId, patch, { ifMatch: row.ifInState });
         // A patch merged in while this one was sent is owed on top of `task`.
         const settlement = await settleSentOutboxMutation(username, row, {
-          rebase: (current) => ({ ...current, ifInState: taskEtag(task) }),
+          rebase: (current) => rowFollowingTask(current, task),
           cacheTables: (db) => [tasksItemsTable(db)],
-          onRemoved: () => upsertTaskInCache(username, task, false),
+          onRemoved: () => followLandedTaskWrite(username, row.id, taskId, task),
+          onChanged: () => followLandedTaskWrite(username, row.id, taskId, task, true),
         });
         sendChangedRowAgain(rows, resends, settlement);
         continue;
       } else if (row.op === "move") {
         const taskId = String(payload.taskId ?? "");
         const taskListId = String(payload.taskListId ?? "");
-        const localTask = cached.data.tasks.find((task) => task.id === taskId);
+        const localTask = await getTaskFromCache(username, taskId);
         if (!localTask) {
           throw new Error(`Task ${taskId} missing from cache for move flush`);
         }
         const task = await putTask(taskId, taskCreateFromTask(localTask, taskListId), {
           ifMatch: row.ifInState,
         });
-        await upsertTaskInCache(username, task, false);
+        await followLandedTaskWrite(username, row.id, taskId, task);
       } else if (row.op === "delete") {
         const taskId = String(payload.taskId ?? "");
         await deleteTask(taskId, { ifMatch: row.ifInState });
@@ -113,6 +173,7 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      if (entityId) held.add(entityId);
       if (isEtagMismatch(error)) {
         const taskId = String(JSON.parse(row.payload).taskId ?? "");
         if (taskId) etagMismatches.push(taskId);

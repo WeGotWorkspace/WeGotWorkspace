@@ -49,10 +49,10 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
   const [editDialog, setEditDialog] = useState<TaskEditDialogState>(null);
 
   const patchTask = useCallback(
-    async (taskId: string, patch: TaskPatch, opts?: { signal?: AbortSignal }) => {
+    async (taskId: string, patch: TaskPatch, opts?: { signal?: AbortSignal; ifMatch?: string }) => {
       if (!operations) return undefined;
       const existing = tasks.find((task) => task.id === taskId);
-      const etag = (existing as Task & { etag?: string })?.etag;
+      const etag = opts?.ifMatch ?? (existing as Task & { etag?: string })?.etag;
       const updated = await operations.patchTask(taskId, patch, {
         ifMatch: etag,
         signal: opts?.signal,
@@ -273,11 +273,15 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
       shell.show(L.toastTaskUpdated, { icon: <Check className="size-4" /> });
 
       try {
-        if (listChanged) {
-          await operations.moveTaskToList(taskId, input.listId);
-        }
+        // The patch starts from the version the move produced, not the one
+        // this dialog opened on, or the server refuses it as a conflict (#1814).
+        const moved = listChanged
+          ? await operations.moveTaskToList(taskId, input.listId)
+          : undefined;
         if (hasPatch) {
-          await patchTask(taskId, patch);
+          await patchTask(taskId, patch, {
+            ifMatch: (moved as (Task & { etag?: string }) | undefined)?.etag,
+          });
         }
       } catch {
         setTasks((prev) => prev.map((item) => (item.id === taskId ? snapshot : item)));

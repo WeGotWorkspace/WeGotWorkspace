@@ -129,6 +129,39 @@ export function sendChangedRowAgain(
   rows.push(settlement.row);
 }
 
+export type RebaseQueuedEntityRowsParams = {
+  domain: string;
+  /** The id the queued rows name: a temporary id until its create lands. */
+  entityId: string;
+  /** The row that just landed; settling it is the caller's job. */
+  sentRowId: string;
+  entityIdFromRow: (row: OfflineOutboxRow) => string | null;
+  /** Points a queued row at what the server answered: its id and concurrency token. */
+  rebase: (row: OfflineOutboxRow) => OfflineOutboxRow;
+};
+
+/**
+ * After a queued write for one entity landed, point the other rows still
+ * queued for it at the server's answer: a temporary id becomes the server id
+ * and the base becomes the version that write produced. Without this a
+ * second queued write is sent from the version before the first one, and the
+ * server refuses it as a conflict, or to an id it never had (#1814, #1816).
+ * Returns how many rows were rebased: more writes for the entity are owed.
+ */
+export async function rebaseQueuedEntityRows(
+  username: string,
+  params: RebaseQueuedEntityRowsParams,
+): Promise<number> {
+  const { domain, entityId, sentRowId, entityIdFromRow, rebase } = params;
+  const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+  return db.transaction("rw", db.outbox, async () => {
+    const rows = await db.outbox.where("domain").equals(domain).toArray();
+    const queued = rows.filter((row) => row.id !== sentRowId && entityIdFromRow(row) === entityId);
+    for (const row of queued) await db.outbox.put(rebase(row));
+    return queued.length;
+  });
+}
+
 /**
  * Increment the retry count and record the last error. A numeric `status`
  * replaces `lastStatus`. A later failure with no status leaves an existing

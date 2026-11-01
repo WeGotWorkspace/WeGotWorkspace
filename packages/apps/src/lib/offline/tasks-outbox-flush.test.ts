@@ -23,22 +23,28 @@ const bootstrap = createTasksAppBootstrap({
 });
 const task = bootstrap.data.tasks[0]!;
 
-const { patchTask } = vi.hoisted(() => ({
+const { createTask, patchTask, putTask } = vi.hoisted(() => ({
+  createTask: vi.fn(),
   patchTask: vi.fn(),
+  putTask: vi.fn(),
 }));
 
 vi.mock("@/lib/api/wgw/tasks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/wgw/tasks")>();
   return {
     ...actual,
+    createTask,
     patchTask,
+    putTask,
     TasksRequestError: actual.TasksRequestError,
   };
 });
 
 describe("flushTasksOutbox", () => {
   beforeEach(async () => {
+    createTask.mockReset();
     patchTask.mockReset();
+    putTask.mockReset();
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     await db.outbox.clear();
     await tasksItemsTable(db).clear();
@@ -95,5 +101,142 @@ describe("flushTasksOutbox", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     const cached = await tasksItemsTable(db).get(task.id);
     expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Second" });
+  });
+
+  it("sends an edit to a task created offline to the id the create got (#1816)", async () => {
+    const tempId = "local-abc";
+    await upsertTaskInCache(
+      username,
+      { ...task, id: tempId, title: "Renamed", etag: `local-etag-${tempId}` },
+      true,
+    );
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: tempId,
+        tempTaskId: tempId,
+        body: { title: "First", taskListIds: { [task.taskListId]: true } },
+      }),
+    });
+    await enqueueCoalescedTaskUpdate(
+      username,
+      tempId,
+      { title: "Renamed" },
+      `local-etag-${tempId}`,
+    );
+    createTask.mockResolvedValue({ ...task, id: "server-1", title: "First", etag: "e1" });
+    patchTask.mockResolvedValue({ ...task, id: "server-1", title: "Renamed", etag: "e2" });
+
+    const result = await flushTasksOutbox(username);
+
+    expect(patchTask).toHaveBeenCalledWith("server-1", { title: "Renamed" }, { ifMatch: "e1" });
+    expect(result.etagMismatches).toEqual([]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await tasksItemsTable(db).get(tempId)).toBeUndefined();
+    const cached = await tasksItemsTable(db).get("server-1");
+    expect(cached?.pendingSync).toBe(false);
+    expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Renamed", etag: "e2" });
+  });
+
+  it("sends a rename queued after a move from the version the move produced (#1814)", async () => {
+    await upsertTaskInCache(
+      username,
+      { ...task, taskListId: "work", title: "Renamed", etag: "e0" },
+      true,
+    );
+    await enqueueOutboxMutation(username, {
+      id: "queued-move",
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId: task.id, taskListId: "work" }),
+      ifInState: "e0",
+    });
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "Renamed" }, "e0");
+    putTask.mockResolvedValue({ ...task, taskListId: "work", title: "Renamed", etag: "e1" });
+    patchTask.mockResolvedValue({ ...task, taskListId: "work", title: "Renamed", etag: "e2" });
+
+    const result = await flushTasksOutbox(username);
+
+    expect(putTask).toHaveBeenCalledWith(
+      task.id,
+      expect.objectContaining({ taskListIds: { work: true }, title: "Renamed" }),
+      { ifMatch: "e0" },
+    );
+    expect(patchTask).toHaveBeenCalledWith(task.id, { title: "Renamed" }, { ifMatch: "e1" });
+    expect(result.etagMismatches).toEqual([]);
+    expect(await listOutboxMutations(username)).toEqual([]);
+  });
+
+  it("keeps the local copy while a later write for the task is still owed", async () => {
+    await upsertTaskInCache(
+      username,
+      { ...task, taskListId: "work", title: "Renamed", etag: "e0" },
+      true,
+    );
+    await enqueueOutboxMutation(username, {
+      id: "queued-move",
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId: task.id, taskListId: "work" }),
+      ifInState: "e0",
+    });
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "Renamed" }, "e0");
+    putTask.mockResolvedValue({ ...task, taskListId: "work", title: "Moved only", etag: "e1" });
+    patchTask.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await flushTasksOutbox(username);
+
+    const outbox = await listOutboxMutations(username);
+    expect(outbox.map((row) => [row.op, row.ifInState])).toEqual([["update", "e1"]]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const cached = await tasksItemsTable(db).get(task.id);
+    expect(cached?.pendingSync).toBe(true);
+    expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Renamed", etag: "e1" });
+  });
+
+  it("holds a task's later writes when an earlier one fails", async () => {
+    const tempId = "local-held";
+    await upsertTaskInCache(username, { ...task, id: tempId, title: "Renamed" }, true);
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: tempId,
+        tempTaskId: tempId,
+        body: { title: "First", taskListIds: { [task.taskListId]: true } },
+      }),
+    });
+    await enqueueCoalescedTaskUpdate(username, tempId, { title: "Renamed" }, undefined);
+    createTask.mockRejectedValue(new TasksRequestError("POST /tasks/items failed (500)", 500));
+
+    await flushTasksOutbox(username);
+
+    expect(patchTask).not.toHaveBeenCalled();
+    const outbox = await listOutboxMutations(username);
+    expect(outbox.map((row) => [row.op, row.retries])).toEqual([
+      ["create", 1],
+      ["update", 0],
+    ]);
+  });
+
+  it("does not send a rename after a move the server refused as a conflict", async () => {
+    await enqueueOutboxMutation(username, {
+      id: "queued-move",
+      domain: TASKS_DOMAIN,
+      op: "move",
+      payload: JSON.stringify({ taskId: task.id, taskListId: "work" }),
+      ifInState: "e0",
+    });
+    await enqueueCoalescedTaskUpdate(username, task.id, { title: "Renamed" }, "e0");
+    putTask.mockRejectedValue(new TasksRequestError("PUT /tasks/items failed (412)", 412));
+
+    const result = await flushTasksOutbox(username);
+
+    expect(result.etagMismatches).toEqual([task.id]);
+    expect(patchTask).not.toHaveBeenCalled();
   });
 });
