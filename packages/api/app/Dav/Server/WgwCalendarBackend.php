@@ -137,7 +137,9 @@ final class WgwCalendarBackend extends CalPDO
 
         $supported = array_keys($this->propertyMap);
         $supported[] = '{'.CalDAVPlugin::NS_CALDAV.'}schedule-calendar-transp';
-        $propPatch->handle($supported, function (array $mutations) use ($calendarId): bool {
+        // One transaction, so the owner and the sharee copies never disagree
+        // after a failed write (a DAV PROPPATCH has no outer transaction).
+        $propPatch->handle($supported, fn (array $mutations): bool => DB::connection('wgw')->transaction(function () use ($calendarId, $mutations): bool {
             [$collectionId, $instanceId] = [(int) $calendarId[0], (int) $calendarId[1]];
             $before = (array) DB::connection('wgw')->table('calendarinstances')
                 ->where('id', $instanceId)
@@ -151,7 +153,7 @@ final class WgwCalendarBackend extends CalPDO
             $this->mirrorAppearanceToSharees($collectionId, $before, $mutations);
 
             return true;
-        });
+        }));
     }
 
     /** @param array<mixed> $calendarId */
