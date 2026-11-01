@@ -205,6 +205,7 @@ final class TaskRepository
             $ifUnmodifiedSince,
             $requirePrecondition,
             'Could not load updated task.',
+            self::requestedTaskListId($payload),
         );
     }
 
@@ -234,6 +235,8 @@ final class TaskRepository
     /**
      * Shared write path for {@see update()} and {@see patch()}: checks access and
      * preconditions, rewrites the VTODO, re-indexes it and returns the stored task.
+     * A `$targetListId` naming another list moves the task there (#1813); its id
+     * stays the same, since the id is the object's URI.
      *
      * @param  callable(array<string, mixed>): array<string, mixed>  $buildPayload  maps the existing task to the payload to normalize
      * @return array<string, mixed>
@@ -246,6 +249,7 @@ final class TaskRepository
         ?string $ifUnmodifiedSince,
         bool $requirePrecondition,
         string $reloadFailedMessage,
+        ?string $targetListId = null,
     ): array {
         $located = $this->findOwnedTask($username, $taskId);
         if ($located === null) {
@@ -264,20 +268,35 @@ final class TaskRepository
             throw new ApiHttpException(404, 'Task not found.', 'not_found');
         }
 
+        $target = $this->resolveMoveTarget($username, $targetListId, $instance, $objectUri, $located['vtodoUid']);
+        $targetListUri = $this->taskListUriForInstance($target);
+
         $taskPayload = $this->normalizeTaskPayload($buildPayload($existingTask), $existingTask);
         $taskPayload['id'] = $existingTask['id'];
-        $taskPayload['taskListId'] = $this->taskLists->apiIdForInstance($instance);
+        $taskPayload['taskListId'] = $targetListUri;
         $taskPayload['uid'] = $existingTask['uid'];
 
         $raw = is_string($object->calendardata) ? $object->calendardata : (string) $object->calendardata;
         $ics = $this->updatedIcs($raw, $taskPayload, $existingTask, $located['vtodoUid']);
 
-        $this->calBackend()->updateCalendarObject(
-            [(int) $instance->calendarid, (int) $instance->id],
-            $objectUri,
-            $ics,
-        );
-        $davPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
+        $sourceIds = [(int) $instance->calendarid, (int) $instance->id];
+        $targetIds = [(int) $target->calendarid, (int) $target->id];
+        if ($target === $instance) {
+            $this->calBackend()->updateCalendarObject($sourceIds, $objectUri, $ics);
+        } else {
+            DB::connection('wgw')->transaction(function () use ($targetIds, $sourceIds, $objectUri, $ics): void {
+                $this->calBackend()->createCalendarObject($targetIds, $objectUri, $ics);
+                $this->calBackend()->deleteCalendarObject($sourceIds, $objectUri);
+            });
+            $oldPath = $this->calendarDavPath($username, (string) $instance->uri, $objectUri);
+            $this->searchIndexSync->sync(
+                'tasks',
+                fn () => $this->searchIndexer->deleteDavPath($oldPath),
+                $oldPath,
+                $username,
+            );
+        }
+        $davPath = $this->calendarDavPath($username, (string) $target->uri, $objectUri);
         $this->searchIndexSync->sync(
             'tasks',
             fn () => $this->searchIndexer->indexCalendarObjectFromPath($davPath),
@@ -285,19 +304,73 @@ final class TaskRepository
             $username,
         );
 
-        $updated = $this->findObjectInCalendar((int) $instance->calendarid, $objectUri);
+        $updated = $this->findObjectInCalendar((int) $target->calendarid, $objectUri);
         if ($updated === null) {
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
-        $task = $this->mapper->toTask($updated, $taskListId, $located['vtodoUid']);
+        $task = $this->mapper->toTask($updated, $targetListUri, $located['vtodoUid']);
         if ($task === null) {
             throw new ApiHttpException(500, $reloadFailedMessage, 'server_error');
         }
 
-        $this->notifyStatusChanged($username, $instance, $existingTask, $task);
+        $this->notifyStatusChanged($username, $target, $existingTask, $task);
 
         return $task;
+    }
+
+    /**
+     * The list a PUT body names in `taskListIds`, or null when it names none.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private static function requestedTaskListId(array $payload): ?string
+    {
+        $taskListIds = $payload['taskListIds'] ?? null;
+        if (! is_array($taskListIds)) {
+            return null;
+        }
+        foreach ($taskListIds as $id => $enabled) {
+            if ($enabled === true && (string) $id !== '') {
+                return (string) $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The list a write lands in: `$current`, or the writable list `$targetListId`
+     * names when that is another calendar. A task that shares its file with
+     * other tasks cannot move on its own, and the target must not already hold
+     * a file with the same name.
+     */
+    private function resolveMoveTarget(
+        string $username,
+        ?string $targetListId,
+        CalendarInstance $current,
+        string $objectUri,
+        ?string $vtodoUid,
+    ): CalendarInstance {
+        if ($targetListId === null || $targetListId === $this->taskListUriForInstance($current)) {
+            return $current;
+        }
+        $target = $this->taskLists->findAccessibleTaskList($username, $targetListId);
+        if ($target === null) {
+            throw new ApiHttpException(404, 'Task list not found.', 'not_found');
+        }
+        if ((int) $target->calendarid === (int) $current->calendarid) {
+            return $current;
+        }
+        $this->collectionAccess->assertCollectionWritable($target, 'This task list is read-only.');
+        if ($vtodoUid !== null) {
+            throw new ApiHttpException(409, 'This task shares its file with other tasks and cannot move to another list.', 'conflict');
+        }
+        if ($this->findObjectInCalendar((int) $target->calendarid, $objectUri) !== null) {
+            throw new ApiHttpException(409, 'The target list already holds a task with this id.', 'alreadyExists');
+        }
+
+        return $target;
     }
 
     /**

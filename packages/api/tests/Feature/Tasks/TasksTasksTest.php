@@ -124,6 +124,76 @@ final class TasksTasksTest extends WgwDatabaseTestCase
             ->assertJsonPath('progress', 100);
     }
 
+    public function test_update_with_another_task_list_moves_the_task(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'buy-milk.ics', $this->sampleTodoIcs('Buy milk'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $workId = $this->createTaskList('Work');
+
+        $response = $this->withBearer($this->userBearerToken())
+            ->putJson($url, [
+                'taskListIds' => [$workId => true],
+                'title' => 'Buy oat milk',
+            ], $this->withIfMatch($this->fetchEtagFromGet($url)));
+
+        $response->assertOk()
+            ->assertJsonPath('id', $taskId)
+            ->assertJsonPath('taskListId', $workId)
+            ->assertJsonPath('title', 'Buy oat milk');
+        $this->assertSame([], $this->taskIdsIn(InboxTaskListProvisioner::URI));
+        $this->assertSame([$taskId], $this->taskIdsIn($workId));
+        $this->withBearer($this->userBearerToken())
+            ->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('taskListId', $workId);
+    }
+
+    public function test_move_answers_a_new_etag_for_the_next_write(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'buy-milk.ics', $this->sampleTodoIcs('Buy milk'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+        $workId = $this->createTaskList('Work');
+
+        $moved = $this->withBearer($this->userBearerToken())
+            ->putJson($url, ['taskListIds' => [$workId => true], 'title' => 'Buy milk'], $this->withIfMatch($this->fetchEtagFromGet($url)))
+            ->assertOk();
+
+        $this->withBearer($this->userBearerToken())
+            ->patchJson($url, ['title' => 'Buy oat milk'], $this->withIfMatch((string) $moved->json('etag')))
+            ->assertOk()
+            ->assertJsonPath('taskListId', $workId)
+            ->assertJsonPath('title', 'Buy oat milk');
+    }
+
+    public function test_move_to_an_unknown_task_list_is_not_found_and_keeps_the_task(): void
+    {
+        $taskId = $this->seedTaskViaPdo('bob', 'buy-milk.ics', $this->sampleTodoIcs('Buy milk'));
+        $url = '/api/v1/tasks/items/'.$taskId;
+
+        $this->withBearer($this->userBearerToken())
+            ->putJson($url, ['taskListIds' => ['no-such-list' => true], 'title' => 'Buy milk'], $this->withIfMatch($this->fetchEtagFromGet($url)))
+            ->assertNotFound();
+
+        $this->assertSame([$taskId], $this->taskIdsIn(InboxTaskListProvisioner::URI));
+    }
+
+    public function test_move_of_a_task_that_shares_its_file_is_refused(): void
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Test//EN\r\n"
+            ."BEGIN:VTODO\r\nUID:first\r\nSUMMARY:First\r\nEND:VTODO\r\n"
+            ."BEGIN:VTODO\r\nUID:second\r\nSUMMARY:Second\r\nEND:VTODO\r\nEND:VCALENDAR\r\n";
+        $this->seedTaskViaPdo('bob', 'pair.ics', $ics);
+        $taskId = 'pair#first';
+        $url = '/api/v1/tasks/items/'.rawurlencode($taskId);
+        $workId = $this->createTaskList('Work');
+
+        $this->withBearer($this->userBearerToken())
+            ->putJson($url, ['taskListIds' => [$workId => true], 'title' => 'First'], $this->withIfMatch($this->fetchEtagFromGet($url)))
+            ->assertStatus(409);
+
+        $this->assertSame([], $this->taskIdsIn($workId));
+    }
+
     public function test_patch_task(): void
     {
         $taskId = $this->seedTaskViaPdo('bob', 'buy-milk.ics', $this->sampleTodoIcs('Buy milk'));
@@ -217,5 +287,24 @@ final class TasksTasksTest extends WgwDatabaseTestCase
         }
 
         return CalendarObject::query()->find((int) $row->id);
+    }
+
+    private function createTaskList(string $name): string
+    {
+        return (string) $this->withBearer($this->userBearerToken())
+            ->postJson('/api/v1/tasks/tasklists', ['name' => $name])
+            ->assertCreated()
+            ->json('id');
+    }
+
+    /** @return list<string> */
+    private function taskIdsIn(string $taskListId): array
+    {
+        $list = $this->withBearer($this->userBearerToken())
+            ->getJson('/api/v1/tasks/items?taskListId='.rawurlencode($taskListId))
+            ->assertOk()
+            ->json('list');
+
+        return array_values(array_map(static fn (array $task): string => (string) $task['id'], $list));
     }
 }
