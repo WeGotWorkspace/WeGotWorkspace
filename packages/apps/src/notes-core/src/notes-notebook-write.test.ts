@@ -82,4 +82,13 @@ describe("canChangeNotebookOwner", () => {
     expect(canChangeNotebookOwner({ isSharee: true })).toBe(false);
     expect(canChangeNotebookOwner()).toBe(false);
   });
+
+  it("locks a group notebook for members without the delete right", () => {
+    const group = { id: "specs", scope: "group" as const, groupSlug: "team" };
+    expect(canChangeNotebookOwner({ ...group, myRights: { mayDelete: false } })).toBe(false);
+    expect(canChangeNotebookOwner({ ...group, myRights: { mayDelete: true } })).toBe(true);
+    expect(
+      canChangeNotebookOwner({ id: "mine", scope: "personal", myRights: { mayDelete: false } }),
+    ).toBe(true);
+  });
 });

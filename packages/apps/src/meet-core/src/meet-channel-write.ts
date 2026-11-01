@@ -46,6 +46,20 @@ export function applyMeetChannelPatch(
 }
 
 /**
+ * Move Owner between personal and group. Sharees stay locked, and moving a
+ * group channel out of its group needs the delete right (`myRights.mayDelete`).
+ */
+export function canChangeMeetChannelOwner(channel?: {
+  isSharee?: boolean;
+  scope?: "personal" | "group";
+  myRights?: { mayDelete?: boolean } | null;
+}): boolean {
+  if (!channel) return false;
+  if (channel.isSharee === true) return false;
+  return !(channel.scope === "group" && channel.myRights?.mayDelete === false);
+}
+
+/**
  * Owner delete in the channel dialog — same gate as Notes `canDeleteNotebook`.
  * Sharees must not see destroy (`myRights.mayDelete: false` on inbound shares).
  */

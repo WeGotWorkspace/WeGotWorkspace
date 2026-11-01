@@ -381,7 +381,7 @@ final class NotebookRepository
         if ($newGroupSlug === $currentGroupSlug) {
             return;
         }
-
+        $this->collectionAccess->assertGroupOwnedTransferAllowed($username, $instance);
         $principalUri = $this->principalUriForOwnerScope($username, $instance, $newGroupSlug);
         $existing = $this->findNotebookInstance($principalUri, (string) $instance->uri);
         if ($existing !== null && (int) $existing->id !== (int) $instance->id) {

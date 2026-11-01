@@ -317,6 +317,23 @@ describe("tasks-task-utils", () => {
     ).toBe(true);
   });
 
+  it("canChangeTaskListOwner locks a group list for members without the delete right", () => {
+    const group = { id: "roadmap", scope: "group" as const, groupSlug: "team" };
+    expect(
+      canChangeTaskListOwner({ ...group, myRights: { mayShare: true, mayDelete: false } }),
+    ).toBe(false);
+    expect(
+      canChangeTaskListOwner({ ...group, myRights: { mayShare: true, mayDelete: true } }),
+    ).toBe(true);
+    expect(
+      canChangeTaskListOwner({
+        id: "work",
+        scope: "personal",
+        myRights: { mayShare: true, mayDelete: false },
+      }),
+    ).toBe(true);
+  });
+
   it("canDeleteTaskList allows owned custom lists including home and work roles", () => {
     expect(canDeleteTaskList({ id: "work", isDefault: false, isSharee: false })).toBe(true);
     expect(
