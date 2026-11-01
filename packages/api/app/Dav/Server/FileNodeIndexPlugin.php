@@ -144,7 +144,7 @@ final class FileNodeIndexPlugin extends ServerPlugin
 
         try {
             match ($method) {
-                'COPY' => $destKey !== null ? $this->index->recordCopy($key, $destKey) : null,
+                'COPY' => $destKey !== null ? $this->index->recordCopy($key, $destKey, $this->copiesRecursively($request)) : null,
                 'MKCOL' => $this->index->recordCreate($key),
                 // PUT (PATCH is not served; see the class doc)
                 default => $this->index->recordContentWrite($key, $method === 'PUT' ? $this->writtenSha($key) : null),
@@ -156,6 +156,16 @@ final class FileNodeIndexPlugin extends ServerPlugin
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Sabre copies a collection's children unless Depth is 0.
+     */
+    private function copiesRecursively(RequestInterface $request): bool
+    {
+        $depth = trim((string) $request->getHeader('Depth'));
+
+        return ! (ctype_digit($depth) && (int) $depth === 0);
     }
 
     /**

@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property string $staging_key
  * @property int $size_bytes
  * @property int $copied_bytes
+ * @property Carbon|null $locked_until
+ * @property string|null $lease_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -36,6 +38,8 @@ final class JmapAttachStaging extends Model
         'staging_key',
         'size_bytes',
         'copied_bytes',
+        'locked_until',
+        'lease_token',
     ];
 
     protected function casts(): array
@@ -43,6 +47,7 @@ final class JmapAttachStaging extends Model
         return [
             'size_bytes' => 'integer',
             'copied_bytes' => 'integer',
+            'locked_until' => 'datetime',
         ];
     }
 }

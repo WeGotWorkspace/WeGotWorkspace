@@ -100,7 +100,7 @@ final class BlobAssemblyService
         $row = $this->openAssembly($username, $id);
         $this->guardPartsShape($row, $parts);
 
-        return $this->withLease($row, function (JmapBlobAssembly $row) use ($parts): array {
+        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease) use ($parts): array {
             $this->reconcileFile($row);
             [$accepted, $fresh] = $this->splitAccepted($row, $parts);
 
@@ -114,7 +114,7 @@ final class BlobAssemblyService
                 throw new JmapMethodException('requestTooLarge', 'The parts exceed stepBudgetBytes; append fewer parts per call.', ['limit' => 'stepBudgetBytes']);
             }
 
-            [$context, $budget, $rebuildPending, $rebuilt] = $this->rebuildStep($row, $budget);
+            [$context, $budget, $rebuildPending, $rebuilt] = $this->rebuildStep($row, $budget, $lease);
             if ($rebuildPending) {
                 return $this->appendResponse($row, $accepted, rebuiltOnly: true, rebuildPending: true);
             }
@@ -128,7 +128,7 @@ final class BlobAssemblyService
                 if ($partSize > $budget) {
                     break;
                 }
-                $this->appendPart($row, $part['blobId'], $partSize, $context, $received);
+                $this->appendPart($row, $part['blobId'], $partSize, $context, $received, $lease);
                 $budget -= $partSize;
                 $received += $partSize;
                 $nextIndex = $part['index'] + 1;
@@ -138,14 +138,14 @@ final class BlobAssemblyService
             }
 
             $encoded = HashStateCodec::encode($context);
-            DB::connection('wgw')->transaction(function () use ($row, $received, $nextIndex, $encoded, $newRows): void {
+            DB::connection('wgw')->transaction(function () use ($row, $lease, $received, $nextIndex, $encoded, $newRows): void {
                 $row->received_bytes = $received;
                 $row->next_index = $nextIndex;
                 $row->hashed_bytes = $received;
                 $row->hash_state = $encoded['state'];
                 $row->hash_build = $encoded['build'];
                 $row->expires_at = Carbon::now()->addSeconds(JmapBlobLimits::assemblyTtlSeconds());
-                $row->save();
+                $this->saveHeld($row, $lease);
                 foreach ($newRows as $newRow) {
                     JmapBlobAssemblyPart::query()->create($newRow);
                 }
@@ -170,13 +170,13 @@ final class BlobAssemblyService
         }
         $this->guardOpen($row);
 
-        return $this->withLease($row, function (JmapBlobAssembly $row): array {
+        return $this->withLease($row, function (JmapBlobAssembly $row, string $lease): array {
             if ($row->received_bytes !== $row->size_bytes) {
                 throw new JmapMethodException('invalidArguments', sprintf('The assembly holds %d of %d octets.', $row->received_bytes, $row->size_bytes));
             }
             if ($row->final_sha256 === null) {
                 $this->reconcileFile($row);
-                [$context, , $rebuildPending] = $this->rebuildStep($row, JmapBlobLimits::stepBudgetBytes());
+                [$context, , $rebuildPending] = $this->rebuildStep($row, JmapBlobLimits::stepBudgetBytes(), $lease);
                 if ($rebuildPending) {
                     return $this->finishResponse($row, rebuildPending: true);
                 }
@@ -185,7 +185,7 @@ final class BlobAssemblyService
                 // retried finish reuses it.
                 $row->final_sha256 = hash_final($context);
                 $row->hash_state = null;
-                $row->save();
+                $this->saveHeld($row, $lease);
             }
 
             $stored = $this->blobs->commitFile(
@@ -195,11 +195,11 @@ final class BlobAssemblyService
                 (string) $row->final_sha256,
                 $row->size_bytes,
             );
-            DB::connection('wgw')->transaction(function () use ($row, $stored): void {
+            DB::connection('wgw')->transaction(function () use ($row, $lease, $stored): void {
                 $row->status = self::STATUS_FINISHED;
                 $row->blob_id = $stored['blobId'];
                 $row->expires_at = Carbon::now()->addHours(JmapBlobLimits::blobTtlHours());
-                $row->save();
+                $this->saveHeld($row, $lease);
                 JmapBlobAssemblyPart::query()->where('assembly_id', $row->assembly_id)->delete();
             });
             $this->claims->release($row->assembly_id);
@@ -234,6 +234,9 @@ final class BlobAssemblyService
         if ($row === null) {
             return false;
         }
+        if ($this->takeLease($row) === null) {
+            throw new JmapMethodException('serverUnavailable', 'Another call is working on this assembly; retry shortly.');
+        }
         $this->discard($row);
 
         return true;
@@ -251,7 +254,10 @@ final class BlobAssemblyService
             ->limit($limit)
             ->get();
         foreach ($rows as $row) {
-            $this->discard($row);
+            // An append still holds the lease: leave the row for the next run.
+            if ($this->takeLease($row) !== null) {
+                $this->discard($row);
+            }
         }
 
         return $rows->count();
@@ -402,7 +408,7 @@ final class BlobAssemblyService
      *
      * @return array{0: \HashContext, 1: int, 2: bool, 3: bool} context, budget left, rebuild still pending, rebuild advanced in this call
      */
-    private function rebuildStep(JmapBlobAssembly $row, int $budget): array
+    private function rebuildStep(JmapBlobAssembly $row, int $budget, string $lease): array
     {
         [$context, $hashed] = StepHasher::resume($row->hash_state, $row->hash_build, $row->hashed_bytes);
         if ($hashed > $row->received_bytes) {
@@ -421,7 +427,7 @@ final class BlobAssemblyService
         $row->hashed_bytes = $offset;
         $row->hash_state = $encoded['state'];
         $row->hash_build = $encoded['build'];
-        $row->save();
+        $this->saveHeld($row, $lease);
 
         return [$context, $budget, $offset < $row->received_bytes, true];
     }
@@ -436,7 +442,7 @@ final class BlobAssemblyService
         return $hashed !== $row->received_bytes;
     }
 
-    private function appendPart(JmapBlobAssembly $row, string $blobId, int $size, \HashContext $context, int $received): void
+    private function appendPart(JmapBlobAssembly $row, string $blobId, int $size, \HashContext $context, int $received, string $lease): void
     {
         $disk = $this->storage->data();
         $source = $this->blobs->openStream($row->username, $blobId);
@@ -444,8 +450,15 @@ final class BlobAssemblyService
             throw new JmapMethodException('blobNotFound', 'A part vanished while appending; upload it again.', ['notFound' => [$blobId]]);
         }
         try {
-            $written = $this->local->append($disk, $this->fileKey($row), $source, $size, static function (string $chunk) use ($context): void {
+            $renewedAt = time();
+            $written = $this->local->append($disk, $this->fileKey($row), $source, $size, function (string $chunk) use ($context, $row, $lease, &$renewedAt): void {
                 hash_update($context, $chunk);
+                // Disk time is not counted by max_execution_time: keep the
+                // lease alive while bytes flow, and stop if it was lost.
+                if (time() - $renewedAt >= 5) {
+                    $renewedAt = time();
+                    $this->renewLease($row, $lease);
+                }
             });
         } catch (StorageFullException $e) {
             $this->local->truncate($disk, $this->fileKey($row), $received);
@@ -511,32 +524,69 @@ final class BlobAssemblyService
 
     /**
      * Serializes calls on one assembly with a lease taken by one
-     * conditional UPDATE (no transaction is held open during I/O).
+     * conditional UPDATE (no transaction is held open during I/O). The lease
+     * has an owner: it is released, renewed and committed against only while
+     * this call's token is still the stored one.
      *
      * @template T
      *
-     * @param  callable(JmapBlobAssembly): T  $work
+     * @param  callable(JmapBlobAssembly, string): T  $work
      * @return T
      */
     private function withLease(JmapBlobAssembly $row, callable $work): mixed
     {
-        $now = Carbon::now();
-        $taken = JmapBlobAssembly::query()
-            ->where('id', $row->id)
-            ->where(function ($query) use ($now): void {
-                $query->whereNull('locked_until')->orWhere('locked_until', '<', $now);
-            })
-            ->update(['locked_until' => $now->copy()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)]);
-        if ($taken !== 1) {
+        $token = $this->takeLease($row);
+        if ($token === null) {
             throw new JmapMethodException('serverUnavailable', 'Another call is working on this assembly; retry shortly.');
         }
         try {
             $fresh = JmapBlobAssembly::query()->findOrFail($row->id);
 
-            return $work($fresh);
+            return $work($fresh, $token);
         } finally {
-            JmapBlobAssembly::query()->where('id', $row->id)->update(['locked_until' => null]);
+            JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)
+                ->update(['locked_until' => null, 'lease_token' => null]);
         }
+    }
+
+    private function takeLease(JmapBlobAssembly $row): ?string
+    {
+        $now = Carbon::now();
+        $token = Str::random(32);
+        $taken = JmapBlobAssembly::query()
+            ->where('id', $row->id)
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('locked_until')->orWhere('locked_until', '<', $now);
+            })
+            ->update(['locked_until' => $now->copy()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5), 'lease_token' => $token]);
+
+        return $taken === 1 ? $token : null;
+    }
+
+    private function renewLease(JmapBlobAssembly $row, string $token): void
+    {
+        $renewed = JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)
+            ->update(['locked_until' => Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5)]);
+        if ($renewed !== 1) {
+            throw new JmapMethodException('serverUnavailable', 'The lease on this assembly was lost; retry.');
+        }
+    }
+
+    /**
+     * Saves the row only while this call still owns the lease; otherwise
+     * nothing is written and the caller must not report success.
+     */
+    private function saveHeld(JmapBlobAssembly $row, string $token): void
+    {
+        $dirty = $row->getDirty();
+        if ($dirty === []) {
+            return;
+        }
+        $updated = JmapBlobAssembly::query()->where('id', $row->id)->where('lease_token', $token)->update($dirty);
+        if ($updated !== 1) {
+            throw new JmapMethodException('serverUnavailable', 'The lease on this assembly was lost; retry.');
+        }
+        $row->syncOriginal();
     }
 
     /**

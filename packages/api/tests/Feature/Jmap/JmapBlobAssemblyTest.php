@@ -7,6 +7,7 @@ namespace Tests\Feature\Jmap;
 use App\Models\JmapBlob;
 use App\Models\JmapBlobAssembly;
 use App\Models\JmapBlobClaim;
+use App\Services\Jmap\Assembly\BlobAssemblyService;
 use App\Services\Jmap\Blobs\JmapBlobMaintenance;
 use App\Services\Jmap\Blobs\StorageFullException;
 use App\Services\Jmap\JmapCapabilities;
@@ -120,6 +121,26 @@ final class JmapBlobAssemblyTest extends WgwDatabaseTestCase
     private function data(): Filesystem
     {
         return Storage::disk('wgw_data');
+    }
+
+    public function test_destroy_and_expiry_leave_an_assembly_alone_while_a_call_holds_its_lease(): void
+    {
+        $id = $this->createAssembly(10);
+        JmapBlobAssembly::query()->where('assembly_id', $id)->update([
+            'locked_until' => Carbon::now()->addMinute(), 'lease_token' => 'someone-else',
+        ]);
+
+        $result = $this->method('BlobAssembly/set', ['destroy' => [$id]]);
+        $this->assertSame('serverFail', $result['notDestroyed'][$id]['type']);
+        $this->assertSame(1, JmapBlobAssembly::query()->where('assembly_id', $id)->count());
+
+        JmapBlobAssembly::query()->where('assembly_id', $id)->update(['expires_at' => Carbon::now()->subMinute()]);
+        app(BlobAssemblyService::class)->expire();
+        $this->assertSame(1, JmapBlobAssembly::query()->where('assembly_id', $id)->count());
+
+        JmapBlobAssembly::query()->where('assembly_id', $id)->update(['locked_until' => Carbon::now()->subSecond()]);
+        $this->assertSame(1, app(BlobAssemblyService::class)->expire());
+        $this->assertSame(0, JmapBlobAssembly::query()->where('assembly_id', $id)->count());
     }
 
     public function test_capability_is_advertised_and_only_usable_when_listed_in_using(): void

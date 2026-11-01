@@ -251,6 +251,51 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
         $this->assertSame(0, JmapAttachStaging::query()->count());
     }
 
+    public function test_a_staged_copy_another_call_is_writing_answers_attach_in_progress_untouched(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1]);
+        $this->forceCopies();
+        $blobId = $this->upload(random_bytes(2_500_000));
+        $create = ['create' => ['f' => ['parentId' => $this->homeId(), 'name' => 'big.bin', 'blobId' => $blobId]]];
+        $this->set($create)->assertOk();
+        JmapAttachStaging::query()->update(['locked_until' => Carbon::now()->addMinute(), 'lease_token' => 'other-call']);
+
+        $busy = $this->set($create)->json('methodResponses.0.1.notCreated.f');
+
+        $this->assertSame('attachInProgress', $busy['type']);
+        $this->assertSame(1024 * 1024, $busy['copied']);
+        $this->assertSame(1024 * 1024, JmapAttachStaging::query()->firstOrFail()->copied_bytes);
+        $this->assertSame('other-call', JmapAttachStaging::query()->firstOrFail()->lease_token);
+    }
+
+    public function test_a_refused_attach_leaves_the_replaced_file_and_the_name_untouched(): void
+    {
+        config(['wgw.jmap.step_throughput_bytes' => 1]);
+        $this->forceCopies();
+        $this->seedPrivateFile('bob', 'big.bin', 'old bytes');
+        $this->seedPrivateFile('bob', 'small.txt', 'small');
+        $home = $this->homeId();
+        $blobId = $this->upload(random_bytes(2_500_000));
+
+        // Create with onExists replace: the copy needs more calls, nothing is destroyed yet.
+        $create = $this->set(['onExists' => 'replace', 'create' => ['f' => ['parentId' => $home, 'name' => 'big.bin', 'blobId' => $blobId]]]);
+        $this->assertSame('attachInProgress', $create->json('methodResponses.0.1.notCreated.f.type'));
+        $this->assertSame('old bytes', $this->files()->get('users/bob/big.bin'));
+        $this->assertEmpty($create->json('methodResponses.0.1.destroyed'));
+
+        // Update with a rename and a blob: the rename waits for the attach too.
+        $list = $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+            'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE],
+            'methodCalls' => [['FileNode/get', ['accountId' => 'bob', 'ids' => null], 'g']],
+        ])->json('methodResponses.0.1.list');
+        $smallId = (string) collect($list)->firstWhere('name', 'small.txt')['id'];
+        $other = $this->upload(random_bytes(2_500_000));
+        $update = $this->set(['update' => [$smallId => ['name' => 'renamed.bin', 'blobId' => $other]]]);
+        $this->assertSame('attachInProgress', $update->json('methodResponses.0.1.notUpdated.'.$smallId.'.type'));
+        $this->assertTrue($this->files()->exists('users/bob/small.txt'));
+        $this->assertFalse($this->files()->exists('users/bob/renamed.bin'));
+    }
+
     public function test_not_enough_free_space_is_over_quota(): void
     {
         $this->forceCopies();

@@ -25,6 +25,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $blob_id
  * @property string $status
  * @property Carbon|null $locked_until
+ * @property string|null $lease_token
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -49,6 +50,7 @@ final class JmapBlobAssembly extends Model
         'blob_id',
         'status',
         'locked_until',
+        'lease_token',
         'expires_at',
     ];
 

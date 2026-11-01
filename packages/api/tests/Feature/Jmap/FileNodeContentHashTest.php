@@ -175,6 +175,45 @@ final class FileNodeContentHashTest extends WgwDatabaseTestCase
         $this->assertSame($this->row('users/bob')->node_id, $dst->parent_node_id);
     }
 
+    public function test_a_folder_copy_over_a_path_with_wildcards_tombstones_the_old_children(): void
+    {
+        $this->dav('MKCOL', '/files/users/bob/src')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/src/one.txt', 'new')->assertSuccessful();
+        $this->dav('MKCOL', '/files/users/bob/my_dst')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/my_dst/one.txt', 'old')->assertSuccessful();
+
+        $this->dav('COPY', '/files/users/bob/src', null, ['HTTP_DESTINATION' => '/files/users/bob/my_dst', 'HTTP_OVERWRITE' => 'T'])->assertSuccessful();
+
+        $live = JmapFileNode::query()->whereNull('deleted_at')->where('storage_key', 'users/bob/my_dst/one.txt')->get();
+        $this->assertCount(1, $live);
+        $this->assertSame(hash('sha256', 'new'), $live->first()->content_sha256);
+    }
+
+    public function test_a_folder_copy_ignores_a_sibling_that_differs_only_in_case(): void
+    {
+        $this->dav('MKCOL', '/files/users/bob/Pics')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/Pics/a.txt', 'upper')->assertSuccessful();
+        $this->dav('MKCOL', '/files/users/bob/pics')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/pics/a.txt', 'lower')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/pics/b.txt', 'only lower')->assertSuccessful();
+
+        $this->dav('COPY', '/files/users/bob/Pics', null, ['HTTP_DESTINATION' => '/files/users/bob/Copy'])->assertSuccessful();
+
+        $this->assertSame(hash('sha256', 'upper'), $this->row('users/bob/Copy/a.txt')->content_sha256);
+        $this->assertSame(0, JmapFileNode::query()->whereNull('deleted_at')->where('storage_key', 'users/bob/Copy/b.txt')->count());
+    }
+
+    public function test_a_depth_zero_folder_copy_indexes_only_the_folder(): void
+    {
+        $this->dav('MKCOL', '/files/users/bob/full')->assertSuccessful();
+        $this->dav('PUT', '/files/users/bob/full/one.txt', 'one')->assertSuccessful();
+
+        $this->dav('COPY', '/files/users/bob/full', null, ['HTTP_DESTINATION' => '/files/users/bob/shallow', 'HTTP_DEPTH' => '0'])->assertSuccessful();
+
+        $this->assertTrue((bool) $this->row('users/bob/shallow')->is_dir);
+        $this->assertSame(0, JmapFileNode::query()->whereNull('deleted_at')->where('storage_key', 'users/bob/shallow/one.txt')->count());
+    }
+
     public function test_small_discovered_files_are_hashed_in_the_walk(): void
     {
         $this->files()->put('users/bob/sftp-small.txt', 'dropped over sftp');

@@ -281,15 +281,19 @@ final class FileNodeSetService
             throw new FileNodeSetError($this->invalidProperties('Directory nodes must not carry a blobId.', ['blobId']));
         }
 
-        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload, incomingIsFile: $nodeType === 'file');
+        $pending = null;
+        $name = $this->resolveCollision($parent, $name, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $payload, incomingIsFile: $nodeType === 'file', pending: $pending);
         $key = $parent->storage_key.'/'.$name;
         $disk = $this->storage->files();
 
         if ($nodeType === 'directory') {
+            if ($pending !== null) {
+                $pending();
+            }
             $disk->makeDirectory($key);
             $node = $this->index->recordCreate($key);
         } else {
-            $sha256 = $this->writeContent($username, $key, $name, $note, $hasBlob ? (string) $blobId : null, $payload['size'] ?? null);
+            $sha256 = $this->writeContent($username, $key, $name, $note, $hasBlob ? (string) $blobId : null, $payload['size'] ?? null, $pending);
             $node = $this->index->recordContentWrite($key, $sha256);
         }
 
@@ -332,12 +336,21 @@ final class FileNodeSetService
                 array_values(array_map(strval(...), $unsupported)),
             ));
         }
+        $guarded = null;
         if (array_key_exists('expectedBlobId', $patch)) {
             $this->versionCheck->guard($node, $patch['expectedBlobId']);
+            $guarded = $node;
         }
 
         $serverSet = [];
         $note = $this->notePatch($patch);
+        // Destroying a replaced sibling and renaming run together, just
+        // before the content changes: an attach that is refused leaves both
+        // undone.
+        $pending = null;
+        $relocate = null;
+        $targetKey = (string) $node->storage_key;
+        $targetName = (string) $node->name;
 
         $wantsMove = array_key_exists('name', $patch) || array_key_exists('parentId', $patch);
         if ($wantsMove) {
@@ -382,16 +395,36 @@ final class FileNodeSetService
             $newName = array_key_exists('name', $patch)
                 ? $this->validName($patch['name'])
                 : (string) $node->name;
-            $newName = $this->resolveCollision($newParent, $newName, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $patch, (string) $node->node_id);
+            $newName = $this->resolveCollision($newParent, $newName, $onExists, $onDestroyRemoveChildren, $compareCaseInsensitively, $principal, $patch, (string) $node->node_id, pending: $pending);
 
             $fromKey = (string) $node->storage_key;
             $toKey = $newParent->storage_key.'/'.$newName;
             if ($toKey !== $fromKey) {
-                $node = $this->relocator->move($node, $toKey);
+                $relocate = function () use (&$node, $toKey): void {
+                    $node = $this->relocator->move($node, $toKey);
+                };
             }
+            $targetKey = $toKey;
+            $targetName = $newName;
         }
 
         $wantsContent = array_key_exists('blobId', $patch) || $note !== null;
+        $before = function () use ($guarded, $wantsContent, &$pending, &$relocate): void {
+            // Claim first: a concurrent writer with the same expectedBlobId
+            // loses here, before it destroys or renames anything.
+            if ($guarded !== null && $wantsContent) {
+                $this->versionCheck->claim($guarded);
+            }
+            if ($pending !== null) {
+                $pending();
+            }
+            if ($relocate !== null) {
+                $relocate();
+            }
+        };
+        if (! $wantsContent) {
+            $before();
+        }
         if ($wantsContent) {
             if ($node->is_dir) {
                 throw new FileNodeSetError($this->invalidProperties(
@@ -409,8 +442,8 @@ final class FileNodeSetService
                     throw new FileNodeSetError($this->invalidProperties('blobId must be a non-empty id.', ['blobId']));
                 }
             }
-            $sha256 = $this->writeContent($username, (string) $node->storage_key, (string) $node->name, $note, $blobId, $patch['size'] ?? null);
-            $node = $this->index->recordContentWrite((string) $node->storage_key, $sha256) ?? $node;
+            $sha256 = $this->writeContent($username, $targetKey, $targetName, $note, $blobId, $patch['size'] ?? null, $before);
+            $node = $this->index->recordContentWrite($targetKey, $sha256) ?? $node;
             $this->eventDispatch->fireMutation('system', 'drive', 'written', 'files/'.(string) $node->storage_key);
             $shape = $this->mapper->toFileNode($node, $principal);
             $serverSet['size'] = $shape['size'];
@@ -431,7 +464,7 @@ final class FileNodeSetService
      *
      * @param  array{title?: string, tags?: list<string>}|null  $note
      */
-    private function writeContent(string $username, string $key, string $name, ?array $note, ?string $blobId, mixed $size): string
+    private function writeContent(string $username, string $key, string $name, ?array $note, ?string $blobId, mixed $size, ?\Closure $beforePlace = null): string
     {
         $expectedSize = is_int($size) ? $size : null;
         try {
@@ -441,11 +474,18 @@ final class FileNodeSetService
                 }
                 $remaining = ($this->blobReferences[$blobId] ?? 1) - 1;
                 $this->blobReferences[$blobId] = max(0, $remaining);
-                // #1517: an outside write to a Docs document, detected on the
-                // next yjs read; recorded only once the blob checks passed.
-                $beforeWrite = fn () => $this->index->recordBeforeContentWrite($key);
+                // The caller's destroy/rename runs right before the bytes land,
+                // after every outcome that can still refuse the attach. #1517:
+                // an outside write to a Docs document, detected on the next
+                // yjs read; recorded only once the blob checks passed.
+                $place = function () use ($beforePlace, $key): void {
+                    if ($beforePlace !== null) {
+                        $beforePlace();
+                    }
+                    $this->index->recordBeforeContentWrite($key);
+                };
 
-                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize, $beforeWrite)['sha256'];
+                return $this->attacher->attach($username, $blobId, $key, $remaining <= 0, $expectedSize, $place)['sha256'];
             }
 
             $blobContents = null;
@@ -458,6 +498,9 @@ final class FileNodeSetService
                     throw new FileNodeSetError($this->invalidProperties('size does not match the blob.', ['size']));
                 }
                 $blobContents = $blob['contents'];
+            }
+            if ($beforePlace !== null) {
+                $beforePlace();
             }
             $contents = $this->contentsForNoteWrite($key, $name, $note, $blobContents);
             $this->index->recordBeforeContentWrite($key);
@@ -518,7 +561,10 @@ final class FileNodeSetService
 
     /**
      * Sibling-uniqueness + onExists handling (§3.2.3). Returns the name to
-     * use (possibly server-chosen for "rename").
+     * use (possibly server-chosen for "rename"). Replacing a sibling is not
+     * done here: `$pending` receives the destroy, which the caller runs only
+     * once the write can no longer be refused (a failed attach must not
+     * leave the old file destroyed).
      *
      * @param  array{username: string, role: string}  $principal
      * @param  array<string, mixed>  $payload
@@ -533,6 +579,7 @@ final class FileNodeSetService
         array $payload,
         ?string $ignoreNodeId = null,
         bool $incomingIsFile = false,
+        ?\Closure &$pending = null,
     ): string {
         $existing = $this->findSibling($parent, $name, $compareCaseInsensitively, $ignoreNodeId);
         if ($existing === null) {
@@ -541,7 +588,7 @@ final class FileNodeSetService
 
         switch ($onExists) {
             case 'replace':
-                $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
+                $pending = fn () => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                 return $name;
             case 'rename':
@@ -561,7 +608,7 @@ final class FileNodeSetService
                 } catch (\Throwable) {
                 }
                 if ($incomingTs !== false && $incomingTs > $existingTs) {
-                    $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
+                    $pending = fn () => $this->replaceSibling($existing, $parent->storage_key.'/'.$name, $incomingIsFile, $principal, $onDestroyRemoveChildren);
 
                     return $name;
                 }

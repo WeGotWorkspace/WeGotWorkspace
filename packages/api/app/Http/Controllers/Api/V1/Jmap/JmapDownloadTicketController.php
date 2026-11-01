@@ -39,7 +39,7 @@ final class JmapDownloadTicketController
         if (! is_string($blobId) || $blobId === '' || strlen($blobId) > 128) {
             throw new ApiHttpException(400, 'blobId is required.', 'bad_request');
         }
-        if (! is_string($name) || trim($name) === '' || strlen($name) > 255 || preg_match('/[\x00-\x1f\x7f]/', $name) === 1) {
+        if (! is_string($name) || trim($name) === '' || strlen($name) > 255 || preg_match('/[\x00-\x1f\x7f\/\\\\]/', $name) === 1 || in_array(trim($name), ['.', '..'], true)) {
             throw new ApiHttpException(400, 'name must be a file name.', 'bad_request');
         }
         if ($type !== null && (! is_string($type) || strlen($type) > 255 || preg_match('/[\x00-\x1f\x7f]/', $type) === 1)) {

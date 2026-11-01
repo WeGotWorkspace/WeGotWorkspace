@@ -152,16 +152,32 @@ final class FileNodeMapper
                 return hash('sha256', '');
             }
             $this->hasher->markPending($node);
-            $node->saveQuietly();
+            $this->persistIfStillUnhashed($node, ['hash_pending' => true]);
 
             return null;
         }
         // Persist without bumping change_seq: this id was never exposed in
-        // another form, so nothing about the node changed.
+        // another form, so nothing about the node changed. Conditional: a
+        // write that landed meanwhile has stored its own hash, which wins.
+        if (! $this->persistIfStillUnhashed($node, ['content_sha256' => $sha])) {
+            $current = JmapFileNode::query()->where('node_id', $node->node_id)->value('content_sha256');
+
+            return is_string($current) && $current !== '' ? $current : null;
+        }
         $node->content_sha256 = $sha;
-        $node->saveQuietly();
 
         return $sha;
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function persistIfStillUnhashed(JmapFileNode $node, array $values): bool
+    {
+        return JmapFileNode::query()
+            ->where('node_id', $node->node_id)
+            ->whereNull('content_sha256')
+            ->update($values) === 1;
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Jmap;
 
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Support\JmapProblem;
+use App\Http\Support\JmapUploadContentType;
 use App\Http\Support\RangeResponder;
 use App\Http\Support\WgwOversizedPost;
 use App\Services\Jmap\Assembly\BlobClaimService;
@@ -60,7 +61,8 @@ final class JmapBlobController
             return JmapProblem::limit('maxSizeUpload', 'The file is larger than maxSizeUpload.');
         }
 
-        $mediaType = (string) $request->header('Content-Type', 'application/octet-stream');
+        $mediaType = (string) ($request->server->get(JmapUploadContentType::SERVER_KEY)
+            ?? $request->header('Content-Type', 'application/octet-stream'));
         // Strip parameters (e.g. "; charset=…") — the type is echoed back
         // and stored as the blob's media type.
         $mediaType = trim(explode(';', $mediaType, 2)[0]);

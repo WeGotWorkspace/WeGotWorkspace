@@ -181,6 +181,19 @@ final class JmapDownloadTicketTest extends WgwDatabaseTestCase
         ])->assertNotFound();
     }
 
+    public function test_a_name_that_cannot_be_a_url_segment_is_refused(): void
+    {
+        $this->seedPrivateFile('bob', 'report.txt', self::BODY);
+        $token = $this->userBearerToken();
+        $blobId = $this->blobIdFor('report.txt', $token);
+
+        foreach (['a/b.txt', 'a\\b.txt', '.', '..'] as $name) {
+            $this->withBearer($token)->postJson('/api/v1/jmap/download-tickets/bob', [
+                'blobId' => $blobId, 'name' => $name,
+            ])->assertStatus(400);
+        }
+    }
+
     public function test_ticket_never_serves_bytes_other_than_the_blob_it_was_issued_for(): void
     {
         $this->seedPrivateFile('bob', 'versioned.txt', 'version one');

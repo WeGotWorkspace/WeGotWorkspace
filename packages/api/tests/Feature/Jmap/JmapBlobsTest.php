@@ -65,6 +65,15 @@ final class JmapBlobsTest extends WgwDatabaseTestCase
         $this->assertStringContainsString('filename="note.txt"', (string) $download->headers->get('Content-Disposition'));
     }
 
+    public function test_a_json_typed_upload_is_stored_as_a_blob_with_its_own_type(): void
+    {
+        $body = '{"a": 1, "b": [1, 2, 3]}';
+        $upload = $this->upload($body, 'application/json')->assertStatus(201);
+
+        $this->assertSame('application/json', $upload->json('type'));
+        $this->assertSame(strlen($body), $upload->json('size'));
+    }
+
     public function test_download_honours_the_type_query_parameter(): void
     {
         $blobId = $this->upload('binary-ish', 'application/octet-stream')->json('blobId');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Jmap\FileNodes;
 
+use App\Models\JmapContentHashJob;
 use App\Models\JmapFileNode;
 use App\Models\JmapFileNodeMeta;
 use App\Services\Collab\CollabSidecarMover;
@@ -185,7 +186,7 @@ final class FileNodeIndexService
         $query->where(function ($outer) use ($roots): void {
             foreach ($roots as $root) {
                 $outer->orWhere('storage_key', $root)
-                    ->orWhere('storage_key', 'like', $this->escapeLike($root).'/%');
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($root).'/%']);
             }
         });
 
@@ -208,10 +209,12 @@ final class FileNodeIndexService
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key): void {
                 $query->where('storage_key', $key)
-                    ->orWhere('storage_key', 'like', $this->escapeLike($key).'/%');
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($key).'/%']);
             })
             ->orderBy('storage_key')
             ->get()
+            ->filter(static fn (JmapFileNode $row): bool => (string) $row->storage_key === $key
+                || str_starts_with((string) $row->storage_key, $key.'/'))
             ->all());
     }
 
@@ -313,18 +316,70 @@ final class FileNodeIndexService
     }
 
     /**
+     * Compare-and-swap before a guarded content write: succeeds only while
+     * the row still has the change_seq the caller read and is not hash
+     * pending, then marks it pending (a provisional version that never
+     * equals an expectedBlobId) and bumps change_seq. The write's
+     * recordContentWrite stores the true hash and clears it.
+     */
+    public function claimContentWrite(JmapFileNode $loaded): bool
+    {
+        $seq = $this->nextSeq();
+        $claimed = JmapFileNode::query()
+            ->where('node_id', (string) $loaded->node_id)
+            ->whereNull('deleted_at')
+            ->where('change_seq', $loaded->change_seq)
+            ->where('hash_pending', false)
+            ->update(['hash_pending' => true, 'change_seq' => $seq]);
+        if ($claimed !== 1) {
+            return false;
+        }
+        $fresh = JmapFileNode::query()->where('node_id', (string) $loaded->node_id)->first();
+        if ($fresh !== null) {
+            $this->hasher->markPending($fresh);
+        }
+
+        return true;
+    }
+
+    /**
      * Stores the true hash a hash job computed for a hash-pending node and
      * bumps change_seq, so FileNode/changes tells clients the blobId moved
      * (once per discovered file).
      */
     public function recordHashResolved(JmapFileNode $node, string $sha256, int $size): void
     {
-        $node->content_sha256 = $sha256;
-        $node->size_bytes = $size;
-        $this->hasher->clearPending($node);
-        $node->change_seq = $this->nextSeq();
-        $node->save();
-        $this->markers->touch((string) $node->storage_key);
+        // One transaction: the job row is deleted only while the runner's
+        // lease on it is intact (a write that restarted or cleared the job
+        // resets it), and the node is updated only while still pending. A
+        // PUT that landed meanwhile is never overwritten with old bytes.
+        $seq = $this->nextSeq();
+        try {
+            $applied = DB::connection('wgw')->transaction(function () use ($node, $sha256, $size, $seq): bool {
+                $deleted = JmapContentHashJob::query()
+                    ->where('node_id', (string) $node->node_id)
+                    ->whereNotNull('locked_until')
+                    ->delete();
+                if ($deleted !== 1) {
+                    return false;
+                }
+                $updated = JmapFileNode::query()
+                    ->where('node_id', (string) $node->node_id)
+                    ->where('hash_pending', true)
+                    ->update(['content_sha256' => $sha256, 'size_bytes' => $size, 'hash_pending' => false, 'change_seq' => $seq]);
+                if ($updated !== 1) {
+                    // Rolls the job delete back; the node is no longer pending.
+                    throw new \RuntimeException('The node is no longer hash-pending.');
+                }
+
+                return true;
+            });
+        } catch (\RuntimeException) {
+            return;
+        }
+        if ($applied) {
+            $this->markers->touch((string) $node->storage_key);
+        }
     }
 
     /**
@@ -333,17 +388,21 @@ final class FileNodeIndexService
      * source storage_key prefix onto the destination and carries size_bytes
      * and content_sha256 (and a pending hash) across — no file is read.
      */
-    public function recordCopy(string $fromKey, string $toKey): ?JmapFileNode
+    public function recordCopy(string $fromKey, string $toKey, bool $recursive = true): ?JmapFileNode
     {
-        return $this->markers->batch(fn (): ?JmapFileNode => $this->copySubtree($fromKey, $toKey));
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->copySubtree($fromKey, $toKey, $recursive));
     }
 
-    private function copySubtree(string $fromKey, string $toKey): ?JmapFileNode
+    private function copySubtree(string $fromKey, string $toKey, bool $recursive): ?JmapFileNode
     {
         if ($this->isHiddenKey($toKey)) {
             return null;
         }
         $source = $this->isHiddenKey($fromKey) ? [] : $this->liveSubtree($fromKey);
+        if (! $recursive) {
+            // Depth: 0 copies the collection itself, not what is inside.
+            $source = array_values(array_filter($source, static fn (JmapFileNode $row): bool => (string) $row->storage_key === $fromKey));
+        }
         if ($source === [] || (string) $source[0]->storage_key !== $fromKey) {
             return $this->recordCreate($toKey);
         }
@@ -435,9 +494,12 @@ final class FileNodeIndexService
         $fromPrefix = $fromKey.'/';
         $descendants = JmapFileNode::query()
             ->whereNull('deleted_at')
-            ->where('storage_key', 'like', $this->escapeLike($fromPrefix).'%')
+            ->whereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($fromPrefix).'%'])
             ->get();
         foreach ($descendants as $descendant) {
+            if (! str_starts_with((string) $descendant->storage_key, $fromPrefix)) {
+                continue;
+            }
             $descendant->storage_key = $toKey.'/'.substr((string) $descendant->storage_key, strlen($fromPrefix));
             $descendant->save();
         }
@@ -483,11 +545,14 @@ final class FileNodeIndexService
         $keys = JmapFileNode::query()
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key, $row): void {
-                $query->where('storage_key', 'like', $this->escapeLike($key.'/').'%')
+                $query->whereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($key.'/').'%'])
                     ->orWhere('node_id', $row->node_id);
             })
             ->get();
         foreach ($keys as $node) {
+            if ((string) $node->node_id !== (string) $row->node_id && ! str_starts_with((string) $node->storage_key, $key.'/')) {
+                continue;
+            }
             $node->deleted_at = now();
             $node->change_seq = $this->nextSeq();
             $node->save();
@@ -710,8 +775,10 @@ final class FileNodeIndexService
      */
     private function liveSubtree(string $key): array
     {
-        $pattern = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $key).'/%';
+        $pattern = $this->escapeLike($key).'/%';
 
+        // LIKE ignores case on SQLite and on _ci collations: keep only the
+        // exact key and keys under "$key/" by byte comparison.
         return array_values(JmapFileNode::query()
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key, $pattern): void {
@@ -720,6 +787,8 @@ final class FileNodeIndexService
             })
             ->orderBy('storage_key')
             ->get()
+            ->filter(static fn (JmapFileNode $row): bool => (string) $row->storage_key === $key
+                || str_starts_with((string) $row->storage_key, $key.'/'))
             ->all());
     }
 
@@ -775,6 +844,6 @@ final class FileNodeIndexService
 
     private function escapeLike(string $value): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 }

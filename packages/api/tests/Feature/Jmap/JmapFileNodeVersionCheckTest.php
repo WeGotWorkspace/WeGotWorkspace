@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jmap;
 
+use App\Models\JmapFileNode;
+use App\Services\Jmap\FileNodes\FileNodeSetError;
+use App\Services\Jmap\FileNodes\FileNodeVersionCheck;
 use App\Services\Jmap\JmapCapabilities;
 use App\Storage\WgwStorage;
 use Illuminate\Testing\TestResponse;
@@ -123,6 +126,35 @@ final class JmapFileNodeVersionCheckTest extends WgwDatabaseTestCase
         // The rest of the request still applies.
         $this->assertArrayHasKey($nodes['other.txt']['id'], $result['updated']);
         $this->assertSame('other two', $this->contents('other.txt'));
+    }
+
+    public function test_an_expected_blob_id_of_another_length_is_version_mismatch_for_that_update_only(): void
+    {
+        $this->seedPrivateFile('bob', 'plan.txt', 'version one');
+        $nodes = $this->nodes();
+
+        $result = $this->update([$nodes['plan.txt']['id'] => ['blobId' => $this->upload('my edit'), 'expectedBlobId' => 'jb-short']]);
+
+        $this->assertSame('versionMismatch', $result['notUpdated'][$nodes['plan.txt']['id']]['type']);
+        $this->assertSame('version one', $this->contents('plan.txt'));
+    }
+
+    public function test_only_one_of_two_writers_holding_the_same_version_wins_the_claim(): void
+    {
+        $this->seedPrivateFile('bob', 'plan.txt', 'version one');
+        $this->nodes();
+        $loaded = JmapFileNode::query()->where('storage_key', 'users/bob/plan.txt')->firstOrFail();
+        $second = JmapFileNode::query()->where('storage_key', 'users/bob/plan.txt')->firstOrFail();
+        $check = app(FileNodeVersionCheck::class);
+
+        $check->claim($loaded);
+
+        try {
+            $check->claim($second);
+            $this->fail('The second writer must lose the claim.');
+        } catch (FileNodeSetError $e) {
+            $this->assertSame('versionMismatch', $e->shape['type']);
+        }
     }
 
     public function test_a_mismatch_leaves_a_rename_in_the_same_update_undone(): void

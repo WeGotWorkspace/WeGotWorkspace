@@ -15,6 +15,7 @@ use App\Storage\Local\LocalDiskFiles;
 use App\Storage\Streams\HashingStreamFilter;
 use App\Storage\Streams\StreamDigest;
 use App\Storage\WgwStorage;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -49,15 +50,18 @@ final class FileNodeBlobAttacher
     ) {}
 
     /**
-     * `$beforeWrite` runs once the blob is known and its size matches, right
-     * before the target's bytes change.
+     * `$beforePlace` runs once, after the blob is known, its size matches and
+     * its bytes are fully available, right before the target changes. Every
+     * outcome that can still refuse the attach (attachInProgress, overQuota)
+     * comes first, so a caller can destroy or rename there without losing
+     * anything when the attach is refused.
      *
-     * @param  (callable(): mixed)|null  $beforeWrite
+     * @param  (callable(): mixed)|null  $beforePlace
      * @return array{sha256: string, size: int}
      *
      * @throws FileNodeSetError
      */
-    public function attach(string $username, string $blobId, string $targetKey, bool $lastReference, ?int $expectedSize, ?callable $beforeWrite = null): array
+    public function attach(string $username, string $blobId, string $targetKey, bool $lastReference, ?int $expectedSize, ?callable $beforePlace = null): array
     {
         $row = $this->blobs->find($username, $blobId);
         if ($row === null) {
@@ -66,17 +70,24 @@ final class FileNodeBlobAttacher
         if ($expectedSize !== null && $expectedSize !== $row->size_bytes) {
             throw new FileNodeSetError(['type' => 'invalidProperties', 'description' => 'size does not match the blob.', 'properties' => ['size']]);
         }
-        if ($beforeWrite !== null) {
-            $beforeWrite();
+        $placing = null;
+        if ($beforePlace !== null) {
+            $done = false;
+            $placing = static function () use (&$done, $beforePlace): void {
+                if (! $done) {
+                    $done = true;
+                    $beforePlace();
+                }
+            };
         }
 
         try {
             $staging = $this->stagingFor($username, $blobId, $targetKey);
-            if ($staging === null && $lastReference && $this->tryMove($username, $row, $targetKey)) {
+            if ($staging === null && $lastReference && $this->tryMove($username, $row, $targetKey, $placing)) {
                 return ['sha256' => $row->sha256, 'size' => $row->size_bytes];
             }
 
-            return $this->copy($username, $row, $targetKey, $staging);
+            return $this->copy($username, $row, $targetKey, $staging, $placing);
         } catch (StorageFullException) {
             throw new FileNodeSetError(['type' => 'overQuota', 'description' => 'The server has no space left for this file.']);
         }
@@ -100,7 +111,7 @@ final class FileNodeBlobAttacher
         return $rows->count();
     }
 
-    private function tryMove(string $username, JmapBlob $row, string $targetKey): bool
+    private function tryMove(string $username, JmapBlob $row, string $targetKey, ?\Closure $placing): bool
     {
         $data = $this->storage->data();
         $files = $this->storage->files();
@@ -135,20 +146,37 @@ final class FileNodeBlobAttacher
             return false;
         }
 
+        if ($placing !== null) {
+            try {
+                $placing();
+            } catch (\Throwable $e) {
+                // Refused after all: hand the blob back untouched.
+                $this->restoreClaimed($claimed);
+                throw $e;
+            }
+        }
         if ($this->local->moveAcross($data, $this->blobs->blobKey($username, $row->blob_id), $files, $targetKey)) {
             return true;
         }
         // The rename failed after all: hand the blob back and copy instead.
-        unset($claimed['id']);
-        JmapBlob::query()->insert($claimed);
+        $this->restoreClaimed($claimed);
 
         return false;
     }
 
     /**
+     * @param  array<string, mixed>  $claimed
+     */
+    private function restoreClaimed(array $claimed): void
+    {
+        unset($claimed['id']);
+        JmapBlob::query()->insert($claimed);
+    }
+
+    /**
      * @return array{sha256: string, size: int}
      */
-    private function copy(string $username, JmapBlob $row, string $targetKey, ?JmapAttachStaging $staging): array
+    private function copy(string $username, JmapBlob $row, string $targetKey, ?JmapAttachStaging $staging, ?\Closure $placing): array
     {
         $files = $this->storage->files();
         $copied = $staging !== null ? $staging->copied_bytes : 0;
@@ -158,41 +186,59 @@ final class FileNodeBlobAttacher
         }
         $budget = JmapBlobLimits::stepBudgetBytes();
         if ($staging === null && $row->size_bytes <= $budget) {
-            return $this->copyInOneStep($username, $row, $targetKey);
+            return $this->copyInOneStep($username, $row, $targetKey, $placing);
         }
 
-        $staging ??= JmapAttachStaging::query()->create([
-            'username' => $username,
-            'blob_id' => $row->blob_id,
-            'target_hash' => hash('sha256', $targetKey),
-            'target_key' => $targetKey,
-            'staging_key' => $this->stagingKey($username),
-            'size_bytes' => $row->size_bytes,
-            'copied_bytes' => 0,
-        ]);
-        $this->local->truncate($files, $staging->staging_key, $staging->copied_bytes);
-        $source = $this->blobs->openStream($username, $row->blob_id);
-        if ($source === null) {
-            throw new FileNodeSetError(['type' => 'invalidProperties', 'description' => 'Unknown blobId.', 'properties' => ['blobId']]);
-        }
+        $staging = $this->leaseStaging($username, $row, $targetKey, $staging);
+        $token = (string) $staging->lease_token;
+        $copied = $staging->copied_bytes;
         try {
-            if ($staging->copied_bytes > 0 && fseek($source, $staging->copied_bytes) !== 0) {
-                throw new \RuntimeException('Could not seek in the blob.');
+            $this->local->truncate($files, $staging->staging_key, $copied);
+            $source = $this->blobs->openStream($username, $row->blob_id);
+            if ($source === null) {
+                throw new FileNodeSetError(['type' => 'invalidProperties', 'description' => 'Unknown blobId.', 'properties' => ['blobId']]);
             }
-            $written = $this->local->append($files, $staging->staging_key, $source, min($budget, $row->size_bytes - $staging->copied_bytes));
-        } finally {
-            fclose($source);
+            try {
+                if ($copied > 0 && fseek($source, $copied) !== 0) {
+                    throw new \RuntimeException('Could not seek in the blob.');
+                }
+                $written = $this->local->append($files, $staging->staging_key, $source, min($budget, $row->size_bytes - $copied));
+            } finally {
+                fclose($source);
+            }
+            if ($written === 0 && $copied < $row->size_bytes) {
+                // The stored blob ended early: retrying can never finish it.
+                $this->dropStaging($staging);
+                throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'The uploaded blob is shorter than its recorded size.']);
+            }
+            $copied += $written;
+            // Commit only while this call still owns the lease.
+            $kept = JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token)
+                ->update(['copied_bytes' => $copied, 'locked_until' => null, 'lease_token' => null, 'updated_at' => Carbon::now()]);
+            if ($kept !== 1) {
+                throw $this->stagingBusy($copied, $row->size_bytes);
+            }
+        } catch (\Throwable $e) {
+            JmapAttachStaging::query()->where('id', $staging->id)->where('lease_token', $token)
+                ->update(['locked_until' => null, 'lease_token' => null]);
+            throw $e;
         }
-        $staging->copied_bytes += $written;
-        $staging->save();
 
-        if ($staging->copied_bytes < $row->size_bytes) {
+        if ($copied < $row->size_bytes) {
             throw new FileNodeSetError([
                 'type' => 'attachInProgress',
                 'description' => 'The file is still being copied; repeat this FileNode/set.',
-                'copied' => $staging->copied_bytes,
+                'copied' => $copied,
                 'size' => $row->size_bytes,
             ]);
+        }
+        // The staged file must be exactly the blob before it replaces anything.
+        if ($this->local->size($files, $staging->staging_key) !== $row->size_bytes) {
+            $this->dropStaging($staging);
+            throw new FileNodeSetError(['type' => 'serverFail', 'description' => 'The staged copy does not match the blob; repeat this FileNode/set.']);
+        }
+        if ($placing !== null) {
+            $placing();
         }
         if (! $files->move($staging->staging_key, $targetKey)) {
             throw new \RuntimeException('Could not place the copied file.');
@@ -207,7 +253,7 @@ final class FileNodeBlobAttacher
     /**
      * @return array{sha256: string, size: int}
      */
-    private function copyInOneStep(string $username, JmapBlob $row, string $targetKey): array
+    private function copyInOneStep(string $username, JmapBlob $row, string $targetKey, ?\Closure $placing): array
     {
         $files = $this->storage->files();
         // Keeps a concurrent attach from moving the file away mid-copy.
@@ -231,6 +277,9 @@ final class FileNodeBlobAttacher
             } finally {
                 fclose($source);
             }
+            if ($placing !== null) {
+                $placing();
+            }
             if (! $files->move($stagingKey, $targetKey)) {
                 throw new \RuntimeException('Could not place the copied file.');
             }
@@ -251,6 +300,64 @@ final class FileNodeBlobAttacher
             ->where('blob_id', $blobId)
             ->where('target_hash', hash('sha256', $targetKey))
             ->first();
+    }
+
+    /**
+     * Takes the staging row's lease (creating the row on the first call), or
+     * answers attachInProgress while another call holds it: two calls that
+     * truncate and append the same range would interleave their bytes.
+     */
+    private function leaseStaging(string $username, JmapBlob $row, string $targetKey, ?JmapAttachStaging $staging): JmapAttachStaging
+    {
+        $token = Str::random(32);
+        $until = Carbon::now()->addSeconds(JmapBlobLimits::timeLimitSeconds() + 5);
+        if ($staging === null) {
+            try {
+                return JmapAttachStaging::query()->create([
+                    'username' => $username,
+                    'blob_id' => $row->blob_id,
+                    'target_hash' => hash('sha256', $targetKey),
+                    'target_key' => $targetKey,
+                    'staging_key' => $this->stagingKey($username),
+                    'size_bytes' => $row->size_bytes,
+                    'copied_bytes' => 0,
+                    'locked_until' => $until,
+                    'lease_token' => $token,
+                ]);
+            } catch (QueryException) {
+                // A concurrent first call created it (unique index).
+                throw $this->stagingBusy(0, $row->size_bytes);
+            }
+        }
+        $now = Carbon::now();
+        $taken = JmapAttachStaging::query()->where('id', $staging->id)
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('locked_until')->orWhere('locked_until', '<', $now);
+            })
+            ->update(['locked_until' => $until, 'lease_token' => $token]);
+        if ($taken !== 1) {
+            throw $this->stagingBusy($staging->copied_bytes, $row->size_bytes);
+        }
+        // Re-read: the holder before us may have advanced copied_bytes.
+        $fresh = JmapAttachStaging::query()->findOrFail($staging->id);
+
+        return $fresh;
+    }
+
+    private function stagingBusy(int $copied, int $size): FileNodeSetError
+    {
+        return new FileNodeSetError([
+            'type' => 'attachInProgress',
+            'description' => 'The file is still being copied; repeat this FileNode/set.',
+            'copied' => $copied,
+            'size' => $size,
+        ]);
+    }
+
+    private function dropStaging(JmapAttachStaging $staging): void
+    {
+        $this->blobs->deleteQuietly($this->storage->files(), $staging->staging_key);
+        $staging->delete();
     }
 
     private function stagingKey(string $username): string

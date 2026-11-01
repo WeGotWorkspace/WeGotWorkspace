@@ -68,8 +68,15 @@ final class BlobAssemblySetMethod implements JmapMethodInterface
         $destroyed = [];
         $notDestroyed = [];
         foreach ($destroy as $id) {
-            if (is_string($id) && $this->assemblies->destroy($username, $id)) {
-                $destroyed[] = $id;
+            try {
+                if (is_string($id) && $this->assemblies->destroy($username, $id)) {
+                    $destroyed[] = $id;
+
+                    continue;
+                }
+            } catch (JmapMethodException $e) {
+                // A call is appending to it right now: retry later.
+                $notDestroyed[(string) $id] = ['type' => 'serverFail', 'description' => $e->getMessage()];
 
                 continue;
             }
