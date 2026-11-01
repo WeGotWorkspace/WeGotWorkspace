@@ -13,7 +13,11 @@ export type { JmapNote, JmapNotebook } from "./notes/types.js";
 export type { DateRange } from "./calendars/JmapCalendarsClient.js";
 export { JmapCalendarsClient } from "./calendars/JmapCalendarsClient.js";
 export { JmapFileNodePathCache } from "./filenodes/JmapFileNodePathCache.js";
-export { FILENODE_USING, JmapFileNodesClient } from "./filenodes/JmapFileNodesClient.js";
+export {
+  FILENODE_USING,
+  fileNodeUsing,
+  JmapFileNodesClient,
+} from "./filenodes/JmapFileNodesClient.js";
 export type {
   JmapFileNode,
   JmapFileNodeCreate,
@@ -45,16 +49,20 @@ export { JmapMethodError, JmapRequestError, JmapSetItemError } from "./core/erro
 export type { JmapClientOptions, JmapFetch } from "./core/JmapClient.js";
 export { JmapClient } from "./core/JmapClient.js";
 export {
+  BLOB_ASSEMBLY_CAPABILITY,
+  BLOB_CAPABILITY,
   CALENDARS_CAPABILITY,
   CONTACTS_CAPABILITY,
   type ChangesResponse,
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
+  FILENODE_VERSION_CHECK_CAPABILITY,
   NOTES_CAPABILITY,
   CHAT_CAPABILITY,
   type GetResponse,
   type JmapId,
   type JmapInvocation,
+  type JmapMethodErrorArgs,
   type JmapRequest,
   type JmapResponse,
   type JmapSession,

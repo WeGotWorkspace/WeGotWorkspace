@@ -32,6 +32,8 @@ export type DriveUploadItemView = {
   folderPath?: string;
   /** The server is putting the parts together (#1519). */
   phase?: "assembling";
+  /** Octets put together so far while `phase` is `assembling` (of `bytesTotal`). */
+  assembledBytes?: number;
   /** False for `no_local_copy` and `quota`: the file has to be added again. */
   canRetry: boolean;
   error?: DriveUploadItemError;
@@ -79,6 +81,9 @@ export function buildDriveUploadQueueSnapshot(
       createdAt: item.createdAt,
       ...(rows.folderPaths?.has(item.id) ? { folderPath: rows.folderPaths.get(item.id) } : {}),
       ...(item.phase ? { phase: item.phase } : {}),
+      ...(item.phase && item.assembledBytes !== undefined
+        ? { assembledBytes: item.assembledBytes }
+        : {}),
       canRetry: canRetryDriveUpload(item),
       ...(item.error ? { error: item.error } : {}),
     })),

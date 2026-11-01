@@ -15,6 +15,13 @@ export const CONTACTS_CAPABILITY = "urn:ietf:params:jmap:contacts";
 export const FILENODE_CAPABILITY = "urn:ietf:params:jmap:filenode";
 export const NOTES_CAPABILITY = "urn:wgw:jmap:notes";
 export const CHAT_CAPABILITY = "urn:wgw:jmap:chat";
+/** RFC 9404 Blob/upload and Blob/get. */
+export const BLOB_CAPABILITY = "urn:ietf:params:jmap:blob";
+/** WGW extension (#1500): assemble one blob from parts in bounded steps. */
+export const BLOB_ASSEMBLY_CAPABILITY = "https://wegotworkspace.org/jmap/blob-assembly";
+/** WGW extension (#1500): `expectedBlobId` on FileNode/set update, SetError `versionMismatch`. */
+export const FILENODE_VERSION_CHECK_CAPABILITY =
+  "https://wegotworkspace.org/jmap/filenode-version-check";
 
 export type JmapAccount = {
   name: string;

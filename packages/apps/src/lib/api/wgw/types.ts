@@ -162,7 +162,13 @@ export type WgwDriveRootPath = DriveRootPath;
  * a direct upload whose bytes are gone after a reload. `upload_failed`:
  * anything else that will not succeed by retrying. #1520 refines these classes.
  */
-export type WgwDriveUploadErrorCode = "too_large" | "quota" | "no_local_copy" | "upload_failed";
+/**
+ * Why a queued upload failed. `upload_failed` is the permanent class (#1520
+ * may rename it); `server_full` waits for *Retry*; `insecure_context` is a
+ * large file on an `http://` install (no Web Crypto for part checksums).
+ */
+export type WgwDriveUploadErrorCode =
+  "too_large" | "quota" | "no_local_copy" | "upload_failed" | "server_full" | "insecure_context";
 /** UI-only marker on a cached placeholder row for a file still in the upload queue. */
 export type WgwDriveUploadPlaceholder = {
   /** Upload queue item id. */
@@ -178,6 +184,13 @@ export type WgwDriveUploadPlaceholder = {
  */
 export type WgwDriveDirectoryEntry = DriveDirectoryEntry & {
   nodeId?: string;
+  /**
+   * The file's version as the listing saw it (signed-in JMAP listings only).
+   * A *Replace* sends it back as `expectedBlobId`.
+   */
+  blobId?: string;
+  /** The server is still hashing a file that arrived outside WGW: no *Replace*. */
+  contentHashPending?: boolean;
   upload?: WgwDriveUploadPlaceholder;
 };
 /** Listing rows may carry the UI-only FileNode id. The OpenAPI schema does not. */

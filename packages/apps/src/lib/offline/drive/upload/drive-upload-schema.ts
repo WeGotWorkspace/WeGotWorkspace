@@ -26,8 +26,27 @@ export type DriveUploadKeepOffline = "remove" | "keep";
 
 export type DriveUploadBatchStatus = "awaiting_input" | "released";
 
-/** Per-batch notices. #1519 adds the conflict notices (`replace_fell_back`, keep-both). */
-export type DriveUploadNotice = { type: "offline_copy_failed"; itemName: string; reason: "quota" };
+/**
+ * Per-batch notices, kept until the user has seen them (also after the item
+ * finished). `replace_fell_back`: *Replace* found the file changed and kept
+ * both instead. `kept_both`: a name conflict found at upload time in a batch
+ * without a stored choice was resolved as keep both. Both name the existing
+ * file (`itemName`) and the name the upload got (`keptAsName`).
+ */
+export type DriveUploadNotice =
+  | { type: "offline_copy_failed"; itemName: string; reason: "quota" }
+  | { type: "replace_fell_back"; itemName: string; keptAsName: string }
+  | { type: "kept_both"; itemName: string; keptAsName: string };
+
+/** The user's answer for names that already exist in the target folder. */
+export type DriveUploadConflictChoice = "replace" | "keep_both" | "skip";
+
+/**
+ * The existing file as the user saw it when choosing *Replace* (from the
+ * listing the question was based on). The upload updates this node's
+ * `blobId` with `expectedBlobId` = `blobId`.
+ */
+export type DriveUploadReplaceTarget = { nodeId: string; blobId: string };
 
 /** One pick or drop. */
 export type OfflineDriveUploadBatchRow = {
@@ -38,6 +57,11 @@ export type OfflineDriveUploadBatchRow = {
   createdAt: number;
   /** Kept after the items finish, until the user has seen them. */
   notices: DriveUploadNotice[];
+  /**
+   * The conflict answer. Unset when the batch had no conflicts when it was
+   * queued: a conflict found at upload time is then kept both, with a notice.
+   */
+  conflict?: DriveUploadConflictChoice;
 };
 
 export type DriveUploadItemStatus = "queued" | "uploading" | "failed";
@@ -77,7 +101,36 @@ export type OfflineDriveUploadItemRow = {
    * server is putting the file together. Unset during a whole-file upload.
    */
   phase?: "assembling";
+  /** Octets the server has put together so far, while `phase` is `assembling`. */
+  assembledBytes?: number;
+  /** Parts, assembly id, and steps done; survives a reload. */
+  chunk?: DriveUploadChunkState;
+  /** *Replace* only: the existing file as the user saw it when choosing. */
+  replaceTarget?: DriveUploadReplaceTarget;
   error?: DriveUploadItemError;
+};
+
+/** One part on the server, in file order. */
+export type DriveUploadPart = { offset: number; length: number; blobId: string };
+
+/**
+ * Progress of a chunked upload (#1519), stored after every part and every
+ * assembly step so a reload or reconnect resumes from the next one.
+ */
+export type DriveUploadChunkState = {
+  /** Working part size for this file (halved when a host refuses a part). */
+  partSize: number;
+  /** Parts the server has, in file order. */
+  parts: DriveUploadPart[];
+  /** How the parts become one blob; unset while the file fits in one part. */
+  join?: "assembly" | "blob_upload";
+  assemblyId?: string;
+  /** Parts the assembly has accepted (its `nextIndex`); never sent again. */
+  appendedParts: number;
+  /** Most parts per append call, after a `limit` on a step. */
+  stepParts?: number;
+  /** The file's blob: its only part, the joined blob, or the finished assembly. */
+  blobId?: string;
 };
 
 export type OfflineDriveUploadBlobRow = {
