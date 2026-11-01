@@ -180,10 +180,11 @@ async function pick(tab: Tab, scope: Locator, label: string, name: string) {
   await pickOption(tab, scope.getByRole("combobox", { name: label }), name);
 }
 
-async function addTask(tab: Tab, title: string, list: string) {
+async function addTask(tab: Tab, title: string, list: string, dues: Due[] = []) {
   await showAllTasks(tab);
   await tab.getByRole("textbox", { name: "Task name" }).fill(title);
   await pick(tab, tab.locator("body"), "List", list);
+  for (const due of dues) await setDue(tab, tab.locator("body"), due);
   await tab.getByRole("button", { name: "Add task" }).click();
   await row(tab, title).waitFor({ timeout: 15_000 });
   await sleep(2_000);
@@ -196,7 +197,7 @@ async function openTaskMenu(tab: Tab, title: string, item: "Edit" | "Delete") {
   await tab.getByRole("menuitem", { name: item, exact: true }).click();
 }
 
-type Due = { date: string } | "none" | "addTime" | "dateOnly";
+type Due = { date: string } | "none" | "addTime" | "addTimeAmsterdam" | "dateOnly";
 type Remind = { add?: string[]; change?: string; remove?: boolean };
 type Edit = {
   title?: string;
@@ -237,8 +238,13 @@ async function setDue(tab: Tab, dialog: Locator, due: Due) {
     await popover.getByRole("button", { name: "No due date" }).click();
     return;
   }
-  if (due === "addTime") await popover.getByRole("button", { name: "Add time" }).click();
-  else if (due === "dateOnly") await popover.getByRole("button", { name: "Date only" }).click();
+  if (due === "addTime" || due === "addTimeAmsterdam") {
+    await popover.getByRole("button", { name: "Add time" }).click();
+    if (due === "addTimeAmsterdam") {
+      await popover.getByRole("combobox", { name: "Time zone" }).click();
+      await tab.getByRole("option", { name: /Europe\/Amsterdam/ }).click();
+    }
+  } else if (due === "dateOnly") await popover.getByRole("button", { name: "Date only" }).click();
   else await pickDay(tab, popover, due.date);
   await sleep(200);
   await tab.keyboard.press("Escape");
@@ -600,6 +606,42 @@ const ACTIONS = {
     },
     landed: (s, f) => titled(s, `N ${f.id} v2`)?.listId === f.listAId && !titled(s, `N ${f.id}`),
   },
+  // A new task with a due, moved before it reached the server: the queued move
+  // rides on the server id and must keep the due's time and zone. Amsterdam is
+  // picked so a dropped TZID shows, whatever zone the runner is in.
+  createMove: {
+    nets: COMPOUND,
+    async run(tab, f) {
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }, "addTimeAmsterdam"]);
+      await editTask(tab, `N ${f.id}`, { list: f.listB });
+    },
+    landed: (s, f) => {
+      const t = titled(s, `N ${f.id}`);
+      return (
+        t?.listId === f.listBId &&
+        t.due === `${D1}T09:00 Europe/Amsterdam` &&
+        s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
+      );
+    },
+    calendar: (f) => [{ date: D1, spot: "timed", title: `N ${f.id}` }],
+  },
+  // The same with an all-day due.
+  createMoveAllDay: {
+    nets: COMPOUND,
+    async run(tab, f) {
+      await addTask(tab, `N ${f.id}`, f.listA, [{ date: D1 }]);
+      await editTask(tab, `N ${f.id}`, { list: f.listB });
+    },
+    landed: (s, f) => {
+      const t = titled(s, `N ${f.id}`);
+      return (
+        t?.listId === f.listBId &&
+        t.due === D1 &&
+        s.tasks.every((x) => x.title !== `N ${f.id}` || x.listId !== f.listAId)
+      );
+    },
+    calendar: (f) => [{ date: D1, spot: "all-day", title: `N ${f.id}` }],
+  },
 } satisfies Record<string, ActionDef>;
 type Action = keyof typeof ACTIONS;
 
@@ -666,7 +708,9 @@ async function withOutboxes(tabs: Tab[], id: string, error: unknown): Promise<ne
   }
   const server = await serverState(id).catch(() => null);
   if (server) {
-    const { etag: _etag, ...task } = server.tasks.find((t) => t.title.startsWith("T ")) ?? {};
+    const task = server.tasks
+      .filter((t) => /^[TN] /.test(t.title))
+      .map(({ etag: _etag, ...t }) => t);
     message += `\nserver: lists ${JSON.stringify(server.lists)}\nserver: task ${JSON.stringify(task)}`;
   }
   throw new Error(message);
@@ -870,10 +914,7 @@ async function inboundCase(browser: Browser, id: string, taskCount: number) {
  */
 const BUGS = {
   listDeleteOffline: 1812, // an offline list delete drops the cached tasks of other lists
-  moveIgnored: 1813, // the server does not move a task to another list
-  renameMoveConflict: 1814, // an offline rename + move conflicts with itself
   sameBrowserTabStale: 1815, // a second tab of one browser keeps an old view
-  createRenameLost: 1816, // an edit to a task created offline goes to its temporary id
   dueAddMidnight: 1821, // a due date added in Edit is saved at midnight, not all day
   shareeKeepsOldName: 1822, // an owner's rename or colour does not reach the sharee
   refusedWriteStuck: 1825, // a queued edit refused with 403/404 stays on screen and queued
@@ -881,9 +922,6 @@ const BUGS = {
 
 function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
   const bugs: number[] = [];
-  if (action === "move" || action === "renameMove") bugs.push(BUGS.moveIgnored);
-  if (action === "renameMove") bugs.push(BUGS.renameMoveConflict);
-  if (action === "createRename") bugs.push(BUGS.createRenameLost);
   if (action === "dueAdd" || action === "edit") bugs.push(BUGS.dueAddMidnight);
   if (tabs === "diff" && (action === "listRename" || action === "listColor")) {
     bugs.push(BUGS.shareeKeepsOldName);
@@ -891,8 +929,9 @@ function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
   if (action === "listDelete" && ["off", "both", "aOff"].includes(net)) {
     bugs.push(BUGS.listDeleteOffline);
   }
-  // The other tab stays online while tab A changes the shared cache.
-  if (tabs === "same" && ["on", "aOff"].includes(net) && bugs.length === 0) {
+  // The other tab stays online while tab A changes the shared cache. After a
+  // move the other tab catches up (it passed 3 of 3 runs once #1813 was fixed).
+  if (tabs === "same" && ["on", "aOff"].includes(net) && bugs.length === 0 && action !== "move") {
     bugs.push(BUGS.sameBrowserTabStale);
   }
   if (tabs === "same" && net === "aOff" && action === "listDelete") {

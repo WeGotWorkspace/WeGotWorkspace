@@ -143,3 +143,74 @@ describe("useTasksMutations reminders", () => {
     );
   });
 });
+
+describe("useTasksMutations rename and move in one save", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends the patch from the version the move produced (#1814)", async () => {
+    const task = bootstrap.data.tasks[2]!;
+    const otherList = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
+    mockOperations.moveTaskToList.mockResolvedValue({
+      ...task,
+      taskListId: otherList.id,
+      etag: "after-move",
+    });
+    mockOperations.patchTask.mockImplementation(async (_id, patch) => ({ ...task, ...patch }));
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    await act(async () => {
+      await result.current.saveEditedTask({
+        ...taskToFormValue(task, task.taskListId),
+        listId: otherList.id,
+        title: `${task.title} renamed`,
+      });
+    });
+
+    expect(mockOperations.moveTaskToList).toHaveBeenCalledWith(task.id, otherList.id);
+    expect(mockOperations.patchTask).toHaveBeenCalledWith(
+      task.id,
+      { title: `${task.title} renamed` },
+      expect.objectContaining({ ifMatch: "after-move" }),
+    );
+  });
+
+  it("keeps a move that landed when the patch after it fails", async () => {
+    const task = bootstrap.data.tasks[2]!;
+    const otherList = bootstrap.data.taskLists.find((list) => list.id !== task.taskListId)!;
+    mockOperations.moveTaskToList.mockResolvedValue({
+      ...task,
+      taskListId: otherList.id,
+      etag: "after-move",
+    });
+    mockOperations.patchTask.mockRejectedValue(new Error("refused"));
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    await act(async () => {
+      await result.current.saveEditedTask({
+        ...taskToFormValue(task, task.taskListId),
+        listId: otherList.id,
+        title: `${task.title} renamed`,
+      });
+    });
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    expect(result.current.editingTask).toMatchObject({
+      taskListId: otherList.id,
+      title: task.title,
+    });
+  });
+});

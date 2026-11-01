@@ -15200,7 +15200,7 @@
                     "Tasks"
                 ],
                 "summary": "Replace a task",
-                "description": "Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.",
+                "description": "A `taskListIds` that names another writable list moves the task there; the task keeps its id and the answer carries the new `taskListId`. 409 when the task shares its iCalendar object with other tasks, or the target list already holds an object with its id. Per-object iCalendar caps: 512 KiB serialized; 64 combined nested VEVENT+VTODO+VALARM (VTIMEZONE excluded). Oversize → 413 payload_too_large; over-component → 400 payload_too_complex.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -15245,6 +15245,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/JmapNotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/JmapConflict"
                     },
                     "412": {
                         "$ref": "#/components/responses/JmapPreconditionFailed"
