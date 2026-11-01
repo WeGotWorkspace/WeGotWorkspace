@@ -157,18 +157,27 @@ export type WgwSearchReindexStateResponse = {
 export type WgwDriveEntryType = DriveEntryType;
 export type WgwDriveRootPath = DriveRootPath;
 /**
- * Why a queued upload failed. `too_large`: over the server's `maxSizeUpload`
- * (or a 413). `quota`: the device refused to store the file. `no_local_copy`:
- * a direct upload whose bytes are gone after a reload. `upload_failed`:
- * anything else that will not succeed by retrying. #1520 refines these classes.
- */
-/**
- * Why a queued upload failed. `upload_failed` is the permanent class (#1520
- * may rename it); `server_full` waits for *Retry*; `insecure_context` is a
- * large file on an `http://` install (no Web Crypto for part checksums).
+ * Why a queued upload failed (#1520). `too_large`: refused even at the
+ * smallest part size. `quota`: the device refused to store the file.
+ * `server_full`: 507 or `overQuota`; pauses the whole queue. `auth`: a 401
+ * (sign in again). `forbidden`: a 403, e.g. write access to the folder is
+ * gone; never retried, no sign-in. `target_missing`: the target folder was
+ * deleted or trashed. `no_local_copy`: a direct upload whose bytes are gone
+ * after a reload. `insecure_context`: a large file on an `http://` install
+ * (#1519). `transient`: server or network hiccups that kept coming back after
+ * the retries with backoff. `permanent`: anything else retrying will not fix.
  */
 export type WgwDriveUploadErrorCode =
-  "too_large" | "quota" | "no_local_copy" | "upload_failed" | "server_full" | "insecure_context";
+  | "too_large"
+  | "quota"
+  | "server_full"
+  | "auth"
+  | "forbidden"
+  | "target_missing"
+  | "no_local_copy"
+  | "insecure_context"
+  | "transient"
+  | "permanent";
 /** UI-only marker on a cached placeholder row for a file still in the upload queue. */
 export type WgwDriveUploadPlaceholder = {
   /** Upload queue item id. */

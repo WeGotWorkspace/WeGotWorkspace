@@ -11,24 +11,40 @@ import {
   uploadFromMemory,
   uploadMemoryTabId,
 } from "@/lib/offline/drive/upload/drive-upload-memory";
+import { migrateDriveOutboxUploads } from "@/lib/offline/drive/upload/drive-upload-outbox-migration";
 import type { OfflineDriveUploadItemRow } from "@/lib/offline/drive/upload/drive-upload-schema";
+import { serverHasSpaceForDriveUpload } from "@/lib/offline/drive/upload/drive-upload-space-check";
 import {
+  deferDriveUploadSpaceCheck,
   failDriveUpload,
   listStartableDriveUploads,
   markDriveUploadStarted,
   readDriveUploadBatch,
   readDriveUploadBlob,
+  readDriveUploadQueueRows,
   recordDriveUploadCreated,
   requeueDriveUpload,
+  resumeDriveUploadQueue,
   saveDriveUploadProgress,
   skipDriveUploadItem,
 } from "@/lib/offline/drive/upload/drive-upload-store";
 import { transferDriveUpload } from "@/lib/offline/drive/upload/drive-upload-transfer";
 
-/** Wait before trying again after a server hiccup or a failed token renewal. */
+/** Wait before trying again after a network drop, and before the first retry after a hiccup. */
 export const DRIVE_UPLOAD_RETRY_DELAY_MS = 30_000;
+/** Longest wait between retries after hiccups in a row (the wait doubles each time). */
+export const DRIVE_UPLOAD_MAX_RETRY_DELAY_MS = 8 * 60_000;
+/** While the server is full: how often the uploader asks `Quota/get` for room. */
+export const DRIVE_UPLOAD_SPACE_POLL_MS = 60_000;
 
-type UploadOutcome = "next" | "stop" | "retry_later";
+/** Backoff after the `failures`-th hiccup in a row: 30 s, 1 min, 2 min, … up to 8 min. */
+export function driveUploadRetryDelay(failures: number): number {
+  const doubled = DRIVE_UPLOAD_RETRY_DELAY_MS * 2 ** Math.max(0, failures - 1);
+  return Math.min(DRIVE_UPLOAD_MAX_RETRY_DELAY_MS, doubled);
+}
+
+/** `retryIn`: the item waits in the queue; wake again after that many ms. */
+type UploadOutcome = "next" | "stop" | { retryIn: number };
 
 export type DriveUploaderOptions = {
   lock?: WithCrossTabLock;
@@ -48,6 +64,8 @@ export class DriveUploader {
   private running: Promise<void> = Promise.resolve();
   private dirty = false;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private spaceTimer: ReturnType<typeof setTimeout> | null = null;
+  private outboxMigrated = false;
   private idleWaiters: Array<() => void> = [];
   private readonly cleanups: Array<() => void> = [];
 
@@ -98,6 +116,7 @@ export class DriveUploader {
   async stop(): Promise<void> {
     this.stopController.abort();
     if (this.retryTimer) clearTimeout(this.retryTimer);
+    if (this.spaceTimer) clearTimeout(this.spaceTimer);
     for (const cleanup of this.cleanups.splice(0)) cleanup();
     await this.running;
     this.resolveIdle();
@@ -108,11 +127,65 @@ export class DriveUploader {
   }
 
   private async cycle(): Promise<void> {
+    await this.migrateOutboxOnce();
     if (!readBrowserOnline()) return;
+    if (await this.waitForServerSpace()) return;
     if ((await listStartableDriveUploads(this.username)).length === 0) return;
     await this.lock(driveUploaderLockName(this.username), ({ signal }) => this.drain(signal), {
       signal: this.stopController.signal,
     });
+  }
+
+  /**
+   * Files a previous version left in the outbox as base64 move into the queue
+   * once per tab and app start (again later while their folder is unknown).
+   */
+  private async migrateOutboxOnce(): Promise<void> {
+    if (this.outboxMigrated) return;
+    try {
+      const { waiting } = await migrateDriveOutboxUploads(this.username);
+      this.outboxMigrated = waiting === 0;
+    } catch (error) {
+      console.warn("[drive-upload] outbox migration failed", error);
+    }
+  }
+
+  /**
+   * `paused_server_full`: an item hit a full server, so nothing starts. Once
+   * its time has come, ask `Quota/get` whether its target root has room for
+   * the rest of it; if so, resume the queue, else ask again later. True while
+   * the queue stays paused.
+   */
+  private async waitForServerSpace(): Promise<boolean> {
+    const rows = await readDriveUploadQueueRows(this.username);
+    const waiting = rows.items.find(
+      (item) => item.status === "failed" && item.error?.code === "server_full",
+    );
+    if (!waiting) return false;
+    const due = waiting.retryAt ?? 0;
+    if (due > Date.now()) {
+      this.scheduleSpaceCheck(due - Date.now());
+      return true;
+    }
+    const folderPath = rows.folderPaths?.get(waiting.id);
+    if (await serverHasSpaceForDriveUpload(this.username, waiting, folderPath)) {
+      await resumeDriveUploadQueue(this.username);
+      return false;
+    }
+    await deferDriveUploadSpaceCheck(
+      this.username,
+      waiting.id,
+      Date.now() + DRIVE_UPLOAD_SPACE_POLL_MS,
+    );
+    return true;
+  }
+
+  private scheduleSpaceCheck(delay: number): void {
+    if (this.spaceTimer) clearTimeout(this.spaceTimer);
+    this.spaceTimer = setTimeout(() => {
+      this.spaceTimer = null;
+      this.wake();
+    }, delay);
   }
 
   private async drain(lockSignal: AbortSignal): Promise<void> {
@@ -126,8 +199,8 @@ export class DriveUploader {
       if (!next) return;
       const outcome = await this.uploadOne(next, signal);
       if (outcome === "stop") return;
-      if (outcome === "retry_later") {
-        this.scheduleRetry();
+      if (typeof outcome === "object") {
+        this.scheduleRetry(outcome.retryIn);
         return;
       }
     }
@@ -160,7 +233,7 @@ export class DriveUploader {
       : (uploadFromMemory(item.id) ?? null);
     if (!blob) {
       await failDriveUpload(this.username, item.id, {
-        code: item.localCopy ? "upload_failed" : "no_local_copy",
+        code: item.localCopy ? "permanent" : "no_local_copy",
         message: "The stored file is missing. Add it again.",
       });
       return "next";
@@ -219,11 +292,14 @@ export class DriveUploader {
     signal: AbortSignal,
   ): Promise<UploadOutcome> {
     const failure = classifyDriveUploadFailure(error);
-    // A reason of its own (too large, server full, https needed) stands even
-    // when the lock was lost meanwhile.
-    if (failure.kind === "fail" && failure.error.code !== "upload_failed") {
+    // A reason of its own (too large, server full, access, folder gone, https
+    // needed) stands even when the lock was lost meanwhile. None of them is
+    // retried with backoff; a full server pauses the whole queue.
+    if (failure.kind === "fail" && failure.error.code !== "permanent") {
+      const serverFull = failure.error.code === "server_full";
       await failDriveUpload(this.username, item.id, failure.error, {
         keepProgress: failure.keepProgress,
+        ...(serverFull ? { checkSpaceAt: Date.now() + DRIVE_UPLOAD_SPACE_POLL_MS } : {}),
       });
       return "next";
     }
@@ -233,30 +309,35 @@ export class DriveUploader {
       return "stop";
     }
     // The item waits in every tab, not just this one, before it is tried again.
-    const retryAt = Date.now() + DRIVE_UPLOAD_RETRY_DELAY_MS;
     if (failure.kind === "network") {
       // The browser says online but the request never arrived: try again later.
-      await requeueDriveUpload(this.username, item.id, { countFailure: false, retryAt });
-      return "retry_later";
+      const retryIn = DRIVE_UPLOAD_RETRY_DELAY_MS;
+      await requeueDriveUpload(this.username, item.id, {
+        countFailure: false,
+        retryAt: Date.now() + retryIn,
+      });
+      return { retryIn };
     }
     if (failure.kind === "transient") {
+      // Backoff: the wait doubles with every hiccup in a row.
+      const retryIn = driveUploadRetryDelay(item.transientFailures + 1);
       await requeueDriveUpload(this.username, item.id, {
         countFailure: true,
         message: failure.message,
-        retryAt,
+        retryAt: Date.now() + retryIn,
       });
-      return "retry_later";
+      return { retryIn };
     }
     await failDriveUpload(this.username, item.id, failure.error);
     return "next";
   }
 
-  private scheduleRetry(): void {
+  private scheduleRetry(delay: number): void {
     if (this.retryTimer) clearTimeout(this.retryTimer);
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
       this.wake();
-    }, DRIVE_UPLOAD_RETRY_DELAY_MS);
+    }, delay);
   }
 }
 

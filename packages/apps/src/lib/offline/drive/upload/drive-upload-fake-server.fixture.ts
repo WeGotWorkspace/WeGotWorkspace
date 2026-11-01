@@ -61,6 +61,21 @@ export class FakeDriveServer {
     blobId: string;
     contentHashPending?: boolean;
   }> = [];
+  /**
+   * Folders, apart from `nodes` (files). `fn-home` is the drive root; the
+   * tests upload into `fn-docs` under it. Trash a folder by moving it under
+   * `fn-trash`; delete it from this map to make it gone.
+   */
+  readonly folders = new Map<
+    string,
+    { id: string; parentId: string | null; name: string; mayAddChildren?: boolean }
+  >([
+    ["fn-home", { id: "fn-home", parentId: null, name: "ada" }],
+    ["fn-trash", { id: "fn-trash", parentId: "fn-home", name: ".Trash" }],
+    ["fn-docs", { id: "fn-docs", parentId: "fn-home", name: "docs" }],
+  ]);
+  /** Quotas `Quota/get` returns; null = the Session has no quota capability. */
+  quotas: Array<{ id: string; used: number; hardLimit: number }> | null = null;
   private sequence = 0;
   private activeUploads = 0;
   maxActiveUploads = 0;
@@ -150,6 +165,8 @@ export class FakeDriveServer {
         return this.assemblyAppend(args);
       case "BlobAssembly/finish":
         return this.assemblyFinish(args);
+      case "Quota/get":
+        return { list: this.quotas ?? [] };
       case "BlobAssembly/get": {
         const id = (args.ids as string[])[0]!;
         const row = this.assemblies.get(id);
@@ -288,6 +305,31 @@ export class FakeDriveServer {
     } as JmapFileNode;
   }
 
+  private toFolder(folder: {
+    id: string;
+    parentId: string | null;
+    name: string;
+    mayAddChildren?: boolean;
+  }): JmapFileNode {
+    return {
+      id: folder.id,
+      parentId: folder.parentId,
+      name: folder.name,
+      nodeType: "directory",
+      blobId: null,
+      size: null,
+      type: null,
+      myRights: {
+        mayRead: true,
+        mayAddChildren: folder.mayAddChildren ?? true,
+        mayRename: true,
+        mayDelete: true,
+        mayModifyContent: true,
+        mayShare: true,
+      },
+    };
+  }
+
   readonly fileNodeSets: Array<Record<string, unknown>> = [];
 
   fileNodes = {
@@ -301,7 +343,13 @@ export class FakeDriveServer {
         .map((row) => this.toNode(row)),
     }),
     getFileNodes: async (_account: string, ids: string[]) => ({
-      list: this.nodes.filter((row) => ids.includes(row.id)).map((row) => this.toNode(row)),
+      list: [
+        ...this.nodes.filter((row) => ids.includes(row.id)).map((row) => this.toNode(row)),
+        ...ids.flatMap((id) => {
+          const folder = this.folders.get(id);
+          return folder ? [this.toFolder(folder)] : [];
+        }),
+      ],
     }),
     setFileNodes: async (args: Record<string, unknown>) => {
       this.fileNodeSets.push(args);
@@ -309,6 +357,15 @@ export class FakeDriveServer {
         const create = (
           args.create as Record<string, { parentId: string; name: string; blobId: string }>
         ).upload!;
+        if (!this.folders.has(create.parentId)) {
+          throw new JmapSetItemError("create", "upload", {
+            type: "invalidProperties",
+            properties: ["parentId"],
+          });
+        }
+        if (this.folders.get(create.parentId)?.mayAddChildren === false) {
+          throw new JmapSetItemError("create", "upload", { type: "forbidden" });
+        }
         if (
           this.nodes.some((row) => row.parentId === create.parentId && row.name === create.name)
         ) {
@@ -354,6 +411,7 @@ export class FakeDriveServer {
       uploadUrl: "/api/v1/jmap/upload/{accountId}/",
       downloadUrl: "/api/v1/jmap/download/{accountId}/{blobId}/{name}?type={type}",
       uploadCapabilities: this.capabilities(),
+      quota: this.quotas !== null,
       client: {
         call: (name: string, args: Record<string, unknown>, options?: { using?: string[] }) =>
           this.call(name, args, options),

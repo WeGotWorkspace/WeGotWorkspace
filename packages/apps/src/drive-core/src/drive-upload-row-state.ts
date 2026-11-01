@@ -7,7 +7,13 @@ import type {
 } from "@/lib/offline/drive/upload/drive-upload-subscription";
 
 export type DriveUploadRowKind =
-  "waiting" | "waitingOffline" | "waitingForAnswer" | "uploading" | "assembling" | "failed";
+  | "waiting"
+  | "waitingOffline"
+  | "waitingForAnswer"
+  | "waitingServerFull"
+  | "uploading"
+  | "assembling"
+  | "failed";
 
 /** Everything a placeholder row, its ring, and the Uploads view show for one file. */
 export type DriveUploadRowState = {
@@ -105,7 +111,9 @@ export function driveUploadRowState(
       ? "waitingForAnswer"
       : queueState === "paused_offline"
         ? "waitingOffline"
-        : "waiting";
+        : queueState === "paused_server_full"
+          ? "waitingServerFull"
+          : "waiting";
   return withDeviceNote({ ...base, kind, percent: null }, driveLabels.uploadState[kind]);
 }
 

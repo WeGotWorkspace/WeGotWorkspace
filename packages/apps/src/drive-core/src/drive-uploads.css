@@ -22,7 +22,8 @@
 
 .drive-upload-ring--waiting,
 .drive-upload-ring--waitingOffline,
-.drive-upload-ring--waitingForAnswer {
+.drive-upload-ring--waitingForAnswer,
+.drive-upload-ring--waitingServerFull {
   --progress-ring-color: var(--drive-upload-muted-fg);
 }
 

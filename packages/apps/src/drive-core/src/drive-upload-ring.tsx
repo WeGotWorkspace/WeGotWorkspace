@@ -11,6 +11,7 @@ const RING_LOOK = {
   waiting: "static",
   waitingOffline: "static",
   waitingForAnswer: "static",
+  waitingServerFull: "static",
   uploading: "spin",
   assembling: "pulse",
 } as const;

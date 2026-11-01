@@ -21,10 +21,12 @@ import {
   driveUploadItemsTable,
   type DriveUploadChunkState,
   type DriveUploadConflictChoice,
+  type DriveUploadErrorCode,
   type DriveUploadItemError,
   type DriveUploadKeepOffline,
   type DriveUploadNotice,
   type DriveUploadReplaceTarget,
+  type DriveUploadSpaceCheck,
   type DriveUploadTargetFolder,
   type OfflineDriveUploadBatchRow,
   type OfflineDriveUploadItemRow,
@@ -91,7 +93,7 @@ export async function enqueueDriveUploadBatch(
   await batches.put(batch);
   const itemIds: string[] = [];
   for (const [index, file] of input.files.entries()) {
-    const item = newItem(batch, file, now + index, localPlan[index] ?? true);
+    const item = newDriveUploadItem(batch, file, now + index, localPlan[index] ?? true);
     await storeItem(username, db, input.folderPath, item, file);
     itemIds.push(item.id);
   }
@@ -99,7 +101,8 @@ export async function enqueueDriveUploadBatch(
   return { batchId: batch.id, itemIds };
 }
 
-function newItem(
+/** A new `queued` item of `batch` for `file`. */
+export function newDriveUploadItem(
   batch: OfflineDriveUploadBatchRow,
   file: File,
   createdAt: number,
@@ -220,20 +223,36 @@ export async function removeDriveUploadItem(username: string, itemId: string): P
 
 /**
  * Whether *Retry* can work for a failed item. The bytes of a `no_local_copy`
- * item are gone, and a `quota` item never reached the device: both have to be
- * added again.
+ * item are gone, and a `quota` item that never reached the device has to be
+ * added again too. Every other failed item keeps its `Blob` until the user
+ * retries or removes it; nothing is dropped automatically.
  */
-export function canRetryDriveUpload(item: Pick<OfflineDriveUploadItemRow, "status" | "error">) {
+export function canRetryDriveUpload(
+  item: Pick<OfflineDriveUploadItemRow, "status" | "error" | "localCopy">,
+) {
   if (item.status !== "failed") return false;
-  return !NOT_RETRYABLE.has(item.error?.code ?? "upload_failed");
+  const code = item.error?.code ?? "permanent";
+  if (code === "quota") return item.localCopy;
+  return !NOT_RETRYABLE.has(code);
 }
 
 /**
- * Retrying cannot help: the bytes are gone (`no_local_copy`, `quota`), or the
- * page has no Web Crypto for part checksums (`insecure_context`, fixed only
- * by opening the app over https).
+ * Retrying cannot help: the bytes are gone (`no_local_copy`), or the page has
+ * no Web Crypto for part checksums (`insecure_context`, fixed only by opening
+ * the app over https).
  */
-const NOT_RETRYABLE = new Set(["no_local_copy", "quota", "insecure_context"]);
+const NOT_RETRYABLE = new Set<DriveUploadErrorCode>(["no_local_copy", "insecure_context"]);
+
+/**
+ * The queue is paused because the server is full (`paused_server_full`) while
+ * an item that hit a 507 or `overQuota` waits: no other file starts. *Retry*
+ * on it, or `resumeDriveUploadQueue` once the server has room, lifts it.
+ */
+export function isDriveUploadQueuePausedServerFull(
+  items: readonly Pick<OfflineDriveUploadItemRow, "status" | "error">[],
+): boolean {
+  return items.some((item) => item.status === "failed" && item.error?.code === "server_full");
+}
 
 /** Octets of the file the server already has as parts. */
 function chunkBytes(chunk: DriveUploadChunkState | undefined): number {
@@ -248,6 +267,16 @@ function chunkBytes(chunk: DriveUploadChunkState | undefined): number {
 export async function retryDriveUploadItem(username: string, itemId: string): Promise<boolean> {
   const retried = await requeueFailedItems(username, [itemId]);
   return retried > 0;
+}
+
+/**
+ * Lift the `paused_server_full` pause: the items that hit a full server go
+ * back to the queue, resuming from their stored parts. Returns how many.
+ */
+export async function resumeDriveUploadQueue(username: string): Promise<number> {
+  const failed = await tables(username).items.where("status").equals("failed").toArray();
+  const full = failed.filter((item) => item.error?.code === "server_full").map((item) => item.id);
+  return requeueFailedItems(username, full);
 }
 
 /** *Retry all failed* in the Uploads view. Returns how many items went back to the queue. */
@@ -371,6 +400,7 @@ export async function listStartableDriveUploads(
   username: string,
 ): Promise<OfflineDriveUploadItemRow[]> {
   const { batches, items } = await readDriveUploadQueueRows(username);
+  if (isDriveUploadQueuePausedServerFull(items)) return [];
   const released = new Set(batches.filter((b) => b.status === "released").map((b) => b.id));
   const now = Date.now();
   return items.filter(
@@ -501,37 +531,97 @@ export async function requeueDriveUpload(
   notifyDriveUploadQueueChanged(username);
 }
 
+/** Hiccups that kept coming back after every retry with backoff. */
 function failure(message: string): DriveUploadItemError {
-  return { code: "upload_failed", message };
+  return { code: "transient", message };
 }
 
 /**
  * Fail an item. Its `Blob` stays until it is retried or removed. Stored chunk
  * progress stays only with `keepProgress` (a full server: *Retry* resumes);
- * otherwise a retry starts the file over.
+ * otherwise a retry starts the file over. `checkSpaceAt` (a full server): no
+ * tab asks the server for free space for this item before then.
  */
 export async function failDriveUpload(
   username: string,
   itemId: string,
   error: DriveUploadItemError,
-  options: { keepProgress?: boolean } = {},
+  options: { keepProgress?: boolean; checkSpaceAt?: number } = {},
 ): Promise<void> {
   const { db, items, entries } = tables(username);
   await db.transaction("rw", items, entries, async () => {
     const item = await items.get(itemId);
     if (!item) return;
-    const { chunk, phase: _phase, assembledBytes: _assembled, ...rest } = item;
+    const { chunk, phase: _phase, assembledBytes: _assembled, retryAt: _retryAt, ...rest } = item;
     const kept = options.keepProgress && chunk ? { chunk } : {};
     await items.put({
       ...rest,
       ...kept,
       status: "failed",
       bytesDone: options.keepProgress ? chunkBytes(chunk) : 0,
+      ...(options.checkSpaceAt ? { retryAt: options.checkSpaceAt } : {}),
       error,
     });
     await setUploadPlaceholderStatus(username, itemId, "failed", error.code);
   });
   notifyDriveUploadQueueChanged(username);
+}
+
+/**
+ * The server still has no room for a `server_full` item: no tab asks again
+ * before `at`. The write wakes every tab's uploader, which then waits.
+ */
+export async function deferDriveUploadSpaceCheck(
+  username: string,
+  itemId: string,
+  at: number,
+): Promise<void> {
+  const updated = await tables(username).items.update(itemId, { retryAt: at });
+  if (updated) notifyDriveUploadQueueChanged(username);
+}
+
+/** Store the space pre-check on the batch, for the batch dialog (#1521). */
+export async function recordDriveUploadBatchSpaceCheck(
+  username: string,
+  batchId: string,
+  spaceCheck: DriveUploadSpaceCheck,
+): Promise<void> {
+  const updated = await tables(username).batches.update(batchId, { spaceCheck });
+  if (updated) notifyDriveUploadQueueChanged(username);
+}
+
+/**
+ * Send a queued or failed file to another folder (`target_missing`, or the
+ * user picked a new one): its stored `Blob` and any parts already on the
+ * server stay, its placeholder moves to the new folder, and it goes back to
+ * the queue. False while it is uploading, after the server created its node,
+ * or when it is gone.
+ */
+export async function retargetDriveUploadItem(
+  username: string,
+  itemId: string,
+  target: { folderPath: string; targetFolder: DriveUploadTargetFolder },
+): Promise<boolean> {
+  const { db, items, entries } = tables(username);
+  const moved = await db.transaction("rw", items, entries, async () => {
+    const item = await items.get(itemId);
+    if (!item || item.status === "uploading" || item.createdNodeId) return false;
+    const { error: _error, retryAt: _retryAt, phase: _phase, ...rest } = item;
+    const next: OfflineDriveUploadItemRow = {
+      ...rest,
+      targetFolder: target.targetFolder,
+      status: "queued",
+      bytesDone: chunkBytes(item.chunk),
+      transientFailures: 0,
+    };
+    await items.put(next);
+    await entries.where("uploadId").equals(itemId).delete();
+    const [placeholder] = buildUploadPlaceholderRows(target.folderPath, [next]);
+    await entries.put(placeholder!);
+    return true;
+  });
+  if (moved) notifyDriveUploadQueueChanged(username);
+  return moved;
 }
 
 export async function readDriveUploadBatch(

@@ -2,6 +2,7 @@ import { readBrowserOnline } from "@/lib/offline/core/browser-online";
 import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import {
   canRetryDriveUpload,
+  isDriveUploadQueuePausedServerFull,
   readDriveUploadQueueRows,
   type DriveUploadQueueRows,
 } from "@/lib/offline/drive/upload/drive-upload-store";
@@ -11,10 +12,15 @@ import type {
   DriveUploadItemStatus,
   DriveUploadKeepOffline,
   DriveUploadNotice,
+  DriveUploadSpaceCheck,
   DriveUploadTargetFolder,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
 
-/** `paused_server_full` is set by #1520; this slice never enters it. */
+/**
+ * `paused_server_full` (#1520): a file hit a full server (507 or `overQuota`),
+ * so no other file starts until *Retry* (`resumeUploadQueue`) or until
+ * `Quota/get` reports room for it in its target root.
+ */
 export type DriveUploadQueueState = "idle" | "running" | "paused_offline" | "paused_server_full";
 
 export type DriveUploadItemView = {
@@ -34,7 +40,7 @@ export type DriveUploadItemView = {
   phase?: "assembling";
   /** Octets put together so far while `phase` is `assembling` (of `bytesTotal`). */
   assembledBytes?: number;
-  /** False for `no_local_copy` and `quota`: the file has to be added again. */
+  /** False for `no_local_copy`, `insecure_context`, and `quota` without a local copy. */
   canRetry: boolean;
   error?: DriveUploadItemError;
 };
@@ -44,6 +50,8 @@ export type DriveUploadBatchView = {
   status: DriveUploadBatchStatus;
   keepOffline: DriveUploadKeepOffline;
   notices: DriveUploadNotice[];
+  /** The space pre-check when the batch was added (#1520). */
+  spaceCheck?: DriveUploadSpaceCheck;
 };
 
 export type DriveUploadQueueSnapshot = {
@@ -66,7 +74,13 @@ export function buildDriveUploadQueueSnapshot(
 ): DriveUploadQueueSnapshot {
   const released = new Set(rows.batches.filter((b) => b.status === "released").map((b) => b.id));
   const waiting = rows.items.some((item) => item.status !== "failed" && released.has(item.batchId));
-  const state: DriveUploadQueueState = !waiting ? "idle" : online ? "running" : "paused_offline";
+  const state: DriveUploadQueueState = isDriveUploadQueuePausedServerFull(rows.items)
+    ? "paused_server_full"
+    : !waiting
+      ? "idle"
+      : online
+        ? "running"
+        : "paused_offline";
   return {
     state,
     items: rows.items.map((item) => ({
@@ -92,6 +106,7 @@ export function buildDriveUploadQueueSnapshot(
       status: batch.status,
       keepOffline: batch.keepOffline,
       notices: batch.notices,
+      ...(batch.spaceCheck ? { spaceCheck: batch.spaceCheck } : {}),
     })),
     hasItems: rows.items.length > 0,
     totalBytes: rows.items.reduce((sum, item) => sum + item.size, 0),

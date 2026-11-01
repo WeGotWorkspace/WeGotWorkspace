@@ -1,5 +1,4 @@
 import { createWgwDriveOperations } from "@/lib/api/wgw/drive";
-import { driveJmapSession } from "@/lib/api/wgw/drive-jmap";
 import {
   ensureTrashFolder,
   listTrashEntryNames,
@@ -42,7 +41,6 @@ import { removeDriveContentBlob } from "@/lib/offline/drive/drive-content-sync";
 import { DRIVE_DOMAIN } from "@/lib/offline/drive/drive-schema";
 import type { DriveOutboxPayload } from "@/lib/offline/drive/drive-outbox-flush";
 import {
-  encodeUploadFileForOutbox,
   flushDriveOutbox,
   removeOutboxMutationsForDrivePath,
   type DriveOutboxFlushResult,
@@ -53,23 +51,11 @@ import {
 } from "@/lib/offline/drive/drive-offline-read";
 import { reportDriveSyncConflicts } from "@/lib/offline/drive/drive-sync-conflicts";
 import { applyDriveSidecarPathMigration } from "@/lib/offline/shared/drive-sidecar-mutations";
-import { onDriveUploadQueueChanged } from "@/lib/offline/drive/upload/drive-upload-events";
 import { withUploadPlaceholders } from "@/lib/offline/drive/upload/drive-upload-placeholders";
-import { startDriveUploader } from "@/lib/offline/drive/upload/drive-upload-runner";
 import {
-  describeDriveUploadBatchConflicts,
-  driveUploadSessionVersionCheck,
-} from "@/lib/offline/drive/upload/drive-upload-conflicts";
-import {
-  cancelDriveUploadBatch,
-  enqueueDriveUploadBatch,
-  releaseDriveUploadBatch,
-  removeDriveUploadItem,
-  retryAllFailedDriveUploads,
-  retryDriveUploadItem,
-} from "@/lib/offline/drive/upload/drive-upload-store";
-import { sharedDriveUploadQueueWatch } from "@/lib/offline/drive/upload/drive-upload-queue-watch";
-import { resolveDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target";
+  driveUploadQueueOperations,
+  queueOfflineDriveUploadFiles,
+} from "@/lib/offline/drive/upload/drive-upload-operations";
 import {
   rememberOfflineDriveUsername,
   readOfflineDriveUsername,
@@ -289,49 +275,11 @@ export function createHybridDriveOperations(
         }
       }
       const cwd = normalizeApiVirtualPath(input.cwd);
-      for (const file of input.files) {
-        const encoded = await encodeUploadFileForOutbox(file);
-        await queueDriveOutbox(username, {
-          op: "upload",
-          cwd,
-          name: file.name,
-          base64: encoded.base64,
-          mimeType: encoded.mimeType,
-        });
-      }
+      // Offline the files wait in the upload queue as Blobs, never as base64.
+      await queueOfflineDriveUploadFiles(username, input);
       return offlineQueuedDriveData(username, cwd);
     },
-    enqueueUploads: async (input) => {
-      const folderPath = normalizeApiVirtualPath(input.cwd);
-      const targetFolder = await resolveDriveUploadTarget(username, folderPath);
-      const batch = await enqueueDriveUploadBatch(username, {
-        folderPath,
-        targetFolder,
-        files: input.files,
-        // The caller releases the batch next (see `queueDriveUploadBatch`).
-        notify: false,
-      });
-      startDriveUploader(username);
-      return { batchId: batch.batchId, itemIds: batch.itemIds };
-    },
-    releaseUploadBatch: (batchId, answers) => releaseDriveUploadBatch(username, batchId, answers),
-    describeUploadConflicts: async (batchId) => {
-      // The live Session decides when there is one; offline, the last one this device saw.
-      const live = readBrowserOnline()
-        ? await driveJmapSession().then(
-            (session) => session.uploadCapabilities,
-            () => null,
-          )
-        : null;
-      const versionCheck = driveUploadSessionVersionCheck(username, live);
-      return describeDriveUploadBatchConflicts(username, batchId, versionCheck);
-    },
-    cancelUploadBatch: (batchId) => cancelDriveUploadBatch(username, batchId),
-    removeQueuedUpload: (itemId) => removeDriveUploadItem(username, itemId),
-    retryQueuedUpload: (itemId) => retryDriveUploadItem(username, itemId),
-    retryAllFailedUploads: () => retryAllFailedDriveUploads(username),
-    subscribeUploadQueue: (listener) => onDriveUploadQueueChanged(username, listener),
-    watchUploadQueue: sharedDriveUploadQueueWatch(username),
+    ...driveUploadQueueOperations(username),
     downloadFile: async (path, opts) => {
       const normalized = normalizeApiVirtualPath(path);
       if (readBrowserOnline()) {
