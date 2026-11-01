@@ -11,6 +11,7 @@ import type {
   DriveUploadNotice,
   DriveUploadReplaceTarget,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
+import { assertDriveUploadTarget } from "@/lib/offline/drive/upload/drive-upload-target-check";
 
 export { DriveUploadTooLargeError } from "@/lib/api/wgw/drive-upload-errors";
 
@@ -86,6 +87,8 @@ export async function transferDriveUpload(
     const node = await readNode(session, input.createdNodeId, input.name, signal);
     return { kind: "uploaded", node, finalName: node.name || input.name };
   }
+  // A folder that is gone, in the trash, or no longer writable gets no bytes.
+  await assertDriveUploadTarget(session, input.folderId, signal);
   // A `skip` whose name is taken sends no bytes at all.
   if (input.conflict === "skip" && (await existingByName(session, input, input.name, signal))) {
     return { kind: "skipped" };

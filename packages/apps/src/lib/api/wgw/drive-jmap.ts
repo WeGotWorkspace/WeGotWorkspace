@@ -4,6 +4,7 @@ import {
   CORE_CAPABILITY,
   FILENODE_CAPABILITY,
   JmapClient,
+  QUOTA_CAPABILITY,
   JmapFileNodePathCache,
   JmapFileNodesClient,
   JmapSetItemError,
@@ -86,6 +87,8 @@ export type DriveJmapSession = {
   maxSizeUpload: number;
   /** Blob, blob assembly, and version check support (#1500). */
   uploadCapabilities: DriveUploadCapabilities;
+  /** The Session advertises `urn:ietf:params:jmap:quota` (Drive free space per root). */
+  quota?: boolean;
   uploadUrl: string;
   downloadUrl: string;
   sharedRootPaths: Set<string>;
@@ -148,6 +151,7 @@ export async function driveJmapSession(): Promise<DriveJmapSession> {
     maxSizeUpload:
       typeof core?.maxSizeUpload === "number" ? core.maxSizeUpload : JMAP_MAX_SIZE_UPLOAD_DEFAULT,
     uploadCapabilities,
+    quota: QUOTA_CAPABILITY in session.capabilities,
     uploadUrl: session.uploadUrl,
     downloadUrl: session.downloadUrl,
     sharedRootPaths: new Set(),

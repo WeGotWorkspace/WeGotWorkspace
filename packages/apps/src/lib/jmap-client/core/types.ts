@@ -22,6 +22,8 @@ export const BLOB_ASSEMBLY_CAPABILITY = "https://wegotworkspace.org/jmap/blob-as
 /** WGW extension (#1500): `expectedBlobId` on FileNode/set update, SetError `versionMismatch`. */
 export const FILENODE_VERSION_CHECK_CAPABILITY =
   "https://wegotworkspace.org/jmap/filenode-version-check";
+/** RFC 9425 Quota/get: one Drive quota per writable root (#1500). */
+export const QUOTA_CAPABILITY = "urn:ietf:params:jmap:quota";
 
 export type JmapAccount = {
   name: string;

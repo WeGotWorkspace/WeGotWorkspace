@@ -149,7 +149,7 @@ describe("drive upload store", () => {
 
   it("removes a failed item and drops the batch once it is empty", async () => {
     const { batchId, itemIds } = await enqueue([testFile("a.txt")]);
-    await failDriveUpload(user, itemIds[0]!, { code: "upload_failed", message: "nope" });
+    await failDriveUpload(user, itemIds[0]!, { code: "permanent", message: "nope" });
     expect((await readDirectoryEntriesFromCache(user, folder))[0]?.upload?.status).toBe("failed");
 
     expect(await removeDriveUploadItem(user, itemIds[0]!)).toBe(true);

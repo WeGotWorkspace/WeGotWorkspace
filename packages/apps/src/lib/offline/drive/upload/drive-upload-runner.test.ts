@@ -97,11 +97,26 @@ vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
         return { created: { upload: { id } } };
       },
       getFileNodes: async (_account: string, ids: string[]) => {
-        if (server.getFailures > 0) {
+        const onlyFolders = ids.every((id) => id === "fn-docs" || id === "fn-home");
+        if (server.getFailures > 0 && !onlyFolders) {
           server.getFailures -= 1;
           throw new TypeError("Failed to fetch");
         }
-        return { list: server.nodes.filter((row) => ids.includes(row.id)).map(toNode) };
+        // The target folder `fn-docs` sits right under the drive root `fn-home`.
+        const folders = ids
+          .filter((id) => id === "fn-docs" || id === "fn-home")
+          .map(
+            (id) =>
+              ({
+                id,
+                parentId: id === "fn-docs" ? "fn-home" : null,
+                name: id === "fn-docs" ? "docs" : "ada",
+                nodeType: "directory",
+              }) as JmapFileNode,
+          );
+        return {
+          list: [...server.nodes.filter((row) => ids.includes(row.id)).map(toNode), ...folders],
+        };
       },
     },
   }),

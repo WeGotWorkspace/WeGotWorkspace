@@ -48,7 +48,7 @@ const ITEMS: Record<DriveUploadStoryCase, Omit<DriveUploadItemView, "id" | "crea
   failed: {
     ...item("Scan 0042.png", "failed", 2 * MB),
     canRetry: true,
-    error: { code: "upload_failed", message: "Server error" },
+    error: { code: "permanent", message: "Server error" },
   },
   noLocalCopy: {
     ...item("Interview notes.txt", "failed", 12_000),

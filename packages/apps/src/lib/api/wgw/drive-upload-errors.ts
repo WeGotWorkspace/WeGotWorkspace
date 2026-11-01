@@ -30,7 +30,7 @@ export class DriveUploadTooLargeError extends Error {
   }
 }
 
-/** 507 or `overQuota`: never retried with backoff; the item waits for *Retry*. */
+/** 507 or `overQuota`: never retried with backoff; pauses the whole queue (#1520). */
 export class DriveServerFullError extends Error {
   constructor(message = "The server has no space left for this file.") {
     super(message);
@@ -43,6 +43,25 @@ export class DriveUploadInsecureContextError extends Error {
   constructor() {
     super("Large files need a secure connection (https).");
     this.name = "DriveUploadInsecureContextError";
+  }
+}
+
+/**
+ * The target folder is gone: deleted, or moved to the trash (#1520). The
+ * file can be sent to another folder (its stored `Blob` stays) or removed.
+ */
+export class DriveUploadTargetMissingError extends Error {
+  constructor(readonly folderId: string) {
+    super("The folder this file was going to no longer exists.");
+    this.name = "DriveUploadTargetMissingError";
+  }
+}
+
+/** The account may no longer add files to the target folder (e.g. write access was revoked). */
+export class DriveUploadForbiddenError extends Error {
+  constructor(readonly folderId: string) {
+    super("You can no longer add files to this folder.");
+    this.name = "DriveUploadForbiddenError";
   }
 }
 

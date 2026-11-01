@@ -170,7 +170,7 @@ describe("conflict policy at upload time", () => {
     expect(names()).toEqual(["report.pdf"]);
     expect(classifyDriveUploadFailure(failure)).toMatchObject({
       kind: "fail",
-      error: { code: "upload_failed" },
+      error: { code: "permanent" },
     });
   });
 
@@ -184,7 +184,7 @@ describe("conflict policy at upload time", () => {
 
     expect(failure).toBeInstanceOf(DriveUploadPermanentError);
     expect(server.fileNodeSets.some((set) => set.update)).toBe(false);
-    expect(classifyDriveUploadFailure(failure)).toMatchObject({ error: { code: "upload_failed" } });
+    expect(classifyDriveUploadFailure(failure)).toMatchObject({ error: { code: "permanent" } });
   });
 
   it("keeps both with a notice for a colliding file under replace that has no stored target", async () => {

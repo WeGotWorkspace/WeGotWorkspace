@@ -38,6 +38,31 @@ export type DriveUploadNotice =
   | { type: "replace_fell_back"; itemName: string; keptAsName: string }
   | { type: "kept_both"; itemName: string; keptAsName: string };
 
+/**
+ * The space pre-check of a batch (#1520), stored when the batch is added so
+ * the batch dialog (#1521) can show it. `unknown` (no quota for the target
+ * root, or none known on this device) shows no warning. Otherwise it compares
+ * `neededBytes` (the batch plus what is still left in the queue for the same
+ * root) with `freeBytes` (`hardLimit − used` of that root's quota).
+ * `fresh` is false when the quota came from the last known value (offline or
+ * the server did not answer); `measuredAt` tells its age.
+ */
+export type DriveUploadSpaceCheck =
+  | { status: "unknown" }
+  | {
+      status: "fits" | "does_not_fit";
+      /** Quota id, `dq-{rootNodeId}`. */
+      quotaId: string;
+      batchBytes: number;
+      /** Bytes still to send for other queued files in the same root. */
+      queuedBytes: number;
+      neededBytes: number;
+      freeBytes: number;
+      /** When the server reported this free space (ms). */
+      measuredAt: number;
+      fresh: boolean;
+    };
+
 /** The user's answer for names that already exist in the target folder. */
 export type DriveUploadConflictChoice = "replace" | "keep_both" | "skip";
 
@@ -62,6 +87,8 @@ export type OfflineDriveUploadBatchRow = {
    * queued: a conflict found at upload time is then kept both, with a notice.
    */
   conflict?: DriveUploadConflictChoice;
+  /** The space pre-check when the batch was added (#1520). */
+  spaceCheck?: DriveUploadSpaceCheck;
 };
 
 export type DriveUploadItemStatus = "queued" | "uploading" | "failed";
@@ -89,7 +116,10 @@ export type OfflineDriveUploadItemRow = {
   memoryOwner?: string;
   /** Network or server hiccups in a row; the item fails after a few. */
   transientFailures: number;
-  /** After a hiccup, no tab starts this item again before this time (ms). */
+  /**
+   * After a hiccup, no tab starts this item again before this time (ms). On a
+   * failed `server_full` item: no tab asks the server for free space before it.
+   */
   retryAt?: number;
   /**
    * Id of the node the server created for this item. Once set, a retry only

@@ -189,7 +189,8 @@ describe("drive uploader with parts, resume, and the conflict policy", () => {
 
     const failed = (await readDriveUploadQueueRows(user)).items[0]!;
     expect(failed).toMatchObject({ status: "failed", error: { code: "server_full" } });
-    expect(failed.retryAt).toBeUndefined();
+    // No backoff: `retryAt` only says when to ask the server for room again.
+    expect(failed.retryAt).toBeGreaterThan(Date.now());
     expect(failed.transientFailures).toBe(0);
     expect(failed.chunk?.parts).toHaveLength(2);
     expect(server.uploads).toHaveLength(3);

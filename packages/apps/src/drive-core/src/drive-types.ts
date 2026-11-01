@@ -21,6 +21,7 @@ import type { DriveUploadBatchConflicts } from "@/lib/offline/drive/upload/drive
 import type {
   DriveUploadConflictChoice,
   DriveUploadReplaceTarget,
+  DriveUploadSpaceCheck,
 } from "@/lib/offline/drive/upload/drive-upload-schema";
 
 export type DriveUIData = {
@@ -174,7 +175,7 @@ export type DriveAPIOperations = {
   enqueueUploads?: (input: {
     cwd: string;
     files: File[];
-  }) => Promise<{ batchId: string; itemIds?: string[] }>;
+  }) => Promise<{ batchId: string; itemIds?: string[]; spaceCheck?: DriveUploadSpaceCheck }>;
   /** Hand a queued batch to the background uploader with the dialog's answers. */
   releaseUploadBatch?: (batchId: string, answers: DriveUploadBatchAnswers) => Promise<void>;
   /**
@@ -190,6 +191,16 @@ export type DriveAPIOperations = {
   retryQueuedUpload?: (itemId: string) => Promise<boolean>;
   /** *Retry all failed* in the Uploads view. Resolves to how many went back to the queue. */
   retryAllFailedUploads?: () => Promise<number>;
+  /**
+   * Send a queued or failed file (e.g. `target_missing`) to the folder at
+   * `cwd`, keeping its stored file. False while it is uploading or once gone.
+   */
+  retargetQueuedUpload?: (itemId: string, cwd: string) => Promise<boolean>;
+  /**
+   * *Retry* on a queue paused because the server is full: the files that hit
+   * the full server go back to the queue. Resolves to how many.
+   */
+  resumeUploadQueue?: () => Promise<number>;
   /** Called after every upload queue change in any tab. Returns an unsubscribe. */
   subscribeUploadQueue?: (listener: () => void) => () => void;
   /**

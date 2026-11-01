@@ -60,7 +60,7 @@ describe("drive upload retry", () => {
     const { itemIds } = await released(["a.txt"]);
     const id = itemIds[0]!;
     await requeueDriveUpload(user, id, { countFailure: true, retryAt: Date.now() + 60_000 });
-    await failDriveUpload(user, id, { code: "upload_failed", message: "nope" });
+    await failDriveUpload(user, id, { code: "permanent", message: "nope" });
     expect(await listStartableDriveUploads(user)).toEqual([]);
 
     expect(await retryDriveUploadItem(user, id)).toBe(true);
@@ -78,6 +78,8 @@ describe("drive upload retry", () => {
   it("refuses files whose bytes are gone, and files that did not fail", async () => {
     const { itemIds } = await released(["gone.bin", "full.bin", "waiting.txt"]);
     await failDriveUpload(user, itemIds[0]!, { code: "no_local_copy", message: "gone" });
+    // The device refused to store it: no local copy.
+    await driveUploadItemsTable(uploadTestDb()).update(itemIds[1]!, { localCopy: false });
     await failDriveUpload(user, itemIds[1]!, { code: "quota", message: "full" });
 
     expect(await retryDriveUploadItem(user, itemIds[0]!)).toBe(false);
@@ -90,7 +92,7 @@ describe("drive upload retry", () => {
     const { itemIds } = await released(["a.txt", "b.txt", "c.txt"]);
     await failDriveUpload(user, itemIds[0]!, { code: "too_large", message: "big" });
     await failDriveUpload(user, itemIds[1]!, { code: "no_local_copy", message: "gone" });
-    await failDriveUpload(user, itemIds[2]!, { code: "upload_failed", message: "nope" });
+    await failDriveUpload(user, itemIds[2]!, { code: "permanent", message: "nope" });
 
     expect(await retryAllFailedDriveUploads(user)).toBe(2);
 
