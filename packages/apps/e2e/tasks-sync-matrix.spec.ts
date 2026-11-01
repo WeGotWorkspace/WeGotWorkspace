@@ -754,15 +754,35 @@ async function reconnect(tab: Tab) {
   await setTabOffline(tab, false);
 }
 
+/**
+ * Fails every `GET tasks/tasklists/changes` until released, so no pull can write a token back over
+ * one injected meanwhile. Requests already in flight get a moment to settle first. The next pull
+ * after the release reads whatever token is stored then.
+ */
+async function blockChanges(tab: Tab) {
+  const url = /\/tasks\/tasklists\/changes/;
+  const handler = (route: Route) => route.abort("failed");
+  await tab.route(url, handler);
+  await sleep(3_000);
+  return () => tab.unroute(url, handler);
+}
+
 /** `GET tasks/tasklists/changes` calls since now, split into token pulls and full lists. */
 function watchChanges(tabs: Tab[]) {
-  const calls = { since: 0, full: 0, relisted: new Set<string>() };
+  const calls = {
+    since: 0,
+    full: 0,
+    firstWasFull: null as boolean | null,
+    relisted: new Set<string>(),
+  };
   for (const tab of tabs) {
     tab.on("request", (request) => {
       const url = new URL(request.url());
       if (url.pathname.endsWith("/tasks/tasklists/changes")) {
-        if (url.searchParams.has("since")) calls.since += 1;
-        else calls.full += 1;
+        const full = !url.searchParams.has("since");
+        calls.firstWasFull ??= full;
+        if (full) calls.full += 1;
+        else calls.since += 1;
       }
       if (url.pathname.endsWith("/tasks/items") && url.searchParams.has("taskListId")) {
         calls.relisted.add(url.searchParams.get("taskListId")!);
@@ -1115,11 +1135,13 @@ test.describe("inbound", () => {
 
       const release = await holdRequests(c.tab, "POST", "/tasks/items");
       await ACTIONS.create.run(c.tab, c.f);
+      const unblock = await blockChanges(c.tab);
       await setStoredToken(c.tab, "expired-token");
-      const calls = watchChanges([c.tab]);
       await deleteTask(c.tasks[0]!);
       await patchTask(c.tasks[1]!, { title: `T2 ${id} v2` });
       await deleteList(listCId);
+      const calls = watchChanges([c.tab]);
+      await unblock();
 
       await pollCache(
         c.tab,
@@ -1127,6 +1149,7 @@ test.describe("inbound", () => {
         (cache) => cache.tasks.some((t) => t.title === `T2 ${id} v2`),
         "the full list lands",
       ).toBe(true);
+      expect(calls.firstWasFull, "the first pull after the edits had no `since`").toBe(true);
       expect(calls.full, "the unknown token fell back to a full list").toBeGreaterThan(0);
       const cache = await tabCache(c.tab, id);
       expect(cache.token, "a fresh token").not.toBe("expired-token");
@@ -1156,11 +1179,14 @@ test.describe("inbound", () => {
     try {
       const c = await inboundCase(browser, id, 2);
       session = c.session;
+      const unblock = await blockChanges(c.tab);
       await setStoredToken(c.tab, null);
-      const calls = watchChanges([c.tab]);
       await patchTask(c.tasks[0]!, { title: `T1 ${id} v2` });
       await deleteTask(c.tasks[1]!);
+      const calls = watchChanges([c.tab]);
+      await unblock();
       expect(await converge([c.tab], id, MIRROR_MS), "the tab mirrors the server").toEqual({});
+      expect(calls.firstWasFull, "the first pull after the edits had no `since`").toBe(true);
       expect(calls.full, "no token: a full list").toBeGreaterThan(0);
       expect((await tabCache(c.tab, id)).token, "a token again").not.toBeNull();
     } finally {
