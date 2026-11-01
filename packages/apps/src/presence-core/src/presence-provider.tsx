@@ -14,7 +14,10 @@ import {
 } from "@/presence-core/src/presence-join-timing";
 import { createPresenceRtcSession } from "@/presence-core/src/presence-rtc-session";
 import { createPresenceStore, type PresenceStore } from "@/presence-core/src/presence-store";
-import { PRESENCE_WORKSPACE_ROOM } from "@/presence-core/src/presence-types";
+import {
+  PRESENCE_BOOT_RETRY_DELAYS_MS,
+  PRESENCE_WORKSPACE_ROOM,
+} from "@/presence-core/src/presence-types";
 
 const PresenceStoreContext = createContext<PresenceStore | null>(null);
 
@@ -44,34 +47,67 @@ function hasMemberSession(): boolean {
   return wgwHasAuthenticatedSession() && !wgwIsGuestSession();
 }
 
-async function startPresence(store: PresenceStore): Promise<void> {
-  const session = await wgwFetchPrincipal();
-  store.start({
-    username: session.user.username ?? "",
-    displayName: session.user.displayName,
-  });
+function browserReportsOnline(): boolean {
+  return typeof navigator === "undefined" || navigator.onLine;
 }
 
 /**
  * Mounts the workspace-wide principal presence mesh for authenticated members.
- * Waits for an authenticated (non-guest) session, resolves RTC settings once, then
- * starts the store with the environment-appropriate join timing.
+ * Waits for an authenticated (non-guest) session, resolves RTC settings and the
+ * member identity, then starts the store with the environment-appropriate join timing.
+ * When either request fails (offline start, API unreachable) no mesh is created; the
+ * boot runs again on the `online` event and on a short bounded backoff.
  */
 export function PresenceProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<PresenceStore | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let booting = false;
     let activeStore: PresenceStore | null = null;
     let recheckTimer: ReturnType<typeof setInterval> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryAttempt = 0;
+
+    const clearRetryTimer = () => {
+      if (retryTimer === null) return;
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    };
+
+    const scheduleRetry = () => {
+      clearRetryTimer();
+      // Offline: a request now fails the same way; wait for the `online` event.
+      if (!browserReportsOnline()) return;
+      const delay = PRESENCE_BOOT_RETRY_DELAYS_MS[retryAttempt];
+      if (delay === undefined) return;
+      retryAttempt += 1;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        start();
+      }, delay);
+    };
 
     const boot = async () => {
-      const roomId = resolveRoomId("principal", PRESENCE_WORKSPACE_ROOM);
-      const rtcSettings = await fetchRtcSettings({
-        url: `${wgwApiBaseUrl()}/rooms/${encodeURIComponent(roomId)}/configuration`,
-        bearerToken: wgwCurrentAccessToken() ?? undefined,
-      });
+      booting = true;
+      let rtcSettings: Awaited<ReturnType<typeof fetchRtcSettings>>;
+      let session: Awaited<ReturnType<typeof wgwFetchPrincipal>>;
+      try {
+        const roomId = resolveRoomId("principal", PRESENCE_WORKSPACE_ROOM);
+        rtcSettings = await fetchRtcSettings({
+          url: `${wgwApiBaseUrl()}/rooms/${encodeURIComponent(roomId)}/configuration`,
+          bearerToken: wgwCurrentAccessToken() ?? undefined,
+        });
+        session = await wgwFetchPrincipal();
+      } catch {
+        // Network error or identity fetch failed: no mesh without settings and identity.
+        booting = false;
+        if (!cancelled) scheduleRetry();
+        return;
+      }
+      booting = false;
       if (cancelled) return;
+      window.removeEventListener("online", onOnline);
       const presenceStore = createPresenceStore({
         createSession: () =>
           createPresenceRtcSession({ room: PRESENCE_WORKSPACE_ROOM, rtcSettings }),
@@ -80,16 +116,10 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
         crossWindowLeader: true,
       });
       activeStore = presenceStore;
-      try {
-        await startPresence(presenceStore);
-      } catch {
-        // Identity fetch failed (e.g. session dropped between checks); stay unmounted.
-        return;
-      }
-      if (cancelled) {
-        void presenceStore.stop();
-        return;
-      }
+      presenceStore.start({
+        username: session.user.username ?? "",
+        displayName: session.user.displayName,
+      });
       setStore(presenceStore);
     };
 
@@ -103,12 +133,26 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
       return true;
     };
 
-    if (!tryBoot()) {
-      recheckTimer = setInterval(tryBoot, AUTH_RECHECK_INTERVAL_MS);
+    function start() {
+      if (cancelled || booting || activeStore) return;
+      if (!tryBoot() && recheckTimer === null) {
+        recheckTimer = setInterval(tryBoot, AUTH_RECHECK_INTERVAL_MS);
+      }
     }
+
+    function onOnline() {
+      clearRetryTimer();
+      retryAttempt = 0;
+      start();
+    }
+
+    window.addEventListener("online", onOnline);
+    start();
 
     return () => {
       cancelled = true;
+      window.removeEventListener("online", onOnline);
+      clearRetryTimer();
       if (recheckTimer !== null) clearInterval(recheckTimer);
       if (activeStore) void activeStore.stop();
     };
