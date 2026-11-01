@@ -39,6 +39,7 @@ vi.mock("@/lib/offline/contacts-hybrid-operations", () => ({
   createHybridContactsOperations: vi.fn(),
   getContactsSyncRunner: () => ({ flush: mockFlush }),
   loadContactsBootstrapForBoot: vi.fn(),
+  readContactsCacheForBoot: vi.fn().mockResolvedValue(null),
   refreshCachedContacts: vi.fn().mockResolvedValue(undefined),
 }));
 

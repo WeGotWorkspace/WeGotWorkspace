@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const authDir = path.join(packageRoot, ".auth");
@@ -12,16 +11,8 @@ const password = process.env.WGW_E2E_PASSWORD ?? "storybook-dev";
 const apiBase = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
 const appOrigin = process.env.WGW_APPS_E2E_BASE_URL ?? "http://127.0.0.1:5173";
 
+// The API request budget is reset before each test by `helpers/live-test.ts` (#1677).
 export default async function globalSetup() {
-  try {
-    execSync("php artisan cache:clear", {
-      cwd: path.join(packageRoot, "..", "api"),
-      stdio: "ignore",
-    });
-  } catch {
-    // Best-effort when API package is unavailable; auth may still succeed.
-  }
-
   const response = await fetch(`${apiBase}/api/v1/auth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

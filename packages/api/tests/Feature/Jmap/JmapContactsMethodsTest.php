@@ -315,7 +315,7 @@ final class JmapContactsMethodsTest extends WgwDatabaseTestCase
     public function test_contact_card_query_rejects_unsupported_filters_and_sorts(): void
     {
         $unsupportedFilter = $this->jmap([
-            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['kind' => 'group']], 'c0'],
+            ['ContactCard/query', ['accountId' => 'bob', 'filter' => ['hasMember' => 'urn:uuid:x']], 'c0'],
         ])->assertOk();
         $unsupportedFilter->assertJsonPath('methodResponses.0.1.type', 'unsupportedFilter');
 

@@ -8,7 +8,7 @@
 // A title typed into an open note travels with the collab body save
 // (`PUT /notes/items/{id}`), not the metadata outbox. So these cases edit what
 // the outbox carries: tags, and the notebook a note lives in.
-import { expect, test, type Request, type Route } from "@playwright/test";
+import { expect, test, type Request, type Route } from "./helpers/live-test";
 import {
   api,
   converge,

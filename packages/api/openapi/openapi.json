@@ -387,7 +387,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -509,7 +510,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Sharees: false dismisses the inbound share for this user only; true restores it. A dismissed share answers like a missing book until it is restored."
           },
           "shareWith": {
             "oneOf": [
@@ -855,7 +857,8 @@
             ]
           },
           "isSubscribed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -2152,6 +2155,10 @@
               "string",
               "null"
             ]
+          },
+          "isSubscribed": {
+            "type": "boolean",
+            "description": "false dismisses an inbound share, like DELETE does; true restores a dismissed one. A dismissed share answers like a missing collection until it is restored. No effect on collections the user owns."
           },
           "groupSlug": {
             "type": [
@@ -3534,6 +3541,16 @@
         "responses": {
           "200": {
             "description": "Listing"
+          },
+          "404": {
+            "description": "Unknown directory, or a path the caller may not list. A `..` segment is not found too. The answer is the same for all of these.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
@@ -3623,7 +3640,7 @@
             "description": "Not modified — this representation still matches `If-None-Match`. A markdown tag does not match a yjs tag."
           },
           "403": {
-            "description": "No read access to the path",
+            "description": "A share-link guest: live collaboration is for signed-in users",
             "content": {
               "application/json": {
                 "schema": {
@@ -3633,7 +3650,7 @@
             }
           },
           "404": {
-            "description": "Unknown path",
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3705,7 +3722,7 @@
             }
           },
           "403": {
-            "description": "No write access to the path",
+            "description": "The caller can read the document but may not edit it, or is a share-link guest",
             "content": {
               "application/json": {
                 "schema": {
@@ -3715,7 +3732,7 @@
             }
           },
           "404": {
-            "description": "Unknown path",
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3813,6 +3830,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           }
         }
       }
@@ -3855,6 +3875,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           }
         }
       },
@@ -3906,6 +3929,9 @@
           },
           "403": {
             "$ref": "#/components/responses/JmapForbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/JmapNotFound"
           },
           "409": {
             "$ref": "#/components/responses/JmapConflict"
@@ -4139,6 +4165,16 @@
         "responses": {
           "200": {
             "description": "Stream"
+          },
+          "404": {
+            "description": "Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "guest"
@@ -4169,6 +4205,7 @@
           "Files"
         ],
         "summary": "Resolve file collab room",
+        "description": "Returns the collab room id for a document the caller may read. A path the caller may not read answers 404, the same as a path that does not exist. Link guests cannot use this route.",
         "security": [
           {
             "bearerAuth": []
@@ -4187,9 +4224,29 @@
         "responses": {
           "200": {
             "description": "Room"
+          },
+          "400": {
+            "description": "Missing path",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "x-wgw-access": "guest"
+        "x-wgw-access": "user"
       }
     },
     "/files/share-sessions": {
@@ -4231,6 +4288,26 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`share_unavailable`: no public link has this token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "`share_unavailable`: the link was revoked by its owner, or it is past `expiresAt`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4586,6 +4663,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4628,6 +4725,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DriveShareDataResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4676,6 +4793,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4720,6 +4857,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DriveShareInviteDataResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share, or one the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4779,6 +4936,26 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The caller holds a grant on this share but does not own it. Only the owner manages a share.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown share or invite, or a share the caller neither owns nor holds a grant on.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4808,6 +4985,16 @@
         "responses": {
           "200": {
             "description": "Starred"
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"
@@ -4835,6 +5022,16 @@
         "responses": {
           "200": {
             "description": "Unstarred"
+          },
+          "404": {
+            "description": "Unknown path, or a path the caller may not read. The answer is the same for both.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "x-wgw-access": "user"

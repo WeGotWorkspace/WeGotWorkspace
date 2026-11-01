@@ -123,7 +123,7 @@ export function useDocsCollabReconnect({
     // A local draft room (no server id yet) has no mesh or server state to rejoin.
     if (urls.roomNotPersistent) return;
     refs.reconnectInFlightRef.current = true;
-    // A 404 stays terminal. A 403 lifts here so a restored ACL can save.
+    // A 404 stays terminal. A 403 lifts here, so an editor downgraded to view can save again once the ACL is restored. A member who lost read access gets a 404 and stays stopped until a reload.
     if (refs.saveTerminalKindRef.current === "forbidden") {
       refs.saveTerminalKindRef.current = null;
       refs.saveRetryMsRef.current = 0;

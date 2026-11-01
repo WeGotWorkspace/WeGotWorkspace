@@ -4,8 +4,9 @@ export const DOC_STATUS_LOADING_DOCUMENT = "Loading document…";
 export const DOC_STATUS_LOADED_SHARED_DOCUMENT = "Loaded shared document";
 export const DOC_STATUS_RESTORED_WORKING_VERSION = "Restored working version";
 export const DOC_STATUS_NOTE_TOO_LARGE = "This note is too large to save.";
+/** A 404: the document was deleted, or the caller lost read access (both answer the same). */
 export const DOC_STATUS_DOCUMENT_GONE =
-  "This document no longer exists. Your local copy is still here.";
+  "This document is no longer available. Your local copy is still here.";
 export const DOC_STATUS_ACCESS_LOST = "You no longer have access to save this document.";
 export const DOC_STATUS_NOTE_ARCHIVED =
   "This note was archived elsewhere. Your change was not saved.";

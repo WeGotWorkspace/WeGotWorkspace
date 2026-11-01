@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Exceptions\ApiHttpException;
 use App\Http\Middleware\AuthenticateWgwApi;
 use App\Http\Middleware\BindMcpPublicOrigin;
+use App\Http\Middleware\CompletePendingSchemaMigrations;
 use App\Http\Middleware\EnsureCalendarsEnabled;
 use App\Http\Middleware\EnsureContactsEnabled;
 use App\Http\Middleware\EnsureMcpEnabled;
@@ -89,6 +90,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->trustHosts(at: fn (): array => PublicAppUrl::trustedHostPatterns(), subdomains: false);
         $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
+        // An older release's updater can swap the files and then fail to run
+        // the new migrations in its own process (#1076). Finish them before
+        // any route reads the schema.
+        $middleware->prepend(CompletePendingSchemaMigrations::class);
         $middleware->append(BindMcpPublicOrigin::class);
         $middleware->append(McpCors::class);
         $middleware->append(EnsureMcpEnabled::class);

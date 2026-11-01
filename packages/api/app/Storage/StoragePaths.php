@@ -32,6 +32,27 @@ final class StoragePaths
         return $parts === [] ? '/' : '/'.implode('/', $parts);
     }
 
+    /**
+     * True when the raw path has a `..` segment. Drive REST answers such a path as not found
+     * instead of letting {@see normalizeVirtualPath()} fold it to `/`.
+     */
+    public function hasParentSegment(string $path): bool
+    {
+        return in_array('..', preg_split('#[/\\\\]#', $path) ?: [], true);
+    }
+
+    /**
+     * `/`, `/users`, `/groups`, a top-level drive (`/users/{name}`, `/groups/{slug}`), or its
+     * trash (`.Trash`, legacy `Trash`). These exist for their owner before the first file lands on disk.
+     */
+    public function isProvisionedDirectory(string $path): bool
+    {
+        return preg_match(
+            '#^/(?:(?:users|groups)(?:/[^/]+(?:/\.?Trash)?)?)?$#',
+            $this->normalizeVirtualPath($path),
+        ) === 1;
+    }
+
     public function virtualToStorageKey(string $virtualPath): string
     {
         return ltrim($this->normalizeVirtualPath($virtualPath), '/');

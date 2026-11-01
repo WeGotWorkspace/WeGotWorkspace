@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\RateLimiting\WgwApiRateLimiters;
 use App\Services\Calendars\DefaultCalendarColorMigrator;
 use App\Services\Calendars\UserCalendarCollectionsProvisioner;
 use App\Services\Contacts\AddressBookProvisioner;
@@ -11,6 +12,7 @@ use App\Services\Installer\DevContactSeeder;
 use App\Services\Installer\DevInstallBootstrap;
 use App\Services\Installer\DevNoteCatalog;
 use App\Services\Installer\DevNoteSeeder;
+use App\Services\Installer\DevSeedGuard;
 use App\Services\Installer\DevSeedRunner;
 use App\Services\Installer\InstallerJwtKeyGenerator;
 use App\Services\Installer\InstallerVapidKeyGenerator;
@@ -225,12 +227,13 @@ Artisan::command('wgw:contacts:provision-address-books', function (AddressBookPr
     return Command::SUCCESS;
 })->purpose('Provision one address book per user and group principal (idempotent)');
 
-Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrator): int {
-    $result = $migrator->migrate();
+Artisan::command('wgw:notes:migrate-files {--discard-yjs : Delete .md.yjs collaborative-edit sidecars (kept by default)}', function (NotesFileMigrator $migrator): int {
+    $result = $migrator->migrate(discardYjs: (bool) $this->option('discard-yjs'));
     $this->info(sprintf(
-        'Mapped %d path(s); imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
+        'Mapped %d path(s); imported %d; already imported %d; starred %d; skipped %d; discarded %d yjs; images %d.',
         $result['mapped'],
         $result['imported'],
+        $result['alreadyImported'],
         $result['starred'],
         $result['skipped'],
         $result['discardedYjs'],
@@ -241,7 +244,7 @@ Artisan::command('wgw:notes:migrate-files', function (NotesFileMigrator $migrato
     }
 
     return Command::SUCCESS;
-})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks');
+})->purpose('One-way import of Drive .notes markdown into VJOURNAL notebooks (idempotent; the update runs it too)');
 
 Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJournalStripper $stripper): int {
     $result = $stripper->stripAll();
@@ -251,6 +254,13 @@ Artisan::command('wgw:notes:strip-event-journals', function (EventCalendarJourna
         $result['stripped'],
         $result['movedObjects'],
         $result['skipped'],
+    ));
+    $repair = $stripper->repairStranded();
+    $this->info(sprintf(
+        'Moved %d stranded journal object(s) from %d calendar(s) without VJOURNAL; left %d in place (uid already in the notebook).',
+        $repair['movedObjects'],
+        $repair['repaired'],
+        $repair['collisions'],
     ));
 
     return Command::SUCCESS;
@@ -369,6 +379,27 @@ Artisan::command('wgw:contacts:seed-dev {--force} {--username=} {--profile=} {--
 
     return Command::SUCCESS;
 })->purpose('Seed local-dev vCard contacts for the admin user (idempotent; --force recreates; --profile=large or --count=)');
+
+Artisan::command('wgw:e2e-reset-api-budget {usernames*}', function (DevSeedGuard $guard): int {
+    try {
+        $guard->assertAllowed('an API budget reset');
+    } catch (RuntimeException $e) {
+        $this->error($e->getMessage());
+
+        return Command::FAILURE;
+    }
+
+    $used = [];
+    foreach ((array) $this->argument('usernames') as $raw) {
+        $username = strtolower(trim((string) $raw));
+        if ($username !== '') {
+            $used[$username] = WgwApiRateLimiters::resetAccountBudget($username);
+        }
+    }
+    $this->line((string) json_encode(['limit' => WgwApiRateLimiters::API_REQUESTS_PER_MINUTE, 'used' => $used]));
+
+    return Command::SUCCESS;
+})->purpose('Local e2e only: print and clear the wgw-api request budget of the named accounts (refused outside a local checkout)');
 
 Artisan::command('wgw:seed-dev {apps?*} {--force} {--username=} {--profile=}', function (DevSeedRunner $runner): int {
     $rawName = $this->option('username');

@@ -33,7 +33,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $bobToken = $this->userBearerToken();
 
         $response = $this->getDocContent($bobToken, '/users/carol/docs/secret.md');
-        $response->assertStatus(400);
+        $response->assertNotFound();
 
         $carolToken = $this->carolBearerToken();
         $this->getDocContent($carolToken, '/users/carol/docs/secret.md')
@@ -88,7 +88,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $this->seedDocFile('carol', 'admin-proof.md', 'stay private');
         $adminToken = $this->adminBearerToken();
 
-        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertStatus(400);
+        $this->getDocContent($adminToken, '/users/carol/docs/admin-proof.md')->assertNotFound();
 
         $carolNodes = $this->fileNodeGetAll('carol', $this->carolBearerToken());
         $carolDocsId = $this->fileNodeIdByName($carolNodes, 'docs');
@@ -116,8 +116,8 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($adminToken)
             ->get('/api/v1/files/collaboration?path=/groups/other/plan.md')
-            ->assertForbidden()
-            ->assertJsonPath('error', 'forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error', 'not_found');
     }
 
     public function test_non_member_cannot_access_team_collaboration(): void
@@ -127,7 +127,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
 
         $this->withBearer($carolToken)
             ->get('/api/v1/files/collaboration?path=/groups/team/team-only.md')
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_missing_path_on_content_returns_bad_request(): void
@@ -162,7 +162,7 @@ final class DocsAccessControlTest extends WgwDatabaseTestCase
         $token = $this->userBearerToken();
 
         $this->getDocContent($token, '/users/bob/docs/missing.md')
-            ->assertStatus(400)
+            ->assertNotFound()
             ->assertJsonPath('error', 'File not found.');
     }
 
