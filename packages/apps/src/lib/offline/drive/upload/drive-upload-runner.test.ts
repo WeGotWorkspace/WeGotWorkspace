@@ -53,6 +53,7 @@ vi.mock("@/lib/api/wgw/drive-jmap", async (importOriginal) => ({
   driveJmapSession: async () => ({
     accountId: "ada",
     maxSizeUpload: server.maxSizeUpload,
+    uploadCapabilities: { blob: null, assembly: null, versionCheck: false },
     uploadUrl: "/api/v1/jmap/upload/{accountId}/",
     fileNodes: {
       queryAndGetFileNodes: async (
