@@ -41,8 +41,8 @@ const topic = crossTabTopic(
 export const announceTaskWriteRefused = (event: TaskWriteRefused): void => topic.publish(event);
 export const subscribeTaskWriteRefused = topic.subscribe;
 
-/** Prefix of `createTempTaskId`. */
-const TEMP_TASK_ID_PREFIX = "local-";
+/** Shape of `createTempTaskId`; a server id like `local-1a2b3c4d` (a task titled "Local") differs. */
+const TEMP_TASK_ID = /^local-[0-9a-f]{32}$/;
 const TASK_OPS = new Set(["update", "move", "delete"]);
 
 function isRefusedStatus(error: unknown): boolean {
@@ -56,7 +56,7 @@ function isRefusedStatus(error: unknown): boolean {
  */
 export function isRefusedTaskWrite(row: OfflineOutboxRow, error: unknown): boolean {
   if (!TASK_OPS.has(row.op) || !isRefusedStatus(error)) return false;
-  return !tasksOutboxTaskId(row)?.startsWith(TEMP_TASK_ID_PREFIX);
+  return !TEMP_TASK_ID.test(tasksOutboxTaskId(row) ?? "");
 }
 
 /**
@@ -84,7 +84,8 @@ export async function settleRefusedTaskWrite(
   const local = cached?.data.tasks.find((task) => task.id === taskId);
   const title = (serverTask?.title || local?.title)?.trim() ?? "";
   for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
-    if (queued.op !== "create" && tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
+    if (queued.op !== "create" && tasksOutboxTaskId(queued) === taskId)
+      await removeOutboxMutation(username, queued.id);
   }
   if (serverTask) await upsertTaskInCache(username, serverTask, false);
   else await removeTaskFromCache(username, taskId);

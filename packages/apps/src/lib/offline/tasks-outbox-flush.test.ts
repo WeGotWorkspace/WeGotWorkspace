@@ -154,7 +154,7 @@ describe("flushTasksOutbox", () => {
 
   it("leaves an offline-created task and its edit queued when the edit gets a 404", async () => {
     const refusals = watchRefusals();
-    const tempId = "local-x";
+    const tempId = `local-${"ab12".repeat(8)}`;
     await upsertTaskInCache(username, { ...task, id: tempId, title: "New" }, true);
     await enqueueOutboxMutation(username, {
       id: "queued-create",
@@ -182,6 +182,27 @@ describe("flushTasksOutbox", () => {
     const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
     expect(await tasksItemsTable(db).get(tempId)).toBeDefined();
     expect(refusals).toEqual([]);
+  });
+
+  it("drops a write to a server task whose id starts with local- (#1825)", async () => {
+    const refusals = watchRefusals();
+    const serverId = "local-1a2b3c4d";
+    await upsertTaskInCache(username, { ...task, id: serverId, title: "Local" }, false);
+    await enqueueOutboxMutation(username, {
+      id: "queued-edit",
+      domain: TASKS_DOMAIN,
+      op: "update",
+      payload: JSON.stringify({ taskId: serverId, patch: { title: "Local 2" } }),
+    });
+    patchTask.mockRejectedValue(new TasksRequestError("PATCH /tasks/items failed (404)", 404));
+    getTask.mockRejectedValue(new TasksRequestError("GET /tasks/items failed (404)", 404));
+
+    await flushTasksOutbox(username);
+
+    expect(await listOutboxMutations(username)).toEqual([]);
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    expect(await tasksItemsTable(db).get(serverId)).toBeUndefined();
+    expect(refusals).toEqual([{ username, taskId: serverId, title: "Local", reason: "gone" }]);
   });
 
   it("sends a patch merged in while the first one was on its way (#1711)", async () => {
