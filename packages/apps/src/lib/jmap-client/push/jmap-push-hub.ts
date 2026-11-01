@@ -17,7 +17,15 @@ const VISIBLE_LOCK = `${PUSH_LOCK_PREFIX}visible/`;
 /** Messages on the hub's `crossTabTopic`. Every tab keeps the same copy of the map. */
 export type PushMessage =
   | { v: 1; kind: "state"; changed: StateChange["changed"]; hashes: PushHashes }
-  | { v: 1; kind: "tab"; tabId: string; types: string[]; confirmed: PushHashes }
+  | {
+      v: 1;
+      kind: "tab";
+      tabId: string;
+      types: string[];
+      confirmed: PushHashes;
+      /** Optional so a tab on an older build still parses. */
+      visible?: boolean;
+    }
   | { v: 1; kind: "bye"; tabId: string }
   | { v: 1; kind: "roll-call" }
   | { v: 1; kind: "status"; connected: boolean }
@@ -183,7 +191,8 @@ export class JmapPushHub {
    * hidden leader would reconnect late. While another subscribed tab is
    * visible, a hidden leader gives the lock back and queues again; the lock
    * moves on until a visible tab holds it, which never hands it over. Pass
-   * `otherVisible` when another tab just said it became visible.
+   * `otherVisible` when another tab just said it is visible: the browser grants
+   * that tab's visible lock later, so a query could still miss it.
    */
   async #handOverIfHidden(otherVisible = false): Promise<void> {
     const { locks, tabId, visibility } = this.#options;
@@ -258,7 +267,8 @@ export class JmapPushHub {
             { v: 1, kind: "status", connected: this.#leaderStatus },
             { otherTabsOnly: true },
           );
-          void this.#handOverIfHidden();
+          // Trust the message: the browser grants the new tab's visible lock later.
+          void this.#handOverIfHidden(message.visible === true);
         }
         break;
       case "bye":
@@ -311,6 +321,7 @@ export class JmapPushHub {
       tabId: this.#options.tabId,
       types: [...types].sort(),
       confirmed,
+      visible: this.#options.visibility.visible(),
     };
     const key = JSON.stringify(message);
     if (key === this.#published) return;
