@@ -1,7 +1,7 @@
 // Docs collab: a member loses read access to a shared Doc while editing.
 // The member sees one "no longer available" state (no "Access lost" toast),
 // keeps the local copy, and sees the same state again after a reload.
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page } from "./helpers/live-test";
 import { docsUrlForFile, myDriveDocSearchPath, seedDocAtPath } from "./helpers/docs-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";

@@ -6,7 +6,7 @@
 // whose listing failed as empty, and not start over after a reload.
 //
 // Every test runs in a fresh browser context: nothing cached, like a new device.
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { expect, test, type Page, type Request } from "./helpers/live-test";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";

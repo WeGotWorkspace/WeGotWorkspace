@@ -5,7 +5,7 @@
 // (same IndexedDB and outbox) retries the create. The client-chosen note UID
 // makes that retry return the note the first POST made, so the server holds
 // exactly one new note and the list shows it once.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   api,
   converge,

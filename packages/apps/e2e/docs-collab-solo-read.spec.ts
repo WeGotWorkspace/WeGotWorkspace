@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers/live-test";
 import {
   docsUrlForFile,
   expectEditorContains,
