@@ -62,7 +62,8 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 - A queued Notes field keeps the local value; other fields are adopted; a conflict needs a moved server version. Proof: `path: packages/apps/src/lib/offline/notes-jmap-inbound.test.ts` assertion `merges an inbound tag change when the queued write is an archive` and `does not report a conflict for a queued change the server has not seen yet`.
 - A queued Tasks delete is not brought back, and a queued edit is not a conflict while the server has its base version. Proof: `path: packages/apps/src/lib/offline/tasks-inbound-sync.test.ts` assertion `a queued delete is not brought back by the re-list` and `a queued edit is not a conflict when the server copy did not change`.
 - A failed Tasks pull or lock timeout leaves cache and state alone. Proof: `path: packages/apps/src/lib/offline/tasks-inbound-sync.test.ts` assertion `a failed pull leaves the cache and the state as they are` and `a lock timeout writes neither the snapshot nor the state`.
-- Notes behaves the same end to end across tabs and network states. Proof: `cmd: pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs`.
+- Notes behaves the same end to end across tabs and network states. Proof: `cmd: pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs notes-sync-matrix`.
+- Tasks behaves the same end to end across tabs and network states: changes token, full-list fallback, conflict check, list deletes and queued writes after a reconnect. Proof: `cmd: pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs tasks-sync-matrix`.
 - After each chunk, main works without the next chunk: each migrated domain keeps its public sync function name and signature. Proof: `cmd: pnpm --dir packages/apps exec vitest run src/lib/offline src/notes-core src/tasks-core`.
 
 ## Chunks
@@ -91,7 +92,7 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 - **Skill:** workspace
 - **Inputs:** engine from chunk B
 - **Done when:** `syncNotesInboundFromRest` runs its note scopes as a binding over `runScopedInbound`; `syncNotebooks` stays as it is (writes its token first, prunes no notebooks). `ingestRemoteNote` / `ingestRemoteNoteDestroyed` use the engine's pending-write reader and conflict decision, so the JMAP adapter path shares it without touching adapter files. All existing Notes tests pass unchanged, and so do the Notes sync matrix and the live Notes e2e specs.
-- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline src/notes-core` and `pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs`
+- **Verify with:** `pnpm --dir packages/apps exec vitest run src/lib/offline src/notes-core` and `pnpm --dir packages/apps exec playwright test -c playwright.matrix.config.mjs notes-sync-matrix`
 - **Parallel with:** none
 
 ### Chunk D: Tasks on the engine
@@ -143,7 +144,7 @@ None. The unknown-base policy is a binding option (Notes moved, Tasks not moved,
 
 - [ ] Engine unit tests: queued item survives a full list; move between scopes in one run; token held for every outbox row except `stateMismatch`; unknown-base and missing-remote-version policy both ways; a failed changes request writes no token
 - [ ] Notes: existing unit tests unchanged, sync matrix green, live Notes specs green
-- [ ] Tasks: existing unit tests unchanged, live `tasks-inbound-sync` green
+- [ ] Tasks: existing unit tests unchanged, live `tasks-inbound-sync` green, Tasks sync matrix green
 - [ ] JMAP get: a client test per domain with more ids than `maxObjectsInGet`
 - [ ] `pnpm test:apps-done-gate` before each push
 

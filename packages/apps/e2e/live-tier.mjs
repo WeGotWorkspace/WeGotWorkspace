@@ -14,6 +14,13 @@ export const liveTierSpecPattern =
  */
 export const notesSyncMatrixSpecPattern = /notes-sync-matrix\.spec\.ts/;
 
+/**
+ * Tasks sync matrix (#1565): every action × tab setup × connectivity case,
+ * plus the inbound cases (changes token, full-list fallback, conflict check,
+ * list deletes). Its own nightly job, like the Notes matrix.
+ */
+export const tasksSyncMatrixSpecPattern = /tasks-sync-matrix\.spec\.ts/;
+
 /** Real-time chaos suite (#1091). Parallel, and not part of the Storybook tier. */
 export const chaosTierSpecPattern = /rtc-chaos\.spec\.ts/;
 
