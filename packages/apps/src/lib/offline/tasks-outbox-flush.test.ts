@@ -197,6 +197,40 @@ describe("flushTasksOutbox", () => {
     expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({ title: "Renamed", etag: "e1" });
   });
 
+  it("keeps server-only fields on the local copy while a later write is owed", async () => {
+    const tempId = "local-fields";
+    await upsertTaskInCache(username, { ...task, id: tempId, title: "Renamed" }, true);
+    await enqueueOutboxMutation(username, {
+      id: "queued-create",
+      domain: TASKS_DOMAIN,
+      op: "create",
+      payload: JSON.stringify({
+        creationId: tempId,
+        tempTaskId: tempId,
+        body: { title: "First", taskListIds: { [task.taskListId]: true } },
+      }),
+    });
+    await enqueueCoalescedTaskUpdate(username, tempId, { title: "Renamed" }, undefined);
+    createTask.mockResolvedValue({
+      ...task,
+      id: "srv-1",
+      etag: "e1",
+      showWithoutTime: true,
+      timeZone: "Europe/Berlin",
+    });
+    patchTask.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await flushTasksOutbox(username);
+
+    const db = offlineDbForAccount(offlineAccountKeyFromUsername(username));
+    const cached = await tasksItemsTable(db).get("srv-1");
+    expect(JSON.parse(cached?.data ?? "{}")).toMatchObject({
+      title: "Renamed",
+      showWithoutTime: true,
+      timeZone: "Europe/Berlin",
+    });
+  });
+
   it("holds a task's later writes when an earlier one fails", async () => {
     const tempId = "local-held";
     await upsertTaskInCache(username, { ...task, id: tempId, title: "Renamed" }, true);

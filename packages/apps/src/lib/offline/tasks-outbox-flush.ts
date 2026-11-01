@@ -83,7 +83,7 @@ async function followLandedTaskWrite(
   if (local) {
     await upsertTaskInCache(
       username,
-      { ...local, id: task.id, uid: task.uid, etag: taskEtag(task) } as Task,
+      { ...task, ...local, id: task.id, uid: task.uid, etag: taskEtag(task) } as Task,
       true,
     );
   } else {
