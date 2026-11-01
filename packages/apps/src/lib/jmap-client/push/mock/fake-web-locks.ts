@@ -68,9 +68,10 @@ export class FakeWebLocks {
             if (this.#held.get(name) === clientId) this.#release(name);
           });
       };
+      const waiter: Waiter = { clientId, run: grant, signal: options.signal };
       if (!this.#held.has(name)) {
         if ([...this.#deferredPrefixes].some((prefix) => name.startsWith(prefix))) {
-          this.#deferred.push(() => (this.#held.has(name) ? undefined : grant()));
+          this.#deferred.push(() => (this.#held.has(name) ? this.#enqueue(name, waiter) : grant()));
         } else {
           grant();
         }
@@ -86,10 +87,7 @@ export class FakeWebLocks {
         reject(new DOMException("aborted", "AbortError"));
         return;
       }
-      const waiter: Waiter = { clientId, run: grant, signal: options.signal };
-      const queue = this.#queues.get(name) ?? [];
-      queue.push(waiter);
-      this.#queues.set(name, queue);
+      this.#enqueue(name, waiter);
       options.signal?.addEventListener("abort", () => {
         const current = this.#queues.get(name) ?? [];
         const index = current.indexOf(waiter);
@@ -98,6 +96,12 @@ export class FakeWebLocks {
         reject(new DOMException("aborted", "AbortError"));
       });
     });
+  }
+
+  #enqueue(name: string, waiter: Waiter): void {
+    const queue = this.#queues.get(name) ?? [];
+    queue.push(waiter);
+    this.#queues.set(name, queue);
   }
 
   #release(name: string): void {

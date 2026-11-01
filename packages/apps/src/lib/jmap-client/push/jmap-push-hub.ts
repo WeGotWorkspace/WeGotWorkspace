@@ -192,7 +192,9 @@ export class JmapPushHub {
    * visible, a hidden leader gives the lock back and queues again; the lock
    * moves on until a visible tab holds it, which never hands it over. Pass
    * `otherVisible` when another tab just said it is visible: the browser grants
-   * that tab's visible lock later, so a query could still miss it.
+   * that tab's visible lock later, so a query could still miss it. A tab that
+   * was waiting in the queue drops such a claim, but its roll-call in `#lead`
+   * makes every tab say again whether it is visible.
    */
   async #handOverIfHidden(otherVisible = false): Promise<void> {
     const { locks, tabId, visibility } = this.#options;
