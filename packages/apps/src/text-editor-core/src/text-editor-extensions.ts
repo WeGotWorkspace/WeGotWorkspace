@@ -25,6 +25,9 @@ import type * as Y from "yjs";
 import type { TextEditorContentFormat } from "@/text-editor-core/src/text-editor-content";
 import { PlainTextPaste } from "@/text-editor-core/src/text-editor-plain-paste";
 import type { DocsImageContentFetcher } from "@/text-editor-core/src/text-editor-image-content";
+import { PageBreak } from "@/text-editor-core/src/text-editor-page-break";
+import { createTextEditorPagination } from "@/text-editor-core/src/text-editor-pagination";
+import type { TextEditorPageSetup } from "@/lib/page-format";
 
 export { CommentMark };
 export {
@@ -87,6 +90,11 @@ export type CreateTextEditorExtensionsOptions = {
   format?: TextEditorContentFormat;
   /** Override authenticated image fetch (Storybook / tests). */
   fetchImageContent?: DocsImageContentFetcher;
+  /**
+   * Docs only: on-screen pages (#1810). The setup and on/off state at mount; later
+   * changes go through `applyTextEditorPageSetup`. Notes and Mail leave it out.
+   */
+  pagination?: { setup: TextEditorPageSetup; enabled: boolean };
 };
 
 export function createTextEditorExtensions(
@@ -121,6 +129,15 @@ export function createTextEditorExtensions(
       options.fetchImageContent
         ? DocsImage.configure({ fetchContent: options.fetchImageContent })
         : DocsImage,
+      // Shared schema so every editor that saves a Doc keeps its breaks; only the
+      // Docs slash menu inserts one.
+      PageBreak,
+    );
+  }
+
+  if (options.pagination) {
+    extensions.push(
+      createTextEditorPagination(options.pagination.setup, options.pagination.enabled),
     );
   }
 

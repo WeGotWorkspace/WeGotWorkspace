@@ -18,6 +18,10 @@ export type TextEditorSheetProps = {
   slashMenu?: boolean;
   /** Opens the Docs image picker from the slash menu. */
   onInsertImage?: () => void;
+  /** Docs only: slash menu offers Page break. */
+  pageBreak?: boolean;
+  /** Docs pages on screen: the surface drops its sheet chrome, each page draws its own. */
+  paginated?: boolean;
   /** Absolutely positioned overlays (e.g. margin comment cards). */
   overlay?: ReactNode;
   className?: string;
@@ -32,6 +36,8 @@ export function TextEditorSheet({
   fill = false,
   slashMenu = true,
   onInsertImage,
+  pageBreak = false,
+  paginated = false,
   overlay,
   className,
 }: TextEditorSheetProps) {
@@ -49,6 +55,7 @@ export function TextEditorSheet({
         "text-editor-sheet",
         variant === "inline" && "text-editor-sheet--inline",
         fill && variant === "sheet" && "text-editor-sheet--fill",
+        paginated && variant === "sheet" && "text-editor-sheet--paginated",
         className,
       )}
       onMouseDown={onChromeMouseDown}
@@ -58,7 +65,9 @@ export function TextEditorSheet({
         className={variant === "sheet" ? "text-editor-sheet__surface paper-sheet" : undefined}
       />
       {overlay}
-      {slashMenu ? <TextEditorSlashMenu editor={editor} onInsertImage={onInsertImage} /> : null}
+      {slashMenu ? (
+        <TextEditorSlashMenu editor={editor} onInsertImage={onInsertImage} pageBreak={pageBreak} />
+      ) : null}
       {/* Table chrome is letter-sheet only — skip for inline chat/message editors. */}
       {variant === "sheet" ? <TextEditorTableControls editor={editor} /> : null}
     </div>

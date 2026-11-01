@@ -47,6 +47,10 @@
     24px 0 48px -32px color-mix(in oklab, var(--workspace-foreground) 6%, transparent);
   /* `.paper-sheet` chrome — Docs remaps `--text-editor-shadow-sheet` → `--sheet-shadow`. */
   --paper-sheet-shadow: var(--text-editor-shadow-sheet);
+  /* Docs pages (#1810): page edge, the desk between pages, the page-break line. */
+  --text-editor-page-border: color-mix(in oklab, var(--workspace-foreground) 14%, transparent);
+  --text-editor-page-gap: var(--docs-canvas, var(--background));
+  --text-editor-page-break-line: color-mix(in oklab, var(--workspace-foreground) 35%, transparent);
 }
 
 /* Collaboration carets (TipTap CollaborationCaret extension) */
@@ -396,6 +400,141 @@
   border: none;
   border-top: 1px solid var(--border);
   margin: 1.5rem 0;
+}
+
+/* Page break (#1616): a dashed line labelled "Page break"; prints as a page break. */
+.text-editor-prose [data-type="page-break"] {
+  position: relative;
+  height: 1.5rem;
+  margin-block: 0.75rem;
+  cursor: default;
+}
+
+.text-editor-prose [data-type="page-break"]::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: calc(var(--page-break-label-shift, 0px) + 0.75rem);
+  border-top: 1px dashed var(--text-editor-page-break-line);
+}
+
+.text-editor-prose [data-type="page-break"]::after {
+  content: "Page break";
+  position: absolute;
+  top: calc(var(--page-break-label-shift, 0px) + 0.75rem);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding-inline: 0.5rem;
+  background-color: var(--paper-sheet-bg);
+  color: var(--muted-foreground);
+  @apply text-xs leading-none;
+}
+
+.text-editor-prose [data-type="page-break"].ProseMirror-selectednode::before {
+  border-top-color: var(--primary);
+}
+
+.text-editor-prose [data-type="page-break"].ProseMirror-selectednode::after {
+  color: var(--primary);
+}
+
+/*
+ * Docs pages (#1810). `tiptap-pagination-plus` draws page ends as full-width floats
+ * inside the editor root; text lines flow past them. The root is the page column; the
+ * gaps between pages take the desk colour. The class is only on while pages show.
+ */
+/* Screen only: print lays out its own pages from `@page`. */
+@media screen {
+  .text-editor-prose.rm-with-pagination {
+    box-sizing: border-box;
+    width: var(--rm-page-width);
+    padding-block: 0;
+    padding-inline: var(--rm-margin-left) var(--rm-margin-right);
+    border: 1px solid var(--text-editor-page-border);
+    background-color: var(--paper-sheet-bg);
+  }
+
+  /* Fill and pull come from `text-editor-page-break-fill.ts`: the break reaches its page end. */
+  .text-editor-prose.rm-with-pagination > [data-type="page-break"] {
+    height: var(--page-break-fill, 1.5rem);
+    margin-block: calc(-1 * var(--page-break-pull, 0px)) 0;
+  }
+
+  /*
+   * A box that keeps its own layout (table, code block, image) cannot flow past a page end:
+   * the browser moves it below. One taller than the space left keeps getting pushed, and
+   * pages run away. So with pages on, each table row is its own box (rows break between
+   * pages, like a word processor), code blocks wrap and flow, and every box is capped at
+   * one page of content.
+   */
+  .text-editor-prose.rm-with-pagination table {
+    display: block;
+    width: 100%;
+  }
+
+  .text-editor-prose.rm-with-pagination table > colgroup {
+    display: none;
+  }
+
+  .text-editor-prose.rm-with-pagination table > tbody {
+    display: block;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr {
+    display: table !important;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr + tr {
+    margin-top: -1px;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr :is(td, th) {
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* A row taller than a page (`text-editor-page-rows.ts`): cells stack and flow. */
+  .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked {
+    display: block !important;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked > :is(td, th) {
+    display: block;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr.text-editor-row--stacked > * + * {
+    margin-top: -1px;
+  }
+
+  .text-editor-prose.rm-with-pagination pre {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .text-editor-prose.rm-with-pagination img {
+    max-height: var(--rm-max-content-child-height);
+    object-fit: contain;
+  }
+
+  /* Page ends cover whatever runs past them (a code block's background, a quote's bar). */
+  .text-editor-prose.rm-with-pagination :is(.rm-page-footer, .rm-page-header) {
+    background-color: var(--paper-sheet-bg);
+  }
+
+  /* Page ends hold no content yet (no headers or footers): a click there reaches the text. */
+  .text-editor-prose.rm-with-pagination :is([data-rm-pagination], .rm-first-page-header) {
+    pointer-events: none;
+  }
+
+  .text-editor-sheet--paginated {
+    overflow-x: auto;
+  }
 }
 
 .text-editor-prose ul[data-type="taskList"] {
@@ -1064,6 +1203,44 @@
   .text-editor-sheet__surface {
     box-shadow: none;
     border-radius: 0;
+  }
+
+  /* Pages are screen-only: print paginates by `@page` (paper size set by the Docs editor). */
+  .text-editor-prose.rm-with-pagination :is([data-rm-pagination], .rm-first-page-header) {
+    display: none !important;
+  }
+
+  .text-editor-prose.rm-with-pagination {
+    width: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  /* The library's table rules are not media-scoped; print our tables as tables. */
+  .text-editor-prose.rm-with-pagination table {
+    display: table;
+  }
+
+  .text-editor-prose.rm-with-pagination table > tbody {
+    display: table-row-group;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .text-editor-prose.rm-with-pagination table tr :is(td, th) {
+    word-break: normal;
+  }
+
+  .text-editor-prose [data-type="page-break"] {
+    height: 0 !important;
+    margin: 0 !important;
+    break-after: page;
+  }
+
+  .text-editor-prose [data-type="page-break"]::before,
+  .text-editor-prose [data-type="page-break"]::after {
+    display: none;
   }
 
   .no-print {

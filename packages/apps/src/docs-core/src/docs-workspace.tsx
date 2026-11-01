@@ -17,6 +17,7 @@ import { useDriveShareDialog } from "@/drive-core/src/use-drive-share-dialog";
 import { useDriveShareMyRights } from "@/drive-core/src/use-drive-share-my-rights";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
 import { DocsMainPane } from "@/docs-core/src/docs-main-pane";
+import { useDocsPageSetup, type DocsPageSetupState } from "@/lib/use-docs-page-setup";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { DocsWorkspaceModals } from "@/docs-core/src/docs-workspace-modals";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -133,6 +134,7 @@ function DocsWorkspaceShell({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [viewSource, setViewSource] = useState(false);
   const [activeOutlineIndex, setActiveOutlineIndex] = useState<number | null>(null);
+  const pageSetup = useDocsPageSetup();
 
   useEffect(() => {
     setViewSource(false);
@@ -171,6 +173,7 @@ function DocsWorkspaceShell({
             mayShare={mayShare}
             shareDialog={shareDialog}
             guestView={guestView}
+            pageSetup={pageSetup}
             onToggleViewSource={() => setViewSource((on) => !on)}
           />
         </>
@@ -181,6 +184,7 @@ function DocsWorkspaceShell({
           fileKey={fileKey}
           viewSource={viewSource}
           readOnlyNotice={guestView ? controller.labels.guestReadOnlyNotice : undefined}
+          pageSetup={pageSetup.pageSetup}
           onEditorReady={setEditor}
         />
       }
@@ -237,6 +241,7 @@ function DocsMainHeader({
   mayShare,
   shareDialog,
   guestView,
+  pageSetup,
   onToggleViewSource,
 }: {
   controller: DocsController;
@@ -246,6 +251,7 @@ function DocsMainHeader({
   mayShare?: boolean;
   shareDialog: DocsShareDialog;
   guestView: boolean;
+  pageSetup: DocsPageSetupState;
   onToggleViewSource: () => void;
 }) {
   const title = controller.title || controller.labels.emptyTitle;
@@ -262,6 +268,7 @@ function DocsMainHeader({
       actions={
         controller.hasFile ? (
           <DocsHeaderActions
+            pageSetup={{ ...pageSetup, labels: controller.labels }}
             actions={[
               {
                 id: "print",

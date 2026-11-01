@@ -3,6 +3,10 @@ import { MoreHorizontal } from "lucide-react";
 import type { ActionBarAction } from "@/action-bar/src/action-bar";
 import { IconButton } from "@/button/src/button";
 import { DropdownMenu } from "@/menu-dropdown/src/dropdown-menu";
+import {
+  DocsPageSetupMenu,
+  type DocsPageSetupMenuProps,
+} from "@/docs-core/src/docs-page-setup-menu";
 import { cn } from "@/lib/utils";
 
 export type DocsHeaderAction = ActionBarAction & {
@@ -14,6 +18,8 @@ export type DocsHeaderActionsProps = {
   actions: DocsHeaderAction[];
   menuLabel?: string;
   leading?: ReactNode;
+  /** Page setup menu, first in the wide-screen row (not in the phone overflow menu). */
+  pageSetup?: DocsPageSetupMenuProps;
   className?: string;
 };
 
@@ -39,6 +45,7 @@ export function DocsHeaderActions({
   actions,
   menuLabel = "More actions",
   leading,
+  pageSetup,
   className,
 }: DocsHeaderActionsProps) {
   if (actions.length === 0 && !leading) return null;
@@ -49,6 +56,7 @@ export function DocsHeaderActions({
       {actions.length > 0 ? (
         <>
           <div className="docs-workspace__header-actions-row">
+            {pageSetup ? <DocsPageSetupMenu {...pageSetup} /> : null}
             {actions.map(renderActionButton)}
           </div>
           <div className="docs-workspace__header-actions-menu">
