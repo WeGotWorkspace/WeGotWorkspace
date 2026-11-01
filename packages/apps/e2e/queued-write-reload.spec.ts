@@ -2,7 +2,7 @@
 //
 // Unstarring a file or deleting a task waits 2.5 s behind an Undo toast. A reload or
 // leaving the app inside that window must still reach the server.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 import { putDriveFile } from "./helpers/drive-seed";
 import { E2E_USERNAME } from "./helpers/notes-live";
 

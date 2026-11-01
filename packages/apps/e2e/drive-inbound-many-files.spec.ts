@@ -4,7 +4,7 @@
 // FileNode/get at maxObjectsInGet (500), so one request for all ids failed
 // with requestTooLarge and the offline cache stayed empty. The sync must chunk
 // the ids and keep the cache current across later renames and deletes.
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./helpers/live-test";
 import { E2E_PASSWORD, E2E_USERNAME } from "./helpers/notes-live";
 
 const API = process.env.WGW_E2E_API_URL ?? "http://127.0.0.1:9080";
