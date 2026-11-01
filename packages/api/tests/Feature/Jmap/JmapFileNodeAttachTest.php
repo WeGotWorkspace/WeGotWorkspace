@@ -366,7 +366,10 @@ final class JmapFileNodeAttachTest extends WgwDatabaseTestCase
 
         $done = null;
         for ($i = 0; $i < 6 && $done === null; $i++) {
-            $response = $this->set($update);
+            $response = $this->withBearer($this->token)->postJson('/api/v1/jmap', [
+                'using' => [JmapCapabilities::CORE, JmapCapabilities::FILENODE, JmapCapabilities::FILENODE_VERSION_CHECK],
+                'methodCalls' => [['FileNode/set', ['accountId' => 'bob'] + $update, 's']],
+            ])->assertOk();
             $this->assertNotSame('versionMismatch', $response->json('methodResponses.0.1.notUpdated.'.$node['id'].'.type'));
             $done = $response->json('methodResponses.0.1.updated.'.$node['id']);
         }
