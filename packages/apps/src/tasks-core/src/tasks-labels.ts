@@ -1,3 +1,4 @@
+import type { TaskWriteRefusal } from "@/lib/offline/tasks/tasks-refused-write";
 import { defaultOwnerScopeLabels } from "@/ui/owner-scope-labels";
 
 export type TasksUILabels = {
@@ -132,6 +133,8 @@ export type TasksUILabels = {
   conflictFieldLocal: string;
   conflictFieldServer: string;
   conflictApplyMerge: string;
+  /** A queued write the server refused for good (#1825). */
+  taskWriteRefused: (title: string, reason: TaskWriteRefusal) => string;
 };
 
 export const defaultTasksLabels: TasksUILabels = {
@@ -273,6 +276,15 @@ export const defaultTasksLabels: TasksUILabels = {
   conflictFieldLocal: "Your edits",
   conflictFieldServer: "Server version",
   conflictApplyMerge: "Apply merged changes",
+  taskWriteRefused: (title, reason) => {
+    if (reason === "gone") {
+      return `“${title}” was deleted, or you no longer have access to its list. Your offline changes to it were not kept.`;
+    }
+    if (reason === "readOnly") {
+      return `You can only view the list with “${title}” now. Your offline changes to it were not saved.`;
+    }
+    return `Your offline changes to “${title}” could not be saved. It shows the server version again.`;
+  },
 };
 
 export function mergeTasksLabels(overrides?: Partial<TasksUILabels>): TasksUILabels {

@@ -143,3 +143,67 @@ describe("useTasksMutations reminders", () => {
     );
   });
 });
+
+describe("useTasksMutations due dates (#1821)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockOperations.patchTask.mockImplementation(async (id, patch) => ({
+      ...bootstrap.data.tasks.find((task) => task.id === id)!,
+      ...patch,
+    }));
+  });
+
+  function taskWithoutDue() {
+    const task = bootstrap.data.tasks.find((item) => !item.due);
+    expect(task).toBeTruthy();
+    return task!;
+  }
+
+  it("saves a date added in Edit as all day", async () => {
+    const task = taskWithoutDue();
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    await act(async () => {
+      await result.current.saveEditedTask({
+        ...taskToFormValue(task, task.taskListId),
+        due: "2026-11-08",
+        showWithoutTime: true,
+      });
+    });
+
+    expect(mockOperations.patchTask).toHaveBeenCalledWith(
+      task.id,
+      expect.objectContaining({ due: "2026-11-08", showWithoutTime: true }),
+      expect.anything(),
+    );
+  });
+
+  it("saves a date and time added in Edit as timed", async () => {
+    const task = taskWithoutDue();
+    const { result } = renderHook(() =>
+      useTasksController({ data: bootstrap.data, operations: mockOperations }),
+    );
+
+    act(() => {
+      result.current.editTask(task.id);
+    });
+    await act(async () => {
+      await result.current.saveEditedTask({
+        ...taskToFormValue(task, task.taskListId),
+        due: "2026-11-08T09:30:00",
+        showWithoutTime: false,
+      });
+    });
+
+    expect(mockOperations.patchTask).toHaveBeenCalledWith(
+      task.id,
+      expect.objectContaining({ due: "2026-11-08T09:30:00", showWithoutTime: false }),
+      expect.anything(),
+    );
+  });
+});

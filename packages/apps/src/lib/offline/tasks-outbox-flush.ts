@@ -19,12 +19,17 @@ import { httpStatusFromFlushError } from "@/lib/offline/core/outbox-error-status
 import { sendChangedRowAgain, settleSentOutboxMutation } from "@/lib/offline/core/outbox-store";
 import { TASKS_DOMAIN, tasksItemsTable } from "@/lib/offline/tasks/tasks-schema";
 import {
+  isRefusedTaskWrite,
+  settleRefusedTaskWrite,
+} from "@/lib/offline/tasks/tasks-refused-write";
+import {
   listOutboxMutations,
   markOutboxError,
   readTasksBootstrapFromCache,
   removeOutboxMutation,
   removeTaskFromCache,
   removeTaskListFromCache,
+  tasksOutboxTaskId,
   upsertTaskInCache,
   upsertTaskListInCache,
   writeTasksBootstrapToCache,
@@ -50,9 +55,12 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
   const etagMismatches: string[] = [];
   // Rows sent again in this flush (`sendChangedRowAgain` appends to `rows`).
   const resends = new Map<string, number>();
+  // Tasks whose queued writes the server refused; their later rows are gone too.
+  const refused = new Set<string>();
 
   for (const row of rows) {
     if (row.domain !== TASKS_DOMAIN) continue;
+    if (refused.has(tasksOutboxTaskId(row) ?? "")) continue;
     try {
       const payload = JSON.parse(row.payload) as Record<string, unknown>;
       if (row.op === "create") {
@@ -113,6 +121,14 @@ export async function flushTasksOutbox(username: string): Promise<OutboxFlushRes
       }
       await removeOutboxMutation(username, row.id);
     } catch (error) {
+      if (isRefusedTaskWrite(row, error)) {
+        // A failed read of the server copy keeps the row for the next flush.
+        const taskId = await settleRefusedTaskWrite(username, row, error).catch(() => null);
+        if (taskId) {
+          refused.add(taskId);
+          continue;
+        }
+      }
       if (isEtagMismatch(error)) {
         const taskId = String(JSON.parse(row.payload).taskId ?? "");
         if (taskId) etagMismatches.push(taskId);

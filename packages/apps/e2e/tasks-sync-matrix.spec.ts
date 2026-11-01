@@ -874,9 +874,7 @@ const BUGS = {
   renameMoveConflict: 1814, // an offline rename + move conflicts with itself
   sameBrowserTabStale: 1815, // a second tab of one browser keeps an old view
   createRenameLost: 1816, // an edit to a task created offline goes to its temporary id
-  dueAddMidnight: 1821, // a due date added in Edit is saved at midnight, not all day
   shareeKeepsOldName: 1822, // an owner's rename or colour does not reach the sharee
-  refusedWriteStuck: 1825, // a queued edit refused with 403/404 stays on screen and queued
 };
 
 function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
@@ -884,7 +882,6 @@ function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
   if (action === "move" || action === "renameMove") bugs.push(BUGS.moveIgnored);
   if (action === "renameMove") bugs.push(BUGS.renameMoveConflict);
   if (action === "createRename") bugs.push(BUGS.createRenameLost);
-  if (action === "dueAdd" || action === "edit") bugs.push(BUGS.dueAddMidnight);
   if (tabs === "diff" && (action === "listRename" || action === "listColor")) {
     bugs.push(BUGS.shareeKeepsOldName);
   }
@@ -954,7 +951,6 @@ async function queueEditOffline(b: Tab, f: Fixture, title: string) {
 
 test.describe("sharing", () => {
   test("revoked while the teammate has a queued edit", async ({ browser }) => {
-    expectKnownBugs([BUGS.refusedWriteStuck]);
     const id = caseId();
     let session: Session | null = null;
     try {
@@ -980,7 +976,6 @@ test.describe("sharing", () => {
   });
 
   test("made read-only while the teammate has a queued edit", async ({ browser }) => {
-    expectKnownBugs([BUGS.refusedWriteStuck]);
     const id = caseId();
     let session: Session | null = null;
     try {
@@ -1050,7 +1045,6 @@ test.describe("list delete with a queued edit", () => {
   for (const tabs of ["same", "diff"] as const) {
     const who = tabs === "same" ? "another tab" : "the teammate";
     test(`list delete · while ${who} edits one of its tasks offline`, async ({ browser }) => {
-      expectKnownBugs([BUGS.refusedWriteStuck]);
       const id = caseId();
       let session: Session | null = null;
       try {

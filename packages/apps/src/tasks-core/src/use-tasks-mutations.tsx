@@ -11,7 +11,7 @@ import {
   mergeCreatedTask,
   shouldHideCompletedTaskAfterExit,
   taskAlertsEqual,
-  taskDueIsDateOnly,
+  dueEditSendsShowWithoutTime,
   taskListName,
 } from "@/tasks-core/src/tasks-task-utils";
 import {
@@ -230,7 +230,7 @@ export function useTasksMutations({ shell, list, exitAnimation }: UseTasksMutati
         patch.description = trimmedDescription;
       }
       if (taskDue !== (task.due ?? null)) patch.due = taskDue;
-      if (taskDue && taskShowWithoutTime !== taskDueIsDateOnly(task.due, task.showWithoutTime)) {
+      if (dueEditSendsShowWithoutTime(task, taskDue, taskShowWithoutTime)) {
         patch.showWithoutTime = taskShowWithoutTime;
       }
       if (taskDue && taskTimeZone !== (task.timeZone ?? null)) {
