@@ -385,6 +385,92 @@ describe("JmapPushHub", () => {
       expect(b.live()).toHaveLength(1);
     });
 
+    // The fake bus delivers to tabs in the order their topics were created. A
+    // hidden tab created before the leader hears the joiner while it still
+    // waits in the leader queue, and gets the lock before the joiner does.
+    it("a hidden tab waiting in the leader queue hands over to a visible tab that just joined", async () => {
+      const b = browser();
+      const waiting = b.tab("b", { visible: false });
+      const leader = b.tab("a", { visible: false });
+      cleanup.push(leader.hub.subscribe(["Note"], vi.fn()));
+      cleanup.push(waiting.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      const grantVisible = b.locks.deferGrants("wgw-jmap-push/visible/");
+      const c = b.tab("c");
+      cleanup.push(c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+
+      grantVisible();
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("c");
+      expect(b.live()).toHaveLength(1);
+    });
+
+    it("a hidden tab waiting in the leader queue that becomes visible takes the stream", async () => {
+      const b = browser();
+      const waiting = b.tab("b", { visible: false });
+      const leader = b.tab("a", { visible: false });
+      cleanup.push(leader.hub.subscribe(["Note"], vi.fn()));
+      cleanup.push(waiting.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("a");
+
+      b.locks.deferGrants("wgw-jmap-push/visible/");
+      waiting.view.set(true);
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe("b");
+      expect(b.live()).toHaveLength(1);
+    });
+
+    it("a tab that becomes hidden again no longer draws the stream to it", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      const c = b.tab("c", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+      c.view.set(true);
+      c.view.set(false);
+      await settle();
+      const holder = b.locks.holder(LEADER);
+      const streams = b.streams.length;
+      await settle();
+      expect(b.locks.holder(LEADER)).toBe(holder);
+      expect(b.streams).toHaveLength(streams);
+      expect(b.live()).toHaveLength(1);
+    });
+
+    // A tab can say it is visible and crash before its locks show it, without
+    // a bye. The hidden tabs must not pass the lock between them forever.
+    it("hidden tabs settle the stream when a tab that said it is visible crashed", async () => {
+      const b = browser();
+      const a = b.tab("a", { visible: false });
+      const c = b.tab("c", { visible: false });
+      cleanup.push(a.hub.subscribe(["Note"], vi.fn()), c.hub.subscribe(["Note"], vi.fn()));
+      await settle();
+
+      const ghost = b.bus.topic();
+      ghost.publish({
+        v: 1,
+        kind: "tab",
+        tabId: "ghost",
+        types: ["Note"],
+        confirmed: {},
+        visible: true,
+      });
+      ghost.close();
+      await settle();
+      await settle();
+      const streams = b.streams.length;
+      await settle();
+      expect(b.streams).toHaveLength(streams);
+      expect(streams).toBeLessThanOrEqual(3);
+      expect(b.live()).toHaveLength(1);
+    });
+
     it("a visible leader keeps the stream when another tab shows", async () => {
       const b = browser();
       const a = b.tab("a");
