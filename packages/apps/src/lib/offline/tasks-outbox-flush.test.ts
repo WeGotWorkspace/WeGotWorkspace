@@ -91,7 +91,9 @@ describe("flushTasksOutbox", () => {
     expect(result.etagMismatches).toEqual([]);
     expect(await listOutboxMutations(username)).toEqual([]);
     expect((await cachedTask())?.title).toBe(task.title);
-    expect(refusals).toEqual([{ username, taskId: task.id, title: "Mine", reason: "readOnly" }]);
+    expect(refusals).toEqual([
+      { username, taskId: task.id, title: task.title, reason: "readOnly" },
+    ]);
   });
 
   it("drops a write to a task that is gone, and its later writes (#1825)", async () => {

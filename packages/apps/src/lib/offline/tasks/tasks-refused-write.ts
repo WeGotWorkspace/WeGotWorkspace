@@ -74,7 +74,9 @@ export async function settleRefusedTaskWrite(
   }
 
   const cached = await readTasksBootstrapFromCache(username);
-  const title = cached?.data.tasks.find((task) => task.id === taskId)?.title?.trim() ?? "";
+  // Name the task as it shows from now on: the server copy, else the local one.
+  const local = cached?.data.tasks.find((task) => task.id === taskId);
+  const title = (serverTask?.title || local?.title)?.trim() ?? "";
   for (const queued of await listOutboxMutationsForDomain(username, TASKS_DOMAIN)) {
     if (tasksOutboxTaskId(queued) === taskId) await removeOutboxMutation(username, queued.id);
   }
