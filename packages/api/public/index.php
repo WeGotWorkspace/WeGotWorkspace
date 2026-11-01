@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Support\JmapUploadContentType;
 use App\Http\Support\WgwOversizedPost;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,9 @@ if (str_starts_with($scriptName, '/api/')) {
     unset($_SERVER['PATH_INFO'], $_SERVER['ORIG_PATH_INFO']);
     $_SERVER['SCRIPT_NAME'] = '/index.php';
 }
+
+// A JSON-typed upload part must not be decoded into memory by Request::capture().
+$_SERVER = JmapUploadContentType::mask($_SERVER);
 
 // Bootstrap Laravel and handle the request...
 (require_once __DIR__.'/../bootstrap/app.php')

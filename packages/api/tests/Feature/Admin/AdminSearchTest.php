@@ -6,7 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\JmapFileNode;
 use App\Models\SearchDocument;
-use App\Services\Jmap\FileNodes\FileNodeIndexService;
+use App\Services\Jmap\FileNodes\FileNodeReindexer;
 use App\Services\Search\SearchReindexRunner;
 use App\Services\Search\SearchReindexStateStore;
 use App\Storage\WgwStorage;
@@ -92,7 +92,7 @@ final class AdminSearchTest extends WgwDatabaseTestCase
     {
         $ticked = false;
         try {
-            app(FileNodeIndexService::class)->reindexAll(progress: function (int $done, int $total) use (&$ticked): void {
+            app(FileNodeReindexer::class)->reindexAll(progress: function (int $done, int $total) use (&$ticked): void {
                 $this->assertGreaterThan(0, $done);
                 $this->assertGreaterThanOrEqual($done, $total);
                 $ticked = true;

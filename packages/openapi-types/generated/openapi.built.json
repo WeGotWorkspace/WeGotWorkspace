@@ -13754,11 +13754,66 @@
                             "type": "string"
                         },
                         "description": "FileNode id (`fn-…`). Streams bytes when the caller mayView the path, including inherited Doc ACL on `.attachments/{docId}/`."
+                    },
+                    {
+                        "name": "Range",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Stream"
+                        "description": "File content (inline). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+                        "headers": {
+                            "Accept-Ranges": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "bytes"
+                                    ]
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
                     },
                     "404": {
                         "description": "Unknown file or FileNode id, or one the caller may not read. A `..` segment is not found too. The answer is the same for all of these.",
@@ -13769,9 +13824,20 @@
                                 }
                             }
                         }
+                    },
+                    "416": {
+                        "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 },
-                "x-wgw-access": "guest"
+                "x-wgw-access": "guest",
+                "description": "Streams with a single `Range` request honoured (206 / 416) and `Content-Length` from the file at stream time (#1500)."
             }
         },
         "/files/context": {
@@ -16166,7 +16232,7 @@
                     "JMAP"
                 ],
                 "summary": "JMAP blob download",
-                "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload) and the contacts REST blob store (UUID-shaped, POST /contacts/blobs) — every blobId the envelope surfaces is downloadable here. Content-Type honours the optional `type` query parameter.",
+                "description": "Streams a blob (RFC 8620 §6.2). Serves ids from the envelope blob store (jb-…, POST /jmap/upload), the contacts REST blob store (UUID-shaped, POST /contacts/blobs), and drive content (fnb-…) — every blobId the envelope surfaces is downloadable here. Memory use does not grow with the blob's size. Supports a single `Range` (#1500), so a browser can resume and media can seek. Content-Type honours the optional `type` query parameter. For a native browser download without the Authorization header, issue a ticket with POST /jmap/download-tickets/{accountId}.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -16206,11 +16272,58 @@
                             "type": "string"
                         },
                         "description": "Overrides the response Content-Type."
+                    },
+                    {
+                        "name": "Range",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Blob content",
+                        "description": "Blob content. `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+                        "headers": {
+                            "Accept-Ranges": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "bytes"
+                                    ]
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
                         "content": {
                             "application/octet-stream": {
                                 "schema": {
@@ -16232,6 +16345,16 @@
                                 }
                             }
                         }
+                    },
+                    "416": {
+                        "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -16242,7 +16365,7 @@
                     "JMAP"
                 ],
                 "summary": "JMAP blob upload",
-                "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload.",
+                "description": "Stores the raw request body as a blob (RFC 8620 §6.1). Content-addressed: identical bytes dedupe to one blobId per account. Unreferenced blobs expire after a TTL (re-upload refreshes it); size is bounded by the advertised maxSizeUpload (the smaller of WGW_JMAP_MAX_SIZE_UPLOAD and post_max_size). The body is streamed to storage and hashed on the way (#1500), so memory_limit does not bound a part. Optional Wgw-Part-Length / Wgw-Part-Sha256 headers declare the part; a stored part that differs is rejected and not stored. Two shapes mean \"too large\": 413 {error, code: \"post_too_large\"} from the front controller (declared Content-Length over post_max_size) and 400 with the RFC 8620 limit problem (over maxSizeUpload, or a body PHP discarded). A write the disk or hosting quota refuses is 507.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -16254,6 +16377,35 @@
                         "name": "accountId",
                         "in": "path",
                         "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Wgw-Part-Length",
+                        "in": "header",
+                        "required": false,
+                        "description": "Declared byte count of the part. A stored length that differs is rejected (400 part-mismatch).",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9]{1,18}$"
+                        }
+                    },
+                    {
+                        "name": "Wgw-Part-Sha256",
+                        "in": "header",
+                        "required": false,
+                        "description": "Declared sha256 of the part, 64 hex characters. A stored sha256 that differs is rejected (400 part-mismatch).",
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{64}$"
+                        }
+                    },
+                    {
+                        "name": "Wgw-Assembly-Id",
+                        "in": "header",
+                        "required": false,
+                        "description": "Open blob assembly (https://wegotworkspace.org/jmap/blob-assembly) this part is uploaded for. Records a claim so another assembly that consumes the same content-addressed part does not delete it. Unknown ids are ignored.",
                         "schema": {
                             "type": "string"
                         }
@@ -16271,11 +16423,47 @@
                         }
                     },
                     "400": {
-                        "description": "Body exceeds maxSizeUpload (problem+json, type urn:ietf:params:jmap:error:limit).",
+                        "description": "Problem+json. type urn:ietf:params:jmap:error:limit with limit \"maxSizeUpload\": the body exceeds maxSizeUpload, or PHP discarded it (an empty body with a declared length, a post_max_size warning, or chunked transfer) — never stored as an empty part. type https://wegotworkspace.org/jmap/problem/part-mismatch: the stored part differs from Wgw-Part-Length / Wgw-Part-Sha256 (mismatch lists \"length\" and/or \"sha256\", with expectedLength/receivedLength or expectedSha256/receivedSha256); nothing is stored. type about:blank: a malformed declaration header.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
-                                    "type": "object"
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "limit": {
+                                            "type": "string"
+                                        },
+                                        "mismatch": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "length",
+                                                    "sha256"
+                                                ]
+                                            }
+                                        },
+                                        "expectedLength": {
+                                            "type": "integer"
+                                        },
+                                        "receivedLength": {
+                                            "type": "integer"
+                                        },
+                                        "expectedSha256": {
+                                            "type": "string"
+                                        },
+                                        "receivedSha256": {
+                                            "type": "string"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -16289,6 +16477,41 @@
                             "application/problem+json": {
                                 "schema": {
                                     "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Front controller, before Laravel runs: the declared Content-Length exceeds post_max_size.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "error",
+                                        "code"
+                                    ],
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "post_too_large"
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "507": {
+                        "description": "The disk or the account's hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage). Nothing is stored.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapProblemDetails"
                                 }
                             }
                         }
@@ -16439,7 +16662,7 @@
                     "JMAP"
                 ],
                 "summary": "JMAP batch API endpoint",
-                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits. ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.",
+                "description": "RFC 8620 §3 batched method calls with ResultReference resolution (§3.7). Always returns HTTP 200 for structurally valid batches; individual method failures travel as [\"error\", {...}, callId] invocations inside methodResponses. Non-2xx (problem details, §3.6.1) is reserved for malformed JSON, non-Request bodies, unsupported `using` capabilities, and size limits, plus 507 when a write the batch needed (a blob assembly step, a Blob/upload join) was refused because the disk or hosting quota is full (#1500; FileNode/set reports that as the overQuota SetError instead). ICS/vCard payload bounds: per-object 512 KiB; 64 combined nested VEVENT+VTODO+VALARM (excluding VTIMEZONE); 512 vCard properties. CalendarEvent/set and ContactCard/set map payload_too_large and payload_too_complex to SetError type tooLarge (description keeps the guard message). CalendarEvent/get and ContactCard/get place an over-cap id in notFound and still return other ids; query methods omit the over-cap id.",
                 "security": [
                     {
                         "bearerAuth": []
@@ -16479,6 +16702,16 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/JmapForbidden"
+                    },
+                    "507": {
+                        "description": "A write the batch needed was refused because the disk or hosting quota is full (problem+json, type https://wegotworkspace.org/jmap/problem/insufficient-storage).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JmapProblemDetails"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -19550,6 +19783,230 @@
                     }
                 },
                 "x-wgw-access": "admin"
+            }
+        },
+        "/jmap/download-tickets/{accountId}": {
+            "post": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "Issue a download ticket for one blob",
+                "description": "WGW extension (#1500). A native browser download cannot send the Authorization header, so the client asks for a ticket for one blobId and hands the browser the returned URL. The ticket is bound to this blobId, this account, and the sign-in session of the access token (its refresh-token family): signing out, a password change, or a revoked device ends it. It expires at `min(last request + idle time (30 min), issue + lifetime (24 h))`; every accepted request moves the idle expiry forward, and it never expires while a response streams. An access token minted before session binding existed gets 403 `session_required` (refresh the token and retry).",
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "x-wgw-access": "user",
+                "parameters": [
+                    {
+                        "name": "accountId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "blobId",
+                                    "name"
+                                ],
+                                "properties": {
+                                    "blobId": {
+                                        "type": "string",
+                                        "description": "Any blobId the account can download through downloadUrl."
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "maxLength": 255,
+                                        "description": "File name for Content-Disposition."
+                                    },
+                                    "type": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "Optional Content-Type override."
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ticket issued.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "url",
+                                        "idleExpires",
+                                        "absoluteExpires"
+                                    ],
+                                    "properties": {
+                                        "url": {
+                                            "type": "string",
+                                            "description": "Absolute ticket URL (GET /jmap/download-ticket/{secret}/{name}); the secret is shown once and stored hashed."
+                                        },
+                                        "idleExpires": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "absoluteExpires": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/JmapBadRequest"
+                    },
+                    "403": {
+                        "description": "`session_required`: the access token carries no session binding; or the caller lacks the role.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown blob, a blob the account cannot read, or accountId does not match the principal.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/jmap/download-ticket/{secret}/{name}": {
+            "get": {
+                "tags": [
+                    "JMAP"
+                ],
+                "summary": "Download a blob through a ticket",
+                "description": "WGW extension (#1500). Unauthenticated: the 256-bit secret in the path is the credential, and it grants nothing but this one blob. Each request (a probe, a retry, a Range resume) re-checks the ticket's expiry, its session, that the account is enabled, and the account's read right on the blob, so a withdrawn share stops the download at its next request. Streams with single-Range support. Rate-limited. Unknown, expired, or revoked tickets are 404. Documented exception to 'never other bytes': a hash-pending FileNode's blobId carries a provisional size/mtime version, so an out-of-band rewrite that keeps both can be served under the same ticket.",
+                "x-wgw-access": "guest",
+                "parameters": [
+                    {
+                        "name": "secret",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z0-9_-]{43}$"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Display only; Content-Disposition uses the name the ticket was issued with."
+                    },
+                    {
+                        "name": "Range",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "One byte range (`bytes=a-b`, `bytes=a-`, or `bytes=-n`). Several ranges, another unit, or a malformed value are ignored and the whole body is served."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Blob content as an attachment (`X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`). `Accept-Ranges: bytes`; `Content-Length` is the file's size at stream time.",
+                        "headers": {
+                            "Accept-Ranges": {
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "bytes"
+                                    ]
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "206": {
+                        "description": "The requested byte range, with `Content-Range: bytes a-b/size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown, expired, or revoked ticket, or the blob is no longer readable (problem+json).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "416": {
+                        "description": "Unsatisfiable range; `Content-Range: bytes */size`.",
+                        "headers": {
+                            "Content-Range": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited"
+                    }
+                }
             }
         }
     }

@@ -5,14 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Jmap\FileNodes;
 
 use App\Models\JmapFileNode;
-use App\Models\JmapFileNodeMeta;
 use App\Services\Collab\CollabSidecarMover;
 use App\Services\Collab\DocYjsStateStore;
 use App\Services\Search\BestEffortSearchIndexSync;
 use App\Services\Search\SearchIndexerService;
 use App\Storage\StorageKeyClass;
 use App\Storage\WgwStorage;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -21,13 +19,15 @@ use Illuminate\Support\Str;
  * change sequence and tombstones powering FileNode/changes. Maintained
  * best-effort from both write paths (DriveService and the DAV
  * FileNodeIndexPlugin) and reconciled lazily on reads plus via the
- * wgw:jmap:filenodes-reindex command — out-of-band writes are expected,
- * not fatal (an out-of-band rename is indistinguishable from delete+create
- * and changes the node id; documented deviation).
+ * wgw:jmap:filenodes-reindex command ({@see FileNodeReindexer}) —
+ * out-of-band writes are expected, not fatal (an out-of-band rename is
+ * indistinguishable from delete+create and changes the node id; documented
+ * deviation).
  *
  * Every seq bump also touches the Drive root markers of the key
  * ({@see FileNodeRootMarkers}); each public write is one marker batch, so a
- * write bumps each root once.
+ * write bumps each root once. The sequence itself is {@see FileNodeSequence};
+ * guarded-write claims and resolved hashes are {@see FileNodeContentClaims}.
  */
 final class FileNodeIndexService
 {
@@ -37,7 +37,9 @@ final class FileNodeIndexService
         private readonly BestEffortSearchIndexSync $searchSync,
         private readonly CollabSidecarMover $sidecars,
         private readonly DocYjsStateStore $sidecarLinks,
+        private readonly FileNodeContentHasher $hasher,
         private readonly FileNodeRootMarkers $markers,
+        private readonly FileNodeSequence $seq,
     ) {}
 
     // ---------------------------------------------------------------
@@ -45,32 +47,12 @@ final class FileNodeIndexService
 
     public function currentSeq(): int
     {
-        return (int) ($this->meta()->seq ?? 0);
+        return $this->seq->current();
     }
 
     public function prunedSeq(): int
     {
-        return (int) ($this->meta()->pruned_seq ?? 0);
-    }
-
-    private function nextSeq(): int
-    {
-        return DB::connection('wgw')->transaction(function (): int {
-            $meta = JmapFileNodeMeta::query()->lockForUpdate()->first();
-            if ($meta === null) {
-                $meta = JmapFileNodeMeta::query()->create(['seq' => 0, 'pruned_seq' => 0]);
-            }
-            $meta->seq = (int) $meta->seq + 1;
-            $meta->save();
-
-            return (int) $meta->seq;
-        });
-    }
-
-    private function meta(): JmapFileNodeMeta
-    {
-        return JmapFileNodeMeta::query()->first()
-            ?? JmapFileNodeMeta::query()->create(['seq' => 0, 'pruned_seq' => 0]);
+        return $this->seq->pruned();
     }
 
     // ---------------------------------------------------------------
@@ -112,6 +94,12 @@ final class FileNodeIndexService
     private function isHiddenKey(string $key): bool
     {
         return ! StorageKeyClass::classify($key)->isFileIndexed();
+    }
+
+    /** A key the index keeps a node for: rooted under users/ or groups/ and not hidden. */
+    public function isIndexableKey(string $key): bool
+    {
+        return ! $this->isHiddenKey($key) && $this->isRootedKey($key);
     }
 
     private function syncSearch(string $key, bool $deleted = false): void
@@ -177,7 +165,7 @@ final class FileNodeIndexService
         $query->where(function ($outer) use ($roots): void {
             foreach ($roots as $root) {
                 $outer->orWhere('storage_key', $root)
-                    ->orWhere('storage_key', 'like', $this->escapeLike($root).'/%');
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($root).'/%']);
             }
         });
 
@@ -200,29 +188,37 @@ final class FileNodeIndexService
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key): void {
                 $query->where('storage_key', $key)
-                    ->orWhere('storage_key', 'like', $this->escapeLike($key).'/%');
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($key).'/%']);
             })
             ->orderBy('storage_key')
             ->get()
+            ->filter(static fn (JmapFileNode $row): bool => (string) $row->storage_key === $key
+                || str_starts_with((string) $row->storage_key, $key.'/'))
             ->all());
     }
 
     // ---------------------------------------------------------------
     // Recording (called from DriveService, the DAV plugin, and FileNode/set)
 
-    public function recordCreate(string $key): ?JmapFileNode
+    /**
+     * Indexes a new key. `$sha256` is the hash a WGW write path computed
+     * while streaming the bytes; without one the file was discovered on
+     * disk and is hashed now (small files) or marked hash-pending.
+     * Directories keep a null hash.
+     */
+    public function recordCreate(string $key, ?string $sha256 = null): ?JmapFileNode
     {
-        return $this->markers->batch(fn (): ?JmapFileNode => $this->createNode($key));
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->createNode($key, $sha256));
     }
 
-    private function createNode(string $key): ?JmapFileNode
+    private function createNode(string $key, ?string $sha256): ?JmapFileNode
     {
         if ($this->isHiddenKey($key)) {
             return null;
         }
         $existing = $this->liveByKey($key);
         if ($existing !== null) {
-            return $this->recordContentWrite($key) ?? $existing;
+            return $this->recordContentWrite($key, $sha256) ?? $existing;
         }
 
         $parent = $this->ensureParentIndexed($key);
@@ -232,7 +228,8 @@ final class FileNodeIndexService
             return null;
         }
 
-        $seq = $this->nextSeq();
+        $sha256 ??= $isDir ? null : $this->hasher->discover($key);
+        $seq = $this->seq->next();
 
         $node = JmapFileNode::query()->create([
             'node_id' => $this->mintNodeId(),
@@ -241,16 +238,28 @@ final class FileNodeIndexService
             'name' => basename($key),
             'is_dir' => $isDir,
             'size_bytes' => $isDir ? null : (int) ($disk->size($key) ?: 0),
-            'content_sha256' => null,
+            'content_sha256' => $sha256,
+            'hash_pending' => false,
             'created_seq' => $seq,
             'change_seq' => $seq,
         ]);
+        if (! $isDir && $sha256 === null) {
+            $this->hasher->markPending($node);
+            $node->saveQuietly();
+        }
         $this->markers->touch($key);
         $this->syncSearch($key);
 
         return $node;
     }
 
+    /**
+     * The chokepoint for content writes (#1500): `content_sha256` is always
+     * the true sha256 of the file's bytes. Every WGW write path passes the
+     * hash it computed while streaming the write; a missing hash never
+     * nulls the stored value — the file is hashed now (small) or marked
+     * hash-pending, as a discovered file would be.
+     */
     public function recordContentWrite(string $key, ?string $sha256 = null): ?JmapFileNode
     {
         return $this->markers->batch(fn (): ?JmapFileNode => $this->writeContent($key, $sha256));
@@ -263,26 +272,103 @@ final class FileNodeIndexService
         }
         $row = $this->liveByKey($key);
         if ($row === null) {
-            $row = $this->recordCreate($key);
-            if ($row !== null && ! $row->is_dir && $sha256 !== null) {
-                // Fresh row: attach the known content hash without another
-                // seq bump (the create already announced the node).
-                $row->content_sha256 = $sha256;
-                $row->saveQuietly();
-            }
-
-            return $row;
+            return $this->recordCreate($key, $sha256);
         }
 
         $disk = $this->storage->files();
         $row->size_bytes = $row->is_dir ? null : (int) ($disk->size($key) ?: 0);
-        $row->content_sha256 = $row->is_dir ? null : $sha256;
-        $row->change_seq = $this->nextSeq();
+        if (! $row->is_dir) {
+            $sha256 ??= $this->hasher->discover($key);
+            if ($sha256 !== null) {
+                $row->content_sha256 = $sha256;
+                $this->hasher->clearPending($row);
+            } else {
+                $this->hasher->markPending($row);
+            }
+        }
+        $row->change_seq = $this->seq->next();
         $row->save();
         $this->markers->touch($key);
         $this->syncSearch($key);
 
         return $row;
+    }
+
+    /**
+     * DAV COPY: the destination has identical bytes, so the destination rows
+     * for the whole subtree are inserted in one bulk statement that maps the
+     * source storage_key prefix onto the destination and carries size_bytes
+     * and content_sha256 (and a pending hash) across — no file is read.
+     */
+    public function recordCopy(string $fromKey, string $toKey, bool $recursive = true): ?JmapFileNode
+    {
+        return $this->markers->batch(fn (): ?JmapFileNode => $this->copySubtree($fromKey, $toKey, $recursive));
+    }
+
+    private function copySubtree(string $fromKey, string $toKey, bool $recursive): ?JmapFileNode
+    {
+        if ($this->isHiddenKey($toKey)) {
+            return null;
+        }
+        $source = $this->isHiddenKey($fromKey) ? [] : $this->liveSubtree($fromKey);
+        if (! $recursive) {
+            // Depth: 0 copies the collection itself, not what is inside.
+            $source = array_values(array_filter($source, static fn (JmapFileNode $row): bool => (string) $row->storage_key === $fromKey));
+        }
+        if ($source === [] || (string) $source[0]->storage_key !== $fromKey) {
+            return $this->recordCreate($toKey);
+        }
+        // An overwritten destination was deleted by the COPY first.
+        if ($this->liveByKey($toKey) !== null) {
+            $this->recordDelete($toKey);
+        }
+        $parent = $this->ensureParentIndexed($toKey);
+        $seq = $this->seq->next();
+        $now = now();
+        $idMap = [];
+        $rows = [];
+        $pending = [];
+        foreach ($source as $row) {
+            $sourceKey = (string) $row->storage_key;
+            $newId = $this->mintNodeId();
+            $idMap[(string) $row->node_id] = $newId;
+            $destKey = $sourceKey === $fromKey ? $toKey : $toKey.substr($sourceKey, strlen($fromKey));
+            $rows[] = [
+                'node_id' => $newId,
+                'storage_key' => $destKey,
+                'parent_node_id' => $sourceKey === $fromKey
+                    ? $parent?->node_id
+                    : ($idMap[(string) $row->parent_node_id] ?? null),
+                'name' => basename($destKey),
+                'is_dir' => (bool) $row->is_dir,
+                'size_bytes' => $row->size_bytes,
+                'content_sha256' => $row->content_sha256,
+                'hash_pending' => (bool) $row->hash_pending,
+                'created_seq' => $seq,
+                'change_seq' => $seq,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            if ((bool) $row->hash_pending) {
+                $pending[] = $destKey;
+            }
+        }
+        // ~13 bound values per row: stay under SQLite's variable limit.
+        foreach (array_chunk($rows, 500) as $chunk) {
+            JmapFileNode::query()->insert($chunk);
+        }
+        foreach ($pending as $destKey) {
+            $node = $this->liveByKey($destKey);
+            if ($node !== null) {
+                $this->hasher->markPending($node);
+            }
+        }
+        $this->markers->touch($toKey, withDescendantShares: true);
+        foreach ($rows as $row) {
+            $this->syncSearch($row['storage_key']);
+        }
+
+        return $this->liveByKey($toKey);
     }
 
     /**
@@ -320,9 +406,12 @@ final class FileNodeIndexService
         $fromPrefix = $fromKey.'/';
         $descendants = JmapFileNode::query()
             ->whereNull('deleted_at')
-            ->where('storage_key', 'like', $this->escapeLike($fromPrefix).'%')
+            ->whereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($fromPrefix).'%'])
             ->get();
         foreach ($descendants as $descendant) {
+            if (! str_starts_with((string) $descendant->storage_key, $fromPrefix)) {
+                continue;
+            }
             $descendant->storage_key = $toKey.'/'.substr((string) $descendant->storage_key, strlen($fromPrefix));
             $descendant->save();
         }
@@ -331,7 +420,7 @@ final class FileNodeIndexService
         $row->storage_key = $toKey;
         $row->name = basename($toKey);
         $row->parent_node_id = $newParent?->node_id;
-        $row->change_seq = $this->nextSeq();
+        $row->change_seq = $this->seq->next();
         $row->save();
         // Old and new root sets, including share roots inside a moved folder.
         $this->markers->touch($fromKey, withDescendantShares: true);
@@ -368,13 +457,16 @@ final class FileNodeIndexService
         $keys = JmapFileNode::query()
             ->whereNull('deleted_at')
             ->where(function ($query) use ($key, $row): void {
-                $query->where('storage_key', 'like', $this->escapeLike($key.'/').'%')
+                $query->whereRaw("storage_key LIKE ? ESCAPE '!'", [$this->escapeLike($key.'/').'%'])
                     ->orWhere('node_id', $row->node_id);
             })
             ->get();
         foreach ($keys as $node) {
+            if ((string) $node->node_id !== (string) $row->node_id && ! str_starts_with((string) $node->storage_key, $key.'/')) {
+                continue;
+            }
             $node->deleted_at = now();
-            $node->change_seq = $this->nextSeq();
+            $node->change_seq = $this->seq->next();
             $node->save();
         }
         $this->markers->touch($key, withDescendantShares: true);
@@ -462,7 +554,7 @@ final class FileNodeIndexService
                     continue;
                 }
             }
-            $seq = $this->nextSeq();
+            $seq = $this->seq->next();
             $this->markers->touch($root);
             JmapFileNode::query()->create([
                 'node_id' => $this->mintNodeId(),
@@ -513,100 +605,6 @@ final class FileNodeIndexService
         }
     }
 
-    /**
-     * How often the optional progress callback runs during the mint walk.
-     * Often enough that a caller's phase timestamp stays inside the reindex
-     * stale window, without a state write per key.
-     */
-    private const REINDEX_PROGRESS_STRIDE = 100;
-
-    /**
-     * Full-tree backfill/reconcile (the reindexAll pattern). Existing keys
-     * keep their node ids; new keys are minted; vanished keys tombstoned.
-     * Also prunes tombstones older than the retention window.
-     *
-     * `$progress` is `function (int $done, int $total): void`. SearchReindexRunner
-     * uses it to refresh the phase and to cancel between batches. A throw
-     * aborts the walk.
-     *
-     * @param  callable(int, int): void|null  $progress
-     * @return array{indexed: int, tombstoned: int, pruned: int}
-     */
-    public function reindexAll(int $tombstoneRetentionDays = 30, ?callable $progress = null): array
-    {
-        return $this->markers->batch(fn (): array => $this->reindexTree($tombstoneRetentionDays, $progress));
-    }
-
-    /**
-     * @param  callable(int, int): void|null  $progress
-     * @return array{indexed: int, tombstoned: int, pruned: int}
-     */
-    private function reindexTree(int $tombstoneRetentionDays, ?callable $progress): array
-    {
-        $disk = $this->storage->files();
-        $directoryKeys = $disk->allDirectories();
-        $fileKeys = $disk->allFiles();
-        $total = count($directoryKeys) + count($fileKeys);
-        $indexed = 0;
-        $seen = [];
-        $done = 0;
-
-        foreach ($directoryKeys as $key) {
-            $done++;
-            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
-                $seen[$key] = true;
-                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                    $indexed++;
-                }
-            }
-            $this->reportReindexProgress($progress, $done, $total, $done === count($directoryKeys));
-        }
-        foreach ($fileKeys as $key) {
-            $done++;
-            if (! $this->isHiddenKey($key) && $this->isRootedKey($key)) {
-                $seen[$key] = true;
-                if ($this->liveByKey($key) === null && $this->recordCreate($key) !== null) {
-                    $indexed++;
-                }
-            }
-            $this->reportReindexProgress($progress, $done, $total, $done === $total);
-        }
-
-        $tombstoned = 0;
-        JmapFileNode::query()->whereNull('deleted_at')->orderBy('id')
-            ->chunk(500, function ($rows) use ($seen, $disk, &$tombstoned): void {
-                foreach ($rows as $row) {
-                    $key = (string) $row->storage_key;
-                    if (isset($seen[$key])) {
-                        continue;
-                    }
-                    if ($disk->directoryExists($key) || $disk->fileExists($key)) {
-                        continue;
-                    }
-                    $this->recordDelete($key);
-                    $tombstoned++;
-                }
-            });
-
-        $pruned = $this->pruneTombstones($tombstoneRetentionDays);
-
-        return ['indexed' => $indexed, 'tombstoned' => $tombstoned, 'pruned' => $pruned];
-    }
-
-    /**
-     * @param  callable(int, int): void|null  $progress
-     */
-    private function reportReindexProgress(?callable $progress, int $done, int $total, bool $boundary): void
-    {
-        if ($progress === null || $total === 0) {
-            return;
-        }
-        if (! $boundary && $done % self::REINDEX_PROGRESS_STRIDE !== 0) {
-            return;
-        }
-        $progress($done, $total);
-    }
-
     public function pruneTombstones(int $retentionDays): int
     {
         $cutoff = now()->subDays(max(1, $retentionDays));
@@ -619,11 +617,7 @@ final class FileNodeIndexService
         }
 
         $maxSeq = (int) $stale->max('change_seq');
-        $meta = $this->meta();
-        if ($maxSeq > (int) $meta->pruned_seq) {
-            $meta->pruned_seq = $maxSeq;
-            $meta->save();
-        }
+        $this->seq->raisePruned($maxSeq);
         JmapFileNode::query()->whereIn('id', $stale->pluck('id'))->delete();
 
         return $stale->count();
@@ -680,6 +674,32 @@ final class FileNodeIndexService
     // ---------------------------------------------------------------
     // Helpers
 
+    /**
+     * Live row at $key plus live descendants, parents before children.
+     * `!` is the LIKE escape: portable to SQLite (no default escape) and
+     * MySQL (a backslash ESCAPE clause is a syntax error there).
+     *
+     * @return list<JmapFileNode>
+     */
+    private function liveSubtree(string $key): array
+    {
+        $pattern = $this->escapeLike($key).'/%';
+
+        // LIKE ignores case on SQLite and on _ci collations: keep only the
+        // exact key and keys under "$key/" by byte comparison.
+        return array_values(JmapFileNode::query()
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($key, $pattern): void {
+                $query->where('storage_key', $key)
+                    ->orWhereRaw("storage_key LIKE ? ESCAPE '!'", [$pattern]);
+            })
+            ->orderBy('storage_key')
+            ->get()
+            ->filter(static fn (JmapFileNode $row): bool => (string) $row->storage_key === $key
+                || str_starts_with((string) $row->storage_key, $key.'/'))
+            ->all());
+    }
+
     private function ensureParentIndexed(string $key): ?JmapFileNode
     {
         $parentKey = dirname($key);
@@ -696,7 +716,7 @@ final class FileNodeIndexService
         }
         if ($this->storage->files()->directoryExists($parentKey)) {
             $grand = $this->ensureParentIndexed($parentKey);
-            $seq = $this->nextSeq();
+            $seq = $this->seq->next();
             $this->markers->touch($parentKey);
 
             return JmapFileNode::query()->create([
@@ -732,6 +752,6 @@ final class FileNodeIndexService
 
     private function escapeLike(string $value): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 }

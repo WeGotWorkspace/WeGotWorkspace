@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property int $size_bytes
  * @property string $sha256
  * @property Carbon|null $expires_at
+ * @property Carbon|null $in_use_until
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -34,12 +35,15 @@ final class JmapBlob extends Model
         'size_bytes',
         'sha256',
         'expires_at',
+        'in_use_until',
     ];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
+            'in_use_until' => 'datetime',
+            'size_bytes' => 'integer',
         ];
     }
 }

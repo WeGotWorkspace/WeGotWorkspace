@@ -60,6 +60,14 @@ Larastan only reads `Schema::create` and `Schema::table`. Tables created through
 | `jmap_file_node_root_markers` | `App\Models\JmapFileNodeRootMarker` | Change counter per Drive root (account root or share root; `root_hash` = SHA-256 of `root_key`, unique). Every Drive index write bumps the roots its key falls under; the `FileNode` push hash covers the user's `root → marker` pairs (#1660). A missing row is 0. |
 | `push_subscriptions` | `App\Models\PushSubscription` | Web Push subscriptions (principal + endpoint) |
 | `rtc_relay_events` | `App\Models\RtcRelayEvent` | One row per relay request (`channel`, `actor`, `reason`, `outcome`). No room name, no addresses; 30-day retention |
+| `jmap_blobs` | `App\Models\JmapBlob` | Envelope blobs (`jb-` = first 40 hex of `sha256`, per account). `in_use_until` is set while a FileNode attach streams a copy, so a concurrent attach copies instead of moving ([jmap-blob-assembly.md](files/jmap-blob-assembly.md)) |
+| `jmap_file_nodes` | `App\Models\JmapFileNode` | FileNode index. `content_sha256` is the true sha256 of the bytes; null only for directories, legacy rows, and `hash_pending` files discovered on disk |
+| `jmap_content_hash_jobs` | `App\Models\JmapContentHashJob` | Resumable hash of one hash-pending file (`basis` size:mtime, `hashed_bytes`, serialized `HashContext` + `hash_build`, `locked_until` lease) |
+| `jmap_blob_assemblies` | `App\Models\JmapBlobAssembly` | Blob assembly extension: declared `size_bytes`, `received_bytes`, `next_index`, running hash (`hash_state`, `hash_build`, `hashed_bytes`), `final_sha256` stored before commit, `status`, `locked_until` lease, own `expires_at` |
+| `jmap_blob_assembly_parts` | `App\Models\JmapBlobAssemblyPart` | Accepted parts per assembly (`part_index` → `blob_id`); a retried index is a no-op |
+| `jmap_blob_claims` | `App\Models\JmapBlobClaim` | Parts an open assembly claimed (`Wgw-Assembly-Id`); the GC and part cleanup keep them |
+| `jmap_attach_staging` | `App\Models\JmapAttachStaging` | Attach copies split across `FileNode/set` calls (`target_hash` = sha256 of the target key for the unique index; `copied_bytes`) |
+| `jmap_download_tickets` | `App\Models\JmapDownloadTicket` | Download tickets: `secret_hash` (sha256), bound `username` + `blob_id` + `session_family`, sliding `last_seen_at`, `absolute_expires_at` |
 
 Sabre-owned tables (`locks`, `propertystorage`, `calendarchanges`, …) have no app models yet; access them through Sabre backends or add models when a domain needs direct queries.
 
