@@ -71,6 +71,7 @@
     "@tiptap/react": "3.30.5",
     "@tiptap/starter-kit": "3.30.5",
     "@tiptap/y-tiptap": "3.0.9",
+    "@wgw/openapi-types": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dexie": "^4.4.4",
@@ -90,14 +91,14 @@
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "tiptap-markdown": "^0.9.0",
+    "tiptap-pagination-plus": "3.1.0",
     "tiptap-track-changes": "^0.2.1",
     "tw-animate-css": "^1.3.4",
     "vite-tsconfig-paths": "^6.0.2",
     "y-indexeddb": "^9.0.12",
     "y-protocols": "^1.0.6",
     "yjs": "^13.6.30",
-    "zod": "catalog:",
-    "@wgw/openapi-types": "workspace:*"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.3.1",

@@ -12,6 +12,7 @@ import {
 import { docsEditorFormatFromFileName } from "@/docs-core/src/docs-editor-format";
 import { DocsFilePreview } from "@/docs-core/src/docs-file-preview";
 import { DocsHeaderActions } from "@/docs-core/src/docs-header-actions";
+import { useDocsPageSetup } from "@/lib/use-docs-page-setup";
 import { formatDocLastEdited } from "@/docs-core/src/docs-last-edited";
 import { DocsOutlineSidebar } from "@/docs-core/src/docs-outline-sidebar";
 import { focusOutlineHeading, parseMarkdownOutline } from "@/docs-core/src/docs-outline";
@@ -290,6 +291,7 @@ function DocsCollabWorkspaceInner({
   const [viewSource, setViewSource] = useState(false);
   const [sourceClosedDialogOpen, setSourceClosedDialogOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const pageSetup = useDocsPageSetup();
   const [markdown, setMarkdown] = useState("");
   const [activeOutlineIndex, setActiveOutlineIndex] = useState<number | null>(null);
   const resolvedDocumentTitle = documentTitle?.trim() || defaultTitleFromRoom(urls?.room);
@@ -649,6 +651,7 @@ function DocsCollabWorkspaceInner({
               }
               actions={
                 <DocsHeaderActions
+                  pageSetup={{ ...pageSetup, labels }}
                   leading={
                     permissions.editable ? (
                       <DocsCollabSuggestControls editor={editor} disabled={viewSource} />
@@ -707,6 +710,7 @@ function DocsCollabWorkspaceInner({
                   }
                   commentControlLabels={labels}
                   onInsertImage={imageInsertEnabled ? imageInsert.openPicker : undefined}
+                  pageSetup={pageSetup.pageSetup}
                 />
               ) : null}
               <WorkspaceDetailFooter

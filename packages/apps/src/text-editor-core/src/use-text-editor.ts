@@ -18,6 +18,8 @@ export type UseTextEditorOptions = {
   /** Accessible name of the editable textbox. Falls back to `placeholder`. */
   ariaLabel?: string;
   fetchImageContent?: CreateTextEditorExtensionsOptions["fetchImageContent"];
+  /** Docs only: on-screen pages at mount (see `useTextEditorPageSetup` for changes). */
+  pagination?: CreateTextEditorExtensionsOptions["pagination"];
   onUpdate?: (payload: { editor: Editor; content: string }) => void;
 } & Pick<UseEditorOptions, "autofocus" | "editorProps">;
 
@@ -29,6 +31,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     placeholder,
     ariaLabel,
     fetchImageContent,
+    pagination,
     onUpdate,
     autofocus,
     editorProps,
@@ -38,6 +41,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
     placeholder,
     format,
     fetchImageContent,
+    pagination,
   };
 
   const editor = useEditor(
@@ -59,7 +63,7 @@ export function useTextEditor(options: UseTextEditorOptions = {}) {
             })
         : undefined,
     },
-    [format, editable, placeholder, ariaLabel],
+    [format, editable, placeholder, ariaLabel, pagination != null],
   );
 
   return editor;
