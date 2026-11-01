@@ -12,8 +12,10 @@ use App\Services\Docs\DocsThreadCollectionUris;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Sabre\CalDAV\Backend\PDO as CalPDO;
+use Sabre\CalDAV\Plugin as CalDAVPlugin;
 use Sabre\DAV\Exception\Conflict;
 use Sabre\DAV\Exception\Forbidden;
+use Sabre\DAV\PropPatch;
 use Sabre\DAV\Sharing\Plugin as SharingPlugin;
 use Sabre\VObject\Recur\MaxInstancesExceededException;
 
@@ -49,6 +51,12 @@ final class WgwCalendarBackend extends CalPDO
         ChatCollectionUris::PREFIX_CHANNEL,
         ChatCollectionUris::PREFIX_DM,
         DocsThreadCollectionUris::POOL_URI,
+    ];
+
+    /** DAV property => calendarinstances column a sharee copy follows. */
+    private const APPEARANCE_FIELDS = [
+        '{DAV:}displayname' => 'displayname',
+        '{http://apple.com/ns/ical/}calendar-color' => 'calendarcolor',
     ];
 
     public function __construct(\PDO $pdo)
@@ -110,6 +118,79 @@ final class WgwCalendarBackend extends CalPDO
 
             return $createdId;
         });
+    }
+
+    /**
+     * Sharee copies a sharee did not rename or recolour follow the owner, from
+     * the API and from a DAV client alike (#1822). Other updates go straight
+     * to Sabre.
+     *
+     * @param  mixed  $calendarId  the [calendarid, instanceid] pair
+     */
+    public function updateCalendar($calendarId, PropPatch $propPatch): void
+    {
+        if (! is_array($calendarId) || ! $this->ownerAppearanceChange($calendarId, $propPatch)) {
+            parent::updateCalendar($calendarId, $propPatch);
+
+            return;
+        }
+
+        $supported = array_keys($this->propertyMap);
+        $supported[] = '{'.CalDAVPlugin::NS_CALDAV.'}schedule-calendar-transp';
+        $propPatch->handle($supported, function (array $mutations) use ($calendarId): bool {
+            [$collectionId, $instanceId] = [(int) $calendarId[0], (int) $calendarId[1]];
+            $before = (array) DB::connection('wgw')->table('calendarinstances')
+                ->where('id', $instanceId)
+                ->first(array_values(self::APPEARANCE_FIELDS));
+
+            $own = new PropPatch($mutations);
+            parent::updateCalendar($calendarId, $own);
+            if (! $own->commit()) {
+                return false;
+            }
+            $this->mirrorAppearanceToSharees($collectionId, $before, $mutations);
+
+            return true;
+        });
+    }
+
+    /** @param array<mixed> $calendarId */
+    private function ownerAppearanceChange(array $calendarId, PropPatch $propPatch): bool
+    {
+        if (array_intersect_key($propPatch->getMutations(), self::APPEARANCE_FIELDS) === []) {
+            return false;
+        }
+        $connection = DB::connection('wgw');
+        $access = $connection->table('calendarinstances')->where('id', (int) ($calendarId[1] ?? 0))->value('access');
+        if ((int) ($access ?? SharingPlugin::ACCESS_SHAREDOWNER) !== SharingPlugin::ACCESS_SHAREDOWNER) {
+            return false;
+        }
+        $kind = $connection->table('calendar_collection_meta')->where('calendarid', (int) ($calendarId[0] ?? 0))->value('kind');
+
+        return CollectionKind::tryFrom((string) $kind)?->shareesFollowOwnerAppearance() === true;
+    }
+
+    /**
+     * A sharee copy that still holds the owner's previous value never got a
+     * value of its own, so it takes the new one. The parent update already
+     * moved the shared sync token, so sharees re-list the collection.
+     *
+     * @param  array<string, mixed>  $before  the owner's columns before the update
+     * @param  array<string, mixed>  $mutations
+     */
+    private function mirrorAppearanceToSharees(int $collectionId, array $before, array $mutations): void
+    {
+        foreach (self::APPEARANCE_FIELDS as $property => $column) {
+            if (! array_key_exists($property, $mutations)) {
+                continue;
+            }
+            $previous = $before[$column] ?? null;
+            $query = DB::connection('wgw')->table('calendarinstances')
+                ->where('calendarid', $collectionId)
+                ->where('access', '!=', SharingPlugin::ACCESS_SHAREDOWNER);
+            $previous === null ? $query->whereNull($column) : $query->where($column, $previous);
+            $query->update([$column => $mutations[$property]]);
+        }
     }
 
     /** @return array<mixed> */
