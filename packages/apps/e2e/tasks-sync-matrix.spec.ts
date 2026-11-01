@@ -885,8 +885,9 @@ function knownBugs(action: Action, tabs: Tabs, net: Net): number[] {
   if (action === "listDelete" && ["off", "both", "aOff"].includes(net)) {
     bugs.push(BUGS.listDeleteOffline);
   }
-  // The other tab stays online while tab A changes the shared cache.
-  if (tabs === "same" && ["on", "aOff"].includes(net) && bugs.length === 0) {
+  // The other tab stays online while tab A changes the shared cache. After a
+  // move the other tab catches up (it passed 3 of 3 runs once #1813 was fixed).
+  if (tabs === "same" && ["on", "aOff"].includes(net) && bugs.length === 0 && action !== "move") {
     bugs.push(BUGS.sameBrowserTabStale);
   }
   if (tabs === "same" && net === "aOff" && action === "listDelete") {
